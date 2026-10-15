@@ -3,6 +3,8 @@ package api_test
 import (
 	"context"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"strings"
 	"testing"
@@ -93,5 +95,62 @@ func TestTheRunsRowsBarTheirDurationAndNameARetry(t *testing.T) {
 	}
 	if strings.Count(body, "attempt 2") != 1 || strings.Contains(body, "attempt 1") {
 		t.Error("the retry is not named once as attempt 2")
+	}
+}
+
+func rowsGet(t *testing.T, ui *api.UI, path string) (int, string) {
+	t.Helper()
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	r := httptest.NewRequest(http.MethodGet, path, nil)
+	r.Header.Set("X-Brevis-Fragment", "rows")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, r)
+	return rec.Code, rec.Body.String()
+}
+
+// THE LIST CAN BE FOLLOWED LIVE. The page carries a "Live" switch, hidden
+// until ui.js can drive it, and the list sits in one region; the same URL
+// with X-Brevis-Fragment: rows answers that region alone -- the filter with
+// its counts, the table, the pages and the error dialogs a new failure needs
+// -- for ui.js to swap every few seconds. Each row says which run it is, so a
+// new one can be told from the rest.
+func TestTheRunsListCanBeFollowedLive(t *testing.T) {
+	ui := runsUI(runsReads{
+		runs: []postgres.RunSummary{
+			{ID: "11111111-0000-0000-0000-000000000001", WorkflowSlug: "daily", Status: "failed", Err: "boom"},
+		},
+		counts: map[string]int{"failed": 1},
+	})
+	_, page := get(t, ui, "/runs?workflow=daily")
+	if !strings.Contains(page, `id="runs-list"`) {
+		t.Fatal("the list is not one region")
+	}
+	if !regexp.MustCompile(`<button[^>]*data-live-list="runs-list"[^>]*hidden`).MatchString(page) &&
+		!regexp.MustCompile(`<span[^>]*hidden[^>]*>\s*<button[^>]*data-live-list="runs-list"`).MatchString(page) {
+		t.Error("there is no Live switch, hidden until the script runs")
+	}
+
+	code, frag := rowsGet(t, ui, "/runs?workflow=daily")
+	if code != http.StatusOK {
+		t.Fatalf("the fragment answered %d", code)
+	}
+	if strings.Contains(frag, "<html") || strings.Contains(frag, "data-live-list") {
+		t.Error("the fragment carries the page or the switch")
+	}
+	for _, want := range []string{
+		`aria-label="State"`, `data-run-id="11111111-0000-0000-0000-000000000001"`,
+		`id="erro-11111111-0000-0000-0000-000000000001"`,
+	} {
+		if !strings.Contains(frag, want) {
+			t.Errorf("the fragment has no %s", want)
+		}
+	}
+
+	_, js := get(t, ui, "/assets/ui.js")
+	for _, want := range []string{"data-live-list", `"X-Brevis-Fragment": "rows"`, "localStorage", "visibilitychange"} {
+		if !strings.Contains(strip(js), want) {
+			t.Errorf("ui.js has no %s", want)
+		}
 	}
 }

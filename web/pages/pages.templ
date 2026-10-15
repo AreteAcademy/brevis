@@ -757,29 +757,55 @@ func (f RunFilter) Active() bool {
 }
 
 templ Runs(runs []postgres.RunSummary, f RunFilter, counts map[string]int, total int) {
-	@layouts.Base(layouts.Page{Title: "Runs", Kicker: "History", Active: "runs"}) {
-		<div class="mb-5 flex flex-wrap items-center gap-2">
-			<div class="max-w-full overflow-x-auto whitespace-nowrap">
-				@components.Segmented("State", runStateOptions(f, counts))
-			</div>
-			if f.Workflow != "" {
-				<span class="mx-2 h-5 w-px bg-line"></span>
-				@filterApplied("workflow", f.Workflow, f.With("workflow", ""))
-			}
-			if f.Label != "" {
-				@filterApplied("period", f.Label, f.With("from", "")+"&to=")
-			}
+	@layouts.Base(layouts.Page{Title: "Runs", Kicker: "History", Active: "runs", Actions: liveSwitch()}) {
+		<div id="runs-list">
+			@RunsList(runs, f, counts, total)
 		</div>
-		<p class="display mb-3 text-lg text-ink">
-			{ count(total, "run", "runs") }
-			if f.Active() {
-				<a href="/runs" class="ml-3 text-xs text-gold-strong hover:underline">clear filters</a>
-			}
-		</p>
-		@runsTable(runs, Pagination{
-			Page: f.Page, PerPage: f.PerPage, Total: total, PageLink: f.WithPage,
-		})
 	}
+}
+
+// liveSwitch follows the list as runs arrive. Hidden until ui.js can drive it
+// -- with no script it would be a switch that does nothing -- and off until
+// somebody turns it on; ui.js remembers the choice.
+templ liveSwitch() {
+	<span hidden>
+		<button
+			type="button"
+			data-live-list="runs-list"
+			aria-pressed="false"
+			class="inline-flex h-8 items-center gap-2 rounded-card border border-line bg-surface px-3 text-[0.82rem] text-muted transition-colors duration-150 hover:text-ink aria-pressed:border-accent-strong aria-pressed:text-ink"
+		>
+			<span data-live-dot class="h-1.5 w-1.5 rounded-full bg-line-strong"></span>
+			Live
+		</button>
+	</span>
+}
+
+// RunsList is the list's region: the filter with its counts, the count, the
+// table and its pages. It is the page's fragment (X-Brevis-Fragment: rows),
+// which the Live switch fetches and swaps.
+templ RunsList(runs []postgres.RunSummary, f RunFilter, counts map[string]int, total int) {
+	<div class="mb-5 flex flex-wrap items-center gap-2">
+		<div class="max-w-full overflow-x-auto whitespace-nowrap">
+			@components.Segmented("State", runStateOptions(f, counts))
+		</div>
+		if f.Workflow != "" {
+			<span class="mx-2 h-5 w-px bg-line"></span>
+			@filterApplied("workflow", f.Workflow, f.With("workflow", ""))
+		}
+		if f.Label != "" {
+			@filterApplied("period", f.Label, f.With("from", "")+"&to=")
+		}
+	</div>
+	<p class="display mb-3 text-lg text-ink">
+		{ count(total, "run", "runs") }
+		if f.Active() {
+			<a href="/runs" class="ml-3 text-xs text-gold-strong hover:underline">clear filters</a>
+		}
+	</p>
+	@runsTable(runs, Pagination{
+		Page: f.Page, PerPage: f.PerPage, Total: total, PageLink: f.WithPage,
+	})
 }
 
 // filterApplied shows a slice that came from another screen (a click on the
@@ -870,7 +896,7 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 				<tbody class="divide-y divide-line-soft">
 					{{ longest := longestDuration(runs) }}
 					for _, r := range runs {
-						<tr class="transition-colors hover:bg-gold-wash">
+						<tr data-run-id={ r.ID } class="transition-colors hover:bg-gold-wash">
 							<td class="px-3 py-3 pl-6">
 								@components.State(r.Status)
 								if r.Attempt > 0 {
