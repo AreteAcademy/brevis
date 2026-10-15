@@ -86,7 +86,7 @@ templ Base(p Page) {
 			// Both fonts are served from the binary. The preload avoids the
 			// layout jump on the serif title, which is the first thing the eye
 			// goes to.
-			<link rel="preload" href="/assets/fonts/plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin/>
+			<link rel="preload" href={ assets.URL("fonts/plex-sans-latin.woff2") } as="font" type="font/woff2" crossorigin/>
 			// A VENDORED SHEET IS A DEFAULT, SO IT LOADS FIRST.
 			//
 			// It used to load last, and that is not an ordering preference:
@@ -99,7 +99,7 @@ templ Base(p Page) {
 			for _, href := range p.Island.CSS {
 				<link rel="stylesheet" href={ href }/>
 			}
-			<link rel="stylesheet" href="/assets/app.css"/>
+			<link rel="stylesheet" href={ assets.URL("app.css") }/>
 			// The client's theme AFTER the compiled sheet: they are the same
 			// variables Tailwind emits, and every utility resolves its colour
 			// through `var(--color-*)` — overriding them here repaints the whole
@@ -158,7 +158,7 @@ templ Base(p Page) {
 			// The basic interactions (dialogs, chart tooltips) on every page. It
 			// sits at the end of the body so it does not block rendering — the
 			// HTML already arrives complete, the script only enriches it.
-			<script src="/assets/ui.js" defer></script>
+			<script src={ assets.URL("ui.js") } defer></script>
 			// Then, in order: React's UMD builds have to exist before the shim,
 			// and the shim before React Flow's bundle.
 			for _, src := range p.Island.JS {

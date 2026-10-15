@@ -29,7 +29,7 @@ func TestTheConsolesSheetWinsOverTheVendoredOnes(t *testing.T) {
 	_, ui := browsing(t)
 	_, body := get(t, ui, "/sql")
 
-	sheets := regexp.MustCompile(`<link rel="stylesheet" href="(/assets/[^"]+\.css)"`).FindAllStringSubmatch(body, -1)
+	sheets := regexp.MustCompile(`<link rel="stylesheet" href="(/assets/[^"?]+\.css)(?:\?[^"]*)?"`).FindAllStringSubmatch(body, -1)
 	ours, vendored := -1, map[string]int{}
 	for i, m := range sheets {
 		if m[1] == "/assets/app.css" {

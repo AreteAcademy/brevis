@@ -1,6 +1,9 @@
 package pages
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // A REORDERING IS A BLANK EDITOR, and this is the only part of that a Go test
 // can hold. The browser evaluating these in order is not observable here; the
@@ -11,8 +14,10 @@ import "testing"
 // work out which edge moved.
 func TestTheEditorsAssetsLoadAfterWhatTheyExtend(t *testing.T) {
 	at := map[string]int{}
+	// By path: each one carries its version (`?v=`), which is not what the
+	// order is about.
 	for i, src := range EditorAssets() {
-		at[src] = i
+		at[strings.SplitN(src, "?", 2)[0]] = i
 	}
 
 	for _, dep := range []struct{ first, then, cost string }{

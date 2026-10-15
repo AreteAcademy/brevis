@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"github.com/AreteAcademy/brevis/web/assets"
 	"fmt"
 
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
@@ -19,15 +20,15 @@ import (
 // already cost, on the one screen that asks for it.
 var editorAssets = layouts.Island{
 	CSS: []string{
-		"/assets/vendor/codemirror.css",
-		"/assets/vendor/show-hint.css",
+		assets.URL("vendor/codemirror.css"),
+		assets.URL("vendor/show-hint.css"),
 	},
 	JS: []string{
-		"/assets/vendor/codemirror.js",
-		"/assets/vendor/codemirror-sql.js",
-		"/assets/vendor/show-hint.js",
-		"/assets/vendor/sql-hint.js",
-		"/assets/sql.js",
+		assets.URL("vendor/codemirror.js"),
+		assets.URL("vendor/codemirror-sql.js"),
+		assets.URL("vendor/show-hint.js"),
+		assets.URL("vendor/sql-hint.js"),
+		assets.URL("sql.js"),
 	},
 }
 
