@@ -1,0 +1,105 @@
+package components
+
+// Button is a <button>, `type="button"` unless the attributes say otherwise:
+// one inside a form defaults to submit, and a filter bar that posts the form
+// around it by accident is how a statement ends up somewhere it should not.
+// Its content -- an icon, a word -- is the children.
+templ Button(kind ButtonKind, size ButtonSize, attrs templ.Attributes) {
+	{{ typ, rest := buttonType(attrs) }}
+	<button type={ typ } class={ buttonClass(kind, size) } { rest... }>
+		{ children... }
+	</button>
+}
+
+// IconButton is a button with a glyph and no word, so its label is an
+// ARGUMENT and not an attribute somebody may remember: it is spoken as the
+// name and shown as the tooltip.
+templ IconButton(label, icon string, attrs templ.Attributes) {
+	{{ typ, rest := buttonType(attrs) }}
+	<button
+		type={ typ }
+		aria-label={ label }
+		title={ label }
+		class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-card text-muted transition-colors duration-150 hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong"
+		{ rest... }
+	>
+		@Icon(icon, "h-4 w-4")
+	</button>
+}
+
+// Kbd is a key or a chord, as it is printed on the keyboard.
+templ Kbd(keys string) {
+	<kbd class="inline-flex h-5 min-w-5 items-center justify-center rounded-card border border-line bg-surface-2 px-1 font-mono text-[0.68rem] leading-none text-muted">{ keys }</kbd>
+}
+
+// SearchInput is a list's search box. It is not a form: the caller puts it in
+// the GET form whose URL carries the filter, so a search is a link and works
+// with no script. `/` focuses it (ui.js).
+//
+// THE LABEL IS SPOKEN AND SHOWN. A placeholder is not a label -- it vanishes
+// on the first keystroke and some readers skip it -- so the same words are
+// the aria-label too.
+templ SearchInput(name, value, label string) {
+	<label class="relative flex min-w-0 items-center">
+		<span class="pointer-events-none absolute left-2.5 text-faint">
+			@Icon("search", "h-4 w-4")
+		</span>
+		<input
+			type="search"
+			name={ name }
+			value={ value }
+			aria-label={ label }
+			placeholder={ label }
+			data-hotkey="/"
+			autocomplete="off"
+			class="h-8 w-full rounded-card border border-line bg-surface pr-9 pl-8 text-[0.82rem] text-ink placeholder:text-faint focus:border-accent-strong focus:outline-none"
+		/>
+		<span class="pointer-events-none absolute right-2">
+			@Kbd("/")
+		</span>
+	</label>
+}
+
+// Segmented is a filter with few values -- a status, a kind -- drawn as one
+// control. Each choice is a LINK, so the filter is a URL; the chosen one says
+// `aria-current="true"`, because `aria-pressed` belongs to buttons and
+// `aria-current="page"` to the sidebar.
+templ Segmented(label string, options []SegOption) {
+	<div role="group" aria-label={ label } class="inline-flex h-8 shrink-0 items-center gap-0.5 rounded-card border border-line bg-surface p-0.5">
+		for _, o := range options {
+			if o.Current {
+				<a href={ templ.SafeURL(o.Href) } aria-current="true" class="inline-flex h-full items-center gap-1.5 rounded-[2px] bg-surface-2 px-2.5 text-[0.8rem] font-medium text-ink">
+					{ o.Label }
+					if o.Count != "" {
+						<span class="text-[0.72rem] text-muted tabular-nums">{ o.Count }</span>
+					}
+				</a>
+			} else {
+				<a href={ templ.SafeURL(o.Href) } class="inline-flex h-full items-center gap-1.5 rounded-[2px] px-2.5 text-[0.8rem] text-muted transition-colors duration-150 hover:text-ink">
+					{ o.Label }
+					if o.Count != "" {
+						<span class="text-[0.72rem] text-faint tabular-nums">{ o.Count }</span>
+					}
+				</a>
+			}
+		}
+	</div>
+}
+
+// Tabs is a tablist. The MARKUP is the contract -- `data-tab` per tab,
+// `aria-selected` on one -- and the island that owns the panels drives it,
+// since only it knows what a panel is. Each tab is `type="button"`, because a
+// tab inside a form must not submit it.
+templ Tabs(label string, tabs []Tab) {
+	<div role="tablist" aria-label={ label } class="flex shrink-0 items-center gap-1 border-b border-line-soft">
+		for _, tb := range tabs {
+			<button
+				type="button"
+				role="tab"
+				data-tab={ tb.Key }
+				aria-selected={ ariaBool(tb.Selected) }
+				class="-mb-px border-b-2 border-transparent px-3 py-2 text-[0.82rem] text-muted transition-colors duration-150 hover:text-ink aria-selected:border-accent-strong aria-selected:text-ink"
+			>{ tb.Label }</button>
+		}
+	</div>
+}
