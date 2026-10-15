@@ -68,3 +68,21 @@ func where(ctx context.Context, active, title string) (crumb, bool) {
 	}
 	return crumb{}, false
 }
+
+// Section is one place in the sidebar, with the group it sits in.
+type Section struct {
+	Group, Href, Name, Icon string
+}
+
+// Sections is the sidebar's list, flat: what the command palette offers
+// under Sections. Read from groups, the one list the sidebar is drawn from,
+// so the two cannot disagree -- SQL appears in both or in neither.
+func Sections(ctx context.Context) []Section {
+	var out []Section
+	for _, g := range groups(ctx) {
+		for _, s := range g.Sections {
+			out = append(out, Section{Group: g.Name, Href: s.Href, Name: s.Name, Icon: s.Icon})
+		}
+	}
+	return out
+}

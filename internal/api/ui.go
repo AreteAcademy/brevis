@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -245,6 +247,9 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	if u.gallery {
 		mux.HandleFunc("GET /_components", u.components)
 	}
+	// The command palette's index: everything the console lists, fetched once
+	// per page and filtered in the browser. JSON under /api, like the graph.
+	mux.HandleFunc("GET /api/palette", u.palette)
 	mux.HandleFunc("GET /runs/{id}/live", u.runLive)
 	mux.HandleFunc("GET /workflows/{slug}", u.workflow)
 	mux.HandleFunc("GET /runs/{id}", u.run)
@@ -574,6 +579,90 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	u.render(w, r, pages.SQL(v))
+}
+
+// paletteItem is one thing the command palette can go to. Text is what a
+// search looks in, lower-cased here -- the list filter's contract -- so what
+// matches is decided in one place.
+type paletteItem struct {
+	Group string `json:"group"`
+	Label string `json:"label"`
+	Hint  string `json:"hint,omitempty"`
+	Href  string `json:"href"`
+	Icon  string `json:"icon"`
+	Text  string `json:"text"`
+}
+
+func paletteEntry(group, label, hint, href, icon string) paletteItem {
+	return paletteItem{Group: group, Label: label, Hint: hint, Href: href, Icon: icon,
+		Text: strings.ToLower(label + "\n" + hint)}
+}
+
+// palette is the command palette's index: the sections, then the workflows,
+// projects, destinations and endpoints, each with where it goes.
+//
+// EVERY SOURCE IS OPTIONAL. A console with no endpoints reader lists none, the
+// way its sidebar offers none; one source missing never takes the rest with it.
+// A source that FAILS is an error, though: a partial index that looks whole is
+// how somebody concludes a workflow does not exist.
+//
+// NO-STORE. It names everything this login can see, and it is fetched fresh
+// with each page that opens the palette.
+func (u *UI) palette(w http.ResponseWriter, r *http.Request) {
+	ctx := layouts.WithSQL(r.Context(), u.preview.Configured())
+	items := []paletteItem{}
+	for _, s := range layouts.Sections(ctx) {
+		items = append(items, paletteEntry("Sections", s.Name, s.Group, s.Href, s.Icon))
+	}
+	if u.leitura != nil {
+		wfs, err := u.leitura.Workflows(ctx)
+		if err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		for _, wf := range wfs {
+			items = append(items, paletteEntry("Workflows", wf.Name, wf.Project, "/workflows/"+url.PathEscape(wf.Slug), "workflow"))
+		}
+		projects, err := u.leitura.Projects(ctx)
+		if err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		for _, p := range projects {
+			items = append(items, paletteEntry("Projects", p.Name, fmt.Sprintf("%d workflows", p.Workflows),
+				"/workflows?project="+url.QueryEscape(p.Slug), "folder"))
+		}
+	}
+	if u.catalog != nil {
+		entries, err := u.catalog.Catalog(ctx)
+		if err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		for _, e := range entries {
+			if e.Target == "" {
+				continue
+			}
+			items = append(items, paletteEntry("Destinations", e.Target, e.Kind, pages.TargetHref(e.Target), "database"))
+		}
+	}
+	if u.endpoints != nil {
+		all, err := u.endpoints.List(ctx)
+		if err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		for _, row := range pages.BuildEndpoints(all).Rows {
+			items = append(items, paletteEntry("Endpoints", row.Path, row.API, row.Href(), "plug"))
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	if err := json.NewEncoder(w).Encode(struct {
+		Items []paletteItem `json:"items"`
+	}{items}); err != nil {
+		u.log.Error("writing the palette's index", "error", err)
+	}
 }
 
 func (u *UI) components(w http.ResponseWriter, r *http.Request) {
