@@ -207,3 +207,43 @@ func TestARunReplacesOnlyTheAnswer(t *testing.T) {
 		}
 	}
 }
+
+// A RUN THAT TAKES A WHILE SAYS SO, AND CAN BE CANCELLED.
+//
+// After 120ms the pane shows "Running" and a live timer -- not before, because
+// a status that flashes for 40ms is the flicker this whole slice removes. The
+// previous answer stays under it, so cancelling leaves the pane exactly as it
+// was, never half-drawn.
+//
+// "CANCEL" IS A MEASURED WORD, NOT A HOPE. Aborting the request cancels the
+// request context, and the query with it: on Postgres a `pg_sleep(9)` active
+// at 1.5s was gone from pg_stat_activity half a second after the abort
+// (2026-10-15); on BigQuery `serve` asks jobs.cancel for a job whose caller
+// gave up. A label promising that and delivering a hidden spinner would be
+// money spent on a query nobody is waiting for.
+//
+// The markup is the page's (Tailwind reads templates, not the island); the
+// island clones it.
+func TestASlowRunSaysSoAndCanBeCancelled(t *testing.T) {
+	_, ui := browsing(t)
+	_, page := get(t, ui, "/sql")
+	at := strings.Index(page, "data-running-template")
+	if at < 0 {
+		t.Fatal("the workbench has no running state to show")
+	}
+	tpl := page[at:]
+	tpl = tpl[:strings.Index(tpl, "</template>")]
+	for _, want := range []string{`role="status"`, "data-running-elapsed", "data-stop", `type="button"`, ">Cancel<"} {
+		if !strings.Contains(tpl, want) {
+			t.Errorf("the running state lacks %s", want)
+		}
+	}
+
+	_, raw := get(t, ui, "/assets/sql.js")
+	run := islandFunc(strip(raw), "runInPlace")
+	for _, want := range []string{"AbortController", ".abort()", `"AbortError"`, "120", "data-running-elapsed", "[data-stop]"} {
+		if !strings.Contains(run, want) {
+			t.Errorf("runInPlace never uses %s", want)
+		}
+	}
+}
