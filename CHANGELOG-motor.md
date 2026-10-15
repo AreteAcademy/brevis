@@ -14,6 +14,38 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.28.0] — 2026-10-15
+
+### Changed: the Pipelines screens (#110)
+
+**Workflows.** The search answers while you type: the server still searches
+(the list is paginated), and the list is swapped under the box. State and
+schedule are Segmented filters, each choice with its count. Tags are a popover
+with a box that filters them, and two tags combine with AND (`?tag=a&tag=b`).
+Each row draws its last 14 runs as squares linked to the runs, read in one
+query for the page, and says its schedule in words for the shapes that are
+certain (`0 4 * * *` → "every day at 04:00"); any other expression is shown
+as written.
+
+**Workflow.** The title is the slug, with its project, schedule in words and
+Active/Paused above it, and the four numbers are one Stats strip. A workflow
+with parameters runs from a "Run…" drawer with a preview of the payload; the
+trigger is the same POST. With no script, the form shows in place.
+
+**Runs.** The state filter counts each choice, each duration has a bar against
+the page's longest, and a "Live" switch (off by default, remembered per
+browser) refreshes the list every 5 s, washing the new runs. Nothing is
+requested while the tab is hidden.
+
+**Run.** A strip of phases under the header -- scheduled or triggered, how late
+it started (from the slot, like `delay_seconds`), how long it ran, how it
+ended -- refreshing with the rest of the live head.
+
+No migration. No configuration changes. On a large history, `runs` would
+benefit from an index on `(workflow_slug, criado_em)` (#109).
+
+---
+
 ## [0.27.0] — 2026-10-15
 
 ### Added: a destination's page draws how data reaches it (#108)
