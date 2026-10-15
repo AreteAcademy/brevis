@@ -262,3 +262,59 @@ func TestTheEndpointsListSearches(t *testing.T) {
 		}
 	}
 }
+
+// AN ENDPOINT IS TITLED BY ITS PATH, and what it is goes above: the method,
+// the API it belongs to, when it was published.
+func TestAnEndpointIsTitledByItsPath(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{}).WithEndpoints(published()), "/data/endpoints/metrics-api/clicks")
+	h1 := body[strings.Index(body, "<h1"):]
+	h1 = h1[:strings.Index(h1, "</h1>")]
+	if !strings.Contains(h1, "/v1/clicks") || !strings.Contains(h1, "font-mono") {
+		t.Errorf("the title is not the path in mono: %s", h1)
+	}
+	eyebrow := body[strings.Index(body, "data-page-header"):strings.Index(body, "<h1")]
+	for _, want := range []string{">GET<", "metrics-api", "published"} {
+		if !strings.Contains(eyebrow, want) {
+			t.Errorf("the line above the title lacks %s", want)
+		}
+	}
+}
+
+// THE LIMITS ARE A STRIP OF NUMBERS, and the curl is a block to copy -- with
+// the key as a placeholder, never the console's own.
+func TestAnEndpointsLimitsAreNumbersAndItsCurlIsCopyable(t *testing.T) {
+	_, body := get(t, tryUI(t, "http://api.invalid", loggedIn), "/data/endpoints/metrics-api/clicks")
+	limits := body[strings.Index(body, ">Limits<"):]
+	if !strings.Contains(limits[:strings.Index(limits, "</dl>")], "<dt") {
+		t.Error("the limits are not a strip of labelled numbers")
+	}
+	if !strings.Contains(body, `data-copy="#endpoint-curl"`) || !strings.Contains(body, `id="endpoint-curl"`) {
+		t.Error("the curl cannot be copied")
+	}
+	if strings.Contains(body, "console-key") {
+		t.Error("the page renders the console's key")
+	}
+}
+
+// THE DOCS ARE THE PAGE AND TRY IT SITS BESIDE THEM -- after them in the
+// document, so a narrow screen reads the contract before the form. Where
+// this console cannot run the endpoint there is no side column at all:
+// TestTryItNeedsALoginAndAnAddress holds that nothing is offered.
+func TestTryItSitsBesideTheDocs(t *testing.T) {
+	_, body := get(t, tryUI(t, "http://api.invalid", loggedIn), "/data/endpoints/metrics-api/clicks")
+	side := strings.Index(body, "data-side")
+	if side < 0 {
+		t.Fatal("the endpoint has no side column")
+	}
+	if p := strings.Index(body, ">Parameters<"); p < 0 || p > side {
+		t.Error("the parameters are not in the main column")
+	}
+	if !strings.Contains(body[side:], ">Try it<") || !strings.Contains(body[side:], `name="run"`) {
+		t.Error("Try it is not in the side column")
+	}
+
+	_, body = get(t, dataUI(catalogFake{}).WithEndpoints(published()), "/data/endpoints/metrics-api/clicks")
+	if strings.Contains(body, "data-side") || strings.Contains(body, `name="run"`) {
+		t.Error("a console that cannot run the endpoint still draws a side column for it")
+	}
+}

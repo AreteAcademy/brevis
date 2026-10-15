@@ -19,3 +19,13 @@ func TestAPeriodsContractAndItsSelectAreTheSameList(t *testing.T) {
 		t.Errorf("the contract says %q and the select offers %v", v.Params[0].Accepts, options)
 	}
 }
+
+// A COUNT IS WRITTEN WITH ITS THOUSANDS SEPARATED: 10,000 and not 10000,
+// which somebody has to count the zeros of.
+func TestACountIsWrittenWithItsThousandsSeparated(t *testing.T) {
+	for n, want := range map[int]string{0: "0", 500: "500", 1000: "1,000", 10000: "10,000", 1234567: "1,234,567", -2500: "-2,500"} {
+		if got := thousands(n); got != want {
+			t.Errorf("thousands(%d) = %q, want %q", n, got, want)
+		}
+	}
+}

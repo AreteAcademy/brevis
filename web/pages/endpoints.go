@@ -260,3 +260,31 @@ func TryValues(params []catalog.EndpointParam, q url.Values) url.Values {
 	}
 	return out
 }
+
+// paramsCount is the head of the parameters card: how many, and how many a
+// request must carry.
+func paramsCount(ps []ParamView) string {
+	req := 0
+	for _, p := range ps {
+		if p.Required {
+			req++
+		}
+	}
+	if req == 0 {
+		return fmt.Sprint(len(ps))
+	}
+	return fmt.Sprintf("%d · %d required", len(ps), req)
+}
+
+// thousands writes a count with its thousands separated -- 10,000, not 10000,
+// which somebody has to count the zeros of.
+func thousands(n int) string {
+	s := fmt.Sprint(n)
+	if n < 0 {
+		return "-" + thousands(-n)
+	}
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	return s
+}

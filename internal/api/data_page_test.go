@@ -413,11 +413,14 @@ func TestADestinationIsTitledByItsURI(t *testing.T) {
 		t.Error("the title has no id for Copy URI to read")
 	}
 	eyebrow := body[strings.Index(body, "data-page-header"):strings.Index(body, "<h1")]
-	// The fixture is named for being behind; past its grace, it is stale.
-	for _, want := range []string{"stale", "postgres"} {
-		if !strings.Contains(eyebrow, want) {
-			t.Errorf("the line above the title does not say %q: %s", want, eyebrow)
-		}
+	// LATE OR STALE, BY THE CLOCK. The fixture loaded 90 minutes ago on an
+	// hourly schedule, so which one it is depends on the minute the test
+	// runs -- pinning one made this test fail at the top of some hours.
+	if !strings.Contains(eyebrow, "late") && !strings.Contains(eyebrow, "stale") {
+		t.Errorf("the line above the title does not say how the destination stands: %s", eyebrow)
+	}
+	if !strings.Contains(eyebrow, "postgres") {
+		t.Errorf("the line above the title does not say what it is: %s", eyebrow)
 	}
 }
 

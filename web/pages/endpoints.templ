@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/AreteAcademy/brevis/web/components"
@@ -99,86 +100,137 @@ templ endpointRow(r EndpointRow) {
 }
 
 templ Endpoint(v EndpointView) {
-	@layouts.Base(layouts.Page{Title: "Endpoint", Kicker: "Data", Active: "endpoints"}) {
-		<a href="/data/endpoints" class="text-xs text-muted hover:text-gold-strong">&larr; Endpoints</a>
-		<div class="mt-2 mb-2 flex flex-wrap items-center gap-3">
-			<h2 class="font-mono text-base break-all text-ink">GET { v.Row.Path }</h2>
-			<span class="text-xs text-muted">{ v.Row.API } · published { components.When(&v.Row.PublishedAt) }</span>
-		</div>
-		<p class="mb-6 max-w-3xl text-sm text-muted">
-			if v.Row.Keyed {
-				Each request reads as each key's tenant; a caller cannot send one.
+	@layouts.Base(layouts.Page{
+		Title: v.Row.Path, Kicker: "Data", Active: "endpoints", Mono: true,
+		Eyebrow: endpointEyebrow(v),
+	}) {
+		// THE CONTRACT IS THE PAGE, and Try it sits beside it -- after it in
+		// the document, so a narrow screen reads what the endpoint takes
+		// before the form that sends it.
+		//
+		// NO TRY IT, NO SIDE COLUMN. Where this console cannot run the
+		// endpoint -- it does not ask who you are, or has no address for the
+		// API -- nothing is offered, not even a card saying so: a control that
+		// can only answer "not here" is a question nobody can act on.
+		<div
+			if v.CanRun {
+				class="grid grid-cols-1 gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_380px]"
 			} else {
-				The same rows for every key: its file says the data is not per tenant.
+				class="grid grid-cols-1 gap-6"
 			}
-			if v.About != "" {
-				<span class="mt-2 block whitespace-pre-line text-ink">{ v.About }</span>
-			}
-		</p>
-		<section class="mb-8">
-			<h3 class="kicker mb-2">Parameters</h3>
-			if len(v.Params) == 0 {
-				<p class="text-sm text-muted">None.</p>
-			} else {
-				<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
-					<table class="w-full text-sm">
-						<thead>
-							<tr class="border-b border-line bg-parchment-soft/60 text-left">
-								@th("Name", "pl-6")
-								@th("Type", "")
-								@th("Accepts", "")
-								@th("Default", "pr-6")
-							</tr>
-						</thead>
-						<tbody class="divide-y divide-line-soft">
-							for _, p := range v.Params {
-								<tr class="align-top">
-									<td class="px-3 py-3 pl-6 font-mono text-xs text-ink">
-										{ p.Name }
-										if p.Required {
-											<span class="ml-1 font-sans text-[0.7rem] text-muted">required</span>
-										}
-										if p.Note != "" {
-											<p class="mt-1 max-w-md font-sans whitespace-pre-line text-muted">{ p.Note }</p>
-										}
-									</td>
-									<td class="px-3 py-3 font-mono text-xs text-muted">{ p.Type }</td>
-									<td class="px-3 py-3 text-xs text-muted">{ p.Accepts }</td>
-									<td class="px-3 py-3 pr-6 font-mono text-xs text-ink">{ p.Default }</td>
-								</tr>
-							}
-						</tbody>
-					</table>
+		>
+			<div class="flex min-w-0 flex-col gap-6">
+				<div class="flex flex-col gap-3">
+					if v.About != "" {
+						<p class="max-w-3xl text-sm whitespace-pre-line text-ink-2">{ v.About }</p>
+					}
+					// WHOSE ROWS A REQUEST READS, said before anything else
+					// about it: the one fact a caller cannot change.
+					<div class="flex max-w-3xl items-start gap-2.5 rounded-card border border-line bg-surface px-3.5 py-3 text-[0.82rem] text-ink-2">
+						if v.Row.Keyed {
+							<span class="mt-0.5 text-accent-strong">
+								@components.Icon("key-round", "h-4 w-4")
+							</span>
+							<span>Each request reads as each key's tenant; a caller cannot send one.</span>
+						} else {
+							<span class="mt-0.5 text-state-running">
+								@components.Icon("info", "h-4 w-4")
+							</span>
+							<span>The same rows for every key: its file says the data is not per tenant.</span>
+						}
+					</div>
 				</div>
-			}
-		</section>
-		<section class="mb-8 grid gap-6 md:grid-cols-2">
-			<div>
-				<h3 class="kicker mb-2">Limits</h3>
-				<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-					<dt class="text-muted">timeout</dt>
-					<dd class="font-mono text-xs text-ink">{ v.Limits.Timeout }</dd>
-					<dt class="text-muted">rows</dt>
-					<dd class="font-mono text-xs text-ink">{ fmt.Sprint(v.Limits.MaxRows) }</dd>
-					<dt class="text-muted">bytes billed</dt>
-					<dd class="font-mono text-xs text-ink">{ v.BytesBilled() }</dd>
-				</dl>
-			</div>
-			<div>
-				<h3 class="kicker mb-2">Reads</h3>
-				for _, t := range v.Row.Reads {
-					<a href={ templ.SafeURL(TargetHref(t)) } class="block font-mono text-[0.8rem] break-all text-ink hover:text-gold-strong">{ t }</a>
+				@card("Parameters", paramsCount(v.Params)) {
+					if len(v.Params) == 0 {
+						<p class="px-4 py-3 text-sm text-muted">None. Every request reads the same.</p>
+					} else {
+						<div class="overflow-x-auto">
+							<table class="w-full text-[0.82rem]">
+								<thead>
+									<tr class="border-b border-line bg-canvas-subtle text-left">
+										@th("Name", "pl-4")
+										@th("Type", "")
+										@th("Accepts", "")
+										@th("Default", "pr-4")
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-line-soft">
+									for _, p := range v.Params {
+										<tr class="align-top">
+											<td class="px-3 py-2.5 pl-4">
+												<span class="font-mono text-[0.8rem] text-ink">{ p.Name }</span>
+												if p.Required {
+													<span class="ml-1.5 rounded-card bg-state-queued/13 px-1.5 py-px text-[0.68rem] font-medium text-state-queued">required</span>
+												}
+												if p.Note != "" {
+													<p class="mt-1 max-w-md text-[0.75rem] whitespace-pre-line text-muted">{ p.Note }</p>
+												}
+											</td>
+											<td class="px-3 py-2.5 font-mono text-[0.75rem] text-muted">{ p.Type }</td>
+											<td class="px-3 py-2.5 text-[0.78rem] text-ink-2">{ p.Accepts }</td>
+											<td class="px-3 py-2.5 pr-4 font-mono text-[0.75rem] text-ink">
+												if p.Default == "" {
+													<span class="text-faint">—</span>
+												} else {
+													{ p.Default }
+												}
+											</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+					}
+				}
+				<section>
+					<h2 class="mb-2 text-[0.875rem] font-semibold text-ink">Limits</h2>
+					@components.Stats([]components.Stat{
+						{Label: "Timeout", Value: v.Limits.Timeout, Icon: "clock"},
+						{Label: "Rows", Value: thousands(v.Limits.MaxRows), Icon: "rows-3"},
+						{Label: "Bytes billed", Value: v.BytesBilled(), Icon: "hard-drive"},
+					})
+				</section>
+				@card("Reads", fmt.Sprint(len(v.Row.Reads))) {
+					<ul class="divide-y divide-line-soft">
+						for _, t := range v.Row.Reads {
+							<li class="flex flex-wrap items-center gap-2.5 px-4 py-2.5">
+								@components.Icon("database", "h-3.5 w-3.5 text-muted")
+								{{ where, what := SplitTarget(t) }}
+								<a href={ templ.SafeURL(TargetHref(t)) } class="min-w-0 flex-1 font-mono text-[0.78rem] break-all hover:underline"><span class="text-faint">{ where }</span><span class="text-ink">{ what }</span></a>
+								if layouts.HasSQL(ctx) {
+									@components.ButtonLink(components.ButtonSecondary, components.SizeSmall, "/sql?target="+url.QueryEscape(t)) {
+										Open in SQL
+									}
+								}
+							</li>
+						}
+					</ul>
+				}
+				@card("Call it", "") {
+					<div class="p-4">
+						@components.CodeBlock("endpoint-curl", v.Curl())
+					</div>
 				}
 			</div>
-		</section>
-		if v.CanRun {
-			@tryIt(v)
-		}
-		<section>
-			<h3 class="kicker mb-2">Call it</h3>
-			<pre class="overflow-x-auto rounded-card border border-line bg-parchment-soft/60 px-4 py-3 font-mono text-xs text-ink">{ v.Curl() }</pre>
-		</section>
+			if v.CanRun {
+				<div data-side class="flex min-w-0 flex-col gap-6 min-[1180px]:sticky min-[1180px]:top-4 min-[1180px]:self-start">
+					@card("Try it", "") {
+						<div class="p-4">
+							@tryIt(v)
+						</div>
+					}
+				</div>
+			}
+		</div>
 	}
+}
+
+// endpointEyebrow is what the endpoint is, above its path: the method, the
+// API that serves it, when it was published.
+templ endpointEyebrow(v EndpointView) {
+	@components.MethodPill("GET")
+	<span class="font-mono text-[0.75rem] text-ink-2">{ v.Row.API }</span>
+	<span class="text-[0.72rem] text-muted">published { components.When(&v.Row.PublishedAt) }</span>
 }
 
 templ readBy(refs []EndpointRef) {
@@ -198,9 +250,8 @@ templ readBy(refs []EndpointRef) {
 }
 
 templ tryIt(v EndpointView) {
-	<section class="mb-8">
-		<h3 class="kicker mb-2">Try it</h3>
-		<p class="mb-3 max-w-3xl text-xs text-muted">
+	<section>
+		<p class="mb-3 text-xs text-muted">
 			Runs through this console's key, as that key's tenant, for every login. An empty field is the parameter's default.
 		</p>
 		<form method="get" action={ templ.SafeURL(v.Row.Href()) } class="mb-4 flex flex-wrap items-end gap-3">
