@@ -1149,12 +1149,39 @@ templ runHead(r run.Run, wait *postgres.Wait) {
 		<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="text-xs text-gold-strong hover:underline">see definition</a>
 		<span class="font-mono text-[0.7rem] text-muted/70">{ r.ID.String() }</span>
 	</div>
+	@phases(PhasesOf(r, time.Now()))
 	if wait != nil {
 		@waitLine(wait)
 	}
 	if r.Err != "" {
 		<pre class="mb-5 overflow-auto rounded-card border border-state-failed/20 bg-state-failed/5 px-5 py-4 font-mono text-xs text-state-failed">{ r.Err }</pre>
 	}
+}
+
+// phases is the run's life as a strip: made, started, running, finished, the
+// current one marked. It sits in the live head, so it moves with the run.
+templ phases(ps []Phase) {
+	<ol data-phases class="mb-5 grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line-soft sm:grid-cols-4">
+		for _, p := range ps {
+			<li data-phase={ p.Key } data-phase-state={ p.State } class="bg-surface px-4 py-3">
+				<p class="flex items-center gap-1.5 text-[0.78rem] text-muted">
+					<span class={ "h-1.5 w-1.5 rounded-full", phaseDot(p.State) }></span>
+					if p.State == "current" {
+						<span class="font-medium text-ink">{ p.Label }</span>
+					} else {
+						{ p.Label }
+					}
+				</p>
+				<p title={ p.Detail } class="mt-1 truncate text-[0.8rem] tabular-nums text-ink-2">
+					if p.Detail != "" {
+						{ p.Detail }
+					} else {
+						<span class="text-faint">—</span>
+					}
+				</p>
+			</li>
+		}
+	</ol>
 }
 
 templ runBody(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
