@@ -230,3 +230,50 @@ func TestBelowTheBreakpointTheSidebarIsADrawer(t *testing.T) {
 		}
 	}
 }
+
+// THE COMMAND PALETTE IS ON EVERY SIGNED-IN PAGE, CLOSED, AND ITS OPENER WAITS
+// FOR THE SCRIPT.
+//
+// A native <dialog>, so focus containment, Escape and the backdrop come with
+// the element. The input is a combobox over a listbox and says which option
+// is active (aria-activedescendant, set by ui.js), because a screen reader
+// cannot see a highlight. Rows and group headings are <template>s -- Tailwind
+// reads templates, and the island clones rather than writes markup -- and the
+// glyphs it needs are drawn here once, for the same reason.
+//
+// The sidebar's opener is hidden in the markup: without ui.js it would be a
+// button that opens nothing.
+func TestThePaletteIsOnEveryPageClosed(t *testing.T) {
+	body := render(t, dataUI(catalogFake{}), "/data")
+
+	at := strings.Index(body, `<dialog id="palette"`)
+	if at < 0 {
+		t.Fatal("the page has no palette")
+	}
+	dialog := body[at : at+strings.Index(body[at:], "</dialog>")]
+	if strings.Contains(dialog[:strings.Index(dialog, ">")], " open") {
+		t.Error("the palette is drawn open")
+	}
+	for _, want := range []string{
+		`role="combobox"`, `aria-controls="palette-list"`, `aria-autocomplete="list"`, `aria-expanded="false"`,
+		`id="palette-list"`, `role="listbox"`,
+		"<template data-palette-row>", `role="option"`, "<template data-palette-group>",
+		`data-palette-icon-set`, `data-icon="workflow"`, `data-icon="database"`,
+	} {
+		if !strings.Contains(dialog, want) {
+			t.Errorf("the palette lacks %s", want)
+		}
+	}
+
+	aside, end := strings.Index(body, "<aside"), strings.Index(body, "</aside>")
+	open := strings.Index(body, "data-palette-open")
+	if open < aside || open > end {
+		t.Fatal("the sidebar has no palette opener")
+	}
+	if wrap := body[strings.LastIndex(body[:open], "<span"):open]; !strings.Contains(wrap, "hidden") {
+		t.Errorf("the opener is visible before the script can drive it: %s", wrap)
+	}
+	if !strings.Contains(body[open:end], "⌘K") {
+		t.Error("the opener does not say its key")
+	}
+}

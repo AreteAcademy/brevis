@@ -880,3 +880,13 @@ li.CodeMirror-hint-active {
     transition: none;
   }
 }
+
+/* THE COMMAND PALETTE sits in the upper third, where the eye already is
+   when the hands reach for Cmd-K, and keeps its width on a phone. */
+.palette {
+  width: min(40rem, calc(100vw - 2rem));
+  margin: 12vh auto auto;
+}
+.palette::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}

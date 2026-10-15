@@ -196,6 +196,7 @@ templ Base(p Page) {
 				</main>
 				</div>
 			</div>
+			@palette()
 			// The basic interactions (dialogs, chart tooltips) on every page. It
 			// sits at the end of the body so it does not block rendering — the
 			// HTML already arrives complete, the script only enriches it.
@@ -330,6 +331,21 @@ templ sidebar(active string, brand branding.Brand) {
 			@components.Icon("x", "h-4 w-4")
 		</a>
 		</div>
+		// THE PALETTE'S OPENER, hidden until ui.js can drive it: without the
+		// script it would be a button that opens nothing.
+		<span class="block px-2.5 pt-3" hidden>
+			<button
+				type="button"
+				data-palette-open
+				aria-haspopup="dialog"
+				aria-controls="palette"
+				class="flex h-8 w-full items-center gap-2 rounded-card border border-line bg-surface px-2.5 text-[0.8rem] text-muted transition-colors hover:border-line-strong hover:text-ink"
+			>
+				@components.Icon("search", "h-3.5 w-3.5")
+				<span class="flex-1 truncate text-left">Search or jump to…</span>
+				@components.Kbd("⌘K")
+			</button>
+		</span>
 		<nav aria-label="Sections" class="flex-1 overflow-y-auto px-2.5 py-3">
 			// A GROUP IS ANNOUNCED AS ONE -- `role="group"` with its name -- so
 			// the label a sighted reader sees in small caps is heard too, and
@@ -419,4 +435,67 @@ templ topbar(p Page) {
 			</div>
 		}
 	</header>
+}
+
+// paletteIcons are the glyphs the palette's rows are drawn with: the
+// sections' own, and one per kind of thing it lists.
+var paletteIcons = []string{"layout-grid", "workflow", "history", "database", "plug", "terminal", "folder"}
+
+// palette is the command palette: a native <dialog>, closed, that ui.js opens
+// on Cmd/Ctrl-K and fills from /api/palette.
+//
+// NATIVE, so focus containment, Escape and the backdrop come with the
+// element. The input is a combobox over a listbox and names the active
+// option (aria-activedescendant), because a screen reader cannot see a
+// highlight. Rows and headings are <template>s, and the glyphs are drawn here
+// once: Tailwind reads templates, and the island clones rather than writes.
+templ palette() {
+	<dialog id="palette" aria-label="Search the console" class="palette rounded-panel border border-line bg-surface p-0 text-ink shadow-warm">
+		<div class="flex items-center gap-2 border-b border-line-soft px-3">
+			<span class="text-muted">
+				@components.Icon("search", "h-4 w-4")
+			</span>
+			<input
+				id="palette-input"
+				type="text"
+				role="combobox"
+				aria-controls="palette-list"
+				aria-expanded="false"
+				aria-autocomplete="list"
+				aria-label="Search the console"
+				placeholder="Search workflows, destinations, endpoints…"
+				autocomplete="off"
+				spellcheck="false"
+				class="h-11 min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-faint focus:outline-none"
+			/>
+			@components.Kbd("esc")
+		</div>
+		<div id="palette-list" role="listbox" aria-label="Results" class="max-h-[min(60vh,28rem)] overflow-y-auto p-1.5"></div>
+		<div class="flex flex-wrap gap-x-4 gap-y-1 border-t border-line-soft px-3 py-2 text-[0.72rem] text-muted">
+			<span class="flex items-center gap-1">@components.Kbd("↑↓") navigate</span>
+			<span class="flex items-center gap-1">@components.Kbd("↵") open</span>
+			<span class="flex items-center gap-1">@components.Kbd("⌘↵") in a new tab</span>
+		</div>
+		<template data-palette-row>
+			<div
+				role="option"
+				aria-selected="false"
+				class="flex cursor-pointer items-center gap-2.5 rounded-card px-2.5 py-1.5 text-[0.82rem] text-ink-2 aria-selected:bg-surface-2 aria-selected:text-ink"
+			>
+				<span data-palette-icon class="flex shrink-0 text-muted"></span>
+				<span data-palette-label class="min-w-0 truncate"></span>
+				<span data-palette-hint class="ml-auto shrink-0 truncate pl-3 font-mono text-[0.72rem] text-faint"></span>
+			</div>
+		</template>
+		<template data-palette-group>
+			<div role="presentation" class="px-2.5 pt-2.5 pb-1 text-[0.68rem] font-medium tracking-[0.08em] text-faint uppercase"></div>
+		</template>
+		<div data-palette-icon-set hidden>
+			for _, name := range paletteIcons {
+				<span data-icon={ name }>
+					@components.Icon(name, "h-4 w-4")
+				</span>
+			}
+		</div>
+	</dialog>
 }
