@@ -73,6 +73,7 @@
   wireRecent();
   wireTabs();
   wireCost();
+  wireCopy();
   if (typeof CodeMirror === "undefined") {
     area.addEventListener("input", keep);
     return;
@@ -564,6 +565,25 @@
     var pick = panel.querySelector("[data-per-page-pick]");
     if (pick) pick.addEventListener("change", function () { at = 0; draw(); });
     draw();
+  }
+
+  // COPY, WHICH IS THE EDITOR'S TEXT. The button is hidden in the markup:
+  // what is in the editor is only here (the textarea is written back on
+  // submit), so without this file the button would copy nothing true.
+  function wireCopy() {
+    var btn = document.querySelector("[data-copy-statement]");
+    if (!btn || !navigator.clipboard) return;
+    if (btn.parentElement) btn.parentElement.removeAttribute("hidden");
+    btn.addEventListener("click", function () {
+      navigator.clipboard.writeText(text()).then(function () {
+        btn.setAttribute("aria-label", "Copied");
+        btn.setAttribute("title", "Copied");
+        setTimeout(function () {
+          btn.removeAttribute("aria-label");
+          btn.removeAttribute("title");
+        }, 1500);
+      });
+    });
   }
 
   // A RUN, WITHOUT THROWING THE WORKBENCH AWAY.

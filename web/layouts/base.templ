@@ -60,6 +60,12 @@ type Page struct {
 	// TitleID gives the title an id, for a control that reads it (Copy URI).
 	TitleID string
 
+	// Status sits at the right of the top bar: a state of the whole screen
+	// that should stay in sight however the page scrolls or its panes are
+	// arranged -- the workbench's "Writes allowed". Nil draws nothing, which
+	// is the default and should stay the common case.
+	Status templ.Component
+
 	// Island carries the extra assets of the interactive screens.
 	Island Island
 
@@ -132,6 +138,9 @@ templ Base(p Page) {
 					// THE PAGE'S OWN HEADER: one title, large, and the page's
 					// verbs beside it. Where the page is lives in the top bar
 					// now, so this no longer repeats it in small caps.
+					// A FILL PAGE DRAWS NO PAGE HEADER: its panes take the height,
+					// and the breadcrumb already says where it is.
+					if !p.Fill {
 					<header data-page-header class="px-4 pt-6 pb-4 min-[960px]:px-6">
 						<div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
 							<div class="min-w-0">
@@ -166,6 +175,7 @@ templ Base(p Page) {
 							}
 						</div>
 					</header>
+					}
 					// THE SCREEN GETS THE WINDOW, and a measure is a
 					// BLOCK's decision from here on.
 					//
@@ -402,6 +412,11 @@ templ topbar(p Page) {
 					<span class="truncate text-ink">{ c.Section.Name }</span>
 				}
 			</nav>
+		}
+		if p.Status != nil {
+			<div class="ml-auto flex shrink-0 items-center gap-2">
+				@p.Status
+			</div>
 		}
 	</header>
 }

@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"github.com/AreteAcademy/brevis/web/components"
 	"github.com/AreteAcademy/brevis/web/assets"
 	"fmt"
 
@@ -44,7 +45,7 @@ var editorAssets = layouts.Island{
 // and in a Referer header. Tab state in a query parameter would be exactly
 // that, so tabs wait for the island that can hold state in the browser.
 templ SQL(v SQLView) {
-	@layouts.Base(layouts.Page{Title: "SQL", Kicker: "Workbench", Active: "sql", Island: editorAssets, Fill: true}) {
+	@layouts.Base(layouts.Page{Title: "SQL", Kicker: "Workbench", Active: "sql", Island: editorAssets, Fill: true, Status: sqlStatus(v)}) {
 		if v.Empty() {
 			<p class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm text-muted">
 				Nothing here can be queried yet. A destination shows up once a pipeline
@@ -163,30 +164,36 @@ templ SQL(v SQLView) {
 							// control.
 							<input type="hidden" name="target" value={ v.Target }/>
 							<div class="flex shrink-0 items-center gap-3 pb-1">
-								// RUN LOOKS LIKE THE THING YOU PRESS. It was a grey
-								// button beside a grey sentence, which is the shape of
-								// a secondary action.
-								<button
-									type="submit"
-									data-run
-									class="inline-flex items-center gap-1.5 rounded-card bg-accent px-3 py-1.5 text-sm font-medium text-canvas hover:bg-accent-strong"
-								>
-									<svg class="h-3 w-3" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
-										<path d="M3 1.5v9l7-4.5z"></path>
-									</svg>
+								// RUN LOOKS LIKE THE THING YOU PRESS: the accent, which
+								// this screen spends on nothing else.
+								@components.Button(components.ButtonAccent, components.SizeRegular, templ.Attributes{"type": "submit", "data-run": true}) {
+									@components.Icon("play", "h-3.5 w-3.5")
 									Run
-								</button>
+								}
 								// AND THE KEY THAT DOES IT. Ctrl-Enter and Cmd-Enter
 								// have run the query since the editor island landed,
 								// and the screen has never said so.
-								<kbd class="rounded border border-line px-1.5 py-0.5 font-mono text-[0.7rem] text-muted">⌘↵</kbd>
+								@components.Kbd("⌘↵")
 								// AND IT SAYS WHERE IT WILL RUN. The picker used to be
 								// the answer to "against what"; with the picker gone,
 								// the button has to carry it, or choosing a connection
 								// in the tree becomes an invisible change.
 								if on := v.Running(); on != "" {
-									<span class="truncate font-mono text-xs text-muted" data-running-on>{ on }</span>
+									<span class="flex min-w-0 items-center gap-1.5 text-muted">
+										@components.Icon("database", "h-3.5 w-3.5")
+										<span class="truncate font-mono text-xs" data-running-on>{ on }</span>
+									</span>
 								}
+								// COPY IS THE EDITOR'S TEXT, which only the island
+								// holds -- the textarea is written back on submit, not
+								// as somebody types -- so it is hidden until the
+								// island can drive it.
+								<span class="ml-auto" hidden>
+									@components.Button(components.ButtonSecondary, components.SizeSmall, templ.Attributes{"data-copy-statement": true}) {
+										@components.Icon("copy", "h-3.5 w-3.5")
+										Copy
+									}
+								</span>
 							</div>
 							<label for="q" class="sr-only">SQL to run on this warehouse</label>
 							<textarea
@@ -200,9 +207,13 @@ templ SQL(v SQLView) {
 							// THE FOOTER, where the cost line joins it in W6. It left
 							// the button row because a verb and a caveat read as two
 							// controls when they sit on one line.
-							<p class="shrink-0 text-[0.7rem] text-muted">
-								Reads only. The service refuses anything else, and stops a query that would scan too much.
-							</p>
+							// NOT ON A WRITABLE CONNECTION, where the banner above
+							// says the opposite and both cannot be true.
+							if !v.Writable {
+								<p class="shrink-0 text-[0.7rem] text-muted">
+									Reads only. The service refuses anything else, and stops a query that would scan too much.
+								</p>
+							}
 							// AND WHAT THE COMPLETION KNOWS, SAID ONCE.
 							//
 							// Columns are fetched one relation at a time --
@@ -299,7 +310,18 @@ templ SQLAnswer(v SQLView) {
 	} else if v.Result != nil {
 		@results(v)
 	} else {
-		<p class="text-xs text-muted">Nothing has run yet.</p>
+		// BEFORE ANYTHING RUNS, HOW TO: the verb and its key, where the
+		// answer will be.
+		<div class="flex h-full min-h-32 flex-col items-center justify-center gap-2 text-center">
+			<span class="flex h-9 w-9 items-center justify-center rounded-full border border-line text-muted">
+				@components.Icon("play", "h-4 w-4")
+			</span>
+			<p class="text-sm font-medium text-ink">Run a query</p>
+			<p class="flex items-center gap-1.5 text-[0.75rem] text-muted">
+				Nothing has run yet. The answer appears here.
+				@components.Kbd("⌘↵")
+			</p>
+		</div>
 	}
 }
 
@@ -721,4 +743,21 @@ templ resultCell(v any) {
 	} else {
 		<td class="px-3 py-1 font-mono whitespace-nowrap text-ink">{ Cell(v) }</td>
 	}
+}
+
+// sqlStatus is the top bar's state for the workbench: "Writes allowed" on a
+// connection that may change data, and nothing on a read-only one -- the
+// default, where a badge on every visit would be one nobody reads.
+func sqlStatus(v SQLView) templ.Component {
+	if !v.Writable {
+		return nil
+	}
+	return writesAllowed()
+}
+
+templ writesAllowed() {
+	<span data-mode="write" class="inline-flex items-center gap-1.5 rounded-card bg-state-queued/13 px-2 py-0.5 text-xs font-medium text-state-queued">
+		@components.Icon("triangle-alert", "h-3.5 w-3.5")
+		Writes allowed
+	</span>
 }
