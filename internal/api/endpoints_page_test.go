@@ -318,3 +318,66 @@ func TestTryItSitsBesideTheDocs(t *testing.T) {
 		t.Error("a console that cannot run the endpoint still draws a side column for it")
 	}
 }
+
+// fragmentGet is a GET asking for one part of the page alone, as ui.js does
+// for a form with `data-swap`.
+func fragmentGet(t *testing.T, ui *api.UI, path string) (int, string) {
+	t.Helper()
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	r := httptest.NewRequest(http.MethodGet, path, nil)
+	r.Header.Set("X-Brevis-Fragment", "answer")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, r)
+	return rec.Code, rec.Body.String()
+}
+
+// A RUN OF TRY IT CAN ASK FOR THE ANSWER ALONE: the status, the time and the
+// rows, with nothing around them -- the form and the docs stay as they are,
+// and the API is asked once.
+func TestTryItCanAnswerAlone(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		_, _ = w.Write([]byte(`{"data":[{"day":"2026-10-12","clicks":412}],"truncated":false,"meta":{"rows":1}}`))
+	}))
+	defer srv.Close()
+	code, body := fragmentGet(t, tryUI(t, srv.URL, loggedIn), "/data/endpoints/metrics-api/clicks?run=1&period=today")
+	if code != http.StatusOK {
+		t.Fatalf("%d", code)
+	}
+	for _, want := range []string{">412<", ">200<"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the answer lacks %s", want)
+		}
+	}
+	for _, gone := range []string{"<html", `name="run"`, ">Parameters<"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("the answer carries %s, which is the page around it", gone)
+		}
+	}
+	if calls != 1 {
+		t.Errorf("the API was asked %d times for one run", calls)
+	}
+}
+
+// THE FORM SWAPS ITS ANSWER AND SAYS ITS SHORTCUT: `data-swap` names the pane
+// the answer goes into, Run is the primary button with ⌘↵ beside it, and the
+// pane says when it is busy. Without a script, the form is a GET that draws
+// the whole page with the answer in it, as before.
+func TestTryItSwapsItsAnswer(t *testing.T) {
+	_, body := get(t, tryUI(t, "http://api.invalid", loggedIn), "/data/endpoints/metrics-api/clicks")
+	for _, want := range []string{`data-swap="endpoint-answer"`, `id="endpoint-answer"`, `aria-live="polite"`, "⌘↵", "Run request"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("Try it lacks %s", want)
+		}
+	}
+	_, ui := browsing(t)
+	_, raw := get(t, ui, "/assets/ui.js")
+	js := strip(raw)
+	for _, want := range []string{"form[data-swap]", `"X-Brevis-Fragment": "answer"`, ".redirected", "replaceState", "requestSubmit"} {
+		if !strings.Contains(js, want) {
+			t.Errorf("ui.js's swapping form never uses %s", want)
+		}
+	}
+}

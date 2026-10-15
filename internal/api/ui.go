@@ -330,6 +330,13 @@ func (u *UI) dataEndpoint(w http.ResponseWriter, r *http.Request) {
 		} else {
 			v.Form = pages.TryForm(e.Endpoint.Params, nil)
 		}
+		// THE ANSWER ALONE, when Try it asks for it: the form and the docs
+		// stay as they are, and only the answer pane is swapped. The same
+		// handler, the same refusals -- the header changes the shape only.
+		if fragment(r) == "answer" {
+			u.render(w, r, pages.EndpointAnswer(v))
+			return
+		}
 	}
 	u.render(w, r, pages.Endpoint(v))
 }
