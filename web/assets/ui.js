@@ -587,4 +587,198 @@
       if (form && form.id && document.querySelector('[data-curl-from="' + form.id + '"]')) followCurl(form);
     });
   });
+
+  // ------------------------------------------------------------------
+  // The command palette (Cmd/Ctrl-K)
+  //
+  // A native <dialog> in every page (Base), filled from /api/palette -- the
+  // sections and everything the console lists -- fetched on the first open
+  // and kept for the page's life. Filtering is here, on every keystroke; the
+  // search text in each item was lower-cased by the server, the list
+  // filter's contract.
+  //
+  // RANKED, NOT FUZZY: the label starting with the query, then a word in it
+  // starting with it (`sal` finds `daily_sales`), then anywhere. Groups keep
+  // their own heading, ordered by their best match, at most 8 rows each and
+  // 40 in all. A query that is a run's id offers that run first.
+  //
+  // THE KEY IS HEARD IN THE CAPTURE PHASE, so an editor below -- CodeMirror
+  // in the workbench -- cannot swallow it. A choice is an ordinary
+  // navigation (View Transitions apply); Cmd/Ctrl-Enter opens it beside.
+  // Escape and the backdrop close it (the dialog's own, and the backdrop
+  // rule at the top of this file), and the focus goes back where it was.
+  // ------------------------------------------------------------------
+
+  var paletteEl = document.getElementById("palette");
+  if (paletteEl && typeof paletteEl.showModal === "function") {
+    wirePalette(paletteEl);
+  }
+
+  function wirePalette(dialog) {
+    var input = document.getElementById("palette-input");
+    var list = document.getElementById("palette-list");
+    var rowTpl = dialog.querySelector("template[data-palette-row]");
+    var groupTpl = dialog.querySelector("template[data-palette-group]");
+    var icons = {};
+    dialog.querySelectorAll("[data-palette-icon-set] [data-icon]").forEach(function (n) {
+      icons[n.getAttribute("data-icon")] = n.innerHTML;
+    });
+    var ORDER = ["Runs", "Sections", "Workflows", "Destinations", "Endpoints", "Projects"];
+    var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    var index = null;
+    var failed = false;
+    var loading = false;
+    var shown = [];
+    var active = 0;
+    var returnTo = null;
+
+    document.querySelectorAll("[data-palette-open]").forEach(function (b) {
+      if (b.parentElement) b.parentElement.removeAttribute("hidden");
+    });
+
+    function load() {
+      if (index || loading) return;
+      loading = true;
+      fetch("/api/palette", { headers: { Accept: "application/json" } })
+        .then(function (r) {
+          // A REDIRECT IS THE LOGIN PAGE, not an index: an expired session
+          // must not be parsed as data.
+          if (r.redirected || !r.ok) throw new Error("no index");
+          return r.json();
+        })
+        .then(function (d) { index = (d && d.items) || []; })
+        .catch(function () { index = []; failed = true; })
+        .then(function () { loading = false; if (dialog.open) render(); });
+    }
+
+    function rank(item, q) {
+      var label = item.label.toLowerCase();
+      if (label.indexOf(q) === 0) return 0;
+      var words = label.split(/[^a-z0-9]+/);
+      for (var i = 0; i < words.length; i++) if (words[i].indexOf(q) === 0) return 1;
+      return item.text.indexOf(q) >= 0 ? 2 : -1;
+    }
+
+    function results(raw) {
+      var q = raw.trim().toLowerCase();
+      var out = [];
+      if (UUID.test(q)) {
+        out.push({ group: "Runs", label: "Open run " + q.slice(0, 8) + "…", hint: q, href: "/runs/" + q, icon: "history" });
+      }
+      if (!index) return out;
+      if (q === "") return out.concat(index.filter(function (it) { return it.group === "Sections"; }));
+
+      var groups = {};
+      index.forEach(function (it, n) {
+        var r = rank(it, q);
+        if (r < 0) return;
+        (groups[it.group] = groups[it.group] || []).push({ it: it, r: r, n: n });
+      });
+      var names = Object.keys(groups).map(function (g) {
+        groups[g].sort(function (a, b) { return a.r - b.r || a.n - b.n; });
+        return g;
+      });
+      names.sort(function (a, b) {
+        return groups[a][0].r - groups[b][0].r || ORDER.indexOf(a) - ORDER.indexOf(b);
+      });
+      names.forEach(function (g) {
+        groups[g].slice(0, 8).forEach(function (x) { out.push(x.it); });
+      });
+      return out.slice(0, 40);
+    }
+
+    function heading(text) {
+      var h = groupTpl.content.firstElementChild.cloneNode(true);
+      h.textContent = text;
+      list.appendChild(h);
+    }
+
+    function render() {
+      shown = results(input.value);
+      list.textContent = "";
+      var last = "";
+      shown.forEach(function (it, i) {
+        if (it.group !== last) { heading(it.group); last = it.group; }
+        var row = rowTpl.content.firstElementChild.cloneNode(true);
+        row.id = "palette-opt-" + i;
+        row.setAttribute("data-palette-index", String(i));
+        row.querySelector("[data-palette-icon]").innerHTML = icons[it.icon] || icons.database || "";
+        row.querySelector("[data-palette-label]").textContent = it.label;
+        row.querySelector("[data-palette-hint]").textContent = it.hint || "";
+        list.appendChild(row);
+      });
+      if (shown.length === 0) {
+        heading(failed ? "Search is unavailable. Reload the page to try again." : index ? "Nothing matches." : "Loading…");
+      }
+      input.setAttribute("aria-expanded", shown.length > 0 ? "true" : "false");
+      choose(Math.min(active, Math.max(0, shown.length - 1)));
+    }
+
+    function choose(i) {
+      if (shown.length === 0) {
+        input.removeAttribute("aria-activedescendant");
+        return;
+      }
+      active = (i + shown.length) % shown.length;
+      list.querySelectorAll('[role="option"]').forEach(function (row) {
+        row.setAttribute("aria-selected", row.id === "palette-opt-" + active ? "true" : "false");
+      });
+      var row = document.getElementById("palette-opt-" + active);
+      input.setAttribute("aria-activedescendant", row.id);
+      if (typeof row.scrollIntoView === "function") row.scrollIntoView({ block: "nearest" });
+    }
+
+    function go(i, beside) {
+      var it = shown[i];
+      if (!it) return;
+      dialog.close();
+      if (beside) window.open(it.href, "_blank");
+      else window.location.assign(it.href);
+    }
+
+    function open() {
+      returnTo = document.activeElement;
+      input.value = "";
+      active = 0;
+      dialog.showModal();
+      input.focus();
+      load();
+      render();
+    }
+
+    dialog.addEventListener("close", function () {
+      input.setAttribute("aria-expanded", "false");
+      if (returnTo && typeof returnTo.focus === "function") returnTo.focus();
+      returnTo = null;
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || !e.key) return;
+      if (e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (dialog.open) dialog.close();
+        else open();
+      }
+    }, true);
+
+    document.addEventListener("click", function (e) {
+      if (e.target && typeof e.target.closest === "function" && e.target.closest("[data-palette-open]")) open();
+    });
+
+    input.addEventListener("input", function () { active = 0; render(); });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown") { e.preventDefault(); choose(active + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); choose(active - 1); }
+      else if (e.key === "Enter") { e.preventDefault(); go(active, e.metaKey || e.ctrlKey); }
+    });
+    list.addEventListener("mousemove", function (e) {
+      var row = e.target.closest ? e.target.closest("[data-palette-index]") : null;
+      if (row && +row.getAttribute("data-palette-index") !== active) choose(+row.getAttribute("data-palette-index"));
+    });
+    list.addEventListener("click", function (e) {
+      var row = e.target.closest ? e.target.closest("[data-palette-index]") : null;
+      if (row) go(+row.getAttribute("data-palette-index"), e.metaKey || e.ctrlKey);
+    });
+  }
 })();
