@@ -1,0 +1,74 @@
+package components
+
+// Stats is a strip of numbers -- an endpoint's limits, a screen's headline
+// figures -- in one bordered band rather than one card each, which is what
+// lets four numbers be read as a row.
+//
+// A <dl>, because each number is the definition of its label. The hairlines
+// between cells are the gap showing the line colour underneath, so they stay
+// right however the cells wrap.
+templ Stats(items []Stat) {
+	<dl class={ "grid gap-px overflow-hidden rounded-card border border-line bg-line-soft", statsCols(len(items)) }>
+		for _, s := range items {
+			<div class="bg-surface px-5 py-4">
+				<dt class="flex items-center gap-1.5 text-[0.78rem] text-muted">
+					if s.Icon != "" {
+						@Icon(s.Icon, "h-3.5 w-3.5")
+					}
+					<span>{ s.Label }</span>
+				</dt>
+				<dd class="mt-2 flex items-baseline gap-0.5 text-[1.75rem] leading-none font-semibold tracking-[-0.03em] text-ink tabular-nums">
+					<span>{ s.Value }</span>
+					if s.Unit != "" {
+						<span class="text-[0.85rem] font-normal tracking-normal text-muted">{ s.Unit }</span>
+					}
+				</dd>
+				if s.Note != "" {
+					<dd class="mt-1.5 text-[0.75rem] text-faint">{ s.Note }</dd>
+				}
+			</div>
+		}
+	</dl>
+}
+
+// MethodPill is an HTTP method, as the protocol writes it. GET is green
+// because it is the safe one -- the only one this console's endpoints serve.
+templ MethodPill(method string) {
+	<span class={ "inline-flex h-5 shrink-0 items-center rounded-card px-1.5 font-mono text-[0.68rem] font-semibold", methodClass(method) }>{ method }</span>
+}
+
+// TableFoot says how much of a list is on screen, and says "of" only when a
+// filter is hiding part of it.
+templ TableFoot(shown, total int, noun string) {
+	<div class="border-t border-line-soft px-4 py-2.5 text-[0.75rem] text-muted tabular-nums">{ footText(shown, total, noun) }</div>
+}
+
+// DefinitionList is configuration: a term and its value, aligned in two
+// columns. A machine's value is mono and may break anywhere -- a URI has no
+// spaces to wrap at.
+templ DefinitionList(rows []Def) {
+	<dl class="grid grid-cols-[minmax(0,11rem)_minmax(0,1fr)] gap-x-4 gap-y-2 text-[0.82rem]">
+		for _, r := range rows {
+			<dt class="text-muted">{ r.Term }</dt>
+			if r.Mono {
+				<dd class="font-mono text-[0.78rem] break-all text-ink">{ r.Value }</dd>
+			} else {
+				<dd class="text-ink">{ r.Value }</dd>
+			}
+		}
+	</dl>
+}
+
+// CodeBlock is a block of code to read and to copy -- a curl, a command.
+//
+// THE COPY BUTTON IS HIDDEN UNTIL A SCRIPT CAN DRIVE IT. Without ui.js it
+// would be a button that does nothing; the text is selectable either way.
+// The id is the caller's, because the button copies by it.
+templ CodeBlock(id, code string) {
+	<div class="relative">
+		<pre id={ id } class="overflow-x-auto rounded-card border border-line bg-canvas-subtle p-3 pr-11 font-mono text-[0.75rem] leading-relaxed text-ink"><code>{ code }</code></pre>
+		<span class="absolute top-1.5 right-1.5" hidden>
+			@IconButton("Copy", "copy", templ.Attributes{"data-copy": "#" + id})
+		</span>
+	</div>
+}

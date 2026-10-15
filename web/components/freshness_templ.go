@@ -32,7 +32,7 @@ func Freshness(status string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var2 = []any{"inline-flex items-center gap-1.5 whitespace-nowrap rounded-card border px-2.5 py-0.5 text-xs font-medium", freshnessClass(status)}
+		var templ_7745c5c3_Var2 = []any{"inline-flex items-center gap-1.5 whitespace-nowrap rounded-card px-2 py-0.5 text-xs font-medium", freshnessClass(status)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -118,17 +118,17 @@ func FreshnessLabel(s string) string {
 func freshnessClass(s string) string {
 	switch s {
 	case "on_time":
-		return "border-state-success/25 bg-state-success/10 text-state-success"
+		return "bg-state-success/13 text-state-success"
 	case "late":
-		return "border-state-queued/25 bg-state-queued/10 text-state-queued"
+		return "bg-state-queued/13 text-state-queued"
 	case "stale":
-		return "border-state-failed/25 bg-state-failed/10 text-state-failed"
+		return "bg-state-failed/13 text-state-failed"
 	case "paused":
-		return "border-state-canceled/25 bg-state-canceled/10 text-state-canceled"
+		return "bg-state-canceled/13 text-state-canceled"
 	case "continuous":
-		return "border-state-running/25 bg-state-running/10 text-state-running"
+		return "bg-state-running/13 text-state-running"
 	}
-	return "border-line bg-parchment-soft text-muted"
+	return "bg-surface-2 text-muted"
 }
 
 func freshnessDot(s string) string {
