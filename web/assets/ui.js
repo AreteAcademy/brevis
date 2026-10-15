@@ -498,4 +498,56 @@
       });
     });
   });
+
+  // ------------------------------------------------------------------
+  // A GET form that swaps its answer
+  //
+  // `form[data-swap]` names the element its answer goes into. A submit
+  // fetches the same URL with X-Brevis-Fragment: answer -- the handler draws
+  // that part alone -- and swaps it in; the form, its values and the page
+  // around it stay. The URL follows with replaceState, so a reload or a sent
+  // link shows the same run. GET only: this is for parameters that may sit in
+  // a URL, never for SQL, which the workbench posts.
+  //
+  // THE FORM IS STILL THE MECHANISM. No fetch, a non-2xx or a redirect (an
+  // expired session) navigates to the URL the form would have, which is
+  // what a submit was before this existed. Cmd/Ctrl-Enter submits from any
+  // field.
+  // ------------------------------------------------------------------
+
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form || typeof form.matches !== "function" || !form.matches("form[data-swap]")) return;
+    var pane = document.getElementById(form.getAttribute("data-swap"));
+    if (!pane || !window.fetch || !window.FormData) return;
+    e.preventDefault();
+    if (pane.getAttribute("aria-busy") === "true") return;
+
+    var url = form.getAttribute("action").split("?")[0] + "?" + new URLSearchParams(new FormData(form)).toString();
+    var button = form.querySelector('[type="submit"]');
+    pane.setAttribute("aria-busy", "true");
+    if (button) button.disabled = true;
+    fetch(url, { headers: { "X-Brevis-Fragment": "answer" } })
+      .then(function (r) {
+        if (r.redirected || !r.ok) throw new Error("not an answer");
+        return r.text();
+      })
+      .then(function (html) {
+        pane.innerHTML = html;
+        history.replaceState(history.state, "", url);
+      })
+      .catch(function () { window.location.assign(url); })
+      .then(function () {
+        pane.removeAttribute("aria-busy");
+        if (button) button.disabled = false;
+      });
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
+    var form = e.target && typeof e.target.closest === "function" ? e.target.closest("form[data-swap]") : null;
+    if (!form || typeof form.requestSubmit !== "function") return;
+    e.preventDefault();
+    form.requestSubmit();
+  });
 })();

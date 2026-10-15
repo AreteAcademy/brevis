@@ -250,22 +250,26 @@ templ readBy(refs []EndpointRef) {
 }
 
 templ tryIt(v EndpointView) {
-	<section>
-		<p class="mb-3 text-xs text-muted">
-			Runs through this console's key, as that key's tenant, for every login. An empty field is the parameter's default.
-		</p>
-		<form method="get" action={ templ.SafeURL(v.Row.Href()) } class="mb-4 flex flex-wrap items-end gap-3">
-			<input type="hidden" name="run" value="1"/>
+	<p class="mb-3 text-[0.75rem] text-muted">
+		Runs through this console's key, as that key's tenant, for every login. An empty field is the parameter's default.
+	</p>
+	// A GET, so a run is a link somebody can send -- these are an endpoint's
+	// parameters, not SQL. `data-swap` names the pane the answer goes into:
+	// ui.js fetches the answer alone and swaps it, and with no script the
+	// form draws the whole page with the answer in it.
+	<form method="get" action={ templ.SafeURL(v.Row.Href()) } data-swap="endpoint-answer" class="flex flex-col gap-3">
+		<input type="hidden" name="run" value="1"/>
+		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 			for _, f := range v.Form {
-				<label class="flex flex-col gap-1 text-xs text-muted">
-					<span class="font-mono">
+				<label class="flex min-w-0 flex-col gap-1">
+					<span class="flex items-center gap-1.5 font-mono text-[0.75rem] text-ink-2">
 						{ f.Name }
 						if f.Required {
-							<span class="font-sans">*</span>
+							<span class="rounded-card bg-state-queued/13 px-1 py-px font-sans text-[0.65rem] font-medium text-state-queued">required</span>
 						}
 					</span>
 					if f.Kind == "select" {
-						<select name={ f.Name } class="rounded-card border border-line bg-surface px-2 py-1 text-sm text-ink">
+						<select name={ f.Name } class={ fieldClass }>
 							<option value="">default</option>
 							for _, o := range f.Options {
 								if o == f.Value {
@@ -276,40 +280,63 @@ templ tryIt(v EndpointView) {
 							}
 						</select>
 					} else if f.MaxLen > 0 {
-						<input type={ f.Kind } name={ f.Name } value={ f.Value } maxlength={ fmt.Sprint(f.MaxLen) } class="rounded-card border border-line bg-surface px-2 py-1 text-sm text-ink"/>
+						<input type={ f.Kind } name={ f.Name } value={ f.Value } maxlength={ fmt.Sprint(f.MaxLen) } class={ fieldClass }/>
 					} else {
-						<input type={ f.Kind } name={ f.Name } value={ f.Value } class="rounded-card border border-line bg-surface px-2 py-1 text-sm text-ink"/>
+						<input type={ f.Kind } name={ f.Name } value={ f.Value } class={ fieldClass }/>
 					}
 				</label>
 			}
-			<button type="submit" class="rounded-card bg-accent px-4 py-1.5 text-sm font-medium text-surface hover:opacity-90">Run</button>
-		</form>
-		if v.RunErr != "" {
-			<p class="rounded-card border border-line bg-parchment-soft/60 px-4 py-3 text-sm text-ink">{ v.RunErr }</p>
+		</div>
+		@components.Button(components.ButtonPrimary, components.SizeRegular, templ.Attributes{"type": "submit"}) {
+			@components.Icon("play", "h-3.5 w-3.5")
+			Run request
+			<span class="ml-1 font-mono text-[0.7rem] opacity-60">⌘↵</span>
 		}
-		if a := v.Answer; a != nil {
-			<div class="mb-2 flex flex-wrap items-center gap-3 text-xs text-muted">
-				<span class="rounded-card border border-line px-1.5 py-px font-mono text-ink">{ fmt.Sprint(a.Status) }</span>
-				if a.Cache != "" {
-					<span>cache <span class="font-mono text-ink">{ a.Cache }</span></span>
-				}
-				<span class="tabular-nums">{ fmt.Sprint(a.Millis) } ms</span>
-				if a.Status == 200 {
-					<span class="tabular-nums">{ Total(a.Received, a.Truncated) }</span>
-				}
-				if a.Received > len(a.Rows) {
-					<span>
-						showing the first { fmt.Sprint(len(a.Rows)) } of { fmt.Sprint(a.Received) } rows; call the API for the rest
-					</span>
-				}
-			</div>
-			if a.Error != "" {
-				<p class="rounded-card border border-line bg-parchment-soft/60 px-4 py-3 text-sm text-ink">{ a.Error }</p>
-			} else if len(a.Rows) == 0 {
-				<p class="text-sm text-muted">No rows.</p>
+	</form>
+	// WHERE THE ANSWER GOES, and what a screen reader hears when it arrives.
+	// Dimmed while a run is in flight (`aria-busy`, set by ui.js).
+	<div id="endpoint-answer" aria-live="polite" class="mt-4 transition-opacity aria-busy:opacity-50">
+		@EndpointAnswer(v)
+	</div>
+}
+
+// EndpointAnswer is what a run brought back -- the status, the cache, the
+// time and the rows -- or why there is nothing. ONE DEFINITION FOR BOTH
+// SHAPES: the page draws it in its pane, and a run that asks for the answer
+// alone (X-Brevis-Fragment: answer) gets exactly this.
+templ EndpointAnswer(v EndpointView) {
+	if v.RunErr != "" {
+		<p class="rounded-card border border-line bg-canvas-subtle px-3 py-2.5 text-[0.82rem] text-ink">{ v.RunErr }</p>
+	} else if a := v.Answer; a != nil {
+		<div class="mb-2 flex flex-wrap items-center gap-2 text-[0.75rem] text-muted">
+			if a.Status < 300 {
+				<span class="rounded-card bg-state-success/13 px-1.5 py-px font-mono font-semibold text-state-success">{ fmt.Sprint(a.Status) }</span>
 			} else {
-				@grid(a.Columns, a.Rows)
+				<span class="rounded-card bg-state-failed/13 px-1.5 py-px font-mono font-semibold text-state-failed">{ fmt.Sprint(a.Status) }</span>
 			}
+			<span class="tabular-nums">{ fmt.Sprint(a.Millis) } ms</span>
+			if a.Status == 200 {
+				<span class="tabular-nums">{ Total(a.Received, a.Truncated) } rows</span>
+			}
+			if a.Cache != "" {
+				<span>cache <span class="font-mono text-ink">{ a.Cache }</span></span>
+			}
+		</div>
+		if a.Received > len(a.Rows) {
+			<p class="mb-2 text-[0.72rem] text-muted">
+				Showing the first { fmt.Sprint(len(a.Rows)) } of { fmt.Sprint(a.Received) } rows; call the API for the rest.
+			</p>
 		}
-	</section>
+		if a.Error != "" {
+			<p class="rounded-card border border-line bg-canvas-subtle px-3 py-2.5 text-[0.82rem] text-ink">{ a.Error }</p>
+		} else if len(a.Rows) == 0 {
+			<p class="text-[0.82rem] text-muted">No rows.</p>
+		} else {
+			<div class="max-h-[28rem] overflow-auto rounded-card border border-line-soft">
+				@grid(a.Columns, a.Rows)
+			</div>
+		}
+	} else {
+		<p class="text-[0.78rem] text-faint">The answer appears here.</p>
+	}
 }

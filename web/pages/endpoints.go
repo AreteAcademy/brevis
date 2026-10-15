@@ -288,3 +288,6 @@ func thousands(n int) string {
 	}
 	return s
 }
+
+// fieldClass is a Try it field: the shell's input, the height of a button.
+const fieldClass = "h-8 w-full min-w-0 rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink focus:border-accent-strong focus:outline-none"
