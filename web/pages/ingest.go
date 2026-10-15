@@ -808,3 +808,49 @@ func FindStream(groups []GatewayGroup, gateway, path string) *Stream {
 	}
 	return nil
 }
+
+// TestFormat is the stream's declared format; json, the gateway's default,
+// when it declares none.
+func (v StreamView) TestFormat() string {
+	if f := v.Field("format"); f != "" {
+		return f
+	}
+	return "json"
+}
+
+// TestBody is an example event in the stream's own format: an object for
+// json, a list of them for array, one per line for ndjson -- with the field
+// an identity routes by (`identity.source_key`) filled in, since the gateway
+// refuses an event without it.
+func (v StreamView) TestBody() string {
+	event := `{"event": "test"}`
+	if k := v.Field("identity.source_key"); k != "" {
+		event = `{"event": "test", "` + k + `": "test"}`
+	}
+	switch v.TestFormat() {
+	case "array":
+		return "[" + event + "]"
+	case "ndjson":
+		return event + "\n" + event
+	}
+	return event
+}
+
+// TestCurlHead is the curl that sends a body to this stream, up to the body:
+// $GATEWAY and $GATEWAY_TOKEN stand where the console does not know the
+// gateway's address or its token (`listen.auth` is the gateway's, not the
+// stream's). The body follows as a heredoc, so nothing in it needs quoting.
+func (v StreamView) TestCurlHead() string {
+	ct := "application/json"
+	if v.TestFormat() == "ndjson" {
+		ct = "application/x-ndjson"
+	}
+	return `curl -X POST "$GATEWAY` + v.Path + `" -H 'Content-Type: ` + ct +
+		`' -H "Authorization: Bearer $GATEWAY_TOKEN" --data-binary @- <<'EOF'`
+}
+
+// TestCurl is the whole command for the example body; ui.js rebuilds it the
+// same way as the body is edited.
+func (v StreamView) TestCurl() string {
+	return v.TestCurlHead() + "\n" + v.TestBody() + "\nEOF"
+}
