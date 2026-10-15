@@ -237,7 +237,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /runs", u.runs)
 	mux.HandleFunc("GET /workflows", u.workflows)
 	mux.HandleFunc("GET /projects", u.projetos)
-	mux.HandleFunc("GET /data", u.data)
+	mux.HandleFunc("GET /data", u.dataMoved)
 	// THE WORKBENCH, and both verbs on one path: a GET draws the box and a
 	// POST runs what is in it. The statement travels in the BODY, which is
 	// why there is no second route carrying it.
@@ -245,7 +245,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("POST /sql", u.sql)
 	// A query parameter and not a path wildcard: ServeMux cleans `//` out of a
 	// path, and would redirect /data/bigquery://… to /data/bigquery:/….
-	mux.HandleFunc("GET /data/target", u.dataTarget)
+	mux.HandleFunc("GET /data/target", u.targetMoved)
 	mux.HandleFunc("GET /ingest/loads", u.loads)
 	mux.HandleFunc("GET /ingest/streams", u.streams)
 	mux.HandleFunc("GET /ingest/streams/{gateway}/{path...}", u.stream)
@@ -283,19 +283,6 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	// Served from the embed, not from disk: the container is distroless and has
 	// no web/assets, and the binary has to work from any directory.
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", assets.Handler()))
-}
-
-// data lists every destination the ecosystem writes.
-func (u *UI) data(w http.ResponseWriter, r *http.Request) {
-	var entries []postgres.CatalogEntry
-	if u.catalog != nil {
-		var err error
-		if entries, err = u.catalog.Catalog(r.Context()); err != nil {
-			u.failure(w, r, err)
-			return
-		}
-	}
-	u.render(w, r, pages.Data(pages.BuildData(entries, time.Now()).Apply(pages.ParseDataFilter(r.URL.Query()))))
 }
 
 // loads is Ingest → Loads: what the workflows wrote, by workflow. The same
@@ -432,32 +419,33 @@ func (u *UI) dataEndpoint(w http.ResponseWriter, r *http.Request) {
 // value is a 404, not a 400.
 const targetCeiling = 512
 
-// dataTarget is one destination's page.
-func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
+// dataMoved is where Catalog was: its loads are /ingest/loads now. The
+// query string is dropped -- its filters were the list's, and a stream is
+// not on that list.
+func (u *UI) dataMoved(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/ingest/loads", http.StatusMovedPermanently)
+}
+
+// targetMoved is where a destination's page was. A destination is now the
+// stream that owns it -- its sink or its dead letter -- or the load that
+// writes it, the most recent when several steps do; with no owner, the
+// loads. Endpoints still link here (TargetHref), and follow it.
+func (u *UI) targetMoved(w http.ResponseWriter, r *http.Request) {
 	target := r.URL.Query().Get("u")
-	if target == "" || len(target) > targetCeiling || strings.ContainsFunc(target, unicode.IsControl) {
+	if len(target) > targetCeiling || strings.ContainsFunc(target, unicode.IsControl) {
 		http.Error(w, "name a destination: /data/target?u=<target>", http.StatusBadRequest)
 		return
 	}
-	if u.catalog == nil {
-		http.NotFound(w, r)
-		return
+	to := "/ingest/loads"
+	if target != "" && u.catalog != nil {
+		entries, err := u.catalog.Catalog(r.Context())
+		if err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		to = pages.OwnerOf(entries, target, time.Now())
 	}
-	d, err := u.catalog.CatalogTarget(r.Context(), target)
-	if err != nil {
-		u.failure(w, r, err)
-		return
-	}
-	if d == nil {
-		http.Error(w, "nothing has landed on "+target, http.StatusNotFound)
-		return
-	}
-	v := pages.BuildTarget(*d, time.Now())
-	if err := u.targetTools(r, &v, target); err != nil {
-		u.failure(w, r, err)
-		return
-	}
-	u.render(w, r, pages.Target(v))
+	http.Redirect(w, r, to, http.StatusMovedPermanently)
 }
 
 // targetTools fills in what a destination's page offers beyond its loads --
@@ -753,7 +741,7 @@ func paletteEntry(group, label, hint, href, icon string) paletteItem {
 }
 
 // palette is the command palette's index: the sections, then the workflows,
-// projects, destinations and endpoints, each with where it goes.
+// projects, streams, loads and endpoints, each with where it goes.
 //
 // EVERY SOURCE IS OPTIONAL. A console with no endpoints reader lists none, the
 // way its sidebar offers none; one source missing never takes the rest with it.
@@ -793,11 +781,19 @@ func (u *UI) palette(w http.ResponseWriter, r *http.Request) {
 			u.failure(w, r, err)
 			return
 		}
-		for _, e := range entries {
-			if e.Target == "" {
-				continue
+		// A stream by what it is, POST <path>; a load by step → where.
+		for _, g := range pages.StreamsOf(entries) {
+			for _, s := range g.Streams {
+				items = append(items, paletteEntry("Streams", "POST "+s.Path, g.Name, s.Href(), "cloud"))
 			}
-			items = append(items, paletteEntry("Destinations", e.Target, e.Kind, pages.TargetHref(e.Target), "database"))
+		}
+		for _, g := range pages.LoadsOf(entries, time.Now()) {
+			for _, t := range g.Targets {
+				if t.URI == "" {
+					continue
+				}
+				items = append(items, paletteEntry("Loads", t.Step+" → "+t.URI, g.Workflow, t.Href(), "download"))
+			}
 		}
 	}
 	if u.endpoints != nil {

@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -102,46 +101,20 @@ func targets(rows []DataRow) []string {
 	return out
 }
 
-func TestFiltersNarrowTheRowsAndLeaveTheSummaryWhole(t *testing.T) {
-	cases := []struct {
-		query string
-		want  []string
-	}{
-		{"", []string{"s3://landing/vendors/", "postgres://db/public/late", "bronze.payments", "postgres://db/public/fresh", "postgres://db/public/paused"}},
-		{"status=attention", []string{"s3://landing/vendors/", "postgres://db/public/late"}},
-		{"status=late", []string{"postgres://db/public/late"}},
-		{"kind=s3", []string{"s3://landing/vendors/"}},
-		{"legacy=1", []string{"bronze.payments"}},
-		{"status=attention&kind=postgres", []string{"postgres://db/public/late"}},
-		// What the page does not know is ignored, not an empty page.
-		{"status=bogus&kind=snowflake&legacy=yes", []string{"s3://landing/vendors/", "postgres://db/public/late", "bronze.payments", "postgres://db/public/fresh", "postgres://db/public/paused"}},
-	}
-	for _, c := range cases {
-		q, _ := url.ParseQuery(c.query)
-		v := filterFixture().Apply(ParseDataFilter(q))
-		if got := targets(v.Rows); strings.Join(got, ",") != strings.Join(c.want, ",") {
-			t.Errorf("?%s = %v, want %v", c.query, got, c.want)
-		}
-		if v.Total != 5 {
-			t.Errorf("?%s: total = %d; the summary counts every destination", c.query, v.Total)
-		}
-	}
-}
-
 // Links are stable and shareable: the same filter always writes the same URL,
 // and setting one field keeps the others.
 func TestFilterLinksAreStableAndKeepTheOtherFields(t *testing.T) {
 	f := DataFilter{Status: "attention", Kind: "s3"}
-	if got := f.With("kind", "postgres"); got != "/data?status=attention&kind=postgres" {
+	if got := f.With("kind", "postgres"); got != "/ingest/loads?status=attention&kind=postgres" {
 		t.Errorf("With(kind) = %q", got)
 	}
-	if got := f.With("status", ""); got != "/data?kind=s3" {
+	if got := f.With("status", ""); got != "/ingest/loads?kind=s3" {
 		t.Errorf("clearing status = %q", got)
 	}
-	if got := (DataFilter{}).With("legacy", "1"); got != "/data?legacy=1" {
+	if got := (DataFilter{}).With("legacy", "1"); got != "/ingest/loads?legacy=1" {
 		t.Errorf("legacy = %q", got)
 	}
-	if got := (DataFilter{}).With("status", ""); got != "/data" {
+	if got := (DataFilter{}).With("status", ""); got != "/ingest/loads" {
 		t.Errorf("no filter = %q", got)
 	}
 }

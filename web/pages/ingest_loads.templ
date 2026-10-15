@@ -164,6 +164,9 @@ templ loadRow(r LoadRow) {
 		</td>
 		<td class="px-3 py-2.5">
 			@components.Freshness(string(r.Status))
+			if run := r.Fixing(); run != nil {
+				<a href={ templ.SafeURL("/runs/" + *run) } class="mt-1 block text-[0.72rem] text-state-running hover:underline">run in progress</a>
+			}
 		</td>
 		<td class="px-3 py-2.5 text-[0.78rem] whitespace-nowrap text-muted">{ components.When(&r.LastLoaded) }</td>
 		<td class="px-3 py-2.5 text-right text-[0.78rem] text-ink tabular-nums">{ rowsText(r.Rows) }</td>

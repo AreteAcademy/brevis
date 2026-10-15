@@ -106,7 +106,7 @@ func TestTheDestinationPageShowsTheGatewaysConfiguration(t *testing.T) {
 		}}},
 	}}
 	var b bytes.Buffer
-	if err := Target(BuildTarget(d, time.Now())).Render(context.Background(), &b); err != nil {
+	if err := configurations(BuildTarget(d, time.Now())).Render(context.Background(), &b); err != nil {
 		t.Fatal(err)
 	}
 	html := b.String()
@@ -137,7 +137,7 @@ func TestAWriterWithNoConfigurationHasNoSection(t *testing.T) {
 			Name: "edge", Stream: "/v1/clicks", Role: "sink", Kind: "pubsub"}}},
 	}}
 	var b bytes.Buffer
-	if err := Target(BuildTarget(d, time.Now())).Render(context.Background(), &b); err != nil {
+	if err := configurations(BuildTarget(d, time.Now())).Render(context.Background(), &b); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(b.String(), "data-path=") {
@@ -183,7 +183,7 @@ func TestTheConfigurationsChangesAreListedNewestFirst(t *testing.T) {
 	var b bytes.Buffer
 	d := postgres.TargetDetail{CatalogEntry: postgres.CatalogEntry{Target: "bigquery://acme/landing/*",
 		Writers: []postgres.CatalogWriter{{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/tables", Config: c}}}}}
-	if err := Target(BuildTarget(d, time.Now())).Render(context.Background(), &b); err != nil {
+	if err := configurations(BuildTarget(d, time.Now())).Render(context.Background(), &b); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"Changes", "1m → 2m", "removed (was 2)", "First published"} {
@@ -232,7 +232,7 @@ func TestTheDestinationPageShowsAStepsConfiguration(t *testing.T) {
 		},
 	}}
 	var b bytes.Buffer
-	if err := Target(BuildTarget(d, time.Now())).Render(context.Background(), &b); err != nil {
+	if err := configurations(BuildTarget(d, time.Now())).Render(context.Background(), &b); err != nil {
 		t.Fatal(err)
 	}
 	html := b.String()

@@ -14,7 +14,7 @@ type group struct {
 }
 
 // groups is the sidebar, in the data's path: how it is built and what
-// happened, where it lives and goes, and the workspace around it.
+// happened, what comes in, what reads it, and the workspace around it.
 //
 // ONE LIST FOR TWO READERS. The sidebar draws it and the top bar's breadcrumb
 // looks the open section up in it; two lists would disagree the first time a
@@ -24,12 +24,11 @@ type group struct {
 // is a section that leads nowhere, and the sidebar is the one place a reader
 // trusts to say what exists.
 func groups(ctx context.Context) []group {
-	data := []section{
-		{"/data", "Catalog", "data", "database"},
+	consume := []section{
 		{"/data/endpoints", "Endpoints", "endpoints", "plug"},
 	}
 	if HasSQL(ctx) {
-		data = append(data, section{"/sql", "SQL", "sql", "terminal"})
+		consume = append(consume, section{"/sql", "SQL", "sql", "terminal"})
 	}
 	return []group{
 		{"Pipelines", []section{
@@ -37,7 +36,13 @@ func groups(ctx context.Context) []group {
 			{"/workflows", "Workflows", "workflows", "workflow"},
 			{"/runs", "Runs", "runs", "history"},
 		}},
-		{"Data", data},
+		// What comes in: a gateway's streams, and what the workflows load.
+		{"Ingest", []section{
+			{"/ingest/streams", "Streams", "streams", "cloud"},
+			{"/ingest/loads", "Loads", "loads", "download"},
+		}},
+		// What reads it: the published endpoints and the workbench.
+		{"Consume", consume},
 		{"Workspace", []section{
 			{"/projects", "Projects", "projects", "folder"},
 		}},

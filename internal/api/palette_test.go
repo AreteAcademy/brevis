@@ -96,10 +96,10 @@ func TestThePaletteIndexesWhatTheConsoleLists(t *testing.T) {
 		t.Fatalf("/api/palette answered %d", code)
 	}
 	for _, want := range []struct{ group, label, href string }{
-		{"Sections", "Catalog", "/data"},
+		{"Sections", "Loads", "/ingest/loads"},
 		{"Workflows", "daily_sales", "/workflows/daily_sales"},
 		{"Projects", "analytics", "/workflows?project=analytics"},
-		{"Destinations", "s3://demo-landing/reports/", "/data/target?u=s3%3A%2F%2Fdemo-landing%2Freports%2F"},
+		{"Loads", "build_report → s3://demo-landing/reports/", "/ingest/loads/shell_report/build_report"},
 		{"Endpoints", "/v1/clicks", "/data/endpoints/metrics-api/clicks"},
 	} {
 		it := find(items, want.group, want.label)
@@ -133,7 +133,7 @@ func TestThePaletteOffersOnlyWhatThisConsoleHas(t *testing.T) {
 			t.Errorf("the index lists %s %q from a reader that is not there", it.Group, it.Label)
 		}
 	}
-	if find(items, "Destinations", "bronze.payments") == nil {
+	if find(items, "Loads", "load → bronze.payments") == nil {
 		t.Error("an optional reader being absent took the others with it")
 	}
 }

@@ -119,7 +119,7 @@ func TestADestinationPageDrawsEachDescribedWritersFlow(t *testing.T) {
 			{Workflow: "python_job", Node: "build"},
 		},
 	}}
-	page := draw(t, Target(BuildTarget(d, time.Now())))
+	page := draw(t, configurations(BuildTarget(d, time.Now())))
 
 	at := strings.Index(page, "data-flow")
 	if at < 0 {

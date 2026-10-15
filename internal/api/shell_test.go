@@ -20,7 +20,7 @@ import (
 // outside the page. Position is the only kind of assertion that sees a
 // layout.
 func TestTheNavigationIsASidebarBesideTheContent(t *testing.T) {
-	body := render(t, dataUI(catalogFake{}), "/data")
+	body := render(t, dataUI(catalogFake{}), "/ingest/loads")
 
 	aside, end := strings.Index(body, "<aside"), strings.Index(body, "</aside>")
 	main := strings.Index(body, "<main")
@@ -59,12 +59,12 @@ func TestTheSidebarHoldsStillAcrossANavigation(t *testing.T) {
 // EVERY SECTION, AND THE OPEN ONE SAID OUT LOUD. `aria-current` is what tells
 // somebody not looking at the highlight which section they are in.
 func TestTheSidebarCarriesEverySectionAndMarksTheOpenOne(t *testing.T) {
-	body := render(t, dataUI(catalogFake{}), "/data")
+	body := render(t, dataUI(catalogFake{}), "/ingest/loads")
 
 	for _, want := range []string{
 		`href="/"`, `href="/workflows"`, `href="/runs"`,
-		`href="/projects"`, `href="/data"`,
-		"Overview", "Workflows", "Runs", "Projects", "Catalog",
+		`href="/projects"`, `href="/ingest/streams"`, `href="/ingest/loads"`,
+		"Overview", "Workflows", "Runs", "Projects", "Streams", "Loads",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the sidebar does not carry %q", want)
@@ -78,8 +78,8 @@ func TestTheSidebarCarriesEverySectionAndMarksTheOpenOne(t *testing.T) {
 		return
 	}
 	tag := body[strings.LastIndex(body[:i], "<a"):i]
-	if !strings.Contains(tag, `href="/data"`) {
-		t.Errorf("the marked section is not /data: %q", tag)
+	if !strings.Contains(tag, `href="/ingest/loads"`) {
+		t.Errorf("the marked section is not /ingest/loads: %q", tag)
 	}
 }
 
@@ -87,7 +87,7 @@ func TestTheSidebarCarriesEverySectionAndMarksTheOpenOne(t *testing.T) {
 // I and how do I leave" lives. A console nobody can sign out of is one nobody
 // can leave.
 func TestTheAccountMenuIsInTheSidebar(t *testing.T) {
-	body := render(t, dataUI(catalogFake{}), "/data")
+	body := render(t, dataUI(catalogFake{}), "/ingest/loads")
 
 	aside, end := strings.Index(body, "<aside"), strings.Index(body, "</aside>")
 	// The MENU and not the sign-out form: signing out needs a session, and
@@ -105,13 +105,15 @@ func TestTheAccountMenuIsInTheSidebar(t *testing.T) {
 }
 
 // THE SIDEBAR FOLLOWS THE DATA'S PATH: how it is built and what happened
-// (Pipelines: Overview, Workflows, Runs), where it lives and goes (Data:
-// Catalog, Endpoints, SQL), and the Workspace. Groups are announced as
-// groups, so a screen reader hears "Data, group" before "Endpoints".
+// (Pipelines: Overview, Workflows, Runs), what comes in (Ingest: Streams,
+// Loads), what reads it (Consume: Endpoints, SQL), and the Workspace. Groups
+// are announced as groups, so a screen reader hears "Ingest, group" before
+// "Streams".
 func TestTheSidebarGroupsSectionsByTheDatasPath(t *testing.T) {
-	body := render(t, dataUI(catalogFake{}).WithEndpoints(endpointsFake{}), "/data")
+	body := render(t, dataUI(catalogFake{}).WithEndpoints(endpointsFake{}), "/ingest/loads")
 	for _, group := range []string{
-		`role="group" aria-label="Pipelines"`, `role="group" aria-label="Data"`, `role="group" aria-label="Workspace"`,
+		`role="group" aria-label="Pipelines"`, `role="group" aria-label="Ingest"`,
+		`role="group" aria-label="Consume"`, `role="group" aria-label="Workspace"`,
 	} {
 		if !strings.Contains(body, group) {
 			t.Errorf("the sidebar has no %s", group)
@@ -122,7 +124,8 @@ func TestTheSidebarGroupsSectionsByTheDatasPath(t *testing.T) {
 		body = body[at:]
 	}
 	order := []string{`aria-label="Pipelines"`, `href="/"`, `href="/workflows"`, `href="/runs"`,
-		`aria-label="Data"`, `href="/data"`, `href="/data/endpoints"`,
+		`aria-label="Ingest"`, `href="/ingest/streams"`, `href="/ingest/loads"`,
+		`aria-label="Consume"`, `href="/data/endpoints"`,
 		`aria-label="Workspace"`, `href="/projects"`}
 	last := -1
 	for _, want := range order {
@@ -137,12 +140,13 @@ func TestTheSidebarGroupsSectionsByTheDatasPath(t *testing.T) {
 	}
 }
 
-// EACH PAGE MARKS ITS OWN ITEM, and only one: Endpoints is not Catalog
-// although both live under Data.
+// EACH PAGE MARKS ITS OWN ITEM, and only one: Streams is not Loads although
+// both live under Ingest.
 func TestEachPageMarksItsOwnItem(t *testing.T) {
 	ui := dataUI(catalogFake{}).WithEndpoints(endpointsFake{})
 	for path, href := range map[string]string{
-		"/data":           `href="/data"`,
+		"/ingest/loads":   `href="/ingest/loads"`,
+		"/ingest/streams": `href="/ingest/streams"`,
 		"/data/endpoints": `href="/data/endpoints"`,
 	} {
 		body := render(t, ui, path)
@@ -166,8 +170,9 @@ func TestEachPageMarksItsOwnItem(t *testing.T) {
 func TestTheTopBarSaysWhereYouAre(t *testing.T) {
 	ui := dataUI(catalogFake{}).WithEndpoints(endpointsFake{})
 	for path, want := range map[string][2]string{
-		"/data":           {"Data", "Catalog"},
-		"/data/endpoints": {"Data", "Endpoints"},
+		"/ingest/loads":   {"Ingest", "Loads"},
+		"/ingest/streams": {"Ingest", "Streams"},
+		"/data/endpoints": {"Consume", "Endpoints"},
 	} {
 		body := render(t, ui, path)
 		at := strings.Index(body, `aria-label="Breadcrumb"`)
@@ -196,7 +201,7 @@ func TestTheTopBarSaysWhereYouAre(t *testing.T) {
 // same controls stop touching the URL, close on Escape and give the focus
 // back to the button -- an enhancement, not the mechanism.
 func TestBelowTheBreakpointTheSidebarIsADrawer(t *testing.T) {
-	body := render(t, dataUI(catalogFake{}), "/data")
+	body := render(t, dataUI(catalogFake{}), "/ingest/loads")
 
 	if !strings.Contains(body, `<aside id="app-sidebar"`) {
 		t.Error("the sidebar has no id for the drawer's controls to name")
@@ -244,7 +249,7 @@ func TestBelowTheBreakpointTheSidebarIsADrawer(t *testing.T) {
 // The sidebar's opener is hidden in the markup: without ui.js it would be a
 // button that opens nothing.
 func TestThePaletteIsOnEveryPageClosed(t *testing.T) {
-	body := render(t, dataUI(catalogFake{}), "/data")
+	body := render(t, dataUI(catalogFake{}), "/ingest/loads")
 
 	at := strings.Index(body, `<dialog id="palette"`)
 	if at < 0 {

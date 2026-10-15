@@ -24,7 +24,7 @@ func gatewayPage(t *testing.T, fields ...catalog.ManifestField) string {
 		}}},
 	}}
 	var b bytes.Buffer
-	if err := Target(BuildTarget(d, time.Now())).Render(context.Background(), &b); err != nil {
+	if err := configurations(BuildTarget(d, time.Now())).Render(context.Background(), &b); err != nil {
 		t.Fatal(err)
 	}
 	return b.String()

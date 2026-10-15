@@ -63,15 +63,7 @@ type DataRow struct {
 	Writers  []WriterView
 	LastWhen *time.Time
 	LastRows *int64
-	// Hidden is a row the search does not match. It is drawn, hidden: with
-	// no script it is invisible, and the list filter can bring it back as
-	// somebody deletes a letter.
-	Hidden bool
 }
-
-// SearchText is what a search looks in, lower-cased -- the same text on the
-// server and in the row's data-filter-text, so the two cannot disagree.
-func (r DataRow) SearchText() string { return searchText(r) }
 
 // WriterView is one writer and its verdict.
 type WriterView struct {
@@ -172,8 +164,8 @@ type DataFilter struct {
 	// stream -- case-insensitively. "" is no search.
 	Q string
 
-	// Path is the page the filter's links go to; "" is /data. The loads list
-	// filters the same way and keeps its links on itself.
+	// Path is the page the filter's links go to; "" is /ingest/loads, the
+	// list this filter narrows since Catalog became Streams and Loads.
 	Path string
 }
 
@@ -233,7 +225,7 @@ func (f DataFilter) With(field, value string) string {
 	}
 	base := f.Path
 	if base == "" {
-		base = "/data"
+		base = "/ingest/loads"
 	}
 	if len(parts) == 0 {
 		return base
@@ -243,39 +235,6 @@ func (f DataFilter) With(field, value string) string {
 
 // Active reports whether any field is set.
 func (f DataFilter) Active() bool { return f.Status != "" || f.Kind != "" || f.Legacy || f.Q != "" }
-
-func (f DataFilter) keeps(r DataRow) bool {
-	switch {
-	case f.Status == "attention" && r.Status != catalog.Late && r.Status != catalog.Stale:
-		return false
-	case f.Status != "" && f.Status != "attention" && string(r.Status) != f.Status:
-		return false
-	case f.Kind != "" && r.Kind != f.Kind:
-		return false
-	case f.Legacy && !r.Legacy:
-		return false
-	}
-	return true
-}
-
-// matches is the search alone: it hides a row rather than dropping it.
-func (f DataFilter) matches(r DataRow) bool {
-	return f.Q == "" || strings.Contains(searchText(r), strings.ToLower(f.Q))
-}
-
-// searchText is everything a search looks in, lower-cased: where the data
-// lands and who writes it.
-func searchText(r DataRow) string {
-	parts := []string{r.Target}
-	for _, w := range r.Writers {
-		if g := w.Gateway; g != nil {
-			parts = append(parts, g.Name, g.Stream)
-		} else {
-			parts = append(parts, w.Workflow, w.Node)
-		}
-	}
-	return strings.ToLower(strings.Join(parts, "\n"))
-}
 
 // SplitTarget cuts a URI into where and what -- `postgres://brevis_it/` and
 // `public/landing_orders` -- so a table of them can dim the part every row
@@ -343,30 +302,4 @@ func legacyOptions(v DataView) []components.SegOption {
 		{Label: "Any label", Href: f.With("legacy", ""), Current: !f.Legacy},
 		{Label: "Legacy only", Href: f.With("legacy", "1"), Current: f.Legacy},
 	}
-}
-
-// Apply narrows the rows to the filter. Total and Counts still describe every
-// destination: the summary answers "how is the fleet", whatever is shown.
-func (v DataView) Apply(f DataFilter) DataView {
-	v.Filter = f
-	rows := make([]DataRow, 0, len(v.Rows))
-	for _, r := range v.Rows {
-		if f.keeps(r) {
-			r.Hidden = !f.matches(r)
-			rows = append(rows, r)
-		}
-	}
-	v.Rows = rows
-	return v
-}
-
-// Shown is how many rows are drawn visible.
-func (v DataView) Shown() int {
-	n := 0
-	for _, r := range v.Rows {
-		if !r.Hidden {
-			n++
-		}
-	}
-	return n
 }
