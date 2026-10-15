@@ -14,6 +14,46 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.25.0] — 2026-10-15
+
+### Changed: the console is redrawn, and stops blanking on every click (#105)
+
+The console keeps its identity (IBM Plex, the brevis.sh palette, dark) and
+its shape -- server-rendered pages with small islands, no JavaScript build --
+and changes how it is laid out and how it moves.
+
+- **A sidebar** replaces the top bar: Pipelines (Overview, Workflows, Runs),
+  Data (Catalog, Endpoints, SQL), Workspace (Projects), and the account at its
+  foot. The top bar carries a breadcrumb. Below 960px the sidebar is a drawer
+  that opens with no script.
+- **No flash.** Every navigation crossfades (`@view-transition`) and the
+  sidebar holds still. A SQL run swaps only the answer pane, without
+  reloading the editor. After 120ms a run shows "Running" with a timer and a
+  Cancel that stops the query in the warehouse.
+- **Assets are cached by version.** Every page asks for `/assets/…?v=<digest>`,
+  answered `immutable`, so a remote console no longer revalidates its
+  stylesheet, scripts and fonts on every click. A changed file gets a new URL.
+- **Catalog** is a dense list searched by URI and writer, on the server and
+  while typing. A destination's page is titled by its URI, in two columns.
+- **Endpoints** is a searchable index. An endpoint's page reads as its
+  contract, its Try it swaps only its answer, and its curl follows the form.
+- **SQL**: "Writes allowed" in the top bar on a writable connection, every
+  token painted from the palette (NULL, TRUE and type names were nearly
+  invisible), CSV export of an answer, and on a phone the workbench stacks.
+- A component gallery at `/_components`, served only with `BREVIS_ENV=local`.
+
+### Fixed
+
+- Every workflow and run page threw `rf is not defined` in the graph's init
+  (#106). Nothing visible depended on it; the error is gone.
+- "Reads only" was drawn under the editor on a writable connection too.
+- A destination's rows-per-load bars had no height and grew to a third of the
+  screen.
+
+No migration. No configuration changes.
+
+---
+
 ## [0.24.0] — 2026-10-14
 
 ### Added: a destination's page says how to get its dead letter back (#86)
