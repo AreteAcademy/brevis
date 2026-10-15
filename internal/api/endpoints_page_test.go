@@ -215,3 +215,50 @@ func TestAnAnswerLongerThanThePageSaysHowManyThereWere(t *testing.T) {
 		t.Error("the page does not say it drew a part of the answer")
 	}
 }
+
+// twoAPIs is two endpoints on two APIs, reading different models.
+func twoAPIs() endpointsFake {
+	f := published()
+	req := catalog.Endpoint{Name: "orders", Path: "/v1/orders", Tenant: "key",
+		Params: []catalog.EndpointParam{{Name: "day", Type: "date", Required: true}},
+		Reads:  []string{"postgres://warehouse/sales/orders", "postgres://warehouse/sales/customers"}}
+	f.all = append(f.all, postgres.PublishedEndpoint{API: "sales-api", Name: "orders", Path: "/v1/orders",
+		Tenant: "key", Reads: req.Reads, Endpoint: req, PublishedAt: time.Now().Add(-time.Hour)})
+	return f
+}
+
+// THE LIST IS AN INDEX: method and path, the API, the parameters (the
+// required ones said so), what it reads and when it was published -- and the
+// whole row goes to the endpoint's page.
+func TestTheEndpointsListIsAnIndex(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{}).WithEndpoints(twoAPIs()), "/data/endpoints")
+	for _, want := range []string{">GET<", ">/v1/orders<", "sales-api", `data-href="/data/endpoints/sales-api/orders"`,
+		"postgres://warehouse/sales/orders", "+1", "2 endpoints"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the list lacks %s", want)
+		}
+	}
+	day := strings.Index(body, ">day<")
+	if day < 0 {
+		t.Fatal("the list does not name the orders endpoint's parameter")
+	}
+	if tag := body[strings.LastIndex(body[:day], "<span"):day]; !strings.Contains(tag, "text-ink") {
+		t.Errorf("a required parameter is not set apart from the optional ones: %s", tag)
+	}
+}
+
+// THE LIST SEARCHES PATH, API, PARAMETERS AND READS, on the server and while
+// somebody types -- the same contract as the catalog's.
+func TestTheEndpointsListSearches(t *testing.T) {
+	ui := dataUI(catalogFake{}).WithEndpoints(twoAPIs())
+	_, body := get(t, ui, "/data/endpoints?q=CUSTOMERS")
+	if rowHidden(t, body, "/v1/orders") || !rowHidden(t, body, "/v1/clicks") {
+		t.Error("?q=CUSTOMERS did not narrow to the endpoint that reads customers")
+	}
+	for _, want := range []string{"Showing 1 of 2 endpoints", `value="CUSTOMERS"`,
+		`data-filter-for="endpoint-rows"`, `id="endpoint-rows"`, `data-foot-noun="endpoints"`, "data-filter-empty"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the searched list lacks %s", want)
+		}
+	}
+}

@@ -295,7 +295,7 @@ func (u *UI) dataEndpoints(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	u.render(w, r, pages.Endpoints(pages.BuildEndpoints(all)))
+	u.render(w, r, pages.Endpoints(pages.BuildEndpoints(all).Search(r.URL.Query().Get("q"))))
 }
 
 // dataEndpoint is one endpoint's page.
