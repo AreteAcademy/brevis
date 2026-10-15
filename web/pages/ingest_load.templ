@@ -1,0 +1,112 @@
+package pages
+
+import (
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/layouts"
+)
+
+// Load is one step landing on one destination: what it wrote, load by load,
+// each opening its run; how it is configured; and, where a SQL service
+// answers, the destination's first rows.
+templ Load(v LoadView) {
+	@layouts.Base(layouts.Page{
+		Title: v.Row.Target, Active: "loads", Mono: true, TitleID: "destination-uri",
+		Eyebrow: loadEyebrow(v), Actions: targetActions(v.TargetView),
+	}) {
+		<p class="mb-5 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.8rem] text-muted">
+			<span>written by</span>
+			<a href={ templ.SafeURL("/workflows/" + v.Workflow) } class="font-mono text-ink hover:underline">{ v.Workflow }</a>
+			<span class="text-faint">›</span>
+			<span class="font-mono text-ink">{ v.Step }</span>
+			<span class="text-faint">·</span>
+			<span>{ writerSchedule(v.Writer()) }</span>
+		</p>
+		<div class="mb-6">
+			@components.Stats(loadStats(v))
+		</div>
+		<div class="grid grid-cols-1 gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
+			<div class="flex min-w-0 flex-col gap-6">
+				@card("Rows per load", "") {
+					<div class="px-4 pt-4 [&_svg]:h-28 [&_svg]:max-w-none">
+						@components.LoadBars(v.Bars, v.Missed)
+					</div>
+					<p class="px-4 pt-2 pb-4 text-[0.75rem] text-muted">
+						Oldest on the left; each bar opens the run that wrote it. A hollow bar is a load that did not say how many rows it wrote, and a red one wrote none.
+						if v.Missed > 0 {
+							Dashed bars are scheduled loads that did not arrive.
+						}
+					</p>
+				}
+				@recentLoads(v.TargetView)
+				@configurations(v.TargetView)
+				@panels(v.TargetView)
+			</div>
+			<div data-side class="flex min-w-0 flex-col gap-6">
+				if w := v.Writer(); w != nil {
+					@card("Written by", "") {
+						<div class="px-4 py-3">
+							<p class="font-mono text-[0.8rem]">
+								<a href={ templ.SafeURL("/workflows/" + v.Workflow) } class="text-ink hover:underline">{ v.Workflow }</a>
+								<span class="text-faint">›</span>
+								<span class="text-ink">{ v.Step }</span>
+							</p>
+							<dl class="mt-2 grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[0.78rem]">
+								<dt class="text-muted">Schedule</dt>
+								<dd class="text-ink">
+									if w.HasSchedule {
+										<span class="font-mono">{ w.Cron }</span> <span class="text-muted">{ w.Timezone }</span>
+									} else {
+										by hand
+									}
+								</dd>
+								<dt class="text-muted">Last load</dt>
+								<dd class="text-ink">{ components.When(&w.LastLoaded) }</dd>
+								<dt class="text-muted">Status</dt>
+								<dd>
+									@components.Freshness(string(w.Verdict.Status))
+								</dd>
+							</dl>
+							if r := w.Reason(); r != "" {
+								<p class="mt-2 text-[0.75rem] text-muted">{ r }</p>
+							}
+							if w.RunInFlight != nil {
+								<a href={ templ.SafeURL("/runs/" + *w.RunInFlight) } class="mt-1 inline-block text-[0.75rem] text-state-running hover:underline">run in progress</a>
+							}
+						</div>
+					}
+				}
+				@readBy(v.ReadBy)
+				@card("Destination", "") {
+					<div class="p-4">
+						@components.DefinitionList(targetProperties(v.TargetView))
+					</div>
+				}
+			</div>
+		</div>
+	}
+}
+
+// loadEyebrow is how the load stands and what it is, above its URI.
+templ loadEyebrow(v LoadView) {
+	@components.Freshness(string(v.Row.Status))
+	<span class="text-[0.7rem] font-medium tracking-[0.08em] text-muted uppercase">SDK load · { loadKind(v) }</span>
+	if v.Row.Legacy {
+		@components.Tag("legacy label", "")
+	}
+}
+
+// LoadChooser asks which destination a step that writes several is about.
+templ LoadChooser(workflow, step string, choices []LoadChoice) {
+	@layouts.Base(layouts.Page{Title: step, Active: "loads", Mono: true}) {
+		<p class="mb-4 text-sm text-muted">
+			<span class="font-mono text-ink">{ workflow } › { step }</span> writes more than one destination. Which one?
+		</p>
+		<ul class="divide-y divide-line-soft overflow-hidden rounded-card border border-line bg-surface">
+			for _, c := range choices {
+				<li>
+					<a href={ templ.SafeURL(c.Href) } class="block px-4 py-3 font-mono text-[0.8rem] break-all text-ink hover:bg-surface-2">{ c.URI }</a>
+				</li>
+			}
+		</ul>
+	}
+}

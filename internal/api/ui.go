@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -245,6 +246,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	// path, and would redirect /data/bigquery://… to /data/bigquery:/….
 	mux.HandleFunc("GET /data/target", u.dataTarget)
 	mux.HandleFunc("GET /ingest/loads", u.loads)
+	mux.HandleFunc("GET /ingest/loads/{workflow}/{step}", u.loadDetail)
 	mux.HandleFunc("GET /data/endpoints", u.dataEndpoints)
 	mux.HandleFunc("GET /data/endpoints/{api}/{name}", u.dataEndpoint)
 	if u.gallery {
@@ -391,11 +393,21 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := pages.BuildTarget(*d, time.Now())
+	if err := u.targetTools(r, &v, target); err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	u.render(w, r, pages.Target(v))
+}
+
+// targetTools fills in what a destination's page offers beyond its loads --
+// the endpoints that read it, and, where a SQL service answers for it, the
+// Preview tab -- for the destination page and a load's page alike.
+func (u *UI) targetTools(r *http.Request, v *pages.TargetView, target string) error {
 	if u.endpoints != nil {
 		readers, err := u.endpoints.Reading(r.Context(), target)
 		if err != nil {
-			u.failure(w, r, err)
-			return
+			return err
 		}
 		v.ReadBy = pages.ReadersOf(readers)
 	}
@@ -409,12 +421,12 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 
 	// ONE TAB NOW. The destination previews; the workbench queries. See
 	// TargetView.WorkbenchHref for why that is not a second tab.
-	switch v.Tab {
+	//
 	// ASKED ONLY WHEN ASKED FOR. A preview costs a warehouse query, and
 	// drawing one on every visit to a destination page would mean a query per
 	// page view, charged to somebody, for rows nobody looked at. `?tab=preview`
 	// is a link, which also makes it shareable the way /data's filters are.
-	case "preview":
+	if v.Tab == "preview" {
 		res, err := u.preview.Preview(r.Context(), target, previewRows)
 		switch {
 		case errors.Is(err, sqlserve.ErrNoConnection):
@@ -426,9 +438,72 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 		default:
 			v.Preview = &res
 		}
-
 	}
-	u.render(w, r, pages.Target(v))
+	return nil
+}
+
+// loadDetail is one step landing on one destination. A step that writes
+// several asks which (?target=); one that writes nothing, or a target it does
+// not write, is not found.
+func (u *UI) loadDetail(w http.ResponseWriter, r *http.Request) {
+	workflow, step := r.PathValue("workflow"), r.PathValue("step")
+	if u.catalog == nil {
+		http.NotFound(w, r)
+		return
+	}
+	entries, err := u.catalog.Catalog(r.Context())
+	if err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	var uris []string
+	for _, e := range entries {
+		for _, wr := range e.Writers {
+			if wr.Gateway == nil && wr.Workflow == workflow && wr.Node == step && !slices.Contains(uris, e.Target) {
+				uris = append(uris, e.Target)
+			}
+		}
+	}
+	if len(uris) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+	self := "/ingest/loads/" + url.PathEscape(workflow) + "/" + url.PathEscape(step)
+	target := r.URL.Query().Get("target")
+	switch {
+	case target == "" && len(uris) == 1:
+		target = uris[0]
+	case target == "":
+		choices := make([]pages.LoadChoice, 0, len(uris))
+		for _, uri := range uris {
+			choices = append(choices, pages.LoadChoice{URI: uri, Href: self + "?target=" + url.QueryEscape(uri)})
+		}
+		u.render(w, r, pages.LoadChooser(workflow, step, choices))
+		return
+	case !slices.Contains(uris, target):
+		http.NotFound(w, r)
+		return
+	}
+	if len(uris) > 1 {
+		self += "?target=" + url.QueryEscape(target)
+	}
+
+	d, err := u.catalog.CatalogTarget(r.Context(), target)
+	if err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	if d == nil {
+		http.NotFound(w, r)
+		return
+	}
+	v := pages.BuildLoad(*d, workflow, step, time.Now())
+	v.Self = self
+	if err := u.targetTools(r, &v.TargetView, target); err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	u.render(w, r, pages.Load(v))
 }
 
 // previewRows is how many a destination page draws.

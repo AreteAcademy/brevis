@@ -20,7 +20,8 @@ type LoadBar struct {
 // followed by `missed` dashed bars: slots that went by without a load.
 //
 // A load that did not say how many rows it wrote is drawn hollow at full
-// height -- present, uncounted -- and never as a zero.
+// height -- present, uncounted -- and never as a zero; one that wrote zero is
+// a red sliver.
 func LoadBars(bars []LoadBar, missed int) templ.Component {
 	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
 		n := len(bars) + missed
@@ -52,7 +53,13 @@ func LoadBars(bars []LoadBar, missed int) templ.Component {
 				if top > 0 {
 					h = max(2.0, float64(*b.Rows)/float64(top)*(height-2))
 				}
-				shape = fmt.Sprintf(`<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" class="fill-gold-strong"/>`, x, height-h, bw, h)
+				// Zero is red: counted, and empty -- the load a reader is
+				// looking for.
+				fill := "fill-gold-strong"
+				if *b.Rows == 0 {
+					fill = "fill-state-failed"
+				}
+				shape = fmt.Sprintf(`<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" class="%s"/>`, x, height-h, bw, h, fill)
 			}
 			if _, err := fmt.Fprintf(w, `<a href="%s"><title>%s</title>%s</a>`,
 				html.EscapeString(b.Href), html.EscapeString(b.Title), shape); err != nil {
