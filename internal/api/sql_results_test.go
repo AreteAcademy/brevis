@@ -203,12 +203,18 @@ func TestTheIslandDrivesTheTabsAndThePager(t *testing.T) {
 	// that nothing BELOW the pager ever fetches. It passed for as long as
 	// the pager happened to be last, and failed the day an unrelated
 	// function was added after it.
-	wired := islandFunc(js, "wireResults")
-	if wired == "" {
-		t.Fatal("the results are not wired at all")
-	}
-	if strings.Contains(wired, "fetch(") {
-		t.Error("paging the answer asks the service again")
+	//
+	// TWO FUNCTIONS NOW, and both are held to it: the tabs are one delegated
+	// listener and the pager is bound per answer, so the answer a run swaps
+	// in gets a pager of its own.
+	for _, name := range []string{"wireResultTabs", "wirePager"} {
+		wired := islandFunc(js, name)
+		if wired == "" {
+			t.Fatalf("the results are not wired at all: no %s", name)
+		}
+		if strings.Contains(wired, "fetch(") {
+			t.Errorf("%s asks the service again to page the answer", name)
+		}
 	}
 }
 

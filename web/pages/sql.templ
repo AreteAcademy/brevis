@@ -245,7 +245,10 @@ templ SQL(v SQLView) {
 					></div>
 					<section class="workbench-results" data-pane="results">
 						@recent()
-						<div class="workbench-answer">
+						// MARKED, because the island wires the answer from this
+						// node and not from the document: a run that replaces
+						// the pane hands it the new one.
+						<div class="workbench-answer" data-answer>
 							// WHAT JUST HAPPENED, AS DATA. The rail is built in the
 							// browser and needs the outcome and the cost; the
 							// sentence under the grid is for a person. Parsing that
