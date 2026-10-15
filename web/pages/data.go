@@ -11,6 +11,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/domain/schedule"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/components"
 )
 
 // lastLoad is the destination's most recent load across its writers: when,
@@ -159,7 +160,14 @@ type DataFilter struct {
 	// Kind is a target scheme; "" is all.
 	Kind   string
 	Legacy bool
+	// Q searches the URI and the writers -- workflow, step, gateway and its
+	// stream -- case-insensitively. "" is no search.
+	Q string
 }
+
+// searchCeiling bounds what a search may be: it is matched against every row,
+// and nobody's destination name is longer than this.
+const searchCeiling = 200
 
 // The values a filter may take. Anything else is ignored rather than turned
 // into an empty page, the rule the workflows list applies to its own.
@@ -172,7 +180,10 @@ var (
 
 // ParseDataFilter reads the filter from a query string.
 func ParseDataFilter(q url.Values) DataFilter {
-	f := DataFilter{Legacy: q.Get("legacy") == "1"}
+	f := DataFilter{Legacy: q.Get("legacy") == "1", Q: strings.TrimSpace(q.Get("q"))}
+	if r := []rune(f.Q); len(r) > searchCeiling {
+		f.Q = string(r[:searchCeiling])
+	}
 	if s := q.Get("status"); filterStatuses[s] {
 		f.Status = s
 	}
@@ -192,6 +203,8 @@ func (f DataFilter) With(field, value string) string {
 		f.Kind = value
 	case "legacy":
 		f.Legacy = value == "1"
+	case "q":
+		f.Q = value
 	}
 	var parts []string
 	if f.Status != "" {
@@ -203,6 +216,9 @@ func (f DataFilter) With(field, value string) string {
 	if f.Legacy {
 		parts = append(parts, "legacy=1")
 	}
+	if f.Q != "" {
+		parts = append(parts, "q="+url.QueryEscape(f.Q))
+	}
 	if len(parts) == 0 {
 		return "/data"
 	}
@@ -210,7 +226,7 @@ func (f DataFilter) With(field, value string) string {
 }
 
 // Active reports whether any field is set.
-func (f DataFilter) Active() bool { return f.Status != "" || f.Kind != "" || f.Legacy }
+func (f DataFilter) Active() bool { return f.Status != "" || f.Kind != "" || f.Legacy || f.Q != "" }
 
 func (f DataFilter) keeps(r DataRow) bool {
 	switch {
@@ -222,8 +238,92 @@ func (f DataFilter) keeps(r DataRow) bool {
 		return false
 	case f.Legacy && !r.Legacy:
 		return false
+	case f.Q != "" && !strings.Contains(searchText(r), strings.ToLower(f.Q)):
+		return false
 	}
 	return true
+}
+
+// searchText is everything a search looks in, lower-cased: where the data
+// lands and who writes it.
+func searchText(r DataRow) string {
+	parts := []string{r.Target}
+	for _, w := range r.Writers {
+		if g := w.Gateway; g != nil {
+			parts = append(parts, g.Name, g.Stream)
+		} else {
+			parts = append(parts, w.Workflow, w.Node)
+		}
+	}
+	return strings.ToLower(strings.Join(parts, "\n"))
+}
+
+// SplitTarget cuts a URI into where and what -- `postgres://brevis_it/` and
+// `public/landing_orders` -- so a table of them can dim the part every row
+// shares. A legacy label (`bronze.payments`) splits at its last dot. Joined,
+// the two halves are the target, character for character.
+func SplitTarget(t string) (where, what string) {
+	if i := strings.Index(t, "://"); i >= 0 {
+		rest := t[i+3:]
+		if j := strings.Index(rest, "/"); j >= 0 {
+			return t[:i+3+j+1], rest[j+1:]
+		}
+		return t, ""
+	}
+	if i := strings.LastIndex(t, "."); i >= 0 {
+		return t[:i+1], t[i+1:]
+	}
+	return "", t
+}
+
+// kindIcon is the glyph a destination's kind is drawn with.
+func kindIcon(kind string) string {
+	switch kind {
+	case "gs", "s3":
+		return "cloud"
+	case "file":
+		return "folder"
+	case "pubsub":
+		return "plug"
+	}
+	return "database"
+}
+
+// statusOptions is the status filter: everything, what needs a person, then
+// each status present with how many stand there.
+func statusOptions(v DataView) []components.SegOption {
+	f := v.Filter
+	out := []components.SegOption{{Label: "All", Href: f.With("status", ""), Current: f.Status == ""}}
+	if n := v.Counts[catalog.Late] + v.Counts[catalog.Stale]; n > 0 {
+		out = append(out, components.SegOption{Label: "Attention", Href: f.With("status", "attention"),
+			Count: fmt.Sprint(n), Current: f.Status == "attention"})
+	}
+	for _, st := range statusOrder {
+		if n := v.Counts[st]; n > 0 {
+			out = append(out, components.SegOption{Label: components.FreshnessLabel(string(st)),
+				Href: f.With("status", string(st)), Count: fmt.Sprint(n), Current: f.Status == string(st)})
+		}
+	}
+	return out
+}
+
+// kindOptions is the kind filter, offered only when there is a choice.
+func kindOptions(v DataView) []components.SegOption {
+	f := v.Filter
+	out := []components.SegOption{{Label: "Any kind", Href: f.With("kind", ""), Current: f.Kind == ""}}
+	for _, k := range v.Kinds {
+		out = append(out, components.SegOption{Label: k, Href: f.With("kind", k), Current: f.Kind == k})
+	}
+	return out
+}
+
+// legacyOptions is the label filter, offered only when a legacy row exists.
+func legacyOptions(v DataView) []components.SegOption {
+	f := v.Filter
+	return []components.SegOption{
+		{Label: "Any label", Href: f.With("legacy", ""), Current: !f.Legacy},
+		{Label: "Legacy only", Href: f.With("legacy", "1"), Current: f.Legacy},
+	}
 }
 
 // Apply narrows the rows to the filter. Total and Counts still describe every

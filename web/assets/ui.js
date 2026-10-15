@@ -420,4 +420,25 @@
       }, 1500);
     });
   });
+
+  // ------------------------------------------------------------------
+  // A table row that goes somewhere
+  //
+  // A list row carries its page in `data-href`, and a click anywhere on it
+  // goes there -- the target is the whole row, not a strip of text. A click
+  // that lands on something of its own (a writer's link, a button, a
+  // field) is left to it. The row's main cell keeps a real link, which is
+  // how the keyboard and a page with no script get there; Cmd/Ctrl-click
+  // and the middle button open it beside this page, as a link would.
+  // ------------------------------------------------------------------
+
+  document.addEventListener("click", function (e) {
+    if (!e.target || typeof e.target.closest !== "function") return;
+    var row = e.target.closest("tr[data-href]");
+    if (!row || e.target.closest("a, button, input, label")) return;
+    if (window.getSelection && String(window.getSelection()).length > 0) return;
+    var href = row.getAttribute("data-href");
+    if (e.metaKey || e.ctrlKey || e.button === 1) window.open(href, "_blank");
+    else window.location.assign(href);
+  });
 })();

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -90,7 +91,7 @@ func TestTheDataPageListsEveryDestinationAndItsWriter(t *testing.T) {
 		// What is listed, and what is not, is said under the title.
 		"Writes from outside Brevis do not appear here",
 	} {
-		if !strings.Contains(body, want) {
+		if !strings.Contains(visible(body), want) {
 			t.Errorf("the page does not show %q", want)
 		}
 	}
@@ -146,10 +147,10 @@ func TestTheDataPageFiltersFromTheQueryString(t *testing.T) {
 	ui := dataUI(catalogFake{entries: demoCatalog()})
 
 	_, body := get(t, ui, "/data?kind=s3")
-	if !strings.Contains(body, "s3://demo-landing/reports/") || strings.Contains(body, "landing_orders</span>") {
+	if !strings.Contains(body, "demo-landing") || strings.Contains(body, "landing_orders") {
 		t.Error("?kind=s3 did not narrow the table to the s3 destination")
 	}
-	if !strings.Contains(body, "showing 1 of 3") {
+	if !strings.Contains(body, "Showing 1 of 3 destinations") {
 		t.Error("a filtered page does not say how much it shows")
 	}
 
@@ -159,7 +160,7 @@ func TestTheDataPageFiltersFromTheQueryString(t *testing.T) {
 	}
 
 	_, body = get(t, ui, "/data?status=bogus")
-	if !strings.Contains(body, "landing_orders") || strings.Contains(body, "showing ") {
+	if !strings.Contains(body, "landing_orders") || strings.Contains(body, "Showing ") {
 		t.Error("an unknown status should be ignored, showing everything")
 	}
 }
@@ -243,10 +244,18 @@ func TestTheDataPageShowsGatewayDestinations(t *testing.T) {
 		"pubsub://brevis-local/clicks", "continuous", "edge", "/v1/clicks",
 		"unidentified", "relative to the gateway", "/metrics",
 	} {
-		if !strings.Contains(html.UnescapeString(body), want) {
+		if !strings.Contains(visible(body), want) {
 			t.Errorf("the page does not show %q", want)
 		}
 	}
+}
+
+// visible is the page's text as a reader sees it: tags removed and entities
+// decoded. A URI drawn as a dimmed prefix and its object is two elements in
+// the markup and one string on the screen, and the screen is what these
+// tests are about.
+func visible(body string) string {
+	return html.UnescapeString(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(body, ""))
 }
 
 func TestADestinationPageNamesTheGatewayThatPublishedIt(t *testing.T) {
@@ -255,5 +264,79 @@ func TestADestinationPageNamesTheGatewayThatPublishedIt(t *testing.T) {
 		"/data/target?u="+url.QueryEscape(e.Target))
 	if !strings.Contains(body, "Published from gateway") || !strings.Contains(body, "/metrics") {
 		t.Errorf("the page does not say which gateway published it:\n%s", body)
+	}
+}
+
+// THE CATALOG SEARCHES BY WHERE AND BY WHO: a destination's URI, and the
+// workflow, step or gateway that writes it -- case-insensitive, because
+// nobody remembers whether it was `Orders` or `orders`. On the SERVER, so a
+// search is a link and works with no script; ui.js only makes it answer while
+// somebody types.
+func TestTheCatalogSearchesByWhereAndByWho(t *testing.T) {
+	ui := dataUI(catalogFake{entries: demoCatalog()})
+
+	_, body := get(t, ui, "/data?q=REPORTS")
+	if !strings.Contains(body, "demo-landing") || strings.Contains(body, "landing_orders") || strings.Contains(body, "payments") {
+		t.Error("?q=REPORTS did not narrow to the destination whose URI says reports")
+	}
+	if !strings.Contains(body, "Showing 1 of 3 destinations") {
+		t.Error("a searched page does not say how much it shows")
+	}
+	if !strings.Contains(body, `value="REPORTS"`) {
+		t.Error("the search box does not keep what was searched")
+	}
+
+	_, body = get(t, ui, "/data?q=sdk_orders")
+	if !strings.Contains(body, "landing_orders") || strings.Contains(body, "demo-landing") {
+		t.Error("?q=sdk_orders did not find the destination that workflow writes")
+	}
+
+	_, body = get(t, ui, "/data?q=nothing-is-called-this")
+	if !strings.Contains(body, "Nothing matches this filter") || !strings.Contains(body, `href="/data"`) {
+		t.Error("a search that finds nothing does not say so and offer the way back")
+	}
+}
+
+// A SEARCH DOES NOT DROP THE OTHER FILTERS, AND A FILTER DOES NOT DROP THE
+// SEARCH: each is one field of the same URL.
+func TestTheSearchAndTheFiltersKeepEachOther(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data?kind=s3&q=report")
+	if !strings.Contains(body, `<input type="hidden" name="kind" value="s3"`) {
+		t.Error("searching again would drop the kind filter")
+	}
+	if !strings.Contains(body, `href="/data?status=on_time&amp;kind=s3&amp;q=report"`) &&
+		!strings.Contains(body, `href="/data?kind=s3&amp;q=report"`) {
+		t.Error("the filter links drop the search")
+	}
+}
+
+// A URI IS DRAWN AS WHERE, THEN WHAT. The scheme and host are the same on
+// most rows and the eye needs the part that differs, so the prefix is dimmed
+// and the object is not -- the whole URI is still there to read and select.
+func TestAURIIsDrawnAsWhereThenWhat(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data")
+	for _, want := range []string{">postgres://brevis_it/<", ">public/landing_orders<", ">bronze.<", ">payments<"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the URI is not split where it should be: no %s", want)
+		}
+	}
+}
+
+// THE WHOLE ROW GOES TO THE DESTINATION, without taking the writer's own link
+// away: the row carries where it goes, ui.js follows it on a click that did
+// not land on a link, and the URI stays a real link for the keyboard and for
+// no script at all.
+func TestTheWholeRowGoesToTheDestination(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data")
+	if !strings.Contains(body, `data-href="/data/target?u=`+url.QueryEscape("s3://demo-landing/reports/")+`"`) {
+		t.Error("a row does not say where it goes")
+	}
+	_, ui := browsing(t)
+	_, raw := get(t, ui, "/assets/ui.js")
+	js := strip(raw)
+	for _, want := range []string{`closest("tr[data-href]")`, `closest("a, button, input, label")`} {
+		if !strings.Contains(js, want) {
+			t.Errorf("ui.js never uses %s, so a row is not a link", want)
+		}
 	}
 }
