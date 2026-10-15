@@ -51,9 +51,8 @@ type TargetView struct {
 	// so the link is shareable the way /data's filters already are.
 	Tab string
 
-	// Self is the page's own link, which the tabs extend; "" is the
-	// destination's /data/target page. A load's page is the same view, under
-	// its own URL.
+	// Self is the page's own link, which the tabs extend: a load's page is
+	// this view under its own URL. "" links the tab relative to the page.
 	Self string
 
 	// PreviewErr is why there are no rows, in words somebody can act on.
@@ -111,7 +110,7 @@ func (v TargetView) TabHref(tab string) string {
 		}
 		return v.Self + sep + "tab=" + tab
 	}
-	return "/data/target?u=" + url.QueryEscape(v.Row.Target) + "&tab=" + tab
+	return "?tab=" + tab
 }
 
 // bytesText is a byte count somebody can judge at a glance.

@@ -40,14 +40,14 @@ func (f *sqlFake) start(t *testing.T) *httptest.Server {
 // strip links to instead of pretending to hold.
 func TestThePreviewTabIsThereWhenAServiceIsAndNotWhenItIsNot(t *testing.T) {
 	svc := (&sqlFake{body: `{}`}).start(t)
-	with := render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/data/target?u="+probeTarget)
+	with := render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/ingest/loads/bronze/load")
 	for _, want := range []string{"tab=preview", "/sql?target="} {
 		if !strings.Contains(with, want) {
 			t.Errorf("a console with a service offers no %q", want)
 		}
 	}
 
-	without := render(t, withPreview(t, nil), "/data/target?u="+probeTarget)
+	without := render(t, withPreview(t, nil), "/ingest/loads/bronze/load")
 	for _, gone := range []string{"tab=preview", "/sql?target="} {
 		if strings.Contains(without, gone) {
 			t.Errorf("a console with no service still offers %q", gone)
@@ -74,7 +74,7 @@ func TestAnUnprotectedConsoleOffersNoTabs(t *testing.T) {
 	defer svc.Close()
 	open := openConsole(t, sqlserve.New(svc.URL, ""))
 
-	body := render(t, open, "/data/target?u="+probeTarget)
+	body := render(t, open, "/ingest/loads/bronze/load")
 	for _, gone := range []string{"tab=preview", "/sql?target="} {
 		if strings.Contains(body, gone) {
 			t.Errorf("a console with no login offers %q", gone)
@@ -83,7 +83,7 @@ func TestAnUnprotectedConsoleOffersNoTabs(t *testing.T) {
 
 	// AND NOT BY HIDING A LINK. Somebody typing the parameter, or following
 	// one from a message, must not reach a warehouse either.
-	render(t, open, "/data/target?u="+probeTarget+"&tab=preview")
+	render(t, open, "/ingest/loads/bronze/load?tab=preview")
 	if asked {
 		t.Error("an unprotected console reached the warehouse")
 	}
@@ -103,7 +103,7 @@ func TestAnUnprotectedConsoleOffersNoTabs(t *testing.T) {
 func TestTheTabsRenderInsideThePageLayout(t *testing.T) {
 	svc := (&sqlFake{body: `{"columns":["k"],"rows":[["1"]]}`}).start(t)
 	body := render(t, withPreview(t, sqlserve.New(svc.URL, "")),
-		"/data/target?u="+probeTarget+"&tab=preview")
+		"/ingest/loads/bronze/load?tab=preview")
 
 	closing := strings.Index(body, "</main>")
 	if closing < 0 {

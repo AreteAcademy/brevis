@@ -109,7 +109,7 @@ func TestTheWorkbenchKeepsTheScreenOnARefusal(t *testing.T) {
 func TestWithoutAServiceTheWorkbenchIsNotOffered(t *testing.T) {
 	ui := consoleOf(t, nil, signedIn, probeTarget, "bigquery")
 
-	body := render(t, ui, "/data")
+	body := render(t, ui, "/ingest/loads")
 	if strings.Contains(body, `href="/sql"`) {
 		t.Error("the bar offers /sql with no SQL service configured")
 	}
@@ -142,7 +142,7 @@ func TestADestinationPreviewsButDoesNotQuery(t *testing.T) {
 	svc := (&sqlFake{body: `{"columns":["k"],"rows":[["1"]]}`}).start(t)
 	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery")
 
-	body := render(t, ui, "/data/target?u="+probeTarget)
+	body := render(t, ui, "/ingest/loads/bronze/load")
 	if !strings.Contains(body, "tab=preview") {
 		t.Error("the destination lost its Preview")
 	}
@@ -158,7 +158,7 @@ func TestADestinationLinksToTheWorkbenchCarryingItself(t *testing.T) {
 	svc := (&sqlFake{body: `{}`}).start(t)
 	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery")
 
-	body := render(t, ui, "/data/target?u="+probeTarget)
+	body := render(t, ui, "/ingest/loads/bronze/load")
 	want := "/sql?target=" + url.QueryEscape(probeTarget)
 	if !strings.Contains(body, want) {
 		t.Errorf("the destination does not link to %q", want)
@@ -305,7 +305,7 @@ func TestTheEditorLoadsOnlyOnTheWorkbench(t *testing.T) {
 		}
 	}
 
-	for _, path := range []string{"/data", "/data/target?u=" + probeTarget} {
+	for _, path := range []string{"/ingest/loads", "/ingest/loads/bronze/load"} {
 		body := render(t, ui, path)
 		if strings.Contains(body, "codemirror") {
 			t.Errorf("%s pays for the editor and never uses it", path)

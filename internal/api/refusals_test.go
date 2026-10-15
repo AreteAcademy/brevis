@@ -3,7 +3,6 @@ package api_test
 import (
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 
@@ -36,7 +35,7 @@ func TestABucketOrATopicGetsNoTabs(t *testing.T) {
 			defer svc.Close()
 			ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, target, "file")
 
-			body := render(t, ui, "/data/target?u="+url.QueryEscape(target))
+			body := render(t, ui, "/ingest/loads/bronze/load")
 			for _, gone := range []string{"tab=preview", "/sql?target="} {
 				if strings.Contains(body, gone) {
 					t.Errorf("a destination that is not a relation offers %q", gone)
@@ -44,7 +43,7 @@ func TestABucketOrATopicGetsNoTabs(t *testing.T) {
 			}
 			// AND NOT BY HIDING A LINK. The parameter typed by hand must not
 			// reach a warehouse either.
-			render(t, ui, "/data/target?u="+url.QueryEscape(target)+"&tab=preview")
+			render(t, ui, "/ingest/loads/bronze/load?tab=preview")
 			if asked {
 				t.Error("it asked a SQL service about a bucket")
 			}
@@ -60,7 +59,7 @@ func TestARelationWithNoReaderKeepsItsTabs(t *testing.T) {
 		body: `{"error":"mysql destinations cannot be read; bigquery and postgres can"}`}).start(t)
 	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, "mysql://app/orders", "mysql")
 
-	body := render(t, ui, "/data/target?u="+url.QueryEscape("mysql://app/orders"))
+	body := render(t, ui, "/ingest/loads/bronze/load")
 	for _, want := range []string{"tab=preview", "/sql?target="} {
 		if !strings.Contains(body, want) {
 			t.Errorf("a relation lost its %q", want)
@@ -81,7 +80,7 @@ func TestANoConnectionRefusalNamesTheDatabase(t *testing.T) {
 	target := "postgres://brevis_it/public/orders"
 	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, target, "postgres")
 
-	body := render(t, ui, "/data/target?u="+url.QueryEscape(target)+"&tab=preview")
+	body := render(t, ui, "/ingest/loads/bronze/load?tab=preview")
 	for _, want := range []string{"brevis_it", "brevis.yaml"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page never says %q, so nobody knows what to declare", want)
@@ -89,7 +88,7 @@ func TestANoConnectionRefusalNamesTheDatabase(t *testing.T) {
 	}
 	// AND THE PAGE SURVIVES IT. A missing declaration is a configuration
 	// gap, not an error page.
-	if !strings.Contains(body, "Writers") {
+	if !strings.Contains(body, "Written by") {
 		t.Error("the page lost the rest of itself")
 	}
 }
@@ -105,7 +104,7 @@ func TestServeUnreachableDrawsAReasonAndNoAddress(t *testing.T) {
 	dead.Close()
 
 	ui := consoleOf(t, sqlserve.New(addr, ""), signedIn, probeTarget, "bigquery")
-	body := render(t, ui, "/data/target?u="+probeTarget+"&tab=preview")
+	body := render(t, ui, "/ingest/loads/bronze/load?tab=preview")
 
 	if !strings.Contains(body, "could not be reached") {
 		t.Error("the page does not say the service is unreachable")
@@ -113,7 +112,7 @@ func TestServeUnreachableDrawsAReasonAndNoAddress(t *testing.T) {
 	if strings.Contains(body, strings.TrimPrefix(addr, "http://")) {
 		t.Error("the page carries the service's address")
 	}
-	if !strings.Contains(body, "Writers") {
+	if !strings.Contains(body, "Written by") {
 		t.Error("the page lost the rest of itself")
 	}
 }

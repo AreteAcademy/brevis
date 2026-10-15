@@ -94,9 +94,11 @@ func TestAnEndpointsPageIsItsContract(t *testing.T) {
 // endpoint adds to its lineage.
 func TestAModelsPageListsTheEndpointsThatReadIt(t *testing.T) {
 	target := "postgres://analytics/marts/clicks_daily"
-	ui := dataUI(catalogFake{detail: &postgres.TargetDetail{CatalogEntry: postgres.CatalogEntry{Target: target}}}).
+	model := postgres.CatalogEntry{Target: target, Kind: "postgres",
+		Writers: []postgres.CatalogWriter{{Workflow: "marts", Node: "build", LastLoaded: time.Now()}}}
+	ui := dataUI(catalogFake{detail: &postgres.TargetDetail{CatalogEntry: model}, entries: []postgres.CatalogEntry{model}}).
 		WithEndpoints(published())
-	code, body := get(t, ui, "/data/target?u="+target)
+	code, body := get(t, ui, "/ingest/loads/marts/build")
 	if code != http.StatusOK {
 		t.Fatalf("%d %s", code, body)
 	}

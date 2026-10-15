@@ -49,7 +49,8 @@ func (r EndpointRow) Href() string {
 	return "/data/endpoints/" + url.PathEscape(r.API) + "/" + url.PathEscape(r.Name)
 }
 
-// TargetHref is a read target's page on /data.
+// TargetHref is a read target's page: /data/target, which forwards it to the
+// stream or the load that owns it now that Catalog is Streams and Loads.
 func TargetHref(target string) string { return "/data/target?u=" + url.QueryEscape(target) }
 
 func rowOf(e postgres.PublishedEndpoint) EndpointRow {

@@ -38,9 +38,19 @@ type Stream struct {
 	Config *postgres.WriterConfig
 }
 
-// Place is a destination: its URI and its kind (the scheme).
+// Place is a destination: its URI and its kind (the scheme). Note is why a
+// gateway destination has no URI -- its manifest could not name it -- and is
+// empty otherwise.
 type Place struct {
-	URI, Kind string
+	URI, Kind, Note string
+}
+
+// Label is the URI, or "unidentified" for a destination nothing could name.
+func (p Place) Label() string {
+	if p.URI == "" {
+		return "unidentified"
+	}
+	return p.URI
 }
 
 // Field is a declared configuration value, as text; "" when the stream does
@@ -107,6 +117,9 @@ func StreamsOf(entries []postgres.CatalogEntry) []GatewayGroup {
 				s.PublishedAt = g.PublishedAt
 			}
 			place := Place{URI: e.Target, Kind: e.Kind}
+			if e.Target == "" {
+				place.Note = g.Note
+			}
 			switch g.Role {
 			case "dead_letter":
 				s.DeadLetter = &place
@@ -168,6 +181,19 @@ type LoadTarget struct {
 	// Many is set when the step writes more than one destination, so its
 	// link has to say which.
 	Many bool
+
+	// RunInFlight is a run of the workflow that is queued or running: on a
+	// late load, the run about to fix it.
+	RunInFlight *string
+}
+
+// Fixing is the run in flight when the load is late or stale -- the one
+// worth a link -- and nil otherwise.
+func (t LoadTarget) Fixing() *string {
+	if t.Status == catalog.Late || t.Status == catalog.Stale {
+		return t.RunInFlight
+	}
+	return nil
 }
 
 // Href is the load's page; the destination goes in the query only when the
@@ -207,7 +233,7 @@ func LoadsOf(entries []postgres.CatalogEntry, now time.Time) []LoadGroup {
 			t := LoadTarget{
 				Workflow: w.Workflow, Step: w.Node, Place: Place{URI: e.Target, Kind: e.Kind},
 				Legacy: e.Legacy, Status: verdictOf(e, w, now).Status,
-				LastLoaded: w.LastLoaded, Rows: w.LastRows,
+				LastLoaded: w.LastLoaded, Rows: w.LastRows, RunInFlight: w.RunInFlight,
 			}
 			if steps == 1 {
 				t.Recent = e.Recent
@@ -644,13 +670,43 @@ func streamFlow(s Stream) *Flow {
 	if f == nil {
 		f = &Flow{Nodes: []FlowNode{
 			{Kind: "source", Title: "Source", Main: "POST " + s.Path},
-			{Kind: "destination", Title: "Destination", Main: s.Sink.URI, Detail: s.Sink.Kind},
+			{Kind: "destination", Title: "Destination", Main: s.Sink.Label(), Detail: joinWords(" · ", s.Sink.Kind, s.Sink.Note)},
 		}}
 	}
 	if s.DeadLetter != nil {
-		f.DeadLetter = &FlowNode{Kind: "dead_letter", Title: "Dead letter", Main: s.DeadLetter.URI, Detail: "refused batches"}
+		detail := "refused batches"
+		if s.DeadLetter.Note != "" {
+			detail += " · " + s.DeadLetter.Note
+		}
+		f.DeadLetter = &FlowNode{Kind: "dead_letter", Title: "Dead letter", Main: s.DeadLetter.Label(), Detail: detail}
 	}
 	return f
+}
+
+// OwnerOf is where a destination lives now that Catalog is gone: the stream
+// whose sink or dead letter it is, else the load that writes it -- the most
+// recent, when several steps do -- else the loads list.
+func OwnerOf(entries []postgres.CatalogEntry, target string, now time.Time) string {
+	for _, g := range StreamsOf(entries) {
+		for _, s := range g.Streams {
+			if s.Sink.URI == target || (s.DeadLetter != nil && s.DeadLetter.URI == target) {
+				return s.Href()
+			}
+		}
+	}
+	var best *LoadTarget
+	for _, g := range LoadsOf(entries, now) {
+		for i := range g.Targets {
+			t := &g.Targets[i]
+			if t.URI == target && (best == nil || t.LastLoaded.After(best.LastLoaded)) {
+				best = t
+			}
+		}
+	}
+	if best != nil {
+		return best.Href()
+	}
+	return "/ingest/loads"
 }
 
 // StreamView is one stream's page.

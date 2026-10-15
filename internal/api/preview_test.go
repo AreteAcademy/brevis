@@ -29,7 +29,7 @@ func TestTheTabDrawsWhatTheServiceAnswered(t *testing.T) {
 	}))
 	defer svc.Close()
 
-	body := render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/data/target?u="+probeTarget+"&tab=preview")
+	body := render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/ingest/loads/bronze/load?tab=preview")
 
 	if !strings.Contains(gotTarget, probeTarget) {
 		t.Errorf("the service was asked for %q", gotTarget)
@@ -55,7 +55,7 @@ func TestTheServiceIsNotAskedUnlessTheTabIsOpen(t *testing.T) {
 	}))
 	defer svc.Close()
 
-	body := render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/data/target?u="+probeTarget)
+	body := render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/ingest/loads/bronze/load")
 	if asked {
 		t.Error("it queried a warehouse for a page nobody asked a preview of")
 	}
@@ -80,7 +80,7 @@ func TestARefusalRendersTheRestOfThePage(t *testing.T) {
 	}))
 	defer svc.Close()
 
-	body := render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/data/target?u="+probeTarget+"&tab=preview")
+	body := render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/ingest/loads/bronze/load?tab=preview")
 	if !strings.Contains(body, "only BigQuery destinations") {
 		t.Error("the reason is not on the page")
 	}
@@ -92,7 +92,7 @@ func TestARefusalRendersTheRestOfThePage(t *testing.T) {
 // AND AN UNREACHABLE ONE DOES TOO -- with a sentence, never a stack trace.
 func TestAnUnreachableServiceStillRendersThePage(t *testing.T) {
 	body := render(t, withPreview(t, sqlserve.New("http://127.0.0.1:1", "")),
-		"/data/target?u="+probeTarget+"&tab=preview")
+		"/ingest/loads/bronze/load?tab=preview")
 	if !strings.Contains(body, "could not be reached") {
 		t.Error("the page does not say the service is unreachable")
 	}
@@ -103,7 +103,7 @@ func TestAnUnreachableServiceStillRendersThePage(t *testing.T) {
 
 // NO SERVICE, NO TAB, and the page is exactly what it was before any of this.
 func TestWithNoServiceThePageIsUnchanged(t *testing.T) {
-	body := render(t, withPreview(t, nil), "/data/target?u="+probeTarget+"&tab=preview")
+	body := render(t, withPreview(t, nil), "/ingest/loads/bronze/load?tab=preview")
 	if strings.Contains(body, "Preview") {
 		t.Error("a console with no SQL service offered a preview")
 	}

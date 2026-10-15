@@ -87,8 +87,12 @@ func demoCatalog() []postgres.CatalogEntry {
 	}
 }
 
-func TestTheDataPageListsEveryDestinationAndItsWriter(t *testing.T) {
-	code, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data")
+// Catalog's tests, restated on the screens that inherited each behaviour
+// (IN6): the list's on /ingest/loads, the destination page's on a load's page,
+// the gateway's on /ingest/streams.
+
+func TestTheLoadsPageListsEveryLoadAndItsWriter(t *testing.T) {
+	code, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads")
 	if code != http.StatusOK {
 		t.Fatalf("status %d", code)
 	}
@@ -97,7 +101,7 @@ func TestTheDataPageListsEveryDestinationAndItsWriter(t *testing.T) {
 		"s3://demo-landing/reports/", "shell_report",
 		"bronze.payments", "legacy",
 		// What is listed, and what is not, is said under the title.
-		"Writes from outside Brevis do not appear here",
+		"Writes from outside Brevis do not appear",
 	} {
 		if !strings.Contains(visible(body), want) {
 			t.Errorf("the page does not show %q", want)
@@ -109,27 +113,33 @@ func TestTheDataPageListsEveryDestinationAndItsWriter(t *testing.T) {
 	}
 }
 
-func TestTheDataPageSaysHowADestinationAppears(t *testing.T) {
-	code, body := get(t, dataUI(catalogFake{}), "/data")
+func TestTheLoadsPageSaysHowALoadAppears(t *testing.T) {
+	code, body := get(t, dataUI(catalogFake{}), "/ingest/loads")
 	if code != http.StatusOK {
 		t.Fatalf("status %d", code)
 	}
-	if !strings.Contains(body, "No destination yet") || !strings.Contains(body, "landed") {
-		t.Errorf("the empty state does not say how a destination appears:\n%s", body)
+	if !strings.Contains(body, "No load yet") || !strings.Contains(body, "landed") {
+		t.Errorf("the empty state does not say how a load appears:\n%s", body)
 	}
 }
 
-func TestDataIsInTheNavigation(t *testing.T) {
-	_, body := get(t, dataUI(catalogFake{}), "/data")
-	if !strings.Contains(body, `href="/data"`) {
-		t.Error("the navigation has no link to /data")
+// INGEST IS IN THE NAVIGATION, Streams and Loads, and Catalog is not.
+func TestIngestIsInTheNavigation(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{}), "/ingest/loads")
+	for _, want := range []string{`href="/ingest/streams"`, `href="/ingest/loads"`, `aria-label="Ingest"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the navigation has no %s", want)
+		}
+	}
+	if strings.Contains(body, `href="/data"`) {
+		t.Error("the navigation still links Catalog's /data")
 	}
 }
 
-// Every destination carries its status as words, not colour alone, and the
-// summary above the table counts them.
-func TestTheDataPageShowsStatusesInWordsAndCountsThem(t *testing.T) {
-	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data")
+// Every load carries its status as words, not colour alone, and the summary
+// above the table counts them.
+func TestTheLoadsPageShowsStatusesInWordsAndCountsThem(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads")
 	for _, want := range []string{"on time", "no schedule", "3 destinations"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page does not say %q", want)
@@ -137,7 +147,7 @@ func TestTheDataPageShowsStatusesInWordsAndCountsThem(t *testing.T) {
 	}
 }
 
-func TestALateWriterLinksToTheRunThatIsAboutToFixIt(t *testing.T) {
+func TestALateLoadLinksToTheRunThatIsAboutToFixIt(t *testing.T) {
 	run := "7aa2549c-0503-5f93-ab58-0ab78e7eb555"
 	late := []postgres.CatalogEntry{{
 		Target: "postgres://db/public/orders", Kind: "postgres",
@@ -145,29 +155,29 @@ func TestALateWriterLinksToTheRunThatIsAboutToFixIt(t *testing.T) {
 			LastLoaded: time.Now().Add(-90 * time.Minute), HasSchedule: true,
 			Cron: "0 * * * *", Timezone: "UTC", Active: true, RunInFlight: &run}},
 	}}
-	_, body := get(t, dataUI(catalogFake{entries: late}), "/data")
+	_, body := get(t, dataUI(catalogFake{entries: late}), "/ingest/loads")
 	if !strings.Contains(body, `href="/runs/`+run+`"`) || !strings.Contains(body, "run in progress") {
-		t.Error("a late writer with a run in flight does not link to it")
+		t.Error("a late load with a run in flight does not link to it")
 	}
 }
 
-func TestTheDataPageFiltersFromTheQueryString(t *testing.T) {
+func TestTheLoadsPageFiltersFromTheQueryString(t *testing.T) {
 	ui := dataUI(catalogFake{entries: demoCatalog()})
 
-	_, body := get(t, ui, "/data?kind=s3")
+	_, body := get(t, ui, "/ingest/loads?kind=s3")
 	if !strings.Contains(body, "demo-landing") || strings.Contains(body, "landing_orders") {
-		t.Error("?kind=s3 did not narrow the table to the s3 destination")
+		t.Error("?kind=s3 did not narrow the table to the s3 load")
 	}
-	if !strings.Contains(body, "Showing 1 of 3 destinations") {
+	if !strings.Contains(body, "Showing 1 of 3 loads") {
 		t.Error("a filtered page does not say how much it shows")
 	}
 
-	_, body = get(t, ui, "/data?status=attention")
+	_, body = get(t, ui, "/ingest/loads?status=attention")
 	if !strings.Contains(body, "Nothing matches this filter") {
 		t.Error("an empty filter result does not say so")
 	}
 
-	_, body = get(t, ui, "/data?status=bogus")
+	_, body = get(t, ui, "/ingest/loads?status=bogus")
 	if !strings.Contains(body, "landing_orders") || strings.Contains(body, "Showing ") {
 		t.Error("an unknown status should be ignored, showing everything")
 	}
@@ -190,12 +200,16 @@ func lateDetail() *postgres.TargetDetail {
 	}
 }
 
-func TestTheDestinationPageShowsItsWritersAndLoads(t *testing.T) {
+// loadUI is a console holding one destination, listed and detailed, so its
+// load's page resolves.
+func loadUI(d *postgres.TargetDetail, asked *string) *api.UI {
+	return dataUI(catalogFake{detail: d, asked: asked, entries: []postgres.CatalogEntry{d.CatalogEntry}})
+}
+
+func TestALoadPageShowsItsWriterAndLoads(t *testing.T) {
 	d := lateDetail()
 	var asked string
-	ui := dataUI(catalogFake{detail: d, asked: &asked})
-
-	code, body := get(t, ui, "/data/target?u="+url.QueryEscape(d.Target))
+	code, body := get(t, loadUI(d, &asked), "/ingest/loads/orders_sync/load")
 	if code != http.StatusOK {
 		t.Fatalf("status %d", code)
 	}
@@ -215,23 +229,51 @@ func TestTheDestinationPageShowsItsWritersAndLoads(t *testing.T) {
 	}
 }
 
-func TestTheDestinationPageRefusesWhatItCannotRead(t *testing.T) {
-	ui := dataUI(catalogFake{detail: lateDetail()})
-	if code, _ := get(t, ui, "/data/target"); code != http.StatusBadRequest {
-		t.Errorf("no target: %d, want 400", code)
+// CATALOG'S OLD URLS LAND WHERE THEIR DESTINATION LIVES NOW: a sink or a dead
+// letter on its stream, a load's target on the load (the most recent writer
+// when several), anything else on the loads list. Permanent, so bookmarks and
+// links move once. What could never be a target is still refused.
+func TestCatalogsURLsRedirectToTheirOwner(t *testing.T) {
+	now := time.Now()
+	entries := append(gatewayCatalog(),
+		postgres.CatalogEntry{Target: "file:///var/dead-letter/clicks/", Kind: "file",
+			Writers: []postgres.CatalogWriter{{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/clicks", Role: "dead_letter"}}}},
+		postgres.CatalogEntry{Target: "s3://lake/shared/", Kind: "s3", Writers: []postgres.CatalogWriter{
+			{Workflow: "old", Node: "dump", LastLoaded: now.Add(-48 * time.Hour)},
+			{Workflow: "fresh", Node: "load", LastLoaded: now.Add(-time.Hour)},
+		}},
+		postgres.CatalogEntry{Target: "postgres://db/public/x", Kind: "postgres",
+			Writers: []postgres.CatalogWriter{{Workflow: "sync", Node: "load", LastLoaded: now}}},
+	)
+	mux := http.NewServeMux()
+	dataUI(catalogFake{entries: entries}).Registrar(mux)
+	for _, c := range []struct{ path, to string }{
+		{"/data", "/ingest/loads"},
+		{"/data?status=late", "/ingest/loads"},
+		{"/data/target?u=" + url.QueryEscape("pubsub://brevis-local/clicks"), "/ingest/streams/edge/v1/clicks"},
+		{"/data/target?u=" + url.QueryEscape("file:///var/dead-letter/clicks/"), "/ingest/streams/edge/v1/clicks"},
+		{"/data/target?u=" + url.QueryEscape("postgres://db/public/x"), "/ingest/loads/sync/load"},
+		{"/data/target?u=" + url.QueryEscape("s3://lake/shared/"), "/ingest/loads/fresh/load"},
+		{"/data/target?u=" + url.QueryEscape("postgres://nowhere/public/x"), "/ingest/loads"},
+		{"/data/target", "/ingest/loads"},
+	} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, c.path, nil))
+		if rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != c.to {
+			t.Errorf("%s → %d %q, want 301 %q", c.path, rec.Code, rec.Header().Get("Location"), c.to)
+		}
 	}
-	if code, _ := get(t, ui, "/data/target?u="+url.QueryEscape(strings.Repeat("x", 513))); code != http.StatusBadRequest {
-		t.Errorf("an oversized target: %d, want 400", code)
-	}
-	if code, _ := get(t, ui, "/data/target?u="+url.QueryEscape("postgres://nowhere/public/x")); code != http.StatusNotFound {
-		t.Errorf("an unknown target: %d, want 404", code)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/data/target?u="+url.QueryEscape(strings.Repeat("x", 513)), nil))
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("an oversized target: %d, want 400", rec.Code)
 	}
 }
 
-func TestTheListLinksEachDestinationToItsPage(t *testing.T) {
-	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data")
-	if !strings.Contains(body, `href="/data/target?u=`+url.QueryEscape("s3://demo-landing/reports/")+`"`) {
-		t.Error("the list does not link to the destination page")
+func TestTheListLinksEachLoadToItsPage(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads")
+	if !strings.Contains(body, `href="/ingest/loads/shell_report/build_report"`) {
+		t.Error("the list does not link to the load page")
 	}
 }
 
@@ -246,8 +288,10 @@ func gatewayCatalog() []postgres.CatalogEntry {
 	}
 }
 
-func TestTheDataPageShowsGatewayDestinations(t *testing.T) {
-	_, body := get(t, dataUI(catalogFake{entries: gatewayCatalog()}), "/data")
+// A GATEWAY'S DESTINATIONS ARE ITS STREAMS', and one its manifest could not
+// name is said to be so, with why -- inside its stream, not as a row.
+func TestTheStreamsPageShowsGatewayDestinations(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: gatewayCatalog()}), "/ingest/streams")
 	for _, want := range []string{
 		"pubsub://brevis-local/clicks", "continuous", "edge", "/v1/clicks",
 		"unidentified", "relative to the gateway", "/metrics",
@@ -255,6 +299,9 @@ func TestTheDataPageShowsGatewayDestinations(t *testing.T) {
 		if !strings.Contains(visible(body), want) {
 			t.Errorf("the page does not show %q", want)
 		}
+	}
+	if strings.Count(body, "data-stream-card") != 1 {
+		t.Error("the unnamed dead letter became a stream of its own")
 	}
 }
 
@@ -266,42 +313,44 @@ func visible(body string) string {
 	return html.UnescapeString(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(body, ""))
 }
 
-func TestADestinationPageNamesTheGatewayThatPublishedIt(t *testing.T) {
+func TestAStreamPageNamesTheGatewayThatPublishedIt(t *testing.T) {
 	e := gatewayCatalog()[0]
-	_, body := get(t, dataUI(catalogFake{detail: &postgres.TargetDetail{CatalogEntry: e}}),
-		"/data/target?u="+url.QueryEscape(e.Target))
-	if !strings.Contains(body, "Published from gateway") || !strings.Contains(body, "/metrics") {
-		t.Errorf("the page does not say which gateway published it:\n%s", body)
+	_, body := get(t, dataUI(catalogFake{entries: gatewayCatalog(), detail: &postgres.TargetDetail{CatalogEntry: e}}),
+		"/ingest/streams/edge/v1/clicks")
+	for _, want := range []string{"gateway stream", "edge", "/metrics", "published"} {
+		if !strings.Contains(visible(body), want) {
+			t.Errorf("the stream page does not say %q", want)
+		}
 	}
 }
 
-// THE CATALOG SEARCHES BY WHERE AND BY WHO: a destination's URI, and the
-// workflow, step or gateway that writes it -- case-insensitive, because
-// nobody remembers whether it was `Orders` or `orders`. On the SERVER, so a
-// search is a link and works with no script; ui.js only makes it answer while
-// somebody types.
-func TestTheCatalogSearchesByWhereAndByWho(t *testing.T) {
+// LOADS ARE SEARCHED BY WHERE AND BY WHO: a destination's URI, and the
+// workflow or step that writes it -- case-insensitive, because nobody
+// remembers whether it was `Orders` or `orders`. On the SERVER, so a search is
+// a link and works with no script; ui.js only makes it answer while somebody
+// types.
+func TestTheLoadsAreSearchedByWhereAndByWho(t *testing.T) {
 	ui := dataUI(catalogFake{entries: demoCatalog()})
 
-	_, body := get(t, ui, "/data?q=REPORTS")
+	_, body := get(t, ui, "/ingest/loads?q=REPORTS")
 	if rowHidden(t, body, "demo-landing") || !rowHidden(t, body, "landing_orders") || !rowHidden(t, body, "payments") {
-		t.Error("?q=REPORTS did not narrow to the destination whose URI says reports")
+		t.Error("?q=REPORTS did not narrow to the load whose URI says reports")
 	}
-	if !strings.Contains(body, "Showing 1 of 3 destinations") {
+	if !strings.Contains(body, "Showing 1 of 3 loads") {
 		t.Error("a searched page does not say how much it shows")
 	}
 	if !strings.Contains(body, `value="REPORTS"`) {
 		t.Error("the search box does not keep what was searched")
 	}
 
-	_, body = get(t, ui, "/data?q=sdk_orders")
+	_, body = get(t, ui, "/ingest/loads?q=sdk_orders")
 	if rowHidden(t, body, "landing_orders") || !rowHidden(t, body, "demo-landing") {
-		t.Error("?q=sdk_orders did not find the destination that workflow writes")
+		t.Error("?q=sdk_orders did not find the load that workflow writes")
 	}
 
-	_, body = get(t, ui, "/data?q=nothing-is-called-this")
+	_, body = get(t, ui, "/ingest/loads?q=nothing-is-called-this")
 	empty := body[strings.LastIndex(body[:strings.Index(body, "Nothing matches this filter")], "<div"):]
-	if strings.Contains(empty[:strings.Index(empty, ">")], "hidden") || !strings.Contains(body, `href="/data"`) {
+	if strings.Contains(empty[:strings.Index(empty, ">")], "hidden") || !strings.Contains(body, `href="/ingest/loads"`) {
 		t.Error("a search that finds nothing does not say so and offer the way back")
 	}
 }
@@ -309,12 +358,12 @@ func TestTheCatalogSearchesByWhereAndByWho(t *testing.T) {
 // A SEARCH DOES NOT DROP THE OTHER FILTERS, AND A FILTER DOES NOT DROP THE
 // SEARCH: each is one field of the same URL.
 func TestTheSearchAndTheFiltersKeepEachOther(t *testing.T) {
-	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data?kind=s3&q=report")
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads?kind=s3&q=report")
 	if !strings.Contains(body, `<input type="hidden" name="kind" value="s3"`) {
 		t.Error("searching again would drop the kind filter")
 	}
-	if !strings.Contains(body, `href="/data?status=on_time&amp;kind=s3&amp;q=report"`) &&
-		!strings.Contains(body, `href="/data?kind=s3&amp;q=report"`) {
+	if !strings.Contains(body, `href="/ingest/loads?status=on_time&amp;kind=s3&amp;q=report"`) &&
+		!strings.Contains(body, `href="/ingest/loads?kind=s3&amp;q=report"`) {
 		t.Error("the filter links drop the search")
 	}
 }
@@ -323,7 +372,7 @@ func TestTheSearchAndTheFiltersKeepEachOther(t *testing.T) {
 // most rows and the eye needs the part that differs, so the prefix is dimmed
 // and the object is not -- the whole URI is still there to read and select.
 func TestAURIIsDrawnAsWhereThenWhat(t *testing.T) {
-	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data")
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads")
 	for _, want := range []string{">postgres://brevis_it/<", ">public/landing_orders<", ">bronze.<", ">payments<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the URI is not split where it should be: no %s", want)
@@ -331,13 +380,12 @@ func TestAURIIsDrawnAsWhereThenWhat(t *testing.T) {
 	}
 }
 
-// THE WHOLE ROW GOES TO THE DESTINATION, without taking the writer's own link
-// away: the row carries where it goes, ui.js follows it on a click that did
-// not land on a link, and the URI stays a real link for the keyboard and for
-// no script at all.
-func TestTheWholeRowGoesToTheDestination(t *testing.T) {
-	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data")
-	if !strings.Contains(body, `data-href="/data/target?u=`+url.QueryEscape("s3://demo-landing/reports/")+`"`) {
+// THE WHOLE ROW GOES TO THE LOAD, without taking the URI's own link away: the
+// row carries where it goes, ui.js follows it on a click that did not land on
+// a link, and the URI stays a real link for the keyboard and for no script.
+func TestTheWholeRowGoesToTheLoad(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads")
+	if !strings.Contains(body, `data-href="/ingest/loads/shell_report/build_report"`) {
 		t.Error("a row does not say where it goes")
 	}
 	_, ui := browsing(t)
@@ -378,19 +426,19 @@ func rowHidden(t *testing.T, body, needle string) bool {
 // The search box names the rows it filters; each row carries the text a
 // search looks in, lower-cased by the same function the server uses, so the
 // two cannot disagree about what matches. The foot says how many are shown,
-// and the URL keeps the search with replaceState -- a catalog URL carries no
+// and the URL keeps the search with replaceState -- a list URL carries no
 // statement, so the SQL screen's rule against touching history is not this
 // one's -- which is what makes a reload or a sent link show the same rows.
-func TestTheCatalogFiltersWhileYouType(t *testing.T) {
-	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data")
-	for _, want := range []string{`data-filter-for="catalog-rows"`, `id="catalog-rows"`,
-		`data-filter-row`, `data-foot-total="3"`, `data-foot-noun="destinations"`, "data-filter-empty"} {
+func TestTheLoadsFilterWhileYouType(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads")
+	for _, want := range []string{`data-filter-for="load-rows"`, `id="load-rows"`,
+		`data-filter-row`, `data-foot-total="3"`, `data-foot-noun="loads"`, "data-filter-empty"} {
 		if !strings.Contains(body, want) {
-			t.Errorf("the catalog lacks %s", want)
+			t.Errorf("the loads list lacks %s", want)
 		}
 	}
-	if !strings.Contains(body, `data-filter-text="s3://demo-landing/reports/`) || !strings.Contains(body, "shell_report") {
-		t.Error("a row's search text is not where and who")
+	if !strings.Contains(body, `data-filter-text="shell_report`) || !strings.Contains(body, "s3://demo-landing/reports/") {
+		t.Error("a row's search text is not who and where")
 	}
 
 	_, ui := browsing(t)
@@ -403,13 +451,12 @@ func TestTheCatalogFiltersWhileYouType(t *testing.T) {
 	}
 }
 
-// A DESTINATION IS TITLED BY ITS URI, IN THE MACHINE'S FACE. "Destination"
-// above every destination named nothing; the URI is what somebody came to
-// read and what they will paste. Above it, what kind of thing it is and how
-// it stands, before the title rather than beside it.
-func TestADestinationIsTitledByItsURI(t *testing.T) {
+// A LOAD IS TITLED BY ITS URI, IN THE MACHINE'S FACE: the URI is what
+// somebody came to read and what they will paste. Above it, what kind of
+// thing it is and how it stands, before the title rather than beside it.
+func TestALoadIsTitledByItsURI(t *testing.T) {
 	d := lateDetail()
-	_, body := get(t, dataUI(catalogFake{detail: d}), "/data/target?u="+url.QueryEscape(d.Target))
+	_, body := get(t, loadUI(d, nil), "/ingest/loads/orders_sync/load")
 
 	h1 := body[strings.Index(body, "<h1"):]
 	h1 = h1[:strings.Index(h1, "</h1>")]
@@ -424,7 +471,7 @@ func TestADestinationIsTitledByItsURI(t *testing.T) {
 	// hourly schedule, so which one it is depends on the minute the test
 	// runs -- pinning one made this test fail at the top of some hours.
 	if !strings.Contains(eyebrow, "late") && !strings.Contains(eyebrow, "stale") {
-		t.Errorf("the line above the title does not say how the destination stands: %s", eyebrow)
+		t.Errorf("the line above the title does not say how the load stands: %s", eyebrow)
 	}
 	if !strings.Contains(eyebrow, "postgres") {
 		t.Errorf("the line above the title does not say what it is: %s", eyebrow)
@@ -434,9 +481,9 @@ func TestADestinationIsTitledByItsURI(t *testing.T) {
 // THE PAGE'S VERBS ARE IN ITS HEADER: copy the URI, and -- only where there
 // is a SQL service to ask -- open it in the workbench. A button that leads to
 // "not configured" is a question nobody can act on.
-func TestADestinationsVerbsAreInItsHeader(t *testing.T) {
+func TestALoadsVerbsAreInItsHeader(t *testing.T) {
 	d := lateDetail()
-	_, body := get(t, dataUI(catalogFake{detail: d}), "/data/target?u="+url.QueryEscape(d.Target))
+	_, body := get(t, loadUI(d, nil), "/ingest/loads/orders_sync/load")
 	header := body[strings.Index(body, "data-page-header"):]
 	header = header[:strings.Index(header, "</header>")]
 	if !strings.Contains(header, `data-copy="#destination-uri"`) {
@@ -447,7 +494,7 @@ func TestADestinationsVerbsAreInItsHeader(t *testing.T) {
 	}
 
 	svc := (&sqlFake{body: `{"columns":["k"],"rows":[["1"]]}`}).start(t)
-	body = render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/data/target?u="+probeTarget)
+	body = render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/ingest/loads/bronze/load")
 	header = body[strings.Index(body, "data-page-header"):]
 	header = header[:strings.Index(header, "</header>")]
 	if !strings.Contains(header, "/sql?target=") {
@@ -458,9 +505,9 @@ func TestADestinationsVerbsAreInItsHeader(t *testing.T) {
 // THE LOADS ARE THE PAGE; WHO WRITES IT AND WHAT IT IS SIT BESIDE THEM. The
 // side column is after the main one in the document, so a narrow screen
 // stacks it below rather than above what somebody came for.
-func TestADestinationKeepsItsWritersAndPropertiesBeside(t *testing.T) {
+func TestALoadKeepsItsWriterAndDestinationBeside(t *testing.T) {
 	d := lateDetail()
-	_, body := get(t, dataUI(catalogFake{detail: d}), "/data/target?u="+url.QueryEscape(d.Target))
+	_, body := get(t, loadUI(d, nil), "/ingest/loads/orders_sync/load")
 	side := strings.Index(body, "data-side")
 	if side < 0 {
 		t.Fatal("the page has no side column")
@@ -468,7 +515,7 @@ func TestADestinationKeepsItsWritersAndPropertiesBeside(t *testing.T) {
 	if loads := strings.Index(body, "Rows per load"); loads < 0 || loads > side {
 		t.Error("the loads are not in the main column")
 	}
-	for _, want := range []string{">Writers<", ">Properties<", "orders_sync", "0 * * * *"} {
+	for _, want := range []string{">Written by<", ">Destination<", "orders_sync", "0 * * * *"} {
 		if i := strings.Index(body[side:], want); i < 0 {
 			t.Errorf("the side column does not carry %s", want)
 		}
@@ -533,6 +580,28 @@ func TestTheStreamPageAnswers(t *testing.T) {
 	for _, want := range []string{"[data-hash-tabs]", "hashchange", "[data-tab-panel]", "[data-test-body]"} {
 		if !strings.Contains(strip(js), want) {
 			t.Errorf("ui.js has no %s", want)
+		}
+	}
+}
+
+// "CATALOG" IS GONE FROM THE CONSOLE. Catalog became Streams and Loads (IN6);
+// a word left in a menu, a breadcrumb, a title or the palette is a section
+// that no longer exists, named to somebody looking for it.
+func TestNoScreenSaysCatalog(t *testing.T) {
+	entries := append(demoCatalog(), gatewayCatalog()...)
+	ui := dataUI(catalogFake{entries: entries, detail: &postgres.TargetDetail{CatalogEntry: entries[0]}}).WithEndpoints(published())
+	for _, path := range []string{
+		"/ingest/loads", "/ingest/streams", "/ingest/streams/edge/v1/clicks",
+		"/ingest/loads/sdk_orders/load", "/data/endpoints", "/api/palette",
+	} {
+		code, body := get(t, ui, path)
+		if code != http.StatusOK {
+			t.Errorf("%s answered %d", path, code)
+			continue
+		}
+		if strings.Contains(strings.ToLower(body), "catalog") {
+			at := strings.Index(strings.ToLower(body), "catalog")
+			t.Errorf("%s says catalog: …%s…", path, body[max(0, at-60):min(len(body), at+40)])
 		}
 	}
 }
