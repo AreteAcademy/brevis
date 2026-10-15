@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"github.com/AreteAcademy/brevis/web/assets"
 	"fmt"
 	"net/url"
 	"strings"
@@ -823,13 +824,13 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 // references `React` the instant it runs, and React Flow's bundle references
 // `jsxRuntime` in its own. Swapping two lines here leaves the screen blank.
 var dagAssets = layouts.Island{
-	CSS: []string{"/assets/vendor/xyflow.css"},
+	CSS: []string{assets.URL("vendor/xyflow.css")},
 	JS: []string{
-		"/assets/vendor/react.js",
-		"/assets/vendor/react-dom.js",
-		"/assets/jsx-shim.js",
-		"/assets/vendor/xyflow.js",
-		"/assets/dag.js",
+		assets.URL("vendor/react.js"),
+		assets.URL("vendor/react-dom.js"),
+		assets.URL("jsx-shim.js"),
+		assets.URL("vendor/xyflow.js"),
+		assets.URL("dag.js"),
 	},
 }
 

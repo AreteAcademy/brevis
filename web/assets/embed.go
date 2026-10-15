@@ -11,12 +11,16 @@
 package assets
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
 	"io/fs"
 	"net/http"
+	"path"
+	"regexp"
 	"strings"
+	"time"
 )
 
 // FS holds the compiled CSS and the React island's scripts. `app.src.css` is
@@ -60,42 +64,80 @@ var LogoSVG = func() string {
 	return string(b)
 }()
 
-// Handler serves the embedded files with a validator, which http.FileServerFS
-// alone does not give them.
+// Handler serves the embedded files with a validator AND, when the URL names
+// the current version, with a year-long cache.
 //
-// An embedded file's ModTime is the zero time, so the stdlib's file server
-// omits Last-Modified — and it sets no ETag of its own. The response therefore
-// carried NO validator at all: not Cache-Control, not ETag, not Last-Modified.
-// A browser then caches on a heuristic and a proxy may keep the file for as
-// long as it likes, with no way to revalidate.
+// THE VALIDATOR CAME FIRST. An embedded file's ModTime is the zero time, so
+// the stdlib's file server omits Last-Modified and sets no ETag: the response
+// carried no validator at all, a browser cached on a heuristic, and a UI fix
+// shipped without arriving -- `/assets/dag.js` had no version in its path, so
+// an upgraded binary served new bytes at a URL some client was convinced it
+// already had. The tag is the CONTENT's digest, so it changes exactly when the
+// bytes do, and a `no-cache` response is a 304 with no body in steady state.
 //
-// That is how a UI fix ships and does not arrive. `/assets/dag.js` has no
-// version in its path, so the upgraded binary serves new bytes at a URL some
-// client is convinced it already has.
-//
-// The tag is the CONTENT's digest, not the build's version: it needs no ldflags
-// reaching this package, and it changes exactly when the bytes change — a
-// rebuild that alters nothing does not invalidate a single cache.
-//
-// `no-cache` is not "do not store". It stores, and revalidates every time, so
-// the steady state is a 304 with no body. http.ServeContent reads the ETag that
-// is already on the header and answers If-None-Match itself.
+// THE VERSIONED URL CAME SECOND, because `no-cache` still costs a round trip
+// per asset per page: nothing locally, a blank pause on every click over a
+// 50-100ms link. URL(name) puts the digest in the query, so a changed file
+// gets a new URL and the old one can be kept for a year. Only a `v` that IS
+// the current digest gets `immutable`; anything else -- no `v`, or a page
+// from before an upgrade asking for the old one -- gets `no-cache`, as
+// before. A year-long promise is made only about the bytes being served.
 func Handler() http.Handler {
-	files := http.FileServerFS(FS)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if tag, ok := etags[strings.TrimPrefix(r.URL.Path, "/")]; ok {
-			w.Header().Set("ETag", tag)
+		name := strings.TrimPrefix(r.URL.Path, "/")
+		f, ok := served[name]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("ETag", `"`+f.digest+`"`)
+		if v := r.URL.Query().Get("v"); v != "" && v == f.version() {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
 			w.Header().Set("Cache-Control", "no-cache")
 		}
-		files.ServeHTTP(w, r)
+		// ServeContent reads the ETag already on the header and answers
+		// If-None-Match itself; the zero time sends no Last-Modified.
+		http.ServeContent(w, r, path.Base(name), time.Time{}, bytes.NewReader(f.body))
 	})
 }
 
-// etags is every embedded file's digest, computed once at start rather than per
-// request: the set is fixed at compile time and hashing 350 KB of vendor
-// bundles on every page load would be work with a known answer.
-var etags = func() map[string]string {
-	out := map[string]string{}
+// URL is the address of an embedded file at its current version:
+// `/assets/app.css?v=<digest>`. Every reference a page makes goes through it,
+// which is what lets the handler cache it for good. A name that is not
+// embedded comes back unversioned, and the page's test says which.
+func URL(name string) string {
+	f, ok := served[name]
+	if !ok {
+		return "/assets/" + name
+	}
+	return "/assets/" + name + "?v=" + f.version()
+}
+
+type file struct {
+	body   []byte
+	digest string
+}
+
+// version is the digest, shortened: enough to tell versions apart, short
+// enough to read in a URL.
+func (f file) version() string { return f.digest[:12] }
+
+// fontURL is how Tailwind writes a font into the compiled sheet.
+var fontURL = regexp.MustCompile(`url\((/assets/(fonts/[^)?]+))\)`)
+
+// served is every embedded file as it is SERVED, with its digest, computed
+// once at start: the set is fixed at compile time, and hashing 350 KB of
+// vendor bundles on every request would be work with a known answer.
+//
+// ONE FILE IS NOT SERVED AS EMBEDDED. Tailwind writes the fonts into app.css
+// as `url(/assets/fonts/…)` and cannot know a digest, so the sheet is
+// rewritten here to ask for each font by URL() -- otherwise the four fonts
+// would be revalidated on every page while everything else is cached. The
+// sheet's digest is taken AFTER the rewrite, so a changed font changes the
+// sheet's URL too.
+var served = func() map[string]file {
+	out := map[string]file{}
 	_ = fs.WalkDir(FS, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil
@@ -104,9 +146,24 @@ var etags = func() map[string]string {
 		if err != nil {
 			return nil
 		}
-		sum := sha256.Sum256(b)
-		out[p] = `"` + hex.EncodeToString(sum[:16]) + `"`
+		out[p] = file{body: b, digest: digest(b)}
 		return nil
 	})
+	if css, ok := out["app.css"]; ok {
+		body := fontURL.ReplaceAllFunc(css.body, func(m []byte) []byte {
+			name := string(fontURL.FindSubmatch(m)[2])
+			f, ok := out[name]
+			if !ok {
+				return m
+			}
+			return []byte("url(/assets/" + name + "?v=" + f.version() + ")")
+		})
+		out["app.css"] = file{body: body, digest: digest(body)}
+	}
 	return out
 }()
+
+func digest(b []byte) string {
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:16])
+}
