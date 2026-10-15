@@ -348,12 +348,13 @@ body {
   font-size: 0.75rem;
   line-height: 1.6;
 }
+/* The gutter is metadata: a step back from the text, in the faint role. */
 .CodeMirror-gutters {
-  background: var(--color-surface-2);
-  border-right: 1px solid var(--color-line);
+  background: var(--color-canvas-subtle);
+  border-right: 1px solid var(--color-line-soft);
 }
 .CodeMirror-linenumber {
-  color: var(--color-muted);
+  color: var(--color-faint);
 }
 .CodeMirror-cursor {
   border-left-color: var(--color-ink);
@@ -376,8 +377,23 @@ body {
   font-style: italic;
 }
 .cm-s-default .cm-variable-2,
-.cm-s-default .cm-type {
+.cm-s-default .cm-type,
+.cm-s-default .cm-variable-3 {
   color: var(--color-state-queued);
+}
+/* THE FOUR THAT WERE LEFT TO THE LIGHT THEME. codemirror.css colours atoms
+   #219 and builtins #30a -- a dark blue and a dark purple for a white page --
+   so NULL, TRUE and every type name (INT, DATE) all but vanished here. The
+   test beside the sheets reads which classes the SQL mode emits and refuses
+   one the default theme colours and this file does not. */
+.cm-s-default .cm-atom {
+  color: var(--color-state-retrying);
+}
+.cm-s-default .cm-builtin {
+  color: var(--color-state-skipped);
+}
+.cm-s-default .cm-bracket {
+  color: var(--color-muted);
 }
 
 /* The charts' tooltip. Out of the flow and with no position transition:
