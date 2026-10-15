@@ -36,11 +36,41 @@ func tokens(t *testing.T) map[string]string {
 		out[m[1]] = strings.TrimSpace(m[2])
 	}
 	for name, v := range out {
-		if ref := strings.TrimSuffix(strings.TrimPrefix(v, "var(--color-"), ")"); ref != v {
-			out[name] = out[ref]
+		// ONLY A `var(` IS AN ALIAS. Trimming a trailing `)` off anything
+		// read every `color-mix(…)` as a reference to a name that does not
+		// exist, and resolved it to nothing.
+		if !strings.HasPrefix(v, "var(--color-") {
+			continue
+		}
+		out[name] = out[strings.TrimSuffix(strings.TrimPrefix(v, "var(--color-"), ")")]
+	}
+	// AND A MIX IS COMPUTED, because the derived roles are mixes and a ratio
+	// nobody can compute is a ratio nobody checked. `in srgb` interpolates the
+	// encoded channels, which is what this does.
+	for name, v := range out {
+		if m := colorMix.FindStringSubmatch(v); m != nil {
+			out[name] = mixHex(t, name, out[m[1]], m[2], out[m[3]])
 		}
 	}
 	return out
+}
+
+var colorMix = regexp.MustCompile(`^color-mix\(in srgb,\s*var\(--color-([a-z0-9-]+)\)\s+(\d+)%,\s*var\(--color-([a-z0-9-]+)\)\)$`)
+
+func mixHex(t *testing.T, name, a, pct, b string) string {
+	t.Helper()
+	p, err := strconv.Atoi(pct)
+	if err != nil {
+		t.Fatalf("--color-%s: %v", name, err)
+	}
+	ar, ag, ab, ok1 := rgb(t, name, a)
+	br, bg, bb, ok2 := rgb(t, name, b)
+	if !ok1 || !ok2 {
+		t.Fatalf("--color-%s mixes something that is not a hex colour: %q, %q", name, a, b)
+	}
+	w := float64(p) / 100
+	ch := func(x, y float64) int { return int(math.Round(x*w + y*(1-w))) }
+	return "#" + strconv.FormatInt(int64(1<<24|ch(ar, br)<<16|ch(ag, bg)<<8|ch(ab, bb)), 16)[1:]
 }
 
 // rgb parses #rgb, #rrggbb and #rrggbbaa. An alpha channel is DROPPED rather
@@ -115,6 +145,15 @@ func TestEveryTextRoleIsReadableOnItsGround(t *testing.T) {
 		// The accent is a link and a label, which are text.
 		{"accent-strong", "canvas"},
 		{"accent-strong", "surface"},
+		// The two the redesign adds: strong secondary text and metadata
+		// (axes, timestamps, the dimmed prefix of a URI). Faint is the
+		// dimmest text there is, so it is the one most likely to fall under.
+		{"ink-2", "canvas"},
+		{"ink-2", "surface"},
+		{"faint", "canvas"},
+		{"faint", "surface"},
+		{"faint", "surface-2"},
+		{"faint", "canvas-subtle"},
 	} {
 		if got := ratio(t, tok, c.fg, c.bg); got < aa {
 			t.Errorf("%s on %s is %.2f:1, and body text needs %.1f:1 (%s / %s)",

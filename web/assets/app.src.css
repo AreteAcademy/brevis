@@ -149,6 +149,27 @@
   --color-accent-wash: var(--color-gold-wash);
   --color-line-strong: #4a553a;
 
+  /* THE ROLES THE REDESIGN ADDS, AND NOT ONE OF THEM IS A COLOUR.
+
+     Each is a MIX of variables internal/branding writes, so a brand.yaml
+     that repaints the ground and the ink repaints these too -- a literal
+     here would be the one part of the screen a client theme cannot reach.
+     The test beside this file reads branding.go's write list and refuses a
+     role that mixes anything else.
+
+     `faint` is the dimmest TEXT there is -- axes, timestamps, the dimmed
+     prefix of a URI -- and 80% is the floor that keeps it at 4.5:1 on every
+     ground it is drawn on (4.71:1 on surface-2, the darkest case). Below
+     that it stops being metadata and starts being decoration.
+     `ink-2` is the strong secondary: a description under a title.
+     `surface-3` is a bar's empty track and an empty cell.
+     `canvas-subtle` is the sidebar's ground and a table's head: a step
+     above the page, short of a card. */
+  --color-faint: color-mix(in srgb, var(--color-muted) 80%, var(--color-parchment));
+  --color-ink-2: color-mix(in srgb, var(--color-ink) 60%, var(--color-muted));
+  --color-surface-3: color-mix(in srgb, var(--color-ink) 10%, var(--color-surface));
+  --color-canvas-subtle: color-mix(in srgb, var(--color-surface) 60%, var(--color-parchment));
+
   /* States. Each one passes AA as TEXT on both grounds, because they are used
      as text on a pill and not only as a dot.
 
@@ -214,6 +235,11 @@
 
   --radius-card: 3px;
   --radius-panel: 4px;
+
+  /* One curve for everything that moves: fast out, soft landing. A panel
+     that eases in linearly reads as lag rather than motion. Durations stay
+     Tailwind's own scale (`duration-150`, `duration-200`). */
+  --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* A flat ground. The parchment gradient, the golden halo and the grid went with
