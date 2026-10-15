@@ -524,6 +524,18 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	// THE ANSWER ALONE, when the island asks for it. A run that swaps only
+	// the answer pane draws nothing else, so the tree and the open relation's
+	// columns -- two metadata round trips -- would be work for a page nobody
+	// sees. Every refusal above has already been applied: the shape of the
+	// response is the only thing the header changes.
+	//
+	// ONLY ON A POST. A GET runs nothing, and the answer to opening a screen
+	// is the screen.
+	if r.Method == http.MethodPost && fragment(r) == "answer" {
+		u.render(w, r, pages.SQLAnswer(v))
+		return
+	}
 	if v.Target == "" && len(v.Targets) > 0 {
 		v.Target = v.Targets[0]
 	}
@@ -1190,6 +1202,17 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	if err := c.Render(ctx, w); err != nil {
 		u.log.Error("rendering the page", "path", r.URL.Path, "error", err)
 	}
+}
+
+// fragment is the part of a page a request asks for alone, from the
+// X-Brevis-Fragment header; empty asks for the whole page.
+//
+// A HEADER AND NOT A ROUTE. The fragment is the same handler's answer in
+// another shape -- the same refusals, the same limits -- and a second route
+// would be a second place for those to drift. A handler that has no fragment
+// ignores the header and draws its page.
+func fragment(r *http.Request) string {
+	return r.Header.Get("X-Brevis-Fragment")
 }
 
 func (u *UI) failure(w http.ResponseWriter, r *http.Request, err error) {

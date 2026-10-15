@@ -1,8 +1,13 @@
 package api_test
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/AreteAcademy/brevis/web/pages"
 )
 
 // THE ANSWER IS WIRED FROM ITS OWN NODE, NOT FROM THE DOCUMENT.
@@ -43,6 +48,118 @@ func TestTheAnswerIsWiredFromItsOwnNode(t *testing.T) {
 	} {
 		if strings.Contains(js, gone) {
 			t.Errorf("the island still reads %s from the document, which is the answer the page loaded with", gone)
+		}
+	}
+}
+
+// submit posts the workbench's form, asking for the answer alone when
+// fragment is set -- what the island does on Run.
+func submit(t *testing.T, ui interface{ Registrar(*http.ServeMux) }, form url.Values, fragment bool) (int, string) {
+	t.Helper()
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	r := httptest.NewRequest(http.MethodPost, "/sql", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if fragment {
+		r.Header.Set("X-Brevis-Fragment", "answer")
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, r)
+	return rec.Code, rec.Body.String()
+}
+
+func asked(calls []string, path string) bool {
+	for _, c := range calls {
+		if c == path {
+			return true
+		}
+	}
+	return false
+}
+
+// A RUN CAN ASK FOR THE ANSWER ALONE, AND THEN THE WAREHOUSE IS ASKED ONLY
+// THE QUERY.
+//
+// The island replaces the answer pane and nothing else, so the tree and the
+// open relation's columns -- two metadata round trips every full run pays --
+// are work for a page nobody will draw. With the header, the response is the
+// pane's markup and the service is asked one thing: the statement.
+func TestARunCanAskForTheAnswerAlone(t *testing.T) {
+	w, ui := browsing(t)
+	w.query = `{"columns":["n"],"rows":[["1"]]}`
+	code, body := submit(t, ui, url.Values{"target": {probeTarget}, "q": {"SELECT 1"}, "open": {"sales.daily"}}, true)
+	if code != http.StatusOK {
+		t.Fatalf("/sql answered %d", code)
+	}
+	for _, want := range []string{"data-outcome", `data-tab="results"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the answer lacks %s", want)
+		}
+	}
+	for _, gone := range []string{"<html", "<aside", "data-rail", `id="workbench"`} {
+		if strings.Contains(body, gone) {
+			t.Errorf("the answer carries %s, which is the page around it", gone)
+		}
+	}
+	if asked(w.calls, "/v1/objects") || asked(w.calls, "/v1/columns") {
+		t.Errorf("the warehouse was asked for metadata nobody will draw: %v", w.calls)
+	}
+	if len(w.calls) != 1 {
+		t.Errorf("the warehouse was asked %d things for one statement: %v", len(w.calls), w.calls)
+	}
+}
+
+// WITHOUT THE HEADER, A RUN IS WHAT IT ALWAYS WAS: the whole workbench, tree
+// and all. That is the path with no script, and it does not change.
+func TestWithoutTheHeaderARunDrawsTheWholeWorkbench(t *testing.T) {
+	w, ui := browsing(t)
+	code, body := submit(t, ui, url.Values{"target": {probeTarget}, "q": {"SELECT 1"}}, false)
+	if code != http.StatusOK {
+		t.Fatalf("/sql answered %d", code)
+	}
+	if !strings.Contains(body, "<html") || !strings.Contains(body, "data-answer") {
+		t.Error("a run without the header no longer draws the workbench")
+	}
+	if !asked(w.calls, "/v1/objects") {
+		t.Error("a full run no longer draws the tree")
+	}
+}
+
+// THE REFUSALS DO NOT CHANGE WITH THE SHAPE. A body naming a connection the
+// catalog does not know is refused in the pane, as on the full page; a
+// statement past the ceiling is the same 400.
+func TestTheAnswerAloneKeepsEveryRefusal(t *testing.T) {
+	w, ui := browsing(t)
+	code, body := submit(t, ui, url.Values{"target": {"postgres://not-in-the-catalog"}, "q": {"SELECT 1"}}, true)
+	if code != http.StatusOK || !strings.Contains(body, strings.SplitN(pages.Unknown, ".", 2)[0]) {
+		t.Errorf("an unknown connection is not refused in the pane: %d %q", code, body)
+	}
+	if len(w.calls) != 0 {
+		t.Errorf("a refused body still reached the warehouse: %v", w.calls)
+	}
+
+	code, _ = submit(t, ui, url.Values{"target": {probeTarget}, "q": {strings.Repeat("x", 70<<10)}}, true)
+	if code != http.StatusBadRequest {
+		t.Errorf("a statement past the ceiling answered %d with the header", code)
+	}
+}
+
+// A GET IGNORES THE HEADER: it runs nothing and draws the workbench, because
+// the answer to opening a screen is the screen.
+func TestAGetIgnoresTheFragmentHeader(t *testing.T) {
+	w, ui := browsing(t)
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	r := httptest.NewRequest(http.MethodGet, "/sql", nil)
+	r.Header.Set("X-Brevis-Fragment", "answer")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, r)
+	if !strings.Contains(rec.Body.String(), "<html") {
+		t.Error("a GET with the header did not draw the workbench")
+	}
+	for _, c := range w.calls {
+		if c != "/v1/objects" {
+			t.Errorf("a GET asked the warehouse %s", c)
 		}
 	}
 }
