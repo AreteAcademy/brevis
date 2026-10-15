@@ -275,3 +275,33 @@ func TestConcurrentPublishesOfOneGatewayAllSucceed(t *testing.T) {
 		t.Errorf("%d line(s) repeat the one before them", n)
 	}
 }
+
+// THE STREAMS LIST READS EVERY STREAM'S CONFIGURATION IN ONE QUERY, keyed by
+// gateway and path, with its notes; a version-1 stream has none.
+func TestStreamConfigsAreEveryStreamsCurrentConfiguration(t *testing.T) {
+	pool := gatewaysDB(t)
+	ctx := context.Background()
+	repo := postgres.NewGatewayRepo(pool)
+	if err := repo.Publish(ctx, v2(configured("1m", map[string]string{"buffer.flush.every": "a minute"})), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	old := catalog.ManifestStream{Path: "/v1/clicks", Destinations: []catalog.ManifestDestination{
+		{Role: "sink", Kind: "pubsub", Target: target("pubsub://acme/clicks")}}}
+	other := manifest(old)
+	other.Gateway = "legacy_edge"
+	if err := repo.Publish(ctx, other, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := postgres.NewReadRepo(pool).StreamConfigs(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := got[postgres.StreamKey{Gateway: "edge", Path: "/v1/tables"}]
+	if c == nil || len(c.Fields) != 3 || c.Notes["buffer.flush.every"] != "a minute" {
+		t.Fatalf("edge /v1/tables = %+v", c)
+	}
+	if v1, ok := got[postgres.StreamKey{Gateway: "legacy_edge", Path: "/v1/clicks"}]; ok && v1 != nil {
+		t.Errorf("a version-1 stream has a configuration: %+v", v1)
+	}
+}

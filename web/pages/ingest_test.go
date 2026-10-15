@@ -206,3 +206,53 @@ func TestALoadsTabsStayOnItsPage(t *testing.T) {
 		t.Errorf("tab link with a target = %q", got)
 	}
 }
+
+// THE STREAMS LIST: one section per gateway, one card per stream -- its path,
+// format, hook and a compact flow with the dead letter hanging off the
+// destination -- and no dead letter as a card of its own. Traffic is named
+// where it lives, never drawn.
+func TestTheStreamsListDrawsEachStreamWithItsDeadLetter(t *testing.T) {
+	v := BuildStreams(printFixtures(time.Now())).Apply(StreamFilter{})
+	page := draw(t, Streams(v))
+	if n := strings.Count(page, "data-stream-card"); n != 3 {
+		t.Fatalf("%d stream cards, want 3 (a dead letter became a card?)", n)
+	}
+	at := strings.Index(page, `data-stream-card="events_gateway /v1/clicks"`)
+	end := strings.Index(page[at:], `data-stream-card="events_gateway /v1/orders"`)
+	if at < 0 || end < 0 {
+		t.Fatal("the clicks and orders cards are not in order")
+	}
+	clicks := page[at : at+end]
+	for _, want := range []string{"POST", "/v1/clicks", "json", "enrich_clicks", "pubsub://brevis-local/clicks",
+		"file:///var/dead-letter/clicks/", "refused batches", `href="/ingest/streams/events_gateway/v1/clicks#config"`} {
+		if !strings.Contains(clicks, want) {
+			t.Errorf("the clicks card has no %s", want)
+		}
+	}
+	for _, want := range []string{`data-filter-group="events_gateway"`, "2 streams", "brevis_gateway_", "/metrics",
+		"3 streams", "2 gateways", "2 with a dead letter", `data-filter-for="stream-cards"`} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the streams list has no %s", want)
+		}
+	}
+	// The stream with no configuration still draws where it lands.
+	if !strings.Contains(page, "bigquery://zarv-development-94b6/bronze/*") {
+		t.Error("a stream with no configuration is not drawn")
+	}
+}
+
+// THE FILTERS: a kind narrows to the streams whose sink is of it; the search
+// looks in the path, the sink, the dead letter and the gateway, and hides.
+func TestTheStreamsListFilters(t *testing.T) {
+	v := BuildStreams(printFixtures(time.Now()))
+	pubsub := draw(t, Streams(v.Apply(StreamFilter{Kind: "pubsub"})))
+	if strings.Count(pubsub, "data-stream-card") != 1 || strings.Contains(pubsub, `data-filter-group="zarv_ingestion_dev"`) {
+		t.Error("the pubsub filter did not narrow to the one pubsub stream")
+	}
+	if got := v.Apply(StreamFilter{Q: "dead-letter/orders"}).Shown(); got != 1 {
+		t.Errorf("searching a dead letter shows %d streams, want 1", got)
+	}
+	if got := (StreamFilter{Q: "x"}).With("kind", "postgres"); got != "/ingest/streams?kind=postgres&q=x" {
+		t.Errorf("a filter link = %q", got)
+	}
+}

@@ -101,6 +101,7 @@ type AlertsReader interface {
 type CatalogReader interface {
 	Catalog(ctx context.Context) ([]postgres.CatalogEntry, error)
 	CatalogTarget(ctx context.Context, target string) (*postgres.TargetDetail, error)
+	StreamConfigs(ctx context.Context) (map[postgres.StreamKey]*postgres.WriterConfig, error)
 }
 
 // Actions are the two effects the screen triggers. A small interface on purpose:
@@ -246,6 +247,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	// path, and would redirect /data/bigquery://… to /data/bigquery:/….
 	mux.HandleFunc("GET /data/target", u.dataTarget)
 	mux.HandleFunc("GET /ingest/loads", u.loads)
+	mux.HandleFunc("GET /ingest/streams", u.streams)
 	mux.HandleFunc("GET /ingest/loads/{workflow}/{step}", u.loadDetail)
 	mux.HandleFunc("GET /data/endpoints", u.dataEndpoints)
 	mux.HandleFunc("GET /data/endpoints/{api}/{name}", u.dataEndpoint)
@@ -309,6 +311,27 @@ func (u *UI) loads(w http.ResponseWriter, r *http.Request) {
 	f := pages.ParseDataFilter(r.URL.Query())
 	f.Path = "/ingest/loads"
 	u.render(w, r, pages.Loads(pages.BuildLoads(entries, time.Now()).Apply(f)))
+}
+
+// streams is Ingest → Streams: every gateway stream with its sink and dead
+// letter, regrouped from the catalog read, its configuration from the one
+// read of every stream's.
+func (u *UI) streams(w http.ResponseWriter, r *http.Request) {
+	var entries []postgres.CatalogEntry
+	if u.catalog != nil {
+		var err error
+		if entries, err = u.catalog.Catalog(r.Context()); err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		configs, err := u.catalog.StreamConfigs(r.Context())
+		if err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		pages.AttachStreamConfigs(entries, configs)
+	}
+	u.render(w, r, pages.Streams(pages.BuildStreams(entries).Apply(pages.ParseStreamFilter(r.URL.Query()))))
 }
 
 // dataEndpoints is Data → Endpoints.

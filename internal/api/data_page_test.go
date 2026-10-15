@@ -15,6 +15,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/api"
 	"github.com/AreteAcademy/brevis/internal/branding"
+	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 )
@@ -25,6 +26,12 @@ type catalogFake struct {
 
 	detail *postgres.TargetDetail
 	asked  *string
+
+	streams map[postgres.StreamKey]*postgres.WriterConfig
+}
+
+func (c catalogFake) StreamConfigs(context.Context) (map[postgres.StreamKey]*postgres.WriterConfig, error) {
+	return c.streams, nil
 }
 
 func (c catalogFake) Catalog(context.Context) ([]postgres.CatalogEntry, error) {
@@ -484,5 +491,23 @@ func TestTheLoadsPageAnswers(t *testing.T) {
 		if !strings.Contains(strip(raw), want) {
 			t.Errorf("ui.js has no %s", want)
 		}
+	}
+}
+
+// /ingest/streams ANSWERS, and fills each stream's configuration from the one
+// read of every stream's.
+func TestTheStreamsPageAnswers(t *testing.T) {
+	entries := []postgres.CatalogEntry{
+		{Target: "pubsub://local/clicks", Kind: "pubsub", Writers: []postgres.CatalogWriter{{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/clicks", Role: "sink"}}}},
+		{Target: "file:///dl/clicks/", Kind: "file", Writers: []postgres.CatalogWriter{{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/clicks", Role: "dead_letter"}}}},
+	}
+	cfg := &postgres.WriterConfig{Fields: []catalog.ManifestField{{Path: "format", Value: "ndjson"}, {Path: "sink.type", Value: "pubsub"}}}
+	ui := dataUI(catalogFake{entries: entries, streams: map[postgres.StreamKey]*postgres.WriterConfig{{Gateway: "edge", Path: "/v1/clicks"}: cfg}})
+	code, body := get(t, ui, "/ingest/streams")
+	if code != http.StatusOK {
+		t.Fatalf("/ingest/streams answered %d", code)
+	}
+	if strings.Count(body, "data-stream-card") != 1 || !strings.Contains(body, "ndjson") {
+		t.Error("the stream is not drawn once, with its configuration")
 	}
 }
