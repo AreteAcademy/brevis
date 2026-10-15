@@ -387,4 +387,37 @@
     box.focus();
     if (typeof box.select === "function") box.select();
   });
+
+  // ------------------------------------------------------------------
+  // Copy buttons
+  //
+  // A code block's copy button is `hidden` in the markup: without this file
+  // it would be a button that does nothing. Here it is revealed, and a click
+  // copies the text of the element its `data-copy` names. The button says
+  // "Copied" for a moment, in its label as well as its tooltip, so the
+  // confirmation is heard and not only seen.
+  // ------------------------------------------------------------------
+
+  document.querySelectorAll("[data-copy]").forEach(function (b) {
+    if (b.parentElement) b.parentElement.removeAttribute("hidden");
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!e.target || typeof e.target.closest !== "function") return;
+    var b = e.target.closest("[data-copy]");
+    if (!b || !navigator.clipboard) return;
+    var src = document.querySelector(b.getAttribute("data-copy"));
+    if (!src) return;
+    navigator.clipboard.writeText(src.textContent).then(function () {
+      var label = b.getAttribute("aria-label");
+      b.setAttribute("aria-label", "Copied");
+      b.setAttribute("title", "Copied");
+      b.setAttribute("data-copied", "");
+      setTimeout(function () {
+        b.setAttribute("aria-label", label);
+        b.setAttribute("title", label);
+        b.removeAttribute("data-copied");
+      }, 1500);
+    });
+  });
 })();

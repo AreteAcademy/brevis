@@ -44,7 +44,7 @@ func State(status string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var2 = []any{"inline-flex items-center gap-1.5 rounded-card border px-2.5 py-0.5 text-xs font-medium", stateClass(status)}
+		var templ_7745c5c3_Var2 = []any{"inline-flex items-center gap-1.5 rounded-card px-2 py-0.5 text-xs font-medium", stateClass(status)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -194,21 +194,21 @@ func stateLabel(s string) string {
 func stateClass(s string) string {
 	switch s {
 	case "success":
-		return "border-state-success/25 bg-state-success/10 text-state-success"
+		return "bg-state-success/13 text-state-success"
 	case "failed":
-		return "border-state-failed/25 bg-state-failed/10 text-state-failed"
+		return "bg-state-failed/13 text-state-failed"
 	case "running":
-		return "border-state-running/25 bg-state-running/10 text-state-running"
+		return "bg-state-running/13 text-state-running"
 	case "queued":
-		return "border-state-queued/25 bg-state-queued/10 text-state-queued"
+		return "bg-state-queued/13 text-state-queued"
 	case "retrying":
-		return "border-state-retrying/25 bg-state-retrying/10 text-state-retrying"
+		return "bg-state-retrying/13 text-state-retrying"
 	case "canceled":
-		return "border-state-canceled/25 bg-state-canceled/10 text-state-canceled"
+		return "bg-state-canceled/13 text-state-canceled"
 	case "skipped":
-		return "border-state-skipped/25 bg-state-skipped/10 text-state-skipped"
+		return "bg-state-skipped/13 text-state-skipped"
 	}
-	return "border-line bg-parchment text-muted"
+	return "bg-surface-2 text-muted"
 }
 
 func stateDot(s string) string {
