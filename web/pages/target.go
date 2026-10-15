@@ -212,11 +212,13 @@ func BuildTarget(d postgres.TargetDetail, now time.Time) TargetView {
 		switch g := w.Gateway; {
 		case g != nil && g.Config != nil:
 			v.Configs = append(v.Configs, WriterConfigView{Gateway: g.Name, Stream: g.Stream,
-				Role: g.Role, PublishedAt: g.PublishedAt, Described: true, Config: BuildConfig(g.Config)})
+				Role: g.Role, PublishedAt: g.PublishedAt, Described: true, Config: BuildConfig(g.Config),
+				Flow: FlowOf(g.Config, d.Target)})
 		case g == nil:
 			c := WriterConfigView{Workflow: w.Workflow, Node: w.Node, Described: w.Config != nil}
 			if w.Config != nil {
 				c.Config = BuildConfig(w.Config)
+				c.Flow = FlowOf(w.Config, d.Target)
 			}
 			v.Configs = append(v.Configs, c)
 		}

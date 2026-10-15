@@ -890,3 +890,44 @@ li.CodeMirror-hint-active {
 .palette::backdrop {
   background: rgb(0 0 0 / 0.5);
 }
+
+/* A WRITER'S FLOW, on a dot grid like the graph's ground. The connectors are
+   drawn here and not in markup: one line before every step but the first,
+   across from 700px and down below it, where the steps stack. */
+.flow-ground {
+  background-image: radial-gradient(var(--color-line-soft) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+.flow-step {
+  position: relative;
+}
+.flow-step + .flow-step::before {
+  content: "";
+  position: absolute;
+  background: var(--color-line-strong);
+  left: 50%;
+  top: -0.75rem;
+  width: 1px;
+  height: 0.75rem;
+}
+@media (min-width: 700px) {
+  .flow-step + .flow-step::before {
+    left: -0.75rem;
+    top: 50%;
+    width: 0.75rem;
+    height: 1px;
+  }
+}
+/* The dead letter hangs off the destination by a dashed line, in the
+   colour of what travels down it: refused batches. */
+.flow-branch {
+  position: relative;
+}
+.flow-branch::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -0.75rem;
+  height: 0.75rem;
+  border-left: 1px dashed var(--color-state-failed);
+}

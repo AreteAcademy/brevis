@@ -121,3 +121,24 @@ func joinWords(sep string, parts ...string) string {
 	}
 	return strings.Join(kept, sep)
 }
+
+// flowIcon is a node's glyph.
+func flowIcon(kind string) string {
+	switch kind {
+	case "source":
+		return "plug"
+	case "buffer":
+		return "rows-3"
+	case "dead_letter":
+		return "triangle-alert"
+	}
+	return "database"
+}
+
+// flowBorder marks the destination: the node the page is about.
+func flowBorder(kind string) string {
+	if kind == "destination" {
+		return "border-accent-strong"
+	}
+	return "border-line"
+}

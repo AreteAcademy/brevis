@@ -194,6 +194,9 @@ templ configurations(v TargetView) {
 			} else {
 				<div class="divide-y divide-line-soft rounded-card border border-line bg-surface shadow-warm-sm">
 					<p class="px-4 py-3 text-sm text-ink sm:px-6" data-summary>{ c.Config.Summary }</p>
+					if c.Flow != nil {
+						@flowDiagram(c.Flow)
+					}
 					if dl := c.Config.DeadLetter; c.Gateway != "" && dl != nil {
 						@deadLetterPanel(dl)
 					}
@@ -395,6 +398,41 @@ templ deadLetterPanel(dl *DeadLetterView) {
 			<p class="mt-2 text-xs text-muted">
 				gateway deadletter reads back only a files dead letter (a directory, gs:// or s3://); this one is read with the destination's own tools.
 			</p>
+		}
+	</div>
+}
+
+// flowDiagram draws a writer's Flow: the nodes left to right (top to bottom
+// on a narrow screen), the destination marked, and the dead letter as a
+// dashed branch under it. Server-drawn boxes, not the graph island: four
+// nodes in a row need no layout engine, and the page works with no script.
+templ flowDiagram(f *Flow) {
+	<div data-flow class="flow-ground px-4 py-4 sm:px-6">
+		<ol class="flex flex-col gap-3 min-[700px]:flex-row min-[700px]:items-stretch">
+			for _, n := range f.Nodes {
+				<li data-flow-node={ n.Kind } class={ "flow-step min-w-0 flex-1 rounded-card border bg-surface px-3 py-2", flowBorder(n.Kind) }>
+					<p class="flex items-center gap-1.5 text-[0.68rem] font-medium tracking-[0.08em] text-muted uppercase">
+						@components.Icon(flowIcon(n.Kind), "h-3.5 w-3.5")
+						{ n.Title }
+					</p>
+					<p class="mt-1 font-mono text-[0.78rem] break-all text-ink">{ n.Main }</p>
+					if n.Detail != "" {
+						<p class="mt-0.5 text-[0.72rem] text-muted">{ n.Detail }</p>
+					}
+				</li>
+			}
+		</ol>
+		if dl := f.DeadLetter; dl != nil {
+			<div class="mt-3 flex min-[700px]:justify-end">
+				<div data-flow-node={ dl.Kind } class="flow-branch w-full min-w-0 rounded-card border border-dashed border-line px-3 py-2 min-[700px]:w-[calc((100%-1.5rem)/3)]">
+					<p class="flex items-center gap-1.5 text-[0.68rem] font-medium tracking-[0.08em] text-muted uppercase">
+						@components.Icon(flowIcon(dl.Kind), "h-3.5 w-3.5")
+						{ dl.Title }
+					</p>
+					<p class="mt-1 font-mono text-[0.78rem] break-all text-ink">{ dl.Main }</p>
+					<p class="mt-0.5 text-[0.72rem] text-state-failed">{ dl.Detail }</p>
+				</div>
+			</div>
 		}
 	</div>
 }
