@@ -61,6 +61,7 @@ type Leitura interface {
 	CountRuns(ctx context.Context, f postgres.RunFilter) (int, error)
 	WorkflowRuns(ctx context.Context, slug string, limite int) ([]postgres.RunSummary, error)
 	Workflows(ctx context.Context) ([]postgres.WorkflowSummary, error)
+	RecentStates(ctx context.Context, slugs []string, n int) (map[string][]postgres.RecentRun, error)
 	Schedules(ctx context.Context) ([]postgres.ScheduleSummary, error)
 	Projects(ctx context.Context) ([]postgres.ProjectSummary, error)
 	QueueDepth(ctx context.Context) (int, int, error)
@@ -868,11 +869,21 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 	filtered := filtrar(all, f)
 	sortBy(filtered, f)
 	ws, tags, counts := recortar(filtered, f), tagsDe(all), contar(all, f)
-	if fragment(r) == "answer" {
-		u.render(w, r, pages.WorkflowsList(ws, tags, f, counts, len(all), len(filtered)))
+	// The strip of last runs is read for the page's rows only, in one query.
+	slugs := make([]string, len(ws))
+	for i, wf := range ws {
+		slugs[i] = wf.Slug
+	}
+	recent, err := u.leitura.RecentStates(r.Context(), slugs, pages.RecentRuns)
+	if err != nil {
+		u.failure(w, r, err)
 		return
 	}
-	u.render(w, r, pages.Workflows(ws, tags, f, counts, len(all), len(filtered)))
+	if fragment(r) == "answer" {
+		u.render(w, r, pages.WorkflowsList(ws, tags, f, counts, recent, len(all), len(filtered)))
+		return
+	}
+	u.render(w, r, pages.Workflows(ws, tags, f, counts, recent, len(all), len(filtered)))
 }
 
 // contar is how many workflows each state and schedule choice would show:
