@@ -26,6 +26,7 @@ templ StreamPage(v StreamView) {
 				<span>published { components.UTCStamp(&v.PublishedAt) }</span>
 			}
 		</p>
+		@testEventDrawer(v)
 		<div data-hash-tabs>
 			<div data-hash-tabs-bar hidden class="mb-5">
 				@components.Tabs("Stream", []components.Tab{
@@ -121,13 +122,69 @@ templ streamEyebrow(v StreamView) {
 	<span class="font-mono text-[0.75rem] text-ink-2">{ v.Gateway }</span>
 }
 
-// streamActions are the page's verbs: query the sink, where SQL can read it
-// and a SQL service answers for it.
+// streamActions are the page's verbs: a test event to copy, and a query of
+// the sink where SQL can read it and a SQL service answers for it.
 templ streamActions(v StreamView) {
+	<a href="#test-event" data-dialogo="test-event" aria-haspopup="dialog" class={ components.ButtonClass(components.ButtonSecondary, components.SizeRegular) }>
+		@components.Icon("terminal", "h-3.5 w-3.5")
+		Send test event
+	</a>
 	if v.SQL && v.Queryable() {
 		@components.ButtonLink(components.ButtonPrimary, components.SizeRegular, v.QueryHref()) {
 			@components.Icon("terminal", "h-3.5 w-3.5")
 			Query destination
 		}
 	}
+}
+
+// testEventDrawer is an example event in the stream's format and the curl that
+// would send it. IT SENDS NOTHING: no form, no fetch -- the console holds no
+// token for the gateway and does not know where it listens. ui.js validates
+// the body against the format as it is edited and rebuilds the curl; with no
+// script, #test-event shows the example and its curl in place.
+templ testEventDrawer(v StreamView) {
+	<dialog
+		id="test-event"
+		aria-labelledby="test-event-title"
+		class="run-drawer fixed inset-y-0 right-0 left-auto m-0 h-full max-h-none w-[min(520px,100vw)] border-l border-line bg-surface p-0 text-ink backdrop:bg-ink/40"
+	>
+		<div class="flex h-full flex-col">
+			<div class="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
+				<div class="min-w-0">
+					<p id="test-event-title" class="text-[0.95rem] font-medium text-ink">Send a test event</p>
+					<p class="truncate font-mono text-[0.75rem] text-muted">POST { v.Path } · { v.TestFormat() }</p>
+				</div>
+				<form method="dialog">
+					<button type="submit" aria-label="Close" class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+						@components.Icon("x", "h-4 w-4")
+					</button>
+				</form>
+			</div>
+			<div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+				<label class="flex flex-col gap-1.5">
+					<span class="text-[0.78rem] text-muted">Body</span>
+					<textarea
+						data-test-body
+						data-test-format={ v.TestFormat() }
+						rows="8"
+						spellcheck="false"
+						class="w-full rounded-card border border-line bg-canvas px-3 py-2 font-mono text-[0.78rem] text-ink focus:border-accent-strong focus:outline-none"
+					>{ v.TestBody() }</textarea>
+				</label>
+				<p data-test-status class="text-[0.75rem] text-muted" aria-live="polite"></p>
+				<div>
+					<div class="mb-1.5 flex items-center justify-between">
+						<span class="text-[0.78rem] text-muted">Send it with</span>
+						<span hidden>
+							@components.IconButton("Copy the curl", "copy", templ.Attributes{"data-copy": "#test-event-curl"})
+						</span>
+					</div>
+					<pre class="overflow-x-auto rounded-card border border-line-soft bg-canvas px-3 py-2 font-mono text-[0.72rem] text-ink-2"><code id="test-event-curl" data-test-curl data-test-curl-head={ v.TestCurlHead() }>{ v.TestCurl() }</code></pre>
+				</div>
+				<p class="text-[0.75rem] text-muted">
+					The console sends nothing. Set <code class="font-mono">$GATEWAY</code> to where the gateway listens and, when its <code class="font-mono">listen.auth</code> is bearer, <code class="font-mono">$GATEWAY_TOKEN</code> to its token, then run it. The event lands in <span class="font-mono">{ v.Sink.URI }</span> like any other.
+				</p>
+			</div>
+		</div>
+	</dialog>
 }

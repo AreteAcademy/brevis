@@ -315,3 +315,48 @@ func TestAStreamQueriesOnlyATable(t *testing.T) {
 		t.Error("a Postgres sink offers no query")
 	}
 }
+
+// SEND TEST EVENT IS A DRAWER THAT SENDS NOTHING: a body in the stream's own
+// format, validated as you type, and the curl that would send it -- with
+// $GATEWAY and $GATEWAY_TOKEN where the console does not know the address or
+// the token. No form, no action: the console posts nothing.
+func TestTheTestEventDrawerSendsNothing(t *testing.T) {
+	s := StreamsOf(printFixtures(time.Now()))[0].Streams[0] // clicks, json
+	page := draw(t, StreamPage(BuildStream(s, nil)))
+	if !strings.Contains(page, `href="#test-event"`) || !strings.Contains(page, `data-dialogo="test-event"`) {
+		t.Error("there is no Send test event action")
+	}
+	at := strings.Index(page, `<dialog id="test-event"`)
+	if at < 0 {
+		t.Fatal("there is no drawer")
+	}
+	d := page[at : at+strings.Index(page[at:], "</dialog>")]
+	for _, want := range []string{`data-test-body`, `data-test-format="json"`, `data-test-status`, `data-test-curl`,
+		`$GATEWAY/v1/clicks`, `$GATEWAY_TOKEN`, "--data-binary @-", `{&#34;event&#34;: &#34;test&#34;}`} {
+		if !strings.Contains(d, want) {
+			t.Errorf("the drawer has no %s", want)
+		}
+	}
+	if strings.Contains(d, `method="post"`) || strings.Contains(d, "action=") {
+		t.Error("the drawer can post")
+	}
+}
+
+// THE EXAMPLE IS IN THE STREAM'S FORMAT: a list for `array`, one object per
+// line for `ndjson`, and the source key an identity declares filled in.
+func TestTheTestEventExampleFollowsTheFormat(t *testing.T) {
+	for _, c := range []struct{ format, key, want string }{
+		{"array", "", `[{"event": "test"}]`},
+		{"ndjson", "", "{\"event\": \"test\"}\n{\"event\": \"test\"}"},
+		{"json", "table_name", `{"event": "test", "table_name": "test"}`},
+	} {
+		f := []catalog.ManifestField{{Path: "format", Value: c.format}}
+		if c.key != "" {
+			f = append(f, catalog.ManifestField{Path: "identity.source_key", Value: c.key})
+		}
+		v := StreamView{Stream: Stream{Path: "/v1/x", Config: &postgres.WriterConfig{Fields: f}}}
+		if got := v.TestBody(); got != c.want {
+			t.Errorf("%s example = %q, want %q", c.format, got, c.want)
+		}
+	}
+}

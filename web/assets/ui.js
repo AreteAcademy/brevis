@@ -743,6 +743,47 @@
     });
   });
 
+  // The test event (`[data-test-body]`): the body is checked against the
+  // stream's format as it is edited -- one object for json, a list of them
+  // for array, one object per line for ndjson -- and the curl under it is
+  // rebuilt from its head and the body. Nothing is sent from here.
+  function testEvent(box) {
+    var drawer = box.closest("dialog") || document;
+    var status = drawer.querySelector("[data-test-status]");
+    var curl = drawer.querySelector("[data-test-curl]");
+    var body = box.value.replace(/\s+$/, "");
+    var problem = "";
+    var isObject = function (v) { return v !== null && typeof v === "object" && !Array.isArray(v); };
+    try {
+      switch (box.getAttribute("data-test-format")) {
+        case "array":
+          var list = JSON.parse(body);
+          if (!Array.isArray(list)) problem = "an array stream takes a JSON list of events";
+          else if (!list.every(isObject)) problem = "every item of the list has to be an object";
+          break;
+        case "ndjson":
+          body.split("\n").forEach(function (line, i) {
+            if (problem || line.trim() === "") return;
+            try {
+              if (!isObject(JSON.parse(line))) problem = "line " + (i + 1) + " is not an object";
+            } catch (e) { problem = "line " + (i + 1) + ": " + e.message; }
+          });
+          break;
+        default:
+          if (!isObject(JSON.parse(body))) problem = "a json stream takes one object per request";
+      }
+    } catch (e) { problem = e.message; }
+    if (status) {
+      status.textContent = problem ? "Not valid: " + problem : "Valid " + box.getAttribute("data-test-format") + ".";
+      status.className = "text-[0.75rem] " + (problem ? "text-state-failed" : "text-state-success");
+    }
+    if (curl) curl.textContent = curl.getAttribute("data-test-curl-head") + "\n" + body + "\nEOF";
+  }
+  document.querySelectorAll("[data-test-body]").forEach(function (box) {
+    testEvent(box);
+    box.addEventListener("input", function () { testEvent(box); });
+  });
+
   // A form that answers while somebody types (`form[data-swap-typing]`):
   // a pause of 200 ms in its search box submits it, so a word is one request
   // and not one per letter. The server answers, so a paginated list is

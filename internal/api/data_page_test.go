@@ -530,7 +530,7 @@ func TestTheStreamPageAnswers(t *testing.T) {
 		t.Errorf("an unknown stream answered %d", code)
 	}
 	_, js := get(t, ui, "/assets/ui.js")
-	for _, want := range []string{"[data-hash-tabs]", "hashchange", "[data-tab-panel]"} {
+	for _, want := range []string{"[data-hash-tabs]", "hashchange", "[data-tab-panel]", "[data-test-body]"} {
 		if !strings.Contains(strip(js), want) {
 			t.Errorf("ui.js has no %s", want)
 		}
