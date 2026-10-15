@@ -244,6 +244,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	// A query parameter and not a path wildcard: ServeMux cleans `//` out of a
 	// path, and would redirect /data/bigquery://… to /data/bigquery:/….
 	mux.HandleFunc("GET /data/target", u.dataTarget)
+	mux.HandleFunc("GET /ingest/loads", u.loads)
 	mux.HandleFunc("GET /data/endpoints", u.dataEndpoints)
 	mux.HandleFunc("GET /data/endpoints/{api}/{name}", u.dataEndpoint)
 	if u.gallery {
@@ -290,6 +291,22 @@ func (u *UI) data(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	u.render(w, r, pages.Data(pages.BuildData(entries, time.Now()).Apply(pages.ParseDataFilter(r.URL.Query()))))
+}
+
+// loads is Ingest → Loads: what the workflows wrote, by workflow. The same
+// catalog read Catalog draws, regrouped; the filter is Catalog's, on this URL.
+func (u *UI) loads(w http.ResponseWriter, r *http.Request) {
+	var entries []postgres.CatalogEntry
+	if u.catalog != nil {
+		var err error
+		if entries, err = u.catalog.Catalog(r.Context()); err != nil {
+			u.failure(w, r, err)
+			return
+		}
+	}
+	f := pages.ParseDataFilter(r.URL.Query())
+	f.Path = "/ingest/loads"
+	u.render(w, r, pages.Loads(pages.BuildLoads(entries, time.Now()).Apply(f)))
 }
 
 // dataEndpoints is Data → Endpoints.

@@ -8,6 +8,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/components"
 )
 
 // Ingest is what Catalog was, read as the two mechanisms it mixed: gateway
@@ -236,4 +237,152 @@ func LoadsOf(entries []postgres.CatalogEntry, now time.Time) []LoadGroup {
 		out = append(out, *g)
 	}
 	return out
+}
+
+// LoadsView is /ingest/loads as the template draws it: the workflows and their
+// loads under the filter, and the counts of every load whatever is shown.
+type LoadsView struct {
+	Groups []LoadGroupView
+	Counts map[catalog.Status]int
+
+	// Total is every load and Workflows every workflow that writes one.
+	Total, Workflows int
+
+	Kinds     []string
+	HasLegacy bool
+	Filter    DataFilter
+}
+
+// LoadGroupView is one workflow's group under the filter. Hidden is a group
+// the search hides every row of: drawn hidden, so deleting a letter brings it
+// back.
+type LoadGroupView struct {
+	LoadGroup
+	Rows   []LoadRow
+	Hidden bool
+}
+
+// LoadRow is one load under the filter.
+type LoadRow struct {
+	LoadTarget
+	Hidden bool
+}
+
+// SearchText is what a search looks in, lower-cased: the workflow, the step
+// and the destination. The same text on the server and in data-filter-text.
+func (t LoadTarget) SearchText() string {
+	return strings.ToLower(t.Workflow + "\n" + t.Step + "\n" + t.URI)
+}
+
+// BuildLoads is every load, counted.
+func BuildLoads(entries []postgres.CatalogEntry, now time.Time) LoadsView {
+	v := LoadsView{Counts: map[catalog.Status]int{}}
+	for _, g := range LoadsOf(entries, now) {
+		gv := LoadGroupView{LoadGroup: g}
+		for _, t := range g.Targets {
+			gv.Rows = append(gv.Rows, LoadRow{LoadTarget: t})
+			v.Counts[t.Status]++
+			v.Total++
+			if t.Kind != "" && !containsString(v.Kinds, t.Kind) {
+				v.Kinds = append(v.Kinds, t.Kind)
+			}
+			v.HasLegacy = v.HasLegacy || t.Legacy
+		}
+		v.Groups = append(v.Groups, gv)
+	}
+	v.Workflows = len(v.Groups)
+	sort.Strings(v.Kinds)
+	return v
+}
+
+// Apply narrows the loads to the filter: status, kind and legacy drop what
+// they exclude (and a group left empty); the search hides. Counts and totals
+// still describe every load.
+func (v LoadsView) Apply(f DataFilter) LoadsView {
+	v.Filter = f
+	groups := make([]LoadGroupView, 0, len(v.Groups))
+	for _, g := range v.Groups {
+		var rows []LoadRow
+		visible := 0
+		for _, r := range g.Rows {
+			if !f.keepsLoad(r.LoadTarget) {
+				continue
+			}
+			r.Hidden = f.Q != "" && !strings.Contains(r.SearchText(), strings.ToLower(f.Q))
+			if !r.Hidden {
+				visible++
+			}
+			rows = append(rows, r)
+		}
+		if len(rows) == 0 {
+			continue
+		}
+		g.Rows, g.Hidden = rows, visible == 0
+		groups = append(groups, g)
+	}
+	v.Groups = groups
+	return v
+}
+
+// Shown is how many loads are drawn visible.
+func (v LoadsView) Shown() int {
+	n := 0
+	for _, g := range v.Groups {
+		for _, r := range g.Rows {
+			if !r.Hidden {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+func (f DataFilter) keepsLoad(t LoadTarget) bool {
+	switch {
+	case f.Status == "attention" && t.Status != catalog.Late && t.Status != catalog.Stale:
+		return false
+	case f.Status != "" && f.Status != "attention" && string(t.Status) != f.Status:
+		return false
+	case f.Kind != "" && t.Kind != f.Kind:
+		return false
+	case f.Legacy && !t.Legacy:
+		return false
+	}
+	return true
+}
+
+// loadStatusOptions is the status filter over loads: everything, what needs a
+// person, then each status present with its count.
+func loadStatusOptions(v LoadsView) []components.SegOption {
+	return statusOptions(DataView{Counts: v.Counts, Filter: v.Filter})
+}
+
+// loadKindOptions and loadLegacyOptions are the kind and label filters.
+func loadKindOptions(v LoadsView) []components.SegOption {
+	return kindOptions(DataView{Kinds: v.Kinds, Filter: v.Filter})
+}
+
+func loadLegacyOptions(v LoadsView) []components.SegOption {
+	return legacyOptions(DataView{Filter: v.Filter})
+}
+
+// groupSchedule is a workflow's schedule as the group header says it: in
+// words where they are sure, the expression otherwise, "manual" with none.
+func groupSchedule(g LoadGroup) string {
+	if g.Cron == "" {
+		return "manual"
+	}
+	if words := CronText(g.Cron); words != "" {
+		return words + zoneSuffix(g.Timezone)
+	}
+	return g.Cron
+}
+
+func containsString(list []string, s string) bool {
+	for _, x := range list {
+		if x == s {
+			return true
+		}
+	}
+	return false
 }

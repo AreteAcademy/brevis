@@ -171,6 +171,10 @@ type DataFilter struct {
 	// Q searches the URI and the writers -- workflow, step, gateway and its
 	// stream -- case-insensitively. "" is no search.
 	Q string
+
+	// Path is the page the filter's links go to; "" is /data. The loads list
+	// filters the same way and keeps its links on itself.
+	Path string
 }
 
 // searchCeiling bounds what a search may be: it is matched against every row,
@@ -227,10 +231,14 @@ func (f DataFilter) With(field, value string) string {
 	if f.Q != "" {
 		parts = append(parts, "q="+url.QueryEscape(f.Q))
 	}
-	if len(parts) == 0 {
-		return "/data"
+	base := f.Path
+	if base == "" {
+		base = "/data"
 	}
-	return "/data?" + strings.Join(parts, "&")
+	if len(parts) == 0 {
+		return base
+	}
+	return base + "?" + strings.Join(parts, "&")
 }
 
 // Active reports whether any field is set.
