@@ -54,12 +54,18 @@
   var costWait = null;
   var priced = "";
 
+  // Recent: the rail, its template, its cap and what it lists. Held here
+  // rather than inside wireRecent because a run that replaces the answer
+  // adds to the same list the page loaded with.
+  var recent = { rail: null, tpl: null, cap: 20, list: [] };
+
   // The tree is wired whether or not CodeMirror loaded, so a blocked CDN
   // costs the highlighting and not the screen. Tabs and Recent are the same:
   // both work on the plain textarea.
   wireTree();
   wireChrome();
-  wireResults();
+  wireResultTabs();
+  wirePager(answer());
   wireRecent();
   wireTabs();
   wireCost();
@@ -469,39 +475,53 @@
   // NO SECOND QUERY, EVER. Paging here is `hidden` on rows the server
   // already drew -- a warehouse is not asked again because somebody wanted
   // rows 51 to 100, which is the whole reason the limit exists.
-  function wireResults() {
-    var panel = document.querySelector("[data-pager]");
+  //
+  // WIRED FROM THE ANSWER'S OWN NODE. The tabs are one delegated listener
+  // that finds its pane from the tab clicked; the pager is bound to the pane
+  // it is handed, so an answer that replaces this one brings a pager that is
+  // its own, with no listener left behind on the old.
+  function answer() {
+    return document.querySelector("[data-answer]") || document;
+  }
 
+  function wireResultTabs() {
     document.addEventListener("click", function (ev) {
       var tab = ev.target.closest ? ev.target.closest("[data-tab]") : null;
       if (!tab) return;
       ev.preventDefault();
+      var root = tab.closest("[data-answer]") || document;
       var want = tab.getAttribute("data-tab");
-      document.querySelectorAll("[data-tab]").forEach(function (t) {
+      root.querySelectorAll("[data-tab]").forEach(function (t) {
         t.setAttribute("aria-selected", t.getAttribute("data-tab") === want ? "true" : "false");
       });
-      document.querySelectorAll("[data-panel]").forEach(function (p) {
+      root.querySelectorAll("[data-panel]").forEach(function (p) {
         p.hidden = p.getAttribute("data-panel") !== want;
       });
       // THE PAGER BELONGS TO THE GRID. On the JSON tab there is one block
       // of text and nothing to page through, so offering the control would
       // be offering a control that does nothing.
-      if (panel) panel.hidden = want !== "results" || rows().length <= perPage();
+      var panel = root.querySelector("[data-pager]");
+      if (panel) panel.hidden = want !== "results" || pagerRows(root).length <= perPage(panel);
     });
+  }
 
+  function perPage(panel) {
+    var pick = panel.querySelector("[data-per-page-pick]");
+    return parseInt(pick ? pick.value : panel.getAttribute("data-per-page"), 10) || 50;
+  }
+
+  function pagerRows(root) {
+    return Array.prototype.slice.call(root.querySelectorAll("[data-panel='results'] [data-row]"));
+  }
+
+  function wirePager(root) {
+    var panel = root.querySelector("[data-pager]");
     if (!panel) return;
     var at = 0;
 
-    function perPage() {
-      var pick = panel.querySelector("[data-per-page-pick]");
-      return parseInt(pick ? pick.value : panel.getAttribute("data-per-page"), 10) || 50;
-    }
-    function rows() {
-      return Array.prototype.slice.call(document.querySelectorAll("[data-panel='results'] [data-row]"));
-    }
     function draw() {
-      var all = rows();
-      var size = perPage();
+      var all = pagerRows(root);
+      var size = perPage(panel);
       var last = Math.max(0, Math.ceil(all.length / size) - 1);
       if (at > last) at = last;
       all.forEach(function (row, i) {
@@ -713,46 +733,51 @@
   }
 
   function wireRecent() {
-    var rail = document.querySelector("[data-recent]");
-    var tpl = document.querySelector("[data-recent-template]");
-    if (!rail || !tpl) return;
+    recent.rail = document.querySelector("[data-recent]");
+    recent.tpl = document.querySelector("[data-recent-template]");
+    if (!recent.rail || !recent.tpl) return;
     // THE CAP COMES FROM THE MARKUP, like the grips' floor: a number that
     // lived only here is one the next person changes with nothing on the
     // page to say what it was.
-    var cap = parseInt(rail.getAttribute("data-recent-keep"), 10) || 20;
-    var list = parse(recall("recent"), []);
+    recent.cap = parseInt(recent.rail.getAttribute("data-recent-keep"), 10) || 20;
+    recent.list = parse(recall("recent"), []);
 
-    // WHAT JUST RAN, FROM THE PAGE'S OWN FACTS.
-    //
-    // A reload of this screen re-submits and genuinely runs the query
-    // again, so a second entry is not a duplicate -- it is a second run,
-    // and it was paid for.
-    var ran = document.querySelector("[data-outcome]");
-    if (ran && echoed !== "") {
-      list.unshift({
-        text: echoed,
-        outcome: ran.getAttribute("data-outcome"),
-        // The words the server already wrote. Formatting bytes again here
-        // would be a second rounder, and two rounders disagree eventually.
-        cost: ran.getAttribute("data-cost") || "",
-      });
-      if (list.length > cap) list.length = cap;
-      remember("recent", JSON.stringify(list));
-    }
-
-    rail.hidden = false;
-    drawRecent(rail, tpl, list);
+    recent.rail.hidden = false;
+    addRecent(answer(), echoed);
 
     document.addEventListener("click", function (ev) {
       var btn = ev.target.closest ? ev.target.closest("[data-recent-open]") : null;
       if (!btn) return;
       ev.preventDefault();
-      var entry = list[parseInt(btn.getAttribute("data-recent-at"), 10)];
+      var entry = recent.list[parseInt(btn.getAttribute("data-recent-at"), 10)];
       // IN A NEW TAB, never over what is in the box: the statement somebody
       // is in the middle of writing is not a thing to overwrite with one
       // click.
       if (entry) openTab(entry.text);
     });
+  }
+
+  // WHAT JUST RAN, FROM THE ANSWER'S OWN FACTS: the outcome marker in the
+  // pane it is handed, and the statement that produced it.
+  //
+  // A reload of this screen re-submits and genuinely runs the query again,
+  // so a second entry is not a duplicate -- it is a second run, and it was
+  // paid for.
+  function addRecent(root, statement) {
+    if (!recent.rail || !recent.tpl) return;
+    var ran = root.querySelector("[data-outcome]");
+    if (ran && statement !== "") {
+      recent.list.unshift({
+        text: statement,
+        outcome: ran.getAttribute("data-outcome"),
+        // The words the server already wrote. Formatting bytes again here
+        // would be a second rounder, and two rounders disagree eventually.
+        cost: ran.getAttribute("data-cost") || "",
+      });
+      if (recent.list.length > recent.cap) recent.list.length = recent.cap;
+      remember("recent", JSON.stringify(recent.list));
+    }
+    drawRecent(recent.rail, recent.tpl, recent.list);
   }
 
   function drawRecent(rail, tpl, list) {
