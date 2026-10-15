@@ -249,28 +249,40 @@ templ SQL(v SQLView) {
 						// node and not from the document: a run that replaces
 						// the pane hands it the new one.
 						<div class="workbench-answer" data-answer>
-							// WHAT JUST HAPPENED, AS DATA. The rail is built in the
-							// browser and needs the outcome and the cost; the
-							// sentence under the grid is for a person. Parsing that
-							// sentence back out in JavaScript would break the day
-							// somebody rewords it.
-							//
-							// NOT `data-run`: that is already the Run button.
-							if v.Ran() {
-								<p data-outcome={ v.Outcome() } data-cost={ v.Cost() } hidden></p>
-							}
-							if v.Err != "" {
-								<p class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.Err }</p>
-							} else if v.Result != nil {
-								@results(v)
-							} else {
-								<p class="text-xs text-muted">Nothing has run yet.</p>
-							}
+							@SQLAnswer(v)
 						</div>
 					</section>
 				</div>
 			</div>
 		}
+	}
+}
+
+
+// SQLAnswer is the answer pane's content: what ran, as data for the island,
+// then the refusal, the result or the sentence that says nothing has run.
+//
+// ONE DEFINITION FOR BOTH SHAPES. The workbench draws it inside its pane, and
+// a run that asks for the answer alone (X-Brevis-Fragment: answer) gets
+// exactly this and nothing around it -- so the island swaps in the same
+// markup a reload would have drawn.
+templ SQLAnswer(v SQLView) {
+	// WHAT JUST HAPPENED, AS DATA. The rail is built in the
+	// browser and needs the outcome and the cost; the
+	// sentence under the grid is for a person. Parsing that
+	// sentence back out in JavaScript would break the day
+	// somebody rewords it.
+	//
+	// NOT `data-run`: that is already the Run button.
+	if v.Ran() {
+		<p data-outcome={ v.Outcome() } data-cost={ v.Cost() } hidden></p>
+	}
+	if v.Err != "" {
+		<p class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.Err }</p>
+	} else if v.Result != nil {
+		@results(v)
+	} else {
+		<p class="text-xs text-muted">Nothing has run yet.</p>
 	}
 }
 
