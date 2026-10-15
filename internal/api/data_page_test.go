@@ -511,3 +511,28 @@ func TestTheStreamsPageAnswers(t *testing.T) {
 		t.Error("the stream is not drawn once, with its configuration")
 	}
 }
+
+// A STREAM'S PAGE ANSWERS at /ingest/streams/<gateway>/<path>, reading the
+// sink's detail for the configuration's history; a stream nobody published is
+// not found.
+func TestTheStreamPageAnswers(t *testing.T) {
+	sink := postgres.CatalogEntry{Target: "pubsub://local/clicks", Kind: "pubsub", Writers: []postgres.CatalogWriter{{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/clicks", Role: "sink"}}}}
+	var asked string
+	ui := dataUI(catalogFake{entries: []postgres.CatalogEntry{sink}, detail: &postgres.TargetDetail{CatalogEntry: sink}, asked: &asked})
+	code, body := get(t, ui, "/ingest/streams/edge/v1/clicks")
+	if code != http.StatusOK || !strings.Contains(body, "POST /v1/clicks") {
+		t.Fatalf("the stream page answered %d", code)
+	}
+	if asked != "pubsub://local/clicks" {
+		t.Errorf("the page read %q, want the sink's detail", asked)
+	}
+	if code, _ := get(t, ui, "/ingest/streams/edge/v1/nothing"); code != http.StatusNotFound {
+		t.Errorf("an unknown stream answered %d", code)
+	}
+	_, js := get(t, ui, "/assets/ui.js")
+	for _, want := range []string{"[data-hash-tabs]", "hashchange", "[data-tab-panel]"} {
+		if !strings.Contains(strip(js), want) {
+			t.Errorf("ui.js has no %s", want)
+		}
+	}
+}

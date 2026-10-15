@@ -248,6 +248,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /data/target", u.dataTarget)
 	mux.HandleFunc("GET /ingest/loads", u.loads)
 	mux.HandleFunc("GET /ingest/streams", u.streams)
+	mux.HandleFunc("GET /ingest/streams/{gateway}/{path...}", u.stream)
 	mux.HandleFunc("GET /ingest/loads/{workflow}/{step}", u.loadDetail)
 	mux.HandleFunc("GET /data/endpoints", u.dataEndpoints)
 	mux.HandleFunc("GET /data/endpoints/{api}/{name}", u.dataEndpoint)
@@ -332,6 +333,42 @@ func (u *UI) streams(w http.ResponseWriter, r *http.Request) {
 		pages.AttachStreamConfigs(entries, configs)
 	}
 	u.render(w, r, pages.Streams(pages.BuildStreams(entries).Apply(pages.ParseStreamFilter(r.URL.Query()))))
+}
+
+// stream is one gateway stream's page: /ingest/streams/<gateway>/<path>, the
+// stream's path as the tail. Its sink's detail carries the configuration's
+// history; a stream nobody published is not found.
+func (u *UI) stream(w http.ResponseWriter, r *http.Request) {
+	if u.catalog == nil {
+		http.NotFound(w, r)
+		return
+	}
+	entries, err := u.catalog.Catalog(r.Context())
+	if err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	configs, err := u.catalog.StreamConfigs(r.Context())
+	if err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	pages.AttachStreamConfigs(entries, configs)
+	s := pages.FindStream(pages.StreamsOf(entries), r.PathValue("gateway"), "/"+r.PathValue("path"))
+	if s == nil {
+		http.NotFound(w, r)
+		return
+	}
+	var detail *postgres.TargetDetail
+	if s.Sink.URI != "" {
+		if detail, err = u.catalog.CatalogTarget(r.Context(), s.Sink.URI); err != nil {
+			u.failure(w, r, err)
+			return
+		}
+	}
+	v := pages.BuildStream(*s, detail)
+	v.SQL = s.Sink.URI != "" && u.dataTools(s.Sink.URI)
+	u.render(w, r, pages.StreamPage(v))
 }
 
 // dataEndpoints is Data → Endpoints.
