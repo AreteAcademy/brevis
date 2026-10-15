@@ -1019,7 +1019,6 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
           nodesDraggable: false,
           nodesConnectable: false,
           edgesFocusable: false,
-          onInit: function (instance) { rf.current = instance; },
           onNodeClick: function (_, n) { setSelected(n.id); },
           onPaneClick: function () { setSelected(null); },
         },
