@@ -721,6 +721,70 @@ li.CodeMirror-hint-active {
   display: block;
 }
 
+/* ON A PHONE THE WORKBENCH STACKS.
+
+   Three zones side by side need width, and on a 390px screen the tree took
+   two thirds of it and the editor was a strip. Below 960px the zones go one
+   under the other -- the tree, the editor, the answer, then Recent -- each
+   with a height of its own, and the PAGE scrolls instead of the panes, which
+   is how a phone is read.
+
+   THE GRIPS GO. Dragging a width is meaningless when nothing is beside
+   anything. What a grip stored (--rail, --editor) is left alone in the
+   browser, for the next time this screen is wide.
+
+   Only CSS: the island and its markers are the same on every width. */
+@media (max-width: 959.98px) {
+  main[data-fill] {
+    overflow-y: auto;
+  }
+  main[data-fill] > :last-child {
+    flex: none;
+  }
+  .workbench {
+    flex: none;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .workbench-grip {
+    display: none;
+  }
+  .workbench-rail {
+    width: auto;
+    max-height: 15rem;
+    padding: 0 0 0.75rem;
+    border-right: none;
+    border-bottom: 1px solid var(--color-line-soft);
+  }
+  /* The pane is as tall as what it holds -- the banner, the tabs, the
+     toolbar and the hints vary -- and the editor gets a height of its own,
+     so it is never what is left over. */
+  .workbench-editor {
+    height: auto;
+  }
+  .workbench-editor .CodeMirror {
+    flex: none;
+    height: 14rem;
+  }
+  .workbench-results {
+    flex: none;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .workbench-answer {
+    min-height: 16rem;
+  }
+  .workbench-recent {
+    order: 2;
+    width: auto;
+    max-height: 12rem;
+    margin-right: 0;
+    padding: 0.75rem 0 0;
+    border-right: none;
+    border-top: 1px solid var(--color-line-soft);
+  }
+}
+
 /* The active statement, marked the way the result panel marks its tab: the
    two strips are the same control in two places and should not look like
    two conventions. */
