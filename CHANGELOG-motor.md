@@ -14,6 +14,27 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.27.0] — 2026-10-15
+
+### Added: a destination's page draws how data reaches it (#108)
+
+Each described writer's configuration card on `/data/target` now opens with
+its flow: the source (`POST <path>` and its format for a gateway stream, the
+driver and what it reads for an SDK pipeline), the buffer when its flush is
+configured, the destination, and the dead letter as a dashed branch -- where
+refused batches go.
+
+It draws only what the configuration declares. Every label is a configuration
+field or the destination itself, and a writer that did not describe itself
+(a Python, dbt or shell step) gets no diagram. Drawn on the server, it needs
+no script, and below 700px the nodes stack.
+
+The site's illustrations of the console now use the console's own palette.
+
+No migration. No configuration changes.
+
+---
+
 ## [0.26.0] — 2026-10-15
 
 ### Added: ⌘K goes anywhere in the console (#107)
