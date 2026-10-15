@@ -278,3 +278,27 @@ func shortID(id string) string {
 	}
 	return id
 }
+
+// targetProperties is what the destination is, in the side column: its kind,
+// where it lives and what it is, and the last load. Every value is a
+// machine's, so every one is mono.
+func targetProperties(v TargetView) []components.Def {
+	kind := v.Row.Kind
+	if v.Row.Legacy {
+		kind = "legacy label"
+	}
+	if kind == "" {
+		kind = "—"
+	}
+	where, what := SplitTarget(v.Row.Target)
+	if where == "" {
+		where = "—"
+	}
+	return []components.Def{
+		{Term: "Kind", Value: kind, Mono: true},
+		{Term: "Where", Value: where, Mono: true},
+		{Term: "Object", Value: what, Mono: true},
+		{Term: "Last loaded", Value: components.UTCStamp(v.Row.LastWhen), Mono: true},
+		{Term: "Rows, last load", Value: rowsText(v.Row.LastRows), Mono: true},
+	}
+}

@@ -1,123 +1,168 @@
 package pages
 
 import (
+	"fmt"
 	"github.com/AreteAcademy/brevis/web/components"
 	"github.com/AreteAcademy/brevis/web/layouts"
 )
 
 templ Target(v TargetView) {
-	@layouts.Base(layouts.Page{Title: "Destination", Kicker: "Catalog", Active: "data"}) {
-		<a href="/data" class="text-xs text-muted hover:text-gold-strong">&larr; Data</a>
-		<div class="mt-2 mb-6 flex flex-wrap items-center gap-3">
-			<h2 class="font-mono text-base break-all text-ink">{ v.Row.Target }</h2>
-			@components.Freshness(string(v.Row.Status))
-			if v.Row.Legacy {
-				<span class="rounded-card border border-line px-1.5 py-px text-[0.7rem] font-medium text-muted">legacy label</span>
-			} else {
-				<span class="text-xs text-muted">{ v.Row.Kind }</span>
-			}
-		</div>
-		<section class="mb-8">
-			<h3 class="kicker mb-2">Writers</h3>
-			<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
-				<table class="w-full text-sm">
-					<thead>
-						<tr class="border-b border-line bg-parchment-soft/60 text-left">
-							@th("Step", "pl-6")
-							@th("Schedule", "")
-							@th("Last loaded", "")
-							@th("Status", "pr-6")
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-line-soft">
+	@layouts.Base(layouts.Page{
+		Title: v.Row.Target, Kicker: "Catalog", Active: "data",
+		Mono: true, TitleID: "destination-uri",
+		Eyebrow: targetEyebrow(v), Actions: targetActions(v),
+	}) {
+		// THE LOADS ARE THE PAGE; who writes it and what it is sit beside
+		// them. The side column comes after the main one in the document, so
+		// a narrow screen stacks it below what somebody came for.
+		<div class="grid grid-cols-1 gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
+			<div class="flex min-w-0 flex-col gap-6">
+				@card("Rows per load", "") {
+					// A HEIGHT, because the bars' viewBox has none: at full
+					// width they grew to a third of the screen.
+					<div class="px-4 pt-4 [&_svg]:h-28 [&_svg]:max-w-none">
+						@components.LoadBars(v.Bars, v.Missed)
+					</div>
+					<p class="px-4 pt-2 pb-4 text-[0.75rem] text-muted">
+						Oldest on the left; each bar opens its run. A hollow bar is a load that did not say how many rows it wrote.
+						if v.Missed > 0 {
+							Dashed bars are scheduled loads that did not arrive.
+						}
+					</p>
+				}
+				@card("Recent loads", fmt.Sprint(len(v.Loads))) {
+					<div class="overflow-x-auto">
+						<table class="w-full text-[0.82rem]">
+							<thead>
+								<tr class="border-b border-line bg-canvas-subtle text-left">
+									@th("Loaded", "pl-4")
+									@th("Step", "")
+									@th("Rows", "text-right")
+									@th("Bytes", "text-right")
+									@th("Run", "pr-4")
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-line-soft">
+								for _, l := range v.Loads {
+									<tr>
+										<td class="px-3 py-2 pl-4 font-mono text-[0.75rem] whitespace-nowrap text-muted tabular-nums">{ components.UTCStamp(&l.LoadedAt) }</td>
+										<td class="px-3 py-2 text-[0.78rem]"><span class="font-mono text-ink">{ l.Workflow }</span> <span class="text-muted">· { l.Node }</span></td>
+										<td class="px-3 py-2 text-right text-[0.78rem] tabular-nums">{ rowsText(l.Rows) }</td>
+										<td class="px-3 py-2 text-right text-[0.78rem] tabular-nums">{ rowsText(l.Bytes) }</td>
+										<td class="px-3 py-2 pr-4 text-[0.78rem]">
+											<a href={ templ.SafeURL("/runs/" + l.RunID) } class="font-mono text-accent-strong hover:underline">{ shortID(l.RunID) }</a>
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+				@configurations(v)
+				@panels(v)
+			</div>
+			<div data-side class="flex min-w-0 flex-col gap-6">
+				@card("Writers", fmt.Sprint(len(v.Row.Writers))) {
+					<ul class="divide-y divide-line-soft">
 						for _, w := range v.Row.Writers {
-							<tr class="align-top">
-								<td class="px-3 py-3 pl-6">
+							<li class="px-4 py-3">
+								<div class="flex flex-wrap items-center gap-1.5">
 									if g := w.Gateway; g != nil {
-										<span class="mr-1 rounded-card border border-line px-1 py-px text-[0.65rem] text-muted">gateway</span>
-										<span class="font-medium text-ink">{ g.Name }</span>
-										<span class="font-mono text-xs text-muted">{ g.Stream }</span>
+										@components.Tag("gateway", "")
+										<span class="font-mono text-[0.8rem] text-ink">{ g.Name }</span>
+										<span class="font-mono text-[0.72rem] text-muted">{ g.Stream }</span>
 									} else {
-										<a href={ templ.SafeURL("/workflows/" + w.Workflow) } class="font-medium text-ink hover:text-gold-strong">{ w.Workflow }</a>
-										<span class="text-muted">· { w.Node }</span>
+										<a href={ templ.SafeURL("/workflows/" + w.Workflow) } class="font-mono text-[0.8rem] text-ink hover:underline">{ w.Workflow }</a>
+										<span class="text-[0.75rem] text-muted">· { w.Node }</span>
 									}
-									if r := w.Reason(); r != "" {
-										<p class="mt-1 max-w-xl text-xs text-muted">{ r }</p>
-									}
-									if w.RunInFlight != nil {
-										<a href={ templ.SafeURL("/runs/" + *w.RunInFlight) } class="mt-1 inline-block text-xs text-state-running hover:underline">run in progress</a>
-									}
-								</td>
-								<td class="px-3 py-3 font-mono text-xs whitespace-nowrap text-muted">
-									if w.Gateway != nil {
-										<span class="font-sans">continuous</span>
-									} else if w.HasSchedule {
-										{ w.Cron } <span class="font-sans">{ w.Timezone }</span>
-									} else {
-										<span class="font-sans">by hand</span>
-									}
-								</td>
-								<td class="px-3 py-3 text-xs whitespace-nowrap text-muted">
-									if w.Gateway != nil {
-										—
-									} else {
-										{ components.When(&w.LastLoaded) }
-									}
-								</td>
-								<td class="px-3 py-3 pr-6">
-									@components.Freshness(string(w.Verdict.Status))
-								</td>
-							</tr>
+								</div>
+								<dl class="mt-2 grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[0.78rem]">
+									<dt class="text-muted">Schedule</dt>
+									<dd class="text-ink">
+										if w.Gateway != nil {
+											continuous
+										} else if w.HasSchedule {
+											<span class="font-mono">{ w.Cron }</span> <span class="text-muted">{ w.Timezone }</span>
+										} else {
+											by hand
+										}
+									</dd>
+									<dt class="text-muted">Last loaded</dt>
+									<dd class="text-ink">
+										if w.Gateway != nil {
+											—
+										} else {
+											{ components.When(&w.LastLoaded) }
+										}
+									</dd>
+									<dt class="text-muted">Status</dt>
+									<dd>
+										@components.Freshness(string(w.Verdict.Status))
+									</dd>
+								</dl>
+								if r := w.Reason(); r != "" {
+									<p class="mt-2 text-[0.75rem] text-muted">{ r }</p>
+								}
+								if w.RunInFlight != nil {
+									<a href={ templ.SafeURL("/runs/" + *w.RunInFlight) } class="mt-1 inline-block text-[0.75rem] text-state-running hover:underline">run in progress</a>
+								}
+							</li>
 						}
-					</tbody>
-				</table>
+					</ul>
+				}
+				@readBy(v.ReadBy)
+				@card("Properties", "") {
+					<div class="p-4">
+						@components.DefinitionList(targetProperties(v))
+					</div>
+				}
 			</div>
-		</section>
-		@readBy(v.ReadBy)
-		@configurations(v)
-		<section class="mb-8">
-			<h3 class="kicker mb-2">Rows per load</h3>
-			<div class="rounded-card border border-line bg-surface p-4 shadow-warm-sm">
-				@components.LoadBars(v.Bars, v.Missed)
-				<p class="mt-2 max-w-3xl text-xs text-muted">
-					Oldest on the left; each bar opens its run. A hollow bar is a load that did not say how many rows it wrote.
-					if v.Missed > 0 {
-						Dashed bars are scheduled loads that did not arrive.
-					}
-				</p>
-			</div>
-		</section>
-		<section>
-			<h3 class="kicker mb-2">Recent loads</h3>
-			<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
-				<table class="w-full text-sm">
-					<thead>
-						<tr class="border-b border-line bg-parchment-soft/60 text-left">
-							@th("Loaded", "pl-6")
-							@th("Step", "")
-							@th("Rows", "text-right")
-							@th("Bytes", "text-right")
-							@th("Run", "pr-6")
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-line-soft">
-						for _, l := range v.Loads {
-							<tr>
-								<td class="px-3 py-2 pl-6 text-xs tabular-nums whitespace-nowrap text-muted">{ components.UTCStamp(&l.LoadedAt) }</td>
-								<td class="px-3 py-2 text-xs">{ l.Workflow } <span class="text-muted">· { l.Node }</span></td>
-								<td class="px-3 py-2 text-right text-xs tabular-nums">{ rowsText(l.Rows) }</td>
-								<td class="px-3 py-2 text-right text-xs tabular-nums">{ rowsText(l.Bytes) }</td>
-								<td class="px-3 py-2 pr-6 text-xs">
-									<a href={ templ.SafeURL("/runs/" + l.RunID) } class="font-mono text-gold-strong hover:underline">{ shortID(l.RunID) }</a>
-								</td>
-							</tr>
-						}
-					</tbody>
-				</table>
-			</div>
-		</section>
-		@panels(v)
+		</div>
 	}
+}
+
+// targetEyebrow is what the destination is and how it stands, above its URI.
+templ targetEyebrow(v TargetView) {
+	@components.Freshness(string(v.Row.Status))
+	if v.Row.Legacy {
+		@components.Tag("legacy label", "")
+	} else if v.Row.Kind != "" {
+		<span class="text-[0.7rem] font-medium tracking-[0.08em] text-muted uppercase">{ v.Row.Kind }</span>
+	}
+}
+
+// targetActions are the page's verbs. Copy URI is hidden until ui.js can
+// drive it. Query in SQL only where there is a SQL service to ask: the
+// workbench, not a second tab -- a preview is "show me this table", a query
+// joins and reaches across -- and it carries the destination, so nobody has
+// to find the connection again in a picker.
+templ targetActions(v TargetView) {
+	<span hidden>
+		@components.Button(components.ButtonSecondary, components.SizeRegular, templ.Attributes{"data-copy": "#destination-uri"}) {
+			@components.Icon("copy", "h-3.5 w-3.5")
+			Copy URI
+		}
+	</span>
+	if v.Tabs {
+		@components.ButtonLink(components.ButtonPrimary, components.SizeRegular, v.WorkbenchHref()) {
+			@components.Icon("terminal", "h-3.5 w-3.5")
+			Query in SQL
+		}
+	}
+}
+
+// card is a titled panel of this page: a head with the title and, when it
+// helps, a count; the body is the children.
+templ card(title, count string) {
+	<section class="overflow-hidden rounded-card border border-line bg-surface">
+		<header class="flex items-center justify-between border-b border-line-soft px-4 py-3">
+			<h2 class="text-[0.875rem] font-semibold text-ink">{ title }</h2>
+			if count != "" {
+				<span class="text-[0.75rem] text-faint tabular-nums">{ count }</span>
+			}
+		</header>
+		{ children... }
+	</section>
 }
 
 // configurations is how each writer of this destination is configured: its
@@ -255,21 +300,9 @@ templ configNote(text string) {
 // the way /data's filters already are.
 templ panels(v TargetView) {
 	if v.Tabs {
-		<section class="mt-8">
+		<section>
 			<nav class="mb-4 flex items-center gap-1 border-b border-line-soft text-sm" aria-label="Destination tools">
 				@tab(v, "preview", "Preview")
-				// THE WORKBENCH, AND NOT A SECOND TAB. A preview is "show me
-				// this table" -- asked about the thing already on the screen,
-				// which is what a destination page is for. A query joins,
-				// groups and reaches across, and pretending it belongs to one
-				// table is what made both screens worse.
-				//
-				// It carries the destination, so nobody has to find the
-				// connection again in a picker.
-				<a
-					href={ templ.SafeURL(v.WorkbenchHref()) }
-					class="-mb-px ml-auto border-b-2 border-transparent px-3 py-2 text-muted hover:text-ink"
-				>Query in SQL &rarr;</a>
 			</nav>
 			if v.Tab == "preview" {
 				@preview(v)

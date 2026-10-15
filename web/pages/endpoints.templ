@@ -139,18 +139,17 @@ templ Endpoint(v EndpointView) {
 
 templ readBy(refs []EndpointRef) {
 	if len(refs) > 0 {
-		<section class="mb-8">
-			<h3 class="kicker mb-2">Read by</h3>
-			<ul class="space-y-1 text-sm">
+		@card("Read by", fmt.Sprint(len(refs))) {
+			<ul class="divide-y divide-line-soft">
 				for _, e := range refs {
-					<li>
-						<span class="mr-1 rounded-card border border-line px-1 py-px text-[0.65rem] text-muted">endpoint</span>
-						<a href={ templ.SafeURL(e.Href) } class="font-mono text-xs text-ink hover:text-gold-strong">GET { e.Path }</a>
-						<span class="text-xs text-muted">· { e.API }</span>
+					<li class="flex flex-wrap items-center gap-1.5 px-4 py-2.5">
+						@components.MethodPill("GET")
+						<a href={ templ.SafeURL(e.Href) } class="font-mono text-[0.78rem] text-ink hover:underline">{ e.Path }</a>
+						<span class="text-[0.72rem] text-muted">· { e.API }</span>
 					</li>
 				}
 			</ul>
-		</section>
+		}
 	}
 }
 

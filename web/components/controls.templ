@@ -109,3 +109,13 @@ templ Tabs(label string, tabs []Tab) {
 		}
 	</div>
 }
+
+// ButtonLink is a link drawn as a button: a verb that goes somewhere (open
+// in the workbench) rather than one that acts here. A link and not a
+// <button>, so it opens in a new tab, shows its address and works with no
+// script.
+templ ButtonLink(kind ButtonKind, size ButtonSize, href string) {
+	<a href={ templ.SafeURL(href) } class={ buttonClass(kind, size) }>
+		{ children... }
+	</a>
+}
