@@ -27,15 +27,21 @@
   <path class="rule" d="M150 0v600M150 44h850"/>
   <path d="M22 26c0 3.4 11 3.4 11 0" stroke="#5e6b40" stroke-width="2" stroke-linecap="round" fill="none"/>
   <text class="t" x="40" y="30" font-size="13" font-weight="600" fill="#1f2419">Brevis</text>
-  <text class="m lbl" x="14" y="44">ORCHESTRATION</text>
+  <!-- the sidebar as the console draws it now: three groups, one section open -->
+  <text class="m lbl" x="14" y="54">PIPELINES</text>
   <text class="t nav" x="20" y="72">Overview</text>
-  <text class="t nav" x="20" y="96">Workflows</text>
-  <rect x="8" y="108" width="134" height="20" rx="2" fill="#dfe2d6"/>
-  <path d="M9 108v20" stroke="#5e6b40" stroke-width="2"/>
-  <text class="t" x="20" y="122" font-size="10" font-weight="600" fill="#1f2419">Runs</text>
-  <text class="t nav" x="20" y="146">Projects</text>
+  <text class="t nav" x="20" y="92">Workflows</text>
+  <rect x="8" y="98" width="134" height="20" rx="2" fill="#dfe2d6"/>
+  <path d="M9 98v20" stroke="#5e6b40" stroke-width="2"/>
+  <text class="t" x="20" y="112" font-size="10" font-weight="600" fill="#1f2419">Runs</text>
+  <text class="m lbl" x="14" y="138">DATA</text>
+  <text class="t nav" x="20" y="156">Catalog</text>
+  <text class="t nav" x="20" y="176">Endpoints</text>
+  <text class="t nav" x="20" y="196">SQL</text>
+  <text class="m lbl" x="14" y="222">WORKSPACE</text>
+  <text class="t nav" x="20" y="240">Projects</text>
 
-  <text class="m lbl" x="168" y="18">RUN</text>
+  <text class="t dim" x="168" y="18">Pipelines / Runs</text>
   <text class="m" x="168" y="36" font-size="15" font-weight="600" fill="#1f2419">weather_alerts</text>
 
   <rect x="168" y="54" width="52" height="15" rx="2" fill="#e7efe8"/>

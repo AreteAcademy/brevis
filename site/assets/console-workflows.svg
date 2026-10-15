@@ -22,15 +22,21 @@
   <path class="rule" d="M150 0v600M150 44h850"/>
   <path d="M22 26c0 3.4 11 3.4 11 0" stroke="#5e6b40" stroke-width="2" stroke-linecap="round" fill="none"/>
   <text class="t h" x="40" y="30" font-size="13">Brevis</text>
-  <text class="m lbl" x="14" y="44">ORCHESTRATION</text>
+  <!-- the sidebar as the console draws it now: three groups, one section open -->
+  <text class="m lbl" x="14" y="54">PIPELINES</text>
   <text class="t nav" x="20" y="72">Overview</text>
-  <rect x="8" y="84" width="134" height="20" rx="2" fill="#dfe2d6"/>
-  <path d="M9 84v20" stroke="#5e6b40" stroke-width="2"/>
-  <text class="t navon" x="20" y="98">Workflows</text>
-  <text class="t nav" x="20" y="122">Runs</text>
-  <text class="t nav" x="20" y="146">Projects</text>
+  <rect x="8" y="78" width="134" height="20" rx="2" fill="#dfe2d6"/>
+  <path d="M9 78v20" stroke="#5e6b40" stroke-width="2"/>
+  <text class="t" x="20" y="92" font-size="10" font-weight="600" fill="#1f2419">Workflows</text>
+  <text class="t nav" x="20" y="112">Runs</text>
+  <text class="m lbl" x="14" y="138">DATA</text>
+  <text class="t nav" x="20" y="156">Catalog</text>
+  <text class="t nav" x="20" y="176">Endpoints</text>
+  <text class="t nav" x="20" y="196">SQL</text>
+  <text class="m lbl" x="14" y="222">WORKSPACE</text>
+  <text class="t nav" x="20" y="240">Projects</text>
 
-  <text class="m lbl" x="168" y="20">ORCHESTRATION</text>
+  <text class="t dim" x="168" y="20">Pipelines / Workflows</text>
   <text class="t h" x="168" y="36" font-size="16">Workflows</text>
 
   <!-- search -->
