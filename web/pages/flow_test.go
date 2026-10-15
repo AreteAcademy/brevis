@@ -3,6 +3,7 @@ package pages
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
@@ -98,5 +99,52 @@ func TestAWriterThatDidNotDescribeItselfHasNoFlow(t *testing.T) {
 	}
 	if FlowOf(&postgres.WriterConfig{Fields: []catalog.ManifestField{{Path: "x", Value: "y"}}}, "postgres://db/public/x") != nil {
 		t.Error("a configuration with neither a sink nor a source has a flow")
+	}
+}
+
+// THE DESTINATION'S PAGE DRAWS EACH DESCRIBED WRITER'S FLOW, in its
+// configuration's card: the nodes in order, the destination marked, the dead
+// letter as a branch. A writer that did not describe itself gets none.
+func TestADestinationPageDrawsEachDescribedWritersFlow(t *testing.T) {
+	gw := &postgres.WriterConfig{Fields: []catalog.ManifestField{
+		{Path: "path", Value: "/v1/orders"}, {Path: "format", Value: "json"},
+		{Path: "buffer.flush.every", Value: "2m"},
+		{Path: "sink.type", Value: "bigquery"}, {Path: "sink.write", Value: "append"},
+		{Path: "dead_letter.type", Value: "files"}, {Path: "dead_letter.path", Value: "./dead-letter/orders/"},
+	}}
+	d := postgres.TargetDetail{CatalogEntry: postgres.CatalogEntry{
+		Target: "bigquery://acme/landing/orders", Kind: "bigquery",
+		Writers: []postgres.CatalogWriter{
+			{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/orders", Role: "sink", Config: gw}},
+			{Workflow: "python_job", Node: "build"},
+		},
+	}}
+	page := draw(t, Target(BuildTarget(d, time.Now())))
+
+	at := strings.Index(page, "data-flow")
+	if at < 0 {
+		t.Fatal("the gateway's flow is not drawn")
+	}
+	if strings.Count(page, "data-flow>")+strings.Count(page, `data-flow class`) != 1 {
+		t.Errorf("one described writer, %d flows", strings.Count(page, "data-flow"))
+	}
+	last := at
+	for _, kind := range []string{"source", "buffer", "destination", "dead_letter"} {
+		i := strings.Index(page[at:], `data-flow-node="`+kind+`"`)
+		if i < 0 {
+			t.Fatalf("the flow has no %s node", kind)
+		}
+		if at+i < last {
+			t.Errorf("the %s node is out of order", kind)
+		}
+		last = at + i
+	}
+	for _, want := range []string{"POST /v1/orders", "every 2m", "refused batches"} {
+		if !strings.Contains(page[at:], want) {
+			t.Errorf("the flow does not say %q", want)
+		}
+	}
+	if strings.Index(page, "data-flow") > strings.Index(page, `data-config="python_job build"`) {
+		t.Error("the flow is drawn for the step that did not describe itself")
 	}
 }

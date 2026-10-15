@@ -156,6 +156,10 @@ type WriterConfigView struct {
 	Described bool
 
 	Config ConfigView
+
+	// Flow is how data reaches the destination through this writer, drawn
+	// from what its configuration declares; nil when there is none to draw.
+	Flow *Flow
 }
 
 // Key is what the page tags the section with: "gateway stream" or
