@@ -256,3 +256,62 @@ func TestTheStreamsListFilters(t *testing.T) {
 		t.Errorf("a filter link = %q", got)
 	}
 }
+
+// A STREAM'S PAGE: POST <path> as its name, and three panels -- Overview,
+// Configuration (#config), Dead letter (#deadletter) -- all rendered, so with
+// no script each is an anchor on one page and ui.js shows one at a time.
+func TestAStreamPageHasItsThreeTabs(t *testing.T) {
+	s := StreamsOf(printFixtures(time.Now()))[0].Streams[0] // clicks
+	page := draw(t, StreamPage(BuildStream(s, nil)))
+	for _, want := range []string{
+		">POST /v1/clicks</h1>", "events_gateway",
+		`data-hash-tabs`, `data-tab="overview"`, `data-tab="config"`, `data-tab="deadletter"`,
+		`id="overview"`, `id="config"`, `id="deadletter"`,
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the stream page has no %s", want)
+		}
+	}
+	at := strings.Index(page, `id="deadletter"`)
+	dl := page[at:]
+	for _, want := range []string{"file:///var/dead-letter/clicks/", "data-copy", `brevis_gateway_dead_letter_records_total{stream=&#34;clicks&#34;}`} {
+		if !strings.Contains(dl, want) {
+			t.Errorf("the dead letter tab has no %s", want)
+		}
+	}
+}
+
+// THE CONFIGURATION TAB IS EVERYTHING THE STREAM DECLARES IN ONE PLACE, and a
+// setting it does not declare is "—", never a guess. Merge is "—" when no
+// write mode is declared, "yes" when it merges.
+func TestAStreamsConfigurationSaysWhatIsUndeclared(t *testing.T) {
+	gws := StreamsOf(printFixtures(time.Now()))
+	clicks := draw(t, StreamPage(BuildStream(gws[0].Streams[0], nil)))
+	cfg := clicks[strings.Index(clicks, `id="config"`):strings.Index(clicks, `id="deadletter"`)]
+	for _, want := range []string{"enrich_clicks", "1s", "500", "pubsub://brevis-local/clicks", "file:///var/dead-letter/clicks/"} {
+		if !strings.Contains(cfg, want) {
+			t.Errorf("the configuration has no %s", want)
+		}
+	}
+	if !strings.Contains(cfg, `data-declared="identity.provider">—`) {
+		t.Error("an undeclared identity is not shown as —")
+	}
+	if !strings.Contains(cfg, `data-declared="merge">—`) {
+		t.Error("an undeclared write mode is called merge or not")
+	}
+	orders := draw(t, StreamPage(BuildStream(gws[0].Streams[1], nil)))
+	if !strings.Contains(orders, `data-declared="merge">yes`) {
+		t.Error("a merging stream is not called merge")
+	}
+}
+
+// QUERY DESTINATION ONLY WHERE SQL CAN READ IT: not Pub/Sub, not a file.
+func TestAStreamQueriesOnlyATable(t *testing.T) {
+	gws := StreamsOf(printFixtures(time.Now()))
+	if BuildStream(gws[0].Streams[0], nil).Queryable() {
+		t.Error("a Pub/Sub sink offers a query")
+	}
+	if !BuildStream(gws[0].Streams[1], nil).Queryable() {
+		t.Error("a Postgres sink offers no query")
+	}
+}

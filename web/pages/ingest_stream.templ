@@ -1,0 +1,133 @@
+package pages
+
+import (
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/layouts"
+)
+
+// StreamPage is one gateway stream: where events are posted, what it declares,
+// and where its refusals go. Three panels, all rendered: ui.js shows one at a
+// time by the URL's hash (#config, #deadletter); with no script they stack,
+// each an anchor.
+templ StreamPage(v StreamView) {
+	@layouts.Base(layouts.Page{
+		Title: "POST " + v.Path, Active: "streams", Mono: true,
+		Eyebrow: streamEyebrow(v), Actions: streamActions(v),
+	}) {
+		<p class="mb-5 -mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8rem] text-muted">
+			if f := v.Field("format"); f != "" {
+				<span class="font-mono text-ink-2">{ f }</span>
+			}
+			if h := v.Field("hook"); h != "" {
+				<span>hook <span class="font-mono text-ink-2">{ h }</span></span>
+			}
+			<span>lands in <span class="text-ink-2">{ v.Sink.Kind }</span></span>
+			if !v.PublishedAt.IsZero() {
+				<span>published { components.UTCStamp(&v.PublishedAt) }</span>
+			}
+		</p>
+		<div data-hash-tabs>
+			<div data-hash-tabs-bar hidden class="mb-5">
+				@components.Tabs("Stream", []components.Tab{
+					{Key: "overview", Label: "Overview", Selected: true},
+					{Key: "config", Label: "Configuration"},
+					{Key: "deadletter", Label: "Dead letter"},
+				})
+			</div>
+			<section id="overview" data-tab-panel="overview" class="mb-8">
+				<h2 data-panel-heading class="kicker mb-3">Overview</h2>
+				<div class="grid grid-cols-1 gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
+					<div class="flex min-w-0 flex-col gap-4">
+						<div class="overflow-hidden rounded-card border border-line bg-surface">
+							@flowDiagram(streamFlow(v.Stream))
+						</div>
+						<div class="rounded-card border border-line bg-surface px-4 py-3">
+							<p class="text-sm text-ink" data-summary>{ v.Summary() }</p>
+							<p class="mt-3 border-t border-line-soft pt-3 text-[0.75rem] text-muted">
+								The stream's volume and latency are on the gateway's /metrics. Brevis does not record a stream's loads one by one.
+							</p>
+						</div>
+					</div>
+					@card("Properties", "") {
+						<div class="p-4">
+							@components.DefinitionList(v.Properties())
+						</div>
+					}
+				</div>
+			</section>
+			<section id="config" data-tab-panel="config" class="mb-8">
+				<h2 data-panel-heading class="kicker mb-3">Configuration</h2>
+				<div class="mb-6 grid grid-cols-1 gap-4 min-[900px]:grid-cols-2">
+					for _, g := range v.DeclaredGroups() {
+						@card(g.Title, "") {
+							<dl class="grid grid-cols-[9rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 px-4 py-3 text-[0.78rem]">
+								for _, d := range g.Rows {
+									<dt class="font-mono text-muted">{ d.Label }</dt>
+									if d.Value == "" {
+										<dd class="font-mono text-faint" data-declared={ d.Key }>—</dd>
+									} else {
+										<dd class="font-mono break-all text-ink" data-declared={ d.Key }>{ d.Value }</dd>
+									}
+								}
+							</dl>
+						}
+					}
+				</div>
+				if v.Configured != nil {
+					@configurations(TargetView{Configs: []WriterConfigView{*v.Configured}})
+				} else {
+					<p class="rounded-card border border-line bg-surface px-4 py-3 text-xs text-muted">
+						This stream was published without its configuration (a version-1 manifest), so only where it lands is known. Publishing the gateway again with this version sends the rest.
+					</p>
+				}
+			</section>
+			<section id="deadletter" data-tab-panel="deadletter" class="mb-8">
+				<h2 data-panel-heading class="kicker mb-3">Dead letter</h2>
+				if v.DeadLetter == nil {
+					<p class="rounded-card border border-line bg-surface px-4 py-3 text-sm text-muted">This stream declares no dead letter.</p>
+				} else {
+					<div class="flex flex-col gap-4">
+						@card("Where refused batches go", v.DeadLetter.Kind) {
+							<div class="flex items-start gap-3 px-4 py-3">
+								<pre id="dead-letter-uri" class="min-w-0 flex-1 overflow-x-auto font-mono text-[0.8rem] break-all whitespace-pre-wrap text-ink">{ v.DeadLetter.URI }</pre>
+								<span hidden>
+									@components.IconButton("Copy the path", "copy", templ.Attributes{"data-copy": "#dead-letter-uri"})
+								</span>
+							</div>
+							<p class="border-t border-line-soft px-4 py-3 text-[0.75rem] text-muted">
+								How many records it buried is the gateway's <code class="font-mono text-ink-2">{ v.BuriedMetric() }</code>, on its /metrics.
+							</p>
+						}
+						if dl := v.DeadLetterPanel(); dl != nil {
+							<div class="rounded-card border border-line bg-surface">
+								@deadLetterPanel(dl)
+							</div>
+						} else {
+							<p class="rounded-card border border-line bg-surface px-4 py-3 text-xs text-muted">
+								The commands to list and resend its batches need the stream's configuration, which this publish did not carry.
+							</p>
+						}
+					</div>
+				}
+			</section>
+		</div>
+	}
+}
+
+// streamEyebrow is what the page is, above the path.
+templ streamEyebrow(v StreamView) {
+	@components.Freshness("continuous")
+	<span class="text-[0.7rem] font-medium tracking-[0.08em] text-muted uppercase">gateway stream</span>
+	<span class="font-mono text-[0.75rem] text-ink-2">{ v.Gateway }</span>
+}
+
+// streamActions are the page's verbs: query the sink, where SQL can read it
+// and a SQL service answers for it.
+templ streamActions(v StreamView) {
+	if v.SQL && v.Queryable() {
+		@components.ButtonLink(components.ButtonPrimary, components.SizeRegular, v.QueryHref()) {
+			@components.Icon("terminal", "h-3.5 w-3.5")
+			Query destination
+		}
+	}
+}

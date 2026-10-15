@@ -610,6 +610,38 @@
     });
   });
 
+  // Tabs by the URL's hash (`[data-hash-tabs]`): every panel is rendered
+  // (`[data-tab-panel]`), and this shows the one the hash names -- the first
+  // with none -- on load, on a tab's click and on hashchange, so #config in a
+  // link opens Configuration. With no script the panels stack, each an
+  // anchor, and the tab bar stays hidden; so do the panels' own headings
+  // once the bar says the same.
+  document.querySelectorAll("[data-hash-tabs]").forEach(function (host) {
+    var bar = host.querySelector("[data-hash-tabs-bar]");
+    var panels = host.querySelectorAll("[data-tab-panel]");
+    if (!bar || !panels.length) return;
+    function show(key) {
+      var found = false;
+      panels.forEach(function (p) { if (p.getAttribute("data-tab-panel") === key) found = true; });
+      if (!found) key = panels[0].getAttribute("data-tab-panel");
+      panels.forEach(function (p) { p.hidden = p.getAttribute("data-tab-panel") !== key; });
+      bar.querySelectorAll("[data-tab]").forEach(function (t) {
+        t.setAttribute("aria-selected", t.getAttribute("data-tab") === key ? "true" : "false");
+      });
+    }
+    bar.hidden = false;
+    host.querySelectorAll("[data-panel-heading]").forEach(function (h) { h.hidden = true; });
+    bar.addEventListener("click", function (e) {
+      var t = e.target && typeof e.target.closest === "function" ? e.target.closest("[data-tab]") : null;
+      if (!t) return;
+      var key = t.getAttribute("data-tab");
+      history.replaceState(history.state, "", "#" + key);
+      show(key);
+    });
+    window.addEventListener("hashchange", function () { show(location.hash.slice(1)); });
+    show(location.hash.slice(1));
+  });
+
   // A group that collapses (`[data-group-toggle]` in a tbody): the button,
   // hidden until this runs, folds the group's rows under its header. With no
   // script every group stays open.

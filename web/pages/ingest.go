@@ -652,3 +652,159 @@ func streamFlow(s Stream) *Flow {
 	}
 	return f
 }
+
+// StreamView is one stream's page.
+type StreamView struct {
+	Stream
+
+	// Configured is the stream's configuration card -- settings by section,
+	// the file's notes and the history of changes -- read from the sink's
+	// detail; nil when the stream described nothing.
+	Configured *WriterConfigView
+
+	// SQL says a SQL service answers for the sink, so "Query destination"
+	// leads somewhere.
+	SQL bool
+}
+
+// BuildStream lays out a stream's page. detail is its sink's, which carries
+// the configuration's history; without it the page still draws what the
+// stream declares.
+func BuildStream(s Stream, detail *postgres.TargetDetail) StreamView {
+	v := StreamView{Stream: s}
+	cfg := s.Config
+	if detail != nil {
+		for _, w := range detail.Writers {
+			if g := w.Gateway; g != nil && g.Name == s.Gateway && g.Stream == s.Path && g.Config != nil {
+				cfg = g.Config
+				v.PublishedAt = g.PublishedAt
+			}
+		}
+	}
+	if cfg != nil {
+		v.Config = cfg
+		v.Configured = &WriterConfigView{Gateway: s.Gateway, Stream: s.Path, Role: "sink",
+			PublishedAt: v.PublishedAt, Described: true, Config: BuildConfig(cfg)}
+	}
+	return v
+}
+
+// Queryable says the sink is something SQL can read: not a topic, not files.
+func (v StreamView) Queryable() bool {
+	switch v.Sink.Kind {
+	case "", "pubsub", "file":
+		return false
+	}
+	return true
+}
+
+// QueryHref opens the workbench on the sink.
+func (v StreamView) QueryHref() string { return "/sql?target=" + url.QueryEscape(v.Sink.URI) }
+
+// Summary is one paragraph on what the stream does, from what it declares.
+func (v StreamView) Summary() string {
+	if v.Config != nil {
+		return Summary(v.Config)
+	}
+	return "Events posted to " + v.Path + " land in " + v.Sink.URI + ". The stream was published without its configuration, so this is all it says."
+}
+
+// Declared is one setting in the Configuration tab: what it is and its
+// value, "" when the stream does not declare it (drawn "—").
+type Declared struct {
+	Key, Label, Value string
+}
+
+// DeclaredGroup is one block of the Configuration tab.
+type DeclaredGroup struct {
+	Title string
+	Rows  []Declared
+}
+
+// DeclaredGroups is everything a stream may declare, in one place, each
+// setting it does not declare left empty rather than guessed.
+func (v StreamView) DeclaredGroups() []DeclaredGroup {
+	f := func(key, label string) Declared { return Declared{Key: key, Label: label, Value: v.Field(key)} }
+	merge := Declared{Key: "merge", Label: "merge"}
+	if m := v.Merge(); m != nil {
+		merge.Value = "no"
+		if *m {
+			merge.Value = "yes"
+		}
+	}
+	dl := Declared{Key: "dead_letter", Label: "where"}
+	if v.DeadLetter != nil {
+		dl.Value = v.DeadLetter.URI
+	}
+	return []DeclaredGroup{
+		{"Stream", []Declared{f("name", "name"), {Key: "path", Label: "path", Value: v.Path}, f("format", "format"), f("hook", "hook")}},
+		{"Buffer", []Declared{f("buffer.flush.every", "flush every"), f("buffer.flush.records", "flush at records"), f("buffer.durability", "durability")}},
+		{"Destination", []Declared{{Key: "sink", Label: "where", Value: v.Sink.URI}, f("sink.type", "type"),
+			{Key: "mode", Label: "write", Value: v.Mode()}, merge}},
+		{"Identity", []Declared{f("identity.provider", "provider"), f("identity.entity", "entity"),
+			f("identity.source_key", "source key"), f("identity.record_ts", "record time")}},
+		{"Dead letter", []Declared{dl, f("dead_letter.type", "type")}},
+	}
+}
+
+// Properties are the Overview's side list.
+func (v StreamView) Properties() []components.Def {
+	or := func(s string) string {
+		if s == "" {
+			return "—"
+		}
+		return s
+	}
+	merge := "—"
+	if m := v.Merge(); m != nil {
+		merge = "no"
+		if *m {
+			merge = "yes"
+		}
+	}
+	published := "—"
+	if !v.PublishedAt.IsZero() {
+		published = components.UTCStamp(&v.PublishedAt)
+	}
+	return []components.Def{
+		{Term: "Gateway", Value: v.Gateway, Mono: true},
+		{Term: "Stream", Value: or(v.Field("name")), Mono: true},
+		{Term: "Destination", Value: v.Sink.URI, Mono: true},
+		{Term: "Write", Value: or(v.Mode()), Mono: true},
+		{Term: "Merge", Value: merge, Mono: true},
+		{Term: "Published", Value: published, Mono: true},
+	}
+}
+
+// DeadLetterPanel is the commands and the resend note, when the stream's
+// configuration says what its dead letter is.
+func (v StreamView) DeadLetterPanel() *DeadLetterView {
+	if v.Configured == nil {
+		return nil
+	}
+	return v.Configured.Config.DeadLetter
+}
+
+// BuriedMetric is the gateway's counter of what this stream buried, labelled
+// by the stream's name as the gateway labels it.
+func (v StreamView) BuriedMetric() string {
+	if n := v.Field("name"); n != "" {
+		return `brevis_gateway_dead_letter_records_total{stream="` + n + `"}`
+	}
+	return "brevis_gateway_dead_letter_records_total"
+}
+
+// FindStream is the stream with this gateway and path, or nil.
+func FindStream(groups []GatewayGroup, gateway, path string) *Stream {
+	for _, g := range groups {
+		if g.Name != gateway {
+			continue
+		}
+		for i := range g.Streams {
+			if g.Streams[i].Path == path {
+				return &g.Streams[i]
+			}
+		}
+	}
+	return nil
+}
