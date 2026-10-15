@@ -5,98 +5,130 @@ import (
 	"testing"
 )
 
-// THE NAVIGATION IS AT THE TOP, and this asserts WHERE and not whether.
+// THE NAVIGATION IS A SIDEBAR, and this asserts WHERE and not whether.
+//
+// It was a top bar, and this test pinned that: the sections were few and
+// one level deep, and a column of them spent width on screens whose job is a
+// wide table. The owner reversed it on 2026-10-14 with the console redesign
+// (G1): three groups now -- Pipelines, Data, Workspace -- each with a label
+// and an icon, which a single row cannot carry without crowding, and a fixed
+// frame that holds still while the page beside it changes. The width is paid
+// knowingly; below 960px the sidebar becomes a drawer.
 //
 // A sidebar and a top bar contain the same links; `strings.Contains` cannot
-// tell them apart, and seven tests passed this afternoon on a panel that was
-// rendering outside the page. Position is the only kind of assertion that
-// sees a layout.
-func TestTheNavigationIsAboveTheContentAndNotBesideIt(t *testing.T) {
+// tell them apart, and seven tests once passed on a panel that rendered
+// outside the page. Position is the only kind of assertion that sees a
+// layout.
+func TestTheNavigationIsASidebarBesideTheContent(t *testing.T) {
 	body := render(t, dataUI(catalogFake{}), "/data")
 
+	aside, end := strings.Index(body, "<aside"), strings.Index(body, "</aside>")
 	main := strings.Index(body, "<main")
-	if main < 0 {
-		t.Fatal("the layout no longer has a <main>; this test needs a new anchor")
+	if aside < 0 || end < 0 || main < 0 {
+		t.Fatalf("the shell has no <aside> and <main> to place (aside %d, main %d)", aside, main)
 	}
-	nav := strings.Index(body, "<nav")
+	nav := strings.Index(body, `<nav aria-label="Sections"`)
 	if nav < 0 {
-		t.Fatal("there is no <nav> at all")
+		t.Fatal("there is no section navigation at all")
 	}
-	if nav > main {
-		t.Error("the navigation renders inside <main>, which is a sidebar's position")
+	if nav < aside || nav > end {
+		t.Error("the section navigation is not inside the sidebar")
 	}
-	// A sidebar is an <aside>. The shell must not have one.
-	if i := strings.Index(body, "<aside"); i >= 0 && i < main {
-		t.Error("the shell still draws an <aside> beside the content")
+	if main < end {
+		t.Error("<main> opens inside the sidebar, which is the page drawn inside its own frame")
+	}
+}
+
+// THE SIDEBAR HOLDS STILL WHILE THE PAGE CHANGES. Every navigation crossfades
+// (transitions_test.go); a named element is captured on its own and, being
+// identical on both pages, does not visibly fade -- which is the point of a
+// fixed frame. Named in the SERVED sheet, because a class with no rule behind
+// it is a layout that silently does nothing.
+func TestTheSidebarHoldsStillAcrossANavigation(t *testing.T) {
+	_, ui := browsing(t)
+	_, body := get(t, ui, "/sql")
+	if !strings.Contains(body, `class="app-sidebar`) {
+		t.Error("the sidebar does not carry the class the transition is named on")
+	}
+	_, css := get(t, ui, "/assets/app.css")
+	if !strings.Contains(css, "view-transition-name:sidebar") && !strings.Contains(css, "view-transition-name: sidebar") {
+		t.Error("the served sheet does not name the sidebar's transition, so it fades with the page")
 	}
 }
 
 // EVERY SECTION, AND THE OPEN ONE SAID OUT LOUD. `aria-current` is what tells
-// somebody not looking at the underline which section they are in.
-func TestTheBarCarriesEverySectionAndMarksTheOpenOne(t *testing.T) {
+// somebody not looking at the highlight which section they are in.
+func TestTheSidebarCarriesEverySectionAndMarksTheOpenOne(t *testing.T) {
 	body := render(t, dataUI(catalogFake{}), "/data")
 
 	for _, want := range []string{
 		`href="/"`, `href="/workflows"`, `href="/runs"`,
 		`href="/projects"`, `href="/data"`,
-		"Overview", "Workflows", "Runs", "Projects", "Data",
+		"Overview", "Workflows", "Runs", "Projects", "Catalog",
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("the bar does not carry %q", want)
+			t.Errorf("the sidebar does not carry %q", want)
 		}
 	}
 	if n := strings.Count(body, `aria-current="page"`); n != 1 {
 		t.Errorf("%d items claim to be the open section, and one is open", n)
 	}
-	// And it is the right one: `/data` was asked for.
 	i := strings.Index(body, `aria-current="page"`)
 	if i < 0 {
 		return
 	}
-	around := body[max(0, i-220):i]
-	if !strings.Contains(around, `href="/data"`) {
-		t.Errorf("the marked section is not /data: %q", around)
+	tag := body[strings.LastIndex(body[:i], "<a"):i]
+	if !strings.Contains(tag, `href="/data"`) {
+		t.Errorf("the marked section is not /data: %q", tag)
 	}
 }
 
-// THE ACCOUNT MENU MOVES WITH THE BAR. It lived at the bottom of the sidebar;
-// a sidebar that no longer exists cannot hold it, and a console where nobody
-// can sign out is a console nobody can leave.
-func TestTheAccountMenuIsInTheBar(t *testing.T) {
+// THE ACCOUNT MENU IS AT THE FOOT OF THE SIDEBAR, where a console's "who am
+// I and how do I leave" lives. A console nobody can sign out of is one nobody
+// can leave.
+func TestTheAccountMenuIsInTheSidebar(t *testing.T) {
 	body := render(t, dataUI(catalogFake{}), "/data")
 
-	main := strings.Index(body, "<main")
+	aside, end := strings.Index(body, "<aside"), strings.Index(body, "</aside>")
 	// The MENU and not the sign-out form: signing out needs a session, and
-	// this render has none -- "Sign out depends on there being something to
-	// sign out of", which the menu's own comment says. What moved is the
-	// menu.
+	// this render has none.
 	menu := strings.Index(body, "account-menu")
 	if menu < 0 {
 		t.Fatal("there is no account menu at all")
 	}
-	if menu > main {
-		t.Error("the account menu is inside <main>, which is where the page's own content goes")
+	if menu < aside || menu > end {
+		t.Error("the account menu is not in the sidebar")
+	}
+	if nav := strings.Index(body, `<nav aria-label="Sections"`); menu < nav {
+		t.Error("the account menu sits above the sections, where the eye looks for where to go")
 	}
 }
 
-// THE BAR FOLLOWS THE DATA'S PATH: what happened (Overview), how it is built
-// (Pipelines: Workflows, Runs), where it lives and goes (Data: Catalog,
-// Endpoints, SQL), and Projects. Groups are announced as groups, so a screen
-// reader hears "Data, group" before "Endpoints" -- the label is not decoration.
-func TestTheBarGroupsSectionsByTheDatasPath(t *testing.T) {
+// THE SIDEBAR FOLLOWS THE DATA'S PATH: how it is built and what happened
+// (Pipelines: Overview, Workflows, Runs), where it lives and goes (Data:
+// Catalog, Endpoints, SQL), and the Workspace. Groups are announced as
+// groups, so a screen reader hears "Data, group" before "Endpoints".
+func TestTheSidebarGroupsSectionsByTheDatasPath(t *testing.T) {
 	body := render(t, dataUI(catalogFake{}).WithEndpoints(endpointsFake{}), "/data")
-	for _, group := range []string{`role="group" aria-label="Pipelines"`, `role="group" aria-label="Data"`} {
+	for _, group := range []string{
+		`role="group" aria-label="Pipelines"`, `role="group" aria-label="Data"`, `role="group" aria-label="Workspace"`,
+	} {
 		if !strings.Contains(body, group) {
-			t.Errorf("the bar has no %s", group)
+			t.Errorf("the sidebar has no %s", group)
 		}
 	}
-	order := []string{`href="/"`, `aria-label="Pipelines"`, `href="/workflows"`, `href="/runs"`,
-		`aria-label="Data"`, `href="/data"`, `href="/data/endpoints"`, `href="/projects"`}
+	// Inside the section navigation only: the logo also links to `/`, above it.
+	if at := strings.Index(body, `<nav aria-label="Sections"`); at >= 0 {
+		body = body[at:]
+	}
+	order := []string{`aria-label="Pipelines"`, `href="/"`, `href="/workflows"`, `href="/runs"`,
+		`aria-label="Data"`, `href="/data"`, `href="/data/endpoints"`,
+		`aria-label="Workspace"`, `href="/projects"`}
 	last := -1
 	for _, want := range order {
 		i := strings.Index(body, want)
 		if i < 0 {
-			t.Fatalf("the bar lacks %s", want)
+			t.Fatalf("the sidebar lacks %s", want)
 		}
 		if i < last {
 			t.Errorf("%s is out of order", want)
@@ -122,6 +154,35 @@ func TestEachPageMarksItsOwnItem(t *testing.T) {
 		tag := body[strings.LastIndex(body[:i], "<a"):i]
 		if !strings.Contains(tag, href) {
 			t.Errorf("%s marks %q", path, tag)
+		}
+	}
+}
+
+// THE TOP BAR SAYS WHERE YOU ARE: the section's group, then the section, read
+// from the same list the sidebar is drawn from -- two lists would disagree the
+// first time a section moved. It is not a second `aria-current`: the sidebar
+// already says which section is open, and saying it twice makes a screen
+// reader count two.
+func TestTheTopBarSaysWhereYouAre(t *testing.T) {
+	ui := dataUI(catalogFake{}).WithEndpoints(endpointsFake{})
+	for path, want := range map[string][2]string{
+		"/data":           {"Data", "Catalog"},
+		"/data/endpoints": {"Data", "Endpoints"},
+	} {
+		body := render(t, ui, path)
+		at := strings.Index(body, `aria-label="Breadcrumb"`)
+		if at < 0 {
+			t.Errorf("%s: the top bar has no breadcrumb", path)
+			continue
+		}
+		crumb := body[at:]
+		crumb = crumb[:strings.Index(crumb, "</nav>")]
+		g, s := strings.Index(crumb, ">"+want[0]+"<"), strings.Index(crumb, ">"+want[1]+"<")
+		if g < 0 || s < 0 || s < g {
+			t.Errorf("%s: the breadcrumb is not %s / %s: %q", path, want[0], want[1], crumb)
+		}
+		if strings.Contains(crumb, "aria-current") {
+			t.Errorf("%s: the breadcrumb claims the current page a second time", path)
 		}
 	}
 }

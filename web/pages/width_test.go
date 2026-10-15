@@ -50,8 +50,9 @@ func TestTheContentWrapperFollowsTheHeader(t *testing.T) {
 		t.Run(s.name, func(t *testing.T) {
 			page := draw(t, s.c)
 			// The PAGE header, not the bar: there are two <header>s in
-			// this document and the first one is the navigation.
-			head := strings.Index(page, `<header class="sticky`)
+			// this document and the first one is the top bar. Found by its
+			// marker rather than a class, which is styling and moves.
+			head := strings.Index(page, `<header data-page-header`)
 			if head < 0 {
 				t.Fatalf("%s rendered no page header", s.name)
 			}
