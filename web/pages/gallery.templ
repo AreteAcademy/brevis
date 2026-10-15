@@ -1,0 +1,124 @@
+package pages
+
+import (
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/layouts"
+)
+
+// Gallery is every component the screens are built from, with sample data:
+// the place to see a change to one before a screen shows it. Served only
+// where the console is being built (UI.WithGallery). The data is invented and
+// says so -- nothing here is read from a database.
+templ Gallery() {
+	@layouts.Base(layouts.Page{Title: "Components"}) {
+		<p class="mb-6 max-w-3xl text-sm text-muted">
+			Every component the screens are built from, with invented data. Served only with BREVIS_ENV=local.
+		</p>
+		<div class="flex flex-col gap-8">
+			@gallerySection("Buttons") {
+				<div class="flex flex-wrap items-center gap-2">
+					@components.Button(components.ButtonPrimary, components.SizeRegular, nil) {
+						Primary
+					}
+					@components.Button(components.ButtonSecondary, components.SizeRegular, nil) {
+						Secondary
+					}
+					@components.Button(components.ButtonAccent, components.SizeRegular, nil) {
+						@components.Icon("play", "h-3.5 w-3.5")
+						Run
+					}
+					@components.Button(components.ButtonDanger, components.SizeRegular, nil) {
+						Cancel run
+					}
+					@components.Button(components.ButtonSecondary, components.SizeSmall, nil) {
+						Small
+					}
+					@components.Button(components.ButtonSecondary, components.SizeRegular, templ.Attributes{"disabled": true}) {
+						Disabled
+					}
+					@components.IconButton("Copy URI", "copy", nil)
+					@components.Kbd("⌘↵")
+					@components.Kbd("/")
+				</div>
+			}
+			@gallerySection("Filters") {
+				<div class="flex flex-wrap items-center gap-2">
+					<div class="w-72">
+						@components.SearchInput("q", "", "Search destinations")
+					</div>
+					@components.Segmented("Status", []components.SegOption{
+						{Label: "All", Href: "#", Current: true},
+						{Label: "Attention", Href: "#", Count: "2"},
+						{Label: "Continuous", Href: "#", Count: "4"},
+					})
+				</div>
+			}
+			@gallerySection("Tabs") {
+				@components.Tabs("How to read the answer", []components.Tab{
+					{Key: "results", Label: "Results", Selected: true},
+					{Key: "json", Label: "JSON"},
+				})
+			}
+			@gallerySection("Stats") {
+				@components.Stats([]components.Stat{
+					{Label: "Timeout", Value: "20", Unit: "s", Icon: "clock"},
+					{Label: "Rows", Value: "10,000", Icon: "rows-3"},
+					{Label: "Bytes billed", Value: "1.0", Unit: "GB", Icon: "hard-drive", Note: "per request"},
+				})
+			}
+			@gallerySection("Badges") {
+				<div class="flex flex-wrap items-center gap-2">
+					for _, s := range []string{"success", "failed", "running", "queued", "retrying", "canceled", "skipped", ""} {
+						@components.State(s)
+					}
+				</div>
+				<div class="mt-2 flex flex-wrap items-center gap-2">
+					for _, s := range []string{"on_time", "late", "stale", "paused", "continuous", "unidentified", ""} {
+						@components.Freshness(s)
+					}
+				</div>
+				<div class="mt-2 flex flex-wrap items-center gap-2">
+					@components.MethodPill("GET")
+					@components.MethodPill("POST")
+					@components.Tag("gateway", "")
+					@components.Tag("legacy", "")
+				</div>
+			}
+			@gallerySection("Table foot") {
+				<div class="rounded-card border border-line bg-surface">
+					@components.TableFoot(11, 15, "destinations")
+				</div>
+			}
+			@gallerySection("Definition list") {
+				@components.DefinitionList([]components.Def{
+					{Term: "Stream", Value: "example://stream/orders", Mono: true},
+					{Term: "Identity", Value: "By the event's key"},
+					{Term: "Schedule", Value: "0 4 * * *", Mono: true},
+				})
+			}
+			@gallerySection("Code") {
+				@components.CodeBlock("gallery-curl", `curl -H "Authorization: Bearer $KEY" "https://api.example/v1/orders?period=today"`)
+			}
+			@gallerySection("Empty") {
+				@components.Empty("Nothing here yet.", "make up-data")
+			}
+			@gallerySection("Icons") {
+				<ul class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+					for _, n := range components.GlyphNames() {
+						<li class="flex items-center gap-2 rounded-card border border-line-soft px-2.5 py-2 text-[0.78rem] text-muted">
+							@components.Icon(n, "h-4 w-4 text-ink")
+							<span>{ n }</span>
+						</li>
+					}
+				</ul>
+			}
+		</div>
+	}
+}
+
+templ gallerySection(title string) {
+	<section>
+		<h2 class="mb-3 text-[0.68rem] font-medium tracking-[0.08em] text-faint uppercase">{ title }</h2>
+		{ children... }
+	</section>
+}

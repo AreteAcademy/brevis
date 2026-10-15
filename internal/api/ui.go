@@ -132,6 +132,9 @@ type UI struct {
 
 	// protected says this console asks for a login. See dataTools.
 	protected bool
+
+	// gallery serves /_components. See WithGallery.
+	gallery bool
 }
 
 // WithPreview points the console at a SQL service, and says whether this
@@ -169,6 +172,16 @@ type EndpointCaller interface {
 func (u *UI) WithEndpointCalls(c EndpointCaller, console auth.Credential) *UI {
 	u.calls = c
 	u.callsProtected = console.Enabled()
+	return u
+}
+
+// WithGallery serves /_components: every component the screens are built
+// from, with sample data, in one page. For somebody building the console --
+// the caller turns it on with BREVIS_ENV=local and nowhere else. Off, the
+// route is not registered at all, so it is a 404 rather than a page that
+// explains itself.
+func (u *UI) WithGallery(on bool) *UI {
+	u.gallery = on
 	return u
 }
 
@@ -229,6 +242,9 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /data/target", u.dataTarget)
 	mux.HandleFunc("GET /data/endpoints", u.dataEndpoints)
 	mux.HandleFunc("GET /data/endpoints/{api}/{name}", u.dataEndpoint)
+	if u.gallery {
+		mux.HandleFunc("GET /_components", u.components)
+	}
 	mux.HandleFunc("GET /runs/{id}/live", u.runLive)
 	mux.HandleFunc("GET /workflows/{slug}", u.workflow)
 	mux.HandleFunc("GET /runs/{id}", u.run)
@@ -539,6 +555,10 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	u.render(w, r, pages.SQL(v))
+}
+
+func (u *UI) components(w http.ResponseWriter, r *http.Request) {
+	u.render(w, r, pages.Gallery())
 }
 
 func (u *UI) overview(w http.ResponseWriter, r *http.Request) {

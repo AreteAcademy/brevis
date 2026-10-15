@@ -8,6 +8,8 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import "sort"
+
 // Icon draws one glyph inline, in the text's own colour, at the size the
 // class gives it. `shrink-0` is always added: an icon beside a long label in
 // a flex row is the first thing the browser squeezes, and a squeezed glyph
@@ -71,6 +73,16 @@ func Icon(name, class string) templ.Component {
 		}
 		return nil
 	})
+}
+
+// GlyphNames is every glyph there is, sorted: the gallery draws them all.
+func GlyphNames() []string {
+	out := make([]string, 0, len(glyphs))
+	for n := range glyphs {
+		out = append(out, n)
+	}
+	sort.Strings(out)
+	return out
 }
 
 var _ = templruntime.GeneratedTemplate

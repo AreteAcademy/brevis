@@ -1343,7 +1343,9 @@ func serve(ctx context.Context) error {
 		// What each brevis-sql-api was published with, from this database:
 		// the engine reads no API and no API reaches it.
 		WithEndpoints(postgres.NewEndpointRepo(pool)).
-		WithEndpointCalls(calls, cfg.Auth)
+		WithEndpointCalls(calls, cfg.Auth).
+		// The component gallery, for whoever is building the console.
+		WithGallery(cfg.Env == "local")
 	// `inseguro` follows the environment: locally the server listens on plain
 	// http, and a Secure cookie would never come back — the login would look
 	// broken.
