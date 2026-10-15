@@ -4,6 +4,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/auth"
 	"github.com/AreteAcademy/brevis/internal/branding"
 	"github.com/AreteAcademy/brevis/web/assets"
+	"github.com/AreteAcademy/brevis/web/components"
 )
 
 // Base is the skeleton of every page.
@@ -22,10 +23,15 @@ import (
 type Page struct {
 	Title string
 
-	// Kicker is the small-caps crumb above the title ("DASHBOARD", "WORKFLOWS").
+	// Kicker WAS the small-caps crumb above the title ("DASHBOARD"). It is no
+	// longer drawn: the top bar's breadcrumb says where a page is, from the
+	// same list the sidebar is drawn from, and a kicker above the title said
+	// it a second time in other words. Kept until the screens that set it are
+	// redesigned, so this change does not touch nine pages at once.
 	Kicker string
 
-	// Active matches the menu item's key.
+	// Active matches a section's key in the sidebar (nav.go). It marks the
+	// open section and is where the breadcrumb starts.
 	Active string
 
 	// Actions occupies the header's right-hand corner. Nil = no buttons.
@@ -104,17 +110,19 @@ templ Base(p Page) {
 			}
 		</head>
 		<body class="h-full font-sans text-ink antialiased">
-			<div class="flex h-full flex-col">
-				@topbar(p.Active, brand)
+			<div class="flex h-full">
+				@sidebar(p.Active, brand)
+				<div class="flex h-full min-w-0 flex-1 flex-col">
+				@topbar(p)
 				<main class="flex-1 overflow-y-auto" data-fill?={ p.Fill }>
-					<header class="sticky top-0 z-10 border-b border-line bg-canvas/90 px-6 py-4 backdrop-blur">
+					// THE PAGE'S OWN HEADER: one title, large, and the page's
+					// verbs beside it. Where the page is lives in the top bar
+					// now, so this no longer repeats it in small caps.
+					<header data-page-header class="px-6 pt-6 pb-4">
 						<div class="flex items-center justify-between gap-6">
 							<div class="min-w-0">
-								if p.Kicker != "" {
-									<p class="kicker mb-1">{ p.Kicker }</p>
-								}
 								<div class="flex items-center gap-2">
-									<h1 class="display truncate text-xl text-ink">{ p.Title }</h1>
+									<h1 class="display truncate text-[1.6rem] tracking-[-0.022em] text-ink">{ p.Title }</h1>
 									if p.Aside != nil {
 										@p.Aside
 									}
@@ -145,6 +153,7 @@ templ Base(p Page) {
 						{ children... }
 					</div>
 				</main>
+				</div>
 			</div>
 			// The basic interactions (dialogs, chart tooltips) on every page. It
 			// sits at the end of the body so it does not block rendering — the
@@ -182,11 +191,10 @@ templ accountMenu(operator string, brand branding.Brand) {
 				<path d="M4 10l4-4 4 4"></path>
 			</svg>
 		</summary>
-		// It drops DOWN now. It opened upwards while the button sat at the
-		// bottom of a sidebar, where a dropdown would have been drawn past
-		// the edge of the window; at the top of the screen the same choice
-		// would draw it off the other edge.
-		<div class="absolute top-full right-0 z-20 mt-1 w-60 overflow-hidden rounded-card border border-line bg-surface shadow-warm">
+		// IT OPENS UPWARDS, because it sits at the foot of the sidebar: a
+		// dropdown from there would be drawn past the bottom of the window.
+		// It dropped down for the while it lived in a top bar.
+		<div class="absolute bottom-full left-0 z-20 mb-1 w-60 overflow-hidden rounded-card border border-line bg-surface shadow-warm">
 			// The installation's phrase, INSIDE the menu.
 			//
 			// It used to sit in the sidebar's footer, where it was a paragraph
@@ -248,88 +256,92 @@ templ accountMenu(operator string, brand branding.Brand) {
 	</details>
 }
 
-type item struct {
-	Rota  string
-	Name  string
-	Key string
-}
-
-templ topbar(active1 string, brand branding.Brand) {
-	// THE BAR, AND IT IS THE PRODUCT'S OWN IDENTITY RATHER THAN A THEME.
-	//
-	// The site and this console had inverted palettes sharing one colour --
-	// the site's background IS the console's ink -- so somebody who followed
-	// a link from the page that sells this arrived at what looked like
-	// another product. One palette, two surfaces.
-	//
-	// ACROSS THE TOP AND NOT DOWN THE SIDE. The sections are grouped now --
-	// Pipelines, Data -- but each group is two or three items, one level
-	// deep, and a column of them would still spend 14rem of width on screens
-	// whose job is a wide table.
-	<header class="shrink-0 border-b border-line bg-surface">
-		<div class="flex items-center gap-6 px-5 py-2.5">
-			<a href="/" class="flex shrink-0 items-center gap-2.5">
-				if brand.Logo == branding.DefaultLogo {
-					// Inline, so the symbol inherits the theme's colour.
-					<span class="block h-6 w-6 shrink-0 text-accent">
-						@templ.Raw(assets.LogoSVG)
-					</span>
-				} else if brand.Logo != "" {
-					<img src={ brand.Logo } alt={ brand.Title } class="h-6 w-6 shrink-0 rounded-card object-contain"/>
-				}
-				<span class="display block text-[1.05rem] leading-none text-ink">{ brand.Title }</span>
-			</a>
-			<nav class="flex min-w-0 items-center gap-1 overflow-x-auto" aria-label="Sections">
-				@navLink(item{"/", "Overview", "overview"}, active1)
-				// GROUPED BY THE DATA'S PATH: how it is built, then where it
-				// lives and where it goes. A group is announced as one --
-				// `role="group"` with its name -- so the label a sighted reader
-				// sees in small caps is heard too, and the visible copy is
-				// hidden from a screen reader rather than read twice.
-				<div role="group" aria-label="Pipelines" class="ml-1 flex shrink-0 items-center gap-1 border-l border-line pl-2">
-					<span aria-hidden="true" class="kicker px-1 text-[0.65rem] text-muted">Pipelines</span>
-					@navLink(item{"/workflows", "Workflows", "workflows"}, active1)
-					@navLink(item{"/runs", "Runs", "runs"}, active1)
-				</div>
-				<div role="group" aria-label="Data" class="ml-1 flex shrink-0 items-center gap-1 border-l border-line pl-2">
-					<span aria-hidden="true" class="kicker px-1 text-[0.65rem] text-muted">Data</span>
-					@navLink(item{"/data", "Catalog", "data"}, active1)
-					@navLink(item{"/data/endpoints", "Endpoints", "endpoints"}, active1)
-					// SQL IS CONDITIONAL: a section that answers "no SQL
-					// service is configured" is a section that leads nowhere,
-					// and the bar is the one place a reader trusts to say what
-					// exists.
-					if HasSQL(ctx) {
-						@navLink(item{"/sql", "SQL", "sql"}, active1)
+// sidebar is the console's frame: who it is, where to go, who you are.
+//
+// DOWN THE SIDE, which it was not. It moved to the top when the sections were
+// few and one level deep; the redesign (2026-10-14) brought it back as three
+// labelled groups with an icon per section, which one row cannot carry
+// without crowding. It is the part of the screen that does not change between
+// pages, and `app-sidebar` names it for the view transition so it holds still
+// while the page beside it crossfades.
+templ sidebar(active string, brand branding.Brand) {
+	<aside class="app-sidebar flex h-full w-[236px] shrink-0 flex-col border-r border-line-soft bg-canvas-subtle">
+		<a href="/" class="flex h-13 shrink-0 items-center gap-2.5 border-b border-line-soft px-4">
+			if brand.Logo == branding.DefaultLogo {
+				// Inline, so the symbol inherits the theme's colour.
+				<span class="block h-6 w-6 shrink-0 text-accent">
+					@templ.Raw(assets.LogoSVG)
+				</span>
+			} else if brand.Logo != "" {
+				<img src={ brand.Logo } alt={ brand.Title } class="h-6 w-6 shrink-0 rounded-card object-contain"/>
+			}
+			<span class="display block truncate text-[1.05rem] leading-none text-ink">{ brand.Title }</span>
+		</a>
+		<nav aria-label="Sections" class="flex-1 overflow-y-auto px-2.5 py-3">
+			// A GROUP IS ANNOUNCED AS ONE -- `role="group"` with its name -- so
+			// the label a sighted reader sees in small caps is heard too, and
+			// the visible copy is hidden from a screen reader rather than read
+			// twice.
+			for _, g := range groups(ctx) {
+				<div role="group" aria-label={ g.Name } class="mb-4 flex flex-col gap-0.5">
+					<p aria-hidden="true" class="px-2.5 pb-1 text-[0.68rem] font-medium tracking-[0.08em] text-faint uppercase">{ g.Name }</p>
+					for _, s := range g.Sections {
+						@navLink(s, active)
 					}
 				</div>
-				<div class="ml-1 flex shrink-0 items-center border-l border-line pl-2">
-					@navLink(item{"/projects", "Projects", "projects"}, active1)
-				</div>
-			</nav>
-			// The account menu moved with the bar. It lived at the bottom of
-			// a sidebar that no longer exists, and a console nobody can sign
-			// out of is one nobody can leave.
-			<div class="ml-auto flex shrink-0 items-center gap-2">
-				@accountMenu(auth.De(ctx), brand)
-			</div>
+			}
+		</nav>
+		// WHO YOU ARE, AT THE FOOT, which is where a console keeps "who am I
+		// and how do I leave". The menu opens upwards from here.
+		<div class="shrink-0 border-t border-line-soft p-2.5">
+			@accountMenu(auth.De(ctx), brand)
 		</div>
-	</header>
+	</aside>
 }
 
-templ navLink(i item, active1 string) {
-	if i.Key == active1 {
+templ navLink(s section, active string) {
+	if s.Key == active {
 		// `aria-current` and not only the box: the shape says which section
 		// to somebody looking at it, and this says it to everybody else.
 		<a
-			href={ templ.SafeURL(i.Rota) }
+			href={ templ.SafeURL(s.Href) }
 			aria-current="page"
-			class="shrink-0 rounded-card bg-accent-wash px-3 py-1.5 text-[0.85rem] font-medium text-ink"
-		>{ i.Name }</a>
+			class="flex h-8 items-center gap-2.5 rounded-card border border-line bg-surface-2 px-2.5 text-[0.85rem] font-medium text-ink"
+		>
+			@components.Icon(s.Icon, "h-4 w-4")
+			{ s.Name }
+		</a>
 	} else {
 		<a
-			href={ templ.SafeURL(i.Rota) }
-			class="shrink-0 rounded-card px-3 py-1.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-		>{ i.Name }</a>
+			href={ templ.SafeURL(s.Href) }
+			class="flex h-8 items-center gap-2.5 rounded-card border border-transparent px-2.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+		>
+			@components.Icon(s.Icon, "h-4 w-4")
+			{ s.Name }
+		</a>
 	}
+}
+
+// topbar says where the page is: the section's group, the section, and the
+// page's own name when it is deeper than the section. The section links back
+// to its list; the rest is text.
+//
+// NOT A SECOND `aria-current`. The sidebar already marks the open section,
+// and a screen reader counting two "current page"s is told nothing.
+templ topbar(p Page) {
+	<header class="flex h-13 shrink-0 items-center gap-4 border-b border-line-soft px-6">
+		if c, ok := where(ctx, p.Active, p.Title); ok {
+			<nav aria-label="Breadcrumb" class="flex min-w-0 items-center gap-1.5 text-[0.82rem]">
+				<span class="shrink-0 text-muted">{ c.Group }</span>
+				<span aria-hidden="true" class="text-faint">/</span>
+				if c.Title != "" {
+					<a href={ templ.SafeURL(c.Section.Href) } class="shrink-0 text-muted transition-colors hover:text-ink">{ c.Section.Name }</a>
+					<span aria-hidden="true" class="text-faint">/</span>
+					<span class="truncate text-ink">{ c.Title }</span>
+				} else {
+					<span class="truncate text-ink">{ c.Section.Name }</span>
+				}
+			</nav>
+		}
+	</header>
 }

@@ -729,3 +729,11 @@ li.CodeMirror-hint-active {
   background: color-mix(in oklab, var(--color-state-queued) 12%, transparent);
   color: var(--color-state-queued);
 }
+
+/* THE FRAME HOLDS STILL. Every navigation crossfades (see @view-transition);
+   a named element is captured on its own, and one that is the same on both
+   pages does not visibly move. The sidebar is that element: the part of the
+   screen a click never changes. */
+.app-sidebar {
+  view-transition-name: sidebar;
+}
