@@ -14,6 +14,39 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.29.0] — 2026-10-15
+
+### Changed: Catalog becomes Streams and Loads (#111)
+
+Catalog listed two mechanisms as "destinations", and a stream's dead letter as
+a destination of its own. The console now has an **Ingest** group with two
+screens, each answering one question:
+
+- **Streams** (`/ingest/streams`): what comes in through the gateways. One card
+  per stream, `POST <path>`, with its compact flow and its dead letter hanging
+  off the destination ("refused batches"). A stream's page has Overview,
+  Configuration (`#config`, everything it declares, "—" for what it does not)
+  and Dead letter (`#deadletter`: the path, the gateway metric that counts what
+  it buried, the ls/resend commands), plus **Send test event**, a drawer with
+  a validated body and a curl to copy. The console sends nothing.
+- **Loads** (`/ingest/loads`): what the workflows wrote, grouped by workflow,
+  with freshness, last load and rows. A load's page is one step on one
+  destination: rows per load (each bar opens its run; zero is red), recent
+  loads, configuration, Preview and Query in SQL.
+
+The sidebar is now Pipelines · Ingest (Streams, Loads) · Consume (Endpoints,
+SQL) · Workspace, and ⌘K lists streams and loads instead of destinations.
+
+**Old links keep working.** `/data` answers 301 to `/ingest/loads`;
+`/data/target?u=<uri>` answers 301 to the stream whose sink or dead letter the
+URI is, else the load that writes it, else `/ingest/loads`. `/data/endpoints`
+is unchanged.
+
+No migration. No configuration changes. The streams list reads every stream's
+configuration in one query (`gateway_streams` joined to `writer_configs`).
+
+---
+
 ## [0.28.0] — 2026-10-15
 
 ### Changed: the Pipelines screens (#110)
