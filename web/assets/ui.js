@@ -592,6 +592,11 @@
         var noun = foot.getAttribute("data-foot-noun") || "";
         foot.textContent = shown === total ? total + " " + noun : "Showing " + shown + " of " + total + " " + noun;
       }
+      // A group (a workflow's tbody) with every row hidden hides its header
+      // too, the way the server draws it.
+      rows.querySelectorAll("[data-filter-group]").forEach(function (group) {
+        group.hidden = !group.querySelector("[data-filter-row]:not([hidden])");
+      });
       var empty = scope.querySelector("[data-filter-empty]");
       if (empty) empty.hidden = shown > 0;
 
@@ -602,6 +607,19 @@
       document.querySelectorAll("[data-filter-keep] a[href]").forEach(function (a) {
         a.setAttribute("href", withQuery(a.getAttribute("href"), box.name, raw));
       });
+    });
+  });
+
+  // A group that collapses (`[data-group-toggle]` in a tbody): the button,
+  // hidden until this runs, folds the group's rows under its header. With no
+  // script every group stays open.
+  document.querySelectorAll("[data-group-toggle]").forEach(function (button) {
+    button.hidden = false;
+    button.addEventListener("click", function () {
+      var open = button.getAttribute("aria-expanded") !== "false";
+      button.setAttribute("aria-expanded", open ? "false" : "true");
+      var group = button.closest("tbody");
+      if (group) group.toggleAttribute("data-collapsed", open);
     });
   });
 

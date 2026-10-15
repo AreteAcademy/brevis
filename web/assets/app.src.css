@@ -965,3 +965,8 @@ tr[data-run-new] {
     background: var(--color-accent-wash);
   }
 }
+
+/* A COLLAPSED GROUP keeps its header row and folds the rest. */
+tbody[data-collapsed] > tr:not(:first-child) {
+  display: none;
+}

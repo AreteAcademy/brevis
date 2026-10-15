@@ -145,3 +145,52 @@ func TestIngestHrefs(t *testing.T) {
 		t.Errorf("a stream's link = %q", s.Href())
 	}
 }
+
+// THE LOADS LIST: one group per workflow, its header saying the schedule in
+// words (or that it runs by hand) and how many destinations, and under it one
+// row per step and destination, `step → URI`, each going to its load.
+func TestTheLoadsListGroupsByWorkflow(t *testing.T) {
+	now := time.Now()
+	page := draw(t, Loads(BuildLoads(printFixtures(now), now).Apply(DataFilter{})))
+	for _, want := range []string{
+		`data-filter-group="daily_sales"`, "every day at 04:00", "3 destinations",
+		`data-filter-group="vendors_bacen"`, "manual",
+		`href="/ingest/loads/daily_sales/report"`, "report", "file:///", "data/reports/2026-10-15/",
+		"legacy", `data-filter-for="load-rows"`,
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the loads list has no %s", want)
+		}
+	}
+	for _, never := range []string{"events_gateway", "dead-letter", "pubsub://"} {
+		if strings.Contains(page, never) {
+			t.Errorf("a gateway stream is listed as a load: %s", never)
+		}
+	}
+	if !strings.Contains(page, "6 destinations") || !strings.Contains(page, "3 workflows") {
+		t.Error("the header does not count destinations and workflows")
+	}
+}
+
+// THE FILTERS NARROW, COUNT AND STAY IN THE URL. A status or kind drops the
+// rows outside it, and a group with none left; the search hides rather than
+// drops, so deleting a letter brings a row back.
+func TestTheLoadsListFilters(t *testing.T) {
+	now := time.Now()
+	v := BuildLoads(printFixtures(now), now)
+	legacy := draw(t, Loads(v.Apply(DataFilter{Legacy: true, Path: "/ingest/loads"})))
+	if strings.Contains(legacy, `data-filter-group="daily_sales"`) || !strings.Contains(legacy, `data-filter-group="vendors_bacen"`) {
+		t.Error("legacy-only did not narrow to the legacy load's workflow")
+	}
+	searched := v.Apply(DataFilter{Q: "warehouse", Path: "/ingest/loads"})
+	if searched.Shown() != 1 {
+		t.Errorf("searching warehouse shows %d loads, want 1", searched.Shown())
+	}
+	page := draw(t, Loads(searched))
+	if !strings.Contains(page, `href="/ingest/loads?kind=file"`) && !strings.Contains(page, `href="/ingest/loads?kind=file&amp;q=warehouse"`) {
+		t.Error("a kind choice does not stay on /ingest/loads")
+	}
+	if got := (DataFilter{Path: "/ingest/loads"}).With("status", "late"); got != "/ingest/loads?status=late" {
+		t.Errorf("a filter link = %q", got)
+	}
+}

@@ -467,3 +467,22 @@ func TestADestinationKeepsItsWritersAndPropertiesBeside(t *testing.T) {
 		}
 	}
 }
+
+// /ingest/loads ANSWERS, with the catalog's step writers grouped by workflow,
+// and its collapse and group filter are in ui.js.
+func TestTheLoadsPageAnswers(t *testing.T) {
+	code, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads?legacy=1")
+	if code != http.StatusOK {
+		t.Fatalf("/ingest/loads answered %d", code)
+	}
+	if !strings.Contains(body, `data-filter-group="payments"`) || strings.Contains(body, `data-filter-group="sdk_orders"`) {
+		t.Error("legacy-only did not narrow the groups")
+	}
+	_, ui := browsing(t)
+	_, raw := get(t, ui, "/assets/ui.js")
+	for _, want := range []string{"data-group-toggle", "data-filter-group"} {
+		if !strings.Contains(strip(raw), want) {
+			t.Errorf("ui.js has no %s", want)
+		}
+	}
+}
