@@ -550,4 +550,41 @@
     e.preventDefault();
     form.requestSubmit();
   });
+
+  // ------------------------------------------------------------------
+  // A curl that follows its form
+  //
+  // The endpoint's curl names the form it follows (`data-curl-from`) and
+  // carries its fixed parts; as somebody types, the query string is built
+  // again from the fields that have a value -- an empty one is the default
+  // and says nothing. The escaping is Go's url.QueryEscape, which the server
+  // used to draw the same curl: encodeURIComponent leaves ! ' ( ) * alone,
+  // and a quote typed into a field would end the shell's quoted string.
+  // ------------------------------------------------------------------
+
+  function queryEscape(v) {
+    return encodeURIComponent(v)
+      .replace(/[!'()*]/g, function (c) { return "%" + c.charCodeAt(0).toString(16).toUpperCase(); })
+      .replace(/%20/g, "+");
+  }
+
+  function followCurl(form) {
+    document.querySelectorAll('[data-curl-from="' + form.id + '"]').forEach(function (pre) {
+      var q = [];
+      new FormData(form).forEach(function (value, name) {
+        if (name === "run" || typeof value !== "string" || value === "") return;
+        q.push(queryEscape(name) + "=" + queryEscape(value));
+      });
+      var u = pre.getAttribute("data-curl-base") + (q.length ? "?" + q.join("&") : "");
+      var code = pre.querySelector("code") || pre;
+      code.textContent = pre.getAttribute("data-curl-head") + "'" + u + "'";
+    });
+  }
+
+  ["input", "change"].forEach(function (type) {
+    document.addEventListener(type, function (e) {
+      var form = e.target && e.target.form;
+      if (form && form.id && document.querySelector('[data-curl-from="' + form.id + '"]')) followCurl(form);
+    });
+  });
 })();

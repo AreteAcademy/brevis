@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"context"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -378,6 +379,47 @@ func TestTryItSwapsItsAnswer(t *testing.T) {
 	for _, want := range []string{"form[data-swap]", `"X-Brevis-Fragment": "answer"`, ".redirected", "replaceState", "requestSubmit"} {
 		if !strings.Contains(js, want) {
 			t.Errorf("ui.js's swapping form never uses %s", want)
+		}
+	}
+}
+
+// THE CURL IS THE RUN, AS A COMMAND: what was sent is in it, so copying it
+// reproduces the request outside the console. Only the parameters given --
+// an empty field is the default and says nothing -- and the key stays a
+// placeholder.
+func TestTheCurlCarriesTheRunsParameters(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[],"truncated":false,"meta":{"rows":0}}`))
+	}))
+	defer srv.Close()
+	_, body := get(t, tryUI(t, srv.URL, loggedIn), "/data/endpoints/metrics-api/clicks?run=1&period=today&order=")
+	curl := html.UnescapeString(body[strings.Index(body, `id="endpoint-curl"`):])
+	curl = curl[:strings.Index(curl, "</pre>")]
+	if !strings.Contains(curl, "<api address>/v1/clicks?period=today'") {
+		t.Errorf("the curl does not carry the run: %s", curl)
+	}
+	if strings.Contains(curl, "order=") || strings.Contains(curl, "run=") || strings.Contains(curl, "console-key") {
+		t.Errorf("the curl carries what it should not: %s", curl)
+	}
+}
+
+// AND IT FOLLOWS THE FORM AS SOMEBODY TYPES. The block names the form it
+// follows and carries its fixed parts; ui.js rebuilds the query string with
+// the same escaping Go's url.QueryEscape uses -- a quote typed into a field
+// must not end the shell's quoted string.
+func TestTheCurlFollowsTheForm(t *testing.T) {
+	_, body := get(t, tryUI(t, "http://api.invalid", loggedIn), "/data/endpoints/metrics-api/clicks")
+	for _, want := range []string{`id="try-it"`, `data-curl-from="try-it"`, `data-curl-base="&lt;api address&gt;/v1/clicks"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page lacks %s", want)
+		}
+	}
+	_, ui := browsing(t)
+	_, raw := get(t, ui, "/assets/ui.js")
+	js := strip(raw)
+	for _, want := range []string{"[data-curl-from", "encodeURIComponent", `/[!'()*]/g`} {
+		if !strings.Contains(js, want) {
+			t.Errorf("ui.js's curl never uses %s", want)
 		}
 	}
 }

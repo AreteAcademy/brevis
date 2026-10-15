@@ -97,7 +97,7 @@ templ Gallery() {
 				})
 			}
 			@gallerySection("Code") {
-				@components.CodeBlock("gallery-curl", `curl -H "Authorization: Bearer $KEY" "https://api.example/v1/orders?period=today"`)
+				@components.CodeBlock("gallery-curl", `curl -H "Authorization: Bearer $KEY" "https://api.example/v1/orders?period=today"`, nil)
 			}
 			@gallerySection("Empty") {
 				@components.Empty("Nothing here yet.", "make up-data")
