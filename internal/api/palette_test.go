@@ -130,3 +130,27 @@ func TestThePaletteIndexIsReadOnly(t *testing.T) {
 		t.Errorf("a POST to the index answered %d", rec.Code)
 	}
 }
+
+// THE ISLAND DRIVES THE PALETTE: Cmd/Ctrl-K from anywhere -- listened for in
+// the capture phase, so an editor below cannot swallow it -- the index
+// fetched from one place, a redirect or a refusal taken as "no index" and
+// never parsed as data, the active row named to a screen reader, the dialog
+// opened modally, Cmd-Enter to a new tab, and the opener revealed only here.
+// The ranking and the keys are verified in a browser (P4); what Go can hold
+// is that the pieces are there.
+func TestTheIslandDrivesThePalette(t *testing.T) {
+	_, ui := browsing(t)
+	_, raw := get(t, ui, "/assets/ui.js")
+	js := strip(raw)
+	for _, want := range []string{
+		`"/api/palette"`, ".redirected", "aria-activedescendant", "showModal", `"aria-expanded"`,
+		`=== "k"`, `"keydown", function`, "}, true);", "window.open", "[data-palette-open]",
+	} {
+		if !strings.Contains(js, want) {
+			t.Errorf("ui.js's palette never uses %s", want)
+		}
+	}
+	if n := strings.Count(js, `"/api/palette"`); n != 1 {
+		t.Errorf("the index is fetched from %d places; one is how it is fetched once", n)
+	}
+}
