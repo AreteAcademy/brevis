@@ -59,6 +59,7 @@ type Leitura interface {
 	LatestRuns(ctx context.Context, limite int) ([]postgres.RunSummary, error)
 	Runs(ctx context.Context, f postgres.RunFilter) ([]postgres.RunSummary, error)
 	CountRuns(ctx context.Context, f postgres.RunFilter) (int, error)
+	CountRunsByState(ctx context.Context, f postgres.RunFilter) (map[string]int, error)
 	WorkflowRuns(ctx context.Context, slug string, limite int) ([]postgres.RunSummary, error)
 	Workflows(ctx context.Context) ([]postgres.WorkflowSummary, error)
 	RecentStates(ctx context.Context, slugs []string, n int) (map[string][]postgres.RecentRun, error)
@@ -784,7 +785,16 @@ func (u *UI) runs(w http.ResponseWriter, r *http.Request) {
 		u.failure(w, r, err)
 		return
 	}
-	u.render(w, r, pages.Runs(runs, f, total))
+	// The counts are the same filter WITHOUT its state, so each choice says
+	// what its link would show.
+	byState := query
+	byState.State, byState.Limite, byState.Offset = "", 0, 0
+	counts, err := u.leitura.CountRunsByState(r.Context(), byState)
+	if err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	u.render(w, r, pages.Runs(runs, f, counts, total))
 }
 
 // validState refuses any state outside §7's machine.

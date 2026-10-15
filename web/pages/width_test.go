@@ -85,7 +85,7 @@ func screens() []screen {
 	return []screen{
 		{"overview", Overview(OverviewData{})},
 		{"workflows", Workflows(nil, nil, Filter{}, WorkflowCounts{}, nil, 0, 0)},
-		{"runs", Runs(nil, RunFilter{}, 0)},
+		{"runs", Runs(nil, RunFilter{}, nil, 0)},
 		{"projects", Projects(nil)},
 		{"data", Data(DataView{})},
 		{"destination", Target(TargetView{})},
