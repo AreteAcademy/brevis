@@ -383,160 +383,156 @@ func (p Pagination) Window() []int {
 	return out
 }
 
-templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, filtered int) {
+templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, total, filtered int) {
 	@layouts.Base(layouts.Page{Title: "Workflows", Kicker: "Orchestration", Active: "workflows"}) {
-		<form method="get" action="/workflows" class="mb-5">
-			<div class="flex items-center gap-3 rounded-card border border-line bg-surface px-5 py-3 shadow-warm-sm">
-				<svg class="h-4 w-4 shrink-0 text-muted" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
-					<circle cx="9" cy="9" r="6"></circle>
-					<path d="M13.5 13.5 17 17" stroke-linecap="round"></path>
-				</svg>
-				<input
-					type="search"
-					name="q"
-					value={ f.Search }
-					placeholder="Search workflows"
-					class="w-full bg-transparent text-sm text-ink placeholder:text-muted focus:outline-none"
-				/>
-				// The other filters go along as hidden fields: searching must not
-				// erase the state the operator had already chosen.
-				<input type="hidden" name="state" value={ f.State }/>
-				<input type="hidden" name="active" value={ f.Active }/>
-				<input type="hidden" name="tag" value={ f.Tag }/>
-				<input type="hidden" name="project" value={ f.Project }/>
-				<button type="submit" class="shrink-0 rounded-card bg-ink px-4 py-1.5 text-xs font-medium text-surface transition-colors hover:bg-accent-strong">
-					Search
-				</button>
-			</div>
+		// THE BOX ANSWERS WHILE SOMEBODY TYPES, and the server still decides:
+		// the list is paginated, so ui.js submits this form as a fetch
+		// (`data-swap-typing`) and swaps the list the handler draws alone. With
+		// no script it is the GET form it always was, and Enter submits it.
+		// The other filters go along as hidden fields: searching must not erase
+		// the state the operator had already chosen.
+		<form method="get" action="/workflows" role="search" data-swap="workflows-list" data-swap-typing class="mb-3 w-full sm:w-80">
+			for _, h := range f.hidden() {
+				<input type="hidden" name={ h[0] } value={ h[1] }/>
+			}
+			@components.SearchInput("q", f.Search, "Search workflows", "")
 		</form>
-		<div class="mb-6 flex flex-wrap items-center gap-2">
-			@chip(f.With("state", ""), "All", f.State == "", "")
-			@chip(f.With("state", "success"), "Success", f.State == "success", "bg-state-success")
-			@chip(f.With("state", "failed"), "Failure", f.State == "failed", "bg-state-failed")
-			@chip(f.With("state", "running"), "Running", f.State == "running", "bg-state-running")
-			@chip(f.With("state", "queued"), "Queued", f.State == "queued", "bg-state-queued")
-			<span class="mx-2 h-5 w-px bg-line"></span>
-			@chip(f.With("active", ""), "All", f.Active == "", "")
-			@chip(f.With("active", "active"), "Active", f.Active == "active", "")
-			@chip(f.With("active", "paused"), "Paused", f.Active == "paused", "")
-			if len(tags) > 0 {
-				<span class="mx-2 h-5 w-px bg-line"></span>
-				for _, t := range tags {
-					@chip(f.With("tag", alterna(f.Tag, t)), t, f.Tag == t, "")
-				}
-			}
-			// The project chip appears only when one is selected. There is no
-			// row of every project here on purpose: a project is a namespace,
-			// not a category, and most installations have one -- a permanent
-			// chip for a filter that is almost never on is noise.
-			if f.Project != "" {
-				<span class="mx-2 h-5 w-px bg-line"></span>
-				<a
-					href={ templ.SafeURL(f.With("project", "")) }
-					class="inline-flex items-center gap-1.5 rounded-card border border-accent bg-accent-wash px-3 py-1 text-xs text-ink"
-				>
-					project: <span class="font-mono">{ f.Project }</span>
-					<span class="text-muted">&times;</span>
-				</a>
-			}
+		<div id="workflows-list">
+			@WorkflowsList(ws, tags, f, counts, total, filtered)
 		</div>
-		<p class="display mb-3 text-lg text-ink">
-			{ count(filtered, "workflow", "workflows") }
-			if filtered != total {
-				<span class="ml-2 text-sm text-muted">of { fmt.Sprint(total) }</span>
-				<a href="/workflows" class="ml-3 text-xs text-gold-strong hover:underline">clear filters</a>
+	}
+}
+
+// WorkflowsList is everything under the search box: the filters, the count,
+// the table and its pages. It is the page's fragment (X-Brevis-Fragment:
+// answer), so the counts follow the search as somebody types.
+templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, total, filtered int) {
+	<div class="mb-6 flex flex-wrap items-center gap-2">
+		// Each control scrolls on its own when the screen is narrower than its
+		// choices, rather than cutting the last one off.
+		<div class="max-w-full overflow-x-auto whitespace-nowrap">
+			@components.Segmented("State", stateOptions(f, counts))
+		</div>
+		<div class="max-w-full overflow-x-auto whitespace-nowrap">
+			@components.Segmented("Schedule", scheduleOptions(f, counts))
+		</div>
+		if len(tags) > 0 {
+			<span class="mx-2 h-5 w-px bg-line"></span>
+			for _, t := range tags {
+				@chip(f.With("tag", alterna(f.Tag, t)), t, f.Tag == t, "")
 			}
-		</p>
-		if len(ws) == 0 {
-			@components.Empty("No workflow matches these filters.", "brevis publish file.yaml")
-		} else {
-			<div class="overflow-hidden rounded-card border border-line bg-surface shadow-warm-sm">
-				<table class="w-full text-sm">
-					<thead>
-						<tr class="border-b border-line bg-parchment-soft/60 text-left">
-							@th("", "w-16 pl-6")
-							@sortableTh("Workflow", "workflow", f, "")
-							@sortableTh("Schedule", "schedule", f, "")
-							@sortableTh("Next run", "next", f, "")
-							@sortableTh("Last run", "last", f, "")
-							@th("Tags", "")
-							@th("", "w-24 pr-6 text-right")
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-line-soft">
-						for _, w := range ws {
-							<tr class="transition-colors hover:bg-gold-wash">
-								<td class="py-3 pl-6">
-									@interruptor(w)
-								</td>
-								<td class="py-3 pr-3">
-									<a href={ templ.SafeURL("/workflows/" + w.Slug) } class="font-medium text-ink hover:text-gold-strong">
-										{ w.Slug }
-									</a>
-									<a
-										href={ templ.SafeURL("/workflows?project=" + w.Project) }
-										class="text-xs text-muted hover:text-accent-strong hover:underline"
-									>{ w.Project }</a>
-								</td>
-								<td class="py-3 pr-3">
-									if w.Cron == "" {
-										<span class="text-xs text-muted">manual trigger only</span>
-									} else {
-										<span class="inline-flex items-center gap-1.5 font-mono text-xs text-ink">
-											<svg class="h-3.5 w-3.5 text-gold" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
-												<rect x="2" y="3" width="12" height="11" rx="2"></rect>
-												<path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke-linecap="round"></path>
-											</svg>
-											{ w.Cron }
-										</span>
-										if w.Catchup {
-											<span class="ml-2 text-[0.7rem] text-gold-strong">catchup</span>
-										}
-									}
-								</td>
-								<td class="py-3 pr-3 text-xs tabular-nums">
-									if w.NextRun != nil {
-										<span class="text-ink">{ components.Timestamp(w.NextRun) }</span>
-										<span class="ml-1.5 text-muted">{ components.When(w.NextRun) }</span>
-									} else if w.HasSchedule && !w.Active {
-										<span class="text-muted">paused</span>
-									} else {
-										<span class="text-muted">—</span>
-									}
-								</td>
-								<td class="py-3 pr-3">
-									if w.LastRunID != nil {
-										<a href={ templ.SafeURL("/runs/" + *w.LastRunID) } class="inline-flex items-center gap-2">
-											<span class="text-xs tabular-nums text-ink hover:text-gold-strong">
-												{ components.Timestamp(w.LastRunAt) }
-											</span>
-											@components.Dot(w.LastStatus)
-										</a>
-										<p class="text-[0.7rem] text-muted">{ count(w.TotalRuns, "run", "runs") }</p>
-									} else {
-										<span class="text-xs text-muted">never ran</span>
-									}
-								</td>
-								<td class="py-3 pr-3">
-									<div class="flex flex-wrap gap-1">
-										for _, t := range w.Tags {
-											@components.Tag(t, f.With("tag", alterna(f.Tag, t)))
-										}
-									</div>
-								</td>
-								<td class="py-3 pr-6 text-right">
-									@disparar(w.Slug)
-								</td>
-							</tr>
-						}
-					</tbody>
-				</table>
-				@pagination(Pagination{
-					Page: f.Page, PerPage: f.PerPage, Total: filtered,
-					PageLink: f.WithPage,
-				})
-			</div>
 		}
+		// The project chip appears only when one is selected. There is no
+		// row of every project here on purpose: a project is a namespace,
+		// not a category, and most installations have one -- a permanent
+		// chip for a filter that is almost never on is noise.
+		if f.Project != "" {
+			<span class="mx-2 h-5 w-px bg-line"></span>
+			<a
+				href={ templ.SafeURL(f.With("project", "")) }
+				class="inline-flex items-center gap-1.5 rounded-card border border-accent bg-accent-wash px-3 py-1 text-xs text-ink"
+			>
+				project: <span class="font-mono">{ f.Project }</span>
+				<span class="text-muted">&times;</span>
+			</a>
+		}
+	</div>
+	<p class="display mb-3 text-lg text-ink">
+		{ count(filtered, "workflow", "workflows") }
+		if filtered != total {
+			<span class="ml-2 text-sm text-muted">of { fmt.Sprint(total) }</span>
+			<a href="/workflows" class="ml-3 text-xs text-gold-strong hover:underline">clear filters</a>
+		}
+	</p>
+	if len(ws) == 0 {
+		@components.Empty("No workflow matches these filters.", "brevis publish file.yaml")
+	} else {
+		<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
+			<table class="w-full text-sm">
+				<thead>
+					<tr class="border-b border-line bg-parchment-soft/60 text-left">
+						@th("", "w-16 pl-6")
+						@sortableTh("Workflow", "workflow", f, "")
+						@sortableTh("Schedule", "schedule", f, "")
+						@sortableTh("Next run", "next", f, "")
+						@sortableTh("Last run", "last", f, "")
+						@th("Tags", "")
+						@th("", "w-24 pr-6 text-right")
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-line-soft">
+					for _, w := range ws {
+						<tr class="transition-colors hover:bg-gold-wash">
+							<td class="py-3 pl-6">
+								@interruptor(w)
+							</td>
+							<td class="py-3 pr-3">
+								<a href={ templ.SafeURL("/workflows/" + w.Slug) } class="font-medium text-ink hover:text-gold-strong">
+									{ w.Slug }
+								</a>
+								<a
+									href={ templ.SafeURL("/workflows?project=" + w.Project) }
+									class="text-xs text-muted hover:text-accent-strong hover:underline"
+								>{ w.Project }</a>
+							</td>
+							<td class="py-3 pr-3">
+								if w.Cron == "" {
+									<span class="text-xs text-muted">manual trigger only</span>
+								} else {
+									<span class="inline-flex items-center gap-1.5 font-mono text-xs text-ink">
+										<svg class="h-3.5 w-3.5 text-gold" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+											<rect x="2" y="3" width="12" height="11" rx="2"></rect>
+											<path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke-linecap="round"></path>
+										</svg>
+										{ w.Cron }
+									</span>
+									if w.Catchup {
+										<span class="ml-2 text-[0.7rem] text-gold-strong">catchup</span>
+									}
+								}
+							</td>
+							<td class="py-3 pr-3 text-xs tabular-nums">
+								if w.NextRun != nil {
+									<span class="text-ink">{ components.Timestamp(w.NextRun) }</span>
+									<span class="ml-1.5 text-muted">{ components.When(w.NextRun) }</span>
+								} else if w.HasSchedule && !w.Active {
+									<span class="text-muted">paused</span>
+								} else {
+									<span class="text-muted">—</span>
+								}
+							</td>
+							<td class="py-3 pr-3">
+								if w.LastRunID != nil {
+									<a href={ templ.SafeURL("/runs/" + *w.LastRunID) } class="inline-flex items-center gap-2">
+										<span class="text-xs tabular-nums text-ink hover:text-gold-strong">
+											{ components.Timestamp(w.LastRunAt) }
+										</span>
+										@components.Dot(w.LastStatus)
+									</a>
+									<p class="text-[0.7rem] text-muted">{ count(w.TotalRuns, "run", "runs") }</p>
+								} else {
+									<span class="text-xs text-muted">never ran</span>
+								}
+							</td>
+							<td class="py-3 pr-3">
+								<div class="flex flex-wrap gap-1">
+									for _, t := range w.Tags {
+										@components.Tag(t, f.With("tag", alterna(f.Tag, t)))
+									}
+								</div>
+							</td>
+							<td class="py-3 pr-6 text-right">
+								@disparar(w.Slug)
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+			@pagination(Pagination{
+				Page: f.Page, PerPage: f.PerPage, Total: filtered,
+				PageLink: f.WithPage,
+			})
+		</div>
 	}
 }
 
