@@ -321,4 +321,49 @@
     desenha();
   });
 
+  // ------------------------------------------------------------------
+  // The navigation drawer, below 960px
+  //
+  // It already opens without this: the button is a link to #app-sidebar and
+  // the sheet opens the drawer on `:target`. What this adds is what a link
+  // cannot do -- keep the URL clean (a back button that reopens a menu is a
+  // back button that does not go back), say `aria-expanded`, close on
+  // Escape, and put the focus where the keyboard expects it: into the drawer
+  // when it opens, back on the button when it closes.
+  // ------------------------------------------------------------------
+
+  function drawerOpener() {
+    return document.querySelector("[data-drawer-open]");
+  }
+
+  function setDrawer(open) {
+    var root = document.documentElement;
+    var opener = drawerOpener();
+    if (open) root.setAttribute("data-drawer", "open");
+    else root.removeAttribute("data-drawer");
+    if (opener) opener.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      var close = document.querySelector("#app-sidebar [data-drawer-close]");
+      if (close) close.focus();
+    } else if (opener) {
+      opener.focus();
+    }
+  }
+
+  document.addEventListener("click", function (e) {
+    if (!e.target || typeof e.target.closest !== "function") return;
+    if (e.target.closest("[data-drawer-open]")) {
+      e.preventDefault();
+      setDrawer(true);
+    } else if (e.target.closest("[data-drawer-close]")) {
+      e.preventDefault();
+      setDrawer(false);
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && document.documentElement.getAttribute("data-drawer") === "open") {
+      setDrawer(false);
+    }
+  });
 })();

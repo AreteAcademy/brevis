@@ -118,7 +118,7 @@ templ Base(p Page) {
 					// THE PAGE'S OWN HEADER: one title, large, and the page's
 					// verbs beside it. Where the page is lives in the top bar
 					// now, so this no longer repeats it in small caps.
-					<header data-page-header class="px-6 pt-6 pb-4">
+					<header data-page-header class="px-4 pt-6 pb-4 min-[960px]:px-6">
 						<div class="flex items-center justify-between gap-6">
 							<div class="min-w-0">
 								<div class="flex items-center gap-2">
@@ -149,7 +149,7 @@ templ Base(p Page) {
 					// So a narrow measure now sits on the block it is about,
 					// beside the prose it exists for, where the next person
 					// can see what it is protecting.
-					<div class="px-6 py-5">
+					<div class="px-4 py-5 min-[960px]:px-6">
 						{ children... }
 					</div>
 				</main>
@@ -265,8 +265,9 @@ templ accountMenu(operator string, brand branding.Brand) {
 // pages, and `app-sidebar` names it for the view transition so it holds still
 // while the page beside it crossfades.
 templ sidebar(active string, brand branding.Brand) {
-	<aside class="app-sidebar flex h-full w-[236px] shrink-0 flex-col border-r border-line-soft bg-canvas-subtle">
-		<a href="/" class="flex h-13 shrink-0 items-center gap-2.5 border-b border-line-soft px-4">
+	<aside id="app-sidebar" class="app-sidebar flex h-full w-[236px] shrink-0 flex-col border-r border-line-soft bg-canvas-subtle">
+		<div class="flex h-13 shrink-0 items-center border-b border-line-soft pr-2">
+		<a href="/" class="flex min-w-0 flex-1 items-center gap-2.5 px-4">
 			if brand.Logo == branding.DefaultLogo {
 				// Inline, so the symbol inherits the theme's colour.
 				<span class="block h-6 w-6 shrink-0 text-accent">
@@ -277,6 +278,17 @@ templ sidebar(active string, brand branding.Brand) {
 			}
 			<span class="display block truncate text-[1.05rem] leading-none text-ink">{ brand.Title }</span>
 		</a>
+		// Closes the drawer; only there when the sidebar is one. A link to
+		// `#` so that, with no script, it clears the `:target` that opened it.
+		<a
+			href="#"
+			data-drawer-close
+			aria-label="Close navigation"
+			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink min-[960px]:hidden"
+		>
+			@components.Icon("x", "h-4 w-4")
+		</a>
+		</div>
 		<nav aria-label="Sections" class="flex-1 overflow-y-auto px-2.5 py-3">
 			// A GROUP IS ANNOUNCED AS ONE -- `role="group"` with its name -- so
 			// the label a sighted reader sees in small caps is heard too, and
@@ -297,6 +309,10 @@ templ sidebar(active string, brand branding.Brand) {
 			@accountMenu(auth.De(ctx), brand)
 		</div>
 	</aside>
+	// The drawer's backdrop: a click on it closes the drawer. A sibling AFTER
+	// the sidebar so `.app-sidebar:target ~` can show it with no script, and
+	// out of the tab order -- the close button is the keyboard's way out.
+	<a href="#" data-drawer-close class="app-drawer-backdrop" aria-hidden="true" tabindex="-1"></a>
 }
 
 templ navLink(s section, active string) {
@@ -329,7 +345,20 @@ templ navLink(s section, active string) {
 // NOT A SECOND `aria-current`. The sidebar already marks the open section,
 // and a screen reader counting two "current page"s is told nothing.
 templ topbar(p Page) {
-	<header class="flex h-13 shrink-0 items-center gap-4 border-b border-line-soft px-6">
+	<header class="flex h-13 shrink-0 items-center gap-3 border-b border-line-soft px-4 min-[960px]:px-6">
+		// THE DRAWER'S OPENER, on a narrow screen only. A link to the
+		// sidebar's id so `:target` opens it without a script; ui.js keeps
+		// the URL clean, says `aria-expanded` and moves the focus.
+		<a
+			href="#app-sidebar"
+			data-drawer-open
+			aria-controls="app-sidebar"
+			aria-expanded="false"
+			aria-label="Open navigation"
+			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink min-[960px]:hidden"
+		>
+			@components.Icon("menu", "h-4 w-4")
+		</a>
 		if c, ok := where(ctx, p.Active, p.Title); ok {
 			<nav aria-label="Breadcrumb" class="flex min-w-0 items-center gap-1.5 text-[0.82rem]">
 				<span class="shrink-0 text-muted">{ c.Group }</span>
