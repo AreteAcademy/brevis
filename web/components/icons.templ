@@ -1,0 +1,26 @@
+package components
+
+// Icon draws one glyph inline, in the text's own colour, at the size the
+// class gives it. `shrink-0` is always added: an icon beside a long label in
+// a flex row is the first thing the browser squeezes, and a squeezed glyph
+// reads as a different one.
+//
+// The stroke is 1.7 rather than Lucide's 2 -- the weight of the handoff's
+// glyphs, and closer to IBM Plex's at 13px. A name nobody drew renders
+// nothing.
+templ Icon(name, class string) {
+	if body, ok := glyphs[name]; ok {
+		<svg
+			class={ class + " shrink-0" }
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="1.7"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+			aria-hidden="true"
+		>
+			@templ.Raw(body)
+		</svg>
+	}
+}
