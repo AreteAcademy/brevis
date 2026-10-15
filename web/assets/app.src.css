@@ -946,3 +946,22 @@ dialog.run-drawer:not([open]):target {
   border: 1px solid var(--color-line);
   border-radius: var(--radius-card);
 }
+
+/* A RUN THAT ARRIVED WHILE THE LIST WAS LIVE: its row starts washed in the
+   accent and fades to the table's own, so the eye finds what is new without a
+   badge that has to be dismissed. Still, with reduced motion: the wash stays
+   until the next refresh instead of fading. */
+@keyframes run-arrived {
+  from {
+    background: var(--color-accent-wash);
+  }
+}
+tr[data-run-new] {
+  animation: run-arrived 2.5s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  tr[data-run-new] {
+    animation: none;
+    background: var(--color-accent-wash);
+  }
+}

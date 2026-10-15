@@ -236,6 +236,102 @@
     schedule(LIVE_RUNNING);
   });
 
+  // ------------------------------------------------------------------
+  // A list that follows itself (`[data-live-list]`)
+  //
+  // The Runs list's "Live" switch. On, every 5 s the same URL is fetched with
+  // X-Brevis-Fragment: rows -- the server draws the list's region alone, with
+  // the page's filters -- and swapped in; rows whose run was not there before
+  // are marked `data-run-new`, which the CSS washes and fades.
+  //
+  // Off by default, and the choice is kept (localStorage), since somebody who
+  // watches the list watches it every time. One request in flight at a time,
+  // none while the tab is hidden (it catches up when it is shown), none while
+  // a dialog is open over the list (somebody is reading an error), and it
+  // stops when the answer is not a fragment -- an expired session redirects.
+  // ------------------------------------------------------------------
+
+  var LIVE_LIST_EVERY = 5000;
+  var LIVE_LIST_KEY = "brevis.runs.live";
+
+  document.querySelectorAll("[data-live-list]").forEach(function (button) {
+    var region = document.getElementById(button.getAttribute("data-live-list"));
+    if (!region || !window.fetch) return;
+    var dot = button.querySelector("[data-live-dot]");
+    var timer = null;
+    var busy = false;
+    var last = "";
+
+    function stored() {
+      try { return localStorage.getItem(LIVE_LIST_KEY) === "on"; } catch (e) { return false; }
+    }
+    function store(on) {
+      try { localStorage.setItem(LIVE_LIST_KEY, on ? "on" : "off"); } catch (e) { /* a private window */ }
+    }
+    function on() { return button.getAttribute("aria-pressed") === "true"; }
+    function draw(live) {
+      button.setAttribute("aria-pressed", live ? "true" : "false");
+      if (dot) dot.className = "h-1.5 w-1.5 rounded-full " + (live ? "bg-state-running animate-pulse" : "bg-line-strong");
+    }
+    function schedule() {
+      clearTimeout(timer);
+      if (on()) timer = setTimeout(tick, LIVE_LIST_EVERY);
+    }
+
+    function tick() {
+      if (!on() || busy || document.hidden) return;
+      if (document.querySelector("dialog[open]")) { schedule(); return; }
+      busy = true;
+      fetch(window.location.href, { headers: { "X-Brevis-Fragment": "rows" } })
+        .then(function (r) {
+          if (r.redirected || !r.ok) throw new Error("not a fragment");
+          return r.text();
+        })
+        .then(function (html) {
+          if (html !== last) {
+            var seen = {};
+            region.querySelectorAll("tr[data-run-id]").forEach(function (tr) {
+              seen[tr.getAttribute("data-run-id")] = true;
+            });
+            var first = last === "";
+            last = html;
+            region.innerHTML = html;
+            if (!first) {
+              region.querySelectorAll("tr[data-run-id]").forEach(function (tr) {
+                if (!seen[tr.getAttribute("data-run-id")]) tr.setAttribute("data-run-new", "");
+              });
+            }
+          }
+          busy = false;
+          schedule();
+        })
+        .catch(function () {
+          busy = false;
+          draw(false);
+        });
+    }
+
+    button.addEventListener("click", function () {
+      var live = !on();
+      draw(live);
+      store(live);
+      if (live) tick();
+      else clearTimeout(timer);
+    });
+
+    // Hidden, nothing is sent; shown again, it catches up at once.
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) clearTimeout(timer);
+      else if (on()) tick();
+    });
+
+    button.parentElement.hidden = false;
+    if (stored()) {
+      draw(true);
+      tick();
+    }
+  });
+
   // --- list params, as chips --------------------------------------------
   //
   // Progressive enhancement, and the plain field underneath is the point: with

@@ -794,6 +794,10 @@ func (u *UI) runs(w http.ResponseWriter, r *http.Request) {
 		u.failure(w, r, err)
 		return
 	}
+	if fragment(r) == "rows" {
+		u.render(w, r, pages.RunsList(runs, f, counts, total))
+		return
+	}
 	u.render(w, r, pages.Runs(runs, f, counts, total))
 }
 
