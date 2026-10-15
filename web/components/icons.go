@@ -36,6 +36,7 @@ var glyphs = map[string]string{
 	"search":         `<circle cx="11" cy="11" r="8"/> <path d="m21 21-4.3-4.3"/>`,
 	"square":         `<rect width="18" height="18" x="3" y="3" rx="2"/>`,
 	"table":          `<path d="M12 3v18"/> <rect width="18" height="18" x="3" y="3" rx="2"/> <path d="M3 9h18"/> <path d="M3 15h18"/>`,
+	"tag":            `<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/> <circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>`,
 	"terminal":       `<polyline points="4 17 10 11 4 5"/> <line x1="12" x2="20" y1="19" y2="19"/>`,
 	"triangle-alert": `<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/> <path d="M12 9v4"/> <path d="M12 17h.01"/>`,
 	"workflow":       `<rect width="8" height="8" x="3" y="3" rx="2"/> <path d="M7 11v4a2 2 0 0 0 2 2h4"/> <rect width="8" height="8" x="13" y="13" rx="2"/>`,

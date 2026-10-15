@@ -50,15 +50,31 @@ func scheduleOptions(f Filter, c WorkflowCounts) []components.SegOption {
 func (f Filter) hidden() [][2]string {
 	var out [][2]string
 	for _, h := range [][2]string{
-		{"state", f.State}, {"active", f.Active}, {"tag", f.Tag},
+		{"state", f.State}, {"active", f.Active},
 		{"project", f.Project}, {"sort", f.Sort},
 	} {
 		if h[1] != "" {
 			out = append(out, h)
 		}
 	}
+	for _, t := range f.Tags {
+		out = append(out, [2]string{"tag", t})
+	}
 	if f.Desc {
 		out = append(out, [2]string{"dir", "desc"})
+	}
+	return out
+}
+
+// tagFormHidden is what the tag popover's form carries along: the filter but
+// the tags, which are its own checkboxes -- carried as hidden fields too,
+// unchecking one would keep it.
+func (f Filter) tagFormHidden() [][2]string {
+	g := f
+	g.Tags = nil
+	out := g.hidden()
+	if f.Search != "" {
+		out = append([][2]string{{"q", f.Search}}, out...)
 	}
 	return out
 }

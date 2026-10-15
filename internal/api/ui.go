@@ -857,7 +857,7 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 		Search:  strings.TrimSpace(q.Get("q")),
 		State:   validState(q.Get("state")),
 		Active:  q.Get("active"),
-		Tag:     q.Get("tag"),
+		Tags:    tagsOf(q["tag"]),
 		Project: q.Get("project"),
 		Sort:    validOrder(q.Get("sort")),
 		Desc:    q.Get("dir") == "desc",
@@ -1023,7 +1023,7 @@ func filtrar(ws []postgres.WorkflowSummary, f pages.Filter) []postgres.WorkflowS
 				continue
 			}
 		}
-		if f.Tag != "" && !contains(w.Tags, f.Tag) {
+		if !containsAll(w.Tags, f.Tags) {
 			continue
 		}
 		if f.Project != "" && w.Project != f.Project {
@@ -1041,6 +1041,30 @@ func contains(list []string, target string) bool {
 		}
 	}
 	return false
+}
+
+// containsAll says whether a workflow carries every chosen tag: two tags
+// narrow the list, they do not widen it.
+func containsAll(have, want []string) bool {
+	for _, t := range want {
+		if !contains(have, t) {
+			return false
+		}
+	}
+	return true
+}
+
+// tagsOf reads the repeated `tag=` into the chosen set, without blanks or
+// repeats -- `?tag=a&tag=a` is one tag, and a link built from it says so.
+func tagsOf(values []string) []string {
+	var out []string
+	for _, v := range values {
+		v = strings.TrimSpace(v)
+		if v != "" && !contains(out, v) {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // tagsDe gathers the tags of ALL workflows, not of the filtered rows: the filter

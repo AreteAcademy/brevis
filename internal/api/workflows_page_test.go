@@ -15,9 +15,9 @@ import (
 
 func workflowsUI() *api.UI {
 	reads := readsFake{workflows: []postgres.WorkflowSummary{
-		{Slug: "daily_sales", Name: "daily_sales", Project: "analytics", LastStatus: "success", HasSchedule: true, Active: true},
-		{Slug: "daily_refunds", Name: "daily_refunds", Project: "analytics", LastStatus: "failed", HasSchedule: true},
-		{Slug: "hourly_clicks", Name: "hourly_clicks", Project: "analytics", LastStatus: "success", HasSchedule: true, Active: true},
+		{Slug: "daily_sales", Name: "daily_sales", Project: "analytics", LastStatus: "success", HasSchedule: true, Active: true, Tags: []string{"finance", "sales"}},
+		{Slug: "daily_refunds", Name: "daily_refunds", Project: "analytics", LastStatus: "failed", HasSchedule: true, Tags: []string{"finance"}},
+		{Slug: "hourly_clicks", Name: "hourly_clicks", Project: "analytics", LastStatus: "success", HasSchedule: true, Active: true, Tags: []string{"sales"}},
 		{Slug: "backfill", Name: "backfill", Project: "analytics", LastStatus: "running"},
 	}}
 	return api.NewUI(reads, nil, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
@@ -44,7 +44,7 @@ func TestTheWorkflowsListIsAFragmentForTheSearchBox(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("the fragment answered %d", code)
 	}
-	if strings.Contains(body, "<html") || strings.Contains(body, `name="q"`) {
+	if strings.Contains(body, "<html") || strings.Contains(body, `aria-label="Search workflows"`) {
 		t.Error("the fragment carries the page or the search box, and swapping it would steal the focus")
 	}
 	if !strings.Contains(body, "daily_sales") || !strings.Contains(body, "daily_refunds") || strings.Contains(body, "hourly_clicks") {
@@ -94,4 +94,55 @@ func TestTheWorkflowsFiltersCountWhatEachChoiceWouldShow(t *testing.T) {
 // segment is a Segmented choice's label and count, as the markup prints them.
 func segment(label, count string) *regexp.Regexp {
 	return regexp.MustCompile(`>\s*` + regexp.QuoteMeta(label) + `\s*<span[^>]*>` + count + `</span>`)
+}
+
+// TWO TAGS NARROW TO THE WORKFLOWS CARRYING BOTH, and the URL carries the
+// set: one `tag=` each, so the filter can be pasted.
+func TestTwoTagsNarrowToTheWorkflowsCarryingBoth(t *testing.T) {
+	_, body := answerGet(t, workflowsUI(), "/workflows?tag=finance&tag=sales")
+	if !strings.Contains(body, "daily_sales") || strings.Contains(body, "daily_refunds") || strings.Contains(body, "hourly_clicks") {
+		t.Error("two tags did not narrow to the workflow carrying both")
+	}
+}
+
+// THE TAGS ARE A POPOVER, NOT A WALL OF CHIPS: a <details> holding a GET form
+// -- the rest of the filter as hidden fields, a box that filters the tag
+// list, one checkbox per tag -- so it works with no script. The chosen tags
+// show beside it as chips, each taking out its own tag.
+func TestTheTagsAreAPopoverWithTheChosenAsChips(t *testing.T) {
+	_, body := get(t, workflowsUI(), "/workflows?q=daily&tag=finance&tag=sales")
+	at := strings.Index(body, "<details data-popover")
+	if at < 0 {
+		t.Fatal("the tags are not a popover")
+	}
+	pop := body[at : at+strings.Index(body[at:], "</details>")]
+	if !regexp.MustCompile(`>\s*Tags\s*<span[^>]*>2</span>`).MatchString(pop) {
+		t.Error("the popover's button does not say how many tags are chosen")
+	}
+	for _, want := range []string{
+		`<form method="get" action="/workflows"`,
+		`type="hidden" name="q" value="daily"`,
+		`data-submit-on-change`,
+		`data-filter-for="workflow-tags"`,
+	} {
+		if !strings.Contains(pop, want) {
+			t.Errorf("the popover has no %s", want)
+		}
+	}
+	for _, tag := range []string{"finance", "sales"} {
+		if !regexp.MustCompile(`name="tag" value="` + tag + `" checked`).MatchString(pop) {
+			t.Errorf("the chosen tag %s is not checked", tag)
+		}
+	}
+	if strings.Contains(pop, `name="tag" value="finance"`) && strings.Contains(pop, `type="hidden" name="tag"`) {
+		t.Error("the popover carries the tags as hidden fields, so unchecking one keeps it")
+	}
+	if !strings.Contains(body, `href="/workflows?q=daily&amp;tag=sales"`) {
+		t.Error("the finance chip does not take out finance alone")
+	}
+
+	_, js := get(t, workflowsUI(), "/assets/ui.js")
+	if !strings.Contains(strip(js), `form[data-submit-on-change]`) {
+		t.Error("ui.js does not submit the popover when a box is checked")
+	}
 }
