@@ -1140,7 +1140,22 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 		u.log.Warn("the workflow's load trend is unavailable", "workflow", slug, "error", err)
 	}
 
-	u.render(w, r, pages.Workflow(def, latest, stats))
+	// The summary row says what the definition does not: the project, the
+	// schedule's timezone and whether it is paused. Missing, the eyebrow says
+	// less; the page still opens.
+	var sum *postgres.WorkflowSummary
+	if all, err := u.leitura.Workflows(r.Context()); err == nil {
+		for i := range all {
+			if all[i].Slug == slug {
+				sum = &all[i]
+				break
+			}
+		}
+	} else {
+		u.log.Warn("the workflow's summary is unavailable", "workflow", slug, "error", err)
+	}
+
+	u.render(w, r, pages.Workflow(def, sum, latest, stats))
 }
 
 // run is a run's page. The header comes from the database on the server; the DAG

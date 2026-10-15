@@ -97,7 +97,7 @@ func TestTheQuestionMarkSaysWhatItOpens(t *testing.T) {
 func render(t *testing.T, w wf.Workflow) string {
 	t.Helper()
 	var b strings.Builder
-	if err := Workflow(w, []postgres.RunSummary{}, WorkflowStats{}).Render(context.Background(), &b); err != nil {
+	if err := Workflow(w, nil, []postgres.RunSummary{}, WorkflowStats{}).Render(context.Background(), &b); err != nil {
 		t.Fatalf("rendering the workflow page: %v", err)
 	}
 	return b.String()

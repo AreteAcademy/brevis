@@ -96,3 +96,27 @@ func (f Filter) tagFormHidden() [][2]string {
 	}
 	return out
 }
+
+// workflowStats are the same four numbers the dashboard opens with, scoped to
+// one workflow -- and over thirty days rather than one, because a daily job
+// has a single run in twenty-four hours and a rate over one sample is not a
+// rate.
+func workflowStats(st WorkflowStats) []components.Stat {
+	i := st.Ind
+	return []components.Stat{
+		{Label: "Success rate", Value: pct(i.Ratio(i.Succeeded)),
+			Note: fmt.Sprintf("%d of %d finished", i.Succeeded, i.Succeeded+i.Failed)},
+		{Label: "Failure rate", Value: pct(i.Ratio(i.Failed)), Note: failureNote(i.Failed)},
+		{Label: "Mean duration", Value: meanValue(i.MeanDuration),
+			Note: fmt.Sprintf("over %d days", int(st.Window.Hours()/24))},
+		{Label: "Open", Value: fmt.Sprint(i.Running + i.Pending), Note: openNote(i)},
+	}
+}
+
+// scheduleZone is the schedule's timezone, when the summary was read.
+func scheduleZone(sum *postgres.WorkflowSummary) string {
+	if sum == nil {
+		return ""
+	}
+	return sum.Timezone
+}
