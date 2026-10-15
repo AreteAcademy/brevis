@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AreteAcademy/brevis/internal/api"
 	"github.com/AreteAcademy/brevis/internal/branding"
@@ -144,5 +145,47 @@ func TestTheTagsAreAPopoverWithTheChosenAsChips(t *testing.T) {
 	_, js := get(t, workflowsUI(), "/assets/ui.js")
 	if !strings.Contains(strip(js), `form[data-submit-on-change]`) {
 		t.Error("ui.js does not submit the popover when a box is checked")
+	}
+}
+
+// THE LAST RUNS ARE A STRIP OF SQUARES, oldest to newest, each a link to its
+// run that says its state and time -- read in ONE query for the whole page.
+func TestEachRowDrawsItsLastRunsFromOneQuery(t *testing.T) {
+	calls := 0
+	at := time.Date(2026, 10, 15, 4, 0, 0, 0, time.UTC)
+	last, lastAt := "11111111-0000-0000-0000-000000000002", at.Add(24*time.Hour)
+	reads := readsFake{
+		workflows: []postgres.WorkflowSummary{
+			{Slug: "daily_sales", Name: "daily_sales", Project: "analytics", Cron: "0 4 * * *",
+				LastRunID: &last, LastRunAt: &lastAt, LastStatus: "failed", TotalRuns: 2},
+			{Slug: "odd_one", Name: "odd_one", Project: "analytics", Cron: "0 4 * 1 *"},
+			{Slug: "manual", Name: "manual", Project: "analytics"},
+		},
+		recent: map[string][]postgres.RecentRun{"daily_sales": {
+			{ID: "11111111-0000-0000-0000-000000000001", Status: "success", At: at},
+			{ID: "11111111-0000-0000-0000-000000000002", Status: "failed", At: at.Add(24 * time.Hour)},
+		}},
+		recentCalls: &calls,
+	}
+	ui := api.NewUI(reads, nil, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+	_, body := get(t, ui, "/workflows")
+	if calls != 1 {
+		t.Errorf("the page read the last runs %d times, want once", calls)
+	}
+	first := strings.Index(body, `href="/runs/11111111-0000-0000-0000-000000000001"`)
+	second := strings.Index(body, `href="/runs/11111111-0000-0000-0000-000000000002"`)
+	if first < 0 || second < 0 || first > second {
+		t.Fatal("the strip does not link each run, oldest first")
+	}
+	if !strings.Contains(body, `data-recent-runs`) || !strings.Contains(body, `title="failed · 2026-10-16 04:00:00 UTC"`) {
+		t.Error("a square does not say its state and time")
+	}
+
+	// Cron in words under the expression, and only where the words are sure.
+	if !strings.Contains(body, "every day at 04:00") {
+		t.Error("a daily schedule is not said in words")
+	}
+	if strings.Count(body, `data-cron-text`) != 1 {
+		t.Error("a schedule the translator refuses got words anyway")
 	}
 }

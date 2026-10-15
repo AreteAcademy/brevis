@@ -417,7 +417,7 @@ func (p Pagination) Window() []int {
 	return out
 }
 
-templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, total, filtered int) {
+templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, total, filtered int) {
 	@layouts.Base(layouts.Page{Title: "Workflows", Kicker: "Orchestration", Active: "workflows"}) {
 		// THE BOX ANSWERS WHILE SOMEBODY TYPES, and the server still decides:
 		// the list is paginated, so ui.js submits this form as a fetch
@@ -432,7 +432,7 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts W
 			@components.SearchInput("q", f.Search, "Search workflows", "")
 		</form>
 		<div id="workflows-list">
-			@WorkflowsList(ws, tags, f, counts, total, filtered)
+			@WorkflowsList(ws, tags, f, counts, recent, total, filtered)
 		</div>
 	}
 }
@@ -440,7 +440,7 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts W
 // WorkflowsList is everything under the search box: the filters, the count,
 // the table and its pages. It is the page's fragment (X-Brevis-Fragment:
 // answer), so the counts follow the search as somebody types.
-templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, total, filtered int) {
+templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, total, filtered int) {
 	<div class="mb-6 flex flex-wrap items-center gap-2">
 		// Each control scrolls on its own when the screen is narrower than its
 		// choices, rather than cutting the last one off.
@@ -489,7 +489,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 		@components.Empty("No workflow matches these filters.", "brevis publish file.yaml")
 	} else {
 		<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
-			<table class="w-full text-sm">
+			<table class="w-full min-w-[56rem] text-sm">
 				<thead>
 					<tr class="border-b border-line bg-parchment-soft/60 text-left">
 						@th("", "w-16 pl-6")
@@ -530,6 +530,9 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 									if w.Catchup {
 										<span class="ml-2 text-[0.7rem] text-gold-strong">catchup</span>
 									}
+									if words := CronText(w.Cron); words != "" {
+										<p data-cron-text class="mt-0.5 text-[0.7rem] text-muted">{ words }{ zoneSuffix(w.Timezone) }</p>
+									}
 								}
 							</td>
 							<td class="py-3 pr-3 text-xs tabular-nums">
@@ -544,13 +547,10 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 							</td>
 							<td class="py-3 pr-3">
 								if w.LastRunID != nil {
-									<a href={ templ.SafeURL("/runs/" + *w.LastRunID) } class="inline-flex items-center gap-2">
-										<span class="text-xs tabular-nums text-ink hover:text-gold-strong">
-											{ components.Timestamp(w.LastRunAt) }
-										</span>
-										@components.Dot(w.LastStatus)
+									@recentRuns(recent[w.Slug])
+									<a href={ templ.SafeURL("/runs/" + *w.LastRunID) } class="mt-1 block text-[0.7rem] tabular-nums text-muted hover:text-gold-strong">
+										{ components.Timestamp(w.LastRunAt) } · { count(w.TotalRuns, "run", "runs") }
 									</a>
-									<p class="text-[0.7rem] text-muted">{ count(w.TotalRuns, "run", "runs") }</p>
 								} else {
 									<span class="text-xs text-muted">never ran</span>
 								}
@@ -573,6 +573,24 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 				Page: f.Page, PerPage: f.PerPage, Total: filtered,
 				PageLink: f.WithPage,
 			})
+		</div>
+	}
+}
+
+// recentRuns is a workflow's last runs as a strip of squares, oldest to
+// newest, each a link to its run whose title says its state and time, in the
+// state's colour.
+templ recentRuns(runs []postgres.RecentRun) {
+	if len(runs) > 0 {
+		<div data-recent-runs class="flex items-center gap-0.5">
+			for _, r := range runs {
+				<a
+					href={ templ.SafeURL("/runs/" + r.ID) }
+					title={ recentTitle(r) }
+					aria-label={ recentTitle(r) }
+					class={ "h-3 w-2 rounded-[1px] transition-opacity hover:opacity-70", components.StateFill(r.Status) }
+				></a>
+			}
 		</div>
 	}
 }

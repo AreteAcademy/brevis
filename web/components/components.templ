@@ -75,6 +75,12 @@ func stateClass(s string) string {
 	return "bg-surface-2 text-muted"
 }
 
+// StateFill is a state's colour as a fill, without the pulse a dot has: a
+// strip of squares where every running one blinked would be noise.
+func StateFill(s string) string {
+	return strings.TrimSuffix(stateDot(s), " animate-pulse")
+}
+
 func stateDot(s string) string {
 	switch s {
 	case "success":

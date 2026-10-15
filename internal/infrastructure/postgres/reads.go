@@ -221,6 +221,45 @@ func (r *ReadRepo) Workflows(ctx context.Context) ([]WorkflowSummary, error) {
 	return out, rows.Err()
 }
 
+// RecentRun is one square of a workflow's recent-runs strip.
+type RecentRun struct {
+	ID     string
+	Status string
+	At     time.Time
+}
+
+// RecentStates is the last n runs of each workflow asked, oldest to newest so
+// a strip reads left to right like time. ONE query for a page, with a window
+// over each workflow's runs, rather than one per row; a workflow that never
+// ran is absent from the map.
+func (r *ReadRepo) RecentStates(ctx context.Context, slugs []string, n int) (map[string][]RecentRun, error) {
+	out := map[string][]RecentRun{}
+	if len(slugs) == 0 || n <= 0 {
+		return out, nil
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT workflow_slug, id::text, status, criado_em FROM (
+		    SELECT workflow_slug, id, status, criado_em,
+		           row_number() OVER (PARTITION BY workflow_slug ORDER BY criado_em DESC, id DESC) AS rn
+		    FROM runs WHERE workflow_slug = ANY($1)
+		) recent
+		WHERE rn <= $2
+		ORDER BY workflow_slug, criado_em, id`, slugs, n)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var slug string
+		var rr RecentRun
+		if err := rows.Scan(&slug, &rr.ID, &rr.Status, &rr.At); err != nil {
+			return nil, err
+		}
+		out[slug] = append(out[slug], rr)
+	}
+	return out, rows.Err()
+}
+
 // Projects lists the projects with their totals.
 func (r *ReadRepo) Projects(ctx context.Context) ([]ProjectSummary, error) {
 	rows, err := r.pool.Query(ctx, `

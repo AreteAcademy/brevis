@@ -3,8 +3,26 @@ package pages
 import (
 	"fmt"
 
+	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/web/components"
 )
+
+// RecentRuns is how many of a workflow's last runs its row draws.
+const RecentRuns = 14
+
+// recentTitle is what a recent-run square says: its state and its time.
+func recentTitle(r postgres.RecentRun) string {
+	return r.Status + " · " + components.Timestamp(&r.At)
+}
+
+// zoneSuffix names a schedule's timezone after its words, when it is not
+// UTC: "every day at 04:00" means four in São Paulo for a São Paulo cron.
+func zoneSuffix(tz string) string {
+	if tz == "" || tz == "UTC" || tz == "Etc/UTC" {
+		return ""
+	}
+	return " (" + tz + ")"
+}
 
 // WorkflowCounts is how many workflows each filter choice would show, with
 // the rest of the filter as it is. A choice's count ignores its own filter --

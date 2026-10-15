@@ -20,6 +20,24 @@ type readsFake struct {
 	api.Leitura
 	workflows []postgres.WorkflowSummary
 	projects  []postgres.ProjectSummary
+
+	// recent answers RecentStates, and recentCalls counts the calls: the
+	// strip is one query per page, not one per row.
+	recent      map[string][]postgres.RecentRun
+	recentCalls *int
+}
+
+func (f readsFake) RecentStates(_ context.Context, slugs []string, _ int) (map[string][]postgres.RecentRun, error) {
+	if f.recentCalls != nil {
+		*f.recentCalls++
+	}
+	out := map[string][]postgres.RecentRun{}
+	for _, s := range slugs {
+		if r, ok := f.recent[s]; ok {
+			out[s] = r
+		}
+	}
+	return out, nil
 }
 
 func (f readsFake) Workflows(context.Context) ([]postgres.WorkflowSummary, error) {
