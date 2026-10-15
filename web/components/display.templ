@@ -57,7 +57,9 @@ templ TableFoot(shown, total int, noun string) {
 // columns. A machine's value is mono and may break anywhere -- a URI has no
 // spaces to wrap at.
 templ DefinitionList(rows []Def) {
-	<dl class="grid grid-cols-[minmax(0,11rem)_minmax(0,1fr)] gap-x-4 gap-y-2 text-[0.82rem]">
+	// The terms take what the longest one needs and no more: a fixed width
+	// was half of a side column, and the values broke mid-word beside it.
+	<dl class="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-2 text-[0.82rem]">
 		for _, r := range rows {
 			<dt class="text-muted">{ r.Term }</dt>
 			if r.Mono {

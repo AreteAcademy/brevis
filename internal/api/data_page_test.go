@@ -16,6 +16,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/api"
 	"github.com/AreteAcademy/brevis/internal/branding"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 )
 
 type catalogFake struct {
@@ -391,6 +392,75 @@ func TestTheCatalogFiltersWhileYouType(t *testing.T) {
 	for _, want := range []string{"[data-filter-for]", "data-filter-text", "replaceState", "data-foot-total", "data-filter-keep"} {
 		if !strings.Contains(js, want) {
 			t.Errorf("ui.js's list filter never uses %s", want)
+		}
+	}
+}
+
+// A DESTINATION IS TITLED BY ITS URI, IN THE MACHINE'S FACE. "Destination"
+// above every destination named nothing; the URI is what somebody came to
+// read and what they will paste. Above it, what kind of thing it is and how
+// it stands, before the title rather than beside it.
+func TestADestinationIsTitledByItsURI(t *testing.T) {
+	d := lateDetail()
+	_, body := get(t, dataUI(catalogFake{detail: d}), "/data/target?u="+url.QueryEscape(d.Target))
+
+	h1 := body[strings.Index(body, "<h1"):]
+	h1 = h1[:strings.Index(h1, "</h1>")]
+	if !strings.Contains(h1, d.Target) || !strings.Contains(h1, "font-mono") {
+		t.Errorf("the title is not the URI in mono: %s", h1)
+	}
+	if !strings.Contains(h1, `id="destination-uri"`) {
+		t.Error("the title has no id for Copy URI to read")
+	}
+	eyebrow := body[strings.Index(body, "data-page-header"):strings.Index(body, "<h1")]
+	// The fixture is named for being behind; past its grace, it is stale.
+	for _, want := range []string{"stale", "postgres"} {
+		if !strings.Contains(eyebrow, want) {
+			t.Errorf("the line above the title does not say %q: %s", want, eyebrow)
+		}
+	}
+}
+
+// THE PAGE'S VERBS ARE IN ITS HEADER: copy the URI, and -- only where there
+// is a SQL service to ask -- open it in the workbench. A button that leads to
+// "not configured" is a question nobody can act on.
+func TestADestinationsVerbsAreInItsHeader(t *testing.T) {
+	d := lateDetail()
+	_, body := get(t, dataUI(catalogFake{detail: d}), "/data/target?u="+url.QueryEscape(d.Target))
+	header := body[strings.Index(body, "data-page-header"):]
+	header = header[:strings.Index(header, "</header>")]
+	if !strings.Contains(header, `data-copy="#destination-uri"`) {
+		t.Error("the header offers no Copy URI")
+	}
+	if strings.Contains(body, "/sql?target=") {
+		t.Error("a console with no SQL service offers to query in SQL")
+	}
+
+	svc := (&sqlFake{body: `{"columns":["k"],"rows":[["1"]]}`}).start(t)
+	body = render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/data/target?u="+probeTarget)
+	header = body[strings.Index(body, "data-page-header"):]
+	header = header[:strings.Index(header, "</header>")]
+	if !strings.Contains(header, "/sql?target=") {
+		t.Error("Query in SQL is not one of the header's verbs")
+	}
+}
+
+// THE LOADS ARE THE PAGE; WHO WRITES IT AND WHAT IT IS SIT BESIDE THEM. The
+// side column is after the main one in the document, so a narrow screen
+// stacks it below rather than above what somebody came for.
+func TestADestinationKeepsItsWritersAndPropertiesBeside(t *testing.T) {
+	d := lateDetail()
+	_, body := get(t, dataUI(catalogFake{detail: d}), "/data/target?u="+url.QueryEscape(d.Target))
+	side := strings.Index(body, "data-side")
+	if side < 0 {
+		t.Fatal("the page has no side column")
+	}
+	if loads := strings.Index(body, "Rows per load"); loads < 0 || loads > side {
+		t.Error("the loads are not in the main column")
+	}
+	for _, want := range []string{">Writers<", ">Properties<", "orders_sync", "0 * * * *"} {
+		if i := strings.Index(body[side:], want); i < 0 {
+			t.Errorf("the side column does not carry %s", want)
 		}
 	}
 }
