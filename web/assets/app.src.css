@@ -737,3 +737,66 @@ li.CodeMirror-hint-active {
 .app-sidebar {
   view-transition-name: sidebar;
 }
+
+/* BELOW 960PX THE SIDEBAR IS A DRAWER.
+
+   236px of a 390px phone is most of the screen, so the sidebar leaves the
+   flow and slides in over the page. It OPENS WITHOUT A SCRIPT: the top bar's
+   button is a link to #app-sidebar and `:target` is the open state. ui.js
+   sets `data-drawer` on <html> instead, so the URL stays clean -- both states
+   are written here, side by side.
+
+   `visibility: hidden` while closed, and not only the transform: a sidebar
+   moved off screen is still in the tab order, and a keyboard would walk
+   through eight links it cannot see. */
+@media (max-width: 959.98px) {
+  .app-sidebar {
+    position: fixed;
+    inset-block: 0;
+    left: 0;
+    z-index: 40;
+    transform: translateX(-100%);
+    visibility: hidden;
+    /* Hidden only once it has slid out: closing waits 200ms to hide. */
+    transition:
+      transform 200ms var(--ease-snappy),
+      visibility 0s linear 200ms;
+  }
+  /* And visible AT ONCE when it opens. A visibility transition starts from
+     its old value, so without this the drawer is still `hidden` for the
+     moment ui.js moves the focus into it -- and focus() on a hidden element
+     does nothing. Measured: the focus stayed on the page. */
+  .app-sidebar:target,
+  :root[data-drawer="open"] .app-sidebar {
+    transform: none;
+    visibility: visible;
+    transition:
+      transform 200ms var(--ease-snappy),
+      visibility 0s;
+  }
+  .app-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgb(0 0 0 / 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms var(--ease-snappy);
+  }
+  .app-sidebar:target ~ .app-drawer-backdrop,
+  :root[data-drawer="open"] .app-drawer-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+@media (min-width: 960px) {
+  .app-drawer-backdrop {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar,
+  .app-drawer-backdrop {
+    transition: none;
+  }
+}

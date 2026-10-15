@@ -186,3 +186,47 @@ func TestTheTopBarSaysWhereYouAre(t *testing.T) {
 		}
 	}
 }
+
+// BELOW 960PX THE SIDEBAR IS A DRAWER, AND IT OPENS WITHOUT A SCRIPT.
+//
+// 236px of a 390px phone is most of the screen, so on a narrow one the
+// sidebar leaves the flow and a button in the top bar brings it in. The
+// button is a LINK to the sidebar's id: `:target` opens it with no script
+// at all, and a close link inside clears the hash. With ui.js loaded the
+// same controls stop touching the URL, close on Escape and give the focus
+// back to the button -- an enhancement, not the mechanism.
+func TestBelowTheBreakpointTheSidebarIsADrawer(t *testing.T) {
+	body := render(t, dataUI(catalogFake{}), "/data")
+
+	if !strings.Contains(body, `<aside id="app-sidebar"`) {
+		t.Error("the sidebar has no id for the drawer's controls to name")
+	}
+	open := strings.Index(body, `data-drawer-open`)
+	if open < 0 {
+		t.Fatal("the top bar has no control that opens the drawer")
+	}
+	tag := body[strings.LastIndex(body[:open], "<a"):]
+	tag = tag[:strings.Index(tag, ">")]
+	for _, want := range []string{`href="#app-sidebar"`, `aria-controls="app-sidebar"`, `aria-expanded="false"`, `aria-label="Open navigation"`} {
+		if !strings.Contains(tag, want) {
+			t.Errorf("the drawer's opener lacks %s: %s", want, tag)
+		}
+	}
+	aside, end := strings.Index(body, "<aside"), strings.Index(body, "</aside>")
+	if c := strings.Index(body, `data-drawer-close`); c < aside || c > end {
+		t.Error("the drawer has no way to close from inside it")
+	}
+
+	_, ui := browsing(t)
+	_, css := get(t, ui, "/assets/app.css")
+	if !strings.Contains(css, ".app-sidebar:target") {
+		t.Error("the served sheet does not open the drawer on :target, so without a script it never opens")
+	}
+	_, raw := get(t, ui, "/assets/ui.js")
+	js := strip(raw)
+	for _, want := range []string{`[data-drawer-open]`, `[data-drawer-close]`, `"Escape"`, `setAttribute("aria-expanded"`, `.focus()`} {
+		if !strings.Contains(js, want) {
+			t.Errorf("ui.js never uses %s, so that part of the drawer is inert", want)
+		}
+	}
+}
