@@ -589,12 +589,38 @@
       }
     });
     var statement = text().trim();
+    var ctl = new AbortController();
+    var started = Date.now();
+    var status = null;
+    var tick = null;
+    var button = document.querySelector("[data-run]");
     running = true;
     pane.setAttribute("aria-busy", "true");
+    if (button) button.disabled = true;
+
+    // NOTHING FOR THE FIRST 120ms. Most answers arrive before that, and a
+    // status that flashes for 40ms is the flicker this exists to remove.
+    // After it, "Running" and a live timer go ABOVE the previous answer,
+    // which stays: cancelling leaves the pane exactly as it was.
+    var show = setTimeout(function () {
+      var tpl = document.querySelector("[data-running-template]");
+      if (!tpl) return;
+      status = tpl.content.firstElementChild.cloneNode(true);
+      pane.insertBefore(status, pane.firstChild);
+      var elapsed = status.querySelector("[data-running-elapsed]");
+      tick = setInterval(function () {
+        elapsed.textContent = ((Date.now() - started) / 1000).toFixed(1) + " s";
+      }, 100);
+      status.querySelector("[data-stop]").addEventListener("click", function () {
+        ctl.abort();
+      });
+    }, 120);
+
     fetch(form.action, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Brevis-Fragment": "answer" },
       body: parts.join("&"),
+      signal: ctl.signal,
     })
       .then(function (r) {
         if (r.redirected || !r.ok) throw new Error("not an answer");
@@ -605,10 +631,23 @@
         wirePager(pane);
         addRecent(pane, statement);
       })
-      .catch(function () { form.submit(); })
+      .catch(function (err) {
+        // CANCELLED IS NOT FAILED. Aborting closes the request, which
+        // cancels the query on the server; submitting the form now would
+        // run it again.
+        if (err && err.name === "AbortError") {
+          if (editor) editor.focus();
+          return;
+        }
+        form.submit();
+      })
       .then(function () {
+        clearTimeout(show);
+        clearInterval(tick);
+        if (status && status.parentNode) status.parentNode.removeChild(status);
         running = false;
         pane.removeAttribute("aria-busy");
+        if (button) button.disabled = false;
       });
   }
 

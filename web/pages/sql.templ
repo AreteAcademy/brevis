@@ -251,6 +251,22 @@ templ SQL(v SQLView) {
 						<div class="workbench-answer" data-answer>
 							@SQLAnswer(v)
 						</div>
+						// WHAT A RUN SAYS WHILE IT IS RUNNING, cloned into the
+						// pane by the island once a Run has taken 120ms. Here
+						// and not in sql.js because Tailwind reads templates:
+						// a class written only in the island would not exist.
+						//
+						// "Cancel" is measured, not hoped: aborting the
+						// request cancels the query (Postgres: gone from
+						// pg_stat_activity half a second after; BigQuery:
+						// serve asks jobs.cancel).
+						<template data-running-template>
+							<div data-running role="status" class="mb-3 flex items-center gap-3 rounded-card border border-line bg-surface-2 px-3 py-2 text-[0.8rem] text-ink">
+								<span class="h-2 w-2 shrink-0 animate-pulse rounded-full bg-state-running"></span>
+								<span>Running <span class="text-muted">·</span> <span data-running-elapsed class="tabular-nums">0.1 s</span></span>
+								<button type="button" data-stop class="ml-auto inline-flex h-7 items-center rounded-card border border-line bg-surface px-2.5 text-[0.78rem] font-medium text-ink transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong">Cancel</button>
+							</div>
+						</template>
 					</section>
 				</div>
 			</div>
