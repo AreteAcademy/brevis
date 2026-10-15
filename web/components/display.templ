@@ -1,5 +1,7 @@
 package components
 
+import "fmt"
+
 // Stats is a strip of numbers -- an endpoint's limits, a screen's headline
 // figures -- in one bordered band rather than one card each, which is what
 // lets four numbers be read as a row.
@@ -39,8 +41,16 @@ templ MethodPill(method string) {
 
 // TableFoot says how much of a list is on screen, and says "of" only when a
 // filter is hiding part of it.
+//
+// The total and the noun ride along as data, so the list filter can say it
+// again as rows are hidden without knowing how to pluralise anything.
 templ TableFoot(shown, total int, noun string) {
-	<div class="border-t border-line-soft px-4 py-2.5 text-[0.75rem] text-muted tabular-nums">{ footText(shown, total, noun) }</div>
+	<div
+		data-foot
+		data-foot-total={ fmt.Sprint(total) }
+		data-foot-noun={ noun }
+		class="border-t border-line-soft px-4 py-2.5 text-[0.75rem] text-muted tabular-nums"
+	>{ footText(shown, total, noun) }</div>
 }
 
 // DefinitionList is configuration: a term and its value, aligned in two
