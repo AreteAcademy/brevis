@@ -88,3 +88,48 @@ func TestThePhasesAreDrawnInTheLiveHead(t *testing.T) {
 		t.Error("the live head does not draw the phases")
 	}
 }
+
+// THE RUN PAGE, ONE FOR ONE (density-base DB6): the same phases, error and
+// auto params, denser. The phases are a timeline on one rule; the error is a
+// line that opens to the whole text; the auto params are a key-value grid --
+// every key, value and note still there.
+func TestTheRunPageIsDenseWithNothingLost(t *testing.T) {
+	slot := created
+	r := run.Run{Status: run.StatusFailed, CreatedAt: created, StartedAt: at(time.Second), FinishedAt: at(31 * time.Second),
+		WorkflowSlug: "daily", Attempt: 1, LogicalDate: &slot,
+		Err: "step \"load\": exited with code 1\npanic: boom\n\tat main.go:12"}
+	r.Auto.AdjustedAt = created
+	r.Auto.Date = "2026-10-15"
+	r.Auto.ScheduledAt = &slot
+	page := draw(t, Run(r, nil, nil, nil, ""))
+
+	if !strings.Contains(page, "data-timeline") || strings.Count(page, "data-phase=") != 4 {
+		t.Error("the phases are not a four-step timeline")
+	}
+	at := strings.Index(page, "<details data-run-error")
+	if at < 0 {
+		t.Fatal("the error is not a collapsible line")
+	}
+	errBlock := page[at : at+strings.Index(page[at:], "</details>")]
+	summary := errBlock[:strings.Index(errBlock, "</summary>")]
+	if !strings.Contains(summary, `step &#34;load&#34;: exited with code 1`) || strings.Contains(summary, "panic: boom") {
+		t.Errorf("the summary is not the error's first line: %s", summary)
+	}
+	if !strings.Contains(errBlock, "panic: boom") || !strings.Contains(errBlock, "main.go:12") {
+		t.Error("the whole error is not inside")
+	}
+	if !strings.Contains(summary, "↻2") && !strings.Contains(summary, "Attempt 2") {
+		t.Error("the error's line does not say which attempt")
+	}
+
+	kv := page[strings.Index(page, "data-kv"):]
+	for _, want := range []string{"adjusted_at", "2026-10-15 04:00:00 UTC", "the clock to read instead of now()",
+		"date", "the UTC day of adjusted_at", "scheduled_at", "previous_error", "$BREVIS_AUTO_*"} {
+		if !strings.Contains(kv, want) {
+			t.Errorf("the auto params lost %q", want)
+		}
+	}
+	if strings.Contains(page, "rounded-2xl") {
+		t.Error("an auto param is still a card")
+	}
+}

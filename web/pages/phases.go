@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/AreteAcademy/brevis/internal/domain/run"
@@ -80,4 +82,35 @@ func phaseDot(state string) string {
 		return "bg-state-failed"
 	}
 	return "bg-line-strong"
+}
+
+// autoItems are a run's auto params as the grid shows them, in the order and
+// with the words the cards had; an absent one is left out, as before.
+func autoItems(r run.Run) []components.KVItem {
+	a := r.Auto
+	items := []components.KVItem{
+		{Key: "adjusted_at", Value: components.UTCStamp(&a.AdjustedAt), Note: "the clock to read instead of now()"},
+		{Key: "date", Value: a.Date, Note: "the UTC day of adjusted_at — the partition"},
+		{Key: "delay", Value: lateness(a.DelaySeconds), Note: "how late this attempt started"},
+	}
+	add := func(key string, t *time.Time, note string) {
+		if t != nil {
+			items = append(items, components.KVItem{Key: key, Value: components.UTCStamp(t), Note: note})
+		}
+	}
+	add("scheduled_at", a.ScheduledAt, "the slot this run represents")
+	add("started_at", a.StartedAt, "when this attempt began")
+	add("interval_start", a.IntervalStart, "the window this run covers, from")
+	add("interval_end", a.IntervalEnd, "…up to, excluded")
+	items = append(items, components.KVItem{Key: "previous_error", Value: fmt.Sprint(a.PreviousError), Note: "did the run before this one fail"})
+	add("previous_success_at", a.PreviousSuccessAt, "how far back to catch up from")
+	return items
+}
+
+// firstLine is an error's first line, for the line that opens to the rest.
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return s[:i]
+	}
+	return s
 }
