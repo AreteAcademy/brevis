@@ -5,25 +5,40 @@ import "fmt"
 // Stat is one number in a Stats strip.
 type Stat struct {
 	Label, Value string
-	// Unit is printed small beside the number ("s", "GB"); Note under it.
+	// Unit is printed small beside the number ("s", "GB"); Note faint, on
+	// the value's line (density-base DB4).
 	Unit, Note string
 	// Icon is a glyph name for the label; empty draws none.
 	Icon string
+	// Dot is a state's colour (a `bg-state-*` class) for a dot before the
+	// label; empty draws none.
+	Dot string
+	// Bar is an optional thin bar under the value, in segments.
+	Bar []BarSegment
+}
+
+// BarSegment is one part of a Stat's bar: its share of the whole (0..1) and
+// its colour class.
+type BarSegment struct {
+	Share float64
+	Class string
+}
+
+// width is the segment's share as a CSS width.
+func (b BarSegment) width() string {
+	return fmt.Sprintf("width:%.0f%%", b.Share*100)
 }
 
 // statsCols lays the strip out by how many numbers it holds: two side by
 // side, three in a row from small screens up, four as two rows of two until
 // there is room for one.
 func statsCols(n int) string {
-	switch n {
-	case 1:
+	if n == 1 {
 		return "grid-cols-1"
-	case 2:
-		return "grid-cols-2"
-	case 3:
-		return "grid-cols-1 sm:grid-cols-3"
 	}
-	return "grid-cols-2 lg:grid-cols-4"
+	// Cells of at least 150px, as many to a row as fit: four numbers are one
+	// row on a desktop and two on a phone with no rule per count.
+	return "grid-cols-[repeat(auto-fit,minmax(150px,1fr))]"
 }
 
 // Def is one row of a DefinitionList.

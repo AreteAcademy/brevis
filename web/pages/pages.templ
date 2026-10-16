@@ -41,16 +41,7 @@ type NextRun struct {
 
 templ Overview(d OverviewData) {
 	@layouts.Base(layouts.Page{Title: "Overview", Kicker: "Dashboard", Active: "overview"}) {
-		<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-			@components.Metric("Success rate", pct(d.Ind.Ratio(d.Ind.Succeeded)),
-				fmt.Sprintf("%d of %d finished", d.Ind.Succeeded, d.Ind.Succeeded+d.Ind.Failed), "text-state-success")
-			@components.Metric("Failure rate", pct(d.Ind.Ratio(d.Ind.Failed)),
-				failureNote(d.Ind.Failed), failureHue(d.Ind.Failed))
-			@components.Metric("Running", fmt.Sprint(d.Ind.Running),
-				meanDuration(d.Ind.MeanDuration), "text-state-running")
-			@components.Metric("Queued", fmt.Sprint(d.Ind.Pending),
-				fmt.Sprintf("%d items queued", d.Pending), "text-state-queued")
-		</div>
+		@components.Stats(overviewStats(d))
 		<div class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_320px]">
 			@components.Panel("Runs per hour", "") {
 				<div class="px-3.5 py-3">
@@ -1474,16 +1465,6 @@ func count(n int, singular, plural string) string {
 		return fmt.Sprintf("1 %s", singular)
 	}
 	return fmt.Sprintf("%d %s", n, plural)
-}
-
-// failureHue leaves the number neutral when there is no failure at all: painting
-// a "0.0%" red teaches the eye to ignore the colour on exactly the screen where
-// it has to mean something.
-func failureHue(n int) string {
-	if n == 0 {
-		return "text-ink"
-	}
-	return "text-state-failed"
 }
 
 func failureNote(n int) string {
