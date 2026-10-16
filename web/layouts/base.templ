@@ -57,6 +57,11 @@ type Page struct {
 	// the end of a URI is usually the part that differs.
 	Mono bool
 
+	// Crumb is the breadcrumb's last item when it is not the title: an
+	// identifier, drawn in mono -- the run page's "daily_sales · 2c7233f8",
+	// so two tabs of one workflow read apart. Empty falls back to Title.
+	Crumb string
+
 	// TitleID gives the title an id, for a control that reads it (Copy URI).
 	TitleID string
 
@@ -426,14 +431,18 @@ templ topbar(p Page) {
 		>
 			@components.Icon("menu", "h-4 w-4")
 		</a>
-		if c, ok := where(ctx, p.Active, p.Title); ok {
+		if c, ok := where(ctx, p.Active, crumbTitle(p)); ok {
 			<nav aria-label="Breadcrumb" class="flex min-w-0 items-center gap-1.5 text-[0.82rem]">
 				<span class="shrink-0 text-muted">{ c.Group }</span>
 				<span aria-hidden="true" class="text-faint">/</span>
 				if c.Title != "" {
 					<a href={ templ.SafeURL(c.Section.Href) } class="shrink-0 text-muted transition-colors hover:text-ink">{ c.Section.Name }</a>
 					<span aria-hidden="true" class="text-faint">/</span>
-					<span class="truncate text-ink">{ c.Title }</span>
+					if p.Crumb != "" {
+						<span class="truncate font-mono text-[0.78rem] text-ink">{ c.Title }</span>
+					} else {
+						<span class="truncate text-ink">{ c.Title }</span>
+					}
 				} else {
 					<span class="truncate text-ink">{ c.Section.Name }</span>
 				}
