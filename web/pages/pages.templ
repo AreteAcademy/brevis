@@ -1091,7 +1091,7 @@ templ Run(p RunPage) {
 	{{ r := p.Run }}
 	@layouts.Base(layouts.Page{
 		Title: r.WorkflowSlug, Kicker: "Run", Active: "runs", Crumb: runCrumb(r),
-		Island: dagAssets, Actions: rerunAction(p),
+		Island: runIsland(p), Actions: rerunAction(p),
 	}) {
 		// Two regions the server refreshes, and the graph between them.
 		//
@@ -1115,9 +1115,11 @@ templ Run(p RunPage) {
 			<span class="h-1.5 w-1.5 rounded-full bg-state-running"></span>
 			<span data-live-label>following this run</span>
 		</p>
-		@dag("/api/runs/"+r.ID.String()+"/graph", p.Graph)
+		if p.Step == nil {
+			@dag("/api/runs/"+r.ID.String()+"/graph", p.Graph)
+		}
 		<div id="run-body">
-			@runBody(r, p.Logs, p.Raised)
+			@runBody(p)
 		</div>
 		if p.Workflow != nil && len(p.Workflow.Params) > 0 {
 			{{ w, dropped := rerunWorkflow(p) }}
@@ -1180,7 +1182,7 @@ templ RunLive(p RunPage) {
 		@runHead(r, p.Wait)
 	</div>
 	<div data-live-target="run-body">
-		@runBody(r, p.Logs, p.Raised)
+		@runBody(p)
 	</div>
 }
 
@@ -1251,10 +1253,91 @@ templ phases(ps []Phase) {
 	</ol>
 }
 
-templ runBody(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
-	@autoParams(r)
-	@alertsRaised(raised)
-	@stepsOutput(r, logs)
+templ runBody(p RunPage) {
+	if p.Step != nil {
+		@stepLine(*p.Step)
+	}
+	@autoParams(p.Run)
+	@alertsRaised(p.Raised)
+	@stepsOutput(p.Run, p.Logs)
+}
+
+// runIsland is the graph's island for a run that has a graph. A one-step run
+// draws its step as a line, and loads no React for a canvas with one box.
+func runIsland(p RunPage) layouts.Island {
+	if p.Step != nil {
+		return layouts.Island{}
+	}
+	return dagAssets
+}
+
+// stepLine is a one-step run's step (screen-run-v2 RV3): what the graph's one
+// card said, on a line -- the step, its command, what it runs in, the SDK it
+// announced, what it published and how long it took -- and under it each SDK
+// stage with the numbers the card's pills carried. Inside the live region, so
+// a running step's stages advance with the page.
+templ stepLine(l StepLine) {
+	<section data-step-line class="mb-3">
+		@components.Panel("Steps", "1") {
+			<div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2.5 text-[12.5px]">
+				@components.Dot(l.Status)
+				<span class="font-mono font-medium text-ink">{ l.Name }</span>
+				if l.Action != "" {
+					<span title={ l.Action } class="min-w-0 max-w-[28rem] truncate font-mono text-[12px] text-muted">{ l.Action }</span>
+				}
+				if l.Runtime != "" {
+					if l.RuntimeInferred {
+						<span title="inferred from the command" class="rounded-[4px] border border-dashed border-line-strong px-1.5 font-mono text-[11px] text-ink-2">{ runtimeLabel(l.Runtime) }</span>
+					} else {
+						<span class="rounded-[4px] border border-line-strong px-1.5 font-mono text-[11px] text-ink-2">{ runtimeLabel(l.Runtime) }</span>
+					}
+				}
+				if l.SDK != "" {
+					<span class="rounded-[4px] border border-line-strong px-1.5 font-mono text-[11px] text-ink-2">SDK { l.SDK }</span>
+				}
+				<span class="ml-auto shrink-0 text-[11.5px] text-faint">
+					if l.Published > 0 {
+						{ publishedText(l.Published) } ·
+					}
+					if l.DurationMs > 0 {
+						{ durationMs(l.DurationMs) }
+					} else {
+						—
+					}
+				</span>
+			</div>
+			if len(l.Stages) > 0 {
+				<ol data-stages class="grid grid-cols-1 gap-px border-t border-line-soft bg-line-soft min-[640px]:grid-cols-2 min-[1100px]:grid-flow-col min-[1100px]:auto-cols-fr min-[1100px]:grid-cols-none">
+					for _, st := range l.Stages {
+						<li data-stage={ st.Label } data-stage-state={ st.State } class="min-w-0 bg-surface px-3.5 py-2">
+							<div class="flex items-center gap-1.5 text-[12.5px]">
+								@components.Dot(stageTone(st.State))
+								<span class="font-medium text-ink">{ st.Label }</span>
+								<span class="ml-auto font-mono text-[11.5px] text-faint">
+									if st.Ms != nil {
+										{ durationMs(*st.Ms) }
+									} else {
+										—
+									}
+								</span>
+							</div>
+							<div class="mt-0.5 flex min-w-0 items-baseline gap-2 text-[11.5px] text-muted">
+								for i, n := range st.Numbers {
+									if i > 0 {
+										<span aria-hidden="true" class="text-faint">·</span>
+									}
+									<span class="shrink-0"><b class="font-mono font-medium text-ink-2">{ n.Value }</b> { n.Key }</span>
+								}
+								if st.Detail != "" {
+									<span title={ st.Detail } class="min-w-0 truncate font-mono text-faint">{ st.Detail }</span>
+								}
+							</div>
+						</li>
+					}
+				</ol>
+			}
+		}
+	</section>
 }
 
 // autoParams shows what the engine worked out for this run.

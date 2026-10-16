@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
 
@@ -14,6 +15,7 @@ import (
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/graph"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/pages"
 )
 
 // This file implements the graph's flow:
@@ -724,4 +726,69 @@ func actionLabel(n wf.Node) string {
 		return n.Run[:39] + "..."
 	}
 	return n.Run
+}
+
+// stepLineOf is a one-step run's step as a line (screen-run-v2 RV3), or nil
+// when the run's definition has more than one step that runs.
+//
+// Read off buildGraph's own output rather than computed again: the line and
+// the graph's card are two drawings of one step, and the way to keep them
+// saying the same thing is for them to come from one build.
+func stepLineOf(def wf.Workflow, states map[string]postgres.NodeState) *pages.StepLine {
+	if !oneStep(def) {
+		return nil
+	}
+	var step wf.Node
+	for _, n := range def.Nodes {
+		if !n.Marker {
+			step = n
+		}
+	}
+	g, err := buildGraph(def, states, "", "")
+	if err != nil {
+		return nil
+	}
+	line := &pages.StepLine{Name: step.ID, Action: step.Action, Status: string(dom.StatusPending)}
+	if line.Action == "" {
+		line.Action = step.Run
+	}
+	for _, n := range g.Nodes {
+		switch {
+		case n.ID == step.ID:
+			if v, ok := n.Data["status"].(string); ok {
+				line.Status = v
+			}
+			line.Runtime, _ = n.Data["runtime"].(string)
+			line.RuntimeInferred = fmt.Sprint(n.Data["runtime_source"]) == "inferred"
+			line.SDK, _ = n.Data["sdk"].(string)
+			line.DurationMs, _ = n.Data["duracao_ms"].(int64)
+		case n.ParentID == step.ID && n.Type == "etapa":
+			cell := pages.StageCell{}
+			cell.Label, _ = n.Data["rotulo"].(string)
+			cell.State, _ = n.Data["estado"].(string)
+			cell.Ms, _ = n.Data["ms"].(*int64)
+			if nums, ok := n.Data["numeros"].(map[string]any); ok {
+				cell.Numbers = pages.StageNumbers(nums)
+				cell.Detail, _ = nums["detail"].(string)
+			}
+			line.Stages = append(line.Stages, cell)
+		}
+	}
+	var published map[string]json.RawMessage
+	if json.Unmarshal(states[step.ID].Published, &published) == nil {
+		line.Published = len(published)
+	}
+	return line
+}
+
+// oneStep says the definition has exactly one step that runs. Markers (start,
+// end) are points on the graph, not steps.
+func oneStep(def wf.Workflow) bool {
+	steps := 0
+	for _, n := range def.Nodes {
+		if !n.Marker {
+			steps++
+		}
+	}
+	return steps == 1
 }
