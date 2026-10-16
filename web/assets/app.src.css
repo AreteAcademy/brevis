@@ -1017,3 +1017,40 @@ html[data-navigating] body::after {
     animation: none;
   }
 }
+
+/* A SWAP WITHOUT A GHOST (nav-latency NL4). The browser's default for a
+   cross-document transition cross-fades the whole page, so for ~150 ms the
+   old and the new layouts were both half-visible -- Overview's donut over
+   Workflows' table -- and that is what read as a flicker. The root now fades
+   THROUGH: the old page leaves in 90 ms, and the new one arrives over 150 ms
+   from the moment the old one is gone -- not before: with any overlap the two
+   were faintly drawn together for a frame (measured). Never both at once.
+
+   The frame holds still: the sidebar already has its name, and the top bar
+   gets one, so only the breadcrumb's words cross over. */
+.app-topbar {
+  view-transition-name: topbar;
+}
+@keyframes page-leave {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes page-arrive {
+  from {
+    opacity: 0;
+  }
+}
+::view-transition-old(root) {
+  animation: page-leave 90ms ease-in both;
+}
+::view-transition-new(root) {
+  animation: page-arrive 150ms ease-out 90ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

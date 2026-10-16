@@ -65,3 +65,30 @@ func TestAClickIsAcknowledgedWhileThePageComes(t *testing.T) {
 		t.Error("the sheet draws nothing for a navigation in flight")
 	}
 }
+
+// A SWAP WITHOUT A GHOST (nav-latency NL4). The default cross-document
+// transition cross-faded the whole page, so for ~150 ms both layouts were
+// half-visible -- what read as a flicker. The root now fades THROUGH: the old
+// page leaves, then the new one arrives, never both at once; the sidebar and
+// the top bar hold still under their own names; reduced motion turns it off.
+func TestAPageSwapFadesThroughWithoutAGhost(t *testing.T) {
+	_, ui := browsing(t)
+	_, css := get(t, ui, "/assets/app.css")
+	flat := strings.Join(strings.Fields(css), "")
+	for _, want := range []string{
+		"::view-transition-old(root)", "::view-transition-new(root)",
+		"view-transition-name:topbar", "view-transition-name:sidebar",
+	} {
+		if !strings.Contains(flat, strings.Join(strings.Fields(want), "")) {
+			t.Errorf("the sheet lacks %s", want)
+		}
+	}
+	at := strings.Index(flat, "prefers-reduced-motion:reduce){::view-transition")
+	if at < 0 {
+		t.Error("reduced motion does not turn the page transition off")
+	}
+	_, body := get(t, ui, "/sql")
+	if !strings.Contains(body, `class="app-topbar`) {
+		t.Error("the top bar does not carry the class its transition is named on")
+	}
+}
