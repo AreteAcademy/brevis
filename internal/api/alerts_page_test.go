@@ -396,3 +396,29 @@ func TestTheLiveFragmentCarriesBothRegionsAndTheTerminalFlag(t *testing.T) {
 		})
 	}
 }
+
+// THE ALERTS AT v2 (screen-run-v2 RV5): a panel with its count, one 34px line
+// per alert, and an alert's error under its line, opened when wanted -- the
+// same words, channel, tries and dates as the cards they were.
+func TestTheAlertsAreLinesInAPanel(t *testing.T) {
+	_, html := page(t, alertsFake{rows: []alerts.Record{
+		record("undelivered", 4, "slack respondeu 403: invalid_token"),
+		record("delivered", 1, ""),
+	}})
+	at := strings.Index(html, "data-alerts")
+	if at < 0 {
+		t.Fatal("no alerts panel")
+	}
+	block := html[at:]
+	block = block[:strings.Index(block, "</section>")]
+	if !strings.Contains(block, ">Alerts<") || !strings.Contains(block, ">2<") {
+		t.Error("the panel does not head the alerts with their count")
+	}
+	if strings.Count(block, "h-[34px]") != 2 || strings.Contains(block, "rounded-2xl") {
+		t.Error("an alert is not a 34px line")
+	}
+	d := strings.Index(block, "<details")
+	if d < 0 || !strings.Contains(block[d:], "403: invalid_token") {
+		t.Error("the error does not open under its alert's line")
+	}
+}
