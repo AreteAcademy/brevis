@@ -41,7 +41,7 @@ type NextRun struct {
 
 templ Overview(d OverviewData) {
 	@layouts.Base(layouts.Page{Title: "Overview", Kicker: "Dashboard", Active: "overview"}) {
-		<div class="grid grid-cols-2 gap-5 lg:grid-cols-4">
+		<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
 			@components.Metric("Success rate", pct(d.Ind.Ratio(d.Ind.Succeeded)),
 				fmt.Sprintf("%d of %d finished", d.Ind.Succeeded, d.Ind.Succeeded+d.Ind.Failed), "text-state-success")
 			@components.Metric("Failure rate", pct(d.Ind.Ratio(d.Ind.Failed)),
@@ -51,93 +51,101 @@ templ Overview(d OverviewData) {
 			@components.Metric("Queued", fmt.Sprint(d.Ind.Pending),
 				fmt.Sprintf("%d items queued", d.Pending), "text-state-queued")
 		</div>
-		<div class="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
-			@components.Card("Runs per hour") {
-				<p class="-mt-2 mb-5 text-sm text-muted">
-					Count and average duration over the last { fmt.Sprint(int(d.Window.Hours())) } hours.
-				</p>
-				@components.RunsChart(d.Buckets)
+		<div class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_320px]">
+			@components.Panel("Runs per hour", "") {
+				<div class="px-3.5 py-3">
+					<p class="mb-3 text-[12.5px] text-muted">
+						Count and average duration over the last { fmt.Sprint(int(d.Window.Hours())) } hours.
+					</p>
+					@components.RunsChart(d.Buckets)
+				</div>
 			}
-			@components.Card("Distribution") {
-				@components.Rosca(d.Ind)
-				<dl class="mt-4 space-y-1.5 text-sm">
-					@distLine("Success", d.Ind.Succeeded, "bg-state-success")
-					@distLine("Failure", d.Ind.Failed, "bg-state-failed")
-					@distLine("Running", d.Ind.Running, "bg-state-running")
-					@distLine("Queued", d.Ind.Pending, "bg-state-queued")
-				</dl>
-			}
-		</div>
-		<div class="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
-			@components.Card("In progress") {
-				if len(d.EmCurso) == 0 {
-					@components.Empty("Nothing running right now.", "")
-				} else {
-					<table class="w-full text-sm">
-						<thead>
-							<tr class="border-b border-line text-left">
-								@th("Workflow", "")
-								@th("Trigger", "")
-								@th("Started", "")
-								@th("State", "text-right")
-							</tr>
-						</thead>
-						<tbody class="divide-y divide-line-soft">
-							for _, r := range d.EmCurso {
-								<tr>
-									<td class="py-2.5 pr-3">
-										<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-medium text-ink hover:text-gold-strong">
-											{ r.WorkflowSlug }
-										</a>
-									</td>
-									<td class="py-2.5 pr-3 text-xs text-muted">{ r.TriggerType }</td>
-									<td class="py-2.5 pr-3 text-xs text-muted tabular-nums">
-										{ components.When(startOrCreated(r)) }
-									</td>
-									<td class="py-2.5 text-right">
-										@components.State(r.Status)
-									</td>
-								</tr>
-							}
-						</tbody>
-					</table>
-				}
-			}
-			@components.Card("Upcoming runs") {
-				if len(d.Proximas) == 0 {
-					@components.Empty("No active schedule.", "brevis publish file.yaml")
-				} else {
-					<table class="w-full text-sm">
-						<thead>
-							<tr class="border-b border-line text-left">
-								@th("Workflow", "")
-								@th("Schedule", "")
-								@th("Next trigger", "text-right")
-							</tr>
-						</thead>
-						<tbody class="divide-y divide-line-soft">
-							for _, p := range d.Proximas {
-								<tr>
-									<td class="py-2.5 pr-3">
-										<a href={ templ.SafeURL("/workflows/" + p.Workflow) } class="font-medium text-ink hover:text-gold-strong">
-											{ p.Workflow }
-										</a>
-									</td>
-									<td class="py-2.5 pr-3 font-mono text-xs text-muted">{ p.Cron }</td>
-									<td class="py-2.5 text-right text-xs tabular-nums text-muted">
-										<span class="text-ink">{ components.Timestamp(&p.When) }</span>
-										<span class="ml-2 text-gold-strong">{ components.When(&p.When) }</span>
-									</td>
-								</tr>
-							}
-						</tbody>
-					</table>
-				}
+			@components.Panel("Distribution", "") {
+				<div class="px-3.5 py-3">
+					@components.Rosca(d.Ind)
+					<dl class="mt-4 space-y-1.5 text-sm">
+						@distLine("Success", d.Ind.Succeeded, "bg-state-success")
+						@distLine("Failure", d.Ind.Failed, "bg-state-failed")
+						@distLine("Running", d.Ind.Running, "bg-state-running")
+						@distLine("Queued", d.Ind.Pending, "bg-state-queued")
+					</dl>
+				</div>
 			}
 		</div>
-		<section class="mt-6">
+		<div class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
+			@components.Panel("In progress", "") {
+				<div class="px-3.5 py-3">
+					if len(d.EmCurso) == 0 {
+						@components.Empty("Nothing running right now.", "")
+					} else {
+						<table class="w-full text-sm">
+							<thead>
+								<tr class="border-b border-line text-left">
+									@th("Workflow", "")
+									@th("Trigger", "")
+									@th("Started", "")
+									@th("State", "text-right")
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-line-soft">
+								for _, r := range d.EmCurso {
+									<tr>
+										<td class="py-2.5 pr-3">
+											<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-medium text-ink hover:text-gold-strong">
+												{ r.WorkflowSlug }
+											</a>
+										</td>
+										<td class="py-2.5 pr-3 text-xs text-muted">{ r.TriggerType }</td>
+										<td class="py-2.5 pr-3 text-xs text-muted tabular-nums">
+											{ components.When(startOrCreated(r)) }
+										</td>
+										<td class="py-2.5 text-right">
+											@components.State(r.Status)
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					}
+				</div>
+			}
+			@components.Panel("Upcoming runs", "") {
+				<div class="px-3.5 py-3">
+					if len(d.Proximas) == 0 {
+						@components.Empty("No active schedule.", "brevis publish file.yaml")
+					} else {
+						<table class="w-full text-sm">
+							<thead>
+								<tr class="border-b border-line text-left">
+									@th("Workflow", "")
+									@th("Schedule", "")
+									@th("Next trigger", "text-right")
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-line-soft">
+								for _, p := range d.Proximas {
+									<tr>
+										<td class="py-2.5 pr-3">
+											<a href={ templ.SafeURL("/workflows/" + p.Workflow) } class="font-medium text-ink hover:text-gold-strong">
+												{ p.Workflow }
+											</a>
+										</td>
+										<td class="py-2.5 pr-3 font-mono text-xs text-muted">{ p.Cron }</td>
+										<td class="py-2.5 text-right text-xs tabular-nums text-muted">
+											<span class="text-ink">{ components.Timestamp(&p.When) }</span>
+											<span class="ml-2 text-gold-strong">{ components.When(&p.When) }</span>
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					}
+				</div>
+			}
+		</div>
+		<section class="mt-3">
 			<div class="mb-3 flex items-baseline justify-between">
-				<h2 class="kicker">Recent runs</h2>
+				<h2 class="text-[13px] font-semibold text-ink">Recent runs</h2>
 				<a href="/runs" class="text-xs text-gold-strong hover:underline">see all</a>
 			</div>
 			@runsTable(d.Recentes, Pagination{})
@@ -441,7 +449,7 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts W
 // the table and its pages. It is the page's fragment (X-Brevis-Fragment:
 // answer), so the counts follow the search as somebody types.
 templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, total, filtered int) {
-	<div class="mb-6 flex flex-wrap items-center gap-2">
+	<div class="mb-3 flex flex-wrap items-center gap-2">
 		// Each control scrolls on its own when the screen is narrower than its
 		// choices, rather than cutting the last one off.
 		<div class="max-w-full overflow-x-auto whitespace-nowrap">
@@ -785,7 +793,7 @@ templ liveSwitch() {
 // table and its pages. It is the page's fragment (X-Brevis-Fragment: rows),
 // which the Live switch fetches and swaps.
 templ RunsList(runs []postgres.RunSummary, f RunFilter, counts map[string]int, total int) {
-	<div class="mb-5 flex flex-wrap items-center gap-2">
+	<div class="mb-3 flex flex-wrap items-center gap-2">
 		<div class="max-w-full overflow-x-auto whitespace-nowrap">
 			@components.Segmented("State", runStateOptions(f, counts))
 		</div>
@@ -853,7 +861,7 @@ templ Projects(ps []postgres.ProjectSummary) {
 							<h3 class="display truncate text-base text-ink">{ p.Name }</h3>
 							<span class="shrink-0 font-mono text-[0.7rem] text-muted">{ p.Slug }</span>
 						</div>
-						<dl class="mt-4 flex gap-6 text-sm">
+						<dl class="mt-4 flex gap-3 text-sm">
 							<div>
 								<dt class="text-[0.7rem] tracking-wide text-muted uppercase">Workflows</dt>
 								<dd class="display text-xl tabular-nums text-ink">{ fmt.Sprint(p.Workflows) }</dd>
@@ -1025,7 +1033,7 @@ templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.R
 		if w.Description != "" {
 			@components.AboutDialog(w.Slug, w.Description)
 		}
-		<div class="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
+		<div class="mb-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
 			<span>{ fmt.Sprint(len(w.Nodes)) } steps</span>
 			<span>{ fmt.Sprint(len(w.Edges)) } dependencies</span>
 			if w.Schedule != "" {
@@ -1044,34 +1052,38 @@ templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.R
 		// workflow -- and over thirty days rather than one, because a daily job
 		// has a single run in twenty-four hours and a rate over one sample is
 		// not a rate.
-		<div class="mb-5">
+		<div class="mb-3">
 			@components.Stats(workflowStats(st))
 		</div>
 		@dag("/api/workflows/"+w.Slug+"/graph", graph)
-		<section class="mt-6">
-			@components.Card("A year of runs") {
-				<p class="-mt-2 mb-4 text-sm text-muted">
-					One square per day. The colour is the day&#39;s worst outcome, not how
-					much ran &mdash; the question a calendar answers is when this broke.
-				</p>
-				@components.Heatmap(st.Days, w.Slug)
+		<section class="mt-3">
+			@components.Panel("A year of runs", "") {
+				<div class="px-3.5 py-3">
+					<p class="mb-3 text-[12.5px] text-muted">
+						One square per day. The colour is the day&#39;s worst outcome, not how
+						much ran &mdash; the question a calendar answers is when this broke.
+					</p>
+					@components.Heatmap(st.Days, w.Slug)
+				</div>
 			}
 		</section>
 		if len(st.Load) > 0 {
-			<section class="mt-6">
-				@components.Card("What it loads") {
-					<p class="-mt-2 mb-5 text-sm text-muted">
-						{ components.TrendWindow(st.Load) }. The calendar above answers whether
-						it ran; this answers whether it is getting worse.
-					</p>
-					@components.LoadTrend(components.Trend(st.Load), components.TrendWindow(st.Load))
+			<section class="mt-3">
+				@components.Panel("What it loads", "") {
+					<div class="px-3.5 py-3">
+						<p class="mb-3 text-[12.5px] text-muted">
+							{ components.TrendWindow(st.Load) }. The calendar above answers whether
+							it ran; this answers whether it is getting worse.
+						</p>
+						@components.LoadTrend(components.Trend(st.Load), components.TrendWindow(st.Load))
+					</div>
 				}
 			</section>
 		}
 		if len(latest) > 0 {
-			<section class="mt-6">
+			<section class="mt-3">
 				<div class="mb-3 flex items-baseline justify-between">
-					<h2 class="kicker">This workflow's runs</h2>
+					<h2 class="text-[13px] font-semibold text-ink">This workflow's runs</h2>
 					<a href={ templ.SafeURL("/runs?workflow=" + w.Slug) } class="text-xs text-gold-strong hover:underline">
 						see all
 					</a>
@@ -1107,7 +1119,7 @@ templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *post
 		// It exists because a page that refreshes silently is a page nobody
 		// trusts: an operator who does not know it is live presses F5 anyway,
 		// which is the behaviour this whole change is meant to remove.
-		<p id="live-indicator" class="mb-5 -mt-3 hidden items-center gap-1.5 text-[0.7rem] text-muted">
+		<p id="live-indicator" class="mb-3 -mt-3 hidden items-center gap-1.5 text-[0.7rem] text-muted">
 			<span class="h-1.5 w-1.5 rounded-full bg-state-running"></span>
 			<span data-live-label>following this run</span>
 		</p>
@@ -1137,7 +1149,7 @@ templ RunLive(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *
 }
 
 templ runHead(r run.Run, wait *postgres.Wait) {
-	<div class="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+	<div class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
 		@components.State(string(r.Status))
 		<span class="text-muted">{ r.TriggerType }</span>
 		if r.LogicalDate != nil {
@@ -1154,14 +1166,14 @@ templ runHead(r run.Run, wait *postgres.Wait) {
 		@waitLine(wait)
 	}
 	if r.Err != "" {
-		<pre class="mb-5 overflow-auto rounded-card border border-state-failed/20 bg-state-failed/5 px-5 py-4 font-mono text-xs text-state-failed">{ r.Err }</pre>
+		<pre class="mb-3 overflow-auto rounded-card border border-state-failed/20 bg-state-failed/5 px-5 py-4 font-mono text-xs text-state-failed">{ r.Err }</pre>
 	}
 }
 
 // phases is the run's life as a strip: made, started, running, finished, the
 // current one marked. It sits in the live head, so it moves with the run.
 templ phases(ps []Phase) {
-	<ol data-phases class="mb-5 grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line-soft sm:grid-cols-4">
+	<ol data-phases class="mb-3 grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line-soft sm:grid-cols-4">
 		for _, p := range ps {
 			<li data-phase={ p.Key } data-phase-state={ p.State } class="bg-surface px-4 py-3">
 				<p class="flex items-center gap-1.5 text-[0.78rem] text-muted">
@@ -1202,7 +1214,7 @@ templ runBody(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
 // late AND that it still read the right window -- which is exactly the pair
 // somebody stares at after finding a gap in a table.
 templ autoParams(r run.Run) {
-	<section class="mt-8">
+	<section class="mt-3">
 		<h2 class="display mb-1 text-xl text-ink">Auto params</h2>
 		<p class="mb-4 text-xs text-muted">
 			The engine works these out for every run. No workflow declares them, and
@@ -1263,7 +1275,7 @@ func lateness(seconds int) string {
 // without reading the alert pod's logs.
 templ alertsRaised(raised []alerts.Record) {
 	if len(raised) > 0 {
-		<section class="mt-8">
+		<section class="mt-3">
 			<h2 class="display mb-4 text-xl text-ink">Alerts</h2>
 			<div class="space-y-2">
 				for _, a := range raised {
@@ -1352,7 +1364,7 @@ func durationMs(ms int64) string {
 // it: a mapped step is one entry with its "2/3" and an instance per item.
 templ stepsOutput(r run.Run, logs []postgres.StepLog) {
 	if len(logs) > 0 {
-		<section class="mt-8">
+		<section class="mt-3">
 			<h2 class="display mb-4 text-xl text-ink">Step output</h2>
 			<div class="space-y-2">
 				for _, g := range StepOutputs(r, logs) {
@@ -1417,7 +1429,7 @@ templ stepRow(p StepRow) {
 			// `overflow-auto` with a maximum height: a dbt output
 			// with hundreds of lines must not push the rest of the
 			// page off the screen.
-			<pre class="mx-5 mb-5 max-h-[28rem] overflow-auto rounded-card bg-surface-2 px-4 py-3 font-mono text-[0.7rem] leading-relaxed whitespace-pre text-ink">{ p.Log }</pre>
+			<pre class="mx-5 mb-3 max-h-[28rem] overflow-auto rounded-card bg-surface-2 px-4 py-3 font-mono text-[0.7rem] leading-relaxed whitespace-pre text-ink">{ p.Log }</pre>
 		}
 	</details>
 }
@@ -1698,7 +1710,7 @@ func openNote(i postgres.Indicators) string {
 // key are ahead of it. Drawn only when WaitingOn proved it -- a run waiting on
 // a dispatcher slot, --max-pods or a retry's backoff gets no line at all.
 templ waitLine(w *postgres.Wait) {
-	<p class="mb-5 -mt-2 text-xs text-muted" data-wait>
+	<p class="mb-3 -mt-2 text-xs text-muted" data-wait>
 		<span class="text-state-queued">Waiting for</span>
 		if w.Group != "" {
 			concurrency group <code class="font-mono text-ink">{ w.Group }</code>

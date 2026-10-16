@@ -14,7 +14,7 @@ templ StreamPage(v StreamView) {
 		Title: "POST " + v.Path, Active: "streams", Mono: true,
 		Eyebrow: streamEyebrow(v), Actions: streamActions(v),
 	}) {
-		<p class="mb-5 -mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8rem] text-muted">
+		<p class="mb-3 -mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8rem] text-muted">
 			if f := v.Field("format"); f != "" {
 				<span class="font-mono text-ink-2">{ f }</span>
 			}
@@ -29,16 +29,16 @@ templ StreamPage(v StreamView) {
 		@testEventDrawer(v)
 		@templ.Raw("<style>" + hashTabsCSS("stream-tabs", "overview", "config", "deadletter") + "</style>")
 		<div id="stream-tabs" data-hash-tabs>
-			<div data-hash-tabs-bar data-js class="mb-5">
+			<div data-hash-tabs-bar data-js class="mb-3">
 				@components.Tabs("Stream", []components.Tab{
 					{Key: "overview", Label: "Overview", Selected: true},
 					{Key: "config", Label: "Configuration"},
 					{Key: "deadletter", Label: "Dead letter"},
 				})
 			</div>
-			<section id="overview" data-tab-panel="overview" class="mb-8">
-				<h2 data-panel-heading class="kicker mb-3">Overview</h2>
-				<div class="grid grid-cols-1 gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
+			<section id="overview" data-tab-panel="overview" class="mb-3">
+				<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">Overview</h2>
+				<div class="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
 					<div class="flex min-w-0 flex-col gap-4">
 						<div class="overflow-hidden rounded-card border border-line bg-surface">
 							@flowDiagram(streamFlow(v.Stream))
@@ -50,18 +50,18 @@ templ StreamPage(v StreamView) {
 							</p>
 						</div>
 					</div>
-					@card("Properties", "") {
+					@components.Panel("Properties", "") {
 						<div class="p-4">
 							@components.DefinitionList(v.Properties())
 						</div>
 					}
 				</div>
 			</section>
-			<section id="config" data-tab-panel="config" class="mb-8">
-				<h2 data-panel-heading class="kicker mb-3">Configuration</h2>
-				<div class="mb-6 grid grid-cols-1 gap-4 min-[900px]:grid-cols-2">
+			<section id="config" data-tab-panel="config" class="mb-3">
+				<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">Configuration</h2>
+				<div class="mb-3 grid grid-cols-1 gap-4 min-[900px]:grid-cols-2">
 					for _, g := range v.DeclaredGroups() {
-						@card(g.Title, "") {
+						@components.Panel(g.Title, "") {
 							<dl class="grid grid-cols-[9rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 px-4 py-3 text-[0.78rem]">
 								for _, d := range g.Rows {
 									<dt class="font-mono text-muted">{ d.Label }</dt>
@@ -83,13 +83,13 @@ templ StreamPage(v StreamView) {
 					</p>
 				}
 			</section>
-			<section id="deadletter" data-tab-panel="deadletter" class="mb-8">
-				<h2 data-panel-heading class="kicker mb-3">Dead letter</h2>
+			<section id="deadletter" data-tab-panel="deadletter" class="mb-3">
+				<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">Dead letter</h2>
 				if v.DeadLetter == nil {
 					<p class="rounded-card border border-line bg-surface px-4 py-3 text-sm text-muted">This stream declares no dead letter.</p>
 				} else {
 					<div class="flex flex-col gap-4">
-						@card("Where refused batches go", v.DeadLetter.Kind) {
+						@components.Panel("Where refused batches go", v.DeadLetter.Kind) {
 							<div class="flex items-start gap-3 px-4 py-3">
 								<pre id="dead-letter-uri" class="min-w-0 flex-1 overflow-x-auto font-mono text-[0.8rem] break-all whitespace-pre-wrap text-ink">{ v.DeadLetter.URI }</pre>
 								<span data-js>

@@ -50,7 +50,7 @@ func Endpoints(v EndpointsView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"mb-5 max-w-3xl text-sm text-ink-2\">What each published brevis-sql-api serves: declared, read-only SQL over HTTP, cached until a model it reads is rebuilt. Traffic is on each API's /metrics.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"mb-3 max-w-3xl text-sm text-ink-2\">What each published brevis-sql-api serves: declared, read-only SQL over HTTP, cached until a model it reads is rebuilt. Traffic is on each API's /metrics.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -440,17 +440,17 @@ func Endpoint(v EndpointView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if v.CanRun {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, " class=\"grid grid-cols-1 gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_380px]\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, " class=\"grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_380px]\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, " class=\"grid grid-cols-1 gap-6\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, " class=\"grid grid-cols-1 gap-3\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "><div class=\"flex min-w-0 flex-col gap-6\"><div class=\"flex flex-col gap-3\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "><div class=\"flex min-w-0 flex-col gap-3\"><div class=\"flex flex-col gap-3\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -651,7 +651,7 @@ func Endpoint(v EndpointView) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = card("Parameters", paramsCount(v.Params)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var19), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = components.Panel("Parameters", paramsCount(v.Params)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var19), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -775,7 +775,7 @@ func Endpoint(v EndpointView) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = card("Reads", fmt.Sprint(len(v.Row.Reads))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var25), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = components.Panel("Reads", fmt.Sprint(len(v.Row.Reads))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var25), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -805,7 +805,7 @@ func Endpoint(v EndpointView) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = card("Call it", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var30), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = components.Panel("Call it", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var30), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -814,7 +814,7 @@ func Endpoint(v EndpointView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if v.CanRun {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "<div data-side class=\"flex min-w-0 flex-col gap-6 min-[1180px]:sticky min-[1180px]:top-4 min-[1180px]:self-start\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "<div data-side class=\"flex min-w-0 flex-col gap-3 min-[1180px]:sticky min-[1180px]:top-4 min-[1180px]:self-start\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -844,7 +844,7 @@ func Endpoint(v EndpointView) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = card("Try it", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var31), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = components.Panel("Try it", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var31), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1028,7 +1028,7 @@ func readBy(refs []EndpointRef) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = card("Read by", fmt.Sprint(len(refs))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var36), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = components.Panel("Read by", fmt.Sprint(len(refs))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var36), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -111,7 +111,7 @@ func Login(d LoginData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</head><body class=\"h-full bg-canvas font-sans text-ink antialiased\"><main class=\"flex min-h-full items-center justify-center p-6\"><div class=\"w-full max-w-[19rem]\"><div class=\"mb-8 flex flex-col items-center text-center\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</head><body class=\"h-full bg-canvas font-sans text-ink antialiased\"><main class=\"flex min-h-full items-center justify-center p-6\"><div class=\"w-full max-w-[19rem]\"><div class=\"mb-3 flex flex-col items-center text-center\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -232,7 +232,7 @@ func Login(d LoginData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"><label for=\"username\" class=\"sr-only\">Username</label> <input id=\"username\" name=\"username\" type=\"text\" required autofocus autocomplete=\"username\" placeholder=\"Username\" class=\"h-10 w-full min-w-0 rounded-card border border-line bg-surface px-3 text-sm text-ink transition-colors outline-none placeholder:text-muted/70 focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent/40\"> <label for=\"password\" class=\"sr-only\">Password</label> <input id=\"password\" name=\"password\" type=\"password\" required autocomplete=\"current-password\" placeholder=\"Password\" class=\"h-10 w-full min-w-0 rounded-card border border-line bg-surface px-3 text-sm text-ink transition-colors outline-none placeholder:text-muted/70 focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent/40\"> <button type=\"submit\" class=\"mt-1 inline-flex h-10 w-full items-center justify-center rounded-card bg-ink px-4 text-sm font-medium text-surface transition-colors hover:bg-accent-strong\">Sign in</button></form><p class=\"mt-8 text-center text-xs tracking-wide text-muted\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"><label for=\"username\" class=\"sr-only\">Username</label> <input id=\"username\" name=\"username\" type=\"text\" required autofocus autocomplete=\"username\" placeholder=\"Username\" class=\"h-10 w-full min-w-0 rounded-card border border-line bg-surface px-3 text-sm text-ink transition-colors outline-none placeholder:text-muted/70 focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent/40\"> <label for=\"password\" class=\"sr-only\">Password</label> <input id=\"password\" name=\"password\" type=\"password\" required autocomplete=\"current-password\" placeholder=\"Password\" class=\"h-10 w-full min-w-0 rounded-card border border-line bg-surface px-3 text-sm text-ink transition-colors outline-none placeholder:text-muted/70 focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent/40\"> <button type=\"submit\" class=\"mt-1 inline-flex h-10 w-full items-center justify-center rounded-card bg-ink px-4 text-sm font-medium text-surface transition-colors hover:bg-accent-strong\">Sign in</button></form><p class=\"mt-3 text-center text-xs tracking-wide text-muted\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

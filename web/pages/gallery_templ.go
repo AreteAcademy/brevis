@@ -50,7 +50,7 @@ func Gallery() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"mb-6 max-w-3xl text-sm text-muted\">Every component the screens are built from, with invented data. Served only with BREVIS_ENV=local.</p><div class=\"flex flex-col gap-8\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"mb-3 max-w-3xl text-sm text-muted\">Every component the screens are built from, with invented data. Served only with BREVIS_ENV=local.</p><div class=\"flex flex-col gap-8\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

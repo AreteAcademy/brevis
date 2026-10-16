@@ -352,7 +352,7 @@ templ recent() {
 		data-js
 	>
 		<div class="mb-2 flex items-center justify-between gap-2">
-			<p class="kicker">Recent</p>
+			<p class="text-[11.5px] font-medium text-muted">Recent</p>
 			<button
 				type="button"
 				data-recent-toggle
@@ -416,7 +416,7 @@ templ tree(v SQLView) {
 	if len(v.Targets) > 0 {
 		<aside id="objects" class="workbench-rail border-r border-line-soft pr-3 text-xs" data-rail>
 			<div class="mb-2 flex items-center justify-between gap-2">
-				<p class="kicker">Objects</p>
+				<p class="text-[11.5px] font-medium text-muted">Objects</p>
 				// COLLAPSING IS A CONTROL, not a drag to zero. A rail dragged
 				// to nothing is a rail with no handle left to drag back.
 				<button

@@ -11,7 +11,7 @@ import (
 
 templ Endpoints(v EndpointsView) {
 	@layouts.Base(layouts.Page{Title: "Endpoints", Kicker: "Data", Active: "endpoints"}) {
-		<p class="mb-5 max-w-3xl text-sm text-ink-2">
+		<p class="mb-3 max-w-3xl text-sm text-ink-2">
 			What each published brevis-sql-api serves: declared, read-only SQL over HTTP, cached until a model it reads is rebuilt. Traffic is on each API's /metrics.
 		</p>
 		if len(v.Rows) == 0 {
@@ -114,12 +114,12 @@ templ Endpoint(v EndpointView) {
 		// can only answer "not here" is a question nobody can act on.
 		<div
 			if v.CanRun {
-				class="grid grid-cols-1 gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_380px]"
+				class="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_380px]"
 			} else {
-				class="grid grid-cols-1 gap-6"
+				class="grid grid-cols-1 gap-3"
 			}
 		>
-			<div class="flex min-w-0 flex-col gap-6">
+			<div class="flex min-w-0 flex-col gap-3">
 				<div class="flex flex-col gap-3">
 					if v.About != "" {
 						<p class="max-w-3xl text-sm whitespace-pre-line text-ink-2">{ v.About }</p>
@@ -140,7 +140,7 @@ templ Endpoint(v EndpointView) {
 						}
 					</div>
 				</div>
-				@card("Parameters", paramsCount(v.Params)) {
+				@components.Panel("Parameters", paramsCount(v.Params)) {
 					if len(v.Params) == 0 {
 						<p class="px-4 py-3 text-sm text-muted">None. Every request reads the same.</p>
 					} else {
@@ -190,7 +190,7 @@ templ Endpoint(v EndpointView) {
 						{Label: "Bytes billed", Value: v.BytesBilled(), Icon: "hard-drive"},
 					})
 				</section>
-				@card("Reads", fmt.Sprint(len(v.Row.Reads))) {
+				@components.Panel("Reads", fmt.Sprint(len(v.Row.Reads))) {
 					<ul class="divide-y divide-line-soft">
 						for _, t := range v.Row.Reads {
 							<li class="flex flex-wrap items-center gap-2.5 px-4 py-2.5">
@@ -206,15 +206,15 @@ templ Endpoint(v EndpointView) {
 						}
 					</ul>
 				}
-				@card("Call it", "") {
+				@components.Panel("Call it", "") {
 					<div class="p-4">
 						@components.CodeBlock("endpoint-curl", v.Curl(), curlAttrs(v))
 					</div>
 				}
 			</div>
 			if v.CanRun {
-				<div data-side class="flex min-w-0 flex-col gap-6 min-[1180px]:sticky min-[1180px]:top-4 min-[1180px]:self-start">
-					@card("Try it", "") {
+				<div data-side class="flex min-w-0 flex-col gap-3 min-[1180px]:sticky min-[1180px]:top-4 min-[1180px]:self-start">
+					@components.Panel("Try it", "") {
 						<div class="p-4">
 							@tryIt(v)
 						</div>
@@ -235,7 +235,7 @@ templ endpointEyebrow(v EndpointView) {
 
 templ readBy(refs []EndpointRef) {
 	if len(refs) > 0 {
-		@card("Read by", fmt.Sprint(len(refs))) {
+		@components.Panel("Read by", fmt.Sprint(len(refs))) {
 			<ul class="divide-y divide-line-soft">
 				for _, e := range refs {
 					<li class="flex flex-wrap items-center gap-1.5 px-4 py-2.5">

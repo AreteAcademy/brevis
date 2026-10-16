@@ -13,7 +13,7 @@ templ Load(v LoadView) {
 		Title: v.Row.Target, Active: "loads", Mono: true, TitleID: "destination-uri",
 		Eyebrow: loadEyebrow(v), Actions: targetActions(v.TargetView),
 	}) {
-		<p class="mb-5 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.8rem] text-muted">
+		<p class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.8rem] text-muted">
 			<span>written by</span>
 			<a href={ templ.SafeURL("/workflows/" + v.Workflow) } class="font-mono text-ink hover:underline">{ v.Workflow }</a>
 			<span class="text-faint">›</span>
@@ -21,12 +21,12 @@ templ Load(v LoadView) {
 			<span class="text-faint">·</span>
 			<span>{ writerSchedule(v.Writer()) }</span>
 		</p>
-		<div class="mb-6">
+		<div class="mb-3">
 			@components.Stats(loadStats(v))
 		</div>
-		<div class="grid grid-cols-1 gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
-			<div class="flex min-w-0 flex-col gap-6">
-				@card("Rows per load", "") {
+		<div class="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
+			<div class="flex min-w-0 flex-col gap-3">
+				@components.Panel("Rows per load", "") {
 					<div class="px-4 pt-4 [&_svg]:h-28 [&_svg]:max-w-none">
 						@components.LoadBars(v.Bars, v.Missed)
 					</div>
@@ -41,9 +41,9 @@ templ Load(v LoadView) {
 				@configurations(v.TargetView)
 				@panels(v.TargetView)
 			</div>
-			<div data-side class="flex min-w-0 flex-col gap-6">
+			<div data-side class="flex min-w-0 flex-col gap-3">
 				if w := v.Writer(); w != nil {
-					@card("Written by", "") {
+					@components.Panel("Written by", "") {
 						<div class="px-4 py-3">
 							<p class="font-mono text-[0.8rem]">
 								<a href={ templ.SafeURL("/workflows/" + v.Workflow) } class="text-ink hover:underline">{ v.Workflow }</a>
@@ -76,7 +76,7 @@ templ Load(v LoadView) {
 					}
 				}
 				@readBy(v.ReadBy)
-				@card("Destination", "") {
+				@components.Panel("Destination", "") {
 					<div class="p-4">
 						@components.DefinitionList(targetProperties(v.TargetView))
 					</div>

@@ -101,22 +101,29 @@ func stateDot(s string) string {
 	return "bg-state-pending"
 }
 
-// Card is the base panel: a light surface, a thin border, a warm wide shadow.
-templ Card(label string) {
-	<section class="rounded-card border border-line bg-surface p-6 shadow-warm-sm">
-		if label != "" {
-			<p class="kicker mb-4">{ label }</p>
-		}
+// Panel is one block of a page (density-base DB1): a 38px heading -- a 13px
+// title and, faint beside it, a count -- over its content, which brings its
+// own padding. One component where there were two: a page-local card, and a
+// Card whose title was a caps accent eyebrow. count may be "".
+templ Panel(title, count string) {
+	<section class="overflow-hidden rounded-card border border-line bg-surface">
+		<header class="flex h-[38px] items-center gap-2 border-b border-line-soft pr-3 pl-3.5">
+			<h2 class="text-[13px] font-semibold tracking-[-0.005em] whitespace-nowrap text-ink">{ title }</h2>
+			if count != "" {
+				<span class="text-[11.5px] text-faint tabular-nums">{ count }</span>
+			}
+		</header>
 		{ children... }
 	</section>
 }
+
 
 // Metric is one of the four numbers at the top of the Overview. The large
 // serif number is what sets the editorial tone — in sans it would become just
 // another dashboard.
 templ Metric(label, value, nota string, matiz string) {
 	<div class="rounded-card border border-line bg-surface px-6 py-5 shadow-warm-sm">
-		<p class="kicker">{ label }</p>
+		<p class="text-[11.5px] text-muted">{ label }</p>
 		<p class={ "display mt-2 text-[2.6rem] leading-none", matiz }>{ value }</p>
 		if nota != "" {
 			<p class="mt-2 text-xs text-muted">{ nota }</p>
@@ -693,7 +700,7 @@ templ ErrorDialog(runID, workflow, status, message string) {
 	>
 		<div class="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
 			<div>
-				<p class="kicker">Run failure</p>
+				<p class="text-[11.5px] text-muted">Run failure</p>
 				<p class="display mt-1 text-2xl">{ workflow }</p>
 			</div>
 			// `method="dialog"` closes without JavaScript: the browser itself is
@@ -734,7 +741,7 @@ templ LoadTrend(series []TrendSeries, window string) {
 		for _, s := range series {
 			<div>
 				<div class="flex items-baseline justify-between gap-2">
-					<p class="kicker">{ s.Label }</p>
+					<p class="text-[11.5px] text-muted">{ s.Label }</p>
 					if s.Delta != "" {
 						<span class={ "text-[0.7rem] font-medium " + s.Hue }>{ s.Delta }</span>
 					}
@@ -808,7 +815,7 @@ templ AboutDialog(slug, description string) {
 	>
 		<div class="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
 			<div class="min-w-0">
-				<p class="kicker">What this is for</p>
+				<p class="text-[11.5px] text-muted">What this is for</p>
 				<p class="display mt-1 truncate text-2xl">{ slug }</p>
 			</div>
 			<form method="dialog">
