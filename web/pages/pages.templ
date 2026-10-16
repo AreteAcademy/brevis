@@ -908,7 +908,7 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 							<td class="px-3 py-3 pl-6">
 								@components.State(r.Status)
 								if r.Attempt > 0 {
-									<span class="ml-2 text-[0.7rem] text-state-retrying">attempt { fmt.Sprint(r.Attempt+1) }</span>
+									@components.Retry(r.Attempt)
 								}
 							</td>
 							<td class="px-3 py-3">
@@ -1156,7 +1156,7 @@ templ runHead(r run.Run, wait *postgres.Wait) {
 			<span class="font-mono text-xs text-muted">slot { components.UTCStamp(r.LogicalDate) }</span>
 		}
 		if r.Attempt > 0 {
-			<span class="text-xs text-state-retrying">attempt { fmt.Sprint(r.Attempt+1) }</span>
+			@components.Retry(r.Attempt)
 		}
 		<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="text-xs text-gold-strong hover:underline">see definition</a>
 		<span class="font-mono text-[0.7rem] text-muted/70">{ r.ID.String() }</span>
@@ -1404,7 +1404,7 @@ templ stepRow(p StepRow) {
 				<span class="font-medium text-ink">{ p.NodeID }</span>
 			}
 			if p.Attempt > 0 {
-				<span class="text-xs text-state-retrying">attempt { fmt.Sprint(p.Attempt+1) }</span>
+				@components.Retry(p.Attempt)
 			}
 			if p.ExitCode != nil {
 				<span class="font-mono text-xs text-muted">exit { fmt.Sprint(*p.ExitCode) }</span>
