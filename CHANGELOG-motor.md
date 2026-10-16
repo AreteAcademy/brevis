@@ -14,7 +14,11 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
-## [0.32.0] — 2026-10-16
+## [0.32.1] — 2026-10-16
+
+**`0.32.0` was tagged and never published:** its release stopped before any
+image was built, on a manifest that pinned the gateway at the engine's version.
+`0.32.1` is the same engine with that pin back at the gateway's own.
 
 ### Changed: the run page (#114)
 
