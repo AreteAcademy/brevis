@@ -25,19 +25,6 @@ templ targetActions(v TargetView) {
 	}
 }
 
-// card is a titled panel of this page: a head with the title and, when it
-// helps, a count; the body is the children.
-templ card(title, count string) {
-	<section class="overflow-hidden rounded-card border border-line bg-surface">
-		<header class="flex items-center justify-between border-b border-line-soft px-4 py-3">
-			<h2 class="text-[0.875rem] font-semibold text-ink">{ title }</h2>
-			if count != "" {
-				<span class="text-[0.75rem] text-faint tabular-nums">{ count }</span>
-			}
-		</header>
-		{ children... }
-	</section>
-}
 
 // configurations is how each writer of this destination is configured: its
 // settings by section, the default ones marked, and the config file's comments
@@ -47,9 +34,9 @@ templ card(title, count string) {
 // is a long comment, down to its first line.
 templ configurations(v TargetView) {
 	for _, c := range v.Configs {
-		<section class="mb-8" data-config={ c.Key() }>
+		<section class="mb-3" data-config={ c.Key() }>
 			<div class="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-				<h3 class="kicker">Configuration</h3>
+				<h3 class="text-[13px] font-semibold text-ink">Configuration</h3>
 				<span class="text-xs text-muted">
 					if c.Gateway != "" {
 						gateway <span class="font-medium text-ink">{ c.Gateway }</span>
@@ -314,7 +301,7 @@ templ flowDiagram(f *Flow) {
 
 // recentLoads is the destination's loads, newest first, each with its run.
 templ recentLoads(v TargetView) {
-	@card("Recent loads", fmt.Sprint(len(v.Loads))) {
+	@components.Panel("Recent loads", fmt.Sprint(len(v.Loads))) {
 		<div class="overflow-x-auto">
 			<table class="w-full text-[0.82rem]">
 				<thead>

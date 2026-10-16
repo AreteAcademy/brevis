@@ -273,16 +273,6 @@ body {
   letter-spacing: -0.011em;
 }
 
-/* A small-caps label in the accent. On the site it marks each section; here it
-   plays the same role above each panel. */
-.kicker {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-accent-strong);
-}
-
 /* One card lifted off the background, by a ring rather than by a glow.
    `oklch(from ...)` derives it from the theme's own colour, so an installation
    that changes the accent takes the ring along with no second variable. */

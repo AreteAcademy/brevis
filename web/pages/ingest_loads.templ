@@ -19,7 +19,7 @@ templ Loads(v LoadsView) {
 			@components.Empty("No load yet.",
 				"One appears after an SDK pipeline's first load, or a step that prints a landed line. See docs/LANDINGS.md.")
 		} else {
-			<div class="mb-5 flex flex-wrap items-center gap-2 text-sm">
+			<div class="mb-3 flex flex-wrap items-center gap-2 text-sm">
 				<span class="font-medium text-ink tabular-nums">{ plural(v.Total, "destination") }</span>
 				<span class="text-muted">written by</span>
 				<span class="mr-1 font-medium text-ink tabular-nums">{ plural(v.Workflows, "workflow") }</span>

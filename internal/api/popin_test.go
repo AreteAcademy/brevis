@@ -122,3 +122,20 @@ func TestAStreamsTabIsRightInTheFirstPaint(t *testing.T) {
 		}
 	}
 }
+
+// THE PAGE TITLE IS 20px (18px IN MONO), the content 20px 24px (density-base
+// DB1): the title was a 25.6px display face over a 24px top margin.
+func TestThePageTitleIsCompact(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads")
+	h1 := body[strings.Index(body, "<h1"):]
+	h1 = h1[:strings.Index(h1, ">")]
+	if !strings.Contains(h1, "text-[20px]") || !strings.Contains(h1, "font-semibold") {
+		t.Errorf("the title is not 20px/600: %s", h1)
+	}
+	_, mono := get(t, loadUI(lateDetail(), nil), "/ingest/loads/orders_sync/load")
+	h1 = mono[strings.Index(mono, "<h1"):]
+	h1 = h1[:strings.Index(h1, ">")]
+	if !strings.Contains(h1, "text-[18px]") || !strings.Contains(h1, "font-mono") {
+		t.Errorf("the mono title is not 18px: %s", h1)
+	}
+}

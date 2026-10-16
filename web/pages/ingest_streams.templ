@@ -18,7 +18,7 @@ templ Streams(v StreamsView) {
 		if v.Total == 0 {
 			@components.Empty("No stream yet.", "A stream appears when a gateway is published: brevis gateway publish gateway.yaml")
 		} else {
-			<div class="mb-5 flex flex-wrap items-center gap-2 text-sm">
+			<div class="mb-3 flex flex-wrap items-center gap-2 text-sm">
 				<span class="font-medium text-ink tabular-nums">{ plural(v.Total, "stream") }</span>
 				<span class="text-muted">in</span>
 				<span class="mr-1 font-medium text-ink tabular-nums">{ plural(v.Gateways, "gateway") }</span>

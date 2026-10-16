@@ -18,7 +18,7 @@ const capped = `mx-auto max-w-[1400px] px-6 py-5`
 // full is the wrapper every screen gets now.
 // 16px of gutter on a phone, 24px from 960px up, where the sidebar is beside
 // the page instead of over it.
-const full = `<div class="px-4 py-5 min-[960px]:px-6">`
+const full = `<div class="px-3 pb-10 min-[860px]:px-6">`
 
 // EVERY SCREEN USES THE WINDOW, and the flag that decided otherwise is gone.
 //

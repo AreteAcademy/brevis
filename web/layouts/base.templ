@@ -150,7 +150,7 @@ templ Base(p Page) {
 					// A FILL PAGE DRAWS NO PAGE HEADER: its panes take the height,
 					// and the breadcrumb already says where it is.
 					if !p.Fill {
-					<header data-page-header class="px-4 pt-6 pb-4 min-[960px]:px-6">
+					<header data-page-header class="px-3 pt-4 pb-3 min-[860px]:px-6 min-[860px]:pt-5">
 						<div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
 							<div class="min-w-0">
 								if p.Eyebrow != nil {
@@ -164,13 +164,13 @@ templ Base(p Page) {
 											if p.TitleID != "" {
 												id={ p.TitleID }
 											}
-											class="font-mono text-[1.375rem] leading-tight font-medium tracking-[-0.01em] break-all text-ink">{ p.Title }</h1>
+											class="font-mono text-[18px] leading-tight font-medium tracking-[-0.01em] break-all text-ink">{ p.Title }</h1>
 									} else {
 										<h1
 											if p.TitleID != "" {
 												id={ p.TitleID }
 											}
-											class="display truncate text-[1.6rem] tracking-[-0.022em] text-ink">{ p.Title }</h1>
+											class="truncate text-[20px] leading-tight font-semibold tracking-[-0.018em] text-ink">{ p.Title }</h1>
 									}
 									if p.Aside != nil {
 										@p.Aside
@@ -199,7 +199,7 @@ templ Base(p Page) {
 					// So a narrow measure now sits on the block it is about,
 					// beside the prose it exists for, where the next person
 					// can see what it is protecting.
-					<div class="px-4 py-5 min-[960px]:px-6">
+					<div class="px-3 pb-10 min-[860px]:px-6">
 						{ children... }
 					</div>
 				</main>

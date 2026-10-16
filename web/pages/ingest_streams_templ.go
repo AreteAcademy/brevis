@@ -61,7 +61,7 @@ func Streams(v StreamsView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"mb-5 flex flex-wrap items-center gap-2 text-sm\"><span class=\"font-medium text-ink tabular-nums\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"mb-3 flex flex-wrap items-center gap-2 text-sm\"><span class=\"font-medium text-ink tabular-nums\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

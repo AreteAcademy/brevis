@@ -50,7 +50,7 @@ func StreamPage(v StreamView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"mb-5 -mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8rem] text-muted\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"mb-3 -mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8rem] text-muted\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -144,7 +144,7 @@ func StreamPage(v StreamView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, " <div id=\"stream-tabs\" data-hash-tabs><div data-hash-tabs-bar data-js class=\"mb-5\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, " <div id=\"stream-tabs\" data-hash-tabs><div data-hash-tabs-bar data-js class=\"mb-3\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -156,7 +156,7 @@ func StreamPage(v StreamView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div><section id=\"overview\" data-tab-panel=\"overview\" class=\"mb-8\"><h2 data-panel-heading class=\"kicker mb-3\">Overview</h2><div class=\"grid grid-cols-1 gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]\"><div class=\"flex min-w-0 flex-col gap-4\"><div class=\"overflow-hidden rounded-card border border-line bg-surface\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div><section id=\"overview\" data-tab-panel=\"overview\" class=\"mb-3\"><h2 data-panel-heading class=\"mb-3 text-[13px] font-semibold text-ink\">Overview</h2><div class=\"grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]\"><div class=\"flex min-w-0 flex-col gap-4\"><div class=\"overflow-hidden rounded-card border border-line bg-surface\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -207,11 +207,11 @@ func StreamPage(v StreamView) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = card("Properties", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = components.Panel("Properties", "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div></section><section id=\"config\" data-tab-panel=\"config\" class=\"mb-8\"><h2 data-panel-heading class=\"kicker mb-3\">Configuration</h2><div class=\"mb-6 grid grid-cols-1 gap-4 min-[900px]:grid-cols-2\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div></section><section id=\"config\" data-tab-panel=\"config\" class=\"mb-3\"><h2 data-panel-heading class=\"mb-3 text-[13px] font-semibold text-ink\">Configuration</h2><div class=\"mb-3 grid grid-cols-1 gap-4 min-[900px]:grid-cols-2\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -307,7 +307,7 @@ func StreamPage(v StreamView) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = card(g.Title, "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = components.Panel(g.Title, "").Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -327,7 +327,7 @@ func StreamPage(v StreamView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</section><section id=\"deadletter\" data-tab-panel=\"deadletter\" class=\"mb-8\"><h2 data-panel-heading class=\"kicker mb-3\">Dead letter</h2>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</section><section id=\"deadletter\" data-tab-panel=\"deadletter\" class=\"mb-3\"><h2 data-panel-heading class=\"mb-3 text-[13px] font-semibold text-ink\">Dead letter</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -393,7 +393,7 @@ func StreamPage(v StreamView) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = card("Where refused batches go", v.DeadLetter.Kind).Render(templ.WithChildren(ctx, templ_7745c5c3_Var14), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = components.Panel("Where refused batches go", v.DeadLetter.Kind).Render(templ.WithChildren(ctx, templ_7745c5c3_Var14), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
