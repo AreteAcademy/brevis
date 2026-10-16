@@ -14,6 +14,36 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.30.0] — 2026-10-16
+
+### Fixed: no flicker between screens on real infrastructure (#112)
+
+On a deployed console the screens took a moment to change and at times
+flickered; the sidebar's search, especially, disappeared and reappeared.
+
+- **Nothing pops in after the first paint.** Controls that need a script --
+  the search, Copy, Live, tab bars, group toggles, the SQL workbench's strip
+  and recent rail -- were drawn hidden and revealed by the deferred script, so
+  a paint before it drew the page without them. One inline line at the top of
+  the head now marks the page before anything is drawn, and they are there
+  from the first frame. A stream's `#deadletter` link opens on Dead letter.
+- **A page the pointer rests on is fetched before the click** (speculation
+  rules, prefetch only). Never sign-in or sign-out, the API, the assets, or a
+  Preview link -- that one is a billed warehouse query.
+- **A click is acknowledged**: a thin bar at the top when the next page takes
+  more than 120 ms.
+- **The swap fades through**: the old page leaves, then the new one arrives,
+  never both half-visible at once. The sidebar and the top bar hold still.
+- **The graph comes with the page** instead of a round trip later, so the
+  workflow and run pages no longer draw an empty canvas first.
+
+No migration. No configuration changes. If the screens still feel slow on a
+deployment, check that the proxy keeps `Cache-Control: immutable` on
+`/assets/*?v=` -- the console sends it, and a proxy that rewrites it costs a
+round trip per asset on every screen.
+
+---
+
 ## [0.29.0] — 2026-10-15
 
 ### Changed: Catalog becomes Streams and Loads (#111)
