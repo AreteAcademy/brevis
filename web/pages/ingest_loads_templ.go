@@ -378,7 +378,7 @@ func loadGroup(g LoadGroupView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" hidden class=\"flex h-6 w-6 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[expanded=false]:-rotate-90\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" data-js class=\"flex h-6 w-6 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[expanded=false]:-rotate-90\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

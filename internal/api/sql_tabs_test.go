@@ -28,7 +28,9 @@ func TestTheTabStripWaitsForTheIsland(t *testing.T) {
 	if strip == "" {
 		t.Fatal("there is no tab strip on the screen")
 	}
-	if !strings.Contains(strip, "hidden") {
+	// data-js: drawn from the first paint where a script runs, never where
+	// none does (nav-latency N6).
+	if !strings.Contains(strip, "data-js") {
 		t.Errorf("the tab strip is drawn for a browser that cannot drive it: %s", strip)
 	}
 	if !strings.Contains(body, "<template data-tab-template") {
@@ -50,7 +52,7 @@ func TestTheRecentRailWaitsForTheIsland(t *testing.T) {
 	if rail == "" {
 		t.Fatal("there is no Recent rail on the screen")
 	}
-	if !strings.Contains(rail, "hidden") {
+	if !strings.Contains(rail, "data-js") {
 		t.Errorf("an empty rail is drawn for a browser that can never fill it: %s", rail)
 	}
 	// THE CAP COMES FROM THE MARKUP, like the grips' `data-min`. A number

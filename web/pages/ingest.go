@@ -910,3 +910,27 @@ func (v StreamView) TestCurlHead() string {
 func (v StreamView) TestCurl() string {
 	return v.TestCurlHead() + "\n" + v.TestBody() + "\nEOF"
 }
+
+// hashTabsCSS shows one panel of a hash-tabbed host (`#host`) from the first
+// paint: the one <html data-hash> names -- written by the head before the
+// body is drawn -- and the first when it names none of these. The tab bar's
+// marks follow, so the underline does not jump when ui.js catches up. Rules
+// per key, because CSS cannot match an attribute on <html> against one on
+// a panel; the keys are the page's own.
+func hashTabsCSS(host string, keys ...string) string {
+	if len(keys) == 0 {
+		return ""
+	}
+	first, h := keys[0], "#"+host
+	var b strings.Builder
+	b.WriteString(".js " + h + " [data-tab-panel]{display:none}")
+	b.WriteString(".js " + h + ` [data-tab-panel="` + first + `"]{display:block}`)
+	for _, k := range keys[1:] {
+		on := `.js[data-hash="` + k + `"] `
+		b.WriteString(on + h + ` [data-tab-panel="` + first + `"]{display:none}`)
+		b.WriteString(on + h + ` [data-tab-panel="` + k + `"]{display:block}`)
+		b.WriteString(on + h + ` [data-tab="` + first + `"]{border-color:transparent;color:var(--color-muted)}`)
+		b.WriteString(on + h + ` [data-tab="` + k + `"]{border-color:var(--color-accent-strong);color:var(--color-ink)}`)
+	}
+	return b.String()
+}

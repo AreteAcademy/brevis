@@ -82,7 +82,7 @@ templ DefinitionList(rows []Def) {
 templ CodeBlock(id, code string, attrs templ.Attributes) {
 	<div class="relative">
 		<pre id={ id } class="overflow-x-auto rounded-card border border-line bg-canvas-subtle p-3 pr-11 font-mono text-[0.75rem] leading-relaxed text-ink" { attrs... }><code>{ code }</code></pre>
-		<span class="absolute top-1.5 right-1.5" hidden>
+		<span class="absolute top-1.5 right-1.5" data-js>
 			@IconButton("Copy", "copy", templ.Attributes{"data-copy": "#" + id})
 		</span>
 	</div>

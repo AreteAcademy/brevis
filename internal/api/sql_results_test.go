@@ -251,8 +251,11 @@ func TestAnAnswerCanBeExportedAsCSV(t *testing.T) {
 	if at < 0 {
 		t.Fatal("the answer offers no CSV")
 	}
-	if wrap := body[strings.LastIndex(body[:at], "<span"):at]; !strings.Contains(wrap, "hidden") {
-		t.Errorf("Export CSV is visible before the island can drive it: %s", wrap)
+	// data-js: shown only where a script runs, from the first paint
+	// (nav-latency N6) -- and so in an answer swapped in by a run too, with
+	// nothing for the island to reveal.
+	if wrap := body[strings.LastIndex(body[:at], "<span"):at]; !strings.Contains(wrap, "data-js") {
+		t.Errorf("Export CSV is shown where no island can drive it: %s", wrap)
 	}
 
 	_, raw := get(t, ui, "/assets/sql.js")
@@ -262,8 +265,8 @@ func TestAnAnswerCanBeExportedAsCSV(t *testing.T) {
 			t.Errorf("the island's CSV never uses %s", want)
 		}
 	}
-	if run := islandFunc(js, "runInPlace"); !strings.Contains(run, "wireExport(pane)") {
-		t.Error("an answer swapped in by a run gets no CSV")
+	if !strings.Contains(js, `closest("[data-export-csv]")`) {
+		t.Error("the CSV click is not delegated, so an answer swapped in by a run gets none")
 	}
 }
 

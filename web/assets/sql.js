@@ -75,7 +75,6 @@
   wireCost();
   wireCopy();
   wireCSV();
-  wireExport(answer());
   if (typeof CodeMirror === "undefined") {
     area.addEventListener("input", keep);
     return;
@@ -575,7 +574,6 @@
   function wireCopy() {
     var btn = document.querySelector("[data-copy-statement]");
     if (!btn || !navigator.clipboard) return;
-    if (btn.parentElement) btn.parentElement.removeAttribute("hidden");
     btn.addEventListener("click", function () {
       navigator.clipboard.writeText(text()).then(function () {
         btn.setAttribute("aria-label", "Copied");
@@ -597,12 +595,9 @@
   // field. A byte-order mark leads, because the spreadsheet most people
   // will open this in reads UTF-8 only when told to.
   //
-  // wireExport reveals the button of the answer it is handed; the click is
-  // one delegated listener that finds its own answer, like the tabs.
-  function wireExport(root) {
-    var btn = root.querySelector("[data-export-csv]");
-    if (btn && btn.parentElement && window.Blob && window.URL) btn.parentElement.removeAttribute("hidden");
-  }
+  // The button is in the answer's markup, shown where a script runs
+  // (data-js); the click is one delegated listener that finds its own answer,
+  // like the tabs.
 
   function csvField(v) {
     if (v === null || v === undefined) return "";
@@ -694,7 +689,6 @@
       .then(function (html) {
         pane.innerHTML = html;
         wirePager(pane);
-        wireExport(pane);
         addRecent(pane, statement);
       })
       .catch(function (err) {
@@ -789,7 +783,6 @@
     if (echoed !== "") here().text = echoed;
     else put(here().text);
 
-    strip.hidden = false;
     drawTabs();
     store();
 
@@ -909,7 +902,6 @@
     recent.cap = parseInt(recent.rail.getAttribute("data-recent-keep"), 10) || 20;
     recent.list = parse(recall("recent"), []);
 
-    recent.rail.hidden = false;
     addRecent(answer(), echoed);
 
     document.addEventListener("click", function (ev) {

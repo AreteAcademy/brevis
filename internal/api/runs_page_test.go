@@ -126,9 +126,10 @@ func TestTheRunsListCanBeFollowedLive(t *testing.T) {
 	if !strings.Contains(page, `id="runs-list"`) {
 		t.Fatal("the list is not one region")
 	}
-	if !regexp.MustCompile(`<button[^>]*data-live-list="runs-list"[^>]*hidden`).MatchString(page) &&
-		!regexp.MustCompile(`<span[^>]*hidden[^>]*>\s*<button[^>]*data-live-list="runs-list"`).MatchString(page) {
-		t.Error("there is no Live switch, hidden until the script runs")
+	// Only where a script runs: data-js, shown under <html class="js">,
+	// which the head sets before the first paint (nav-latency N6).
+	if !regexp.MustCompile(`<span[^>]*data-js[^>]*>\s*<button[^>]*data-live-list="runs-list"`).MatchString(page) {
+		t.Error("there is no Live switch, shown only where a script runs")
 	}
 
 	code, frag := rowsGet(t, ui, "/runs?workflow=daily")

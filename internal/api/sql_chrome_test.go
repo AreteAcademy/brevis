@@ -285,8 +285,10 @@ func TestTheToolbarCopiesTheStatement(t *testing.T) {
 	if at < 0 {
 		t.Fatal("the toolbar offers no Copy")
 	}
-	if wrap := body[strings.LastIndex(body[:at], "<span"):at]; !strings.Contains(wrap, "hidden") {
-		t.Errorf("Copy is visible before the island can drive it: %s", wrap)
+	// data-js: shown only where a script runs, from the first paint
+	// (nav-latency N6).
+	if wrap := body[strings.LastIndex(body[:at], "<span"):at]; !strings.Contains(wrap, "data-js") {
+		t.Errorf("Copy is shown where no island can drive it: %s", wrap)
 	}
 	_, raw := get(t, ui, "/assets/sql.js")
 	if js := strip(raw); !strings.Contains(js, "[data-copy-statement]") || !strings.Contains(js, "navigator.clipboard") {
