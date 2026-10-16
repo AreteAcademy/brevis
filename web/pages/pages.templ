@@ -1037,7 +1037,7 @@ templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.R
 			}
 		</div>
 		if len(w.Params) > 0 {
-			@runDrawer(w)
+			@runDrawer(w, runDrawerText)
 		}
 		// The same four numbers the dashboard opens with, scoped to this
 		// workflow -- and over thirty days rather than one, because a daily job
@@ -1087,10 +1087,11 @@ templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.R
 
 // Run shows one run. The header comes from the server already rendered; only the
 // DAG with each step's state depends on JavaScript.
-templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *postgres.Wait, graph string) {
+templ Run(p RunPage) {
+	{{ r := p.Run }}
 	@layouts.Base(layouts.Page{
 		Title: r.WorkflowSlug, Kicker: "Run", Active: "runs", Crumb: runCrumb(r),
-		Island: dagAssets,
+		Island: dagAssets, Actions: rerunAction(p),
 	}) {
 		// Two regions the server refreshes, and the graph between them.
 		//
@@ -1101,7 +1102,7 @@ templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *post
 		// returns BOTH of these already rendered, on the cadence the graph
 		// already uses. See RunLive.
 		<div id="run-head" data-live={ "/runs/" + r.ID.String() + "/live" }>
-			@runHead(r, wait)
+			@runHead(r, p.Wait)
 		</div>
 		// The indicator sits OUTSIDE the swapped region, because a region that
 		// replaces its own contents would replace this too and lose whatever
@@ -1114,11 +1115,54 @@ templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *post
 			<span class="h-1.5 w-1.5 rounded-full bg-state-running"></span>
 			<span data-live-label>following this run</span>
 		</p>
-		@dag("/api/runs/"+r.ID.String()+"/graph", graph)
+		@dag("/api/runs/"+r.ID.String()+"/graph", p.Graph)
 		<div id="run-body">
-			@runBody(r, logs, raised)
+			@runBody(r, p.Logs, p.Raised)
 		</div>
+		if p.Workflow != nil && len(p.Workflow.Params) > 0 {
+			{{ w, dropped := rerunWorkflow(p) }}
+			@runDrawer(w, rerunDrawerText(r, dropped))
+		}
 	}
+}
+
+// rerunAction is the run page's verb (screen-run-v2 RV2): Rerun, posting to
+// the trigger the workflow page uses. With no params it is that one click;
+// with params it opens the drawer, pre-filled from this run. A workflow that
+// is gone has nothing to rerun, so there is no button rather than a dead one.
+func rerunAction(p RunPage) templ.Component {
+	if p.Workflow == nil {
+		return nil
+	}
+	if len(p.Workflow.Params) == 0 {
+		return rerunNow(p.Run)
+	}
+	return rerunLink(p.Run)
+}
+
+templ rerunNow(r run.Run) {
+	<form method="post" action={ templ.SafeURL("/workflows/" + r.WorkflowSlug + "/trigger") } class="inline">
+		<button type="submit" data-rerun title={ rerunTitle(r) } class={ components.ButtonClass(components.ButtonSecondary, components.SizeRegular) }>
+			@components.Icon("refresh-cw", "h-3.5 w-3.5")
+			Rerun
+		</button>
+	</form>
+}
+
+// A link and not a GET form: it opens the dialog on this page, and
+// `data-no-prefetch` keeps the hover from fetching anything for it.
+templ rerunLink(r run.Run) {
+	<a href="#run" data-rerun data-dialogo="run" data-no-prefetch aria-haspopup="dialog" title={ rerunTitle(r) } class={ components.ButtonClass(components.ButtonSecondary, components.SizeRegular) }>
+		@components.Icon("refresh-cw", "h-3.5 w-3.5")
+		Rerun…
+	</a>
+}
+
+func rerunTitle(r run.Run) string {
+	if note := rerunNote(r); note != "" {
+		return note
+	}
+	return "Run this workflow again with this run's values"
 }
 
 // RunLive is the same two regions, with no layout around them.
@@ -1127,15 +1171,16 @@ templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *post
 // every one of these in JavaScript, and two renderings of a step's state is two
 // places for "what colour is retrying" -- the class of bug this repository has
 // hit five times. The server already knows how to draw them.
-templ RunLive(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *postgres.Wait) {
+templ RunLive(p RunPage) {
+	{{ r := p.Run }}
 	// `terminal` is what stops the polling, and it is the RUN's answer rather
 	// than the step's: a failed run is a retry away from running again, and
 	// stopping there would freeze the screen in the middle of one.
 	<div data-live-target="run-head" data-terminal={ fmt.Sprint(r.Status.Terminal()) }>
-		@runHead(r, wait)
+		@runHead(r, p.Wait)
 	</div>
 	<div data-live-target="run-body">
-		@runBody(r, logs, raised)
+		@runBody(r, p.Logs, p.Raised)
 	</div>
 }
 
@@ -1509,7 +1554,7 @@ templ runLink() {
 // payload they make (filled by ui.js, so it is hidden with no script rather
 // than wrong), and Run, posting to the same trigger the ▶ does. A native
 // <dialog>: Esc closes it and the focus goes back to Run….
-templ runDrawer(w wf.Workflow) {
+templ runDrawer(w wf.Workflow, t drawerText) {
 	<dialog
 		id="run"
 		aria-labelledby="run-title"
@@ -1523,7 +1568,7 @@ templ runDrawer(w wf.Workflow) {
 		>
 			<div class="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
 				<div class="min-w-0">
-					<p id="run-title" class="text-[0.95rem] font-medium text-ink">Run with parameters</p>
+					<p id="run-title" class="text-[0.95rem] font-medium text-ink">{ t.Title }</p>
 					<p class="truncate font-mono text-[0.75rem] text-muted">{ w.Slug }</p>
 				</div>
 				<button type="submit" formmethod="dialog" formnovalidate aria-label="Close" class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
@@ -1531,8 +1576,14 @@ templ runDrawer(w wf.Workflow) {
 				</button>
 			</div>
 			<div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+				if t.Note != "" {
+					<p data-rerun-note class="rounded-card border border-line-soft bg-surface-2 px-3 py-2 text-[12px] text-muted">{ t.Note }</p>
+				}
 				for _, p := range w.Params {
 					@paramField(p)
+				}
+				for _, name := range t.Dropped {
+					<p class="font-mono text-[0.8rem] text-faint">{ name } <span class="font-sans text-[0.72rem]">not in the current definition, not sent</span></p>
 				}
 				<div data-run-preview hidden>
 					<p class="mb-1.5 text-[0.75rem] text-muted">Payload</p>
@@ -1542,7 +1593,7 @@ templ runDrawer(w wf.Workflow) {
 			<div class="flex justify-end gap-2 border-t border-line px-5 py-3">
 				<button type="submit" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
 					@components.Icon("play", "h-3.5 w-3.5")
-					Run
+					{ t.Button }
 				</button>
 			</div>
 		</form>

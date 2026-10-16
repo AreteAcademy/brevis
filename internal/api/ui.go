@@ -1333,23 +1333,17 @@ func (u *UI) run(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	// A missing log does not block the screen: the rest of the page stays
-	// useful, and a freshly queued run legitimately has no steps yet.
-	logs, err := u.execs.LogsDaRun(r.Context(), id)
-	if err != nil {
-		u.log.Warn("the run's logs are unavailable", "run", id, "error", err)
-	}
-	// The alerts, on the same terms as the logs: unavailable is not a reason to
-	// refuse the page. An alert nobody can see is indistinguishable from an
-	// alert that was never sent, which is what this section exists to fix --
-	// and a blank page would be worse at it than a page missing one block.
-	var raised []alerts.Record
-	if u.alerts != nil {
-		if raised, err = u.alerts.ForRun(r.Context(), id); err != nil {
-			u.log.Warn("the run's alerts are unavailable", "run", id, "error", err)
+	p := u.runPage(r.Context(), run)
+	p.Graph = u.runSeed(r.Context(), run)
+	// The CURRENT workflow, for Rerun: what the trigger resolves against. A
+	// workflow that is gone is a page without the button, not a refusal --
+	// its runs stay readable.
+	if u.defs != nil {
+		if def, err := u.defs.Definition(r.Context(), run.WorkflowSlug); err == nil {
+			p.Workflow = &def
 		}
 	}
-	u.render(w, r, pages.Run(run, logs, raised, u.waitOf(r.Context(), run), u.runSeed(r.Context(), run)))
+	u.render(w, r, pages.Run(p))
 }
 
 // runLive returns the run's two changing regions, already rendered.
@@ -1375,16 +1369,6 @@ func (u *UI) runLive(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	logs, err := u.execs.LogsDaRun(r.Context(), id)
-	if err != nil {
-		u.log.Warn("the run's logs are unavailable", "run", id, "error", err)
-	}
-	var raised []alerts.Record
-	if u.alerts != nil {
-		if raised, err = u.alerts.ForRun(r.Context(), id); err != nil {
-			u.log.Warn("the run's alerts are unavailable", "run", id, "error", err)
-		}
-	}
 
 	// No caching, at any layer. A refresh that a proxy answered from thirty
 	// seconds ago is a screen that lies about a run in flight, which is worse
@@ -1392,9 +1376,31 @@ func (u *UI) runLive(w http.ResponseWriter, r *http.Request) {
 	// the first is not.
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := pages.RunLive(current, logs, raised, u.waitOf(r.Context(), current)).Render(r.Context(), w); err != nil {
+	if err := pages.RunLive(u.runPage(r.Context(), current)).Render(r.Context(), w); err != nil {
 		u.log.Warn("rendering the live fragment", "run", id, "error", err)
 	}
+}
+
+// runPage reads what the run page and its live refresh are both drawn from.
+// ONE helper for both, so they cannot disagree about what a run is.
+//
+// A missing log or alert does not block the screen: the rest of the page
+// stays useful, and a freshly queued run legitimately has no steps yet. An
+// alert nobody can see is indistinguishable from one never sent, which is
+// what that block exists to fix -- a blank page would be worse at it than a
+// page missing one block.
+func (u *UI) runPage(ctx context.Context, current run.Run) pages.RunPage {
+	p := pages.RunPage{Run: current, Wait: u.waitOf(ctx, current)}
+	var err error
+	if p.Logs, err = u.execs.LogsDaRun(ctx, current.ID); err != nil {
+		u.log.Warn("the run's logs are unavailable", "run", current.ID, "error", err)
+	}
+	if u.alerts != nil {
+		if p.Raised, err = u.alerts.ForRun(ctx, current.ID); err != nil {
+			u.log.Warn("the run's alerts are unavailable", "run", current.ID, "error", err)
+		}
+	}
+	return p
 }
 
 // waitOf asks what holds a queued run, on the terms of the logs and alerts: a
