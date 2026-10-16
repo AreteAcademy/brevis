@@ -7,11 +7,12 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
-// The calendar's geometry. A square and its gap, in the SVG's own units, so the
-// whole drawing scales with one viewBox and needs no media query.
+// The calendar's geometry: an 8px square and a 2px gap (density-base DB5), so
+// 53 weeks fit in about 550px. Drawn at its own size -- a stretched calendar
+// was 132px tall to say which days broke.
 const (
-	cellSize = 11
-	cellGap  = 3
+	cellSize = 8
+	cellGap  = 2
 	cellStep = cellSize + cellGap
 	// Room on the left for the weekday labels, and on top for the months.
 	calLeft = 26
@@ -148,9 +149,9 @@ type WeekdayLabel struct {
 // squares is more text than grid.
 func weekdayLabels() []WeekdayLabel {
 	return []WeekdayLabel{
-		{Y: calTop + int(time.Monday)*cellStep + 9, Label: "Mon"},
-		{Y: calTop + int(time.Wednesday)*cellStep + 9, Label: "Wed"},
-		{Y: calTop + int(time.Friday)*cellStep + 9, Label: "Fri"},
+		{Y: calTop + int(time.Monday)*cellStep + cellSize, Label: "Mon"},
+		{Y: calTop + int(time.Wednesday)*cellStep + cellSize, Label: "Wed"},
+		{Y: calTop + int(time.Friday)*cellStep + cellSize, Label: "Fri"},
 	}
 }
 

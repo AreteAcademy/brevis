@@ -41,7 +41,10 @@ func LoadBars(bars []LoadBar, missed int) templ.Component {
 				top = max(top, *b.Rows)
 			}
 		}
-		if _, err := fmt.Fprintf(w, `<svg class="w-full max-w-3xl" viewBox="0 0 %.0f %.0f" preserveAspectRatio="none" role="img" aria-label="rows per load, oldest first">`, width, height); err != nil {
+		// 44px tall at about 22px a bar (density-base DB5): the width follows
+		// the number of loads, so three loads are three slim bars and not three
+		// slabs stretched across the panel. The viewBox is 17 units a bar.
+		if _, err := fmt.Fprintf(w, `<svg class="h-11" style="width:min(100%%,%.0fpx)" viewBox="0 0 %.0f %.0f" preserveAspectRatio="none" role="img" aria-label="rows per load, oldest first">`, width*25/17, width, height); err != nil {
 			return err
 		}
 		for i, b := range bars {

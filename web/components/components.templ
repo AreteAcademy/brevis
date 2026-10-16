@@ -246,15 +246,16 @@ templ Heatmap(days []postgres.Day, workflow string) {
 	{{ squares, months, w, h := Calendar(days, workflow, 364) }}
 	<div class="overflow-x-auto">
 		<svg
+			width={ fmt.Sprint(w) }
+			height={ fmt.Sprint(h) }
 			viewBox={ fmt.Sprintf("0 0 %d %d", w, h) }
-			class="h-[132px] w-full min-w-[720px]"
 			role="img"
 			aria-label="Runs per day over the last year"
 		>
 			for _, m := range months {
 				<text x={ fmt.Sprint(m.X) } y="9" class="fill-muted text-[9px]">{ m.Label }</text>
 			}
-			// Mon, Wed and Fri only. Seven labels beside eleven-pixel squares is
+			// Mon, Wed and Fri only. Seven labels beside eight-pixel squares is
 			// more text than grid.
 			for _, d := range weekdayLabels() {
 				<text x="0" y={ fmt.Sprint(d.Y) } class="fill-muted text-[9px]">{ d.Label }</text>
@@ -265,8 +266,8 @@ templ Heatmap(days []postgres.Day, workflow string) {
 						<rect
 							x={ fmt.Sprint(sq.X) }
 							y={ fmt.Sprint(sq.Y) }
-							width="11"
-							height="11"
+							width={ fmt.Sprint(cellSize) }
+							height={ fmt.Sprint(cellSize) }
 							rx="2"
 							fill={ sq.Fill }
 						></rect>
@@ -276,8 +277,8 @@ templ Heatmap(days []postgres.Day, workflow string) {
 					<rect
 						x={ fmt.Sprint(sq.X) }
 						y={ fmt.Sprint(sq.Y) }
-						width="11"
-						height="11"
+						width={ fmt.Sprint(cellSize) }
+						height={ fmt.Sprint(cellSize) }
 						rx="2"
 						fill={ sq.Fill }
 						fill-opacity={ emptyOpacity(sq.Empty) }
