@@ -666,7 +666,7 @@ templ ShortStamp(t *time.Time) {
 	if t == nil {
 		<span class="text-faint">—</span>
 	} else {
-		<span title={ UTCStamp(t) } class="tabular-nums">{ t.UTC().Format("Jan 2 15:04") }</span>
+		<span title={ UTCStamp(t) } class="tabular-nums whitespace-nowrap">{ t.UTC().Format("Jan 2 15:04") }</span>
 	}
 }
 

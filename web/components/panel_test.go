@@ -44,7 +44,8 @@ func TestNoTemplateUsesTheKicker(t *testing.T) {
 
 // A DATE IN A TABLE IS SHORT, its full UTC one hover away (density-base DB2):
 // `Oct 16 02:23` reads at a glance down a column; the year and the seconds
-// are in the title for the row that needs them.
+// are in the title for the row that needs them. It never wraps: on a phone
+// the table scrolls, and a date broken over three lines triples the row.
 func TestAShortStampKeepsTheFullDateInItsTitle(t *testing.T) {
 	at := time.Date(2026, 10, 16, 2, 23, 7, 0, time.UTC)
 	var b strings.Builder
@@ -54,6 +55,9 @@ func TestAShortStampKeepsTheFullDateInItsTitle(t *testing.T) {
 	got := b.String()
 	if !strings.Contains(got, ">Oct 16 02:23<") || !strings.Contains(got, `title="2026-10-16 02:23:07 UTC"`) {
 		t.Errorf("short stamp = %s", got)
+	}
+	if !strings.Contains(got, "whitespace-nowrap") {
+		t.Errorf("a short stamp must not wrap in a narrow column: %s", got)
 	}
 	b.Reset()
 	if err := ShortStamp(nil).Render(context.Background(), &b); err != nil || !strings.Contains(b.String(), "—") {
