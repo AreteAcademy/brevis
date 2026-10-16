@@ -32,6 +32,7 @@ var glyphs = map[string]string{
 	"panel-left":     `<rect width="18" height="18" x="3" y="3" rx="2"/> <path d="M9 3v18"/>`,
 	"play":           `<polygon points="6 3 20 12 6 21 6 3"/>`,
 	"plug":           `<path d="M12 22v-5"/> <path d="M9 8V2"/> <path d="M15 8V2"/> <path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>`,
+	"refresh-cw":     `<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/> <path d="M21 3v5h-5"/> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/> <path d="M8 16H3v5"/>`,
 	"rows-3":         `<rect width="18" height="18" x="3" y="3" rx="2"/> <path d="M21 9H3"/> <path d="M21 15H3"/>`,
 	"search":         `<circle cx="11" cy="11" r="8"/> <path d="m21 21-4.3-4.3"/>`,
 	"square":         `<rect width="18" height="18" x="3" y="3" rx="2"/>`,

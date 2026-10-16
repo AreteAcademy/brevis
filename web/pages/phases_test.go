@@ -82,7 +82,7 @@ func TestTheFirstPhaseSaysHowTheRunWasMade(t *testing.T) {
 // the head while the run moves.
 func TestThePhasesAreDrawnInTheLiveHead(t *testing.T) {
 	r := run.Run{Status: run.StatusRunning, CreatedAt: created, StartedAt: at(time.Second), WorkflowSlug: "daily"}
-	page := draw(t, RunLive(r, nil, nil, nil))
+	page := draw(t, RunLive(RunPage{Run: r}))
 	head := page[:strings.Index(page, `data-live-target="run-body"`)]
 	if !strings.Contains(head, "data-phases") || !strings.Contains(head, `data-phase-state="current"`) {
 		t.Error("the live head does not draw the phases")
@@ -101,7 +101,7 @@ func TestTheRunPageIsDenseWithNothingLost(t *testing.T) {
 	r.Auto.AdjustedAt = created
 	r.Auto.Date = "2026-10-15"
 	r.Auto.ScheduledAt = &slot
-	page := draw(t, Run(r, nil, nil, nil, ""))
+	page := draw(t, Run(RunPage{Run: r}))
 
 	if !strings.Contains(page, "data-timeline") || strings.Count(page, "data-phase=") != 4 {
 		t.Error("the phases are not a four-step timeline")
