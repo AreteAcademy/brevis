@@ -14,6 +14,30 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.31.0] — 2026-10-16
+
+### Changed: a denser console (#113)
+
+The console spent its space on ceremony -- large numbers, caps eyebrows, tall
+table rows, full timestamps in every cell. The shared components now take the
+compact measures, and every screen shows more with nothing removed.
+
+- **Tables** have 34px rows and a 30px sentence-case header. Dates in a table
+  read `Oct 16 02:23` (UTC), with the full date on hover. The Runs list shows
+  about 20 runs in a 1440×900 window, up from 12.
+- **One panel** heads every block (title, count, actions), replacing the caps
+  section titles. The page title is smaller and the padding tighter.
+- **A state is a dot and a word**, not a badge. A retried run shows `↻N`.
+- **Key numbers sit in one strip**, the Overview's four cards included.
+- **Small charts are smaller**: the load bars are 44px tall, and the year of
+  runs uses 8px cells.
+- **The run page**: the phases are a timeline, the error is a line you open
+  for the full text, and the auto params are a key-value grid.
+
+No migration. No configuration changes.
+
+---
+
 ## [0.30.0] — 2026-10-16
 
 ### Fixed: no flicker between screens on real infrastructure (#112)
