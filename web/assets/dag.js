@@ -793,7 +793,13 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
   }
 
   function Graph(props) {
-    var graphState = React.useState({ nodes: [], edges: [], loading: true, erro: "" });
+    // THE SEED IS THE FIRST DRAWING (nav-latency NL5): the page embeds the
+    // graph this used to fetch after the load, so the canvas is never drawn
+    // empty first. The fetch below is then only a live run's refresh.
+    var seed = props.seed;
+    var graphState = React.useState(seed
+      ? { nodes: seed.nodes || [], edges: seed.edges || [], loading: false, erro: "" }
+      : { nodes: [], edges: [], loading: true, erro: "" });
     var payload = graphState[0], setPayload = graphState[1];
     var selState = React.useState(null);
     var selected = selState[0], setSelected = selState[1];
@@ -843,7 +849,13 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
           });
       }
 
-      fetchGraph();
+      if (seed) {
+        // Already drawn: a live run refreshes at the cadence the fetch keeps.
+        var next = seed.terminal ? 0 : seed.status === "failed" ? 10000 : 2000;
+        if (next && seed.run_id) timer = setTimeout(fetchGraph, next);
+      } else {
+        fetchGraph();
+      }
       return function () {
         alive = false;
         if (timer) clearTimeout(timer);
@@ -1035,6 +1047,14 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
 
   var root = document.getElementById("dag");
   if (root) {
-    ReactDOM.createRoot(root).render(h(Graph, { src: root.dataset.src }));
+    // The embedded graph is read BEFORE React takes the element over, and the
+    // canvas is sized from it, so React Flow is born in the right box.
+    var seed = null;
+    var carrier = root.querySelector("script[data-graph]");
+    if (carrier) {
+      try { seed = JSON.parse(carrier.textContent); } catch (e) { seed = null; }
+    }
+    if (seed) sizeCanvas(seed.nodes || []);
+    ReactDOM.createRoot(root).render(h(Graph, { src: root.dataset.src, seed: seed }));
   }
 })();
