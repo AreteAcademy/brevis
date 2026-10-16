@@ -143,7 +143,7 @@ func Loads(v LoadsView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if len(v.Groups) > 0 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div class=\"overflow-x-auto\"><table id=\"load-rows\" class=\"w-full min-w-[48rem] text-[0.82rem]\"><thead><tr class=\"border-b border-line bg-canvas-subtle text-left\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div class=\"overflow-x-auto\"><table id=\"load-rows\" class=\"ct w-full min-w-[48rem] text-[0.82rem]\"><thead><tr class=\"border-b border-line bg-canvas-subtle text-left\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

@@ -647,6 +647,18 @@ func Timestamp(t *time.Time) string {
 	return t.Local().Format("2006-01-02 15:04:05 MST")
 }
 
+// ShortStamp is a date as a table cell shows it (density-base DB2): `Oct 16
+// 02:23`, in UTC, with the full UTC in its title -- a column of them reads at a
+// glance, and the year and the seconds are one hover away. A detail line keeps
+// UTCStamp. nil is "—".
+templ ShortStamp(t *time.Time) {
+	if t == nil {
+		<span class="text-faint">—</span>
+	} else {
+		<span title={ UTCStamp(t) } class="tabular-nums">{ t.UTC().Format("Jan 2 15:04") }</span>
+	}
+}
+
 // UTCStamp is the full date in UTC, for values that are UTC by contract.
 //
 // The slot and the auto params are stored, injected and read in UTC -- a step

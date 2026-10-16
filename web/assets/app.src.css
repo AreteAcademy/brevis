@@ -1044,3 +1044,21 @@ html[data-navigating] body::after {
     animation: none !important;
   }
 }
+
+/* THE COMPACT TABLE (density-base DB2). Every console table but the SQL result
+   grid: a 30px header in 11.5px sentence case, 34px rows in 12.5px. Unlayered
+   on purpose, so a page's own `py-*` on a cell no longer decides a row's
+   height -- 34px is a minimum, a cell with two lines grows. */
+table.ct {
+  font-size: 12.5px;
+}
+table.ct > thead th {
+  height: 30px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+table.ct > tbody > tr > td {
+  height: 34px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}

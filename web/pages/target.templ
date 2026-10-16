@@ -210,7 +210,7 @@ templ preview(v TargetView) {
 // start rendering as an empty cell.
 templ grid(columns []string, rows [][]any) {
 	<div class="overflow-x-auto rounded-card border border-line-soft">
-		<table class="w-full text-sm">
+		<table class="ct w-full text-sm">
 			<thead class="border-b border-line-soft text-left text-xs text-muted">
 				<tr>
 					for _, c := range columns {
@@ -303,7 +303,7 @@ templ flowDiagram(f *Flow) {
 templ recentLoads(v TargetView) {
 	@components.Panel("Recent loads", fmt.Sprint(len(v.Loads))) {
 		<div class="overflow-x-auto">
-			<table class="w-full text-[0.82rem]">
+			<table class="ct w-full text-[0.82rem]">
 				<thead>
 					<tr class="border-b border-line bg-canvas-subtle text-left">
 						@th("Loaded", "pl-4")
@@ -316,7 +316,7 @@ templ recentLoads(v TargetView) {
 				<tbody class="divide-y divide-line-soft">
 					for _, l := range v.Loads {
 						<tr>
-							<td class="px-3 py-2 pl-4 font-mono text-[0.75rem] whitespace-nowrap text-muted tabular-nums">{ components.UTCStamp(&l.LoadedAt) }</td>
+							<td class="px-3 py-2 pl-4 font-mono text-[0.75rem] whitespace-nowrap text-muted tabular-nums">@components.ShortStamp(&l.LoadedAt)</td>
 							<td class="px-3 py-2 text-[0.78rem]"><span class="font-mono text-ink">{ l.Workflow }</span> <span class="text-muted">· { l.Node }</span></td>
 							<td class="px-3 py-2 text-right text-[0.78rem] tabular-nums">{ rowsText(l.Rows) }</td>
 							<td class="px-3 py-2 text-right text-[0.78rem] tabular-nums">{ rowsText(l.Bytes) }</td>

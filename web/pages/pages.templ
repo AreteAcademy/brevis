@@ -78,7 +78,7 @@ templ Overview(d OverviewData) {
 					if len(d.EmCurso) == 0 {
 						@components.Empty("Nothing running right now.", "")
 					} else {
-						<table class="w-full text-sm">
+						<table class="ct w-full text-sm">
 							<thead>
 								<tr class="border-b border-line text-left">
 									@th("Workflow", "")
@@ -114,7 +114,7 @@ templ Overview(d OverviewData) {
 					if len(d.Proximas) == 0 {
 						@components.Empty("No active schedule.", "brevis publish file.yaml")
 					} else {
-						<table class="w-full text-sm">
+						<table class="ct w-full text-sm">
 							<thead>
 								<tr class="border-b border-line text-left">
 									@th("Workflow", "")
@@ -132,7 +132,7 @@ templ Overview(d OverviewData) {
 										</td>
 										<td class="py-2.5 pr-3 font-mono text-xs text-muted">{ p.Cron }</td>
 										<td class="py-2.5 text-right text-xs tabular-nums text-muted">
-											<span class="text-ink">{ components.Timestamp(&p.When) }</span>
+											<span class="text-ink">@components.ShortStamp(&p.When)</span>
 											<span class="ml-2 text-gold-strong">{ components.When(&p.When) }</span>
 										</td>
 									</tr>
@@ -165,13 +165,13 @@ templ distLine(label string, value int, matiz string) {
 // pressed against the title, the header competed with the first row instead of
 // separating from it.
 templ th(text, extra string) {
-	<th class={ "px-3 py-4 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted", extra }>{ text }</th>
+	<th class={ "px-2.5 text-[11.5px] font-medium whitespace-nowrap text-faint", extra }>{ text }</th>
 }
 
 // sortableTh is the same column, clickable. The arrow appears only on the
 // active column — one in every header becomes noise.
 templ sortableTh(text, field string, f Filter, extra string) {
-	<th class={ "px-3 py-4 text-[0.7rem] font-semibold uppercase tracking-[0.12em]", extra, columnColour(f, field) }>
+	<th class={ "px-2.5 text-[11.5px] font-medium whitespace-nowrap", extra, columnColour(f, field) }>
 		<a href={ templ.SafeURL(f.WithSort(field)) } class="inline-flex items-center gap-1 hover:text-gold-strong">
 			{ text }
 			if s := f.Arrow(field); s != "" {
@@ -497,7 +497,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 		@components.Empty("No workflow matches these filters.", "brevis publish file.yaml")
 	} else {
 		<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
-			<table class="w-full min-w-[56rem] text-sm">
+			<table class="ct w-full min-w-[56rem] text-sm">
 				<thead>
 					<tr class="border-b border-line bg-parchment-soft/60 text-left">
 						@th("", "w-16 pl-6")
@@ -545,7 +545,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 							</td>
 							<td class="py-3 pr-3 text-xs tabular-nums">
 								if w.NextRun != nil {
-									<span class="text-ink">{ components.Timestamp(w.NextRun) }</span>
+									<span class="text-ink">@components.ShortStamp(w.NextRun)</span>
 									<span class="ml-1.5 text-muted">{ components.When(w.NextRun) }</span>
 								} else if w.HasSchedule && !w.Active {
 									<span class="text-muted">paused</span>
@@ -557,7 +557,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 								if w.LastRunID != nil {
 									@recentRuns(recent[w.Slug])
 									<a href={ templ.SafeURL("/runs/" + *w.LastRunID) } class="mt-1 block text-[0.7rem] tabular-nums text-muted hover:text-gold-strong">
-										{ components.Timestamp(w.LastRunAt) } · { count(w.TotalRuns, "run", "runs") }
+										@components.ShortStamp(w.LastRunAt) · { count(w.TotalRuns, "run", "runs") }
 									</a>
 								} else {
 									<span class="text-xs text-muted">never ran</span>
@@ -889,7 +889,7 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 		@components.Empty("No run yet.", "brevis scheduler")
 	} else {
 		<div class="overflow-hidden rounded-card border border-line bg-surface shadow-warm-sm">
-			<table class="w-full text-sm">
+			<table class="ct w-full text-sm">
 				<thead>
 					<tr class="border-b border-line bg-parchment-soft/60 text-left">
 						@th("State", "pl-6")
@@ -917,7 +917,7 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 								</a>
 							</td>
 							<td class="px-3 py-3 text-xs text-muted">{ r.TriggerType }</td>
-							<td class="px-3 py-3 text-xs tabular-nums text-muted">{ components.UTCStamp(r.LogicalDate) }</td>
+							<td class="px-3 py-3 text-xs tabular-nums text-muted">@components.ShortStamp(r.LogicalDate)</td>
 							<td class="px-3 py-3 text-xs tabular-nums text-muted">
 								{ components.Duration(r.Duration) }
 								if w := durationShare(r.Duration, longest); w != "" {

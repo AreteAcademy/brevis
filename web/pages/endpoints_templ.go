@@ -79,7 +79,7 @@ func Endpoints(v EndpointsView) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, ">Nothing matches this search. <a href=\"/data/endpoints\" class=\"ml-1 text-accent-strong hover:underline\">Show every endpoint</a></div><div class=\"overflow-x-auto\"><table class=\"w-full text-[0.82rem]\"><thead><tr class=\"border-b border-line bg-canvas-subtle text-left\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, ">Nothing matches this search. <a href=\"/data/endpoints\" class=\"ml-1 text-accent-strong hover:underline\">Show every endpoint</a></div><div class=\"overflow-x-auto\"><table class=\"ct w-full text-[0.82rem]\"><thead><tr class=\"border-b border-line bg-canvas-subtle text-left\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -526,7 +526,7 @@ func Endpoint(v EndpointView) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<div class=\"overflow-x-auto\"><table class=\"w-full text-[0.82rem]\"><thead><tr class=\"border-b border-line bg-canvas-subtle text-left\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<div class=\"overflow-x-auto\"><table class=\"ct w-full text-[0.82rem]\"><thead><tr class=\"border-b border-line bg-canvas-subtle text-left\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
