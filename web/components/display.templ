@@ -97,3 +97,34 @@ templ CodeBlock(id, code string, attrs templ.Attributes) {
 		</span>
 	</div>
 }
+
+// KV is a dense key-value grid (density-base DB6): three to a row (one on a
+// phone), each a mono key, its value and a faint note, with Copy on the
+// value that shows on the cell's hover or focus. The hairlines are the gap
+// showing the line colour, as in Stats.
+templ KV(items []KVItem) {
+	<div data-kv class="grid grid-cols-1 gap-px bg-line-soft min-[860px]:grid-cols-3">
+		for _, it := range items {
+			<div class="group min-w-0 bg-surface px-3.5 py-2">
+				<div class="flex items-center gap-1.5 font-mono text-[11px] tracking-[0.02em] text-faint">
+					{ it.Key }
+					<span data-js class="ml-auto opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+						<button
+							type="button"
+							data-copy={ "#kv-" + it.Key }
+							aria-label={ "Copy " + it.Key }
+							title={ "Copy " + it.Key }
+							class="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] text-muted hover:bg-surface-2 hover:text-ink"
+						>
+							@Icon("copy", "h-3 w-3")
+						</button>
+					</span>
+				</div>
+				<div id={ "kv-" + it.Key } title={ it.Value } class="mt-0.5 truncate font-mono text-[12.5px] text-ink">{ it.Value }</div>
+				if it.Note != "" {
+					<div title={ it.Note } class="mt-px truncate text-[11.5px] text-faint">{ it.Note }</div>
+				}
+			</div>
+		}
+	</div>
+}

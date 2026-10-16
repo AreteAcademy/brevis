@@ -61,3 +61,9 @@ func methodClass(m string) string {
 	}
 	return "bg-surface-2 text-muted"
 }
+
+// KVItem is one cell of a key-value grid: a machine's key, its value, and a
+// note on what it means.
+type KVItem struct {
+	Key, Value, Note string
+}

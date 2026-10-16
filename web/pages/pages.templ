@@ -477,7 +477,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 			</a>
 		}
 	</div>
-	<p class="display mb-3 text-lg text-ink">
+	<p class="mb-2 text-[13px] font-semibold text-ink">
 		{ count(filtered, "workflow", "workflows") }
 		if filtered != total {
 			<span class="ml-2 text-sm text-muted">of { fmt.Sprint(total) }</span>
@@ -796,7 +796,7 @@ templ RunsList(runs []postgres.RunSummary, f RunFilter, counts map[string]int, t
 			@filterApplied("period", f.Label, f.With("from", "")+"&to=")
 		}
 	</div>
-	<p class="display mb-3 text-lg text-ink">
+	<p class="mb-2 text-[13px] font-semibold text-ink">
 		{ count(total, "run", "runs") }
 		if f.Active() {
 			<a href="/runs" class="ml-3 text-xs text-gold-strong hover:underline">clear filters</a>
@@ -1157,25 +1157,39 @@ templ runHead(r run.Run, wait *postgres.Wait) {
 		@waitLine(wait)
 	}
 	if r.Err != "" {
-		<pre class="mb-3 overflow-auto rounded-card border border-state-failed/20 bg-state-failed/5 px-5 py-4 font-mono text-xs text-state-failed">{ r.Err }</pre>
+		// ONE LINE THAT OPENS (density-base DB6): the attempt and the error's
+		// first line, the whole text inside -- a stack trace no longer pushes
+		// the page down before anyone asked for it.
+		<details data-run-error class="mb-3 rounded-card border border-state-failed/30 bg-state-failed/5">
+			<summary class="flex h-[34px] cursor-pointer list-none items-center gap-2 px-3 text-[12.5px] [&::-webkit-details-marker]:hidden">
+				@components.Icon("triangle-alert", "h-3.5 w-3.5 text-state-failed")
+				@components.Retry(r.Attempt)
+				<span class="min-w-0 truncate font-mono text-[12px] text-state-failed">{ firstLine(r.Err) }</span>
+				<span class="ml-auto shrink-0 text-[11.5px] text-faint">details</span>
+			</summary>
+			<pre class="overflow-auto border-t border-state-failed/20 px-3 py-2.5 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-state-failed">{ r.Err }</pre>
+		</details>
 	}
 }
 
 // phases is the run's life as a strip: made, started, running, finished, the
 // current one marked. It sits in the live head, so it moves with the run.
 templ phases(ps []Phase) {
-	<ol data-phases class="mb-3 grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line-soft sm:grid-cols-4">
-		for _, p := range ps {
-			<li data-phase={ p.Key } data-phase-state={ p.State } class="bg-surface px-4 py-3">
-				<p class="flex items-center gap-1.5 text-[0.78rem] text-muted">
-					<span class={ "h-1.5 w-1.5 rounded-full", phaseDot(p.State) }></span>
-					if p.State == "current" {
-						<span class="font-medium text-ink">{ p.Label }</span>
-					} else {
-						{ p.Label }
-					}
-				</p>
-				<p title={ p.Detail } class="mt-1 truncate text-[0.8rem] tabular-nums text-ink-2">
+	// A TIMELINE ON ONE RULE (density-base DB6): each phase a dot on the line,
+	// its name and its value -- the four boxes it was, a third the height.
+	<ol data-phases data-timeline class="mb-3 grid grid-cols-2 gap-y-3 rounded-card border border-line bg-surface px-3.5 py-3 sm:grid-cols-4">
+		for i, p := range ps {
+			<li data-phase={ p.Key } data-phase-state={ p.State } class="relative min-w-0 pt-3 pr-3">
+				if i < len(ps)-1 {
+					<span aria-hidden="true" class="absolute top-1 right-0 left-1 h-px bg-line-strong"></span>
+				}
+				<span aria-hidden="true" class={ "absolute top-0 left-0 h-[9px] w-[9px] rounded-full", phaseDot(p.State) }></span>
+				if p.State == "current" {
+					<p class="text-[11.5px] font-medium text-ink">{ p.Label }</p>
+				} else {
+					<p class="text-[11.5px] text-muted">{ p.Label }</p>
+				}
+				<p title={ p.Detail } class="mt-px truncate font-mono text-[12.5px] tabular-nums text-ink-2">
 					if p.Detail != "" {
 						{ p.Detail }
 					} else {
@@ -1206,42 +1220,14 @@ templ runBody(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
 // somebody stares at after finding a gap in a table.
 templ autoParams(r run.Run) {
 	<section class="mt-3">
-		<h2 class="display mb-1 text-xl text-ink">Auto params</h2>
-		<p class="mb-4 text-xs text-muted">
-			The engine works these out for every run. No workflow declares them, and
-			every step can read them — as <code class="font-mono">$BREVIS_AUTO_*</code>.
-		</p>
-		<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-			@autoValue("adjusted_at", components.UTCStamp(&r.Auto.AdjustedAt),
-				"the clock to read instead of now()")
-			@autoValue("date", r.Auto.Date, "the UTC day of adjusted_at — the partition")
-			@autoValue("delay", lateness(r.Auto.DelaySeconds), "how late this attempt started")
-			if r.Auto.ScheduledAt != nil {
-				@autoValue("scheduled_at", components.UTCStamp(r.Auto.ScheduledAt), "the slot this run represents")
-			}
-			if r.Auto.StartedAt != nil {
-				@autoValue("started_at", components.UTCStamp(r.Auto.StartedAt), "when this attempt began")
-			}
-			if r.Auto.IntervalStart != nil {
-				@autoValue("interval_start", components.UTCStamp(r.Auto.IntervalStart), "the window this run covers, from")
-			}
-			if r.Auto.IntervalEnd != nil {
-				@autoValue("interval_end", components.UTCStamp(r.Auto.IntervalEnd), "…up to, excluded")
-			}
-			@autoValue("previous_error", fmt.Sprint(r.Auto.PreviousError), "did the run before this one fail")
-			if r.Auto.PreviousSuccessAt != nil {
-				@autoValue("previous_success_at", components.UTCStamp(r.Auto.PreviousSuccessAt), "how far back to catch up from")
-			}
-		</div>
+		@components.Panel("Auto params", "read by any step as $BREVIS_AUTO_*") {
+			@components.KV(autoItems(r))
+			<p class="border-t border-line-soft px-3.5 py-2 text-[12px] text-faint">
+				The engine works these out for every run. No workflow declares them, and
+				every step can read them — as <code class="font-mono">$BREVIS_AUTO_*</code>.
+			</p>
+		}
 	</section>
-}
-
-templ autoValue(name, value, why string) {
-	<div class="rounded-2xl border border-line bg-surface px-4 py-3">
-		<div class="font-mono text-[0.7rem] uppercase tracking-wider text-muted">{ name }</div>
-		<div class="mt-0.5 font-mono text-sm text-ink">{ value }</div>
-		<div class="mt-1 text-[0.7rem] leading-snug text-muted/80">{ why }</div>
-	</div>
 }
 
 // lateness reads as a duration rather than as a count of seconds. "2220" is a
@@ -1267,7 +1253,7 @@ func lateness(seconds int) string {
 templ alertsRaised(raised []alerts.Record) {
 	if len(raised) > 0 {
 		<section class="mt-3">
-			<h2 class="display mb-4 text-xl text-ink">Alerts</h2>
+			<h2 class="mb-2 text-[13px] font-semibold text-ink">Alerts</h2>
 			<div class="space-y-2">
 				for _, a := range raised {
 					<div class="rounded-2xl border border-line bg-surface px-5 py-3.5">
@@ -1356,7 +1342,7 @@ func durationMs(ms int64) string {
 templ stepsOutput(r run.Run, logs []postgres.StepLog) {
 	if len(logs) > 0 {
 		<section class="mt-3">
-			<h2 class="display mb-4 text-xl text-ink">Step output</h2>
+			<h2 class="mb-2 text-[13px] font-semibold text-ink">Step output</h2>
 			<div class="space-y-2">
 				for _, g := range StepOutputs(r, logs) {
 					if g.Mapped {
