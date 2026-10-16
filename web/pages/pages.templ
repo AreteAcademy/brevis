@@ -1089,7 +1089,7 @@ templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.R
 // DAG with each step's state depends on JavaScript.
 templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *postgres.Wait, graph string) {
 	@layouts.Base(layouts.Page{
-		Title: r.WorkflowSlug, Kicker: "Run", Active: "runs",
+		Title: r.WorkflowSlug, Kicker: "Run", Active: "runs", Crumb: runCrumb(r),
 		Island: dagAssets,
 	}) {
 		// Two regions the server refreshes, and the graph between them.
@@ -1150,7 +1150,12 @@ templ runHead(r run.Run, wait *postgres.Wait) {
 			@components.Retry(r.Attempt)
 		}
 		<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="text-xs text-gold-strong hover:underline">see definition</a>
-		<span class="font-mono text-[0.7rem] text-muted/70">{ r.ID.String() }</span>
+		<span class="inline-flex items-center gap-1">
+			<span id="run-id" class="font-mono text-[0.7rem] text-muted/70">{ r.ID.String() }</span>
+			<span data-js>
+				@components.CopyIcon("#run-id", "Copy the run's id")
+			</span>
+		</span>
 	</div>
 	@phases(PhasesOf(r, time.Now()))
 	if wait != nil {

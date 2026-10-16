@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/web/components"
 )
@@ -61,4 +62,10 @@ func durationShare(d *time.Duration, longest time.Duration) string {
 		pct = 1
 	}
 	return fmt.Sprintf("%d%%", pct)
+}
+
+// runCrumb names the run in the top bar: its workflow and the first block of
+// its id, which is what tells two tabs of the same workflow apart.
+func runCrumb(r run.Run) string {
+	return r.WorkflowSlug + " · " + r.ID.String()[:8]
 }

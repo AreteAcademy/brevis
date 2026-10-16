@@ -109,15 +109,7 @@ templ KV(items []KVItem) {
 				<div class="flex items-center gap-1.5 font-mono text-[11px] tracking-[0.02em] text-faint">
 					{ it.Key }
 					<span data-js class="ml-auto opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-						<button
-							type="button"
-							data-copy={ "#kv-" + it.Key }
-							aria-label={ "Copy " + it.Key }
-							title={ "Copy " + it.Key }
-							class="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] text-muted hover:bg-surface-2 hover:text-ink"
-						>
-							@Icon("copy", "h-3 w-3")
-						</button>
+						@CopyIcon("#kv-"+it.Key, "Copy "+it.Key)
 					</span>
 				</div>
 				<div id={ "kv-" + it.Key } title={ it.Value } class="mt-0.5 truncate font-mono text-[12.5px] text-ink">{ it.Value }</div>
@@ -127,4 +119,19 @@ templ KV(items []KVItem) {
 			</div>
 		}
 	</div>
+}
+
+// CopyIcon is the 18px Copy beside a value: the text of the element target
+// names goes to the clipboard. The caller decides when it shows (a cell's
+// hover, or always) and wraps it in `data-js`, since it needs the script.
+templ CopyIcon(target, label string) {
+	<button
+		type="button"
+		data-copy={ target }
+		aria-label={ label }
+		title={ label }
+		class="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] text-muted hover:bg-surface-2 hover:text-ink"
+	>
+		@Icon("copy", "h-3 w-3")
+	</button>
 }

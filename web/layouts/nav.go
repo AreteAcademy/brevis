@@ -91,3 +91,12 @@ func Sections(ctx context.Context) []Section {
 	}
 	return out
 }
+
+// crumbTitle is what the breadcrumb ends on: the page's Crumb when it names
+// something more precise than its title, the title otherwise.
+func crumbTitle(p Page) string {
+	if p.Crumb != "" {
+		return p.Crumb
+	}
+	return p.Title
+}
