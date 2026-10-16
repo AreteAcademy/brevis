@@ -538,7 +538,10 @@
     if (window.getSelection && String(window.getSelection()).length > 0) return;
     var href = row.getAttribute("data-href");
     if (e.metaKey || e.ctrlKey || e.button === 1) window.open(href, "_blank");
-    else window.location.assign(href);
+    else {
+      navigating();
+      window.location.assign(href);
+    }
   });
 
   // ------------------------------------------------------------------
@@ -1028,4 +1031,49 @@
       if (row) go(+row.getAttribute("data-palette-index"), e.metaKey || e.ctrlKey);
     });
   }
+  // ------------------------------------------------------------------
+  // A click is acknowledged (nav-latency NL3)
+  //
+  // On real infrastructure a page takes a moment to come, and an old page
+  // that sits unchanged after a click reads as a click that did not take.
+  // 120 ms after a navigation starts, <html data-navigating> draws a thin bar
+  // at the top (the sheet's); below that -- a prefetched page -- nothing
+  // shows. The next page arrives without the mark, and `pageshow` clears it
+  // on a page restored by Back, which would otherwise keep it.
+  //
+  // Registered LAST and on `defaultPrevented`: a click a handler already took
+  // -- a dialog's opener, a tab, a swap in place -- is not a navigation. Nor
+  // is a new tab, a download, another origin or a hash on this page.
+  // ------------------------------------------------------------------
+
+  var navTimer = null;
+  function navigating() {
+    clearTimeout(navTimer);
+    navTimer = setTimeout(function () {
+      document.documentElement.setAttribute("data-navigating", "");
+    }, 120);
+  }
+
+  document.addEventListener("click", function (e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target && typeof e.target.closest === "function" ? e.target.closest("a[href]") : null;
+    if (!a || a.hasAttribute("download")) return;
+    if (a.getAttribute("target") === "_blank") return;
+    var u = new URL(a.href, window.location.href);
+    if (u.origin !== window.location.origin) return;
+    if (u.pathname === window.location.pathname && u.search === window.location.search) return;
+    navigating();
+  });
+
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (e.defaultPrevented || !form || typeof form.getAttribute !== "function") return;
+    if ((form.getAttribute("method") || "").toLowerCase() === "dialog") return;
+    navigating();
+  });
+
+  window.addEventListener("pageshow", function () {
+    clearTimeout(navTimer);
+    document.documentElement.removeAttribute("data-navigating");
+  });
 })();

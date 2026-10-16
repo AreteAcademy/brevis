@@ -985,3 +985,35 @@ tbody[data-collapsed] > tr:not(:first-child) {
 .js [data-panel-heading] {
   display: none;
 }
+
+/* A NAVIGATION IN FLIGHT (nav-latency NL3): a thin accent bar at the top while
+   the next page comes, once it has taken more than 120 ms (ui.js sets the
+   mark). A pseudo-element, so there is nothing to announce and nothing to
+   lay out. Still under reduced motion: the bar is there, it just does not
+   move. */
+@keyframes navigating {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+html[data-navigating] body::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  width: 40%;
+  height: 2px;
+  background: var(--color-accent-strong);
+  animation: navigating 900ms ease-in-out infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-navigating] body::after {
+    width: 100%;
+    animation: none;
+  }
+}
