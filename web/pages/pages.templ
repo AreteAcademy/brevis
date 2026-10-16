@@ -1474,74 +1474,138 @@ func durationMs(ms int64) string {
 // it: a mapped step is one entry with its "2/3" and an instance per item.
 templ stepsOutput(r run.Run, logs []postgres.StepLog) {
 	if len(logs) > 0 {
+		{{ groups := StepOutputs(r, logs) }}
+		// A TABLE WHOSE ROWS OPEN (screen-run-v2 RV4): one 34px row per
+		// attempt, the columns a reader scans down -- state, retry, exit,
+		// duration, what it published -- and the error and the log under the
+		// row, opened with no script. A grid of <details> and not a table element,
+		// because a row that opens is not something a <tr> can do; the roles
+		// say it is a table all the same.
 		<section class="mt-3">
-			<h2 class="mb-2 text-[13px] font-semibold text-ink">Step output</h2>
-			<div class="space-y-2">
-				for _, g := range StepOutputs(r, logs) {
-					if g.Mapped {
-						<details class="group rounded-2xl border border-line bg-surface">
-							<summary class="flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 text-sm">
-								@components.State(g.Status)
-								<span class="font-medium text-ink">{ g.Node }</span>
-								<span class="font-mono text-xs text-muted">{ fmt.Sprint(g.Ok) }/{ fmt.Sprint(g.Total) } ok</span>
-							</summary>
-							<div class="space-y-2 px-4 pb-4">
+			@components.Panel("Step output", count(len(groups), "step", "steps")) {
+				<div class="overflow-x-auto">
+					<div data-step-table role="table" aria-label="Step output" class="min-w-[44rem] text-[12.5px]">
+						<div role="row" class={ "h-[30px] border-b border-line-soft text-[11.5px] font-medium text-faint", stepGrid }>
+							<span role="columnheader">Step</span>
+							<span role="columnheader">State</span>
+							<span role="columnheader"><span class="sr-only">Retry</span></span>
+							<span role="columnheader">Exit</span>
+							<span role="columnheader" class="text-right">Duration</span>
+							<span role="columnheader">Output</span>
+						</div>
+						for _, g := range groups {
+							if g.Mapped {
+								<details data-step-group role="rowgroup" class="group/map border-b border-line-soft last:border-b-0">
+									<summary role="row" class={ "h-[34px] cursor-pointer list-none hover:bg-surface-2 [&::-webkit-details-marker]:hidden", stepGrid }>
+										<span role="cell" class="flex min-w-0 items-center gap-1.5 font-mono text-ink">
+											@components.Icon("chevron-right", "h-3 w-3 shrink-0 text-faint transition-transform group-open/map:rotate-90")
+											<span class="truncate">{ g.Node }</span>
+										</span>
+										<span role="cell">
+											@components.State(g.Status)
+										</span>
+										<span role="cell"></span>
+										<span role="cell"></span>
+										<span role="cell"></span>
+										<span role="cell" class="font-mono text-[12px] text-muted">{ fmt.Sprint(g.Ok) }/{ fmt.Sprint(g.Total) } ok</span>
+									</summary>
+									<div class="bg-canvas/40">
+										for _, row := range g.Rows {
+											@stepRow(row)
+										}
+									</div>
+								</details>
+							} else {
 								for _, row := range g.Rows {
 									@stepRow(row)
 								}
-							</div>
-						</details>
-					} else {
-						for _, row := range g.Rows {
-							@stepRow(row)
+							}
 						}
-					}
-				}
-			</div>
+					</div>
+				</div>
+			}
 		</section>
 	}
 }
 
+// stepGrid is the step table's columns, shared by its header and its rows.
+const stepGrid = "grid grid-cols-[minmax(9rem,1.3fr)_6.5rem_2.5rem_3rem_4.5rem_minmax(0,3fr)] items-center gap-x-3 px-3.5"
+
 // stepRow is one attempt of one step, or of one instance of a mapped step,
-// named by the item it ran for.
+// named by the item it ran for. A row with neither an error nor a log has
+// nothing to open, and is a plain row.
 templ stepRow(p StepRow) {
-	<details class="group rounded-2xl border border-line bg-surface">
-		<summary class="flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 text-sm">
-			@components.State(p.Status)
-			if p.Item != "" {
-				<span class="font-mono text-xs text-ink">{ p.Item }</span>
-			} else {
-				<span class="font-medium text-ink">{ p.NodeID }</span>
+	if p.Err != "" || p.Log != "" {
+		<details data-step-row role="rowgroup" class="group/row border-b border-line-soft last:border-b-0">
+			<summary role="row" class={ "h-[34px] cursor-pointer list-none hover:bg-surface-2 [&::-webkit-details-marker]:hidden", stepGrid }>
+				@stepCells(p, true)
+			</summary>
+			if p.Err != "" {
+				<p class="mx-3.5 mb-2 rounded-card bg-state-failed/5 px-3 py-2 text-[12px] text-state-failed">{ p.Err }</p>
 			}
-			if p.Attempt > 0 {
-				@components.Retry(p.Attempt)
+			if p.Log != "" {
+				// `overflow-auto` with a maximum height: a dbt output
+				// with hundreds of lines must not push the rest of the
+				// page off the screen.
+				<pre class="mx-3.5 mb-2.5 max-h-[28rem] overflow-auto rounded-card bg-surface-2 px-3 py-2.5 font-mono text-[0.7rem] leading-relaxed whitespace-pre text-ink">{ p.Log }</pre>
 			}
-			if p.ExitCode != nil {
-				<span class="font-mono text-xs text-muted">exit { fmt.Sprint(*p.ExitCode) }</span>
-			}
-			if p.DurationMs > 0 {
-				<span class="text-xs text-muted">{ durationMs(p.DurationMs) }</span>
-			}
-			// What the step published, as its node in the flow shows it.
-			for _, o := range p.Output {
-				<span class="max-w-[24rem] truncate font-mono text-xs text-muted" title={ o.Value }>
-					<span class="text-muted/70">{ o.Key }</span> { o.Value }
-				</span>
-			}
-			if p.Log == "" {
-				<span class="text-xs text-muted/70 italic">no output recorded</span>
-			}
-		</summary>
-		if p.Err != "" {
-			<p class="mx-5 mb-3 rounded-xl bg-state-failed/5 px-4 py-2.5 text-xs text-state-failed">{ p.Err }</p>
+		</details>
+	} else {
+		<div data-step-row role="row" class={ "h-[34px] border-b border-line-soft last:border-b-0", stepGrid }>
+			@stepCells(p, false)
+		</div>
+	}
+}
+
+templ stepCells(p StepRow, opens bool) {
+	<span role="cell" class="flex min-w-0 items-center gap-1.5">
+		if opens {
+			@components.Icon("chevron-right", "h-3 w-3 shrink-0 text-faint transition-transform group-open/row:rotate-90")
+		} else {
+			<span aria-hidden="true" class="w-3 shrink-0"></span>
 		}
-		if p.Log != "" {
-			// `overflow-auto` with a maximum height: a dbt output
-			// with hundreds of lines must not push the rest of the
-			// page off the screen.
-			<pre class="mx-5 mb-3 max-h-[28rem] overflow-auto rounded-card bg-surface-2 px-4 py-3 font-mono text-[0.7rem] leading-relaxed whitespace-pre text-ink">{ p.Log }</pre>
+		if p.Item != "" {
+			// An instance sits under its step, a step's width in.
+			<span class="truncate pl-4 font-mono text-[12px] text-ink">{ p.Item }</span>
+		} else {
+			<span class="truncate font-mono text-ink">{ p.NodeID }</span>
 		}
-	</details>
+	</span>
+	<span role="cell">
+		@components.State(p.Status)
+	</span>
+	<span role="cell">
+		if p.Attempt > 0 {
+			@components.Retry(p.Attempt)
+		}
+	</span>
+	<span role="cell" data-col="exit" class="font-mono text-[12px] text-muted">
+		if p.ExitCode != nil {
+			{ fmt.Sprint(*p.ExitCode) }
+		}
+	</span>
+	<span role="cell" class="text-right font-mono text-[12px] tabular-nums text-muted">
+		if p.DurationMs > 0 {
+			{ durationMs(p.DurationMs) }
+		}
+	</span>
+	<span role="cell" title={ outputTitle(p.Output) } class="min-w-0 truncate font-mono text-[12px] text-muted">
+		// What the step published, as its node in the flow shows it.
+		for i, o := range p.Output {
+			if i > 0 {
+				<span aria-hidden="true" class="px-1 text-faint">·</span>
+			}
+			<span class="text-faint">{ o.Key }</span> { o.Value }
+		}
+		// The log's absence, said as the cards said it: a step that wrote
+		// nothing is different from one whose log was lost with its pod.
+		if p.Log == "" {
+			if len(p.Output) > 0 {
+				<span aria-hidden="true" class="px-1 text-faint">·</span>
+			}
+			<span class="text-faint italic">no output recorded</span>
+		}
+	</span>
 }
 
 // dag is the island's mount point. The height is fixed on purpose: with `h-full`

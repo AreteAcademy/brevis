@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/domain/runcontext"
@@ -224,4 +225,17 @@ func worst(last map[int]string) string {
 		}
 	}
 	return status
+}
+
+// outputTitle is a row's published values whole, for the cell that cuts them
+// short.
+func outputTitle(out []OutputLine) string {
+	var b strings.Builder
+	for i, o := range out {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		b.WriteString(o.Key + " " + o.Value)
+	}
+	return b.String()
 }
