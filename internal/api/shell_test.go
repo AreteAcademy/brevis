@@ -275,8 +275,10 @@ func TestThePaletteIsOnEveryPageClosed(t *testing.T) {
 	if open < aside || open > end {
 		t.Fatal("the sidebar has no palette opener")
 	}
-	if wrap := body[strings.LastIndex(body[:open], "<span"):open]; !strings.Contains(wrap, "hidden") {
-		t.Errorf("the opener is visible before the script can drive it: %s", wrap)
+	// data-js: shown only where a script runs, from the first paint
+	// (nav-latency N6) -- not hidden and revealed after it.
+	if wrap := body[strings.LastIndex(body[:open], "<span"):open]; !strings.Contains(wrap, "data-js") {
+		t.Errorf("the opener is shown where no script can drive it: %s", wrap)
 	}
 	if !strings.Contains(body[open:end], "⌘K") {
 		t.Error("the opener does not say its key")

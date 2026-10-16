@@ -125,7 +125,7 @@ templ SQL(v SQLView) {
 							data-tabs
 							role="tablist"
 							aria-label="Open statements"
-							hidden
+							data-js
 						>
 							<button
 								type="button"
@@ -188,7 +188,7 @@ templ SQL(v SQLView) {
 								// holds -- the textarea is written back on submit, not
 								// as somebody types -- so it is hidden until the
 								// island can drive it.
-								<span class="ml-auto" hidden>
+								<span class="ml-auto" data-js>
 									@components.Button(components.ButtonSecondary, components.SizeSmall, templ.Attributes{"data-copy-statement": true}) {
 										@components.Icon("copy", "h-3.5 w-3.5")
 										Copy
@@ -349,7 +349,7 @@ templ recent() {
 		data-recent
 		data-recent-keep="20"
 		aria-label="Recent statements"
-		hidden
+		data-js
 	>
 		<div class="mb-2 flex items-center justify-between gap-2">
 			<p class="kicker">Recent</p>
@@ -651,7 +651,7 @@ templ results(v SQLView) {
 			// island can drive it, and absent for a write, whose answer is a
 			// sentence and not a table.
 			if !v.Result.Wrote {
-				<span hidden>
+				<span data-js>
 					@components.Button(components.ButtonSecondary, components.SizeSmall, templ.Attributes{"data-export-csv": true}) {
 						@components.Icon("download", "h-3.5 w-3.5")
 						CSV

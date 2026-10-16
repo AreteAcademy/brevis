@@ -970,3 +970,18 @@ tr[data-run-new] {
 tbody[data-collapsed] > tr:not(:first-child) {
   display: none;
 }
+
+/* WHAT NEEDS A SCRIPT IS IN THE FIRST PAINT, OR NEVER (nav-latency N6).
+   `js` is on <html> before anything is drawn (an inline line at the top of
+   the head), so a control that only works with ui.js or sql.js -- the
+   palette's opener, Copy, Live, the tab bars, a group's toggle -- is drawn
+   with the page, instead of `hidden` and revealed after a paint, which made
+   it pop in on every navigation. With no script it is never shown. A
+   stream's panel headings are the no-script page's; with the tab bar they
+   would say the tab twice. */
+:root:not(.js) [data-js] {
+  display: none !important;
+}
+.js [data-panel-heading] {
+  display: none;
+}

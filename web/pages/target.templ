@@ -11,7 +11,7 @@ import (
 // joins and reaches across -- and it carries the destination, so nobody has
 // to find the connection again in a picker.
 templ targetActions(v TargetView) {
-	<span hidden>
+	<span data-js>
 		@components.Button(components.ButtonSecondary, components.SizeRegular, templ.Attributes{"data-copy": "#destination-uri"}) {
 			@components.Icon("copy", "h-3.5 w-3.5")
 			Copy URI

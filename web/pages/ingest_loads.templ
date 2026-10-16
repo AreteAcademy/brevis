@@ -109,7 +109,7 @@ templ loadGroup(g LoadGroupView) {
 						data-group-toggle
 						aria-expanded="true"
 						aria-label={ "Collapse " + g.Workflow }
-						hidden
+						data-js
 						class="flex h-6 w-6 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[expanded=false]:-rotate-90"
 					>
 						@components.Icon("chevron-down", "h-3.5 w-3.5")

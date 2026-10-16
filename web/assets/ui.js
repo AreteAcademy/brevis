@@ -325,7 +325,6 @@
       else if (on()) tick();
     });
 
-    button.parentElement.hidden = false;
     if (stored()) {
       draw(true);
       tick();
@@ -501,9 +500,6 @@
   // confirmation is heard and not only seen.
   // ------------------------------------------------------------------
 
-  document.querySelectorAll("[data-copy]").forEach(function (b) {
-    if (b.parentElement) b.parentElement.removeAttribute("hidden");
-  });
 
   document.addEventListener("click", function (e) {
     if (!e.target || typeof e.target.closest !== "function") return;
@@ -610,12 +606,14 @@
     });
   });
 
-  // Tabs by the URL's hash (`[data-hash-tabs]`): every panel is rendered
-  // (`[data-tab-panel]`), and this shows the one the hash names -- the first
-  // with none -- on load, on a tab's click and on hashchange, so #config in a
-  // link opens Configuration. With no script the panels stack, each an
-  // anchor, and the tab bar stays hidden; so do the panels' own headings
-  // once the bar says the same.
+  // Tabs by the URL's hash (`[data-hash-tabs]`). Every panel is rendered
+  // (`[data-tab-panel]`), and WHICH ONE SHOWS IS THE CSS'S: the head writes
+  // `data-hash` on <html> before the first paint, and the page's own rules
+  // show the panel -- and mark the tab -- that names, the first when it names
+  // none. So a link to #config paints Configuration first, with no frame of
+  // Overview. This keeps `data-hash` and `aria-selected` current on a tab's
+  // click and on hashchange. With no script the panels stack, each an anchor
+  // with its heading, and the tab bar is never shown (data-js).
   document.querySelectorAll("[data-hash-tabs]").forEach(function (host) {
     var bar = host.querySelector("[data-hash-tabs-bar]");
     var panels = host.querySelectorAll("[data-tab-panel]");
@@ -624,13 +622,11 @@
       var found = false;
       panels.forEach(function (p) { if (p.getAttribute("data-tab-panel") === key) found = true; });
       if (!found) key = panels[0].getAttribute("data-tab-panel");
-      panels.forEach(function (p) { p.hidden = p.getAttribute("data-tab-panel") !== key; });
+      document.documentElement.dataset.hash = key;
       bar.querySelectorAll("[data-tab]").forEach(function (t) {
         t.setAttribute("aria-selected", t.getAttribute("data-tab") === key ? "true" : "false");
       });
     }
-    bar.hidden = false;
-    host.querySelectorAll("[data-panel-heading]").forEach(function (h) { h.hidden = true; });
     bar.addEventListener("click", function (e) {
       var t = e.target && typeof e.target.closest === "function" ? e.target.closest("[data-tab]") : null;
       if (!t) return;
@@ -643,10 +639,9 @@
   });
 
   // A group that collapses (`[data-group-toggle]` in a tbody): the button,
-  // hidden until this runs, folds the group's rows under its header. With no
-  // script every group stays open.
+  // shown only where a script runs (data-js), folds the group's rows under
+  // its header. With no script every group stays open.
   document.querySelectorAll("[data-group-toggle]").forEach(function (button) {
-    button.hidden = false;
     button.addEventListener("click", function () {
       var open = button.getAttribute("aria-expanded") !== "false";
       button.setAttribute("aria-expanded", open ? "false" : "true");
@@ -887,9 +882,6 @@
     var active = 0;
     var returnTo = null;
 
-    document.querySelectorAll("[data-palette-open]").forEach(function (b) {
-      if (b.parentElement) b.parentElement.removeAttribute("hidden");
-    });
 
     function load() {
       if (index || loading) return;

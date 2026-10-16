@@ -768,7 +768,7 @@ templ Runs(runs []postgres.RunSummary, f RunFilter, counts map[string]int, total
 // -- with no script it would be a switch that does nothing -- and off until
 // somebody turns it on; ui.js remembers the choice.
 templ liveSwitch() {
-	<span hidden>
+	<span data-js>
 		<button
 			type="button"
 			data-live-list="runs-list"

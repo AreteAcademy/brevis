@@ -100,6 +100,15 @@ templ Base(p Page) {
 	<!DOCTYPE html>
 	<html lang="en" class="h-full">
 		<head>
+			// THE PAGE KNOWS A SCRIPT WILL RUN BEFORE IT IS DRAWN. One line,
+			// first in the head and so ahead of any paint: `js` on <html> is
+			// what shows the controls that need a script ([data-js]) from the
+			// very first frame, and `data-hash` is what lets a page with tabs
+			// draw the one the URL names first. Without it they were drawn
+			// hidden and revealed by the deferred ui.js -- after a paint, on
+			// every navigation where the HTML arrives in pieces -- and popped
+			// in (nav-latency N6). No logic here: anything more is ui.js's.
+			@templ.Raw(`<script>document.documentElement.classList.add("js");document.documentElement.dataset.hash=location.hash.slice(1)</script>`)
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ p.Title } · { brand.Title }</title>
@@ -331,9 +340,9 @@ templ sidebar(active string, brand branding.Brand) {
 			@components.Icon("x", "h-4 w-4")
 		</a>
 		</div>
-		// THE PALETTE'S OPENER, hidden until ui.js can drive it: without the
-		// script it would be a button that opens nothing.
-		<span class="block px-2.5 pt-3" hidden>
+		// THE PALETTE'S OPENER, only where a script will drive it (data-js):
+		// without one it would be a button that opens nothing.
+		<span class="block px-2.5 pt-3" data-js>
 			<button
 				type="button"
 				data-palette-open

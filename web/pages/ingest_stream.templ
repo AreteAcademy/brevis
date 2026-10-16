@@ -27,8 +27,9 @@ templ StreamPage(v StreamView) {
 			}
 		</p>
 		@testEventDrawer(v)
-		<div data-hash-tabs>
-			<div data-hash-tabs-bar hidden class="mb-5">
+		@templ.Raw("<style>" + hashTabsCSS("stream-tabs", "overview", "config", "deadletter") + "</style>")
+		<div id="stream-tabs" data-hash-tabs>
+			<div data-hash-tabs-bar data-js class="mb-5">
 				@components.Tabs("Stream", []components.Tab{
 					{Key: "overview", Label: "Overview", Selected: true},
 					{Key: "config", Label: "Configuration"},
@@ -91,7 +92,7 @@ templ StreamPage(v StreamView) {
 						@card("Where refused batches go", v.DeadLetter.Kind) {
 							<div class="flex items-start gap-3 px-4 py-3">
 								<pre id="dead-letter-uri" class="min-w-0 flex-1 overflow-x-auto font-mono text-[0.8rem] break-all whitespace-pre-wrap text-ink">{ v.DeadLetter.URI }</pre>
-								<span hidden>
+								<span data-js>
 									@components.IconButton("Copy the path", "copy", templ.Attributes{"data-copy": "#dead-letter-uri"})
 								</span>
 							</div>
@@ -175,7 +176,7 @@ templ testEventDrawer(v StreamView) {
 				<div>
 					<div class="mb-1.5 flex items-center justify-between">
 						<span class="text-[0.78rem] text-muted">Send it with</span>
-						<span hidden>
+						<span data-js>
 							@components.IconButton("Copy the curl", "copy", templ.Attributes{"data-copy": "#test-event-curl"})
 						</span>
 					</div>

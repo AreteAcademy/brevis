@@ -91,8 +91,10 @@ func TestACodeBlockIsEscapedAndItsCopyNeedsAScript(t *testing.T) {
 	}
 	i := strings.Index(got, "data-copy")
 	wrapper := got[strings.LastIndex(got[:i], "<span"):i]
-	if !strings.Contains(wrapper, "hidden") {
-		t.Errorf("the copy button is visible before a script can drive it: %s", wrapper)
+	// data-js: shown only where a script runs, from the first paint
+	// (nav-latency N6).
+	if !strings.Contains(wrapper, "data-js") {
+		t.Errorf("the copy button is shown where no script can drive it: %s", wrapper)
 	}
 
 	raw, err := os.ReadFile("../assets/ui.js")
@@ -100,7 +102,7 @@ func TestACodeBlockIsEscapedAndItsCopyNeedsAScript(t *testing.T) {
 		t.Fatal(err)
 	}
 	js := regexp.MustCompile(`(?m)//.*$`).ReplaceAllString(string(raw), "")
-	for _, want := range []string{`[data-copy]`, "navigator.clipboard", `removeAttribute("hidden")`} {
+	for _, want := range []string{`[data-copy]`, "navigator.clipboard"} {
 		if !strings.Contains(js, want) {
 			t.Errorf("ui.js's copy never uses %s", want)
 		}
