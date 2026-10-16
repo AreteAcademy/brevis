@@ -110,3 +110,27 @@ func TestAStateIsADotAndAWordAndARetryIsMarked(t *testing.T) {
 		t.Errorf("a retry = %s", b.String())
 	}
 }
+
+// THE KPI STRIP AT v2 MEASURES (density-base DB4): an 11.5px label (with the
+// state's dot when it has one), an 18px value with its note inline and faint,
+// and an optional thin bar of segments.
+func TestTheKPIStripIsCompact(t *testing.T) {
+	var b strings.Builder
+	err := Stats([]Stat{{Label: "Success rate", Value: "100.0%", Note: "11 of 11 finished", Dot: "bg-state-success",
+		Bar: []BarSegment{{Share: 0.9, Class: "bg-state-success"}, {Share: 0.1, Class: "bg-state-failed"}}}}).Render(context.Background(), &b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := b.String()
+	for _, want := range []string{"text-[18px]", "text-[11.5px]", "bg-state-success", "100.0%", "11 of 11 finished",
+		`style="width:90%;"`, `style="width:10%;"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the strip lacks %s: %s", want, got)
+		}
+	}
+	value := got[strings.Index(got, "<dd"):]
+	value = value[:strings.Index(value, "</dd>")]
+	if !strings.Contains(value, "11 of 11 finished") {
+		t.Error("the note is not inline with the value")
+	}
+}

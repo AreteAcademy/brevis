@@ -363,3 +363,23 @@ func TestTheTestEventExampleFollowsTheFormat(t *testing.T) {
 		}
 	}
 }
+
+// THE OVERVIEW'S FOUR NUMBERS ARE ONE STRIP (density-base DB4): the same four
+// -- success rate, failure rate, running, queued -- and their notes, in a
+// Stats strip instead of four 42px cards.
+func TestTheOverviewsNumbersAreAStrip(t *testing.T) {
+	page := draw(t, Overview(OverviewData{Ind: postgres.Indicators{Succeeded: 9, Failed: 1, Running: 2, Pending: 3}, Pending: 3}))
+	at := strings.Index(page, "<dl")
+	if at < 0 {
+		t.Fatal("the numbers are not a Stats strip")
+	}
+	strip := page[at : at+strings.Index(page[at:], "</dl>")]
+	for _, want := range []string{"Success rate", "90.0%", "9 of 10 finished", "Failure rate", "10.0%", "Running", ">2<", "Queued", ">3<", "3 items queued"} {
+		if !strings.Contains(strip, want) {
+			t.Errorf("the strip lacks %s", want)
+		}
+	}
+	if strings.Contains(page, "text-[2.6rem]") {
+		t.Error("a 42px metric card is still drawn")
+	}
+}

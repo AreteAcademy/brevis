@@ -12,21 +12,31 @@ import "fmt"
 templ Stats(items []Stat) {
 	<dl class={ "grid gap-px overflow-hidden rounded-card border border-line bg-line-soft", statsCols(len(items)) }>
 		for _, s := range items {
-			<div class="bg-surface px-5 py-4">
-				<dt class="flex items-center gap-1.5 text-[0.78rem] text-muted">
+			<div class="min-w-0 bg-surface px-3.5 py-2.5">
+				<dt class="flex items-center gap-1.5 text-[11.5px] whitespace-nowrap text-muted">
+					if s.Dot != "" {
+						<span class={ "h-[7px] w-[7px] shrink-0 rounded-full", s.Dot }></span>
+					}
 					if s.Icon != "" {
 						@Icon(s.Icon, "h-3.5 w-3.5")
 					}
 					<span>{ s.Label }</span>
 				</dt>
-				<dd class="mt-2 flex items-baseline gap-0.5 text-[1.75rem] leading-none font-semibold tracking-[-0.03em] text-ink tabular-nums">
+				<dd class="mt-[3px] flex flex-wrap items-baseline gap-x-1.5 text-[18px] leading-[1.2] font-semibold tracking-[-0.02em] text-ink tabular-nums">
 					<span>{ s.Value }</span>
 					if s.Unit != "" {
-						<span class="text-[0.85rem] font-normal tracking-normal text-muted">{ s.Unit }</span>
+						<span class="text-[11.5px] font-normal tracking-normal text-faint">{ s.Unit }</span>
+					}
+					if s.Note != "" {
+						<span class="min-w-0 text-[11.5px] font-normal tracking-normal text-faint">{ s.Note }</span>
 					}
 				</dd>
-				if s.Note != "" {
-					<dd class="mt-1.5 text-[0.75rem] text-faint">{ s.Note }</dd>
+				if len(s.Bar) > 0 {
+					<dd class="mt-[7px] flex h-1 gap-0.5 overflow-hidden rounded-sm bg-surface-2" aria-hidden="true">
+						for _, seg := range s.Bar {
+							<i class={ "block h-full", seg.Class } style={ seg.width() }></i>
+						}
+					</dd>
 				}
 			</div>
 		}

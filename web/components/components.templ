@@ -141,19 +141,6 @@ templ Panel(title, count string) {
 }
 
 
-// Metric is one of the four numbers at the top of the Overview. The large
-// serif number is what sets the editorial tone — in sans it would become just
-// another dashboard.
-templ Metric(label, value, nota string, matiz string) {
-	<div class="rounded-card border border-line bg-surface px-6 py-5 shadow-warm-sm">
-		<p class="text-[11.5px] text-muted">{ label }</p>
-		<p class={ "display mt-2 text-[2.6rem] leading-none", matiz }>{ value }</p>
-		if nota != "" {
-			<p class="mt-2 text-xs text-muted">{ nota }</p>
-		}
-	</div>
-}
-
 // Empty communicates the absence of data without looking like an error. An empty
 // table with no explanation sends the operator looking for a defect where there
 // is none.

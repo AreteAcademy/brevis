@@ -120,3 +120,22 @@ func scheduleZone(sum *postgres.WorkflowSummary) string {
 	}
 	return sum.Timezone
 }
+
+// overviewStats are the Overview's four numbers as one strip (density-base
+// DB4): the same figures and notes the four cards had, each label with its
+// state's dot; the failure dot only when there is a failure, as the card only
+// turned red then.
+func overviewStats(d OverviewData) []components.Stat {
+	i := d.Ind
+	failDot := ""
+	if i.Failed > 0 {
+		failDot = "bg-state-failed"
+	}
+	return []components.Stat{
+		{Label: "Success rate", Value: pct(i.Ratio(i.Succeeded)), Dot: "bg-state-success",
+			Note: fmt.Sprintf("%d of %d finished", i.Succeeded, i.Succeeded+i.Failed)},
+		{Label: "Failure rate", Value: pct(i.Ratio(i.Failed)), Dot: failDot, Note: failureNote(i.Failed)},
+		{Label: "Running", Value: fmt.Sprint(i.Running), Dot: "bg-state-running", Note: meanDuration(i.MeanDuration)},
+		{Label: "Queued", Value: fmt.Sprint(i.Pending), Dot: "bg-state-queued", Note: fmt.Sprintf("%d items queued", d.Pending)},
+	}
+}
