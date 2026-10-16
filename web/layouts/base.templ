@@ -210,6 +210,7 @@ templ Base(p Page) {
 			// sits at the end of the body so it does not block rendering — the
 			// HTML already arrives complete, the script only enriches it.
 			<script src={ assets.URL("ui.js") } defer></script>
+			@templ.Raw(`<script type="speculationrules">` + speculationRules + `</script>`)
 			// Then, in order: React's UMD builds have to exist before the shim,
 			// and the shim before React Flow's bundle.
 			for _, src := range p.Island.JS {
