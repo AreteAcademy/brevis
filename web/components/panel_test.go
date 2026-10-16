@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -132,5 +133,33 @@ func TestTheKPIStripIsCompact(t *testing.T) {
 	value = value[:strings.Index(value, "</dd>")]
 	if !strings.Contains(value, "11 of 11 finished") {
 		t.Error("the note is not inline with the value")
+	}
+}
+
+// THE SMALL CHARTS ARE SMALL (density-base DB5): rows per load is 44px tall
+// with bars of about 22px, not stretched across the panel; the year of runs is
+// 8px squares at their own size, 53 weeks in about 550px.
+func TestTheSmallChartsAreSmall(t *testing.T) {
+	four := int64(4)
+	var b strings.Builder
+	if err := LoadBars([]LoadBar{{Href: "/runs/a", Rows: &four}, {Href: "/runs/b", Rows: &four}, {Href: "/runs/c", Rows: &four}}, 0).Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), `class="h-11"`) || !strings.Contains(b.String(), "width:min(100%,") {
+		t.Errorf("the bars are not 44px at their own width: %s", b.String()[:160])
+	}
+
+	b.Reset()
+	if err := Heatmap(nil, "x").Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	got := b.String()
+	if !strings.Contains(got, `width="8"`) || strings.Contains(got, `width="11"`) || strings.Contains(got, "h-[132px]") {
+		t.Errorf("the heatmap is not 8px squares at its own size")
+	}
+	w := got[strings.Index(got, `<svg width="`)+len(`<svg width="`):]
+	w = w[:strings.Index(w, `"`)]
+	if n, _ := strconv.Atoi(w); n < 500 || n > 600 {
+		t.Errorf("the heatmap is %spx wide, want about 550", w)
 	}
 }

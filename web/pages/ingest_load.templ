@@ -27,7 +27,7 @@ templ Load(v LoadView) {
 		<div class="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
 			<div class="flex min-w-0 flex-col gap-3">
 				@components.Panel("Rows per load", "") {
-					<div class="px-4 pt-4 [&_svg]:h-28 [&_svg]:max-w-none">
+					<div class="px-3.5 pt-3">
 						@components.LoadBars(v.Bars, v.Missed)
 					</div>
 					<p class="px-4 pt-2 pb-4 text-[0.75rem] text-muted">
