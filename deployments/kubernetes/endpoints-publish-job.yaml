@@ -68,7 +68,7 @@ spec:
       containers:
         - name: publish
           # The SAME version the engine runs: this talks to its DATABASE.
-          image: areteacademy/brevis:0.31.0-worker
+          image: areteacademy/brevis:0.32.0-worker
           args: ["endpoints", "publish", "/manifest/manifest.json"]
           env:
             - name: BREVIS_DATABASE_URL

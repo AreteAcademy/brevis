@@ -14,6 +14,30 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.32.0] — 2026-10-16
+
+### Changed: the run page (#114)
+
+The run page is where an operator lands from an alert, to find out whether it
+worked, where it stopped, and how to run it again.
+
+- **Rerun**, beside the title. A workflow with no params reruns in one click;
+  one with params opens the Run… drawer filled in with this run's values. A
+  param the workflow no longer declares is named and not sent. It is a manual
+  run: for a run with a slot, the page says the rerun reads now's window, not
+  the slot's.
+- **A one-step workflow shows its step, not a canvas.** The step's command,
+  runtime, SDK and duration on one line, and each SDK stage (check, source,
+  map, target) with the numbers the graph showed. It follows a live run.
+- **Step output is a table**: one row per attempt, opening to its error and
+  log; a mapped step opens to its instances.
+- **Alerts** are one line each, the error opening under its line.
+- The top bar names the run (`daily_sales · 2c7233f8`), and its id copies.
+
+No migration. No configuration changes.
+
+---
+
 ## [0.31.0] — 2026-10-16
 
 ### Changed: a denser console (#113)
