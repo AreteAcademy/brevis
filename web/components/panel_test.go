@@ -80,3 +80,33 @@ func TestEveryConsoleTableIsCompact(t *testing.T) {
 		}
 	}
 }
+
+// A STATE IS A DOT AND A WORD (density-base DB3), in the state's colour --
+// not a tinted badge in every row. A retry is `↻N`, its meaning in the
+// tooltip, and nothing on a first try (attempt counts from 0).
+func TestAStateIsADotAndAWordAndARetryIsMarked(t *testing.T) {
+	var b strings.Builder
+	if err := State("failed").Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	got := b.String()
+	if strings.Contains(got, "bg-state-failed/13") || strings.Contains(got, "rounded-card") {
+		t.Errorf("the state is still a badge: %s", got)
+	}
+	for _, want := range []string{"h-[7px]", "w-[7px]", "bg-state-failed", "text-state-failed", "failed</span>"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the state lacks %s: %s", want, got)
+		}
+	}
+	b.Reset()
+	if err := Retry(0).Render(context.Background(), &b); err != nil || b.String() != "" {
+		t.Errorf("a first try is marked: %q", b.String())
+	}
+	b.Reset()
+	if err := Retry(1).Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "↻2") || !strings.Contains(b.String(), `title="attempt 2 of this run"`) {
+		t.Errorf("a retry = %s", b.String())
+	}
+}

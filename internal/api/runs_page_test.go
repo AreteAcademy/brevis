@@ -93,8 +93,10 @@ func TestTheRunsRowsBarTheirDurationAndNameARetry(t *testing.T) {
 	if strings.Count(body, "data-duration-bar") != 2 {
 		t.Error("a run with no duration has a bar")
 	}
-	if strings.Count(body, "attempt 2") != 1 || strings.Contains(body, "attempt 1") {
-		t.Error("the retry is not named once as attempt 2")
+	// `↻2`, its meaning in the tooltip (density-base DB3), where "attempt 2"
+	// was written out in the row.
+	if strings.Count(body, "↻2") != 1 || !strings.Contains(body, `title="attempt 2 of this run"`) || strings.Contains(body, "↻1") {
+		t.Error("the retry is not marked once as ↻2")
 	}
 }
 
