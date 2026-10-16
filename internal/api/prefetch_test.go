@@ -44,3 +44,24 @@ func TestPagesArePrefetchedOnHoverButNothingThatCostsOrActs(t *testing.T) {
 		t.Error("the rules prerender, which runs a page's scripts unasked")
 	}
 }
+
+// A CLICK IS ACKNOWLEDGED (nav-latency NL3). When a page has not arrived 120 ms
+// after a navigating click or submit, ui.js marks <html data-navigating> and the
+// sheet draws a thin bar at the top; below 120 ms -- a prefetched page --
+// nothing shows. A click a handler already took (a dialog, a swap in place), a
+// hash link, a new tab or a download are not navigations. `pageshow` clears
+// it, so coming Back from the cache never shows a stuck bar.
+func TestAClickIsAcknowledgedWhileThePageComes(t *testing.T) {
+	_, ui := browsing(t)
+	_, raw := get(t, ui, "/assets/ui.js")
+	js := strip(raw)
+	for _, want := range []string{"data-navigating", "pageshow", "defaultPrevented", "120", `"_blank"`, "download", `=== "dialog"`} {
+		if !strings.Contains(js, want) {
+			t.Errorf("ui.js's acknowledgement lacks %s", want)
+		}
+	}
+	_, css := get(t, ui, "/assets/app.css")
+	if !strings.Contains(css, "[data-navigating]") {
+		t.Error("the sheet draws nothing for a navigation in flight")
+	}
+}
