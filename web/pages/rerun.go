@@ -23,6 +23,10 @@ type RunPage struct {
 	// carries it; the live fragment does not redraw the graph.
 	Graph string
 
+	// Step is a one-step run's step, drawn as a line where a multi-step run
+	// has its graph (screen-run-v2 RV3). Nil for every other run.
+	Step *StepLine
+
 	// Workflow is the CURRENT definition, for Rerun: what the trigger resolves
 	// against. Nil when the workflow is gone, and then there is no Rerun.
 	Workflow *wf.Workflow

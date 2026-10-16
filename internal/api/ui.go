@@ -1334,7 +1334,10 @@ func (u *UI) run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := u.runPage(r.Context(), run)
-	p.Graph = u.runSeed(r.Context(), run)
+	// A one-step run has its step as a line, and no graph to embed.
+	if p.Step == nil {
+		p.Graph = u.runSeed(r.Context(), run)
+	}
 	// The CURRENT workflow, for Rerun: what the trigger resolves against. A
 	// workflow that is gone is a page without the button, not a refusal --
 	// its runs stay readable.
@@ -1392,6 +1395,17 @@ func (u *UI) runLive(w http.ResponseWriter, r *http.Request) {
 func (u *UI) runPage(ctx context.Context, current run.Run) pages.RunPage {
 	p := pages.RunPage{Run: current, Wait: u.waitOf(ctx, current)}
 	var err error
+	// What the run ran with decides whether it is one step, not what the
+	// workflow says now. Its states are read only then: a multi-step run's
+	// are the graph's, which the island fetches on its own cadence.
+	var def wf.Workflow
+	if json.Unmarshal(current.Definition, &def) == nil && oneStep(def) {
+		states, err := u.execs.NodeStates(ctx, current.ID)
+		if err != nil {
+			u.log.Warn("the run's step states are unavailable", "run", current.ID, "error", err)
+		}
+		p.Step = stepLineOf(def, states)
+	}
 	if p.Logs, err = u.execs.LogsDaRun(ctx, current.ID); err != nil {
 		u.log.Warn("the run's logs are unavailable", "run", current.ID, "error", err)
 	}
