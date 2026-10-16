@@ -1317,7 +1317,7 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 		u.log.Warn("the workflow's summary is unavailable", "workflow", slug, "error", err)
 	}
 
-	u.render(w, r, pages.Workflow(def, sum, latest, stats))
+	u.render(w, r, pages.Workflow(def, sum, latest, stats, graphSeed(def, nil, "", "")))
 }
 
 // run is a run's page. The header comes from the database on the server; the DAG
@@ -1349,7 +1349,7 @@ func (u *UI) run(w http.ResponseWriter, r *http.Request) {
 			u.log.Warn("the run's alerts are unavailable", "run", id, "error", err)
 		}
 	}
-	u.render(w, r, pages.Run(run, logs, raised, u.waitOf(r.Context(), run)))
+	u.render(w, r, pages.Run(run, logs, raised, u.waitOf(r.Context(), run), u.runSeed(r.Context(), run)))
 }
 
 // runLive returns the run's two changing regions, already rendered.

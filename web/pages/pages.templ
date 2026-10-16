@@ -1012,7 +1012,7 @@ func about(w wf.Workflow) templ.Component {
 	return components.AboutButton(w.Slug)
 }
 
-templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.RunSummary, st WorkflowStats) {
+templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.RunSummary, st WorkflowStats, graph string) {
 	@layouts.Base(layouts.Page{
 		Title: w.Slug, Kicker: "Workflow", Active: "workflows", Mono: true,
 		Eyebrow: workflowEyebrow(w, sum),
@@ -1047,7 +1047,7 @@ templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.R
 		<div class="mb-5">
 			@components.Stats(workflowStats(st))
 		</div>
-		@dag("/api/workflows/" + w.Slug + "/graph")
+		@dag("/api/workflows/"+w.Slug+"/graph", graph)
 		<section class="mt-6">
 			@components.Card("A year of runs") {
 				<p class="-mt-2 mb-4 text-sm text-muted">
@@ -1084,7 +1084,7 @@ templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.R
 
 // Run shows one run. The header comes from the server already rendered; only the
 // DAG with each step's state depends on JavaScript.
-templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *postgres.Wait) {
+templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *postgres.Wait, graph string) {
 	@layouts.Base(layouts.Page{
 		Title: r.WorkflowSlug, Kicker: "Run", Active: "runs",
 		Island: dagAssets,
@@ -1111,7 +1111,7 @@ templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *post
 			<span class="h-1.5 w-1.5 rounded-full bg-state-running"></span>
 			<span data-live-label>following this run</span>
 		</p>
-		@dag("/api/runs/" + r.ID.String() + "/graph")
+		@dag("/api/runs/"+r.ID.String()+"/graph", graph)
 		<div id="run-body">
 			@runBody(r, logs, raised)
 		</div>
@@ -1432,13 +1432,21 @@ templ stepRow(p StepRow) {
 // There is deliberately no `min-height`. It would win against the computed
 // value, and it did: the box stayed at 380px while the script asked for 300,
 // and the drawing sat pinned to the bottom of the empty part.
-templ dag(src string) {
+// dag is the graph's island. seed is the graph itself, the same JSON the
+// island would fetch from src, embedded so it draws on mount -- the fetch
+// painted an empty canvas, then popped the graph in (nav-latency NL5). src
+// stays for a live run's refresh, and for a seed that could not be built.
+templ dag(src, seed string) {
 	<div
 		id="dag"
 		data-src={ src }
 		class="rounded-card border border-line bg-surface shadow-warm-sm"
 		style="height: 380px;"
-	></div>
+	>
+		if seed != "" {
+			@templ.Raw(`<script type="application/json" data-graph>` + seed + `</script>`)
+		}
+	</div>
 }
 
 // ---------------------------------------------------------------------------

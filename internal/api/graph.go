@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"sort"
@@ -183,12 +184,59 @@ func (u *UI) runGraph(w http.ResponseWriter, r *http.Request) {
 func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 	states map[string]postgres.NodeState, runID, status string) {
 
-	levels, err := graph.Levels(def)
+	resp, err := buildGraph(def, states, runID, status)
 	if err != nil {
 		// Getting here means a cyclic graph stored in the database. Not a 500:
 		// it is invalid data, and the message has to say so on the screen.
 		http.Error(w, "invalid graph: "+err.Error(), http.StatusUnprocessableEntity)
 		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		u.log.Error("serializing the graph", "slug", def.Slug, "error", err)
+	}
+}
+
+// graphSeed is the graph a page embeds for its island (nav-latency NL5): the
+// same bytes /api/.../graph would send, so the canvas draws on mount instead
+// of after one more round trip -- which painted it empty, then popped the
+// graph in. "" when there is none to draw (an invalid graph); the island then
+// fetches, and says why, as before. json.Marshal escapes <, > and &, so the
+// bytes are safe inside a <script>.
+func graphSeed(def wf.Workflow, states map[string]postgres.NodeState, runID, status string) string {
+	resp, err := buildGraph(def, states, runID, status)
+	if err != nil {
+		return ""
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
+// runSeed is a run's graph for its page: the snapshot that ran, with each
+// step's state as /api/runs/{id}/graph would draw it. A state that cannot be
+// read draws the graph grey, as the API does; a snapshot that cannot be read
+// embeds nothing, and the island fetches.
+func (u *UI) runSeed(ctx context.Context, run dom.Run) string {
+	var def wf.Workflow
+	if err := json.Unmarshal(run.Definition, &def); err != nil {
+		return ""
+	}
+	states, err := u.execs.NodeStates(ctx, run.ID)
+	if err != nil {
+		states = nil
+	}
+	return graphSeed(def, states, run.ID.String(), string(run.Status))
+}
+
+// buildGraph lays a definition out, with each step's state when there is a
+// run: what /api/.../graph answers and what a page embeds.
+func buildGraph(def wf.Workflow, states map[string]postgres.NodeState, runID, status string) (graphResponse, error) {
+	levels, err := graph.Levels(def)
+	if err != nil {
+		return graphResponse{}, err
 	}
 
 	// The two inputs the availability needs, built once for the whole graph
@@ -405,10 +453,7 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		u.log.Error("serializing the graph", "slug", def.Slug, "error", err)
-	}
+	return resp, nil
 }
 
 // spot is where one step ends up, and how tall it is.
