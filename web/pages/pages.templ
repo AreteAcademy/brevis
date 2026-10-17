@@ -876,15 +876,30 @@ templ Projects(ps []postgres.ProjectSummary) {
 }
 
 templ runsTable(runs []postgres.RunSummary, p Pagination) {
+	@runsTableWith(runs, p, runsOpts{Workflow: true})
+}
+
+// runsOpts are the runs table's two forms: on /runs and the Overview it
+// names each run's workflow and is a card of its own; on a workflow's page
+// (screen-workflow-v2 WV4) the workflow is the page, and the table sits
+// inside a panel -- the state is then the link to the run.
+type runsOpts struct {
+	Workflow bool
+	Bare     bool
+}
+
+templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
 	if len(runs) == 0 {
 		@components.Empty("No run yet.", "brevis scheduler")
 	} else {
-		<div class="overflow-hidden rounded-card border border-line bg-surface shadow-warm-sm">
+		<div class={ templ.KV("overflow-hidden rounded-card border border-line bg-surface shadow-warm-sm", !o.Bare), templ.KV("overflow-x-auto", o.Bare) }>
 			<table class="ct w-full text-sm">
 				<thead>
 					<tr class="border-b border-line bg-parchment-soft/60 text-left">
 						@th("State", "pl-6")
-						@th("Workflow", "")
+						if o.Workflow {
+							@th("Workflow", "")
+						}
 						@th("Trigger", "")
 						@th("Slot", "")
 						@th("Duration", "")
@@ -897,16 +912,24 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 					for _, r := range runs {
 						<tr data-run-id={ r.ID } class="transition-colors hover:bg-gold-wash">
 							<td class="px-3 py-3 pl-6">
-								@components.State(r.Status)
+								if o.Workflow {
+									@components.State(r.Status)
+								} else {
+									<a href={ templ.SafeURL("/runs/" + r.ID) } class="hover:underline">
+										@components.State(r.Status)
+									</a>
+								}
 								if r.Attempt > 0 {
 									@components.Retry(r.Attempt)
 								}
 							</td>
-							<td class="px-3 py-3">
-								<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-medium text-ink hover:text-gold-strong">
-									{ r.WorkflowSlug }
-								</a>
-							</td>
+							if o.Workflow {
+								<td class="px-3 py-3">
+									<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-medium text-ink hover:text-gold-strong">
+										{ r.WorkflowSlug }
+									</a>
+								</td>
+							}
 							<td class="px-3 py-3 text-xs text-muted">{ r.TriggerType }</td>
 							<td class="px-3 py-3 text-xs tabular-nums text-muted">@components.ShortStamp(r.LogicalDate)</td>
 							<td class="px-3 py-3 text-xs tabular-nums text-muted">
@@ -1125,14 +1148,13 @@ templ Workflow(p WorkflowPage) {
 			</section>
 		}
 		if len(latest) > 0 {
-			<section class="mt-3">
-				<div class="mb-3 flex items-baseline justify-between">
-					<h2 class="text-[13px] font-semibold text-ink">This workflow's runs</h2>
-					<a href={ templ.SafeURL("/runs?workflow=" + w.Slug) } class="text-xs text-gold-strong hover:underline">
-						see all
-					</a>
-				</div>
-				@runsTable(latest, Pagination{})
+			<section data-workflow-runs class="mt-3">
+				@components.Panel("Runs", fmt.Sprint(len(latest))) {
+					@runsTableWith(latest, Pagination{}, runsOpts{Bare: true})
+					<div class="border-t border-line-soft px-3.5 py-2 text-right">
+						<a href={ templ.SafeURL("/runs?workflow=" + w.Slug) } class="text-[12px] text-gold-strong hover:underline">see all</a>
+					</div>
+				}
 			</section>
 		}
 	}
