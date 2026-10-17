@@ -14,6 +14,32 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.33.0] — 2026-10-17
+
+### Changed: a load's page (#115)
+
+A load's page answers whether a destination is being fed and how it is
+configured, now in the first screen.
+
+- **The configuration is in tabs**: Summary, Sources, Transform, Destination
+  and Schema. A `from.Many`'s settings that every source shares are said once
+  ("Common to 10"), with a table of only what differs between them. A link to
+  `#sources` opens on that tab.
+- **Rows read beside rows written.** The newest load says "0 of 370 read" when
+  its run's stages know, in red when it wrote nothing of what it read. A
+  mapped step, whose stages belong to one instance, shows no count.
+- **The preview hides the columns that are empty** in every row it returned,
+  with a switch to show them and a note naming them. It still loads only when
+  asked. The SDK's own columns come last.
+- The recent loads sit beside the page; the head says how the load stands,
+  what it is, who writes it and when.
+- **Freshness is a dot and a word** on every page, like a run's state.
+
+No migration. No configuration changes. A pipeline describes its
+configuration from SDK v0.85.0; a load written by an older one shows none.
+
+---
+
 ## [0.32.1] — 2026-10-16
 
 **`0.32.0` was tagged and never published:** its release stopped before any
