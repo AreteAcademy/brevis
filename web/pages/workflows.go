@@ -2,7 +2,9 @@ package pages
 
 import (
 	"fmt"
+	"time"
 
+	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/web/components"
 )
@@ -138,4 +140,21 @@ func overviewStats(d OverviewData) []components.Stat {
 		{Label: "Running", Value: fmt.Sprint(i.Running), Dot: "bg-state-running", Note: meanDuration(i.MeanDuration)},
 		{Label: "Queued", Value: fmt.Sprint(i.Pending), Dot: "bg-state-queued", Note: fmt.Sprintf("%d items queued", d.Pending)},
 	}
+}
+
+// WorkflowPage is what a workflow's page is drawn from (screen-workflow-v2).
+type WorkflowPage struct {
+	Def wf.Workflow
+	// Sum is the workflow's summary row: project, schedule state, the next
+	// run. Nil when it could not be read; the page then says less.
+	Sum    *postgres.WorkflowSummary
+	Latest []postgres.RunSummary
+	Stats  WorkflowStats
+	// Graph is the embedded graph JSON; empty for a one-step workflow.
+	Graph string
+	// Step is a one-step workflow's step as a line, from its definition. Nil
+	// when the graph draws it.
+	Step *StepLine
+	// Now is the page's clock, for "next run in 12m".
+	Now time.Time
 }
