@@ -1,6 +1,7 @@
 package components
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -46,5 +47,24 @@ func TestSkippedHasItsOwnColourAndNotTheFallback(t *testing.T) {
 	}
 	if stateLabel("skipped") != "skipped" {
 		t.Errorf("label = %q", stateLabel("skipped"))
+	}
+}
+
+// FRESHNESS IS A DOT AND A WORD too (screen-load-v2 LV1), like a run's state:
+// the badge it was is the one density-base left behind. The word and the
+// colour are the status' own.
+func TestFreshnessIsADotAndAWord(t *testing.T) {
+	var b strings.Builder
+	if err := Freshness("late").Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	got := b.String()
+	if strings.Contains(got, "rounded-card") || strings.Contains(got, "/13") {
+		t.Errorf("freshness is still a badge: %s", got)
+	}
+	for _, want := range []string{"h-[7px]", "bg-state-queued", "text-state-queued", "late</span>"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("freshness lost %q: %s", want, got)
+		}
 	}
 }
