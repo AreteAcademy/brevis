@@ -476,7 +476,14 @@ func TestInProgressShowsOnlyWhenSomethingRuns(t *testing.T) {
 			t.Errorf("In progress lost %s", want)
 		}
 	}
-	if !strings.Contains(busy, "1 running") {
+	if !strings.Contains(busy, "1 running") || !strings.Contains(busy, `href="/runs?state=running"`) {
 		t.Error("the head does not say what runs")
+	}
+	queued := draw(t, Overview(OverviewData{Window: ParseWindow(""), Now: now,
+		EmCurso: []postgres.RunSummary{{ID: "q1", WorkflowSlug: "daily_sales", Status: "queued", CreatedAt: now}}}))
+	meta := queued[strings.Index(queued, "data-overview-meta"):]
+	meta = meta[:strings.Index(meta, "</p>")]
+	if strings.Contains(meta, "running") || !strings.Contains(meta, "1 queued") || !strings.Contains(meta, `href="/runs?state=queued"`) {
+		t.Errorf("a queued run is not said as queued: %s", meta)
 	}
 }

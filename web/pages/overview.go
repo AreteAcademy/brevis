@@ -43,3 +43,20 @@ func chartTitle(w Window) string {
 	}
 	return "Runs per hour"
 }
+
+// inFlightCounts splits the runs in flight by state, for the head: running,
+// retrying and queued are three filters on /runs, and one word for all of
+// them sent a queued run to an empty "running" list.
+func inFlightCounts(runs []postgres.RunSummary) (running, retrying, queued int) {
+	for _, r := range runs {
+		switch r.Status {
+		case "running":
+			running++
+		case "retrying":
+			retrying++
+		case "queued":
+			queued++
+		}
+	}
+	return running, retrying, queued
+}

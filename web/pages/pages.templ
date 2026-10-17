@@ -48,10 +48,20 @@ templ Overview(d OverviewData) {
 		<p data-overview-meta class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
 			<span>{ d.Window.Label }</span>
 			<span class="text-faint">·</span>
-			if n := len(d.EmCurso); n == 0 {
+			// Running and queued said apart, each linked to its own filter: a
+			// queued run called "running" opened an empty list.
+			{{ running, retrying, queued := inFlightCounts(d.EmCurso) }}
+			if running+retrying+queued == 0 {
 				<span class="inline-flex items-center gap-1.5"><span class="h-[7px] w-[7px] rounded-full bg-line-strong"></span>nothing running</span>
-			} else {
-				<a href="/runs?state=running" class="inline-flex items-center gap-1.5 text-state-running hover:underline"><span class="h-[7px] w-[7px] rounded-full bg-state-running"></span>{ fmt.Sprint(n) } running</a>
+			}
+			if running > 0 {
+				<a href="/runs?state=running" class="inline-flex items-center gap-1.5 text-state-running hover:underline"><span class="h-[7px] w-[7px] rounded-full bg-state-running"></span>{ fmt.Sprint(running) } running</a>
+			}
+			if retrying > 0 {
+				<a href="/runs?state=retrying" class="inline-flex items-center gap-1.5 text-state-retrying hover:underline"><span class="h-[7px] w-[7px] rounded-full bg-state-retrying"></span>{ fmt.Sprint(retrying) } retrying</a>
+			}
+			if queued > 0 {
+				<a href="/runs?state=queued" class="inline-flex items-center gap-1.5 text-state-queued hover:underline"><span class="h-[7px] w-[7px] rounded-full bg-state-queued"></span>{ fmt.Sprint(queued) } queued</a>
 			}
 		</p>
 		@components.Stats(overviewStats(d))
@@ -72,7 +82,7 @@ templ Overview(d OverviewData) {
 		// head says "nothing running" otherwise.
 		if len(d.EmCurso) > 0 {
 			<section class="mt-3">
-				@components.PanelLink("In progress", fmt.Sprint(len(d.EmCurso)), "/runs?state=running", "all running") {
+				@components.PanelLink("In progress", fmt.Sprint(len(d.EmCurso)), "/runs", "all runs") {
 					<table class="ct w-full text-[12.5px]">
 						<thead>
 							<tr class="text-left">
