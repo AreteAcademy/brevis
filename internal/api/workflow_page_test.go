@@ -173,3 +173,31 @@ func TestAWorkflowWithParametersRunsFromADrawer(t *testing.T) {
 		t.Error("a workflow with no parameters lost its one-click run")
 	}
 }
+
+// A ONE-STEP WORKFLOW SHOWS ITS STEP, NOT A CANVAS (screen-workflow-v2 WV3):
+// the step's line from its definition -- name, command, what it runs in --
+// with a neutral mark, since no run is being shown; no graph island. Two
+// steps or more keep the graph (TestTheWorkflowPageEmbedsItsGraph).
+func TestAOneStepWorkflowShowsItsStep(t *testing.T) {
+	ui := workflowPageUI(postgres.WorkflowSummary{Slug: "single"},
+		wf.Workflow{Slug: "single", Nodes: []wf.Node{{ID: "start", Marker: true}, {ID: "load", Run: "/opt/brevis/bin/pipeline load", Runtime: "go"}},
+			Edges: []wf.Edge{{From: "start", To: "load"}}})
+	_, body := get(t, ui, "/workflows/single")
+	if strings.Contains(body, `id="dag"`) || strings.Contains(body, "dag.js") {
+		t.Error("a one-step workflow still mounts the graph island")
+	}
+	at := strings.Index(body, "data-step-line")
+	if at < 0 {
+		t.Fatal("no step line")
+	}
+	line := body[at:]
+	line = line[:strings.Index(line, "</section>")]
+	for _, want := range []string{">load<", "/opt/brevis/bin/pipeline load", ">Go<"} {
+		if !strings.Contains(line, want) {
+			t.Errorf("the step line lost %q", want)
+		}
+	}
+	if strings.Contains(line, "pending") || strings.Contains(line, "data-stages") {
+		t.Error("the definition's line claims a run state or stages")
+	}
+}

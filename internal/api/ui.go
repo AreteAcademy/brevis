@@ -1348,8 +1348,14 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 	if sum != nil {
 		sum.NextRun = proximaDoWorkflow(*sum, now)
 	}
-	u.render(w, r, pages.Workflow(pages.WorkflowPage{Def: def, Sum: sum, Latest: latest, Stats: stats,
-		Graph: graphSeed(def, nil, "", ""), Now: now}))
+	page := pages.WorkflowPage{Def: def, Sum: sum, Latest: latest, Stats: stats, Now: now}
+	// A one-step workflow shows its step as a line, and has no graph to embed.
+	if oneStep(def) {
+		page.Step = stepLineOf(def, nil)
+	} else {
+		page.Graph = graphSeed(def, nil, "", "")
+	}
+	u.render(w, r, pages.Workflow(page))
 }
 
 // run is a run's page. The header comes from the database on the server; the DAG
