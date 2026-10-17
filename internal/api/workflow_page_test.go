@@ -41,27 +41,57 @@ func workflowPageUI(sum postgres.WorkflowSummary, def wf.Workflow) *api.UI {
 	return api.NewUI(reads, defsFake{w: def}, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
 }
 
-// THE TITLE IS THE SLUG IN THE MACHINE'S FACE, and above it the eyebrow says
-// where the workflow lives and how it runs: its project, its schedule in
-// words, and whether that schedule is on.
+// THE TITLE IS THE SLUG IN THE MACHINE'S FACE, and under it one meta line
+// (screen-workflow-v2 WV1, where an eyebrow above it and a line below it
+// were): whether its schedule is on, its project, the cron and its words,
+// how many steps and dependencies, its tags.
 func TestAWorkflowPageNamesItsProjectScheduleAndState(t *testing.T) {
 	ui := workflowPageUI(
 		postgres.WorkflowSummary{Slug: "daily_sales", Project: "analytics", Cron: "0 4 * * *", HasSchedule: true, Active: false},
-		wf.Workflow{Slug: "daily_sales", Schedule: "0 4 * * *"},
+		wf.Workflow{Slug: "daily_sales", Schedule: "0 4 * * *", Tags: []string{"sales"},
+			Nodes: []wf.Node{{ID: "a", Run: "echo a"}, {ID: "b", Run: "echo b"}}, Edges: []wf.Edge{{From: "a", To: "b"}}},
 	)
 	_, body := get(t, ui, "/workflows/daily_sales")
-	at := strings.Index(body, "data-eyebrow")
-	if at < 0 {
-		t.Fatal("the page has no eyebrow")
+	if strings.Contains(body, "data-eyebrow") {
+		t.Error("the state is still an eyebrow above the title")
 	}
-	eyebrow := body[at : at+strings.Index(body[at:], "</div>")]
-	for _, want := range []string{"analytics", "every day at 04:00", "Paused"} {
-		if !strings.Contains(eyebrow, want) {
-			t.Errorf("the eyebrow does not say %q", want)
+	at := strings.Index(body, "data-workflow-meta")
+	if at < 0 {
+		t.Fatal("the page has no meta line")
+	}
+	meta := body[at : at+strings.Index(body[at:], "</p>")]
+	for _, want := range []string{"Paused", "analytics", "0 4 * * *", "every day at 04:00", "2 steps", "1 dependency", "sales"} {
+		if !strings.Contains(meta, want) {
+			t.Errorf("the meta line does not say %q", want)
 		}
+	}
+	if strings.Index(body, ">daily_sales</h1>") > at {
+		t.Error("the meta line is not under the title")
 	}
 	if !strings.Contains(body, `font-mono`) || !strings.Contains(body, ">daily_sales</h1>") {
 		t.Error("the title is not the slug in mono")
+	}
+}
+
+// A SCHEDULE IS PAUSED FROM ITS WORKFLOW'S PAGE (screen-workflow-v2 WV1): one
+// POST to the toggle the list uses, worded by what it will do -- Pause when it
+// runs, Resume when it does not -- and absent when there is nothing to pause.
+func TestAScheduleIsPausedFromItsPage(t *testing.T) {
+	def := wf.Workflow{Slug: "daily_sales", Schedule: "0 4 * * *"}
+	for _, c := range []struct {
+		active bool
+		word   string
+	}{{true, "Pause"}, {false, "Resume"}} {
+		_, body := get(t, workflowPageUI(postgres.WorkflowSummary{Slug: "daily_sales", Cron: "0 4 * * *", HasSchedule: true, Active: c.active}, def), "/workflows/daily_sales")
+		header := body[strings.Index(body, "data-page-header"):]
+		header = header[:strings.Index(header, "</header>")]
+		if !strings.Contains(header, `action="/workflows/daily_sales/toggle"`) || !strings.Contains(header, c.word) {
+			t.Errorf("active=%v: the header has no %s posting to the toggle", c.active, c.word)
+		}
+	}
+	_, manual := get(t, workflowPageUI(postgres.WorkflowSummary{Slug: "daily_sales"}, wf.Workflow{Slug: "daily_sales"}), "/workflows/daily_sales")
+	if strings.Contains(manual, "/toggle") {
+		t.Error("a workflow with no schedule offers to pause it")
 	}
 }
 

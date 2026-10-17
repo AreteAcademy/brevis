@@ -979,28 +979,69 @@ type WorkflowStats struct {
 // words (or the expression, when the words are not sure), and whether the
 // schedule is on. sum is nil when the summary could not be read, and the line
 // then says only what the definition does.
-templ workflowEyebrow(w wf.Workflow, sum *postgres.WorkflowSummary) {
-	<span data-eyebrow class="contents">
+// workflowMeta is the one line under the title (screen-workflow-v2 WV1):
+// whether the schedule runs, the project, the cron with its words and zone,
+// the size of the graph, the tags -- what an eyebrow above the title and a
+// line below it said between them.
+templ workflowMeta(p WorkflowPage) {
+	{{ w, sum := p.Def, p.Sum }}
+	<p data-workflow-meta class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
+		if sum != nil && sum.HasSchedule {
+			if sum.Active {
+				<span class="inline-flex items-center gap-1.5 text-state-success"><span class="h-[7px] w-[7px] rounded-full bg-state-success"></span>Active</span>
+			} else {
+				<span class="inline-flex items-center gap-1.5 text-muted"><span class="h-[7px] w-[7px] rounded-full bg-state-pending"></span>Paused</span>
+			}
+			<span class="text-faint">·</span>
+		}
 		if sum != nil && sum.Project != "" {
-			<a href={ templ.SafeURL("/workflows?project=" + sum.Project) } class="text-[0.75rem] text-ink-2 hover:underline">{ sum.Project }</a>
+			<a href={ templ.SafeURL("/workflows?project=" + sum.Project) } class="text-ink-2 hover:underline">{ sum.Project }</a>
 			<span class="text-faint">·</span>
 		}
 		if w.Schedule == "" {
-			<span class="text-[0.75rem] text-muted">manual trigger only</span>
-		} else if words := CronText(w.Schedule); words != "" {
-			<span class="text-[0.75rem] text-muted">{ words }{ zoneSuffix(scheduleZone(sum)) }</span>
+			<span>manual trigger only</span>
 		} else {
-			<span class="font-mono text-[0.72rem] text-muted">{ w.Schedule }</span>
-		}
-		if sum != nil && sum.HasSchedule {
-			<span class="text-faint">·</span>
-			if sum.Active {
-				<span class="inline-flex items-center gap-1.5 text-[0.75rem] text-state-success"><span class="h-1.5 w-1.5 rounded-full bg-state-success"></span>Active</span>
-			} else {
-				<span class="inline-flex items-center gap-1.5 text-[0.75rem] text-muted"><span class="h-1.5 w-1.5 rounded-full bg-state-pending"></span>Paused</span>
+			<span class="font-mono text-[12px] text-ink">{ w.Schedule }</span>
+			if words := CronText(w.Schedule); words != "" {
+				<span>{ words }{ zoneSuffix(scheduleZone(sum)) }</span>
 			}
 		}
-	</span>
+		<span class="text-faint">·</span>
+		<span>{ count(len(w.Nodes), "step", "steps") } · { count(len(w.Edges), "dependency", "dependencies") }</span>
+		for _, t := range w.Tags {
+			@components.Tag(t, "/workflows?tag="+t)
+		}
+	</p>
+}
+
+// workflowActions are the page's verbs: Pause or Resume when there is a
+// schedule, and Run (▶ or the drawer).
+func workflowActions(p WorkflowPage) templ.Component {
+	return workflowActionsT(p)
+}
+
+templ workflowActionsT(p WorkflowPage) {
+	<div class="flex items-center gap-2">
+		if p.Sum != nil && p.Sum.HasSchedule {
+			@pauseAction(*p.Sum)
+		}
+		@runAction(p.Def)
+	</div>
+}
+
+// pauseAction pauses or resumes the schedule from the workflow's own page:
+// the toggle the list's switch posts to, as a button worded by what it will
+// do. A form, so it works with no script and is never prefetched.
+templ pauseAction(sum postgres.WorkflowSummary) {
+	<form method="post" action={ templ.SafeURL("/workflows/" + sum.Slug + "/toggle") }>
+		<button type="submit" class={ components.ButtonClass(components.ButtonSecondary, components.SizeRegular) }>
+			if sum.Active {
+				Pause
+			} else {
+				Resume
+			}
+		</button>
+	</form>
 }
 
 // about is the question mark beside the name, or nothing.
@@ -1011,11 +1052,11 @@ func about(w wf.Workflow) templ.Component {
 	return components.AboutButton(w.Slug)
 }
 
-templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.RunSummary, st WorkflowStats, graph string) {
+templ Workflow(p WorkflowPage) {
+	{{ w, latest, st, graph := p.Def, p.Latest, p.Stats, p.Graph }}
 	@layouts.Base(layouts.Page{
 		Title: w.Slug, Kicker: "Workflow", Active: "workflows", Mono: true,
-		Eyebrow: workflowEyebrow(w, sum),
-		Island: dagAssets, Actions: runAction(w),
+		Island: dagAssets, Actions: workflowActions(p),
 		// The question mark only exists when there is something behind it: a
 		// control that opens an empty dialog is a promise the page does not
 		// keep.
@@ -1024,18 +1065,7 @@ templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.R
 		if w.Description != "" {
 			@components.AboutDialog(w.Slug, w.Description)
 		}
-		<div class="mb-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
-			<span>{ fmt.Sprint(len(w.Nodes)) } steps</span>
-			<span>{ fmt.Sprint(len(w.Edges)) } dependencies</span>
-			if w.Schedule != "" {
-				<span class="font-mono text-xs text-ink">{ w.Schedule }</span>
-			} else {
-				<span>manual trigger only</span>
-			}
-			for _, t := range w.Tags {
-				@components.Tag(t, "/workflows?tag="+t)
-			}
-		</div>
+		@workflowMeta(p)
 		if len(w.Params) > 0 {
 			@runDrawer(w, runDrawerText)
 		}
