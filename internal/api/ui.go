@@ -877,6 +877,7 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 
 	u.render(w, r, pages.Overview(pages.OverviewData{
 		Window:   window,
+		Now:      time.Now(),
 		Ind:      ind,
 		Buckets:  buckets,
 		EmCurso:  emCurso,

@@ -29,6 +29,8 @@ type OverviewData struct {
 	Proximas  []NextRun
 	Recentes  []postgres.RunSummary
 	Pending int
+	// Now is the page's clock, for "next trigger in 12m".
+	Now time.Time
 }
 
 // ProximaExecucao is a future trigger, already computed from the cron.
@@ -40,7 +42,18 @@ type NextRun struct {
 }
 
 templ Overview(d OverviewData) {
-	@layouts.Base(layouts.Page{Title: "Overview", Kicker: "Dashboard", Active: "overview"}) {
+	@layouts.Base(layouts.Page{Title: "Overview", Kicker: "Dashboard", Active: "overview", Actions: windowToggle(d.Window)}) {
+		// ONE LINE UNDER THE TITLE (screen-overview-v2 OV2): the window the
+		// page reads, and whether anything runs right now.
+		<p data-overview-meta class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
+			<span>{ d.Window.Label }</span>
+			<span class="text-faint">·</span>
+			if n := len(d.EmCurso); n == 0 {
+				<span class="inline-flex items-center gap-1.5"><span class="h-[7px] w-[7px] rounded-full bg-line-strong"></span>nothing running</span>
+			} else {
+				<a href="/runs?state=running" class="inline-flex items-center gap-1.5 text-state-running hover:underline"><span class="h-[7px] w-[7px] rounded-full bg-state-running"></span>{ fmt.Sprint(n) } running</a>
+			}
+		</p>
 		@components.Stats(overviewStats(d))
 		<div class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_320px]">
 			@components.Panel("Runs per hour", "") {
@@ -142,6 +155,24 @@ templ Overview(d OverviewData) {
 			@runsTable(d.Recentes, Pagination{})
 		</section>
 	}
+}
+
+// windowToggle is the Overview's three windows, as links: GET, shareable,
+// the open one marked.
+func windowToggle(w Window) templ.Component {
+	return windowToggleT(w)
+}
+
+templ windowToggleT(current Window) {
+	<nav aria-label="Window" class="flex items-center rounded-card border border-line text-[12px]">
+		for _, w := range overviewWindows {
+			if w.Key == current.Key {
+				<a href={ templ.SafeURL("/?window=" + w.Key) } aria-current="page" class="bg-surface-2 px-2.5 py-1 font-medium text-ink">{ w.Key }</a>
+			} else {
+				<a href={ templ.SafeURL("/?window=" + w.Key) } class="px-2.5 py-1 text-muted hover:text-ink">{ w.Key }</a>
+			}
+		}
+	</nav>
 }
 
 templ distLine(label string, value int, matiz string) {

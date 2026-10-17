@@ -133,12 +133,36 @@ func overviewStats(d OverviewData) []components.Stat {
 	if i.Failed > 0 {
 		failDot = "bg-state-failed"
 	}
+	share := func(n, of int) []components.BarSegment {
+		if of == 0 {
+			return nil
+		}
+		return []components.BarSegment{{Share: float64(n) / float64(of)}}
+	}
+	success := components.Stat{Label: "Success rate", Value: pct(i.Ratio(i.Succeeded)), Dot: "bg-state-success",
+		Note: fmt.Sprintf("%d of %d finished", i.Succeeded, i.Succeeded+i.Failed)}
+	if bar := share(i.Succeeded, i.Succeeded+i.Failed); bar != nil {
+		bar[0].Class = "bg-state-success"
+		success.Bar = bar
+	}
+	retried := components.Stat{Label: "Needed a retry", Value: fmt.Sprint(i.Retried), Dot: "bg-state-retrying",
+		Note: fmt.Sprintf("of %d", i.Total)}
+	if bar := share(i.Retried, i.Total); bar != nil {
+		bar[0].Class = "bg-state-retrying"
+		retried.Bar = bar
+	}
+	next := components.Stat{Label: "Next trigger", Value: "no schedule"}
+	if len(d.Proximas) > 0 {
+		p := d.Proximas[0]
+		next.Value, next.Note = "in "+untilText(p.When.Sub(d.Now)), p.Workflow
+	}
 	return []components.Stat{
-		{Label: "Success rate", Value: pct(i.Ratio(i.Succeeded)), Dot: "bg-state-success",
-			Note: fmt.Sprintf("%d of %d finished", i.Succeeded, i.Succeeded+i.Failed)},
+		success,
+		retried,
 		{Label: "Failure rate", Value: pct(i.Ratio(i.Failed)), Dot: failDot, Note: failureNote(i.Failed)},
-		{Label: "Running", Value: fmt.Sprint(i.Running), Dot: "bg-state-running", Note: meanDuration(i.MeanDuration)},
-		{Label: "Queued", Value: fmt.Sprint(i.Pending), Dot: "bg-state-queued", Note: fmt.Sprintf("%d items queued", d.Pending)},
+		{Label: "Running · queued", Value: fmt.Sprintf("%d · %d", i.Running, i.Pending), Dot: "bg-state-running",
+			Note: meanDuration(i.MeanDuration) + " · " + fmt.Sprintf("%d items queued", d.Pending)},
+		next,
 	}
 }
 

@@ -368,18 +368,48 @@ func TestTheTestEventExampleFollowsTheFormat(t *testing.T) {
 // -- success rate, failure rate, running, queued -- and their notes, in a
 // Stats strip instead of four 42px cards.
 func TestTheOverviewsNumbersAreAStrip(t *testing.T) {
-	page := draw(t, Overview(OverviewData{Ind: postgres.Indicators{Succeeded: 9, Failed: 1, Running: 2, Pending: 3}, Pending: 3}))
+	// FIVE CELLS (screen-overview-v2 OV2): the four it had -- Running and
+	// Queued now one cell, the queue depth beside them -- plus the retries
+	// and the next trigger.
+	now := time.Date(2026, 10, 17, 3, 48, 0, 0, time.UTC)
+	page := draw(t, Overview(OverviewData{
+		Ind:      postgres.Indicators{Total: 15, Succeeded: 9, Failed: 1, Running: 2, Pending: 3, Retried: 4, MeanDuration: 90 * time.Second},
+		Pending:  3,
+		Window:   ParseWindow(""),
+		Now:      now,
+		Proximas: []NextRun{{Workflow: "id_verification", Cron: "0 4 * * *", When: now.Add(12 * time.Minute)}},
+	}))
 	at := strings.Index(page, "<dl")
 	if at < 0 {
 		t.Fatal("the numbers are not a Stats strip")
 	}
 	strip := page[at : at+strings.Index(page[at:], "</dl>")]
-	for _, want := range []string{"Success rate", "90.0%", "9 of 10 finished", "Failure rate", "10.0%", "Running", ">2<", "Queued", ">3<", "3 items queued"} {
+	for _, want := range []string{"Success rate", "90.0%", "9 of 10 finished", "Failure rate", "10.0%",
+		"Running · queued", ">2 · 3<", "3 items queued", "1m 30s",
+		"Needed a retry", ">4<", "of 15", "Next trigger", "in 12m", "id_verification"} {
 		if !strings.Contains(strip, want) {
 			t.Errorf("the strip lacks %s", want)
 		}
 	}
+	if strings.Count(strip, "bg-surface px-3.5") != 5 {
+		t.Errorf("the strip has %d cells, want 5", strings.Count(strip, "bg-surface px-3.5"))
+	}
 	if strings.Contains(page, "text-[2.6rem]") {
 		t.Error("a 42px metric card is still drawn")
+	}
+	meta := page[strings.Index(page, "data-overview-meta"):]
+	meta = meta[:strings.Index(meta, "</p>")]
+	if !strings.Contains(meta, "last 24 hours") || !strings.Contains(meta, "nothing running") {
+		t.Errorf("the meta line = %s", meta)
+	}
+	for _, w := range []string{`href="/?window=7d"`, `href="/?window=30d"`, `aria-current="page"`} {
+		if !strings.Contains(page, w) {
+			t.Errorf("the window toggle has no %s", w)
+		}
+	}
+
+	none := draw(t, Overview(OverviewData{Window: ParseWindow(""), Now: now}))
+	if !strings.Contains(none, "no schedule") {
+		t.Error("with no schedule the next trigger cell is not \"no schedule\"")
 	}
 }
