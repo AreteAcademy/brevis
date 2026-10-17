@@ -1014,6 +1014,28 @@ templ workflowMeta(p WorkflowPage) {
 	</p>
 }
 
+// yearOfRuns is the workflow's calendar.
+templ yearOfRuns(st WorkflowStats, slug string) {
+	@components.Panel("A year of runs", "") {
+		<div class="px-3.5 py-3">
+			<p class="mb-3 text-[12.5px] text-muted">
+				One square per day. The colour is the day&#39;s worst outcome, not how
+				much ran &mdash; the question a calendar answers is when this broke.
+			</p>
+			@components.Heatmap(st.Days, slug)
+		</div>
+	}
+}
+
+// workflowIsland is the graph's island for a workflow drawn as a graph; a
+// one-step workflow's line needs no React.
+func workflowIsland(p WorkflowPage) layouts.Island {
+	if p.Step != nil {
+		return layouts.Island{}
+	}
+	return dagAssets
+}
+
 // workflowActions are the page's verbs: Pause or Resume when there is a
 // schedule, and Run (▶ or the drawer).
 func workflowActions(p WorkflowPage) templ.Component {
@@ -1056,7 +1078,7 @@ templ Workflow(p WorkflowPage) {
 	{{ w, latest, st, graph := p.Def, p.Latest, p.Stats, p.Graph }}
 	@layouts.Base(layouts.Page{
 		Title: w.Slug, Kicker: "Workflow", Active: "workflows", Mono: true,
-		Island: dagAssets, Actions: workflowActions(p),
+		Island: workflowIsland(p), Actions: workflowActions(p),
 		// The question mark only exists when there is something behind it: a
 		// control that opens an empty dialog is a promise the page does not
 		// keep.
@@ -1076,18 +1098,19 @@ templ Workflow(p WorkflowPage) {
 		<div class="mb-3">
 			@components.Stats(workflowPageStats(p))
 		</div>
-		@dag("/api/workflows/"+w.Slug+"/graph", graph)
-		<section class="mt-3">
-			@components.Panel("A year of runs", "") {
-				<div class="px-3.5 py-3">
-					<p class="mb-3 text-[12.5px] text-muted">
-						One square per day. The colour is the day&#39;s worst outcome, not how
-						much ran &mdash; the question a calendar answers is when this broke.
-					</p>
-					@components.Heatmap(st.Days, w.Slug)
-				</div>
-			}
-		</section>
+		// ONE STEP IS A LINE, BESIDE ITS CALENDAR (screen-workflow-v2 WV3);
+		// two or more are the graph, the calendar under it.
+		if p.Step != nil {
+			<div class="grid grid-cols-1 items-start gap-3 min-[1180px]:grid-cols-2">
+				@stepLine(*p.Step)
+				@yearOfRuns(st, w.Slug)
+			</div>
+		} else {
+			@dag("/api/workflows/"+w.Slug+"/graph", graph)
+			<div class="mt-3">
+				@yearOfRuns(st, w.Slug)
+			</div>
+		}
 		if len(st.Load) > 0 {
 			<section class="mt-3">
 				@components.Panel("What it loads", "") {
@@ -1310,7 +1333,12 @@ templ stepLine(l StepLine) {
 	<section data-step-line class="mb-3">
 		@components.Panel("Steps", "1") {
 			<div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2.5 text-[12.5px]">
-				@components.Dot(l.Status)
+				if l.Status == "" {
+					// A definition, not a run: a hollow mark with no state.
+					<span aria-hidden="true" class="inline-block h-2.5 w-2.5 rounded-full border border-line-strong"></span>
+				} else {
+					@components.Dot(l.Status)
+				}
 				<span class="font-mono font-medium text-ink">{ l.Name }</span>
 				if l.Action != "" {
 					<span title={ l.Action } class="min-w-0 max-w-[28rem] truncate font-mono text-[12px] text-muted">{ l.Action }</span>
@@ -1325,6 +1353,7 @@ templ stepLine(l StepLine) {
 				if l.SDK != "" {
 					<span class="rounded-[4px] border border-line-strong px-1.5 font-mono text-[11px] text-ink-2">SDK { l.SDK }</span>
 				}
+				if l.Status != "" {
 				<span class="ml-auto shrink-0 text-[11.5px] text-faint">
 					if l.Published > 0 {
 						{ publishedText(l.Published) } ·
@@ -1335,6 +1364,7 @@ templ stepLine(l StepLine) {
 						—
 					}
 				</span>
+				}
 			</div>
 			if len(l.Stages) > 0 {
 				<ol data-stages class="grid grid-cols-1 gap-px border-t border-line-soft bg-line-soft min-[640px]:grid-cols-2 min-[1100px]:grid-flow-col min-[1100px]:auto-cols-fr min-[1100px]:grid-cols-none">

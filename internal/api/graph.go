@@ -752,10 +752,15 @@ func stepLineOf(def wf.Workflow, states map[string]postgres.NodeState) *pages.St
 	if line.Action == "" {
 		line.Action = step.Run
 	}
+	// From the definition alone (a workflow's page) there is no run to show:
+	// no state, rather than a "pending" that reads like one is waiting.
+	if states == nil {
+		line.Status = ""
+	}
 	for _, n := range g.Nodes {
 		switch {
 		case n.ID == step.ID:
-			if v, ok := n.Data["status"].(string); ok {
+			if v, ok := n.Data["status"].(string); ok && states != nil {
 				line.Status = v
 			}
 			line.Runtime, _ = n.Data["runtime"].(string)
