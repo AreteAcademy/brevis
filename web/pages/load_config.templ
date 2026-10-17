@@ -363,3 +363,37 @@ templ previewHead(name string, metadata bool) {
 	}
 	{ name }
 }
+
+// loadRecent is the step's recent loads beside its page (screen-load-v2 LV5):
+// when, rows, bytes and the run, each a 34px row. No step column -- it is
+// always this page's step, already in the head.
+templ loadRecent(v LoadView) {
+	@components.Panel("Recent loads", loadsCount(len(v.Loads))) {
+		<div class="max-h-[28rem] overflow-auto">
+			<table class="ct w-full text-[12.5px]">
+				<thead class="sticky top-0 bg-surface">
+					<tr class="text-left">
+						@th("Loaded", "pl-3.5")
+						@th("Rows", "text-right")
+						@th("Bytes", "text-right")
+						@th("Run", "pr-3.5")
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-line-soft">
+					for _, l := range v.Loads {
+						<tr>
+							<td class="px-2.5 pl-3.5 font-mono text-[12px] whitespace-nowrap text-muted tabular-nums">
+								@components.ShortStamp(&l.LoadedAt)
+							</td>
+							<td class="px-2.5 text-right tabular-nums">{ rowsText(l.Rows) }</td>
+							<td class="px-2.5 text-right tabular-nums">{ rowsText(l.Bytes) }</td>
+							<td class="px-2.5 pr-3.5">
+								<a href={ templ.SafeURL("/runs/" + l.RunID) } class="font-mono text-[12px] text-accent-strong hover:underline">{ shortID(l.RunID) }</a>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}
