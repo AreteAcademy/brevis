@@ -129,11 +129,23 @@ func stateDot(s string) string {
 // own padding. One component where there were two: a page-local card, and a
 // Card whose title was a caps accent eyebrow. count may be "".
 templ Panel(title, count string) {
+	@PanelLink(title, count, "", "") {
+		{ children... }
+	}
+}
+
+// PanelLink is a Panel with a link on the right of its heading ("see all"):
+// the heading already has the room, and a footer row for one link costs a
+// line of the page.
+templ PanelLink(title, count, href, label string) {
 	<section class="overflow-hidden rounded-card border border-line bg-surface">
 		<header class="flex h-[38px] items-center gap-2 border-b border-line-soft pr-3 pl-3.5">
 			<h2 class="text-[13px] font-semibold tracking-[-0.005em] whitespace-nowrap text-ink">{ title }</h2>
 			if count != "" {
 				<span class="text-[11.5px] text-faint tabular-nums">{ count }</span>
+			}
+			if href != "" {
+				<a href={ templ.SafeURL(href) } class="ml-auto text-[12px] text-gold-strong hover:underline">{ label }</a>
 			}
 		</header>
 		{ children... }
