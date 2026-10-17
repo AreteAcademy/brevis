@@ -17,11 +17,12 @@ import (
 // its project and schedule state), its runs and its numbers.
 type workflowReads struct {
 	readsFake
-	ind postgres.Indicators
+	ind  postgres.Indicators
+	runs []postgres.RunSummary
 }
 
 func (f workflowReads) WorkflowRuns(context.Context, string, int) ([]postgres.RunSummary, error) {
-	return nil, nil
+	return f.runs, nil
 }
 func (f workflowReads) IndicatorsFor(context.Context, time.Duration, string) (postgres.Indicators, error) {
 	return f.ind, nil
@@ -199,5 +200,42 @@ func TestAOneStepWorkflowShowsItsStep(t *testing.T) {
 	}
 	if strings.Contains(line, "pending") || strings.Contains(line, "data-stages") {
 		t.Error("the definition's line claims a run state or stages")
+	}
+}
+
+// THE WORKFLOW'S RUNS DO NOT NAME THE WORKFLOW (screen-workflow-v2 WV4): a
+// panel with its count and "see all", one row per run with its state (the
+// link to the run), trigger, slot, duration and when -- and no Workflow
+// column repeating the page's own name. /runs keeps it.
+func TestAWorkflowsRunsDropTheWorkflowColumn(t *testing.T) {
+	created := time.Now().Add(-time.Hour)
+	d := 90 * time.Second
+	reads := workflowReads{
+		readsFake: readsFake{workflows: []postgres.WorkflowSummary{{Slug: "daily_sales", Project: "analytics", Cron: "0 4 * * *", HasSchedule: true, Active: true}}},
+		runs: []postgres.RunSummary{{ID: "8d36ef6e-0000-0000-0000-000000000001", WorkflowSlug: "daily_sales", Status: "success",
+			TriggerType: "schedule", CreatedAt: created, Duration: &d}},
+	}
+	ui := api.NewUI(reads, defsFake{w: wf.Workflow{Slug: "daily_sales", Schedule: "0 4 * * *"}}, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+	_, body := get(t, ui, "/workflows/daily_sales")
+
+	at := strings.Index(body, "data-workflow-runs")
+	if at < 0 {
+		t.Fatal("the runs are not a panel")
+	}
+	runs := body[at:]
+	if strings.Contains(runs[:strings.Index(runs, "</thead>")], ">Workflow<") {
+		t.Error("the workflow's own runs still name the workflow")
+	}
+	for _, want := range []string{`href="/runs/8d36ef6e-0000-0000-0000-000000000001"`, "schedule", "1m 30s", `href="/runs?workflow=daily_sales"`, ">Runs<"} {
+		if !strings.Contains(runs, want) {
+			t.Errorf("the runs panel lost %s", want)
+		}
+	}
+
+	// NOTHING THE PAGE SHOWED IS LOST: the meta, the actions, the numbers.
+	for _, want := range []string{"analytics", "every day at 04:00", "Active", "Pause", "Success rate", "Failure rate", "Mean duration", "Open", "Next run", "A year of runs"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the workflow page lost %q", want)
+		}
 	}
 }
