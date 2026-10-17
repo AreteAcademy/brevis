@@ -1,0 +1,285 @@
+package pages
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/AreteAcademy/brevis/web/components"
+)
+
+// loadConfiguration is a step's configuration on its load's page, in tabs
+// (screen-load-v2 LV3): Summary, Sources, Transform, Destination, Schema --
+// only those with something in them. Hash tabs, as on a stream's page: every
+// panel is in the HTML, `#sources` is the open one from the first paint, and
+// with no script the panels stack under their headings.
+templ loadConfiguration(v LoadView) {
+	if c, ok := v.StepConfig(); ok {
+		if !c.Described {
+			@components.Panel("Configuration", "") {
+				<p data-config={ c.Key() } class="px-3.5 py-3 text-[12.5px] text-muted">
+					This step did not describe itself. Only the Go SDK sends its configuration; a Python, dbt or shell step lands without one.
+					To see what it runs, open <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="text-accent-strong hover:underline">the workflow's definition</a>.
+				</p>
+			}
+		} else {
+			{{ t := LoadConfigTabs(c.Config) }}
+			{{ tabs := loadTabs(t) }}
+			@templ.Raw("<style>" + hashTabsCSS("load-config", tabKeys(tabs)...) + "</style>")
+			@components.Panel("Configuration", "") {
+				<div id="load-config" data-hash-tabs data-config={ c.Key() }>
+					<div data-hash-tabs-bar data-js class="px-2 pt-1">
+						@components.Tabs("Configuration", tabs)
+					</div>
+					<section id="summary" data-tab-panel="summary">
+						<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">Summary</h3>
+						<p class="px-3.5 py-3 text-[12.5px] text-ink" data-summary>{ c.Config.Summary }</p>
+						@stageRow(t)
+						if c.Flow != nil {
+							<div class="border-t border-line-soft">
+								@flowDiagram(c.Flow)
+							</div>
+						}
+						if c.Config.Note != "" {
+							<div class="border-t border-line-soft px-3.5 py-2.5">
+								@configNote(c.Config.Note)
+							</div>
+						}
+						for _, s := range t.Other {
+							<div class="border-t border-line-soft">
+								<h4 class="px-3.5 pt-2.5 text-[12px] font-semibold text-ink">{ s.Title }</h4>
+								@cfgRows(s.Rows)
+							</div>
+						}
+					</section>
+					if hasTab(tabs, "sources") {
+						<section id="sources" data-tab-panel="sources">
+							<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">Sources</h3>
+							@cfgRows(t.SourceHead)
+							if t.SourceCount > 0 {
+								<div data-common class="flex flex-wrap items-center gap-1.5 border-t border-line-soft px-3.5 py-2.5 text-[12px]">
+									<span class="font-medium text-ink">Common to { fmt.Sprint(t.SourceCount) }:</span>
+									if len(t.Common) == 0 {
+										<span class="text-faint">nothing, every setting differs somewhere</span>
+									}
+									for _, r := range t.Common {
+										<span data-path={ "sources.*." + r.Label } title={ r.Note } class="rounded-[4px] border border-line-strong px-1.5 font-mono text-[11.5px] text-ink-2">
+											<span class="text-faint">{ r.Label }</span> { r.Value }
+											if r.Default {
+												<span class="text-faint">(default)</span>
+											}
+										</span>
+									}
+								</div>
+								if len(t.Varying) > 0 {
+									<div class="overflow-x-auto border-t border-line-soft">
+										<table class="ct w-full text-[12.5px]">
+											<thead>
+												<tr class="text-left">
+													@th("#", "pl-3.5 w-10")
+													for _, k := range t.Varying {
+														@th(k, "")
+													}
+												</tr>
+											</thead>
+											<tbody class="divide-y divide-line-soft">
+												for _, s := range t.Sources {
+													<tr>
+														<td class="px-3 pl-3.5 font-mono text-faint tabular-nums">{ fmt.Sprint(s.Index) }</td>
+														for _, cell := range s.Cells {
+															if cell == nil {
+																<td class="px-3 text-faint">—</td>
+															} else {
+																<td data-path={ cell.Path } title={ cellTitle(*cell) } class="max-w-[28rem] truncate px-3 font-mono text-[12px] text-ink">
+																	{ cell.Value }
+																	if cell.Default {
+																		<span class="text-faint">(default)</span>
+																	}
+																</td>
+															}
+														}
+													</tr>
+												}
+											</tbody>
+										</table>
+									</div>
+								}
+							}
+						</section>
+					}
+					if hasTab(tabs, "transform") {
+						<section id="transform" data-tab-panel="transform">
+							<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">Transform</h3>
+							<ol class="divide-y divide-line-soft">
+								for _, op := range t.Transform {
+									<li class="flex gap-3 px-3.5 py-2 text-[12.5px]">
+										<span class="w-5 shrink-0 font-mono text-faint tabular-nums">{ op.Index }</span>
+										<div class="min-w-0 flex-1">
+											for _, r := range op.Rows {
+												<div data-path={ r.Path } class="flex flex-wrap items-baseline gap-x-2">
+													<span class="font-mono text-[12px] text-muted">{ strings.TrimPrefix(r.Label, op.Index+".") }</span>
+													if len(r.List) > 0 {
+														<span class="font-mono text-[12px] text-ink">{ strings.Join(r.List, " · ") }</span>
+													} else {
+														<span class="font-mono text-[12px] text-ink">{ r.Value }</span>
+													}
+													if r.Note != "" {
+														@configNote(r.Note)
+													}
+												</div>
+											}
+										</div>
+									</li>
+								}
+							</ol>
+						</section>
+					}
+					<section id="destination" data-tab-panel="destination">
+						<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">Destination</h3>
+						<div class="px-3.5 py-3">
+							@components.DefinitionList(destinationIdentity(v.TargetView))
+						</div>
+						@cfgRows(t.Destination)
+					</section>
+					if hasTab(tabs, "schema") {
+						<section id="schema" data-tab-panel="schema">
+							<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">Schema</h3>
+							if len(t.Schema) > 0 {
+								<div class="overflow-x-auto">
+									<table class="ct w-full text-[12.5px]">
+										<thead>
+											<tr class="text-left">
+												@th("Column", "pl-3.5")
+												@th("Type", "")
+												@th("Role", "pr-3.5")
+											</tr>
+										</thead>
+										<tbody class="divide-y divide-line-soft">
+											for _, col := range t.Schema {
+												<tr>
+													<td class="px-3 pl-3.5 font-mono text-ink">{ col.Name }</td>
+													<td class="px-3 font-mono text-[12px] text-muted">{ col.Type }</td>
+													<td class="px-3 pr-3.5 text-muted">{ col.Role }</td>
+												</tr>
+											}
+										</tbody>
+									</table>
+								</div>
+							}
+							@cfgRows(schemaExtra(t.SchemaRows))
+						</section>
+					}
+				</div>
+			}
+		}
+	}
+}
+
+// stageRow is the configuration's path in one line: where it reads, how it
+// changes the rows, where it writes.
+templ stageRow(t LoadTabs) {
+	<ol data-stage-row class="grid grid-cols-1 gap-px border-t border-line-soft bg-line-soft min-[760px]:grid-cols-3">
+		<li class="min-w-0 bg-surface px-3.5 py-2 text-[12px]">
+			<p class="font-medium text-ink">source <span class="font-mono font-normal text-muted">{ rowValue(t.SourceHead, "driver") }</span></p>
+			<p class="mt-0.5 text-muted">
+				if t.SourceCount > 0 {
+					<b class="font-mono font-medium text-ink-2">{ fmt.Sprint(t.SourceCount) }</b> sources
+					if w := rowValue(t.SourceHead, "workers"); w != "" {
+						· { w } workers
+					}
+				} else {
+					one source
+				}
+			</p>
+		</li>
+		<li class="min-w-0 bg-surface px-3.5 py-2 text-[12px]">
+			<p class="font-medium text-ink">transform <span class="font-mono font-normal text-muted">{ plural(len(t.Transform), "stage") }</span></p>
+			<p title={ transformNames(t) } class="mt-0.5 truncate text-muted">
+				if len(t.Transform) == 0 {
+					rows pass as read
+				} else {
+					{ transformNames(t) }
+				}
+			</p>
+		</li>
+		<li class="min-w-0 bg-surface px-3.5 py-2 text-[12px]">
+			<p class="font-medium text-ink">target <span class="font-mono font-normal text-muted">{ rowValue(t.Destination, "driver") }</span></p>
+			<p class="mt-0.5 text-muted">
+				if d := rowValue(t.Destination, "dedup"); d != "" {
+					dedup { d }
+				} else {
+					appends
+				}
+			</p>
+		</li>
+	</ol>
+}
+
+// cfgRows is a list of settings, each its label, value, default flag and
+// note, with any block comment it begins.
+templ cfgRows(rows []ConfigRow) {
+	if len(rows) > 0 {
+		<div class="px-3.5 py-2">
+			for _, r := range rows {
+				for _, b := range r.Before {
+					<div class="mt-2 mb-1">
+						<span class="font-mono text-[12px] text-ink">{ b.Label }</span>
+						@configNote(b.Text)
+					</div>
+				}
+				<div class="grid grid-cols-1 gap-x-4 py-1 sm:grid-cols-[14rem_1fr]" data-path={ r.Path } data-defaulted={ boolText(r.Default) }>
+					<div class="font-mono text-[12px] break-all text-muted">{ r.Label }</div>
+					<div class="text-[12px]">
+						if r.Value == "" {
+							<span class="text-muted">empty</span>
+						} else {
+							<span class="font-mono break-all text-ink">{ r.Value }</span>
+						}
+						if r.Default {
+							<span class="ml-2 rounded-card border border-line px-1 py-px text-[0.65rem] text-muted" title="Not written in the file: the value the gateway filled in">default</span>
+						}
+						if r.Note != "" {
+							<div class="mt-1">
+								@configNote(r.Note)
+							</div>
+						}
+					</div>
+				</div>
+			}
+		</div>
+	}
+}
+
+// loadChanges is the configuration's history, beside the page.
+templ loadChanges(v LoadView) {
+	if c, ok := v.StepConfig(); ok && c.Described && len(c.Config.Changes) > 0 {
+		@components.Panel("Configuration changes", fmt.Sprint(len(c.Config.Changes))) {
+			<ol class="divide-y divide-line-soft">
+				for _, ch := range c.Config.Changes {
+					<li class="px-3.5 py-2 text-[12px]" data-change>
+						<span class="font-mono text-muted tabular-nums">
+							@components.ShortStamp(&ch.At)
+						</span>
+						if ch.RunID != "" {
+							<a href={ templ.SafeURL("/runs/" + ch.RunID) } class="ml-2 font-mono text-gold-strong hover:underline">{ shortID(ch.RunID) }</a>
+						}
+						if ch.First {
+							<span class="ml-2 text-muted">First recorded</span>
+						} else if len(ch.Lines) == 0 {
+							<span class="ml-2 text-muted">Earlier changes are not shown</span>
+						}
+						if len(ch.Lines) > 0 {
+							<ul class="mt-1 space-y-0.5">
+								for _, l := range ch.Lines {
+									<li>
+										<span class="font-mono text-muted">{ l.Path }</span>
+										<span class="ml-2 font-mono break-all text-ink">{ l.Text }</span>
+									</li>
+								}
+							</ul>
+						}
+					</li>
+				}
+			</ol>
+		}
+	}
+}

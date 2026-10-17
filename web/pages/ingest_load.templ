@@ -37,7 +37,7 @@ templ Load(v LoadView) {
 		<div class="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
 			<div class="flex min-w-0 flex-col gap-3">
 				@recentLoads(v.TargetView)
-				@configurations(v.TargetView)
+				@loadConfiguration(v)
 				@panels(v.TargetView)
 			</div>
 			<div data-side class="flex min-w-0 flex-col gap-3">
@@ -75,6 +75,7 @@ templ Load(v LoadView) {
 					}
 				}
 				@readBy(v.ReadBy)
+				@loadChanges(v)
 				@components.Panel("Destination", "") {
 					<div class="p-4">
 						@components.DefinitionList(targetProperties(v.TargetView))

@@ -131,6 +131,10 @@ type ConfigRow struct {
 	Default bool
 	Note    string
 
+	// List is the value's items when it is a list (`declared.schema`), each
+	// as Value would write it; nil otherwise.
+	List []string
+
 	// Before are the comments of the blocks this row is the first setting of:
 	// `sink.metastore`'s, before `metastore.type`. Shown once, where the block
 	// begins, the way the file shows them.
@@ -198,6 +202,11 @@ func BuildConfig(c *postgres.WriterConfig) ConfigView {
 
 		row := ConfigRow{Path: f.Path, Label: label, Value: valueText(f.Value),
 			Default: f.Default, Note: c.Notes[f.Path]}
+		if items, ok := f.Value.([]any); ok {
+			for _, e := range items {
+				row.List = append(row.List, valueText(e))
+			}
+		}
 		// Every block between the section and the setting: `sink.metastore`
 		// for `sink.metastore.ttl`, `sink.into` for `sink.into.write`.
 		parts := strings.Split(f.Path, ".")
