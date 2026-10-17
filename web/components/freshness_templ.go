@@ -11,6 +11,9 @@ import templruntime "github.com/a-h/templ/runtime"
 // Freshness is a destination's or a writer's status against its schedule, in
 // words as well as colour: the colour helps whoever sees it, the word works for
 // everyone, screen readers and colour-blind operators included.
+//
+// A DOT AND A WORD (screen-load-v2 LV1), like State: the tinted badge was the
+// last one density-base left on the screen.
 func Freshness(status string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -32,7 +35,7 @@ func Freshness(status string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var2 = []any{"inline-flex items-center gap-1.5 whitespace-nowrap rounded-card px-2 py-0.5 text-xs font-medium", freshnessClass(status)}
+		var templ_7745c5c3_Var2 = []any{"inline-flex items-center gap-1.5 text-[12.5px] whitespace-nowrap", freshnessClass(status)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -54,7 +57,7 @@ func Freshness(status string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var4 = []any{"h-1.5 w-1.5 rounded-full", freshnessDot(status)}
+		var templ_7745c5c3_Var4 = []any{"h-[7px] w-[7px] shrink-0 rounded-full", freshnessDot(status)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var4...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -79,7 +82,7 @@ func Freshness(status string) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(FreshnessLabel(status))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/freshness.templ`, Line: 9, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/freshness.templ`, Line: 12, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -118,17 +121,17 @@ func FreshnessLabel(s string) string {
 func freshnessClass(s string) string {
 	switch s {
 	case "on_time":
-		return "bg-state-success/13 text-state-success"
+		return "text-state-success"
 	case "late":
-		return "bg-state-queued/13 text-state-queued"
+		return "text-state-queued"
 	case "stale":
-		return "bg-state-failed/13 text-state-failed"
+		return "text-state-failed"
 	case "paused":
-		return "bg-state-canceled/13 text-state-canceled"
+		return "text-state-canceled"
 	case "continuous":
-		return "bg-state-running/13 text-state-running"
+		return "text-state-running"
 	}
-	return "bg-surface-2 text-muted"
+	return "text-muted"
 }
 
 func freshnessDot(s string) string {
