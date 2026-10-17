@@ -14,6 +14,24 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.34.0] — 2026-10-17
+
+### Changed: a workflow's page (#116)
+
+- **Pause and Resume** sit beside Run on a workflow with a schedule, one click,
+  as on the Workflows list.
+- **When it runs next** is a number in the strip: "in 12m" and the UTC time,
+  "paused" or "manual".
+- **A one-step workflow shows its step**, not a canvas holding one box: its
+  command and what it runs in, beside its year of runs.
+- The head says, in one line, whether the schedule runs, the project, the cron,
+  the size of the graph and the tags.
+- The workflow's runs no longer repeat its name on every row.
+
+No migration. No configuration changes.
+
+---
+
 ## [0.33.0] — 2026-10-17
 
 ### Changed: a load's page (#115)
