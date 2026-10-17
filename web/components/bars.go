@@ -23,6 +23,12 @@ type LoadBar struct {
 // height -- present, uncounted -- and never as a zero; one that wrote zero is
 // a red sliver.
 func LoadBars(bars []LoadBar, missed int) templ.Component {
+	return LoadBarsSized(bars, missed, "h-11")
+}
+
+// LoadBarsSized is LoadBars at another height class: 26px inside a KPI cell
+// (screen-load-v2 LV2), 44px on its own.
+func LoadBarsSized(bars []LoadBar, missed int, size string) templ.Component {
 	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
 		n := len(bars) + missed
 		if n == 0 {
@@ -44,7 +50,7 @@ func LoadBars(bars []LoadBar, missed int) templ.Component {
 		// 44px tall at about 22px a bar (density-base DB5): the width follows
 		// the number of loads, so three loads are three slim bars and not three
 		// slabs stretched across the panel. The viewBox is 17 units a bar.
-		if _, err := fmt.Fprintf(w, `<svg class="h-11" style="width:min(100%%,%.0fpx)" viewBox="0 0 %.0f %.0f" preserveAspectRatio="none" role="img" aria-label="rows per load, oldest first">`, width*25/17, width, height); err != nil {
+		if _, err := fmt.Fprintf(w, `<svg class="%s" style="width:min(100%%,%.0fpx)" viewBox="0 0 %.0f %.0f" preserveAspectRatio="none" role="img" aria-label="rows per load, oldest first">`, size, width*25/17, width, height); err != nil {
 			return err
 		}
 		for i, b := range bars {

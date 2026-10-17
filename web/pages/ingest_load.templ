@@ -11,9 +11,19 @@ import (
 templ Load(v LoadView) {
 	@layouts.Base(layouts.Page{
 		Title: v.Row.Target, Active: "loads", Mono: true, TitleID: "destination-uri",
-		Eyebrow: loadEyebrow(v), Actions: targetActions(v.TargetView),
+		Actions: targetActions(v.TargetView),
 	}) {
-		<p class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.8rem] text-muted">
+		// ONE META LINE UNDER THE TITLE (screen-load-v2 LV2): how it stands,
+		// what it is, who writes it and when -- the eyebrow above the URI and
+		// the "written by" line below it, as one.
+		<p data-load-meta class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
+			@components.Freshness(string(v.Row.Status))
+			<span class="text-faint">·</span>
+			<span>SDK load · { loadKind(v) }</span>
+			if v.Row.Legacy {
+				@components.Tag("legacy label", "")
+			}
+			<span class="text-faint">·</span>
 			<span>written by</span>
 			<a href={ templ.SafeURL("/workflows/" + v.Workflow) } class="font-mono text-ink hover:underline">{ v.Workflow }</a>
 			<span class="text-faint">›</span>
@@ -26,17 +36,6 @@ templ Load(v LoadView) {
 		</div>
 		<div class="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
 			<div class="flex min-w-0 flex-col gap-3">
-				@components.Panel("Rows per load", "") {
-					<div class="px-3.5 pt-3">
-						@components.LoadBars(v.Bars, v.Missed)
-					</div>
-					<p class="px-4 pt-2 pb-4 text-[0.75rem] text-muted">
-						Oldest on the left; each bar opens the run that wrote it. A hollow bar is a load that did not say how many rows it wrote, and a red one wrote none.
-						if v.Missed > 0 {
-							Dashed bars are scheduled loads that did not arrive.
-						}
-					</p>
-				}
 				@recentLoads(v.TargetView)
 				@configurations(v.TargetView)
 				@panels(v.TargetView)
@@ -83,15 +82,6 @@ templ Load(v LoadView) {
 				}
 			</div>
 		</div>
-	}
-}
-
-// loadEyebrow is how the load stands and what it is, above its URI.
-templ loadEyebrow(v LoadView) {
-	@components.Freshness(string(v.Row.Status))
-	<span class="text-[0.7rem] font-medium tracking-[0.08em] text-muted uppercase">SDK load · { loadKind(v) }</span>
-	if v.Row.Legacy {
-		@components.Tag("legacy label", "")
 	}
 }
 

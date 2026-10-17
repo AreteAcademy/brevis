@@ -1,6 +1,10 @@
 package components
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/a-h/templ"
+)
 
 // Stat is one number in a Stats strip.
 type Stat struct {
@@ -15,6 +19,15 @@ type Stat struct {
 	Dot string
 	// Bar is an optional thin bar under the value, in segments.
 	Bar []BarSegment
+	// Sub is faint text beside the label ("· 3 loads").
+	Sub string
+	// Tone is a text colour class for the value, for a number that needs a
+	// look (`text-state-failed`); empty is the ink.
+	Tone string
+	// Body is drawn under the label in place of a value: a small chart.
+	Body templ.Component
+	// Title is the cell's tooltip: how to read what it shows.
+	Title string
 }
 
 // BarSegment is one part of a Stat's bar: its share of the whole (0..1) and

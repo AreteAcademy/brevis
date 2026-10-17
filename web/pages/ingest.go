@@ -419,6 +419,10 @@ func containsString(list []string, s string) bool {
 type LoadView struct {
 	TargetView
 	Workflow, Step string
+
+	// Read is how many rows the newest load's step read (RowsRead), nil
+	// when its run's stages do not say.
+	Read *int64
 }
 
 // BuildLoad narrows a destination to the loads and the writer of one step:
@@ -460,13 +464,26 @@ func loadStats(v LoadView) []components.Stat {
 	if len(v.Loads) > 0 && v.Loads[0].Bytes != nil {
 		bytes = bytesText(*v.Loads[0].Bytes)
 	}
-	recent := components.Stat{Label: "Recent loads", Value: fmt.Sprint(len(v.Loads))}
-	if len(v.Loads) >= loadsShown {
-		recent.Note = fmt.Sprintf("the last %d", loadsShown)
+	var recent components.Stat
+	rows := components.Stat{Label: "Rows, last load", Value: rowsText(v.Row.LastRows)}
+	if v.Read != nil {
+		rows.Note = "of " + rowsText(v.Read) + " read"
+		// Nothing written out of something read is the load that needs a
+		// look: a merge that found every row already there, or a filter
+		// that kept none.
+		if v.Row.LastRows != nil && *v.Row.LastRows == 0 && *v.Read > 0 {
+			rows.Tone = "text-state-failed"
+		}
 	}
+	recent.Label = "Rows per load"
+	recent.Value = ""
+	recent.Note = ""
+	recent.Sub = loadsCount(len(v.Loads))
+	recent.Body = components.LoadBarsSized(v.Bars, v.Missed, "h-[26px]")
+	recent.Title = barsLegend(v.Missed)
 	return []components.Stat{
 		{Label: "Last load", Value: components.When(v.Row.LastWhen), Note: components.UTCStamp(v.Row.LastWhen)},
-		{Label: "Rows, last load", Value: rowsText(v.Row.LastRows)},
+		rows,
 		{Label: "Bytes, last load", Value: bytes},
 		recent,
 	}
@@ -933,4 +950,60 @@ func hashTabsCSS(host string, keys ...string) string {
 		b.WriteString(on + h + ` [data-tab="` + k + `"]{border-color:var(--color-accent-strong);color:var(--color-ink)}`)
 	}
 	return b.String()
+}
+
+// RowsRead is how many rows a load's step read, from its stages in that
+// load's run (screen-load-v2 LV2): the landing records only what was
+// written. The first map's `in` is what entered the pipeline; with no map,
+// the source's own `rows`. Nil when the stages do not say -- a step without
+// the SDK, or a source that counts pages, not rows.
+func RowsRead(stages []postgres.Stage) *int64 {
+	var source *int64
+	for _, s := range stages {
+		switch s.Name {
+		case "map":
+			if n, ok := wholeNumber(s.Numbers["in"]); ok {
+				return &n
+			}
+		case "extract":
+			if n, ok := wholeNumber(s.Numbers["rows"]); ok && source == nil {
+				source = &n
+			}
+		}
+	}
+	return source
+}
+
+func wholeNumber(v any) (int64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return int64(n), true
+	case int64:
+		return n, true
+	case int:
+		return int64(n), true
+	}
+	return 0, false
+}
+
+// loadsCount says how many loads the bars draw, and that it is the last
+// loadsShown when the read was cut there: a count at the LIMIT is a floor.
+func loadsCount(n int) string {
+	if n >= loadsShown {
+		return fmt.Sprintf("the last %d loads", loadsShown)
+	}
+	if n == 1 {
+		return "1 load"
+	}
+	return fmt.Sprintf("%d loads", n)
+}
+
+// barsLegend is how to read the bars, in the cell's title now that they sit
+// in the strip.
+func barsLegend(missed int) string {
+	s := "Oldest on the left; each bar opens the run that wrote it. A hollow bar is a load that did not say how many rows it wrote, and a red one wrote none."
+	if missed > 0 {
+		s += " Dashed bars are scheduled loads that did not arrive."
+	}
+	return s
 }

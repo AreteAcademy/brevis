@@ -1,11 +1,15 @@
 package api_test
 
 import (
+	"log/slog"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/api"
+	"github.com/AreteAcademy/brevis/internal/branding"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
@@ -72,5 +76,51 @@ func TestALoadPageForAStepWithSeveralDestinations(t *testing.T) {
 	}
 	if code, _ := get(t, ui, "/ingest/loads/multi/split?target=s3://elsewhere/"); code != http.StatusNotFound {
 		t.Errorf("a target the step does not write answered %d", code)
+	}
+}
+
+// A LOAD SAYS WHAT IT READ beside what it wrote (screen-load-v2 LV2): the
+// newest load's run has the step's stages, and a load that wrote 0 of 370
+// is drawn in the failed tone. The head carries who writes it and when; the
+// bars sit in the strip, their legend in the cell's title.
+func TestALoadSaysHowManyRowsItRead(t *testing.T) {
+	cat := loadCatalog()
+	cat.detail.Loads[0].Rows = i64(0)
+	cat.detail.Writers[0].LastRows = i64(0)
+	execs := execsFake{states: map[string]postgres.NodeState{"report": {Stages: []postgres.Stage{
+		{Name: "extract", Numbers: map[string]any{"pages": 10.0}},
+		{Name: "map", Numbers: map[string]any{"in": 370.0, "out": 370.0}},
+		{Name: "load", Numbers: map[string]any{"rows": 0.0}},
+	}}}}
+	ui := api.NewUI(nil, nil, execs, nil, nil, cat, branding.Default(), slog.New(slog.DiscardHandler))
+	_, body := get(t, ui, "/ingest/loads/daily_sales/report")
+
+	text := strings.Join(strings.Fields(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(body, " ")), " ")
+	if !strings.Contains(text, "0 of 370 read") {
+		t.Error("the rows KPI does not say what was read")
+	}
+	if !strings.Contains(body, "text-state-failed") {
+		t.Error("0 written of 370 read is not in the failed tone")
+	}
+	if strings.Contains(body, ">Rows per load</h2>") {
+		t.Error("the bars still have a panel of their own")
+	}
+	if !strings.Contains(body, "each bar opens the run that wrote it") {
+		t.Error("the bars lost their legend")
+	}
+	if strings.Contains(body, "uppercase") && strings.Contains(body, "SDK load ·") && strings.Index(body, "SDK load") < strings.Index(body, "<h1") {
+		t.Error("the kind is still an eyebrow above the title")
+	}
+
+	mapped := execs
+	mapped.states = map[string]postgres.NodeState{"report": {Instances: 3, Done: 3, Stages: execs.states["report"].Stages}}
+	_, m := get(t, api.NewUI(nil, nil, mapped, nil, nil, loadCatalog(), branding.Default(), slog.New(slog.DiscardHandler)), "/ingest/loads/daily_sales/report")
+	if strings.Contains(m, "of 370 read") {
+		t.Error("a mapped step's load claims one instance's read count")
+	}
+
+	_, plain := get(t, dataUI(loadCatalog()), "/ingest/loads/daily_sales/report")
+	if strings.Contains(plain, " read<") || strings.Contains(plain, "of 370") {
+		t.Error("a load with no stages to read claims a read count")
 	}
 }
