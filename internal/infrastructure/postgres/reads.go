@@ -64,6 +64,9 @@ type Indicators struct {
 	Running      int
 	Pending      int
 	MeanDuration time.Duration
+	// Retried are the runs on their second attempt or later: a failure that
+	// healed, which does not show as a failure (screen-overview-v2).
+	Retried int
 }
 
 // Ratio returns `parte` as a percentage of everything already finished.
@@ -319,11 +322,12 @@ func (r *ReadRepo) IndicatorsFor(ctx context.Context, window time.Duration, work
 		       count(*) FILTER (WHERE status IN ('running', 'retrying')),
 		       count(*) FILTER (WHERE status = 'queued'),
 		       avg(EXTRACT(EPOCH FROM (terminado_em - iniciado_em)) * 1000)
-		         FILTER (WHERE terminado_em IS NOT NULL AND iniciado_em IS NOT NULL)
+		         FILTER (WHERE terminado_em IS NOT NULL AND iniciado_em IS NOT NULL),
+		       count(*) FILTER (WHERE attempt > 0)
 		FROM runs
 		WHERE criado_em >= now() - $1::interval
 		  AND ($2 = '' OR workflow_slug = $2)`, window, workflow).
-		Scan(&i.Total, &i.Succeeded, &i.Failed, &i.Running, &i.Pending, &meanMs)
+		Scan(&i.Total, &i.Succeeded, &i.Failed, &i.Running, &i.Pending, &meanMs, &i.Retried)
 	if err != nil {
 		return i, err
 	}
@@ -378,18 +382,35 @@ func (r *ReadRepo) RunsPerDay(ctx context.Context, workflow string, days int) ([
 	return out, rows.Err()
 }
 
-// RunsPerHour returns one column per hour, the empty ones INCLUDED.
+// Grain is a chart's bucket: an hour or a day. A closed type, mapped to the
+// SQL literal here -- a value from a URL never reaches the query.
+type Grain int
+
+const (
+	ByHour Grain = iota
+	ByDay
+)
+
+func (g Grain) unit() string {
+	if g == ByDay {
+		return "day"
+	}
+	return "hour"
+}
+
+// RunsPer returns one column per hour or per day, the empty ones INCLUDED.
 //
 // The left `generate_series` is the point: without it an hour with no run
 // simply would not appear, and the chart would compress time, giving the
 // impression of continuous activity where there was a gap.
-func (r *ReadRepo) RunsPerHour(ctx context.Context, horas int) ([]Bucket, error) {
+func (r *ReadRepo) RunsPer(ctx context.Context, g Grain, n int) ([]Bucket, error) {
+	unit := g.unit()
 	rows, err := r.pool.Query(ctx, `
 		WITH janela AS (
 		    SELECT generate_series(
-		        date_trunc('hour', now()) - make_interval(hours => $1 - 1),
-		        date_trunc('hour', now()),
-		        interval '1 hour') AS inicio
+		        date_trunc('`+unit+`', now()) - ($1::int - 1) * interval '1 `+unit+`',
+		        date_trunc('`+unit+`', now()),
+		        interval '1 `+unit+`') AS inicio
 		)
 		SELECT j.inicio,
 		       count(r.id) FILTER (WHERE r.status = 'success'),
@@ -399,9 +420,9 @@ func (r *ReadRepo) RunsPerHour(ctx context.Context, horas int) ([]Bucket, error)
 		       avg(EXTRACT(EPOCH FROM (r.terminado_em - r.iniciado_em)) * 1000)
 		FROM janela j
 		LEFT JOIN runs r
-		       ON date_trunc('hour', r.criado_em) = j.inicio
+		       ON date_trunc('`+unit+`', r.criado_em) = j.inicio
 		GROUP BY j.inicio
-		ORDER BY j.inicio`, horas)
+		ORDER BY j.inicio`, n)
 	if err != nil {
 		return nil, err
 	}

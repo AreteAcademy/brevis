@@ -34,12 +34,6 @@ import (
 	"github.com/AreteAcademy/brevis/web/pages"
 )
 
-// overviewWindow is the dashboard's horizon. Twenty-four hours cover a full
-// daily cycle -- most schedules are daily, and a shorter window would show only
-// part of the day and make the success rate swing because of the cut, not
-// because anything changed.
-const overviewWindow = 24 * time.Hour
-
 // workflowWindow is the horizon of ONE workflow's numbers, and it is thirty
 // days rather than the dashboard's twenty-four hours.
 //
@@ -55,7 +49,7 @@ type Leitura interface {
 	IndicatorsFor(ctx context.Context, window time.Duration, workflow string) (postgres.Indicators, error)
 	RunsPerDay(ctx context.Context, workflow string, days int) ([]postgres.Day, error)
 	LoadTrend(ctx context.Context, workflow string, days int) ([]postgres.LoadDay, error)
-	RunsPerHour(ctx context.Context, horas int) ([]postgres.Bucket, error)
+	RunsPer(ctx context.Context, g postgres.Grain, n int) ([]postgres.Bucket, error)
 	InFlight(ctx context.Context, limite int) ([]postgres.RunSummary, error)
 	LatestRuns(ctx context.Context, limite int) ([]postgres.RunSummary, error)
 	Runs(ctx context.Context, f postgres.RunFilter) ([]postgres.RunSummary, error)
@@ -848,13 +842,14 @@ func (u *UI) components(w http.ResponseWriter, r *http.Request) {
 
 func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	window := pages.ParseWindow(r.URL.Query().Get("window"))
 
-	ind, err := u.leitura.Indicators(ctx, overviewWindow)
+	ind, err := u.leitura.Indicators(ctx, window.Span)
 	if err != nil {
 		u.failure(w, r, err)
 		return
 	}
-	buckets, err := u.leitura.RunsPerHour(ctx, int(overviewWindow.Hours()))
+	buckets, err := u.leitura.RunsPer(ctx, window.Grain, window.Buckets)
 	if err != nil {
 		u.failure(w, r, err)
 		return
@@ -881,7 +876,7 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u.render(w, r, pages.Overview(pages.OverviewData{
-		Window:   overviewWindow,
+		Window:   window,
 		Ind:      ind,
 		Buckets:  buckets,
 		EmCurso:  emCurso,
