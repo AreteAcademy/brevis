@@ -413,3 +413,29 @@ func TestTheOverviewsNumbersAreAStrip(t *testing.T) {
 		t.Error("with no schedule the next trigger cell is not \"no schedule\"")
 	}
 }
+
+// BESIDE THE CHART, WHAT RUNS NEXT (screen-overview-v2 OV3): the eight
+// soonest triggers, each its workflow, cron and time -- where the donut was;
+// the donut's four counts are in the strip.
+func TestTheOverviewsChartSitsBesideTheNextTriggers(t *testing.T) {
+	now := time.Date(2026, 10, 17, 3, 48, 0, 0, time.UTC)
+	page := draw(t, Overview(OverviewData{Window: ParseWindow("7d"), Now: now,
+		Proximas: []NextRun{{Workflow: "id_verification", Cron: "15 * * * *", When: now.Add(12 * time.Minute)}}}))
+	if strings.Contains(page, ">Distribution<") {
+		t.Error("the donut panel is still drawn")
+	}
+	if !strings.Contains(page, ">Runs per day<") {
+		t.Error("a 7-day window is not charted by day")
+	}
+	at := strings.Index(page, ">Next triggers<")
+	if at < 0 {
+		t.Fatal("no next triggers panel")
+	}
+	next := page[at:]
+	next = next[:strings.Index(next, "</section>")]
+	for _, want := range []string{`href="/workflows/id_verification"`, "15 * * * *", "in 12m", "Oct 17 04:00", `class="ct `} {
+		if !strings.Contains(next, want) {
+			t.Errorf("the next triggers lost %s", want)
+		}
+	}
+}

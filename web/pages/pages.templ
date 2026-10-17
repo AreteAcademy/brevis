@@ -55,8 +55,10 @@ templ Overview(d OverviewData) {
 			}
 		</p>
 		@components.Stats(overviewStats(d))
-		<div class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_320px]">
-			@components.Panel("Runs per hour", "") {
+		// THE CHART AND WHAT RUNS NEXT, SIDE BY SIDE (screen-overview-v2 OV3):
+		// the donut's four counts are in the strip now.
+		<div class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_380px]">
+			@components.Panel(chartTitle(d.Window), "") {
 				<div class="px-3.5 py-3">
 					<p class="mb-3 text-[12.5px] text-muted">
 						Count and average duration over the { d.Window.Label }.
@@ -64,17 +66,7 @@ templ Overview(d OverviewData) {
 					@components.RunsChart(d.Buckets)
 				</div>
 			}
-			@components.Panel("Distribution", "") {
-				<div class="px-3.5 py-3">
-					@components.Rosca(d.Ind)
-					<dl class="mt-4 space-y-1.5 text-sm">
-						@distLine("Success", d.Ind.Succeeded, "bg-state-success")
-						@distLine("Failure", d.Ind.Failed, "bg-state-failed")
-						@distLine("Running", d.Ind.Running, "bg-state-running")
-						@distLine("Queued", d.Ind.Pending, "bg-state-queued")
-					</dl>
-				</div>
-			}
+			@nextTriggers(d)
 		</div>
 		<div class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
 			@components.Panel("In progress", "") {
@@ -113,39 +105,6 @@ templ Overview(d OverviewData) {
 					}
 				</div>
 			}
-			@components.Panel("Upcoming runs", "") {
-				<div class="px-3.5 py-3">
-					if len(d.Proximas) == 0 {
-						@components.Empty("No active schedule.", "brevis publish file.yaml")
-					} else {
-						<table class="ct w-full text-sm">
-							<thead>
-								<tr class="border-b border-line text-left">
-									@th("Workflow", "")
-									@th("Schedule", "")
-									@th("Next trigger", "text-right")
-								</tr>
-							</thead>
-							<tbody class="divide-y divide-line-soft">
-								for _, p := range d.Proximas {
-									<tr>
-										<td class="py-2.5 pr-3">
-											<a href={ templ.SafeURL("/workflows/" + p.Workflow) } class="font-medium text-ink hover:text-gold-strong">
-												{ p.Workflow }
-											</a>
-										</td>
-										<td class="py-2.5 pr-3 font-mono text-xs text-muted">{ p.Cron }</td>
-										<td class="py-2.5 text-right text-xs tabular-nums text-muted">
-											<span class="text-ink">@components.ShortStamp(&p.When)</span>
-											<span class="ml-2 text-gold-strong">{ components.When(&p.When) }</span>
-										</td>
-									</tr>
-								}
-							</tbody>
-						</table>
-					}
-				</div>
-			}
 		</div>
 		<section class="mt-3">
 			<div class="mb-3 flex items-baseline justify-between">
@@ -175,12 +134,35 @@ templ windowToggleT(current Window) {
 	</nav>
 }
 
-templ distLine(label string, value int, matiz string) {
-	<div class="flex items-center gap-2">
-		<span class={ "h-2 w-2 shrink-0 rounded-full", matiz }></span>
-		<dt class="flex-1 text-muted">{ label }</dt>
-		<dd class="font-medium tabular-nums text-ink">{ fmt.Sprint(value) }</dd>
-	</div>
+// nextTriggers are the eight soonest triggers: the workflow, its cron, and
+// when -- "in 12m" and the time.
+templ nextTriggers(d OverviewData) {
+	@components.PanelLink("Next triggers", fmt.Sprint(len(d.Proximas)), "/workflows", "workflows") {
+		if len(d.Proximas) == 0 {
+			<div class="px-3.5 py-3">
+				@components.Empty("No active schedule.", "brevis publish file.yaml")
+			</div>
+		} else {
+			<table class="ct w-full text-[12.5px]">
+				<tbody class="divide-y divide-line-soft">
+					for _, p := range d.Proximas {
+						<tr>
+							<td class="px-2.5 pl-3.5">
+								<a href={ templ.SafeURL("/workflows/" + p.Workflow) } class="font-mono text-[12px] text-ink hover:text-gold-strong">{ p.Workflow }</a>
+							</td>
+							<td class="px-2.5 font-mono text-[11.5px] whitespace-nowrap text-muted">{ p.Cron }</td>
+							<td class="px-2.5 pr-3.5 text-right whitespace-nowrap">
+								<span class="text-ink">in { untilText(p.When.Sub(d.Now)) }</span>
+								<span class="ml-1.5 text-[11.5px] text-faint">
+									@components.ShortStamp(&p.When)
+								</span>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		}
+	}
 }
 
 // th is a column header. The vertical breathing room (py-4) is deliberate:

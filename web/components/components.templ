@@ -205,7 +205,7 @@ templ RunsChart(buckets []postgres.Bucket) {
 				viewBox={ fmt.Sprintf("0 0 %d %d", chartWidth, chartHeight) }
 				class="h-[240px] w-full min-w-[560px]"
 				role="img"
-				aria-label="Runs per hour"
+				aria-label={ "Runs per " + grainWord(buckets) }
 			>
 				// A horizontal grid: four lines are enough to give scale without
 				// virar papel milimetrado.
@@ -316,33 +316,6 @@ templ legenda(cor, text string) {
 	</span>
 }
 
-// Rosca resume a mesma janela em proporcao. O total no centro evita a leitura
-// only relative: 95% of twenty runs is not 95% of two thousand.
-templ Rosca(i postgres.Indicators) {
-	<div class="flex flex-col items-center">
-		<svg viewBox="0 0 120 120" class="h-[190px] w-[190px]" role="img" aria-label="Run distribution">
-			<circle cx="60" cy="60" r="46" fill="none" stroke="var(--color-ink)" stroke-opacity="0.07" stroke-width="16"></circle>
-			for _, a := range arcos(i) {
-				<a href={ templ.SafeURL(a.Link) } class="grafico-alvo" data-dica={ a.Tooltip }>
-					<circle
-						cx="60"
-						cy="60"
-						r="46"
-						fill="none"
-						stroke={ a.Cor }
-						stroke-width="16"
-						stroke-dasharray={ a.Dash }
-						stroke-dashoffset={ fmt.Sprint(a.Offset) }
-						transform="rotate(-90 60 60)"
-					><title>{ a.Tooltip }</title></circle>
-				</a>
-			}
-			<text x="60" y="58" text-anchor="middle" class="fill-ink text-[22px] font-semibold tabular-nums">{ fmt.Sprint(i.Total) }</text>
-			<text x="60" y="74" text-anchor="middle" class="fill-muted text-[9px] tracking-[0.14em]">RUNS</text>
-		</svg>
-	</div>
-}
-
 // ---------------------------------------------------------------------------
 // The shapes' arithmetic. It stays in Go, and not in the template, because
 // arithmetic in the middle of the markup is unreadable and impossible to test.
@@ -408,6 +381,7 @@ func gridLines(buckets []postgres.Bucket) []GridLine {
 }
 
 func bars(buckets []postgres.Bucket) []Bar {
+	span := bucketSpan(buckets)
 	max := ceiling(buckets)
 	util := chartHeight - bottomMargin
 	area := chartWidth - margemEsq
@@ -441,7 +415,7 @@ func bars(buckets []postgres.Bucket) []Bar {
 		bar := Bar{
 			X: x, Width: width,
 			BandX: bandStart, BandWidth: int(step),
-			Tooltip: bucketTooltip(b), Link: bucketLink(b),
+			Tooltip: bucketTooltip(b, span), Link: bucketLink(b, span),
 		}
 		base -= hs
 		bar.YSucceeded, bar.HSucceeded = base, hs
@@ -454,17 +428,45 @@ func bars(buckets []postgres.Bucket) []Bar {
 	return out
 }
 
+// bucketSpan is how long a bucket is, read off the buckets themselves: the
+// Overview asks for hours over a day and for days over a week or a month
+// (screen-overview-v2), and the chart follows without being told.
+func bucketSpan(buckets []postgres.Bucket) time.Duration {
+	if len(buckets) > 1 {
+		if d := buckets[1].Start.Sub(buckets[0].Start); d >= 24*time.Hour {
+			return 24 * time.Hour
+		}
+	}
+	return time.Hour
+}
+
+func grainWord(buckets []postgres.Bucket) string {
+	if bucketSpan(buckets) >= 24*time.Hour {
+		return "day"
+	}
+	return "hour"
+}
+
+// bucketLabel is a bucket's name: its day ("Oct 17", in UTC, as a day bucket
+// is cut) or its hour in the given layout.
+func bucketLabel(b postgres.Bucket, span time.Duration, hourLayout string) string {
+	if span >= 24*time.Hour {
+		return b.Start.UTC().Format("Jan 2")
+	}
+	return b.Start.Local().Format(hourLayout)
+}
+
 // bucketLink leads to that exact hour in the run list. It is what turns the
 // grafico em ponto de partida de investigacao: ver o pico de falhas e clicar
 // nele, em vez de reconstruir o filtro a mao.
-func bucketLink(b postgres.Bucket) string {
+func bucketLink(b postgres.Bucket, span time.Duration) string {
 	de := b.Start.UTC().Format(time.RFC3339)
-	ate := b.Start.Add(time.Hour).UTC().Format(time.RFC3339)
+	ate := b.Start.Add(span).UTC().Format(time.RFC3339)
 	return "/runs?de=" + url.QueryEscape(de) + "&ate=" + url.QueryEscape(ate)
 }
 
-func bucketTooltip(b postgres.Bucket) string {
-	partes := []string{b.Start.Local().Format("02/01 15h")}
+func bucketTooltip(b postgres.Bucket, span time.Duration) string {
+	partes := []string{bucketLabel(b, span, "Jan 2 15h")}
 	if b.Succeeded > 0 {
 		partes = append(partes, fmt.Sprintf("%d success", b.Succeeded))
 	}
@@ -533,6 +535,7 @@ func durationLine(buckets []postgres.Bucket) string {
 }
 
 func hourTicks(buckets []postgres.Bucket) []Brand {
+	span := bucketSpan(buckets)
 	area := chartWidth - margemEsq
 	step := float64(area) / float64(len(buckets))
 
@@ -545,57 +548,8 @@ func hourTicks(buckets []postgres.Bucket) []Brand {
 		}
 		out = append(out, Brand{
 			X:      margemEsq + int(float64(i)*step+step/2),
-			Label: b.Start.Local().Format("15h"),
+			Label: bucketLabel(b, span, "15h"),
 		})
-	}
-	return out
-}
-
-type Arc struct {
-	Cor    string
-	Dash   string
-	Offset int
-	Tooltip   string
-	Link   string
-}
-
-// arcos builds the donut with a dasharray over a single circle. The perimeter is
-// 2*pi*46 ≈ 289; each slice takes its piece and offsets the next.
-func arcos(i postgres.Indicators) []Arc {
-	const perimetro = 289
-	if i.Total == 0 {
-		return nil
-	}
-	fatias := []struct {
-		n      int
-		cor    string
-		name   string
-		state string
-	}{
-		// A CSS variable, and not a hex value: the SVG is served inside the page,
-		// so the donut follows the client's theme like any other element.
-		{i.Succeeded, "var(--color-state-success)", "success", "success"},
-		{i.Failed, "var(--color-state-failed)", "failed", "failed"},
-		{i.Running, "var(--color-state-running)", "running", "running"},
-		{i.Pending, "var(--color-state-queued)", "queued", "queued"},
-	}
-
-	var out []Arc
-	running := 0
-	for _, f := range fatias {
-		if f.n == 0 {
-			continue
-		}
-		size := f.n * perimetro / i.Total
-		out = append(out, Arc{
-			Cor:    f.cor,
-			Dash:   fmt.Sprintf("%d %d", size, perimetro-size),
-			Offset: -running,
-			Tooltip: fmt.Sprintf("%d %s (%.0f%%) — click to see the list",
-				f.n, f.name, float64(f.n)*100/float64(i.Total)),
-			Link: "/runs?estado=" + f.state,
-		})
-		running += size
 	}
 	return out
 }
