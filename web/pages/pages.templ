@@ -22,7 +22,7 @@ import (
 // OverviewData is everything the landing screen shows. A struct rather than
 // seven parameters: the signature was already illegible with four.
 type OverviewData struct {
-	Window    time.Duration
+	Window    Window
 	Ind       postgres.Indicators
 	Buckets    []postgres.Bucket
 	EmCurso   []postgres.RunSummary
@@ -46,7 +46,7 @@ templ Overview(d OverviewData) {
 			@components.Panel("Runs per hour", "") {
 				<div class="px-3.5 py-3">
 					<p class="mb-3 text-[12.5px] text-muted">
-						Count and average duration over the last { fmt.Sprint(int(d.Window.Hours())) } hours.
+						Count and average duration over the { d.Window.Label }.
 					</p>
 					@components.RunsChart(d.Buckets)
 				</div>
