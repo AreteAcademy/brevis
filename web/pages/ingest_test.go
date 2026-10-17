@@ -439,3 +439,44 @@ func TestTheOverviewsChartSitsBesideTheNextTriggers(t *testing.T) {
 		}
 	}
 }
+
+// IN PROGRESS ONLY WHEN SOMETHING RUNS (screen-overview-v2 OV4): an empty
+// panel took half a row to say nothing, which the head's "nothing running"
+// now says. With a run in flight it is there, each run linked. The recent
+// runs sit in a panel with "see all". Nothing the Overview showed is lost.
+func TestInProgressShowsOnlyWhenSomethingRuns(t *testing.T) {
+	now := time.Date(2026, 10, 17, 3, 48, 0, 0, time.UTC)
+	started := now.Add(-time.Minute)
+	recent := []postgres.RunSummary{{ID: "8d36ef6e-0000-0000-0000-000000000001", WorkflowSlug: "daily_sales", Status: "success", TriggerType: "schedule", CreatedAt: now.Add(-time.Hour)}}
+
+	idle := draw(t, Overview(OverviewData{Window: ParseWindow(""), Now: now, Recentes: recent}))
+	if strings.Contains(idle, ">In progress<") || strings.Contains(idle, "Nothing running right now") {
+		t.Error("an empty In progress panel is drawn")
+	}
+	at := strings.Index(idle, ">Recent runs<")
+	if at < 0 {
+		t.Fatal("no recent runs panel")
+	}
+	panel := idle[strings.LastIndex(idle[:at], "<section"):]
+	if !strings.Contains(panel[:strings.Index(panel, "</header>")], `href="/runs"`) {
+		t.Error("\"see all\" is not in the recent runs' heading")
+	}
+	if !strings.Contains(panel, `href="/runs/8d36ef6e-0000-0000-0000-000000000001"`) || !strings.Contains(panel, ">Workflow<") {
+		t.Error("the recent runs lost their link or their Workflow column")
+	}
+
+	busy := draw(t, Overview(OverviewData{Window: ParseWindow(""), Now: now, Recentes: recent,
+		EmCurso: []postgres.RunSummary{{ID: "a1", WorkflowSlug: "orders_sync", Status: "running", TriggerType: "manual", CreatedAt: started, StartedAt: &started}}}))
+	at = strings.Index(busy, ">In progress<")
+	if at < 0 {
+		t.Fatal("a run in flight has no In progress panel")
+	}
+	for _, want := range []string{`href="/runs/a1"`, "orders_sync", "manual", "running"} {
+		if !strings.Contains(busy[at:], want) {
+			t.Errorf("In progress lost %s", want)
+		}
+	}
+	if !strings.Contains(busy, "1 running") {
+		t.Error("the head does not say what runs")
+	}
+}
