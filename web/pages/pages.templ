@@ -68,50 +68,42 @@ templ Overview(d OverviewData) {
 			}
 			@nextTriggers(d)
 		</div>
-		<div class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
-			@components.Panel("In progress", "") {
-				<div class="px-3.5 py-3">
-					if len(d.EmCurso) == 0 {
-						@components.Empty("Nothing running right now.", "")
-					} else {
-						<table class="ct w-full text-sm">
-							<thead>
-								<tr class="border-b border-line text-left">
-									@th("Workflow", "")
-									@th("Trigger", "")
-									@th("Started", "")
-									@th("State", "text-right")
+		// IN PROGRESS ONLY WHEN SOMETHING RUNS (screen-overview-v2 OV4): the
+		// head says "nothing running" otherwise.
+		if len(d.EmCurso) > 0 {
+			<section class="mt-3">
+				@components.PanelLink("In progress", fmt.Sprint(len(d.EmCurso)), "/runs?state=running", "all running") {
+					<table class="ct w-full text-[12.5px]">
+						<thead>
+							<tr class="text-left">
+								@th("Workflow", "pl-3.5")
+								@th("Trigger", "")
+								@th("Started", "")
+								@th("State", "pr-3.5 text-right")
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-line-soft">
+							for _, r := range d.EmCurso {
+								<tr>
+									<td class="px-2.5 pl-3.5">
+										<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-mono text-[12px] text-ink hover:text-gold-strong">{ r.WorkflowSlug }</a>
+									</td>
+									<td class="px-2.5 text-muted">{ r.TriggerType }</td>
+									<td class="px-2.5 text-muted tabular-nums">{ components.When(startOrCreated(r)) }</td>
+									<td class="px-2.5 pr-3.5 text-right">
+										@components.State(r.Status)
+									</td>
 								</tr>
-							</thead>
-							<tbody class="divide-y divide-line-soft">
-								for _, r := range d.EmCurso {
-									<tr>
-										<td class="py-2.5 pr-3">
-											<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-medium text-ink hover:text-gold-strong">
-												{ r.WorkflowSlug }
-											</a>
-										</td>
-										<td class="py-2.5 pr-3 text-xs text-muted">{ r.TriggerType }</td>
-										<td class="py-2.5 pr-3 text-xs text-muted tabular-nums">
-											{ components.When(startOrCreated(r)) }
-										</td>
-										<td class="py-2.5 text-right">
-											@components.State(r.Status)
-										</td>
-									</tr>
-								}
-							</tbody>
-						</table>
-					}
-				</div>
-			}
-		</div>
+							}
+						</tbody>
+					</table>
+				}
+			</section>
+		}
 		<section class="mt-3">
-			<div class="mb-3 flex items-baseline justify-between">
-				<h2 class="text-[13px] font-semibold text-ink">Recent runs</h2>
-				<a href="/runs" class="text-xs text-gold-strong hover:underline">see all</a>
-			</div>
-			@runsTable(d.Recentes, Pagination{})
+			@components.PanelLink("Recent runs", "", "/runs", "see all") {
+				@runsTableWith(d.Recentes, Pagination{}, runsOpts{Workflow: true, Bare: true})
+			}
 		</section>
 	}
 }
