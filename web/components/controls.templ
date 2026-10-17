@@ -97,14 +97,14 @@ templ Segmented(label string, options []SegOption) {
 // since only it knows what a panel is. Each tab is `type="button"`, because a
 // tab inside a form must not submit it.
 templ Tabs(label string, tabs []Tab) {
-	<div role="tablist" aria-label={ label } class="flex shrink-0 items-center gap-1 border-b border-line-soft">
+	<div role="tablist" aria-label={ label } class="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line-soft">
 		for _, tb := range tabs {
 			<button
 				type="button"
 				role="tab"
 				data-tab={ tb.Key }
 				aria-selected={ ariaBool(tb.Selected) }
-				class="-mb-px border-b-2 border-transparent px-3 py-2 text-[0.82rem] text-muted transition-colors duration-150 hover:text-ink aria-selected:border-accent-strong aria-selected:text-ink"
+				class="-mb-px shrink-0 border-b-2 border-transparent px-3 py-2 text-[0.82rem] whitespace-nowrap text-muted transition-colors duration-150 hover:text-ink aria-selected:border-accent-strong aria-selected:text-ink"
 			>{ tb.Label }</button>
 		}
 	</div>

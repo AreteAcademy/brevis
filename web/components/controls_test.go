@@ -129,6 +129,11 @@ func TestTabsAreATablistWithOneSelected(t *testing.T) {
 	if n := strings.Count(got, `type="button"`); n != 2 {
 		t.Errorf("a tab inside a form would submit it: %d of 2 are type=button", n)
 	}
+	// A label with its count ("Sources 3") never breaks in two on a phone:
+	// the strip scrolls instead (screen-load-v2).
+	if !strings.Contains(got, "whitespace-nowrap") || !strings.Contains(got, "overflow-x-auto") {
+		t.Error("a tab's label can wrap, or the strip cannot scroll")
+	}
 }
 
 // `/` IS WIRED ONCE, AND NEVER WHILE SOMEBODY IS TYPING. A slash typed into a
