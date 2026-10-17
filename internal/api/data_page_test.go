@@ -452,8 +452,9 @@ func TestTheLoadsFilterWhileYouType(t *testing.T) {
 }
 
 // A LOAD IS TITLED BY ITS URI, IN THE MACHINE'S FACE: the URI is what
-// somebody came to read and what they will paste. Above it, what kind of
-// thing it is and how it stands, before the title rather than beside it.
+// somebody came to read and what they will paste. UNDER it, one meta line:
+// how it stands and what kind of thing it is (screen-load-v2 LV2 moved it
+// from an eyebrow above the title, folding in the "written by" line).
 func TestALoadIsTitledByItsURI(t *testing.T) {
 	d := lateDetail()
 	_, body := get(t, loadUI(d, nil), "/ingest/loads/orders_sync/load")
@@ -466,15 +467,16 @@ func TestALoadIsTitledByItsURI(t *testing.T) {
 	if !strings.Contains(h1, `id="destination-uri"`) {
 		t.Error("the title has no id for Copy URI to read")
 	}
-	eyebrow := body[strings.Index(body, "data-page-header"):strings.Index(body, "<h1")]
+	meta := body[strings.Index(body, "data-load-meta"):]
+	meta = meta[:strings.Index(meta, "</p>")]
 	// LATE OR STALE, BY THE CLOCK. The fixture loaded 90 minutes ago on an
 	// hourly schedule, so which one it is depends on the minute the test
 	// runs -- pinning one made this test fail at the top of some hours.
-	if !strings.Contains(eyebrow, "late") && !strings.Contains(eyebrow, "stale") {
-		t.Errorf("the line above the title does not say how the load stands: %s", eyebrow)
+	if !strings.Contains(meta, "late") && !strings.Contains(meta, "stale") {
+		t.Errorf("the meta line does not say how the load stands: %s", meta)
 	}
-	if !strings.Contains(eyebrow, "postgres") {
-		t.Errorf("the line above the title does not say what it is: %s", eyebrow)
+	if !strings.Contains(meta, "postgres") {
+		t.Errorf("the meta line does not say what it is: %s", meta)
 	}
 }
 

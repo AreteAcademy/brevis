@@ -12,7 +12,7 @@ import "fmt"
 templ Stats(items []Stat) {
 	<dl class={ "grid gap-px overflow-hidden rounded-card border border-line bg-line-soft", statsCols(len(items)) }>
 		for _, s := range items {
-			<div class="min-w-0 bg-surface px-3.5 py-2.5">
+			<div class="min-w-0 bg-surface px-3.5 py-2.5" title={ s.Title }>
 				<dt class="flex items-center gap-1.5 text-[11.5px] whitespace-nowrap text-muted">
 					if s.Dot != "" {
 						<span class={ "h-[7px] w-[7px] shrink-0 rounded-full", s.Dot }></span>
@@ -21,9 +21,17 @@ templ Stats(items []Stat) {
 						@Icon(s.Icon, "h-3.5 w-3.5")
 					}
 					<span>{ s.Label }</span>
+					if s.Sub != "" {
+						<span class="text-faint">· { s.Sub }</span>
+					}
 				</dt>
+				if s.Body != nil {
+					<dd class="mt-1">
+						@s.Body
+					</dd>
+				} else {
 				<dd class="mt-[3px] flex flex-wrap items-baseline gap-x-1.5 text-[18px] leading-[1.2] font-semibold tracking-[-0.02em] text-ink tabular-nums">
-					<span>{ s.Value }</span>
+					<span class={ s.Tone }>{ s.Value }</span>
 					if s.Unit != "" {
 						<span class="text-[11.5px] font-normal tracking-normal text-faint">{ s.Unit }</span>
 					}
@@ -31,6 +39,7 @@ templ Stats(items []Stat) {
 						<span class="min-w-0 text-[11.5px] font-normal tracking-normal text-faint">{ s.Note }</span>
 					}
 				</dd>
+				}
 				if len(s.Bar) > 0 {
 					<dd class="mt-[7px] flex h-1 gap-0.5 overflow-hidden rounded-sm bg-surface-2" aria-hidden="true">
 						for _, seg := range s.Bar {

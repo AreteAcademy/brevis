@@ -547,11 +547,38 @@ func (u *UI) loadDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	v := pages.BuildLoad(*d, workflow, step, time.Now())
 	v.Self = self
+	v.Read = u.rowsRead(r.Context(), v, step)
 	if err := u.targetTools(r, &v.TargetView, target); err != nil {
 		u.failure(w, r, err)
 		return
 	}
 	u.render(w, r, pages.Load(v))
+}
+
+// rowsRead asks the newest load's run what its step read (screen-load-v2
+// LV2). One read by run id; a failure is a page without the count, not an
+// error -- the landing's own numbers are still right.
+func (u *UI) rowsRead(ctx context.Context, v pages.LoadView, step string) *int64 {
+	if u.execs == nil || len(v.Loads) == 0 {
+		return nil
+	}
+	id, err := uuid.Parse(v.Loads[0].RunID)
+	if err != nil {
+		return nil
+	}
+	states, err := u.execs.NodeStates(ctx, id)
+	if err != nil {
+		u.log.Warn("the load's run stages are unavailable", "run", id, "error", err)
+		return nil
+	}
+	// A MAPPED STEP HAS NO ONE ANSWER. Its node state carries one
+	// instance's stages, and the newest load is one instance's landing: the
+	// two need not be the same instance, and "2 of 3 read" mixing them would
+	// be a number that is wrong in the way that matters most.
+	if states[step].Instances > 0 {
+		return nil
+	}
+	return pages.RowsRead(states[step].Stages)
 }
 
 // previewRows is how many a destination page draws.
