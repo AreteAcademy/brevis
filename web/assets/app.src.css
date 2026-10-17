@@ -976,6 +976,17 @@ tbody[data-collapsed] > tr:not(:first-child) {
   display: none;
 }
 
+/* A LOAD'S PREVIEW WITHOUT ITS EMPTY COLUMNS (screen-load-v2 LV4): the
+   server marks a column NULL in every row; the switch (data-js) hides them,
+   on by default -- and only under .js, so with no script every column shows.
+   The note says which are hidden, so it goes when they come back. */
+.js [data-hide-null] [data-null-col] {
+  display: none;
+}
+[data-preview]:not([data-hide-null]) [data-null-note] {
+  display: none;
+}
+
 /* A NAVIGATION IN FLIGHT (nav-latency NL3): a thin accent bar at the top while
    the next page comes, once it has taken more than 120 ms (ui.js sets the
    mark). A pseudo-element, so there is nothing to announce and nothing to

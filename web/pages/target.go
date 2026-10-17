@@ -315,3 +315,65 @@ func targetProperties(v TargetView) []components.Def {
 		{Term: "Rows, last load", Value: rowsText(v.Row.LastRows), Mono: true},
 	}
 }
+
+// MetadataColumns are the columns the SDK writes on its own, the
+// sdk/internal/core names (TestTheMetadataColumnsAreTheSDKs). A load's
+// preview puts them last, under "metadata": they are on every row and say
+// nothing about the data.
+var MetadataColumns = []string{"ingestion_id", "ingestion_loaded_at"}
+
+// NullColumns marks the columns that are NULL in every row of a preview
+// (screen-load-v2 LV4). With no rows, none is: an empty preview proves
+// nothing about a column. An empty string is a value, not a NULL.
+func NullColumns(res *sqlserve.Result) []bool {
+	out := make([]bool, len(res.Columns))
+	if len(res.Rows) == 0 {
+		return out
+	}
+	for c := range out {
+		out[c] = true
+		for _, row := range res.Rows {
+			if c < len(row) && row[c] != nil {
+				out[c] = false
+				break
+			}
+		}
+	}
+	return out
+}
+
+// previewOrder is the load preview's column order: the data's own columns as
+// they came, then the SDK's metadata. meta is how many are metadata.
+func previewOrder(res *sqlserve.Result) (order []int, meta int) {
+	var tail []int
+	for i, c := range res.Columns {
+		if slices.Contains(MetadataColumns, c) {
+			tail = append(tail, i)
+		} else {
+			order = append(order, i)
+		}
+	}
+	return append(order, tail...), len(tail)
+}
+
+// hiddenNote says which columns the switch hides: "2 columns hidden: a, b".
+func hiddenNote(res *sqlserve.Result, nulls []bool) string {
+	var names []string
+	for i, null := range nulls {
+		if null {
+			names = append(names, res.Columns[i])
+		}
+	}
+	if len(names) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s hidden: %s", plural(len(names), "column"), strings.Join(names, ", "))
+}
+
+// cellAt is a row's cell, nil (NULL) when the row is short.
+func cellAt(row []any, i int) any {
+	if i < len(row) {
+		return row[i]
+	}
+	return nil
+}
