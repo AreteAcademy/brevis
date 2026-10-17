@@ -10,6 +10,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/api"
 	"github.com/AreteAcademy/brevis/internal/branding"
+	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
@@ -122,5 +123,41 @@ func TestALoadSaysHowManyRowsItRead(t *testing.T) {
 	_, plain := get(t, dataUI(loadCatalog()), "/ingest/loads/daily_sales/report")
 	if strings.Contains(plain, " read<") || strings.Contains(plain, "of 370") {
 		t.Error("a load with no stages to read claims a read count")
+	}
+}
+
+// A LOAD'S CONFIGURATION IS IN TABS (screen-load-v2 LV3): Summary, Sources,
+// Transform, Destination, Schema -- hash tabs, every panel in the HTML with
+// its heading -- and what three sources share is said once.
+func TestALoadsConfigurationIsInTabs(t *testing.T) {
+	cat := loadCatalog()
+	cat.detail.Writers[0].Config = &postgres.WriterConfig{Fields: []catalog.ManifestField{
+		{Path: "source.driver", Value: "from.Many"}, {Path: "source.workers", Value: 2.0},
+		{Path: "source.sources.1.driver", Value: "from.Files"}, {Path: "source.sources.1.path", Value: "/in/a.csv"},
+		{Path: "source.sources.2.driver", Value: "from.Files"}, {Path: "source.sources.2.path", Value: "/in/b.csv"},
+		{Path: "source.sources.3.driver", Value: "from.Files"}, {Path: "source.sources.3.path", Value: "/in/c.csv"},
+		{Path: "transform.1.map", Value: []any{"compute(loaded_by)"}},
+		{Path: "target.driver", Value: "to.Files"}, {Path: "target.target", Value: "file:///data/reports/"},
+		{Path: "target.declared.columns", Value: []any{"sku", "qty"}},
+	}}
+	_, body := get(t, dataUI(cat), "/ingest/loads/daily_sales/report")
+
+	for _, want := range []string{`data-hash-tabs`, `data-tab-panel="summary"`, `data-tab-panel="sources"`,
+		`data-tab-panel="transform"`, `data-tab-panel="destination"`, `data-tab-panel="schema"`,
+		`data-tab="sources"`, ">Sources 3<", ">Transform 1<", ">Schema 2<", "data-panel-heading", "Common to 3"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the load's configuration has no %s", want)
+		}
+	}
+	if strings.Count(body, "from.Files") != 1 {
+		t.Errorf("the shared driver is said %d times, not once", strings.Count(body, "from.Files"))
+	}
+	for _, p := range []string{"/in/a.csv", "/in/b.csv", "/in/c.csv", "compute(loaded_by)", "file:///data/reports/"} {
+		if !strings.Contains(body, p) {
+			t.Errorf("the configuration lost %s", p)
+		}
+	}
+	if !strings.Contains(body, "hashTabs") && !strings.Contains(body, `[data-tab-panel="sources"]{display:block}`) {
+		t.Error("the page does not write the rule that opens #sources first")
 	}
 }
