@@ -38,7 +38,7 @@ templ Load(v LoadView) {
 			<div class="flex min-w-0 flex-col gap-3">
 				@recentLoads(v.TargetView)
 				@loadConfiguration(v)
-				@panels(v.TargetView)
+				@loadPreview(v)
 			</div>
 			<div data-side class="flex min-w-0 flex-col gap-3">
 				if w := v.Writer(); w != nil {

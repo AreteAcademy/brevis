@@ -641,6 +641,19 @@
     show(location.hash.slice(1));
   });
 
+  // A preview's empty columns (`[data-null-toggle]`, screen-load-v2 LV4):
+  // the server marked them, the CSS hides them while the preview carries
+  // data-hide-null, and the switch takes it off and puts it back.
+  document.querySelectorAll("[data-null-toggle]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var preview = button.closest("[data-preview]");
+      if (!preview) return;
+      var hide = !preview.hasAttribute("data-hide-null");
+      preview.toggleAttribute("data-hide-null", hide);
+      button.setAttribute("aria-checked", hide ? "true" : "false");
+    });
+  });
+
   // A group that collapses (`[data-group-toggle]` in a tbody): the button,
   // shown only where a script runs (data-js), folds the group's rows under
   // its header. With no script every group stays open.
