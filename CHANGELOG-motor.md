@@ -14,6 +14,24 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.35.0] — 2026-10-17
+
+### Changed: the Overview (#117)
+
+- **A window of 24 hours, 7 days or 30 days**, from three links at the top
+  (`?window=`). The chart is per hour over a day and per day over a week or a
+  month; a day's bar opens that day's runs.
+- **Runs that needed a retry** are counted: a failure that healed, which does
+  not show as one.
+- **The next trigger** is in the strip; the eight soonest sit beside the chart.
+- The head says what runs, what retries and what waits in the queue, each a link
+  to its list. "In progress" shows only when something does.
+- The donut goes; its four counts are in the strip.
+
+No migration. No configuration changes.
+
+---
+
 ## [0.34.0] — 2026-10-17
 
 ### Changed: a workflow's page (#116)
