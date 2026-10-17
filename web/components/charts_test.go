@@ -1,6 +1,9 @@
 package components
 
 import (
+	"context"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -99,26 +102,6 @@ func countM(s string) int {
 	return n
 }
 
-func TestTheDonutsArcsClose(t *testing.T) {
-	i := postgres.Indicators{Total: 10, Succeeded: 7, Failed: 2, Running: 1}
-	arcos := arcos(i)
-	if len(arcos) != 3 {
-		t.Fatalf("got %d arcs, want 3 (a zero slice does not become an arc)", len(arcos))
-	}
-	// Each arc starts where the previous one ended.
-	if arcos[0].Offset != 0 {
-		t.Errorf("the first arc has offset %d", arcos[0].Offset)
-	}
-	if arcos[1].Offset >= 0 || arcos[2].Offset >= arcos[1].Offset {
-		t.Errorf("the offsets do not accumulate: %v", []int{arcos[0].Offset, arcos[1].Offset, arcos[2].Offset})
-	}
-	if len(arcs2(postgres.Indicators{})) != 0 {
-		t.Error("with no runs the donut draws no slice at all")
-	}
-}
-
-func arcs2(i postgres.Indicators) []Arc { return arcos(i) }
-
 func TestTheDurationPicksItsUnit(t *testing.T) {
 	casos := []struct {
 		d        time.Duration
@@ -136,5 +119,31 @@ func TestTheDurationPicksItsUnit(t *testing.T) {
 	}
 	if Duration(nil) != "—" {
 		t.Error("a missing duration should become a dash, not a zero")
+	}
+}
+
+// A DAY'S BAR READS AS A DAY (screen-overview-v2 OV3): the chart takes its
+// grain from its buckets -- a day apart is a day -- and labels, tooltips and
+// links follow: "Oct 17", the runs of that whole day.
+func TestADayBucketReadsAsADay(t *testing.T) {
+	day := time.Date(2026, 10, 11, 0, 0, 0, 0, time.UTC)
+	var buckets []postgres.Bucket
+	for i := 0; i < 7; i++ {
+		buckets = append(buckets, postgres.Bucket{Start: day.Add(time.Duration(i) * 24 * time.Hour), Succeeded: i})
+	}
+	var b strings.Builder
+	if err := RunsChart(buckets).Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	got := b.String()
+	if !strings.Contains(got, ">Oct 17<") || strings.Contains(got, "00h<") {
+		t.Errorf("a day bar is not labelled by its day")
+	}
+	if !strings.Contains(got, `aria-label="Runs per day"`) {
+		t.Error("the chart does not say it is per day")
+	}
+	want := "/runs?de=" + url.QueryEscape("2026-10-17T00:00:00Z") + "&amp;ate=" + url.QueryEscape("2026-10-18T00:00:00Z")
+	if !strings.Contains(got, want) {
+		t.Errorf("the last bar does not open its whole day (%s)", want)
 	}
 }

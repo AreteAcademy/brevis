@@ -35,3 +35,11 @@ func ParseWindow(key string) Window {
 	}
 	return overviewWindows[0]
 }
+
+// chartTitle names the chart by its grain.
+func chartTitle(w Window) string {
+	if w.Grain == postgres.ByDay {
+		return "Runs per day"
+	}
+	return "Runs per hour"
+}
