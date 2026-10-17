@@ -161,3 +161,34 @@ func TestALoadsConfigurationIsInTabs(t *testing.T) {
 		t.Error("the page does not write the rule that opens #sources first")
 	}
 }
+
+// NOTHING THE LOAD PAGE SHOWED IS LOST (screen-load-v2 LV5): every value of
+// the spec's list is still on it after the regrouping -- each load's when,
+// rows, bytes and run; the bars and their legend; who writes it, on what
+// schedule, how it stands; what it is and where. The loads now sit beside
+// the page, and the side's "Destination" panel went to the head, the strip
+// and the Destination tab.
+func TestNothingTheLoadPageShowedIsLost(t *testing.T) {
+	_, body := get(t, dataUI(loadCatalog()), "/ingest/loads/daily_sales/report")
+	text := strings.Join(strings.Fields(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(body, " ")), " ")
+	for _, want := range []string{
+		"8d36ef6e", "6420b0fd", "149", // runs, and the one load with bytes
+		"each bar opens the run that wrote it",                     // the bars' legend
+		"daily_sales", "report", "every day at 04:00", "0 4 * * *", // writer and schedule
+		"file:///data/reports/", "file", // what and where
+	} {
+		if !strings.Contains(text, want) && !strings.Contains(body, want) {
+			t.Errorf("the load page lost %q", want)
+		}
+	}
+	side := body[strings.Index(body, "data-side"):]
+	if !strings.Contains(side, ">Recent loads<") {
+		t.Error("the recent loads are not beside the page")
+	}
+	if strings.Contains(side, ">Destination</h2>") {
+		t.Error("the side still has a Destination panel")
+	}
+	if !strings.Contains(side, `class="ct `) {
+		t.Error("the recent loads are not a compact table")
+	}
+}

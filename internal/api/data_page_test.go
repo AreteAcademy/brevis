@@ -504,7 +504,9 @@ func TestALoadsVerbsAreInItsHeader(t *testing.T) {
 	}
 }
 
-// THE LOADS ARE THE PAGE; WHO WRITES IT AND WHAT IT IS SIT BESIDE THEM. The
+// THE CONFIGURATION IS THE PAGE; ITS LOADS AND WHO WRITES IT SIT BESIDE IT
+// (screen-load-v2 LV5 moved the loads to the side and the side's
+// Destination panel to the head, the strip and the Destination tab). The
 // side column is after the main one in the document, so a narrow screen
 // stacks it below rather than above what somebody came for.
 func TestALoadKeepsItsWriterAndDestinationBeside(t *testing.T) {
@@ -514,13 +516,16 @@ func TestALoadKeepsItsWriterAndDestinationBeside(t *testing.T) {
 	if side < 0 {
 		t.Fatal("the page has no side column")
 	}
-	if loads := strings.Index(body, "Rows per load"); loads < 0 || loads > side {
-		t.Error("the loads are not in the main column")
+	if strip := strings.Index(body, "Rows per load"); strip < 0 || strip > side {
+		t.Error("the bars are not in the strip above the columns")
 	}
-	for _, want := range []string{">Written by<", ">Destination<", "orders_sync", "0 * * * *"} {
+	for _, want := range []string{">Recent loads<", ">Written by<", "orders_sync", "0 * * * *"} {
 		if i := strings.Index(body[side:], want); i < 0 {
 			t.Errorf("the side column does not carry %s", want)
 		}
+	}
+	if !strings.Contains(body[:side], "postgres") {
+		t.Error("what the destination is left the page")
 	}
 }
 
