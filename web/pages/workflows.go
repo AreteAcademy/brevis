@@ -158,3 +158,45 @@ type WorkflowPage struct {
 	// Now is the page's clock, for "next run in 12m".
 	Now time.Time
 }
+
+// NextRunText is when a workflow runs next, as its KPI cell says it
+// (screen-workflow-v2 WV2): "in 12m" and the UTC time beside it while the
+// schedule runs; "paused" or "manual" otherwise. From the server's clock, so
+// it is as fresh as the page; nothing ticks.
+func NextRunText(sum *postgres.WorkflowSummary, now time.Time) (value, sub string) {
+	switch {
+	case sum == nil:
+		return "—", ""
+	case !sum.HasSchedule:
+		return "manual", ""
+	case !sum.Active:
+		return "paused", ""
+	case sum.NextRun == nil:
+		return "—", ""
+	}
+	return "in " + untilText(sum.NextRun.Sub(now)), sum.NextRun.UTC().Format("Jan 2 15:04") + " UTC"
+}
+
+// untilText is a wait rounded to what a person plans by: minutes under an
+// hour, hours and minutes under two days, days after that.
+func untilText(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return "<1m"
+	case d < time.Hour:
+		return fmt.Sprintf("%dm", int(d.Minutes()))
+	case d < 48*time.Hour:
+		h := int(d.Hours())
+		if m := int(d.Minutes()) - h*60; m > 0 {
+			return fmt.Sprintf("%dh %dm", h, m)
+		}
+		return fmt.Sprintf("%dh", h)
+	}
+	return fmt.Sprintf("%dd", int(d.Hours()/24))
+}
+
+// workflowPageStats are the four numbers and, fifth, when it runs next.
+func workflowPageStats(p WorkflowPage) []components.Stat {
+	value, sub := NextRunText(p.Sum, p.Now)
+	return append(workflowStats(p.Stats), components.Stat{Label: "Next run", Value: value, Note: sub})
+}

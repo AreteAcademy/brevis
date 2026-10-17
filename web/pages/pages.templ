@@ -1074,7 +1074,7 @@ templ Workflow(p WorkflowPage) {
 		// has a single run in twenty-four hours and a rate over one sample is
 		// not a rate.
 		<div class="mb-3">
-			@components.Stats(workflowStats(st))
+			@components.Stats(workflowPageStats(p))
 		</div>
 		@dag("/api/workflows/"+w.Slug+"/graph", graph)
 		<section class="mt-3">
