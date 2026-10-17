@@ -1344,8 +1344,12 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 		u.log.Warn("the workflow's summary is unavailable", "workflow", slug, "error", err)
 	}
 
+	now := time.Now()
+	if sum != nil {
+		sum.NextRun = proximaDoWorkflow(*sum, now)
+	}
 	u.render(w, r, pages.Workflow(pages.WorkflowPage{Def: def, Sum: sum, Latest: latest, Stats: stats,
-		Graph: graphSeed(def, nil, "", ""), Now: time.Now()}))
+		Graph: graphSeed(def, nil, "", ""), Now: now}))
 }
 
 // run is a run's page. The header comes from the database on the server; the DAG
