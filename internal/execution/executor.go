@@ -118,7 +118,23 @@ const (
 	// nothing.
 	EventContext EventKind = "context"
 	EventFailed  EventKind = "failed"
+
+	// EventHandover says the step was NOT stopped when its run's context
+	// ended: it goes on where it runs, and Message carries a Handover (JSON)
+	// saying how to find it again (#125). Only an executor whose steps
+	// outlive the scheduler sends it -- the remote one, on a shutdown.
+	EventHandover EventKind = "handover"
 )
+
+// Handover is where a step that outlived its scheduler can be found again: the
+// agent instance that holds it, its execution id, the attempt it is, and the
+// last line the engine read of it.
+type Handover struct {
+	Instance    string `json:"instance,omitempty"`
+	ExecutionID string `json:"execution_id"`
+	Attempt     int    `json:"attempt"`
+	After       int64  `json:"after"`
+}
 
 // Event is one occurrence during the run. `Stream` tells stdout from stderr:
 // merging the two loses the information about where the message came from, and
