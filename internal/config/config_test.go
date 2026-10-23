@@ -250,3 +250,25 @@ func TestTheRenamedVariablesAcceptTheOldNameToo(t *testing.T) {
 		}
 	})
 }
+
+// #125: a host: step is handed over on a shutdown unless the installation
+// says otherwise -- on by default, `off` for #122's cancel. Anything else
+// refuses to start: a typo must not quietly pick one for you.
+func TestHostHandoverIsOnUnlessTurnedOff(t *testing.T) {
+	t.Setenv("BREVIS_DATABASE_URL", "postgres://u:p@localhost:5432/db")
+	for value, want := range map[string]bool{"": true, "on": true, "off": false} {
+		t.Setenv("BREVIS_HOST_HANDOVER", value)
+		c, err := Load()
+		if err != nil {
+			t.Fatalf("BREVIS_HOST_HANDOVER=%q: %v", value, err)
+		}
+		if c.HostHandover != want {
+			t.Errorf("BREVIS_HOST_HANDOVER=%q gives %v, wanted %v", value, c.HostHandover, want)
+		}
+	}
+
+	t.Setenv("BREVIS_HOST_HANDOVER", "false")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "BREVIS_HOST_HANDOVER") {
+		t.Errorf("BREVIS_HOST_HANDOVER=false loaded (%v); wanted a refusal naming the variable", err)
+	}
+}
