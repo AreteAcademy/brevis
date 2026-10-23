@@ -200,3 +200,26 @@ func TestTheJSONCarriesNoEmptyFields(t *testing.T) {
 		}
 	}
 }
+
+// #127: the instances of a `for_each:` step asked for ONE pod name -- PodName
+// never read the map index -- so the first created the pod and the others
+// adopted it and reported its exit code as their own.
+func TestEachInstanceOfAMappedStepGetsItsOwnPod(t *testing.T) {
+	first, second := task(), task()
+	first.MapIndex, second.MapIndex = 0, 1
+	if k8s.PodName(first) == k8s.PodName(second) {
+		t.Errorf("instances 0 and 1 share the pod %q", k8s.PodName(first))
+	}
+}
+
+// And an UNMAPPED step's pod name is byte for byte what it was before #127, so
+// a rolling upgrade still finds the pods of the runs in flight. The literal was
+// computed by PodName on the branch before the change -- pinned here, not
+// recomputed, because recomputing would agree with whatever PodName does now.
+func TestAnUnmappedStepsPodNameIsUnchanged(t *testing.T) {
+	tk := task()
+	tk.MapIndex = -1
+	if got, want := k8s.PodName(tk), "platform-workspace-bronze-workspace-b0bf8610"; got != want {
+		t.Errorf("PodName = %q; an unmapped step's pod name must not move, wanted %q", got, want)
+	}
+}
