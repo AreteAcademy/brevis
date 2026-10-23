@@ -250,9 +250,10 @@ vendoring React instead of adopting npm.
 A deploy or a node drain sends the scheduler SIGTERM, and a run may be halfway
 through. What happens to it:
 
-1. **What it started is stopped.** Each step in flight is cancelled where it
-   runs: its pod is deleted, its local process killed, its `host:` step
-   cancelled on the agent at the instance that took it.
+1. **A `host:` step is handed over; anything else is stopped.** A `host:` step
+   goes on running on its agent, and its row stays `running` with where it is
+   — the instance, the execution, the last line read. A pod is deleted and a
+   local process killed: they do not outlive the scheduler.
 2. **Nothing interrupted is recorded as done.** The steps stopped end
    `canceled`; the steps not yet started get no row — they were not ruled out,
    the run was stopped. A step counts as succeeded only when its executor said
@@ -260,22 +261,40 @@ through. What happens to it:
 3. **The run goes back to the queue, for free.** It moves `failed → retrying →
    queued` without spending an attempt, without an alert and without a
    backoff, its error saying the scheduler shut down. The next scheduler takes
-   it at once and re-runs what had not succeeded — an interrupted step starts
-   over; it is not reattached (#125).
+   it at once: it **follows** a handed-over step on its agent — the same
+   execution, as the same attempt, its log from the start of the agent's ring
+   — and re-runs what had not succeeded.
 4. **Then the process exits**, after the dispatcher has written all of that
    down.
 
 A run whose last step finished as the signal came keeps its outcome, success or
 failure.
 
+**When a handed-over step cannot be followed**, the next scheduler decides by
+why:
+
+| the agent says | what happens |
+|---|---|
+| it has no execution by that id — it restarted, or kept it for less than `--keep-finished` (1h) | the step starts again, under the same id |
+| it has it, but its ring no longer reaches the last line read — more than `--ring` lines written meanwhile | it is stopped on the agent and the attempt fails; the retry runs it under a new id |
+| nothing — the agent cannot be reached | the attempt fails |
+
+A handover that could not be written down — the database gone at that moment —
+is not left running: the step is stopped, as with handover off.
+
+**`BREVIS_HOST_HANDOVER=off`** restores cancelling: every `host:` step is
+stopped on a shutdown, and re-run by the next scheduler. On is the default.
+A **lost claim** always stops it, handover or not: another scheduler holds the
+run.
+
 **It needs time to do it.** Writing the end takes up to 15s, a `host:` cancel up
 to 10s, a pod deletion up to 30s, and they overlap. Kubernetes' default
 `terminationGracePeriodSeconds` is 30s and Docker Compose's stop timeout is 10s;
 neither is raised by this chart or `docker-compose.yml`. A process killed before
 it finishes leaves its runs to the orphan sweep, which reclaims them after
-`Visibility` (15 minutes) of silence — and a `host:` step it could not cancel may
-still be running on its agent. Raise the grace period if your steps take long
-to stop.
+`Visibility` (15 minutes) of silence — and a `host:` step it neither handed over
+nor cancelled may still be running on its agent. Raise the grace period if your
+steps take long to stop.
 
 ## Decisions the implementation pins down
 
