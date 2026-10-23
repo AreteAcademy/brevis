@@ -2,6 +2,8 @@ package execution_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -120,5 +122,97 @@ func TestAnInterruptedStepEndsCanceledAndIsRecorded(t *testing.T) {
 	}
 	if n := exec.calls.Load(); n != 1 {
 		t.Errorf("the interrupted step was attempted %d times; a cancellation is not retried", n)
+	}
+}
+
+// lastWord succeeds every step -- and cancels the run as the first one ends,
+// which is a SIGTERM landing between two levels.
+type lastWord struct {
+	cancel context.CancelFunc
+	calls  atomic.Int32
+}
+
+func (*lastWord) Name() string                         { return "last-word" }
+func (*lastWord) Cancel(context.Context, string) error { return nil }
+
+func (l *lastWord) Execute(_ context.Context, _ execution.TaskExec) (<-chan execution.Event, error) {
+	l.calls.Add(1)
+	l.cancel()
+	ch := make(chan execution.Event, 2)
+	ch <- execution.Event{Kind: execution.EventStarted}
+	ch <- execution.Event{Kind: execution.EventSucceeded}
+	close(ch)
+	return ch, nil
+}
+
+func twoLevels() wf.Workflow {
+	return wf.Workflow{Slug: "interrupted", Nodes: []wf.Node{
+		{ID: "first", Run: "true"}, {ID: "second", Run: "true"},
+	}, Edges: []wf.Edge{{From: "first", To: "second"}}}
+}
+
+// #122's first point: a cancel between levels stopped the loop and returned
+// the first FAILURE -- nil, since nothing had failed -- and the dispatcher
+// marked a run cut in half as a success.
+func TestARunCutBetweenLevelsSaysItWasInterrupted(t *testing.T) {
+	rows := &endings{spyPersister: &spyPersister{}}
+	ctx, cancel := context.WithCancel(context.Background())
+	exec := &lastWord{cancel: cancel}
+
+	err := app.Runner{
+		RunID: uuid.New(), Persist: rows, Report: &coletor{}, Processo: exec,
+	}.Run(ctx, twoLevels())
+
+	var interrupted app.ErrInterrupted
+	if !errors.As(err, &interrupted) || !errors.Is(err, context.Canceled) {
+		t.Fatalf("Run returned %v; wanted ErrInterrupted wrapping context.Canceled", err)
+	}
+	if n := exec.calls.Load(); n != 1 {
+		t.Errorf("%d steps ran; the second level starts after the cancel and must not", n)
+	}
+	if _, _, ok := rows.of("second"); ok {
+		t.Error("the second level has a row; it was never started, nor ruled out")
+	}
+}
+
+// And inside a level: the interrupted step's own error is not the run's
+// answer. The run was stopped, and that is what it says.
+func TestARunCutInsideALevelSaysItWasInterrupted(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(20*time.Millisecond, cancel)
+
+	err := app.Runner{
+		RunID: uuid.New(), Persist: &endings{spyPersister: &spyPersister{}}, Report: &coletor{},
+		Processo: &mute{waitForCancel: true},
+	}.Run(ctx, oneStep())
+
+	var interrupted app.ErrInterrupted
+	if !errors.As(err, &interrupted) || !errors.Is(err, context.Canceled) {
+		t.Fatalf("Run returned %v; wanted ErrInterrupted wrapping context.Canceled", err)
+	}
+}
+
+// timedOut fails its step with an error that wraps a context's -- an HTTP call
+// to an agent timing out -- while the run itself goes on.
+type timedOut struct{}
+
+func (timedOut) Name() string                         { return "timed-out" }
+func (timedOut) Cancel(context.Context, string) error { return nil }
+func (timedOut) Execute(context.Context, execution.TaskExec) (<-chan execution.Event, error) {
+	return nil, fmt.Errorf("the agent on box refused the step: %w", context.DeadlineExceeded)
+}
+
+// A failure that merely mentions a context is a failure. Only the run's own
+// context ending is an interruption -- otherwise a broken agent would be
+// requeued forever without spending an attempt.
+func TestAFailureMentioningAContextIsNotAnInterruption(t *testing.T) {
+	err := app.Runner{
+		RunID: uuid.New(), Persist: &endings{spyPersister: &spyPersister{}}, Report: &coletor{},
+		Processo: timedOut{},
+	}.Run(context.Background(), oneStep())
+
+	var interrupted app.ErrInterrupted
+	if err == nil || errors.As(err, &interrupted) {
+		t.Fatalf("Run returned %v; wanted an ordinary failure", err)
 	}
 }
