@@ -89,10 +89,6 @@ func TestTheConsolesReadsByWorkflowCanUseTheIndex(t *testing.T) {
 	for name, query := range map[string]string{
 		"Workflows' last run": `SELECT id FROM runs WHERE workflow_slug = 'daily'
 			ORDER BY criado_em DESC LIMIT 1`,
-		"RecentStates": `SELECT workflow_slug, id FROM (
-			SELECT workflow_slug, id, row_number() OVER (
-				PARTITION BY workflow_slug ORDER BY criado_em DESC, id DESC) AS rn
-			FROM runs WHERE workflow_slug = ANY(ARRAY['daily', 'hourly'])) r WHERE rn <= 14`,
 		"WorkflowRuns": `SELECT id FROM runs WHERE workflow_slug = 'daily'
 			ORDER BY criado_em DESC LIMIT 50`,
 	} {
@@ -122,5 +118,67 @@ func TestTheConsolesReadsByWorkflowCanUseTheIndex(t *testing.T) {
 				t.Errorf("the plan does not use %s:\n%s", workflowIndex, strings.Join(plan, "\n"))
 			}
 		})
+	}
+}
+
+// RecentStates is read by the Workflows page on every load and every
+// keystroke, for every workflow on it. Using the index is not enough: a window
+// over all of a workflow's runs reads all of them, and on 100k runs over 50
+// workflows it was 95ms WITH the index, sorting 4.9MB on disk. What it needs is
+// to STOP after n: a Limit over an index scan of each workflow.
+//
+// The planner's choice on a test table of a few rows is not the question --
+// it may pick a bitmap scan and a sort, which is right for four rows -- so
+// sequential scans, bitmap scans and sorts are all turned off, and what is
+// asserted is the SHAPE the query allows. The old window had no Limit to put
+// over anything. The text EXPLAINed is the one the console runs.
+func TestRecentStatesReadsOnlyTheRunsItReturns(t *testing.T) {
+	pool := insightsDB(t)
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	for _, off := range []string{"enable_seqscan", "enable_bitmapscan", "enable_sort"} {
+		if _, err := tx.Exec(ctx, `SET LOCAL `+off+` = off`); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rows, err := tx.Query(ctx, "EXPLAIN "+postgres.RecentStatesSQL, []string{"daily", "hourly"}, 14)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var plan []string
+	for rows.Next() {
+		var line string
+		if err := rows.Scan(&line); err != nil {
+			t.Fatal(err)
+		}
+		plan = append(plan, line)
+	}
+	rows.Close()
+	// The nodes under each Limit, in order: an index scan of the workflow's
+	// runs, with at most an incremental sort between -- the id tie-break,
+	// sorting the few rows of one instant, not the workflow's history.
+	var nodes []string
+	for _, l := range plan {
+		if strings.Contains(l, "->  ") {
+			nodes = append(nodes, l)
+		}
+	}
+	stops := false
+	for i := 0; i+1 < len(nodes); i++ {
+		if !strings.Contains(nodes[i], "->  Limit") {
+			continue
+		}
+		next := nodes[i+1]
+		if strings.Contains(next, "Incremental Sort") && i+2 < len(nodes) {
+			next = nodes[i+2]
+		}
+		stops = stops || strings.Contains(next, "Index Scan using "+workflowIndex)
+	}
+	if !stops {
+		t.Errorf("RecentStates does not stop after n runs of each workflow's index:\n%s", strings.Join(plan, "\n"))
 	}
 }

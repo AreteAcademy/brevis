@@ -68,3 +68,20 @@ func TestCountRunsByStateKeepsTheRestOfTheFilter(t *testing.T) {
 		t.Errorf("counts = %v, want success 2 and failed 1", got)
 	}
 }
+
+// A workflow asked twice is answered once: the window's ANY($1) ignored the
+// repeat, and the LATERAL that replaced it (#109) must too, or a strip would
+// carry each run twice.
+func TestRecentStatesAnswersAWorkflowAskedTwiceOnce(t *testing.T) {
+	pool := insightsDB(t)
+	finished(t, pool, "twice", dom.StatusSuccess, 2*time.Hour)
+	finished(t, pool, "twice", dom.StatusFailed, time.Hour)
+
+	got, err := postgres.NewReadRepo(pool).RecentStates(context.Background(), []string{"twice", "twice"}, 14)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(got["twice"]); n != 2 {
+		t.Errorf("a workflow asked twice came back with %d runs, wanted its 2", n)
+	}
+}
