@@ -241,6 +241,19 @@ type Runner struct {
 // The cost is real and worth naming: more steps run on a failing run. What it
 // does NOT cost is paying for them twice -- a retry re-runs only what failed;
 // see alreadySucceeded.
+// ErrInterrupted is what Run returns when its context ended before the graph
+// did. It wraps the context's error, so errors.Is(err, context.Canceled) holds:
+// the dispatcher asks that, knowing nothing of this package's types, and never
+// reads the message.
+//
+// It is the run's answer whatever else happened first. A run stopped halfway
+// was not ruled a failure or a success -- it was stopped -- and a level that
+// had already failed is retried with the rest when the run comes back.
+type ErrInterrupted struct{ Cause error }
+
+func (e ErrInterrupted) Error() string { return "the run was interrupted: " + e.Cause.Error() }
+func (e ErrInterrupted) Unwrap() error { return e.Cause }
+
 func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 	levels, err := graph.Levels(w)
 	if err != nil {
@@ -322,16 +335,35 @@ func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 	// why.
 	var firstFailure error
 
+	// Whether the context ended before the graph did. Kept apart from the
+	// failure because it overrides it: see ErrInterrupted.
+	stopped := false
+
 	for i, level := range levels {
 		if ctx.Err() != nil {
 			// Cancelled. Marking the rest skipped would record a decision that
 			// was never made: those steps were not ruled out, the run was
 			// stopped.
+			stopped = true
 			break
 		}
-		if err := r.runLevel(ctx, w, level, porID, deps, done, settled); err != nil && firstFailure == nil {
-			firstFailure = fmt.Errorf("level %d: %w", i+1, err)
+		if err := r.runLevel(ctx, w, level, porID, deps, done, settled); err != nil {
+			// The run's OWN context, not merely an error that mentions one: a
+			// step whose HTTP call to its agent timed out failed, and nothing
+			// stopped the run.
+			if ctx.Err() != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+				stopped = true
+			}
+			if firstFailure == nil {
+				firstFailure = fmt.Errorf("level %d: %w", i+1, err)
+			}
 		}
+	}
+	// Returning firstFailure here was #122: a cancel between levels found
+	// nothing failed and returned nil, and the dispatcher recorded a run cut in
+	// half as a success.
+	if stopped {
+		return ErrInterrupted{Cause: ctx.Err()}
 	}
 	return firstFailure
 }
