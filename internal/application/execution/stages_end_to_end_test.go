@@ -61,6 +61,9 @@ type spyPersister struct {
 	// landings is what each instance declared it wrote.
 	landings map[dom.StepKey][]app.Landing
 
+	// handovers is where each instance said it went on running (#125).
+	handovers map[dom.StepKey]execution.Handover
+
 	// ctxOut is the context the step published, by whichever road. Empty when
 	// nothing usable arrived, which is what the tests asserting silence read.
 	ctxOut json.RawMessage
@@ -95,6 +98,24 @@ func (p *spyPersister) instances() map[dom.StepKey]dom.Status {
 }
 
 func (p *spyPersister) IniciarTask(context.Context, uuid.UUID, dom.StepKey, int) error { return nil }
+
+func (p *spyPersister) RecordHandover(_ context.Context, _ uuid.UUID, step dom.StepKey, _ int,
+	h execution.Handover) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.handovers == nil {
+		p.handovers = map[dom.StepKey]execution.Handover{}
+	}
+	p.handovers[step] = h
+	return nil
+}
+
+func (p *spyPersister) handover(step dom.StepKey) (execution.Handover, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	h, ok := p.handovers[step]
+	return h, ok
+}
 
 func (p *spyPersister) TerminarTask(_ context.Context, _ uuid.UUID, step dom.StepKey, _ int,
 	status dom.Status, _ *int, _ string, log string) error {

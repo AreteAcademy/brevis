@@ -75,6 +75,13 @@ type Persister interface {
 	TerminarTask(ctx context.Context, runID uuid.UUID, step run.StepKey, attempt int,
 		status run.Status, exit *int, failure string, log string) error
 
+	// RecordHandover keeps, on the step's row, where a step that outlived its
+	// scheduler goes on running (#125). The row is NOT ended: the step is
+	// running. Required, not optional: a handover nobody can find again is a
+	// step the next scheduler starts beside itself.
+	RecordHandover(ctx context.Context, runID uuid.UUID, step run.StepKey, attempt int,
+		h execution.Handover) error
+
 	// RecordStages records the phases of an SDK step while it runs. It is
 	// what makes the screen advance before the step finishes.
 	RecordStages(ctx context.Context, runID uuid.UUID, step run.StepKey, attempt int,
@@ -938,6 +945,30 @@ func (r Runner) markLandings(ctx context.Context, workflow string, step run.Step
 	}
 }
 
+// errHandedOver is an attempt that did not end: its step goes on running where
+// it runs, and its row says where (#125). It wraps the context's error, so the
+// run still reads as interrupted and is requeued.
+type errHandedOver struct {
+	step  string
+	cause error
+}
+
+func (e errHandedOver) Error() string {
+	return fmt.Sprintf("step %q was handed over to the next scheduler: %v", e.step, e.cause)
+}
+func (e errHandedOver) Unwrap() error { return e.cause }
+
+// recordHandover writes where the step is, on a context that outlives the
+// run's -- the run's is the one that ended.
+func (r Runner) recordHandover(ctx context.Context, step run.StepKey, attempt int, h execution.Handover) error {
+	if r.Persist == nil || r.RunID == uuid.Nil {
+		return errors.New("this run has nowhere to record it")
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), settleTimeout)
+	defer cancel()
+	return r.Persist.RecordHandover(ctx, r.RunID, step, attempt, h)
+}
+
 // settleTimeout bounds the writes that record an interrupted step. Fifteen
 // seconds, the dispatcher's own settle: it fits a normal grace period, and it
 // is "finish writing down what already happened", not "ignore the shutdown".
@@ -945,6 +976,12 @@ const settleTimeout = 15 * time.Second
 
 func (r Runner) markEnd(ctx context.Context, step run.StepKey, attempt int, cause error, log string) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
+		return
+	}
+	// A handed-over attempt did not end, and its row says so by staying
+	// `running`, with the handover beside it.
+	var handed errHandedOver
+	if errors.As(cause, &handed) {
 		return
 	}
 	status, msg := run.StatusSuccess, ""
@@ -1084,7 +1121,17 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst insta
 	var fromExecutor bool
 
 	succeeded := false
+	var handover *execution.Handover
 	for e := range eventos {
+		// Where the step goes on running, if the executor left it running
+		// (#125). Not the step talking: the executor, about the step.
+		if e.Kind == execution.EventHandover {
+			var h execution.Handover
+			if err := json.Unmarshal([]byte(e.Message), &h); err == nil {
+				handover = &h
+			}
+			continue
+		}
 		if e.Kind == execution.EventSucceeded {
 			succeeded = true
 		}
@@ -1181,6 +1228,26 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst insta
 	// A context that ended with no success is an INTERRUPTION, whatever the
 	// executor reported on its way out -- a pod deleted or a process killed by
 	// the cancel says "failed", and that is the cancel talking, not the step.
+	// Handed over: the step outlived this scheduler and goes on where it runs
+	// (#125). Written down first -- a handover nobody can find again is a step
+	// the next scheduler starts beside itself -- and when it cannot be, the
+	// step is stopped instead, which is #122's behaviour and never doubles it.
+	if handover != nil && ctx.Err() != nil {
+		err := r.recordHandover(ctx, inst.key, attempt, *handover)
+		if err == nil {
+			return completa.String(), errHandedOver{step: n.ID, cause: ctx.Err()}
+		}
+		stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), settleTimeout)
+		_ = exec.Cancel(stopCtx, handover.ExecutionID)
+		cancel()
+		if r.Report != nil {
+			r.Report.Evento(execution.Event{
+				Kind: execution.EventLog, NodeID: n.ID, Stream: "stderr",
+				Message: "the step could not be handed over, so it was stopped: " + err.Error(),
+			})
+		}
+	}
+
 	if !succeeded {
 		if err := ctx.Err(); err != nil {
 			return completa.String(), fmt.Errorf("step %q interrupted: %w", n.ID, err)
