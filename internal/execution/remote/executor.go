@@ -141,7 +141,17 @@ func (e *Executor) Execute(ctx context.Context, t execution.TaskExec) (<-chan ex
 type step struct {
 	cancel   context.CancelFunc
 	instance string
+
+	// told is set by Cancel, which tells the agent itself. pump then does not
+	// tell it a second time when the context it cancelled ends the stream.
+	told bool
 }
+
+// cancelTimeout bounds the cancel pump sends when a run's context ends. The
+// run's own context is over by then and reaches nobody, so the request needs
+// one of its own -- and a short one, because what waits on it is a dispatcher
+// finishing its bookkeeping or a process shutting down.
+const cancelTimeout = 10 * time.Second
 
 // pump reads the stream, resumes it when it breaks, and closes `events` once.
 func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
@@ -174,6 +184,14 @@ func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
 		if ctx.Err() != nil {
 			// Cancelled. The step's outcome was already reported by whoever
 			// cancelled it; saying anything here would be a second verdict.
+			//
+			// But the PROCESS is not ours to abandon. A run's context ends
+			// when the scheduler shuts down or when its claim was lost to the
+			// sweep (#121), and nothing else tells the agent -- the process
+			// used to run on, beside the run's next attempt. A pod in the
+			// same position is deleted and a local process killed; this is the
+			// host's equivalent.
+			e.stopOnHost(t.ExecutionID, session.Instance)
 			return
 		}
 
@@ -206,6 +224,27 @@ func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
 		}
 		stream = next
 	}
+}
+
+// stopOnHost asks the agent to stop a step whose run was cancelled here, unless
+// Cancel already did.
+//
+// The error is dropped, and not by oversight: there is no one left to tell. The
+// events channel belongs to a run that has stopped reading it, and this
+// executor has no log of its own. The agent's own --state-dir is what makes a
+// later cancel possible; an agent unreachable now is a process that may still
+// be running there, as Cancel's own error says.
+func (e *Executor) stopOnHost(execID, instance string) {
+	e.mu.Lock()
+	s := e.running[execID]
+	told := s != nil && s.told
+	e.mu.Unlock()
+	if told {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), cancelTimeout)
+	defer cancel()
+	_ = e.Agent.Cancel(ctx, instance, execID)
 }
 
 // drain reads one connection to exhaustion.
@@ -385,6 +424,9 @@ func reasonOf(err error) string {
 func (e *Executor) Cancel(ctx context.Context, execID string) error {
 	e.mu.Lock()
 	s := e.running[execID]
+	if s != nil {
+		s.told = true
+	}
 	e.mu.Unlock()
 	var instance string
 	if s != nil {
