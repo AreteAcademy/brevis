@@ -243,6 +243,38 @@ log, delete the pod. No `client-go`: the official library brings hundreds of
 dependencies and tens of MB for this — the same arithmetic that led to
 vendoring React instead of adopting npm.
 
+### When it stops
+
+A deploy or a node drain sends the scheduler SIGTERM, and a run may be halfway
+through. What happens to it:
+
+1. **What it started is stopped.** Each step in flight is cancelled where it
+   runs: its pod is deleted, its local process killed, its `host:` step
+   cancelled on the agent at the instance that took it.
+2. **Nothing interrupted is recorded as done.** The steps stopped end
+   `canceled`; the steps not yet started get no row — they were not ruled out,
+   the run was stopped. A step counts as succeeded only when its executor said
+   so.
+3. **The run goes back to the queue, for free.** It moves `failed → retrying →
+   queued` without spending an attempt, without an alert and without a
+   backoff, its error saying the scheduler shut down. The next scheduler takes
+   it at once and re-runs what had not succeeded — an interrupted step starts
+   over; it is not reattached (#125).
+4. **Then the process exits**, after the dispatcher has written all of that
+   down.
+
+A run whose last step finished as the signal came keeps its outcome, success or
+failure.
+
+**It needs time to do it.** Writing the end takes up to 15s, a `host:` cancel up
+to 10s, a pod deletion up to 30s, and they overlap. Kubernetes' default
+`terminationGracePeriodSeconds` is 30s and Docker Compose's stop timeout is 10s;
+neither is raised by this chart or `docker-compose.yml`. A process killed before
+it finishes leaves its runs to the orphan sweep, which reclaims them after
+`Visibility` (15 minutes) of silence — and a `host:` step it could not cancel may
+still be running on its agent. Raise the grace period if your steps take long
+to stop.
+
 ## Decisions the implementation pins down
 
 - **`restartPolicy: Never`.** The dispatcher is what counts attempts and applies
@@ -261,7 +293,9 @@ vendoring React instead of adopting npm.
   that explain the failure.
 - **A successful pod is deleted; a failed one can stay**
   (`BREVIS_POD_KEEP_ON_FAILURE`). Thousands of `Completed` pods clutter the
-  namespace and say nothing that Brevis's own history does not say better.
+  namespace and say nothing that Brevis's own history does not say better. A
+  pod whose run was **cancelled** is deleted even so: it has not finished, and
+  keeping it would keep its step running.
 - **The cluster's `reason` goes into the failure message.** `OOMKilled` and
   `DeadlineExceeded` call for the opposite actions from "the code failed".
 
