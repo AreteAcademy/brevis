@@ -2,6 +2,7 @@ package remote_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -676,5 +677,90 @@ func TestAnExplicitCancelReachesTheAgentOnce(t *testing.T) {
 	defer agent.mu.Unlock()
 	if len(agent.cancels) != 1 {
 		t.Errorf("one Cancel reached the agent %d times: %v", len(agent.cancels), agent.cancels)
+	}
+}
+
+// runAndEnd starts a step on the holding agent, ends its context with `cause`,
+// and returns what came out and what the agent was asked.
+func runAndEnd(t *testing.T, handOver bool, cause error) ([]execution.Event, []string) {
+	t.Helper()
+	agent := &holdingAgent{cancelled: make(chan struct{})}
+	e := &remote.Executor{Agent: agent, Host: "dlt-runner-01", LeaseLimit: time.Minute, HandOver: handOver}
+
+	ctx, cancel := context.WithCancelCause(context.Background())
+	tk := task()
+	tk.Attempt = 2
+	ch, err := e.Execute(ctx, tk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(20 * time.Millisecond)
+	cancel(cause)
+	events := collect(t, ch)
+	time.Sleep(50 * time.Millisecond)
+
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+	return events, append([]string(nil), agent.cancels...)
+}
+
+// #125: on a SHUTDOWN, a host: step is handed to the next scheduler instead of
+// being stopped. The agent is not asked to cancel, and the run is told where
+// the step is: the instance, the execution, its attempt, the last line read.
+func TestAShutdownHandsAHostStepOver(t *testing.T) {
+	events, cancels := runAndEnd(t, true, execution.ErrShutdown)
+
+	if len(cancels) != 0 {
+		t.Errorf("a step handed over was cancelled on its agent: %v", cancels)
+	}
+	var h *execution.Handover
+	for _, ev := range events {
+		if ev.Kind == execution.EventHandover {
+			var got execution.Handover
+			if err := json.Unmarshal([]byte(ev.Message), &got); err != nil {
+				t.Fatalf("the handover %q is not a Handover: %v", ev.Message, err)
+			}
+			h = &got
+		}
+	}
+	if h == nil {
+		t.Fatalf("no handover among %+v", events)
+	}
+	if h.Instance != "http://agent-1:9443" || h.ExecutionID != "exec-1" || h.Attempt != 2 {
+		t.Errorf("handover = %+v; wanted the instance, the id and attempt 2", *h)
+	}
+}
+
+// A LOST CLAIM is never handed over: another scheduler holds the run, and a
+// step left running is a step run twice (#121). Nor is a cancel with no reason.
+func TestOnlyAShutdownHandsOver(t *testing.T) {
+	for name, cause := range map[string]error{
+		"claim lost": execution.ErrClaimLost,
+		"no reason":  context.Canceled,
+	} {
+		t.Run(name, func(t *testing.T) {
+			events, cancels := runAndEnd(t, true, cause)
+			if len(cancels) != 1 {
+				t.Errorf("cancels = %v; wanted the step stopped on its agent", cancels)
+			}
+			for _, ev := range events {
+				if ev.Kind == execution.EventHandover {
+					t.Errorf("a %s handed the step over", name)
+				}
+			}
+		})
+	}
+}
+
+// And with handover off, a shutdown cancels, as #122 did.
+func TestWithHandoverOffAShutdownCancels(t *testing.T) {
+	events, cancels := runAndEnd(t, false, execution.ErrShutdown)
+	if len(cancels) != 1 {
+		t.Errorf("cancels = %v; with handover off a shutdown stops the step", cancels)
+	}
+	for _, ev := range events {
+		if ev.Kind == execution.EventHandover {
+			t.Error("handover off, and the step was handed over")
+		}
 	}
 }

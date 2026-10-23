@@ -59,6 +59,12 @@ type Executor struct {
 	// DefaultLeaseLimit.
 	LeaseLimit time.Duration
 
+	// HandOver lets a shutdown leave the step running on its agent, to be
+	// reattached by the next scheduler (#125), instead of cancelling it. Only a
+	// shutdown: any other end of the run's context still cancels. Off is
+	// #122's behaviour.
+	HandOver bool
+
 	// Retries is how many times a dropped connection is resumed before the step
 	// is failed. Zero takes defaultRetries.
 	//
@@ -191,6 +197,15 @@ func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
 			// used to run on, beside the run's next attempt. A pod in the
 			// same position is deleted and a local process killed; this is the
 			// host's equivalent.
+			//
+			// Except on a SHUTDOWN, with handover on (#125): then the step is
+			// left running and the run is told where it is, for the next
+			// scheduler to follow it. Never on a lost claim -- another
+			// scheduler holds the run, and a step left running is run twice.
+			if e.HandOver && errors.Is(context.Cause(ctx), execution.ErrShutdown) &&
+				e.handOver(t, session.Instance, seen, events) {
+				return
+			}
 			e.stopOnHost(t.ExecutionID, session.Instance)
 			return
 		}
@@ -224,6 +239,29 @@ func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
 		}
 		stream = next
 	}
+}
+
+// handOver reports where the step is instead of stopping it, and says whether
+// it did. It does not when Cancel already told the agent to stop -- an
+// explicit cancel outranks a shutdown.
+func (e *Executor) handOver(t execution.TaskExec, instance string, seen int64,
+	events chan<- execution.Event) bool {
+
+	e.mu.Lock()
+	s := e.running[t.ExecutionID]
+	told := s != nil && s.told
+	e.mu.Unlock()
+	if told {
+		return false
+	}
+	raw, err := json.Marshal(execution.Handover{
+		Instance: instance, ExecutionID: t.ExecutionID, Attempt: t.Attempt, After: seen,
+	})
+	if err != nil {
+		return false
+	}
+	events <- execution.Event{Kind: execution.EventHandover, NodeID: t.NodeID, Message: string(raw)}
+	return true
 }
 
 // stopOnHost asks the agent to stop a step whose run was cancelled here, unless
