@@ -916,17 +916,43 @@ func cmdScheduler() *cobra.Command {
 			// The two loops run together, and independently: the scheduler
 			// CREATES, the dispatcher EXECUTES. It is the separation section 37
 			// requires — one can go down without interrupting the other.
-			failures := make(chan error, 2)
-			go func() { failures <- sched.Run(ctx) }()
-			go func() { failures <- disp.Run(ctx) }()
+			loops := make(chan error, 1)
+			go func() {
+				loops <- runLoops(
+					func() error { return sched.Run(ctx) },
+					func() error { return disp.Run(ctx) },
+				)
+			}()
 
 			<-ctx.Done()
 			log.Info("shutting down")
-			return <-failures
+			return <-loops
 		},
 	}
 	f.bind(c)
 	return c
+}
+
+// runLoops runs the scheduler's loops together and returns when ALL of them
+// have, with the first error any of them reported.
+//
+// When the FIRST one, it was #122's "closed pool": the scheduler loop returns
+// the instant the context ends, while the dispatcher is still waiting for its
+// runs to write their end, and the deferred pool.Close ran under it -- so no
+// shutdown ever wrote an interrupted run down, and the dispatcher's "it does
+// not abandon a run in flight" held for nothing.
+func runLoops(loops ...func() error) error {
+	failures := make(chan error, len(loops))
+	for _, loop := range loops {
+		go func() { failures <- loop() }()
+	}
+	var first error
+	for range loops {
+		if err := <-failures; err != nil && first == nil {
+			first = err
+		}
+	}
+	return first
 }
 
 // retrySchedule renders the policy as the times the attempts actually land on,
