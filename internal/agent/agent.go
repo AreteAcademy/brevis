@@ -309,14 +309,12 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 		return nil, fmt.Errorf("execution %q is already running here; a retry gets a new id",
 			req.ExecutionID)
 	}
-	if _, done := a.finished[req.ExecutionID]; done {
-		// A start sent twice -- its response lost on the way back. Running
-		// the step again would be two executions of one, the thing #121
-		// ended; resuming is how to learn how it went.
-		a.mu.Unlock()
-		return nil, fmt.Errorf("execution %q already ran here and finished; resume it to "+
-			"read its outcome, and a retry gets a new id", req.ExecutionID)
-	}
+	// A finished one is NOT refused, and it is not an oversight: an engine
+	// older than #127 names an execution after its step -- the same id for
+	// every run of the workflow -- so a finished id is how its next run
+	// arrives. Refusing it failed every run of a host: step for --keep-finished
+	// after the one before. The new execution replaces what was kept.
+	delete(a.finished, req.ExecutionID)
 	a.mu.Unlock()
 
 	// The file this step publishes through, on THIS host. Created before the

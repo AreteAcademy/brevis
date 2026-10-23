@@ -125,17 +125,26 @@ func TestCancellingAFinishedExecutionIsHonestlyANoOp(t *testing.T) {
 	}
 }
 
-// A second start of a finished id is a start sent twice -- a response lost on
-// the way back -- and running the step again would be the double execution
-// #121 ended. Refused, saying it already ran.
-func TestAFinishedExecutionIsNotStartedAgain(t *testing.T) {
+// An engine older than #127 names an execution after its STEP -- "daily:extract"
+// for every run of that workflow -- so a second start of a finished id is the
+// next run, not a start sent twice. Refusing it, as this agent first did, failed
+// every run of a host: step for an hour after the one before it, on every engine
+// in the field. It runs, and replaces what was kept.
+func TestAFinishedIdCanStartAgain(t *testing.T) {
 	a := agent.New(agent.Options{Shell: []string{"/bin/sh", "-c"}})
-	finish(t, a, "done-3", "true")
-	_, err := a.Start(context.Background(), remote.StartRequest{
-		Protocol: remote.Protocol, ExecutionID: "done-3", NodeID: "step", Command: "true",
-	})
-	if err == nil || !strings.Contains(err.Error(), "finished") {
-		t.Errorf("a second start of a finished execution returned %v; wanted a refusal saying it finished", err)
+	finish(t, a, "daily:extract", "exit 3")
+
+	second := finish(t, a, "daily:extract", "exit 0")
+	if code, ok := exitOf(second); !ok || code != 0 {
+		t.Fatalf("the second start of a finished id ended %d (seen %v); wanted it run, exit 0", code, ok)
+	}
+	again, err := a.Resume("daily:extract", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = again.Close() }()
+	if code, _ := exitOf(lines(t, again)); code != 0 {
+		t.Errorf("a resume read the first execution's exit %d; the second one replaced it", code)
 	}
 }
 
