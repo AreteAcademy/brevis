@@ -209,6 +209,11 @@ type Runner struct {
 	// into the pod name so a retry does not find the previous attempt's pod.
 	RunAttempt int
 
+	// handed is what a stopped scheduler left running in this run (#125),
+	// read once in Run. Unexported and set there, like `published`: it is the
+	// run's state, not configuration.
+	handed map[run.StepKey]execution.Handover
+
 	// Pods runs steps as pods in Kubernetes. When present it serves every step
 	// that declares `image:` -- and the same DAG runs as a pod in the cluster
 	// and as a process on a laptop, with no change to the YAML.
@@ -333,6 +338,11 @@ func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 	// Read once, before anything starts: reading it per step would let two
 	// attempts of the same run disagree with each other halfway through.
 	settled := r.alreadySucceeded(ctx)
+
+	// And what a scheduler that stopped left running, at the same moment and
+	// for the same reason: a step that starts overwrites its row, and the
+	// handover with it.
+	r.handed = r.handovers(ctx)
 
 	// What each step ended as, so the level below can read its trigger rule
 	// against something real.
@@ -729,6 +739,24 @@ func quotedKeys(values map[string]any) string {
 // A failure to read it is not a failure of the run: the answer degrades to
 // "nothing succeeded yet", which re-runs the whole graph -- exactly what this
 // engine did before, and a safe place to land.
+// handovers reads what a stopped scheduler left running in this run.
+//
+// A failed read is warned about and taken as "none", as alreadySucceeded does:
+// the steps then start again, which is #122's behaviour -- the price of a
+// database that did not answer, not a reason to fail a run.
+func (r Runner) handovers(ctx context.Context) map[run.StepKey]execution.Handover {
+	if r.History == nil || r.RunID == uuid.Nil {
+		return nil
+	}
+	handed, err := r.History.Handovers(ctx, r.RunID)
+	if err != nil {
+		slog.WarnContext(ctx, "could not read what a stopped scheduler left running; starting it again",
+			"run", r.RunID, "error", err)
+		return nil
+	}
+	return handed
+}
+
 func (r Runner) alreadySucceeded(ctx context.Context) map[run.StepKey]bool {
 	if r.History == nil || r.RunID == uuid.Nil {
 		return nil
@@ -773,8 +801,21 @@ func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node, inst inst
 		attempts = 1
 	}
 
+	// A step a stopped scheduler handed over is CONTINUED, not restarted
+	// (#125): its first attempt here is the one it was at, followed where it
+	// runs. Starting at 0 would ask for another execution id and run the step
+	// a second time beside the first.
+	first := 1
+	handover, handed := r.handed[inst.key]
+	if handed {
+		first = handover.Attempt + 1
+		if attempts < first {
+			attempts = first
+		}
+	}
+
 	var last error
-	for t := 1; t <= attempts; t++ {
+	for t := first; t <= attempts; t++ {
 		// The slot is taken per ATTEMPT, not for the whole step: holding it
 		// through the backoff would leave a cluster slot idle waiting on a
 		// clock.
@@ -782,15 +823,23 @@ func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node, inst inst
 		if err != nil {
 			return err
 		}
-		r.markStart(ctx, inst.key, t-1)
-		// Counted per ATTEMPT and not per step: flapping -- a step that passes
-		// on the third try, every night -- is invisible in a duration and
-		// invisible on the screen, and this is the only number that shows it.
-		r.Metrics.StepStarted(ctx, w.Slug, n.ID)
+		var follow *execution.Handover
+		if handed && t == first {
+			// The attempt started before the restart: its row and its count
+			// are already there.
+			follow = &handover
+		} else {
+			r.markStart(ctx, inst.key, t-1)
+			// Counted per ATTEMPT and not per step: flapping -- a step that
+			// passes on the third try, every night -- is invisible in a
+			// duration and invisible on the screen, and this is the only
+			// number that shows it.
+			r.Metrics.StepStarted(ctx, w.Slug, n.ID)
+		}
 
 		started := time.Now()
 		var outgoing string
-		outgoing, last = r.tentar(ctx, w, n, inst, t-1)
+		outgoing, last = r.tentar(ctx, w, n, inst, t-1, follow)
 		r.Metrics.StepFinished(ctx, w.Slug, n.ID, stepStatus(last), time.Since(started))
 
 		r.markEnd(ctx, inst.key, t-1, last, outgoing)
@@ -951,6 +1000,54 @@ func (r Runner) markLandings(ctx context.Context, workflow string, step run.Step
 	}
 }
 
+// follow picks up a step a stopped scheduler handed over (#125), and decides
+// what to do when it cannot -- the one place each of the three reasons is
+// told apart:
+//
+//   - the agent has no execution by that id: nothing runs under it, so the
+//     step starts again with it, the re-run decided with #125's map;
+//   - known, but its output can no longer be read from where it was left: it
+//     may still be running, so it is stopped, and the attempt fails -- the
+//     ordinary retry runs it under a new id;
+//   - the agent cannot be reached: nothing is known, nothing is started, and
+//     the attempt fails like any start that cannot reach its agent.
+func (r Runner) follow(ctx context.Context, exec execution.Executor, t execution.TaskExec,
+	h execution.Handover) (<-chan execution.Event, error) {
+
+	re, ok := exec.(execution.Reattacher)
+	if !ok {
+		// The step's executor changed under it -- `host:` edited to an
+		// `image:` between the two schedulers. There is nothing to follow it
+		// with, and nothing of the new kind runs it yet.
+		return exec.Execute(ctx, t)
+	}
+	r.say(t.NodeID, fmt.Sprintf("this step was handed over by a scheduler that stopped, "+
+		"at line %d, and is followed on its agent after a scheduler restart", h.After))
+
+	events, err := re.Reattach(ctx, t, h)
+	switch {
+	case err == nil:
+		return events, nil
+	case errors.Is(err, execution.ErrUnknownExecution):
+		r.say(t.NodeID, "the agent no longer has it, so it starts again: "+err.Error())
+		return exec.Execute(ctx, t)
+	case errors.Is(err, execution.ErrLostTrack):
+		stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), settleTimeout)
+		_ = exec.Cancel(stopCtx, h.ExecutionID)
+		cancel()
+		return nil, fmt.Errorf("the step could not be followed after the handover, and was stopped: %w", err)
+	default:
+		return nil, fmt.Errorf("the step handed over could not be followed: %w", err)
+	}
+}
+
+// say puts one line of the engine's own in the step's log.
+func (r Runner) say(node, msg string) {
+	if r.Report != nil {
+		r.Report.Evento(execution.Event{Kind: execution.EventLog, NodeID: node, Stream: "stderr", Message: msg})
+	}
+}
+
 // errHandedOver is an attempt that did not end: its step goes on running where
 // it runs, and its row says where (#125). It wraps the context's error, so the
 // run still reads as interrupted and is requeued.
@@ -1079,7 +1176,8 @@ const contextLines = 5
 // tentar runs the step once and returns the complete output (capped) along with
 // the outcome. The output comes back on success too: a step that finished fine
 // but produced very little is a signal, and it is only visible in the log.
-func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst instance, attempt int) (string, error) {
+func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst instance, attempt int,
+	follow *execution.Handover) (string, error) {
 	// A marker does nothing and succeeds. Short-circuited HERE rather than
 	// given an executor that runs `true`: an empty pod on a cluster costs a
 	// scheduling round trip and an image pull to accomplish nothing, and on a
@@ -1104,7 +1202,12 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst insta
 		return "", err
 	}
 
-	eventos, err := exec.Execute(ctx, tarefa)
+	var eventos <-chan execution.Event
+	if follow != nil {
+		eventos, err = r.follow(ctx, exec, tarefa, *follow)
+	} else {
+		eventos, err = exec.Execute(ctx, tarefa)
+	}
 	if err != nil {
 		return "", fmt.Errorf("step %q: %w", n.ID, err)
 	}

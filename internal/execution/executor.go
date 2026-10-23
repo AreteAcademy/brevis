@@ -22,6 +22,21 @@ var (
 	ErrClaimLost = errors.New("this scheduler lost the run's claim to another")
 )
 
+// Why a handed-over step cannot be followed (#125), kept apart because the
+// runner does a different thing for each. An executor wraps one of them; any
+// other error means it could not reach where the step runs.
+var (
+	// ErrUnknownExecution: where the step ran has no execution by that id --
+	// it restarted, or kept it for less time than it was gone. Nothing runs
+	// under that id, so the step may start again with it.
+	ErrUnknownExecution = errors.New("the agent has no execution by that id")
+
+	// ErrLostTrack: the execution is known but its output can no longer be
+	// read from where it was left. It may still be running, so it is stopped,
+	// and the attempt fails.
+	ErrLostTrack = errors.New("the step's output can no longer be read from where it was left")
+)
+
 // Executor runs a task and reports what happens.
 type Executor interface {
 	Name() string

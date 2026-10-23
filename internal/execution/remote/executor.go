@@ -172,6 +172,10 @@ func (e *Executor) Reattach(ctx context.Context, t execution.TaskExec, h executi
 			Protocol: Protocol, After: from, Reason: "reattach after a scheduler restart",
 		})
 	}
+	if errors.As(err, &gap) {
+		return nil, fmt.Errorf("the step handed over on %s could not be followed: %w: %w",
+			e.Host, execution.ErrLostTrack, err)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("the step handed over on %s could not be followed: %w", e.Host, err)
 	}
