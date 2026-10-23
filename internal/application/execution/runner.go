@@ -64,6 +64,12 @@ type History interface {
 	// first good day, so they are separate methods rather than one with a
 	// flag.
 	AlreadySucceeded(ctx context.Context, runID uuid.UUID) (map[run.StepKey]bool, error)
+
+	// Handovers returns the instances of THIS run whose attempt was handed
+	// over by a scheduler that stopped (#125): still running somewhere, with
+	// where. Read once, before any step starts -- starting one overwrites its
+	// row, and the handover with it.
+	Handovers(ctx context.Context, runID uuid.UUID) (map[run.StepKey]execution.Handover, error)
 }
 
 // The step is identified by a run.StepKey and not by a bare node id, because a

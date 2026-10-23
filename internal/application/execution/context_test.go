@@ -45,6 +45,10 @@ type historico struct {
 	// the retry tests. Empty is the normal case: a first attempt has settled
 	// nothing.
 	settled map[dom.StepKey]bool
+
+	// handovers is what a stopped scheduler left running, for the reattach
+	// tests (#125).
+	handovers map[dom.StepKey]execution.Handover
 }
 
 func (h *historico) StepHasSucceeded(ctx context.Context, slug, nodeID string, exceto uuid.UUID) (bool, error) {
@@ -54,6 +58,10 @@ func (h *historico) StepHasSucceeded(ctx context.Context, slug, nodeID string, e
 
 func (h *historico) AlreadySucceeded(context.Context, uuid.UUID) (map[dom.StepKey]bool, error) {
 	return h.settled, h.err
+}
+
+func (h *historico) Handovers(context.Context, uuid.UUID) (map[dom.StepKey]execution.Handover, error) {
+	return h.handovers, h.err
 }
 
 func oneStepWorkflow() wf.Workflow {

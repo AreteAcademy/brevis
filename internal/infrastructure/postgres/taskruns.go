@@ -239,6 +239,43 @@ func (r *RunRepo) StepHasSucceeded(ctx context.Context, workflowSlug, nodeID str
 // succeeded in an EARLIER run, which is what tells the SDK it is not the first.
 // Confusing the two would make a step skip itself forever after its first good
 // day.
+// Handovers returns what a stopped scheduler left running in this run (#125):
+// the rows with a handover beside them. No status filter, and not by
+// omission: a row its reattach or a later attempt ended has no handover --
+// TerminarTask and IniciarTask clear it -- so a handover IS a row still
+// running, and asking twice would be a second rule to keep in agreement.
+//
+// The row's own attempt is the one used: it is what the next scheduler
+// continues, and the one the handover was recorded against.
+func (r *RunRepo) Handovers(ctx context.Context, runID uuid.UUID) (map[dom.StepKey]execution.Handover, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT node_id, map_index, attempt, handover FROM task_runs
+		WHERE run_id = $1 AND handover IS NOT NULL`, runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[dom.StepKey]execution.Handover{}
+	for rows.Next() {
+		var (
+			k       dom.StepKey
+			attempt int
+			raw     []byte
+			h       execution.Handover
+		)
+		if err := rows.Scan(&k.Node, &k.MapIndex, &attempt, &raw); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(raw, &h); err != nil {
+			return nil, fmt.Errorf("the handover of %s in run %s is unreadable: %w", k.Node, runID, err)
+		}
+		h.Attempt = attempt
+		out[k] = h
+	}
+	return out, rows.Err()
+}
+
 func (r *RunRepo) AlreadySucceeded(ctx context.Context, runID uuid.UUID) (map[dom.StepKey]bool, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT DISTINCT node_id, map_index FROM task_runs
