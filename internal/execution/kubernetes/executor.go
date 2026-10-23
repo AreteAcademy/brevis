@@ -103,6 +103,13 @@ func (e *Executor) follow(ctx context.Context, name string, t execution.TaskExec
 			Kind: execution.EventFailed, NodeID: t.NodeID,
 			Message: err.Error(), Err: err,
 		}
+		if ctx.Err() != nil {
+			// Cancelled, and NOT a failed pod: it has not finished, it is still
+			// running the step. KeepFailedPod keeps a pod somebody can read; this
+			// one would keep a step running beside the run's next attempt (#121).
+			e.deletePod(name)
+			return
+		}
 		e.cleanUp(name, false)
 		return
 	}
@@ -292,6 +299,11 @@ func (e *Executor) cleanUp(name string, succeeded bool) {
 	if !succeeded && e.opts.KeepFailedPod {
 		return
 	}
+	e.deletePod(name)
+}
+
+// deletePod deletes it whatever the options say.
+func (e *Executor) deletePod(name string) {
 	// A context of its own: the run's may already be cancelled (the
 	// cancellation is what brought us here), and deleting is precisely what
 	// must not be skipped -- an orphaned pod consumes namespace quota
