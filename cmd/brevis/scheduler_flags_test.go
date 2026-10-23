@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -104,5 +105,31 @@ func TestTheBootLineSaysWhenTheAttemptsLand(t *testing.T) {
 		if got := retrySchedule(c.attempts, c.base, c.max); got != c.want {
 			t.Errorf("%d attempts base %s: %q, wanted %q", c.attempts, c.base, got, c.want)
 		}
+	}
+}
+
+// Every replica claimed as "local", so reivindicado_por could not tell two
+// schedulers apart and no log line said which one held a run (#121). The name
+// is the host's -- the pod's, in Kubernetes -- and the process's.
+func TestEachSchedulerClaimsUnderItsOwnName(t *testing.T) {
+	host := func() (string, error) { return "brevis-scheduler-7d9f-x2k", nil }
+	if got := workerName(host, 42); got != "brevis-scheduler-7d9f-x2k-42" {
+		t.Errorf("workerName = %q", got)
+	}
+
+	// A host that cannot be read still yields a name that is not the shared one.
+	broken := func() (string, error) { return "", errors.New("no hostname") }
+	if got := workerName(broken, 42); got != "dispatcher-42" {
+		t.Errorf("workerName with no hostname = %q, wanted dispatcher-42", got)
+	}
+
+	var f schedulerFlags
+	c := &cobra.Command{Use: "scheduler"}
+	f.bind(c)
+	if err := c.ParseFlags(nil); err != nil {
+		t.Fatal(err)
+	}
+	if w := f.dispatcher().Worker; w == "local" || w == "" {
+		t.Errorf("the scheduler claims as %q; each process needs its own name", w)
 	}
 }

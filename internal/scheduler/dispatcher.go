@@ -187,9 +187,13 @@ type Dispatcher struct {
 	wg    sync.WaitGroup
 }
 
+// The logger is given the worker's name once, here, so every line says which
+// process wrote it -- "requeued" or "claim lost" from one of three schedulers
+// is otherwise a line about nobody in particular (#121).
 func New(cfg Config, f *queue.Queue, r Repo, e Executar, log *slog.Logger) *Dispatcher {
 	cfg.defaults()
-	return &Dispatcher{cfg: cfg, queue: f, repo: r, executar: e, log: log}
+	return &Dispatcher{cfg: cfg, queue: f, repo: r, executar: e,
+		log: log.With("worker", cfg.Worker)}
 }
 
 // Run drains the queue until the context is cancelled, then waits for in-flight
@@ -363,8 +367,7 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 	// they always did -- skipping them would leave a finished run `running`
 	// for the sweep to fail and run again.
 	if held, err := d.renew()(done, it); err == nil && !held {
-		d.log.Warn("claim lost, nothing written", "run", it.RunID, "item", it.ID,
-			"worker", d.cfg.Worker)
+		d.log.Warn("claim lost, nothing written", "run", it.RunID, "item", it.ID)
 		return
 	}
 
@@ -433,11 +436,9 @@ func (d *Dispatcher) keepClaim(ctx context.Context, it queue.Item, cancelRun fun
 				// Stopped mid-renewal. The run is over, not the database.
 				return
 			case err != nil:
-				d.log.Warn("renewing the claim", "run", it.RunID, "item", it.ID,
-					"worker", d.cfg.Worker, "error", err)
+				d.log.Warn("renewing the claim", "run", it.RunID, "item", it.ID, "error", err)
 			case !held:
-				d.log.Error("claim lost, cancelling the run", "run", it.RunID, "item", it.ID,
-					"worker", d.cfg.Worker)
+				d.log.Error("claim lost, cancelling the run", "run", it.RunID, "item", it.ID)
 				cancelRun()
 				return
 			}
