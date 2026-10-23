@@ -295,3 +295,29 @@ func TestTheNameChangesWithTheRunsAttempt(t *testing.T) {
 		t.Error("attempts diferentes do run geraram o mesmo pod")
 	}
 }
+
+// KeepFailedPod keeps a pod that FINISHED failing, for somebody to read. A pod
+// whose run was cancelled has not finished -- it is still running its step --
+// and keeping it keeps that step running beside the run's next attempt, which
+// is the duplicate execution #121 exists to end. It is deleted.
+func TestACancelledPodIsDeletedEvenWhenFailedOnesAreKept(t *testing.T) {
+	api := &apiFalsa{fases: []k8s.Pod{phase("Running")}}
+	e := k8s.NewExecutor(api, k8s.Options{KeepFailedPod: true})
+	e.Interval = time.Millisecond
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ch, err := e.Execute(ctx, task())
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(20 * time.Millisecond)
+	cancel()
+	for range ch {
+	}
+
+	api.mu.Lock()
+	defer api.mu.Unlock()
+	if len(api.deleted) != 1 {
+		t.Errorf("a cancelled pod, still running, was kept (deleted=%v)", api.deleted)
+	}
+}
