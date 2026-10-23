@@ -4,16 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/AreteAcademy/brevis/internal/agent"
 	app "github.com/AreteAcademy/brevis/internal/application/execution"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/execution"
+	"github.com/AreteAcademy/brevis/internal/execution/remote"
 )
 
 // following is a host executor a step was handed over on. Reattach answers
@@ -189,5 +195,114 @@ func TestAnAgentThatCannotBeReachedFailsTheAttempt(t *testing.T) {
 	}
 	if rows.ended[2] != dom.StatusSuccess {
 		t.Errorf("attempt 2 ended %v; wanted the retry", rows.ended[2])
+	}
+}
+
+// memory is one run's rows, shared by the scheduler that stops and the one
+// that comes back: what the first hands over, the second reads.
+type memory struct{ *spyPersister }
+
+func (memory) StepHasSucceeded(context.Context, string, string, uuid.UUID) (bool, error) {
+	return false, nil
+}
+
+func (m memory) AlreadySucceeded(context.Context, uuid.UUID) (map[dom.StepKey]bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := map[dom.StepKey]bool{}
+	for k, s := range m.ended {
+		out[k] = s == dom.StatusSuccess
+	}
+	return out, nil
+}
+
+func (m memory) Handovers(context.Context, uuid.UUID) (map[dom.StepKey]execution.Handover, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := map[dom.StepKey]execution.Handover{}
+	for k, h := range m.handovers {
+		if _, ended := m.ended[k]; !ended {
+			out[k] = h
+		}
+	}
+	return out, nil
+}
+
+// #125 end to end, on a real agent: a scheduler stops mid-step and hands it
+// over; the next one, for the same run, follows it to its end. The step runs
+// ONCE, ends as it ended, and what it published arrives.
+func TestAStepOutlivesItsSchedulerAndIsFollowedToItsEnd(t *testing.T) {
+	// The step writes nine lines: started, "first" -- the last one the
+	// stopping scheduler reads -- four after its sleep, "last", the published
+	// context, its exit.
+	for _, c := range []struct {
+		name      string
+		ring      int
+		wantFirst bool // the lines before the handover are in the log
+		lost      bool // not even the last line read is left: D5's gap case
+	}{
+		{"the ring still has its start", 0, true, false},
+		{"the ring lost its start, not the last line read", 7, false, false},
+		{"the ring lost the last line read too", 3, false, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			a := agent.New(agent.Options{Shell: []string{"/bin/sh", "-c"}, RingSize: c.ring})
+			srv := httptest.NewServer(a.Handler(slog.New(slog.NewTextHandler(io.Discard, nil))))
+			t.Cleanup(srv.Close)
+			hosts := map[string]execution.Executor{"box": &remote.Executor{
+				Host: "box", Agent: remote.HTTPAgent{BaseURL: srv.URL}, LeaseLimit: 10 * time.Second, HandOver: true,
+			}}
+			rows := memory{&spyPersister{}}
+			runID := uuid.New()
+			w := wf.Workflow{Slug: "daily", Nodes: []wf.Node{{ID: "long", Host: "box",
+				Run: `echo first; sleep 1; for i in 1 2 3 4; do echo late$i; done; ` +
+					`echo '{"k":1}' > "$BREVIS_OUTPUT"; echo last`}}}
+
+			// The scheduler that stops: a SIGTERM while the step sleeps.
+			ctx, sigterm := context.WithCancelCause(context.Background())
+			time.AfterFunc(300*time.Millisecond, func() { sigterm(execution.ErrShutdown) })
+			err := app.Runner{RunID: runID, Persist: rows, History: rows, Report: &coletor{}, Hosts: hosts}.Run(ctx, w)
+			var interrupted app.ErrInterrupted
+			if !errors.As(err, &interrupted) {
+				t.Fatalf("the first scheduler's run returned %v; wanted ErrInterrupted", err)
+			}
+			if _, ok := rows.handover(dom.Step("long")); !ok {
+				t.Fatal("nothing was handed over")
+			}
+
+			// The scheduler that comes back, for the same run -- after the
+			// step has ENDED on its agent, so what is followed is the outcome
+			// the agent kept (#128), and a small ring has lost the start.
+			time.Sleep(1500 * time.Millisecond)
+			report := &coletor{}
+			err = app.Runner{RunID: runID, Persist: rows, History: rows, Report: report, Hosts: hosts}.
+				Run(context.Background(), w)
+			if c.lost {
+				// Stopped and failed, for the ordinary retry to run under a
+				// new id -- approved as the cost of this case.
+				if err == nil || !strings.Contains(err.Error(), "could not be followed") {
+					t.Errorf("the next scheduler's run returned %v; wanted the attempt failed, not followed", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("the next scheduler's run: %v", err)
+			}
+
+			rows.mu.Lock()
+			defer rows.mu.Unlock()
+			if rows.ended[dom.Step("long")] != dom.StatusSuccess {
+				t.Errorf("the followed step ended %v", rows.ended[dom.Step("long")])
+			}
+			if !strings.Contains(rows.log, "last") || strings.Contains(rows.log, "first") != c.wantFirst {
+				t.Errorf("the step's log %q; wanted its end, and its start only while the ring had it", rows.log)
+			}
+			if !strings.Contains(string(rows.ctxOut), `"k":1`) {
+				t.Errorf("the context the step published did not arrive: %s", rows.ctxOut)
+			}
+			if !said(report, "after a scheduler restart") {
+				t.Error("the log does not say the step was followed after a restart")
+			}
+		})
 	}
 }
