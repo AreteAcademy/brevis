@@ -227,7 +227,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			if n, err := d.RecoverOrphans(ctx); err != nil {
 				d.log.Error("recovering orphans", "error", err)
 			} else if n > 0 {
-				d.log.Warn("runs orfas recuperadas", "quantidade", n)
+				d.log.Warn("orphaned runs recovered", "count", n)
 			}
 		}
 	}
