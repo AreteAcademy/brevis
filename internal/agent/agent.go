@@ -302,13 +302,30 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 		return nil, fmt.Errorf("a step needs an execution id and a command")
 	}
 
+	// The execution is built BEFORE the lock and reserved UNDER it, in the
+	// same step as the check (#130). Checking, letting the lock go, setting
+	// the step up and only then recording it let two starts of one id -- one
+	// start sent twice -- both through: two processes under one id, and one
+	// of them out of anybody's reach. Reserved first, a second start is
+	// refused while the first is still being set up, and a resume or a cancel
+	// arriving meanwhile finds it.
+	e := &execution{id: req.ExecutionID, ring: a.opt.RingSize, first: 1, next: 1}
+	e.cond = sync.NewCond(&e.mu)
+	runCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	if req.TimeoutSeconds > 0 {
+		runCtx, cancel = context.WithTimeout(runCtx, time.Duration(req.TimeoutSeconds)*time.Second)
+	}
+	e.stop = cancel
+
 	a.mu.Lock()
 	a.prune()
 	if _, running := a.runs[req.ExecutionID]; running {
 		a.mu.Unlock()
+		cancel()
 		return nil, fmt.Errorf("execution %q is already running here; a retry gets a new id",
 			req.ExecutionID)
 	}
+	a.runs[req.ExecutionID] = e
 	// A finished one is NOT refused, and it is not an oversight: an engine
 	// older than #127 names an execution after its step -- the same id for
 	// every run of the workflow -- so a finished id is how its next run
@@ -321,6 +338,7 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	// process so the variable can point at it, removed when the execution ends.
 	output, err := os.CreateTemp("", "brevis-output-*.json")
 	if err != nil {
+		a.abandon(e)
 		return nil, fmt.Errorf("this host could not make a file for the step's "+
 			"published context: %w", err)
 	}
@@ -330,21 +348,13 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	env, err := a.environment(req, outputPath)
 	if err != nil {
 		_ = os.Remove(outputPath)
+		a.abandon(e)
 		// Refused before spawning. The engine turns this into a failed step
 		// naming the coordinate, which is the point: a command that starts with
 		// VENDOR_TOKEN unset produces a 401 three layers down and blames the
 		// wrong service.
 		return nil, err
 	}
-
-	e := &execution{id: req.ExecutionID, ring: a.opt.RingSize, first: 1, next: 1}
-	e.cond = sync.NewCond(&e.mu)
-
-	runCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
-	if req.TimeoutSeconds > 0 {
-		runCtx, cancel = context.WithTimeout(runCtx, time.Duration(req.TimeoutSeconds)*time.Second)
-	}
-	e.stop = cancel
 
 	dir := req.WorkDir
 	if dir == "" {
@@ -360,24 +370,27 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		cancel()
+		_ = os.Remove(outputPath)
+		a.abandon(e)
 		return nil, err
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		cancel()
+		_ = os.Remove(outputPath)
+		a.abandon(e)
 		return nil, err
 	}
+	// A cancel during the setup has already ended runCtx, and Start then
+	// fails here -- the step is abandoned, never spawned.
 	if err := cmd.Start(); err != nil {
-		cancel()
+		_ = os.Remove(outputPath)
+		a.abandon(e)
 		return nil, fmt.Errorf("starting the step on this host: %w", err)
 	}
+	e.mu.Lock()
 	e.cmd = cmd
 	e.started = time.Now()
-
-	a.mu.Lock()
-	a.runs[req.ExecutionID] = e
-	a.mu.Unlock()
+	e.mu.Unlock()
 	a.remember(req.ExecutionID, cmd.Process.Pid, e.started)
 
 	e.emit(remote.Line{Kind: remote.KindStarted})
@@ -423,6 +436,20 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	}()
 
 	return e.reader(0), nil
+}
+
+// abandon gives back the reservation of a step that never started: it leaves
+// `runs` -- only if it is still this execution -- so a later start of the id is
+// not refused forever, and it is closed, so a resume that found it during the
+// setup ends instead of waiting on a ring nothing will write.
+func (a *Agent) abandon(e *execution) {
+	e.stop()
+	a.mu.Lock()
+	if a.runs[e.id] == e {
+		delete(a.runs, e.id)
+	}
+	a.mu.Unlock()
+	e.close()
 }
 
 // publish turns what the step wrote into the marker the runner already reads.
@@ -532,11 +559,16 @@ func (a *Agent) Cancel(execID string) error {
 		return a.cancelFromState(execID)
 	}
 	e.stop()
+	// The command is read under the execution's lock, like `exited`: since
+	// #130 an execution is visible from its reservation, before Start has
+	// spawned anything and while it is writing e.cmd. Nil means not spawned
+	// yet, and the stop above is then all it takes -- Start fails on the
+	// ended context and abandons the step.
 	e.mu.Lock()
-	exited := e.exited
+	exited, cmd := e.exited, e.cmd
 	e.mu.Unlock()
-	if !exited && e.cmd != nil && e.cmd.Process != nil {
-		_ = syscall.Kill(-e.cmd.Process.Pid, syscall.SIGTERM)
+	if !exited && cmd != nil && cmd.Process != nil {
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
 	}
 	return nil
 }
