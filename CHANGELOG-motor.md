@@ -14,6 +14,29 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.36.1] — 2026-10-23
+
+### Fixed: two starts of one execution id at once no longer run twice (#130)
+
+The agent checked an execution id, released its lock, set the step up and
+spawned it, and only then recorded the id. Two starts of one id arriving
+together both got through: twenty released at once ran the command twenty
+times under one id, the entries overwriting each other and all but one beyond
+the reach of any resume or cancel.
+
+Since 0.36.0 two runs never share an id, so this was reached by **one start
+sent twice** — an engine or a proxy retrying a `Start` whose response was lost.
+The id is now reserved under the same lock as the check, before any setup: a
+second start is refused while the first is still being set up, and a resume or
+a cancel arriving meanwhile finds it. A step refused during setup (a secret
+outside the allowlist) leaves its id free.
+
+Only the agent changed. No migration, no configuration, no protocol change:
+upgrade the agents (`areteacademy/brevis:0.36.1-agent`); the engine images are
+rebuilt at the same version for consistency.
+
+---
+
 ## [0.36.0] — 2026-10-23
 
 A run is executed once, a scheduler that stops leaves nothing it started
