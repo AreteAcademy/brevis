@@ -14,6 +14,147 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.36.0] — 2026-10-23
+
+A run is executed once, a scheduler that stops leaves nothing it started
+half-recorded or orphaned, and a `host:` step survives a scheduler restart.
+**Three migrations and three upgrade rules — read "Upgrading" first.**
+
+### Fixed: a run longer than 15 minutes ran twice (#121)
+
+A run that took longer than the dispatcher's visibility window (15 minutes) was
+requeued by the **same** scheduler still running it, and executed twice,
+concurrently. Over seven days in two installations the second attempt ended as:
+
+| | `success -> success` | `failed -> success` | `queued -> success` |
+|---|---|---|---|
+| installation A | 13 | 2 | 1 |
+| installation B | 11 | 3 | 5 |
+
+— every one a step doing its work twice: a fetch landing its records twice, two
+dbt MERGEs racing on one `__dbt_tmp`.
+
+- **A live holder renews its claim** every 5 minutes (`Visibility/3`) for as long
+  as the run goes on. The orphan sweep reclaims only a holder **silent** for 15
+  minutes — a worker that died — so a run may now take any time at all.
+- **An attempt whose claim was taken anyway** (the database unreachable for longer
+  than the window) is stopped — its pod deleted, its process killed, its `host:`
+  step cancelled on the agent — and writes nothing. The run belongs to whoever
+  holds it now.
+- **Each scheduler claims under its own name**, `<hostname>-<pid>` (the pod's, in
+  Kubernetes), carried on every dispatcher log line as `worker=`. All claimed as
+  `local` before.
+
+Runs already duplicated are not repaired.
+
+### Fixed: a SIGTERM mid-run no longer records the run as a success (#122)
+
+A deploy or a node drain sent the scheduler SIGTERM, and a run in flight was about
+to be marked **success**: a cancel between two levels returned "nothing failed",
+and a cancelled `host:` step — whose executor closes with no verdict — counted as
+done. It did not land on 0.35.0 only because the process closed its database pool
+before the dispatcher had written anything, which also meant no shutdown ever
+recorded an interrupted run.
+
+- **A step succeeded only if its executor said so.** An interrupted step ends
+  `canceled`; the steps not yet started get no row.
+- **The run is requeued for free**: `failed → retrying → queued`, no attempt spent,
+  no alert, no backoff, its error saying the scheduler shut down. The next
+  scheduler takes it at once instead of the sweep finding it fifteen minutes later.
+- **`brevis scheduler` waits for its dispatcher** before closing the pool.
+- A run whose graph finished as the signal came keeps its outcome.
+
+### Added: a scheduler restart no longer restarts a `host:` step (#125)
+
+On a SIGTERM a `host:` step in flight **goes on running on its agent**, and the
+next scheduler **follows** it: the same execution, as the same attempt, its log
+read again from the start of the agent's ring, ending as it ends. A forty-minute
+load no longer starts over because the scheduler was redeployed.
+
+When it cannot be followed, by why:
+
+- the agent has no execution by that id (it restarted, or `--keep-finished`
+  passed) → the step **starts again**;
+- the agent's ring no longer reaches the last line read (more than `--ring` lines
+  written meanwhile) → it is **stopped** and the attempt fails; the retry runs it
+  under a new id;
+- the agent cannot be reached → the attempt fails.
+
+A handover that could not be written down is stopped instead. A **lost claim**
+(#121) always stops the step. `BREVIS_HOST_HANDOVER`: `on` (default) or `off`,
+which restores cancelling; anything else refuses to start. Pods and local
+processes are not handed over: they stop with the scheduler, as above.
+
+### Fixed: two runs of one workflow collided on an agent (#127)
+
+The execution id was `<workflow>:<node>`, so the agent refused the second of two
+concurrent runs of a workflow with a `host:` step — *"already running here"* — and
+it failed at once. It is now `<workflow>:<node>[-i]:<run>:r<run attempt>:a<step
+attempt>`. Two faces of the same bug on Kubernetes:
+
+- **the instances of a `for_each:` step shared one pod**, the others adopting the
+  first's and reporting its exit code as theirs;
+- **a retried run adopted the previous attempt's pods**: the run's attempt never
+  reached the pod name.
+
+An unmapped step's pod name at run attempt 0 is unchanged.
+
+### Fixed: a step that finished as its connection dropped is no longer failed (#128)
+
+The agent forgot an execution *before* writing its exit line, so a connection that
+dropped at the very end could not be resumed, and the engine failed the step — **a
+step that had succeeded included**. The agent now keeps a finished execution — the
+end of its log, its published context, its exit code — for **`--keep-finished`**
+(`1h`), at most **`--keep-finished-max`** (`200`), the oldest first, in memory.
+Cancelling a finished execution is a no-op (it used to answer "the process may
+still be running"); a second start of a finished id runs again, as engines before
+this one need.
+
+### Changed: the console's reads by workflow use an index (#109)
+
+`runs_workflow_criado_idx (workflow_slug, criado_em DESC)`, and the Workflows
+page's strip of recent runs reads it one workflow at a time. On 100k runs over 50
+workflows: the Workflows list **537 → 13 ms**, the recent-runs strip **~157 → ~1–3
+ms**.
+
+### Changed
+
+- **A cancelled run stops what it started.** A `host:` step is cancelled on its
+  agent when its run's context ends (it used to run on), and a cancelled pod is
+  deleted even with `BREVIS_POD_KEEP_ON_FAILURE`, which keeps pods that *finished*
+  failing.
+- **The agent protocol, compatibly:** a resume of an execution the agent does not
+  have answers **404** instead of a generic 400. A new engine reads an old agent's
+  400 as "unreachable" — the safe side; an old engine reads a 404 as the error it
+  always got.
+- **Two scheduler log lines are in English** (#131): `orphaned runs recovered` and
+  `runs created`, each with `count=` (were `runs orfas recuperadas`, `runs
+  criados`, `quantidade=`). A log query or alert on the old text has to follow.
+
+### Upgrading
+
+1. **Migrate first**: `brevis migrate up` applies `00023` (`queue_items.renovado_em`),
+   `00024` (the index, built `CONCURRENTLY` — writes go on, a large `runs` takes a
+   while; the first migration outside a transaction) and `00025`
+   (`task_runs.handover`), **before** the new scheduler and API serve. The new
+   recent-runs query needs the index: without it, it is slower than before.
+2. **Replace every scheduler replica, not some of them.** An old replica neither
+   renews nor reads renewals — its sweep still measures a claim's age — so it would
+   go on taking long runs from the new ones.
+3. **Upgrade the agents too.** An old agent keeps nothing after a step ends and
+   answers a lost execution with a plain 400: a handed-over step is then not
+   followed — the attempt fails and the retry runs it again. Safe, not followed. An
+   agent now holds up to 200 finished rings; lower `--keep-finished-max` on a small
+   host.
+4. **A shutdown needs its grace period.** Settling takes up to 15s, a `host:` cancel
+   up to 10s, a pod deletion up to 30s; Kubernetes' default is 30s and Compose's
+   10s, and neither is raised. A process killed first leaves its runs to the sweep.
+   See `docs/KUBERNETES.md`, "When it stops".
+
+No new required configuration.
+
+---
+
 ## [0.35.0] — 2026-10-17
 
 ### Changed: the Overview (#117)
