@@ -14,6 +14,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/alerts"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
+	"github.com/AreteAcademy/brevis/internal/execution"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/queue"
 	"github.com/AreteAcademy/brevis/internal/scheduler"
@@ -615,5 +616,33 @@ func TestTheDispatchersLinesNameItsWorker(t *testing.T) {
 		if !strings.Contains(l, "worker=brevis-scheduler-0-42") {
 			t.Errorf("a line that does not name its worker: %q", l)
 		}
+	}
+}
+
+// And a lost claim says so -- the one cancel after which nothing may be left
+// running.
+func TestALostClaimCancelsTheRunWithItsReason(t *testing.T) {
+	pool := testDB(t)
+	repo := postgres.NewRunRepo(pool)
+	q := queue.New(pool.Pool)
+	id := queuedRun(t, pool, q, "cause-lost")
+
+	returned := make(chan struct{})
+	var cause atomic.Value
+	d := scheduler.New(lostClaim, q, repo, func(ctx context.Context, _ uuid.UUID) error {
+		defer close(returned)
+		if _, err := pool.Exec(ctx, `
+			UPDATE queue_items SET reivindicado_em = now() + interval '1 hour', reivindicado_por = 'other'
+			WHERE run_id = $1`, id); err != nil {
+			return err
+		}
+		<-ctx.Done()
+		cause.Store(context.Cause(ctx))
+		return ctx.Err()
+	}, noLog())
+
+	untilExecuted(t, d, returned)
+	if got, _ := cause.Load().(error); !errors.Is(got, execution.ErrClaimLost) {
+		t.Errorf("the run's context ended with cause %v; wanted ErrClaimLost", got)
 	}
 }
