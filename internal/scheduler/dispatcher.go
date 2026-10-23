@@ -22,6 +22,7 @@ import (
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	sch "github.com/AreteAcademy/brevis/internal/domain/schedule"
 	wfdom "github.com/AreteAcademy/brevis/internal/domain/workflow"
+	"github.com/AreteAcademy/brevis/internal/execution"
 	"github.com/AreteAcademy/brevis/internal/notify"
 	"github.com/AreteAcademy/brevis/internal/observability/metrics"
 	"github.com/AreteAcademy/brevis/internal/queue"
@@ -348,11 +349,18 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 		d.log.Warn("automatic params not recorded", "run", it.RunID, "error", err)
 	}
 
-	runCtx, cancelRun := context.WithCancel(ctx)
-	stop := d.keepClaim(runCtx, it, cancelRun)
+	// The run's context says WHY it ends (#125), because an executor has a
+	// choice to make that depends on it: a `host:` step may be handed to the
+	// next scheduler on a shutdown, and must be stopped on a lost claim. It is
+	// detached from this process's context and then cancelled from it with a
+	// cause -- a child of a cancelled context would only ever say "canceled".
+	runCtx, cancelRun := context.WithCancelCause(context.WithoutCancel(ctx))
+	unwatch := context.AfterFunc(ctx, func() { cancelRun(execution.ErrShutdown) })
+	stop := d.keepClaim(runCtx, it, func() { cancelRun(execution.ErrClaimLost) })
 	err := d.executar(runCtx, it.RunID)
 	stop()
-	cancelRun()
+	unwatch()
+	cancelRun(nil)
 
 	// From here on the bookkeeping runs on a context of its own. See settle.
 	done, cancel := settle()

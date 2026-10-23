@@ -2,8 +2,10 @@ package scheduler_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/alerts"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
+	"github.com/AreteAcademy/brevis/internal/execution"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/queue"
 	"github.com/AreteAcademy/brevis/internal/scheduler"
@@ -177,5 +180,29 @@ func TestACanceledErrorWithoutAShutdownIsAFailure(t *testing.T) {
 	}
 	if r.Status != dom.StatusFailed || r.Attempt != 1 {
 		t.Errorf("run = %s at attempt %d; wanted an ordinary failure", r.Status, r.Attempt)
+	}
+}
+
+// #125: an executor has to tell a shutdown from a lost claim. Both cancel the
+// run, and a `host:` step may be handed over on the first and never on the
+// second. The run's context says which, as its cause.
+func TestAShutdownCancelsTheRunWithItsReason(t *testing.T) {
+	pool := testDB(t)
+	repo := postgres.NewRunRepo(pool)
+	q := queue.New(pool.Pool)
+	queuedRun(t, pool, q, "cause-shutdown")
+
+	started := make(chan struct{})
+	var cause atomic.Value
+	d := scheduler.New(oneAttempt, q, repo, func(ctx context.Context, _ uuid.UUID) error {
+		close(started)
+		<-ctx.Done()
+		cause.Store(context.Cause(ctx))
+		return fmt.Errorf("the run was interrupted: %w", ctx.Err())
+	}, noLog())
+
+	shutDownMidRun(t, d, started)
+	if got, _ := cause.Load().(error); !errors.Is(got, execution.ErrShutdown) {
+		t.Errorf("the run's context ended with cause %v; wanted ErrShutdown", got)
 	}
 }

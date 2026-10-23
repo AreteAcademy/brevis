@@ -8,7 +8,18 @@ package execution
 
 import (
 	"context"
+	"errors"
 	"time"
+)
+
+// Why a run's context ended, read with context.Cause by an executor that has a
+// choice to make (#125). Both cancel the run; they differ in what may be left
+// behind. A SHUTDOWN may hand a step over to the next scheduler -- a `host:`
+// step goes on running on its agent. A LOST CLAIM may not: another scheduler
+// holds the run now, and leaving the step running is running it twice (#121).
+var (
+	ErrShutdown  = errors.New("the scheduler is shutting down")
+	ErrClaimLost = errors.New("this scheduler lost the run's claim to another")
 )
 
 // Executor runs a task and reports what happens.
