@@ -82,6 +82,8 @@ func main() {
 		workDir    = flag.String("work-dir", "", "where a step runs when it names no directory")
 		stateDir   = flag.String("state-dir", "", "where the execution -> pid map is kept, so cancel survives a restart")
 		ring       = flag.Int("ring", 10000, "lines kept for a resumed connection; beyond this a reconnect fails the step")
+		keep       = flag.Duration("keep-finished", time.Hour, "how long a finished step stays resumable, so a scheduler that was down while it ended can still read how it ended")
+		keepMax    = flag.Int("keep-finished-max", 200, "at most this many finished steps are kept, each with its ring; past it the oldest goes first")
 		insecure   = flag.Bool("insecure-no-token", false, "run with NO authentication: anything that reaches the port runs any command. Say it out loud or do not do it")
 		advertise  = flag.String("advertise", "", "the address the engine should come back to for this instance's executions; required behind a shared address, meaningless without one")
 		logLevel   = flag.String("log-level", "info", "debug, info, warn or error")
@@ -122,6 +124,8 @@ func main() {
 		WorkDir:         *workDir,
 		StateDir:        *stateDir,
 		RingSize:        *ring,
+		KeepFinished:    *keep,
+		KeepFinishedMax: *keepMax,
 		Advertise:       *advertise,
 	}
 	// BEFORE the socket, so a refused configuration never answers a request.

@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -133,5 +134,62 @@ func TestAFinishedExecutionIsNotStartedAgain(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "finished") {
 		t.Errorf("a second start of a finished execution returned %v; wanted a refusal saying it finished", err)
+	}
+}
+
+// clock is a time the test moves by hand, so an hour of retention takes no
+// hour.
+type clock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func (c *clock) Now() time.Time          { c.mu.Lock(); defer c.mu.Unlock(); return c.now }
+func (c *clock) advance(d time.Duration) { c.mu.Lock(); c.now = c.now.Add(d); c.mu.Unlock() }
+
+// A finished execution is kept for --keep-finished, and not one moment past
+// it: the set is memory, a ring per entry, and it has to stay bounded.
+func TestAFinishedExecutionIsForgottenAfterItsRetention(t *testing.T) {
+	c := &clock{now: time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)}
+	a := agent.New(agent.Options{
+		Shell: []string{"/bin/sh", "-c"}, KeepFinished: time.Hour, Now: c.Now,
+	})
+	finish(t, a, "kept", "true")
+
+	c.advance(59 * time.Minute)
+	if r, err := a.Resume("kept", 0); err != nil {
+		t.Fatalf("within its hour the execution was already gone: %v", err)
+	} else {
+		_ = r.Close()
+	}
+
+	c.advance(2 * time.Minute)
+	if _, err := a.Resume("kept", 0); err == nil || !strings.Contains(err.Error(), "not running here") {
+		t.Errorf("past its hour the execution answered %v; wanted it forgotten", err)
+	}
+}
+
+// And at most --keep-finished-max of them: past it, the OLDEST goes first --
+// the one a returning scheduler is least likely to still be asking about.
+func TestPastTheMaximumTheOldestFinishedExecutionGoesFirst(t *testing.T) {
+	c := &clock{now: time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)}
+	a := agent.New(agent.Options{
+		Shell: []string{"/bin/sh", "-c"}, KeepFinished: time.Hour, KeepFinishedMax: 2, Now: c.Now,
+	})
+	for _, id := range []string{"oldest", "middle", "newest"} {
+		finish(t, a, id, "true")
+		c.advance(time.Minute)
+	}
+
+	if _, err := a.Resume("oldest", 0); err == nil {
+		t.Error("the oldest of three finished executions survived a maximum of two")
+	}
+	for _, id := range []string{"middle", "newest"} {
+		r, err := a.Resume(id, 0)
+		if err != nil {
+			t.Errorf("%s was evicted: %v", id, err)
+			continue
+		}
+		_ = r.Close()
 	}
 }

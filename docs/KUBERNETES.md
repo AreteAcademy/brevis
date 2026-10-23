@@ -156,6 +156,8 @@ brevis-agent \
 | `--allow-secrets` | which names a step may ask for. **Empty denies every one** |
 | `--state-dir` | where the execution → pid map lives, so cancel survives the agent restarting |
 | `--ring` | lines kept for a reconnect. Beyond this a dropped connection fails the step rather than resuming with a hole |
+| `--keep-finished` | how long a step stays resumable **after it ends** (default `1h`), so a connection that dropped at the end — or a scheduler that was down while it ended — still reads its exit code, its published context and the end of its log. In memory: an agent restart loses them |
+| `--keep-finished-max` | at most this many finished steps kept (default `200`), each with its ring; past it the oldest goes first |
 | `--advertise` | the address the engine comes back to for **this instance's** executions. Required behind a shared address, meaningless without one — see below |
 | `--insecure-no-token` | run with **no authentication at all**: anything that reaches the port runs any command. It has to be said, because an empty `--token-file` does not start |
 
