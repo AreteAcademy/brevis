@@ -9,6 +9,7 @@ package scheduler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -390,7 +391,47 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 		return
 	}
 
+	// Stopped by the shutdown rather than failed. Read from the runner's
+	// answer AND this process's context: a run whose last step finished as the
+	// SIGTERM arrived returned nil and succeeded above, and a run that failed
+	// with an error merely mentioning a context, while nobody was shutting
+	// down, fails below like any other.
+	if ctx.Err() != nil && errors.Is(err, context.Canceled) {
+		d.interrupt(done, it, err)
+		return
+	}
+
 	d.fail(done, it, err)
+}
+
+// interrupt sends back to the queue a run this process stopped on its way
+// down (#122).
+//
+// It was not ruled a failure, so it spends no attempt and raises no alert: a
+// deploy at the wrong moment would otherwise exhaust a run's attempts and page
+// somebody about nothing. And it waits for no backoff, because nothing is
+// wrong with what it depends on -- the next scheduler should take it at once,
+// instead of the orphan sweep finding it fifteen minutes later.
+//
+// The edges are the retry's own, failed -> retrying -> queued; the state
+// machine has no running -> queued, and the run's record should read as an
+// attempt that ended and was sent back, which is what happened.
+func (d *Dispatcher) interrupt(ctx context.Context, it queue.Item, cause error) {
+	_ = d.repo.RecordError(ctx, it.RunID, fmt.Sprintf(
+		"interrupted: the scheduler shut down while the run was in flight (%s), "+
+			"and it went back to the queue without spending an attempt", cause))
+	for _, to := range []dom.Status{dom.StatusFailed, dom.StatusRetrying, dom.StatusQueued} {
+		if err := d.repo.Transicionar(ctx, it.RunID, to); err != nil {
+			d.log.Error("requeuing an interrupted run", "run", it.RunID, "to", to, "error", err)
+			_ = d.queue.Done(ctx, it)
+			return
+		}
+	}
+	if err := d.queue.Release(ctx, it, 0); err != nil {
+		d.log.Error("handing an interrupted run back to the queue", "run", it.RunID, "error", err)
+		return
+	}
+	d.log.Info("interrupted, requeued", "run", it.RunID)
 }
 
 // renew is the heartbeat's renewal: the queue's, unless a test replaced it.
