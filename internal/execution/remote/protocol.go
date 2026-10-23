@@ -44,6 +44,7 @@ package remote
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -223,3 +224,10 @@ func Decode(raw []byte) (Line, error) {
 	}
 	return l, l.Validate()
 }
+
+// ErrUnknownExecution is an agent saying it has no execution by that id: it
+// never ran one, it restarted, or its retention is past. Said apart on the
+// wire (404) because the engine does something different with it -- a
+// handed-over step whose agent lost it may start again with its own id
+// (#125), which a step that is merely unreachable may not.
+var ErrUnknownExecution = errors.New("the agent has no execution by that id")

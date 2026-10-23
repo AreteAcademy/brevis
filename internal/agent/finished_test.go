@@ -3,6 +3,7 @@ package agent_test
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"net/http/httptest"
 	"strings"
@@ -259,5 +260,20 @@ func TestAStepThatEndedWhileItsConnectionWasDownEndsAsItEnded(t *testing.T) {
 					end.Kind, end.ExitCode, end.Message, c.want, c.code)
 			}
 		})
+	}
+}
+
+// An execution this agent does not know is said apart on the wire -- 404, not
+// a generic refusal -- because the engine does something different with it:
+// a step whose agent lost it may start again with its own id (#125).
+func TestAnUnknownExecutionIsSaidApart(t *testing.T) {
+	a := agent.New(agent.Options{Shell: []string{"/bin/sh", "-c"}})
+	srv := httptest.NewServer(a.Handler(quiet()))
+	t.Cleanup(srv.Close)
+
+	_, err := remote.HTTPAgent{BaseURL: srv.URL}.Resume(context.Background(), "", "never-ran",
+		remote.Resume{Protocol: remote.Protocol})
+	if !errors.Is(err, remote.ErrUnknownExecution) {
+		t.Errorf("resuming an execution this agent never had: %v; wanted ErrUnknownExecution", err)
 	}
 }

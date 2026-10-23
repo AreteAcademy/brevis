@@ -139,7 +139,53 @@ func (e *Executor) Execute(ctx context.Context, t execution.TaskExec) (<-chan ex
 	e.mu.Unlock()
 
 	events := make(chan execution.Event, 64)
-	go e.pump(ctx, cancel, t, session, events)
+	go e.pump(ctx, cancel, t, session, events, 0)
+	return events, nil
+}
+
+// The one executor whose steps outlive a scheduler, so the one that follows them.
+var _ execution.Reattacher = (*Executor)(nil)
+
+// Reattach follows a step a previous scheduler handed over (#125): the same
+// execution, on the instance that holds it, through the same pump a dropped
+// connection is resumed by -- lease, retries and verdict included.
+//
+// From the START of the agent's ring, so the log comes back whole: the
+// scheduler that handed it over never wrote the lines it had read. When the
+// ring no longer reaches its start, from the last line that scheduler read --
+// the head of the log is lost, the outcome is not.
+//
+// An error says why it cannot, and the three are kept apart because the
+// runner does a different thing for each: a GapError (not even the last line
+// read is left), ErrUnknownExecution (the agent lost it), or anything else
+// (the agent could not be reached).
+func (e *Executor) Reattach(ctx context.Context, t execution.TaskExec, h execution.Handover) (<-chan execution.Event, error) {
+	t.ExecutionID = h.ExecutionID
+	var from int64
+	stream, err := e.Agent.Resume(ctx, h.Instance, h.ExecutionID, Resume{
+		Protocol: Protocol, After: from, Reason: "reattach after a scheduler restart",
+	})
+	var gap GapError
+	if errors.As(err, &gap) {
+		from = h.After
+		stream, err = e.Agent.Resume(ctx, h.Instance, h.ExecutionID, Resume{
+			Protocol: Protocol, After: from, Reason: "reattach after a scheduler restart",
+		})
+	}
+	if err != nil {
+		return nil, fmt.Errorf("the step handed over on %s could not be followed: %w", e.Host, err)
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	e.mu.Lock()
+	if e.running == nil {
+		e.running = map[string]*step{}
+	}
+	e.running[t.ExecutionID] = &step{cancel: cancel, instance: h.Instance}
+	e.mu.Unlock()
+
+	events := make(chan execution.Event, 64)
+	go e.pump(ctx, cancel, t, Session{Instance: h.Instance, Stream: stream}, events, from)
 	return events, nil
 }
 
@@ -160,8 +206,13 @@ type step struct {
 const cancelTimeout = 10 * time.Second
 
 // pump reads the stream, resumes it when it breaks, and closes `events` once.
+//
+// `from` is the last line already accounted for: 0 for a stream that starts at
+// the beginning, the resume point for a reattach that could not -- so a drop
+// right after it resumes from there, and not into a gap the ring no longer
+// covers.
 func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
-	t execution.TaskExec, session Session, events chan<- execution.Event) {
+	t execution.TaskExec, session Session, events chan<- execution.Event, from int64) {
 
 	stream := session.Stream
 
@@ -178,7 +229,7 @@ func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
 		retries = defaultRetries
 	}
 
-	var seen int64
+	seen := from
 	for attempt := 0; ; attempt++ {
 		last, finished, err := e.drain(ctx, t, stream, events, seen)
 		_ = stream.Close()
@@ -640,7 +691,14 @@ func (a HTTPAgent) send(ctx context.Context, base, path string, payload any) (io
 	if resp.StatusCode != http.StatusOK {
 		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		_ = resp.Body.Close()
-		return nil, instance, fmt.Errorf("the agent answered %s: %s", resp.Status, strings.TrimSpace(string(snippet)))
+		err := fmt.Errorf("the agent answered %s: %s", resp.Status, strings.TrimSpace(string(snippet)))
+		if resp.StatusCode == http.StatusNotFound {
+			// The agent has no execution by that id. Typed, because #125's
+			// reattach starts such a step again and must not mistake an
+			// agent it cannot reach -- or an old agent's generic 400 -- for it.
+			err = fmt.Errorf("%w: %w", ErrUnknownExecution, err)
+		}
+		return nil, instance, err
 	}
 	return resp.Body, instance, nil
 }
