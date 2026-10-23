@@ -554,10 +554,19 @@ const terminationMessagePath = "/dev/termination-log"
 //
 // The hash suffix resolves the collision the 63-character cut would create
 // between two long node names with a common prefix.
+//
+// It carries the INSTANCE of a mapped step, and only of a mapped one (#127).
+// Without it the instances of a `for_each:` step shared one name, and all but
+// the first adopted its pod and reported its exit code as their own. An
+// unmapped step's input is left exactly as it was, so its pod name does not
+// move and a rolling upgrade still finds the pods of the runs in flight.
 func PodName(t execution.TaskExec) string {
 	base := sanitize(t.Workflow + "-" + t.NodeID)
-	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%s|%d|%d",
-		t.RunID, t.NodeID, t.RunAttempt, t.Attempt)))
+	identity := fmt.Sprintf("%s|%s|%d|%d", t.RunID, t.NodeID, t.RunAttempt, t.Attempt)
+	if t.MapIndex >= 0 {
+		identity += fmt.Sprintf("|%d", t.MapIndex)
+	}
+	sum := sha256.Sum256([]byte(identity))
 	sufixo := hex.EncodeToString(sum[:4])
 
 	const maxName = 63
