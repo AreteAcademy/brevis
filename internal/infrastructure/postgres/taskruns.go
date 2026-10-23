@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/jackc/pgx/v5"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 
 	exec "github.com/AreteAcademy/brevis/internal/application/execution"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
+	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
 // This file closes a debt left open since PHASE 2: the `task_runs` table existed
@@ -27,7 +29,8 @@ func (r *RunRepo) IniciarTask(ctx context.Context, runID uuid.UUID, step dom.Ste
 		INSERT INTO task_runs (id, run_id, node_id, map_index, status, attempt, iniciado_em)
 		VALUES ($1, $2, $3, $4, $5, $6, now())
 		ON CONFLICT (run_id, node_id, attempt, map_index) DO UPDATE
-		SET status = EXCLUDED.status, iniciado_em = now(), terminado_em = NULL, erro = ''`,
+		SET status = EXCLUDED.status, iniciado_em = now(), terminado_em = NULL, erro = '',
+		    handover = NULL`,
 		uuid.New(), runID, step.Node, step.MapIndex, dom.StatusRunning, attempt)
 	return err
 }
@@ -157,12 +160,37 @@ func (r *RunRepo) PublishedContext(ctx context.Context, runID uuid.UUID) (map[st
 }
 
 // TerminarTask records the outcome.
+// RecordHandover writes where a handed-over step goes on running (#125). The
+// row stays as it is -- `running` -- because the step is.
+func (r *RunRepo) RecordHandover(ctx context.Context, runID uuid.UUID, step dom.StepKey,
+	attempt int, h execution.Handover) error {
+	raw, err := json.Marshal(h)
+	if err != nil {
+		return err
+	}
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE task_runs SET handover = $5
+		WHERE run_id = $1 AND node_id = $2 AND attempt = $3 AND map_index = $4`,
+		runID, step.Node, attempt, step.MapIndex, raw)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		// Written nowhere is not written: the runner then stops the step
+		// rather than leave it running where nobody will look.
+		return fmt.Errorf("no row for step %s attempt %d of run %s to record its handover on",
+			step.Node, attempt, runID)
+	}
+	return nil
+}
+
 func (r *RunRepo) TerminarTask(ctx context.Context, runID uuid.UUID, step dom.StepKey,
 	attempt int, status dom.Status, exit *int, failure string, log string) error {
 
 	_, err := r.pool.Exec(ctx, `
 		UPDATE task_runs
-		SET status = $5, exit_code = $6, erro = $7, log = $8, terminado_em = now()
+		SET status = $5, exit_code = $6, erro = $7, log = $8, terminado_em = now(),
+		    handover = NULL
 		WHERE run_id = $1 AND node_id = $2 AND attempt = $3 AND map_index = $4`,
 		runID, step.Node, attempt, step.MapIndex, status, exit, failure, log)
 	return err

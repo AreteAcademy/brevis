@@ -34,6 +34,18 @@ func migrate(t *testing.T, direction string) {
 	}
 }
 
+// beforeTheIndex rolls the schema back to the migration before the index's
+// -- not "one down", which undoes whichever migration is last, and the index's
+// stopped being last the day #125's handover column landed on top of it.
+const beforeTheIndex = 23
+
+func migrateBeforeTheIndex(t *testing.T) {
+	t.Helper()
+	if err := postgres.MigrateDownTo(context.Background(), os.Getenv("BREVIS_TEST_DATABASE_URL"), beforeTheIndex); err != nil {
+		t.Fatalf("migrate down to %d: %v", beforeTheIndex, err)
+	}
+}
+
 // #109: the console's reads by workflow scanned the whole of `runs`. The index
 // is there, valid, on the two columns they filter and order by.
 func TestRunsHaveAnIndexByWorkflowAndTime(t *testing.T) {
@@ -50,7 +62,7 @@ func TestTheIndexMigrationGoesDownAndUp(t *testing.T) {
 	pool := insightsDB(t)
 	t.Cleanup(func() { migrate(t, "up") })
 
-	migrate(t, "down")
+	migrateBeforeTheIndex(t)
 	if def, _ := indexDef(t, pool); def != "" {
 		t.Errorf("after down the index is still there: %s", def)
 	}
@@ -68,7 +80,7 @@ func TestAnIndexLeftByAFailedBuildDoesNotStopTheMigration(t *testing.T) {
 	pool := insightsDB(t)
 	t.Cleanup(func() { migrate(t, "up") })
 
-	migrate(t, "down")
+	migrateBeforeTheIndex(t)
 	if _, err := pool.Exec(context.Background(),
 		`CREATE INDEX `+workflowIndex+` ON runs (status)`); err != nil {
 		t.Fatal(err)
