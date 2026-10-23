@@ -764,3 +764,99 @@ func TestWithHandoverOffAShutdownCancels(t *testing.T) {
 		}
 	}
 }
+
+func handed(after int64) execution.Handover {
+	return execution.Handover{Instance: "http://agent-0:9443", ExecutionID: "exec-1", Attempt: 1, After: after}
+}
+
+// #125: the next scheduler follows a handed-over step from the START of the
+// agent's ring, so the whole log comes back, and the step ends as it ended.
+func TestReattachFollowsTheStepFromTheStartOfTheRing(t *testing.T) {
+	agent := &fakeAgent{lines: []string{
+		`{"seq":1,"kind":"started"}`, line(2, "log", "stdout", "page 1"), exitLine(3, 0),
+	}}
+	e := &remote.Executor{Agent: agent, Host: "box", LeaseLimit: time.Minute}
+
+	ch, err := e.Reattach(context.Background(), task(), handed(2))
+	if err != nil {
+		t.Fatalf("Reattach: %v", err)
+	}
+	got := collect(t, ch)
+	if got[len(got)-1].Kind != execution.EventSucceeded {
+		t.Errorf("the reattached step ended %+v", got[len(got)-1])
+	}
+	if len(agent.resumes) != 1 || agent.resumes[0].After != 0 {
+		t.Errorf("resumes = %+v; wanted one, from the start of the ring", agent.resumes)
+	}
+}
+
+// When the ring no longer reaches its start, from the last line the first
+// scheduler read: the head of the log is lost, the outcome is not.
+func TestReattachFallsBackToTheLastLineRead(t *testing.T) {
+	// The fake serves by POSITION, so the ring is written out whole and the
+	// gap is what refuses the start of it.
+	agent := &fakeAgent{gapFrom: 5, lines: []string{
+		`{"seq":1,"kind":"started"}`, line(2, "log", "stdout", "1"), line(3, "log", "stdout", "2"),
+		line(4, "log", "stdout", "3"), line(5, "log", "stdout", "4"), line(6, "log", "stdout", "late"),
+		exitLine(7, 3),
+	}}
+	e := &remote.Executor{Agent: agent, Host: "box", LeaseLimit: time.Minute}
+
+	ch, err := e.Reattach(context.Background(), task(), handed(6))
+	if err != nil {
+		t.Fatalf("Reattach: %v", err)
+	}
+	got := collect(t, ch)
+	if end := got[len(got)-1]; end.Kind != execution.EventFailed || end.ExitCode != 3 {
+		t.Errorf("the reattached step ended %+v; wanted failed with code 3", end)
+	}
+	if len(agent.resumes) != 2 || agent.resumes[1].After != 6 {
+		t.Errorf("resumes = %+v; wanted the start, then line 6", agent.resumes)
+	}
+}
+
+// The three ways it cannot be followed come back apart, because the runner
+// does a different thing for each: a gap even from the last line read, an
+// execution the agent no longer knows, and an agent it cannot reach.
+func TestReattachSaysWhyItCannot(t *testing.T) {
+	unreachable := errors.New("dial tcp 10.0.3.7:9443: connection refused")
+	for name, c := range map[string]struct {
+		agent *fakeAgent
+		is    func(error) bool
+	}{
+		"gap":     {&fakeAgent{gapFrom: 50}, func(err error) bool { var g remote.GapError; return errors.As(err, &g) }},
+		"unknown": {&fakeAgent{resumeErr: fmt.Errorf("refused: %w", remote.ErrUnknownExecution)}, func(err error) bool { return errors.Is(err, remote.ErrUnknownExecution) }},
+		"unreachable": {&fakeAgent{resumeErr: unreachable}, func(err error) bool {
+			var g remote.GapError
+			return errors.Is(err, unreachable) && !errors.Is(err, remote.ErrUnknownExecution) && !errors.As(err, &g)
+		}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := &remote.Executor{Agent: c.agent, Host: "box", LeaseLimit: time.Minute}
+			if _, err := e.Reattach(context.Background(), task(), handed(9)); err == nil || !c.is(err) {
+				t.Errorf("Reattach = %v; not the %s it is", err, name)
+			}
+		})
+	}
+}
+
+// Reattached from the last line read, a stream that drops before its first new
+// line resumes from that line again -- not from 0, which the ring no longer
+// covers and which would fail a step that was fine.
+func TestAReattachFromTheLastLineResumesFromItAgain(t *testing.T) {
+	agent := &fakeAgent{gapFrom: 5, breakAfter: []int{0}, lines: []string{
+		`{"seq":1,"kind":"started"}`, line(2, "log", "stdout", "1"), line(3, "log", "stdout", "2"),
+		line(4, "log", "stdout", "3"), line(5, "log", "stdout", "4"), line(6, "log", "stdout", "late"),
+		exitLine(7, 3),
+	}}
+	e := &remote.Executor{Agent: agent, Host: "box", LeaseLimit: time.Minute}
+
+	ch, err := e.Reattach(context.Background(), task(), handed(6))
+	if err != nil {
+		t.Fatalf("Reattach: %v", err)
+	}
+	got := collect(t, ch)
+	if end := got[len(got)-1]; end.Kind != execution.EventFailed || end.ExitCode != 3 {
+		t.Errorf("the step ended %+v; wanted its own exit 3, not a gap", end)
+	}
+}

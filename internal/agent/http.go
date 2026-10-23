@@ -149,7 +149,14 @@ func (a *Agent) handleResume(log *slog.Logger) http.HandlerFunc {
 				return
 			}
 			log.Warn("a resume was refused", "execution", id, "after", req.After, "error", err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			// 404 for an execution this agent does not have, apart from every
+			// other refusal: the engine starts a handed-over step again on it
+			// (#125), and must not on anything else.
+			status := http.StatusBadRequest
+			if errors.Is(err, remote.ErrUnknownExecution) {
+				status = http.StatusNotFound
+			}
+			http.Error(w, err.Error(), status)
 			return
 		}
 		log.Info("stream resumed", "execution", id, "after", req.After, "reason", req.Reason)

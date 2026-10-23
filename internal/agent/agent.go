@@ -496,8 +496,9 @@ func (a *Agent) Resume(execID string, after int64) (io.ReadCloser, error) {
 	}
 	a.mu.Unlock()
 	if e == nil {
-		return nil, fmt.Errorf("execution %q is not running here; it finished, or this "+
-			"agent restarted and lost it", execID)
+		return nil, fmt.Errorf("execution %q is not running here; it finished longer ago "+
+			"than this agent keeps, or this agent restarted and lost it: %w",
+			execID, remote.ErrUnknownExecution)
 	}
 
 	e.mu.Lock()

@@ -126,6 +126,13 @@ const (
 	EventHandover EventKind = "handover"
 )
 
+// Reattacher is an executor that can follow a step a previous scheduler handed
+// over, instead of starting it (#125). Optional, asked for by type assertion:
+// only an executor whose steps outlive the scheduler has anything to follow.
+type Reattacher interface {
+	Reattach(ctx context.Context, t TaskExec, h Handover) (<-chan Event, error)
+}
+
 // Handover is where a step that outlived its scheduler can be found again: the
 // agent instance that holds it, its execution id, the attempt it is, and the
 // last line the engine read of it.
