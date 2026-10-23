@@ -101,10 +101,16 @@ type Config struct {
 	// this is the same knob under the name the other two flags use.
 	BackoffMax time.Duration
 
-	// Visibility is how long an item may stay claimed without the worker
-	// finishing before it counts as orphaned. It has to be LONGER than the
-	// longest expected run: too short, and the dispatcher steals from itself a
-	// run that is still going.
+	// Visibility is how long a holder may go SILENT -- no renewal of its claim
+	// -- before its item counts as orphaned. It bounds how long a dead worker's
+	// run waits to be recovered, and nothing else: a live holder renews every
+	// Visibility/3 for as long as its run goes on (see keepClaim), so a run may
+	// take any time at all.
+	//
+	// It used to mean "the longest a run may take", and fifteen minutes was too
+	// short for some: the sweep took runs from the dispatcher still running
+	// them, and they ran twice (#121). Making it configurable would have moved
+	// the limit, not removed it.
 	Visibility time.Duration
 
 	// RecoveryInterval is how often the orphan sweep runs.
