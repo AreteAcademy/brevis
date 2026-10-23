@@ -74,7 +74,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 			if n, err := s.Cycle(ctx, time.Now()); err != nil {
 				s.log.Error("scheduler cycle", "error", err)
 			} else if n > 0 {
-				s.log.Info("runs criados", "quantidade", n)
+				s.log.Info("runs created", "count", n)
 			}
 		}
 	}
@@ -195,7 +195,7 @@ func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, now time.Ti
 // exactly §29's case.
 //
 // IT REPORTS WHETHER IT CREATED ONE. A collision is not an error and is not a
-// creation either, and counting it as one made `runs criados` over-report
+// creation either, and counting it as one made `runs created` over-report
 // every time the scheduler restarted mid-slot. It matters more for a landing
 // trigger, where a collision is the NORMAL outcome -- that is how ten
 // landings in a window become one run -- so a count that could not tell them
