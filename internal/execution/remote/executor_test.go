@@ -572,3 +572,109 @@ type silence struct{ ctx context.Context }
 
 func (s silence) Read([]byte) (int, error) { <-s.ctx.Done(); return 0, io.EOF }
 func (s silence) Close() error             { return nil }
+
+// holdingAgent takes a step at one instance of a pool and never finishes it,
+// recording every cancel it is asked for -- and whether the context it came
+// with could still reach anybody.
+type holdingAgent struct {
+	mu        sync.Mutex
+	cancels   []string // "instance/execID"
+	deadCtx   bool
+	cancelled chan struct{}
+}
+
+func (h *holdingAgent) Start(ctx context.Context, _ remote.StartRequest) (remote.Session, error) {
+	return remote.Session{Instance: "http://agent-1:9443", Stream: silence{ctx: ctx}}, nil
+}
+
+func (h *holdingAgent) Resume(ctx context.Context, _, _ string, _ remote.Resume) (io.ReadCloser, error) {
+	return silence{ctx: ctx}, nil
+}
+
+func (h *holdingAgent) Cancel(ctx context.Context, instance, execID string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.cancels = append(h.cancels, instance+"/"+execID)
+	h.deadCtx = h.deadCtx || ctx.Err() != nil
+	if len(h.cancels) == 1 {
+		close(h.cancelled)
+	}
+	return nil
+}
+
+// A run whose context is cancelled -- the scheduler shutting down, or the
+// claim lost to the sweep (#121) -- stops its process on the host, not only
+// the engine's reading of it. Until this, nothing called Agent.Cancel on that
+// path, and the process ran on undisturbed beside the run's next attempt.
+func TestACancelledRunCancelsItsProcessOnTheHost(t *testing.T) {
+	agent := &holdingAgent{cancelled: make(chan struct{})}
+	e := &remote.Executor{Agent: agent, Host: "dlt-runner-01", LeaseLimit: time.Minute}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ch, err := e.Execute(ctx, task())
+	if err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	collect(t, ch)
+
+	select {
+	case <-agent.cancelled:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the run was cancelled and the agent was never told")
+	}
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+	if len(agent.cancels) != 1 || agent.cancels[0] != "http://agent-1:9443/exec-1" {
+		t.Errorf("cancels = %v; wanted one, at the instance that took the step", agent.cancels)
+	}
+	if agent.deadCtx {
+		t.Error("the cancel was sent on the run's own context, which is already done and reaches nobody")
+	}
+}
+
+// A step that FINISHED is not cancelled afterwards: its process is gone, and a
+// cancel for it would be a request about nothing -- or, with a recycled
+// execution id, about something else.
+func TestAFinishedStepIsNotCancelledWhenItsContextEnds(t *testing.T) {
+	agent := &fakeAgent{lines: []string{exitLine(1, 0)}}
+	e := &remote.Executor{Agent: agent, Host: "box"}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ch, err := e.Execute(ctx, task())
+	if err != nil {
+		t.Fatal(err)
+	}
+	collect(t, ch)
+	cancel()
+	time.Sleep(50 * time.Millisecond)
+
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+	if len(agent.cancelled) != 0 {
+		t.Errorf("a finished step was cancelled: %v", agent.cancelled)
+	}
+}
+
+// Cancel tells the agent itself, and the stream it ends must not tell it again:
+// one cancel asked for is one cancel sent.
+func TestAnExplicitCancelReachesTheAgentOnce(t *testing.T) {
+	agent := &holdingAgent{cancelled: make(chan struct{})}
+	e := &remote.Executor{Agent: agent, Host: "dlt-runner-01", LeaseLimit: time.Minute}
+
+	ch, err := e.Execute(context.Background(), task())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Cancel(context.Background(), "exec-1"); err != nil {
+		t.Fatal(err)
+	}
+	collect(t, ch)
+	time.Sleep(50 * time.Millisecond)
+
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+	if len(agent.cancels) != 1 {
+		t.Errorf("one Cancel reached the agent %d times: %v", len(agent.cancels), agent.cancels)
+	}
+}
