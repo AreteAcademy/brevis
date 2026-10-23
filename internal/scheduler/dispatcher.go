@@ -337,13 +337,36 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 		d.log.Warn("automatic params not recorded", "run", it.RunID, "error", err)
 	}
 
-	stop := d.keepClaim(ctx, it)
-	err := d.executar(ctx, it.RunID)
+	runCtx, cancelRun := context.WithCancel(ctx)
+	stop := d.keepClaim(runCtx, it, cancelRun)
+	err := d.executar(runCtx, it.RunID)
 	stop()
+	cancelRun()
 
 	// From here on the bookkeeping runs on a context of its own. See settle.
 	done, cancel := settle()
 	defer cancel()
+
+	// A lost claim writes NOTHING: the run belongs to whoever holds it now,
+	// and every write below -- the outcome, the error, the attempt, the alert,
+	// the item -- is that holder's to make. The issue's `success -> success`
+	// and `queued -> success` were this attempt writing anyway (#121).
+	//
+	// Asked once more here rather than taken from the heartbeat, because the
+	// claim can be lost after the last tick and before executar returned, where
+	// the heartbeat cannot see it -- and when the heartbeat did see it, this
+	// sees it too.
+	//
+	// What it cannot close is the gap between this check and the writes:
+	// milliseconds, against a sweep that needs Visibility of silence first.
+	// An error here says nothing about the claim, and the writes go ahead as
+	// they always did -- skipping them would leave a finished run `running`
+	// for the sweep to fail and run again.
+	if held, err := d.renew()(done, it); err == nil && !held {
+		d.log.Warn("claim lost, nothing written", "run", it.RunID, "item", it.ID,
+			"worker", d.cfg.Worker)
+		return
+	}
 
 	if err == nil {
 		if err := d.repo.Transicionar(done, it.RunID, dom.StatusSuccess); err != nil {
@@ -361,6 +384,14 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 	d.fail(done, it, err)
 }
 
+// renew is the heartbeat's renewal: the queue's, unless a test replaced it.
+func (d *Dispatcher) renew() func(context.Context, queue.Item) (bool, error) {
+	if d.Renew != nil {
+		return d.Renew
+	}
+	return d.queue.Renew
+}
+
 // keepClaim renews the claim while the run executes, and returns what stops it.
 //
 // The sweep reclaims an item whose holder has been SILENT for Visibility, and
@@ -372,14 +403,16 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 // leave the claim inside it. An error is logged and the next tick tries again:
 // it says the database did not answer, not that the claim is gone.
 //
+// A renewal that matches nothing means the claim is GONE -- the sweep took it,
+// and somebody else may be running this run already. The run is then cancelled
+// through `cancelRun`, which stops its pod or process, because the alternative
+// is the two concurrent executions this exists to prevent.
+//
 // `stop` waits for the loop to end, so no renewal happens after it returns --
 // the bookkeeping that follows ends the claim, and a renewal racing it would be
 // a holder renewing what it just gave up.
-func (d *Dispatcher) keepClaim(ctx context.Context, it queue.Item) (stop func()) {
-	renew := d.Renew
-	if renew == nil {
-		renew = d.queue.Renew
-	}
+func (d *Dispatcher) keepClaim(ctx context.Context, it queue.Item, cancelRun func()) (stop func()) {
+	renew := d.renew()
 	every := max(d.cfg.Visibility/3, time.Millisecond)
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -403,8 +436,9 @@ func (d *Dispatcher) keepClaim(ctx context.Context, it queue.Item) (stop func())
 				d.log.Warn("renewing the claim", "run", it.RunID, "item", it.ID,
 					"worker", d.cfg.Worker, "error", err)
 			case !held:
-				d.log.Error("claim lost", "run", it.RunID, "item", it.ID,
+				d.log.Error("claim lost, cancelling the run", "run", it.RunID, "item", it.ID,
 					"worker", d.cfg.Worker)
+				cancelRun()
 				return
 			}
 		}
