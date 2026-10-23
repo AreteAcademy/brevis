@@ -130,6 +130,13 @@ type Agent struct {
 
 	mu   sync.Mutex
 	runs map[string]*execution
+
+	// finished holds executions whose process has exited, so a resume that
+	// arrives after the end still gets it (#125): a scheduler that was down
+	// while a long step ended learns its exit code, its published context and
+	// the end of its log here, or nowhere. An id is in `runs` or in `finished`
+	// at every instant from Start on -- never in neither.
+	finished map[string]*execution
 }
 
 // New builds an agent.
@@ -187,7 +194,7 @@ func New(opt Options) *Agent {
 	if len(opt.Shell) == 0 {
 		opt.Shell = []string{"/bin/sh", "-c"}
 	}
-	return &Agent{opt: opt, runs: map[string]*execution{}}
+	return &Agent{opt: opt, runs: map[string]*execution{}, finished: map[string]*execution{}}
 }
 
 // execution is one step, from spawn to exit.
@@ -214,6 +221,12 @@ type execution struct {
 	// Killing the wrong process on somebody's host is the worst thing this
 	// program could do.
 	started time.Time
+
+	// exited is set, under mu, the moment the process has been waited for.
+	// The execution stays in `runs` a little longer -- until its exit line is
+	// written -- and a cancel in that stretch must not signal the group: its
+	// pid is free for the OS to hand to somebody else.
+	exited bool
 }
 
 // Start runs a step and returns a reader over its stream.
@@ -235,6 +248,14 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 		a.mu.Unlock()
 		return nil, fmt.Errorf("execution %q is already running here; a retry gets a new id",
 			req.ExecutionID)
+	}
+	if _, done := a.finished[req.ExecutionID]; done {
+		// A start sent twice -- its response lost on the way back. Running
+		// the step again would be two executions of one, the thing #121
+		// ended; resuming is how to learn how it went.
+		a.mu.Unlock()
+		return nil, fmt.Errorf("execution %q already ran here and finished; resume it to "+
+			"read its outcome, and a retry gets a new id", req.ExecutionID)
 	}
 	a.mu.Unlock()
 
@@ -314,12 +335,11 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	go func() {
 		streams.Wait()
 		err := cmd.Wait()
+		e.mu.Lock()
+		e.exited = true
+		e.mu.Unlock()
 		close(heartbeat)
 		cancel()
-
-		a.mu.Lock()
-		delete(a.runs, req.ExecutionID)
-		a.mu.Unlock()
 		a.forget(req.ExecutionID)
 
 		// BEFORE the exit line, because the engine stops reading at it: the
@@ -330,6 +350,16 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 
 		e.emit(remote.Line{Kind: remote.KindExit, Code: exitCode(err)})
 		e.close()
+
+		// Only now, with the exit line in the ring, does the execution move
+		// -- in one step, under one lock. It used to leave `runs` before the
+		// exit line was written, and a resume in between (a connection
+		// dropped at the very end) was refused: the engine failed a step that
+		// had finished, its exit code and context still on their way.
+		a.mu.Lock()
+		delete(a.runs, req.ExecutionID)
+		a.finished[req.ExecutionID] = e
+		a.mu.Unlock()
 	}()
 
 	return e.reader(0), nil
@@ -400,6 +430,9 @@ const maxPublished = 1 << 20
 func (a *Agent) Resume(execID string, after int64) (io.ReadCloser, error) {
 	a.mu.Lock()
 	e := a.runs[execID]
+	if e == nil {
+		e = a.finished[execID]
+	}
 	a.mu.Unlock()
 	if e == nil {
 		return nil, fmt.Errorf("execution %q is not running here; it finished, or this "+
@@ -422,16 +455,24 @@ func (a *Agent) Resume(execID string, after int64) (io.ReadCloser, error) {
 func (a *Agent) Cancel(execID string) error {
 	a.mu.Lock()
 	e := a.runs[execID]
+	_, done := a.finished[execID]
 	a.mu.Unlock()
 
+	if done {
+		// It finished: what was asked for is already true. Without this a
+		// finished execution fell to the state file below and, with no
+		// --state-dir, was answered "the process may still be running".
+		return nil
+	}
 	if e == nil {
-		// Not in memory. Either it finished -- in which case cancelling is a
-		// no-op and saying so is honest -- or this agent restarted, and the
-		// file is what is left of it.
+		// Not in memory: this agent restarted, and the file is what is left.
 		return a.cancelFromState(execID)
 	}
 	e.stop()
-	if e.cmd != nil && e.cmd.Process != nil {
+	e.mu.Lock()
+	exited := e.exited
+	e.mu.Unlock()
+	if !exited && e.cmd != nil && e.cmd.Process != nil {
 		_ = syscall.Kill(-e.cmd.Process.Pid, syscall.SIGTERM)
 	}
 	return nil
