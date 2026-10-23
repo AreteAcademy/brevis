@@ -1484,6 +1484,20 @@ func (r Runner) firstRun(ctx context.Context, slug, nodeID string) bool {
 // montar escolhe o executor e monta a task.
 // instanceSuffix is empty for an unmapped step, so every pod name and every
 // execution id in the system is byte for byte what it was.
+// executionID names ONE execution: this step, this instance, this run, these
+// two attempts. The agent keys its ring, its process and its state file on it,
+// and refuses a second start of one -- "a retry gets a new id" is its contract,
+// and this is the side that keeps it. It was `<workflow>:<node>` until #127,
+// and two runs of one workflow on one agent collided.
+//
+// `:` and not `/` between the parts: the id travels as a path segment of the
+// agent's routes and becomes its state file's name, and a slash would split
+// both.
+func executionID(slug string, key run.StepKey, runID uuid.UUID, runAttempt, attempt int) string {
+	return fmt.Sprintf("%s:%s%s:%s:r%d:a%d",
+		slug, key.Node, instanceSuffix(key), runID, runAttempt, attempt)
+}
+
 func instanceSuffix(k run.StepKey) string {
 	if k.MapIndex == run.Unmapped {
 		return ""
@@ -1507,15 +1521,18 @@ func (r Runner) build(w wf.Workflow, n wf.Node, inst instance, attempt int, firs
 	resources := w.ResourcesFor(n)
 
 	t := execution.TaskExec{
-		// The instance is in the execution id, and therefore in the POD's
-		// name. Without it, four instances of a mapped step ask the cluster for
-		// four pods with one name: the executor ADOPTS an existing pod rather
-		// than starting a second, so three of the four would attach to the
-		// first one's logs and report its exit code as their own.
-		ExecutionID: w.Slug + ":" + inst.key.Node + instanceSuffix(inst.key),
+		ExecutionID: executionID(w.Slug, inst.key, r.RunID, r.RunAttempt, attempt),
 		NodeID:      n.ID,
 		Workflow:    w.Slug,
 		RunID:       r.RunID.String(),
+		// The run's attempt and the instance go into the POD's name (see
+		// PodName). Without the first, a retried run asks for the pods of the
+		// attempt before and adopts what it left; without the second, the
+		// instances of a mapped step share one pod, and all but one report its
+		// exit code as their own. Neither reached the pod until #127: this
+		// struct never set them.
+		RunAttempt: r.RunAttempt,
+		MapIndex:   inst.key.MapIndex,
 		// The attempt goes into the pod's NAME. Without it, a retry finds the
 		// previous attempt's pod again -- and because the executor adopts an
 		// existing pod (so it does not start two identical ones when the
