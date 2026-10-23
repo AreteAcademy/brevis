@@ -231,23 +231,38 @@ type RecentRun struct {
 	At     time.Time
 }
 
+// recentStatesSQL is RecentStates' query, named so a test can EXPLAIN the very
+// text the console runs.
+//
+// One index scan per workflow, stopping after n (#109). It was a window --
+// row_number() over every run of every workflow asked, then rn <= n -- which
+// reads and sorts ALL of them: 100k runs over 50 workflows took ~95ms even with
+// the index, 4.9MB sorted on disk, on every load and keystroke of the
+// Workflows page. A LATERAL with a LIMIT reads n rows a workflow: ~2.4ms.
+//
+// DISTINCT because ANY($1) ignored a slug asked twice and unnest would not.
+// The tie-break -- id DESC within an instant, id ascending in the answer -- is
+// the window's, unchanged.
+const recentStatesSQL = `
+		SELECT s.slug, r.id::text, r.status, r.criado_em
+		FROM (SELECT DISTINCT unnest($1::text[]) AS slug) s
+		CROSS JOIN LATERAL (
+		    SELECT id, status, criado_em FROM runs
+		    WHERE workflow_slug = s.slug
+		    ORDER BY criado_em DESC, id DESC
+		    LIMIT $2
+		) r
+		ORDER BY s.slug, r.criado_em, r.id`
+
 // RecentStates is the last n runs of each workflow asked, oldest to newest so
-// a strip reads left to right like time. ONE query for a page, with a window
-// over each workflow's runs, rather than one per row; a workflow that never
-// ran is absent from the map.
+// a strip reads left to right like time. ONE query for a page rather than one
+// per row; a workflow that never ran is absent from the map.
 func (r *ReadRepo) RecentStates(ctx context.Context, slugs []string, n int) (map[string][]RecentRun, error) {
 	out := map[string][]RecentRun{}
 	if len(slugs) == 0 || n <= 0 {
 		return out, nil
 	}
-	rows, err := r.pool.Query(ctx, `
-		SELECT workflow_slug, id::text, status, criado_em FROM (
-		    SELECT workflow_slug, id, status, criado_em,
-		           row_number() OVER (PARTITION BY workflow_slug ORDER BY criado_em DESC, id DESC) AS rn
-		    FROM runs WHERE workflow_slug = ANY($1)
-		) recent
-		WHERE rn <= $2
-		ORDER BY workflow_slug, criado_em, id`, slugs, n)
+	rows, err := r.pool.Query(ctx, recentStatesSQL, slugs, n)
 	if err != nil {
 		return nil, err
 	}
