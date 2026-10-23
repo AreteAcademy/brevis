@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -16,6 +17,7 @@ import (
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/execution"
+	"github.com/AreteAcademy/brevis/internal/execution/remote"
 )
 
 // mute is an executor that ends a step WITHOUT a verdict: no EventSucceeded,
@@ -214,5 +216,66 @@ func TestAFailureMentioningAContextIsNotAnInterruption(t *testing.T) {
 	var interrupted app.ErrInterrupted
 	if err == nil || errors.As(err, &interrupted) {
 		t.Fatalf("Run returned %v; wanted an ordinary failure", err)
+	}
+}
+
+// holdingAgent takes a `host:` step at one instance and keeps it running until
+// told to stop -- the agent of #122's reproduction, with `sleep 600` on it.
+type holdingAgent struct {
+	mu      sync.Mutex
+	cancels []string
+}
+
+type untilDone struct{ ctx context.Context }
+
+func (u untilDone) Read([]byte) (int, error) { <-u.ctx.Done(); return 0, io.EOF }
+func (untilDone) Close() error               { return nil }
+
+func (*holdingAgent) Start(ctx context.Context, _ remote.StartRequest) (remote.Session, error) {
+	return remote.Session{Instance: "http://agent-0:9443", Stream: untilDone{ctx: ctx}}, nil
+}
+
+func (*holdingAgent) Resume(ctx context.Context, _, _ string, _ remote.Resume) (io.ReadCloser, error) {
+	return untilDone{ctx: ctx}, nil
+}
+
+func (h *holdingAgent) Cancel(_ context.Context, instance, execID string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.cancels = append(h.cancels, instance+"/"+execID)
+	return nil
+}
+
+// #122's second point, through the whole path a shutdown takes: the runner,
+// the real remote executor, an agent. Cancelling the run's context stops the
+// process on the agent -- once, at the instance that took it -- records the
+// step as canceled, and the run answers that it was interrupted. On 0.35.0 the
+// agent's `sleep 600` was still there after the scheduler came back.
+func TestAShutdownStopsAHostStepOnItsAgent(t *testing.T) {
+	agent := &holdingAgent{}
+	rows := &endings{spyPersister: &spyPersister{}}
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(50*time.Millisecond, cancel)
+
+	err := app.Runner{
+		RunID: uuid.New(), Persist: rows, Report: &coletor{},
+		Hosts: map[string]execution.Executor{
+			"box": &remote.Executor{Agent: agent, Host: "box", LeaseLimit: time.Minute},
+		},
+	}.Run(ctx, wf.Workflow{Slug: "interrupted", Nodes: []wf.Node{
+		{ID: "long", Host: "box", Run: "sleep 600"},
+	}})
+
+	var interrupted app.ErrInterrupted
+	if !errors.As(err, &interrupted) {
+		t.Fatalf("Run returned %v; wanted ErrInterrupted", err)
+	}
+	if status, _, ok := rows.of("long"); !ok || status != dom.StatusCanceled {
+		t.Errorf("the host step ended %s (recorded %v); wanted canceled", status, ok)
+	}
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+	if len(agent.cancels) != 1 || !strings.HasPrefix(agent.cancels[0], "http://agent-0:9443/") {
+		t.Errorf("cancels = %v; wanted one, at the instance that took the step", agent.cancels)
 	}
 }
