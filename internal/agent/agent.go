@@ -120,9 +120,31 @@ type Options struct {
 	// Shell runs the command. Empty is `/bin/sh -c`, matching the local
 	// executor: `run:` in the YAML is a shell line, not an argv.
 	Shell []string
+
+	// KeepFinished is how long an execution stays resumable after its process
+	// exits, so a scheduler that was down while a step ended can still read
+	// how it ended (#125). Zero takes defaultKeepFinished.
+	KeepFinished time.Duration
+
+	// KeepFinishedMax bounds how many finished executions are kept, each with
+	// its ring; past it the oldest goes first. Zero takes
+	// defaultKeepFinishedMax.
+	KeepFinishedMax int
+
+	// Now is the clock retention is measured on. Nil is time.Now; a test sets
+	// it so an hour of retention takes no hour.
+	Now func() time.Time
 }
 
 const defaultRingSize = 10000
+
+// The retention of finished executions (#125). An hour covers a scheduler
+// restart and a deploy with margin; two hundred bounds the memory, a ring per
+// entry, on a host that runs many short steps.
+const (
+	defaultKeepFinished    = time.Hour
+	defaultKeepFinishedMax = 200
+)
 
 // Agent holds the running executions.
 type Agent struct {
@@ -194,6 +216,15 @@ func New(opt Options) *Agent {
 	if len(opt.Shell) == 0 {
 		opt.Shell = []string{"/bin/sh", "-c"}
 	}
+	if opt.KeepFinished <= 0 {
+		opt.KeepFinished = defaultKeepFinished
+	}
+	if opt.KeepFinishedMax <= 0 {
+		opt.KeepFinishedMax = defaultKeepFinishedMax
+	}
+	if opt.Now == nil {
+		opt.Now = time.Now
+	}
 	return &Agent{opt: opt, runs: map[string]*execution{}, finished: map[string]*execution{}}
 }
 
@@ -227,6 +258,34 @@ type execution struct {
 	// written -- and a cancel in that stretch must not signal the group: its
 	// pid is free for the OS to hand to somebody else.
 	exited bool
+
+	// finishedAt is when it moved to the finished set, set under the agent's
+	// lock; retention is measured from it.
+	finishedAt time.Time
+}
+
+// prune drops the finished executions past their retention, and then the
+// oldest past the maximum. The caller holds a.mu.
+//
+// Run where the set is touched -- an execution finishing, one being looked up
+// -- rather than on a ticker: no goroutine to stop on shutdown, and a set
+// nobody touches costs nothing but the memory it already had.
+func (a *Agent) prune() {
+	cutoff := a.opt.Now().Add(-a.opt.KeepFinished)
+	for id, e := range a.finished {
+		if e.finishedAt.Before(cutoff) {
+			delete(a.finished, id)
+		}
+	}
+	for len(a.finished) > a.opt.KeepFinishedMax {
+		var oldest string
+		for id, e := range a.finished {
+			if oldest == "" || e.finishedAt.Before(a.finished[oldest].finishedAt) {
+				oldest = id
+			}
+		}
+		delete(a.finished, oldest)
+	}
 }
 
 // Start runs a step and returns a reader over its stream.
@@ -244,6 +303,7 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	}
 
 	a.mu.Lock()
+	a.prune()
 	if _, running := a.runs[req.ExecutionID]; running {
 		a.mu.Unlock()
 		return nil, fmt.Errorf("execution %q is already running here; a retry gets a new id",
@@ -358,7 +418,9 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 		// had finished, its exit code and context still on their way.
 		a.mu.Lock()
 		delete(a.runs, req.ExecutionID)
+		e.finishedAt = a.opt.Now()
 		a.finished[req.ExecutionID] = e
+		a.prune()
 		a.mu.Unlock()
 	}()
 
@@ -429,6 +491,7 @@ const maxPublished = 1 << 20
 // with a hole in the middle and no way to know how big.
 func (a *Agent) Resume(execID string, after int64) (io.ReadCloser, error) {
 	a.mu.Lock()
+	a.prune()
 	e := a.runs[execID]
 	if e == nil {
 		e = a.finished[execID]
@@ -454,6 +517,7 @@ func (a *Agent) Resume(execID string, after int64) (io.ReadCloser, error) {
 // the command is, and killing only the shell leaves it running.
 func (a *Agent) Cancel(execID string) error {
 	a.mu.Lock()
+	a.prune()
 	e := a.runs[execID]
 	_, done := a.finished[execID]
 	a.mu.Unlock()
