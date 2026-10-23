@@ -10,6 +10,7 @@ import (
 
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/internal/queue"
 )
 
 // waitingRun queues one run. claimed puts it in flight the way the claim does
@@ -79,6 +80,33 @@ func TestARunWaitingOnItsOwnWorkflowsLimitSaysSo(t *testing.T) {
 	}
 	if w == nil || w.Group != "" || w.Limit != 1 || len(w.Holders) != 1 || w.Holders[0].Workflow != "id_verification" {
 		t.Errorf("wait = %+v; wanted its own workflow's limit, held by one run", w)
+	}
+}
+
+// #121's heartbeat renews a claim every few minutes, and "held since" is still
+// the moment the slot was taken -- not the last renewal. A holder of a
+// four-hour run renewed a second ago has been holding for four hours.
+func TestARenewedHolderIsHeldSinceItsClaim(t *testing.T) {
+	pool := insightsDB(t)
+	ctx := context.Background()
+	holder := waitingRun(t, pool, "every_15", "jaffle_models", 1, 0, true, tenFifteen, 0)
+	waiting := waitingRun(t, pool, "daily", "jaffle_models", 1, 10, false, time.Time{}, 0)
+
+	it := queue.Item{RunID: holder, ClaimedAt: tenFifteen}
+	if err := pool.QueryRow(ctx, `SELECT id FROM queue_items WHERE run_id = $1`, holder).
+		Scan(&it.ID); err != nil {
+		t.Fatal(err)
+	}
+	if held, err := queue.New(pool.Pool).Renew(ctx, it); err != nil || !held {
+		t.Fatalf("renewing the holder: held %v, err %v", held, err)
+	}
+
+	w, err := postgres.NewRunRepo(pool).WaitingOn(ctx, waiting)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w == nil || len(w.Holders) != 1 || !w.Holders[0].Since.Equal(tenFifteen) {
+		t.Errorf("wait = %+v; wanted one holder since %s", w, tenFifteen)
 	}
 }
 

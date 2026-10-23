@@ -315,7 +315,7 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 		// An invalid transition here means another dispatcher took the same run,
 		// or that it was cancelled. Not our error: release and move on.
 		d.log.Warn("could not mark running", "run", it.RunID, "error", err)
-		_ = d.queue.Release(ctx, it.ID, 0)
+		_ = d.queue.Release(ctx, it, 0)
 		return
 	}
 
@@ -346,7 +346,7 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 		// bookkeeping and it costs a query; leaving an item claimed while it
 		// happens widens the window in which a crash strands the item, for no
 		// gain.
-		_ = d.queue.Done(done, it.ID)
+		_ = d.queue.Done(done, it)
 		d.measure(done, it.RunID, dom.StatusSuccess)
 		return
 	}
@@ -377,7 +377,7 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
 	_ = d.repo.RecordError(ctx, it.RunID, cause.Error())
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusFailed); err != nil {
 		d.log.Error("marking failed", "run", it.RunID, "error", err)
-		_ = d.queue.Done(ctx, it.ID)
+		_ = d.queue.Done(ctx, it)
 		return
 	}
 
@@ -389,7 +389,7 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
 		d.raise(ctx, it.RunID, cause))
 	if err != nil {
 		d.log.Error("spending the attempt", "run", it.RunID, "error", err)
-		_ = d.queue.Done(ctx, it.ID)
+		_ = d.queue.Done(ctx, it)
 		return
 	}
 
@@ -398,18 +398,18 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
 		// the state machine but is the end of this run.
 		d.log.Warn("out of attempts", "run", it.RunID, "attempts", attempt)
 		d.measure(ctx, it.RunID, dom.StatusFailed)
-		_ = d.queue.Done(ctx, it.ID)
+		_ = d.queue.Done(ctx, it)
 		return
 	}
 
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusRetrying); err != nil {
 		d.log.Error("marking retrying", "run", it.RunID, "error", err)
-		_ = d.queue.Done(ctx, it.ID)
+		_ = d.queue.Done(ctx, it)
 		return
 	}
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusQueued); err != nil {
 		d.log.Error("requeuing", "run", it.RunID, "error", err)
-		_ = d.queue.Done(ctx, it.ID)
+		_ = d.queue.Done(ctx, it)
 		return
 	}
 
@@ -418,7 +418,7 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
 	// the queue.
 	atraso := d.backoff(attempt)
 	d.log.Info("requeued", "run", it.RunID, "attempt", attempt, "delay", atraso)
-	if err := d.queue.Release(ctx, it.ID, atraso); err != nil {
+	if err := d.queue.Release(ctx, it, atraso); err != nil {
 		d.log.Error("handing back to the queue", "run", it.RunID, "error", err)
 	}
 }

@@ -26,6 +26,25 @@ type Item struct {
 	RunID       uuid.UUID
 	Priority    int
 	AvailableAt time.Time
+
+	// ClaimedAt is the claim this holder knows: reivindicado_em as the claim
+	// wrote it. It is the fence on everything the holder does afterwards --
+	// Renew, Done, Release -- because a reclaim always writes a new one, so the
+	// pair (ID, ClaimedAt) names one claim and not merely one item.
+	//
+	// Zero means "no claim", which is what the sweep hands back: it leaves the
+	// item unclaimed, and the orphan path's own Done and Release are fenced on
+	// it staying that way.
+	ClaimedAt time.Time
+}
+
+// claim is ClaimedAt as the fence's parameter: NULL for zero, so
+// `reivindicado_em IS NOT DISTINCT FROM $2` matches an unclaimed item.
+func (it Item) claim() any {
+	if it.ClaimedAt.IsZero() {
+		return nil
+	}
+	return it.ClaimedAt
 }
 
 // Queue operates on queue_items.
@@ -136,7 +155,7 @@ func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, e
 			LIMIT $2
 			FOR UPDATE OF q SKIP LOCKED
 		)
-		RETURNING id, run_id, prioridade, disponivel_em`,
+		RETURNING id, run_id, prioridade, disponivel_em, reivindicado_em`,
 		worker, limite)
 	if err != nil {
 		return nil, fmt.Errorf("reivindicando itens: %w", err)
@@ -146,7 +165,7 @@ func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, e
 	var items []Item
 	for rows.Next() {
 		var it Item
-		if err := rows.Scan(&it.ID, &it.RunID, &it.Priority, &it.AvailableAt); err != nil {
+		if err := rows.Scan(&it.ID, &it.RunID, &it.Priority, &it.AvailableAt, &it.ClaimedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, it)
@@ -154,9 +173,33 @@ func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, e
 	return items, rows.Err()
 }
 
+// Renew says the claim is still held. It is fenced on the claim itself, not on
+// the item: a reclaim writes a new reivindicado_em, so a stale holder's renewal
+// matches nothing -- and nothing is the answer that tells it it lost.
+//
+// `held` false with no error is that answer. An error is the database not
+// answering, which says nothing about the claim either way.
+func (q *Queue) Renew(ctx context.Context, it Item) (held bool, err error) {
+	tag, err := q.pool.Exec(ctx, `
+		UPDATE queue_items SET renovado_em = now()
+		WHERE id = $1 AND reivindicado_em = $2`,
+		it.ID, it.claim())
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
 // Done removes the item: the work finished and does not come back.
-func (q *Queue) Done(ctx context.Context, id int64) error {
-	_, err := q.pool.Exec(ctx, `DELETE FROM queue_items WHERE id = $1`, id)
+//
+// Fenced on the claim (#121). A holder whose claim the sweep took and somebody
+// else claimed again would otherwise delete the item that other attempt is
+// running -- and the queue would forget a run still in flight.
+func (q *Queue) Done(ctx context.Context, it Item) error {
+	_, err := q.pool.Exec(ctx, `
+		DELETE FROM queue_items
+		WHERE id = $1 AND reivindicado_em IS NOT DISTINCT FROM $2`,
+		it.ID, it.claim())
 	return err
 }
 
@@ -164,16 +207,25 @@ func (q *Queue) Done(ctx context.Context, id int64) error {
 //
 // Used on retry and when a dispatcher is interrupted before finishing: the item
 // becomes free again instead of staying stuck on a worker that died.
-func (q *Queue) Release(ctx context.Context, id int64, atraso time.Duration) error {
+//
+// Fenced on the claim, as Done is, so a stale holder cannot hand somebody
+// else's run back to the queue.
+func (q *Queue) Release(ctx context.Context, it Item, atraso time.Duration) error {
 	_, err := q.pool.Exec(ctx, `
 		UPDATE queue_items
-		SET reivindicado_em = NULL, reivindicado_por = NULL, disponivel_em = now() + $2::interval
-		WHERE id = $1`,
-		id, fmt.Sprintf("%d milliseconds", atraso.Milliseconds()))
+		SET reivindicado_em = NULL, reivindicado_por = NULL, renovado_em = NULL,
+		    disponivel_em = now() + $3::interval
+		WHERE id = $1 AND reivindicado_em IS NOT DISTINCT FROM $2`,
+		it.ID, it.claim(), fmt.Sprintf("%d milliseconds", atraso.Milliseconds()))
 	return err
 }
 
-// Recuperar returns to the queue the items claimed longer ago than `limite`.
+// Recuperar returns to the queue the items whose holder has been silent longer
+// than `limite`: no renewal for that long, or none at all and a claim that old.
+// Measuring the claim alone took runs from live holders (#121).
+//
+// The items come back with no claim (a zero ClaimedAt), because that is what
+// this leaves behind.
 //
 // It is the safety net against a dead worker: without it, an item claimed by a
 // process that crashed would stay stuck forever. That was exactly the failure
@@ -186,9 +238,9 @@ func (q *Queue) Recover(ctx context.Context, limite time.Duration) ([]Item, erro
 	// forever -- the half of the bug this fixes.
 	rows, err := q.pool.Query(ctx, `
 		UPDATE queue_items
-		SET reivindicado_em = NULL, reivindicado_por = NULL
+		SET reivindicado_em = NULL, reivindicado_por = NULL, renovado_em = NULL
 		WHERE reivindicado_em IS NOT NULL
-		  AND reivindicado_em < now() - $1::interval
+		  AND COALESCE(renovado_em, reivindicado_em) < now() - $1::interval
 		RETURNING id, run_id, prioridade`,
 		fmt.Sprintf("%d milliseconds", limite.Milliseconds()))
 	if err != nil {

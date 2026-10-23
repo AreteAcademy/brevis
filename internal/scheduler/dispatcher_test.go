@@ -641,7 +641,7 @@ func TestThePerWorkflowLimitHoldsTheRestBack(t *testing.T) {
 	}
 
 	// With the first one finished, the next goes out.
-	if err := queue.Done(ctx, items[0].ID); err != nil {
+	if err := queue.Done(ctx, items[0]); err != nil {
 		t.Fatal(err)
 	}
 	seguintes, err := queue.Claim(ctx, "w", 10)

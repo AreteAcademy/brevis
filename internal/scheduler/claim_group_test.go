@@ -65,7 +65,7 @@ func TestTwoWorkflowsInAGroupNeverRunTogether(t *testing.T) {
 		t.Fatalf("with a run of the group in flight, claim handed out %d more (err %v)", len(more), err)
 	}
 
-	if err := q.Done(ctx, first[0].ID); err != nil {
+	if err := q.Done(ctx, first[0]); err != nil {
 		t.Fatal(err)
 	}
 	next, err := q.Claim(ctx, "w", 10)
