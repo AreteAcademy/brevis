@@ -1289,8 +1289,9 @@ func remoteHosts(cfg config.Config, log *slog.Logger) map[string]execution.Execu
 	out := make(map[string]execution.Executor, len(cfg.Hosts))
 	for name, addr := range cfg.Hosts {
 		out[name] = &remote.Executor{
-			Host:  name,
-			Agent: remote.HTTPAgent{BaseURL: strings.TrimRight(addr, "/"), Token: cfg.HostToken},
+			Host:     name,
+			Agent:    remote.HTTPAgent{BaseURL: strings.TrimRight(addr, "/"), Token: cfg.HostToken},
+			HandOver: cfg.HostHandover,
 		}
 	}
 	log.Info("remote hosts configured", "count", len(out))

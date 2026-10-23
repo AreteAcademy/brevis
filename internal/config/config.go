@@ -81,6 +81,11 @@ type Config struct {
 	// not have anywhere else yet.
 	HostToken string
 
+	// HostHandover lets a shutdown leave a `host:` step running on its agent,
+	// for the next scheduler to follow (#125). On unless BREVIS_HOST_HANDOVER
+	// says `off`, which restores #122's cancel.
+	HostHandover bool
+
 	// SlackWebhook receives the alert for a definitive failure. Empty means
 	// nobody is told. It comes from the environment and never from the YAML:
 	// whoever holds the URL posts in the channel as if they were the
@@ -203,6 +208,20 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("BREVIS_SHUTDOWN_TIMEOUT_SECONDS: %q is not an integer", v)
 		}
 		c.ShutdownTimeout = time.Duration(n) * time.Second
+	}
+
+	// Two words and not a boolean: `off` is what an operator types to get
+	// #122's cancel back, and a "false" or a "0" read as `on` would hand over
+	// a step somebody meant to stop. Anything but the two refuses to start.
+	switch v := os.Getenv("BREVIS_HOST_HANDOVER"); v {
+	case "", "on":
+		c.HostHandover = true
+	case "off":
+		c.HostHandover = false
+	default:
+		return Config{}, fmt.Errorf("BREVIS_HOST_HANDOVER: %q is neither on nor off; "+
+			"on (the default) leaves a host: step running on its agent when the scheduler "+
+			"stops, off cancels it", v)
 	}
 
 	if c.DatabaseURL == "" {
