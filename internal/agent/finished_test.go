@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"context"
 	"io"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/AreteAcademy/brevis/internal/agent"
+	"github.com/AreteAcademy/brevis/internal/execution"
 	"github.com/AreteAcademy/brevis/internal/execution/remote"
 )
 
@@ -191,5 +193,62 @@ func TestPastTheMaximumTheOldestFinishedExecutionGoesFirst(t *testing.T) {
 			continue
 		}
 		_ = r.Close()
+	}
+}
+
+// cutAtTheEnd is the agent's real HTTP client, with the network failing at the
+// worst moment: the first stream breaks after its first line, and the resume
+// only goes out once the step has already exited.
+type cutAtTheEnd struct {
+	remote.HTTPAgent
+	exitedBy time.Duration
+}
+
+func (c cutAtTheEnd) Start(ctx context.Context, req remote.StartRequest) (remote.Session, error) {
+	s, err := c.HTTPAgent.Start(ctx, req)
+	if err != nil {
+		return s, err
+	}
+	first, _ := bufio.NewReader(s.Stream).ReadBytes('\n')
+	_ = s.Stream.Close()
+	s.Stream = io.NopCloser(strings.NewReader(string(first)))
+	return s, nil
+}
+
+func (c cutAtTheEnd) Resume(ctx context.Context, instance, execID string, r remote.Resume) (io.ReadCloser, error) {
+	time.Sleep(c.exitedBy)
+	return c.HTTPAgent.Resume(ctx, instance, execID, r)
+}
+
+// #125, through the engine: a connection that broke before the exit line, and
+// came back only after the step had ended, used to fail the step -- "the stream
+// broke and could not be resumed" -- whatever the step did. It now ends as the
+// step ended, success or the exit code.
+func TestAStepThatEndedWhileItsConnectionWasDownEndsAsItEnded(t *testing.T) {
+	for _, c := range []struct {
+		command string
+		want    execution.EventKind
+		code    int
+	}{
+		{"sleep 0.2; exit 0", execution.EventSucceeded, 0},
+		{"sleep 0.2; exit 3", execution.EventFailed, 3},
+	} {
+		t.Run(c.command, func(t *testing.T) {
+			a := agent.New(agent.Options{Shell: []string{"/bin/sh", "-c"}})
+			srv := httptest.NewServer(a.Handler(quiet()))
+			t.Cleanup(srv.Close)
+			e := &remote.Executor{
+				Host:       "test-host",
+				Agent:      cutAtTheEnd{HTTPAgent: remote.HTTPAgent{BaseURL: srv.URL}, exitedBy: time.Second},
+				LeaseLimit: 10 * time.Second,
+			}
+
+			events := run(t, e, task("ended-"+string(c.want), c.command))
+			end := last(events)
+			if end.Kind != c.want || end.ExitCode != c.code {
+				t.Errorf("the step ended %s (code %d, %q); wanted %s with code %d",
+					end.Kind, end.ExitCode, end.Message, c.want, c.code)
+			}
+		})
 	}
 }
