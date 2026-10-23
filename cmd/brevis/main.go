@@ -688,11 +688,29 @@ func (f *schedulerFlags) bind(c *cobra.Command) {
 // dispatcher is the policy these flags describe.
 func (f schedulerFlags) dispatcher() scheduler.Config {
 	return scheduler.Config{
-		Worker: "local", MaxConcorrente: f.concurrency,
+		Worker: workerName(os.Hostname, os.Getpid()), MaxConcorrente: f.concurrency,
 		MaxAttempts: f.maxAttempts,
 		BackoffBase: f.retryBackoff,
 		BackoffMax:  f.retryBackoffMax,
 	}
+}
+
+// workerName is what this process claims queue items as, and what its log
+// lines say.
+//
+// Every replica claimed as "local" until #121, so reivindicado_por could not
+// tell two schedulers apart. The hostname is the pod's name in Kubernetes, and
+// the pid separates two processes on one machine -- or a container restarted
+// under the same name, whose predecessor's claims are still in the table.
+//
+// Nothing is fenced on this name -- the claim's own timestamp does that -- so a
+// host that cannot be read costs readability, not correctness.
+func workerName(hostname func() (string, error), pid int) string {
+	host, err := hostname()
+	if err != nil || host == "" {
+		host = "dispatcher"
+	}
+	return fmt.Sprintf("%s-%d", host, pid)
 }
 
 func cmdScheduler() *cobra.Command {

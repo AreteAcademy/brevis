@@ -1,8 +1,11 @@
 package scheduler_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -578,5 +581,39 @@ func TestALastRenewalErrorStillWritesTheOutcome(t *testing.T) {
 	}
 	if pending, claimed, _ := q.Size(context.Background()); pending+claimed != 0 {
 		t.Errorf("the queue kept %d items", pending+claimed)
+	}
+}
+
+// Every line the dispatcher writes names the process that wrote it.
+// "requeued" without it says a run went back to the queue, and not from which
+// of three schedulers.
+func TestTheDispatchersLinesNameItsWorker(t *testing.T) {
+	pool := testDB(t)
+	repo := postgres.NewRunRepo(pool)
+	q := queue.New(pool.Pool)
+	id := queuedRun(t, pool, q, "named")
+
+	var out bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&out, nil))
+	cfg := longRun
+	cfg.Worker = "brevis-scheduler-0-42"
+
+	var calls atomic.Int32
+	d := scheduler.New(cfg, q, repo, func(context.Context, uuid.UUID) error {
+		if calls.Add(1) == 1 {
+			return errors.New(`step "run": exited with code 2`)
+		}
+		return nil
+	}, log)
+
+	dispatchUntilSettled(t, d, repo, id, nil)
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if !strings.Contains(out.String(), "msg=requeued") {
+		t.Fatalf("the run was never requeued, so there is nothing to read:\n%s", out.String())
+	}
+	for _, l := range lines {
+		if !strings.Contains(l, "worker=brevis-scheduler-0-42") {
+			t.Errorf("a line that does not name its worker: %q", l)
+		}
 	}
 }
