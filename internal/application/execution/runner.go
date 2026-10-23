@@ -906,13 +906,27 @@ func (r Runner) markLandings(ctx context.Context, workflow string, step run.Step
 	}
 }
 
+// settleTimeout bounds the writes that record an interrupted step. Fifteen
+// seconds, the dispatcher's own settle: it fits a normal grace period, and it
+// is "finish writing down what already happened", not "ignore the shutdown".
+const settleTimeout = 15 * time.Second
+
 func (r Runner) markEnd(ctx context.Context, step run.StepKey, attempt int, cause error, log string) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
 	}
 	status, msg := run.StatusSuccess, ""
 	var exit *int
-	if cause != nil {
+	switch {
+	case errors.Is(cause, context.Canceled) || errors.Is(cause, context.DeadlineExceeded):
+		// Stopped, not failed. And written on a context of its own: the run's
+		// is the one that ended, and a row left `running` forever is what
+		// #122 found after every shutdown.
+		status, msg = run.StatusCanceled, cause.Error()
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.WithoutCancel(ctx), settleTimeout)
+		defer cancel()
+	case cause != nil:
 		status, msg = run.StatusFailed, cause.Error()
 		var step *StepError
 		// Exit 0 is not recorded: a Go task that fails has no process, and a
@@ -1037,7 +1051,11 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst insta
 	// precedence below.
 	var fromExecutor bool
 
+	succeeded := false
 	for e := range eventos {
+		if e.Kind == execution.EventSucceeded {
+			succeeded = true
+		}
 		// A marked line is the SDK talking to the engine, not the program's
 		// output. It becomes a phase on the screen and does NOT enter the log
 		// or the Report: whoever looks wants to see the phases, not the JSON
@@ -1122,6 +1140,23 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst insta
 	// What the step declared it wrote. On the failure path as well: a step
 	// that landed rows and then died did land them.
 	r.markLandings(ctx, w.Slug, inst.key, &stages)
+
+	// A step succeeded only if its executor SAID so (#122). Reading the
+	// absence of a failure as success recorded a cancelled `host:` step as
+	// done: the remote executor closes its channel with no verdict when its
+	// context ends, and nothing below could tell that from a clean exit.
+	//
+	// A context that ended with no success is an INTERRUPTION, whatever the
+	// executor reported on its way out -- a pod deleted or a process killed by
+	// the cancel says "failed", and that is the cancel talking, not the step.
+	if !succeeded {
+		if err := ctx.Err(); err != nil {
+			return completa.String(), fmt.Errorf("step %q interrupted: %w", n.ID, err)
+		}
+		if failure == nil {
+			failure = &StepError{NodeID: n.ID, Message: "the executor ended without an outcome"}
+		}
+	}
 
 	if failure == nil {
 		return completa.String(), nil
