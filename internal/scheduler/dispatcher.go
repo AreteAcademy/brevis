@@ -177,6 +177,11 @@ type Dispatcher struct {
 	// BaseURL of the UI, for the link in the alert.
 	BaseURL string
 
+	// Renew is how the heartbeat renews a claim. Nil uses the queue's, which is
+	// every process; a test replaces it to make the database fail on cue
+	// without breaking the pool every other call shares.
+	Renew func(ctx context.Context, it queue.Item) (held bool, err error)
+
 	mu    sync.Mutex
 	emVoo int
 	wg    sync.WaitGroup
@@ -332,7 +337,9 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 		d.log.Warn("automatic params not recorded", "run", it.RunID, "error", err)
 	}
 
+	stop := d.keepClaim(ctx, it)
 	err := d.executar(ctx, it.RunID)
+	stop()
 
 	// From here on the bookkeeping runs on a context of its own. See settle.
 	done, cancel := settle()
@@ -352,6 +359,57 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 	}
 
 	d.fail(done, it, err)
+}
+
+// keepClaim renews the claim while the run executes, and returns what stops it.
+//
+// The sweep reclaims an item whose holder has been SILENT for Visibility, and
+// this is what keeps a live holder from being silent. Without it the sweep
+// measured the claim's age instead, and a run longer than fifteen minutes was
+// requeued by the very dispatcher running it, and ran twice (#121).
+//
+// A third of the window, so two renewals the database does not answer still
+// leave the claim inside it. An error is logged and the next tick tries again:
+// it says the database did not answer, not that the claim is gone.
+//
+// `stop` waits for the loop to end, so no renewal happens after it returns --
+// the bookkeeping that follows ends the claim, and a renewal racing it would be
+// a holder renewing what it just gave up.
+func (d *Dispatcher) keepClaim(ctx context.Context, it queue.Item) (stop func()) {
+	renew := d.Renew
+	if renew == nil {
+		renew = d.queue.Renew
+	}
+	every := max(d.cfg.Visibility/3, time.Millisecond)
+
+	ctx, cancel := context.WithCancel(ctx)
+	stopped := make(chan struct{})
+	go func() {
+		defer close(stopped)
+		tick := time.NewTicker(every)
+		defer tick.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-tick.C:
+			}
+			held, err := renew(ctx, it)
+			switch {
+			case err != nil && ctx.Err() != nil:
+				// Stopped mid-renewal. The run is over, not the database.
+				return
+			case err != nil:
+				d.log.Warn("renewing the claim", "run", it.RunID, "item", it.ID,
+					"worker", d.cfg.Worker, "error", err)
+			case !held:
+				d.log.Error("claim lost", "run", it.RunID, "item", it.ID,
+					"worker", d.cfg.Worker)
+				return
+			}
+		}
+	}()
+	return func() { cancel(); <-stopped }
 }
 
 // settle returns the context for everything that happens AFTER a run finishes.
