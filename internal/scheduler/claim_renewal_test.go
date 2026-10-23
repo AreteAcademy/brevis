@@ -2,12 +2,17 @@ package scheduler_test
 
 import (
 	"context"
+	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/queue"
+	"github.com/AreteAcademy/brevis/internal/scheduler"
 )
 
 // claimOne queues one run and claims it, returning the item exactly as the
@@ -249,5 +254,167 @@ func TestTheOrphanPathLeavesAnItemClaimedAgain(t *testing.T) {
 	}
 	if by, _ := claimedBy(t, pool, it); by == nil || *by != "other" {
 		t.Errorf("the orphan path's Release took the item from its new holder (by %v)", by)
+	}
+}
+
+// queuedRun is a run the way the scheduler leaves it: queued, with its item.
+func queuedRun(t *testing.T, pool *postgres.Pool, q *queue.Queue, key string) uuid.UUID {
+	t.Helper()
+	ctx := context.Background()
+	repo := postgres.NewRunRepo(pool)
+	r, err := repo.Create(ctx, dom.Run{WorkflowSlug: key, IdempotencyKey: key, Definition: []byte(`{}`)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Transicionar(ctx, r.ID, dom.StatusQueued); err != nil {
+		t.Fatal(err)
+	}
+	if err := q.Enqueue(ctx, r.ID, 0, time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	return r.ID
+}
+
+// The issue's timings, shrunk: a window of 300ms, a sweep every 20ms, a run
+// three windows long, and a backoff short enough that a requeued run WOULD run
+// again inside the test. Before the heartbeat this ran twice.
+var longRun = scheduler.Config{
+	Worker: "w", MaxAttempts: 3, Interval: 10 * time.Millisecond,
+	BackoffBase: 10 * time.Millisecond,
+	Visibility:  300 * time.Millisecond, RecoveryInterval: 20 * time.Millisecond,
+}
+
+const threeWindows = 900 * time.Millisecond
+
+// dispatchUntilSettled runs the dispatcher until the run reaches a status no
+// attempt leaves -- success, or failed with the attempts spent -- and then a
+// little longer, so a second execution that was going to happen has.
+//
+// atSuccess, when given, runs the moment success is first seen. The dispatcher
+// writes success only after the heartbeat has stopped, so that is the instant
+// "after the run" begins.
+func dispatchUntilSettled(t *testing.T, d *scheduler.Dispatcher, repo *postgres.RunRepo,
+	id uuid.UUID, atSuccess func()) dom.Run {
+	t.Helper()
+	ctx, stop := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { defer close(done); _ = d.Run(ctx) }()
+	defer func() { stop(); <-done }()
+
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		r, err := repo.Get(context.Background(), id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if r.Status == dom.StatusSuccess {
+			if atSuccess != nil {
+				atSuccess()
+			}
+			time.Sleep(threeWindows)
+			r, err = repo.Get(context.Background(), id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return r
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("the run never succeeded")
+	return dom.Run{}
+}
+
+// #121 itself: a run longer than the visibility window, on one live
+// dispatcher, executes once.
+func TestARunLongerThanTheWindowRunsOnce(t *testing.T) {
+	pool := testDB(t)
+	repo := postgres.NewRunRepo(pool)
+	q := queue.New(pool.Pool)
+	id := queuedRun(t, pool, q, "long")
+
+	var executions atomic.Int32
+	d := scheduler.New(longRun, q, repo, func(ctx context.Context, _ uuid.UUID) error {
+		executions.Add(1)
+		select {
+		case <-time.After(threeWindows):
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}, noLog())
+
+	r := dispatchUntilSettled(t, d, repo, id, nil)
+	if n := executions.Load(); n != 1 {
+		t.Errorf("the run executed %d times; a live holder's run executes once", n)
+	}
+	if r.Status != dom.StatusSuccess || r.Attempt != 0 {
+		t.Errorf("run = %s at attempt %d; wanted success with no attempt spent", r.Status, r.Attempt)
+	}
+	if pending, claimed, _ := q.Size(context.Background()); pending+claimed != 0 {
+		t.Errorf("the queue kept %d items after the run succeeded", pending+claimed)
+	}
+}
+
+// The heartbeat lives exactly as long as executar: renewing during it, and not
+// a single renewal after it returns.
+func TestTheHeartbeatRenewsOnlyWhileTheRunRuns(t *testing.T) {
+	pool := testDB(t)
+	repo := postgres.NewRunRepo(pool)
+	q := queue.New(pool.Pool)
+	id := queuedRun(t, pool, q, "beat")
+
+	var renewals, atSuccess atomic.Int32
+	d := scheduler.New(longRun, q, repo, func(ctx context.Context, _ uuid.UUID) error {
+		time.Sleep(threeWindows)
+		return nil
+	}, noLog())
+	d.Renew = func(ctx context.Context, it queue.Item) (bool, error) {
+		renewals.Add(1)
+		return q.Renew(ctx, it)
+	}
+
+	dispatchUntilSettled(t, d, repo, id, func() { atSuccess.Store(renewals.Load()) })
+	if n := atSuccess.Load(); n < 2 {
+		t.Errorf("%d renewals in three windows; the heartbeat is every third of one", n)
+	}
+	if after, before := renewals.Load(), atSuccess.Load(); after != before {
+		t.Errorf("%d renewals after the run ended", after-before)
+	}
+}
+
+// A renewal the database did not answer says nothing about the claim. It is
+// not a lost claim, and the run goes on to succeed once.
+func TestARenewalErrorIsNotALostClaim(t *testing.T) {
+	pool := testDB(t)
+	repo := postgres.NewRunRepo(pool)
+	q := queue.New(pool.Pool)
+	id := queuedRun(t, pool, q, "blip")
+
+	var executions, cancelled atomic.Int32
+	d := scheduler.New(longRun, q, repo, func(ctx context.Context, _ uuid.UUID) error {
+		executions.Add(1)
+		select {
+		case <-time.After(threeWindows):
+			return nil
+		case <-ctx.Done():
+			cancelled.Add(1)
+			return ctx.Err()
+		}
+	}, noLog())
+	var calls atomic.Int32
+	d.Renew = func(ctx context.Context, it queue.Item) (bool, error) {
+		if calls.Add(1) == 1 {
+			return false, errors.New("connection reset by peer")
+		}
+		return q.Renew(ctx, it)
+	}
+
+	r := dispatchUntilSettled(t, d, repo, id, nil)
+	if n := executions.Load(); n != 1 || cancelled.Load() != 0 {
+		t.Errorf("executed %d times, cancelled %d; one renewal error must change neither",
+			n, cancelled.Load())
+	}
+	if r.Status != dom.StatusSuccess {
+		t.Errorf("run = %s; wanted success", r.Status)
 	}
 }
