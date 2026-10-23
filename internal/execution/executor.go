@@ -42,6 +42,11 @@ type TaskExec struct {
 	// scratch (the step at attempt 0 again) and runs into the previous pod.
 	RunAttempt int
 
+	// MapIndex is which instance of a `for_each:` step this is, or -1
+	// (run.Unmapped) for a step that is not mapped. Its zero value is a real
+	// index, so whoever builds a TaskExec sets it -- `build` always does.
+	MapIndex int
+
 	Command string // a shell line, for the ProcessExecutor
 	Action  string // the name in the registry, for the GoExecutor
 	With    map[string]any
