@@ -64,8 +64,11 @@ func (m Metering) Address() string { return m.addr }
 type Listen struct {
 	Addr string `yaml:"addr"`
 
-	// Auth is who may write. Outside BREVIS_ENV=local it is required.
+	// Auth is who may write. Outside BREVIS_ENV=local it is required, unless
+	// BREVIS_COMMUNICATION=internal.
 	Auth Auth `yaml:"auth"`
+
+	communication string // resolved by check, from the environment
 
 	// MaxBody caps one request. Zero takes the default; a body past it is
 	// refused with 413 before a byte is parsed, because the alternative is a
@@ -807,7 +810,12 @@ func (c *Config) check() error {
 	if env == "" {
 		env = EnvLocal
 	}
-	if err := c.Listen.Auth.check(env); err != nil {
+	comm, err := communication()
+	if err != nil {
+		return err
+	}
+	c.Listen.communication = comm
+	if err := c.Listen.Auth.check(env, comm); err != nil {
 		return err
 	}
 

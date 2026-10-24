@@ -35,14 +35,42 @@ const AuthBearer = "bearer"
 // same as the engine's so an operator learns one word.
 const EnvLocal = "local"
 
-func (a *Auth) check(env string) error {
+// BREVIS_COMMUNICATION says which side of the network the gateway serves.
+// Internal makes `listen.auth` optional -- declared, it is still enforced --
+// because a gateway only the cluster reaches is one internal teams integrate
+// with without anybody handing out keys. External, the default, is the rule
+// above. Like BREVIS_ENV it comes from the deployment and never from the file.
+const (
+	CommunicationInternal = "internal"
+	CommunicationExternal = "external"
+)
+
+// communication reads BREVIS_COMMUNICATION. Unset is external; anything that
+// is neither value refuses to start, because a typo that fell silently to
+// either side would be a door nobody decided on.
+func communication() (string, error) {
+	v := strings.TrimSpace(os.Getenv("BREVIS_COMMUNICATION"))
+	switch v {
+	case "":
+		return CommunicationExternal, nil
+	case CommunicationInternal, CommunicationExternal:
+		return v, nil
+	}
+	return "", fmt.Errorf("BREVIS_COMMUNICATION is %q: use %s (the cluster "+
+		"alone reaches this gateway, so `listen.auth` is optional) or %s "+
+		"(the default: `listen.auth` is required outside BREVIS_ENV=%s)",
+		v, CommunicationInternal, CommunicationExternal, EnvLocal)
+}
+
+func (a *Auth) check(env, communication string) error {
 	switch a.Type {
 	case "":
-		if env != EnvLocal {
+		if env != EnvLocal && communication != CommunicationInternal {
 			return fmt.Errorf("BREVIS_ENV=%s requires `listen.auth`: an ingestion "+
 				"endpoint with no authentication is an open relay on somebody's "+
-				"topic. Declare `{type: bearer, keys_from: <env var>}`, or run with "+
-				"BREVIS_ENV=%s if this is a laptop", env, EnvLocal)
+				"topic. Declare `{type: bearer, keys_from: <env var>}`, run with "+
+				"BREVIS_COMMUNICATION=%s if only the cluster reaches it, or with "+
+				"BREVIS_ENV=%s if this is a laptop", env, CommunicationInternal, EnvLocal)
 		}
 		return nil
 	case AuthBearer:
