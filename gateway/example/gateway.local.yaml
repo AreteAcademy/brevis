@@ -12,7 +12,8 @@ listen:
   # No auth, and that is only allowed because BREVIS_ENV is local here.
   # Outside local the gateway REFUSES TO START without it -- an ingestion
   # endpoint is a write endpoint on somebody's topic, and an unauthenticated
-  # one on a routable address is an open relay.
+  # one on a routable address is an open relay. The one other way to run open
+  # is BREVIS_COMMUNICATION=internal, for a gateway only the cluster reaches.
 
 # The exposition, on its own address. `curl localhost:9091/metrics` with the
 # compose file next door.
