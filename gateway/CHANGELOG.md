@@ -13,7 +13,7 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
-## [Unreleased]
+## [0.32.0] — 2026-10-25
 
 ### Added: `BREVIS_COMMUNICATION=internal` makes `listen.auth` optional
 

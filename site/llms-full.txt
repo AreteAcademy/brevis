@@ -4195,7 +4195,7 @@ With the `gateway.yaml` from the section below, and the key it asks for in `keys
 ```bash
 docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.31.0
+  areteacademy/brevis-gateway:0.32.0
 ```
 
 ```text
@@ -4801,8 +4801,8 @@ build that only writes locally should not carry the AWS SDK to do it.
 
 | image | carries | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.31.0` | six sinks, S3, GCS, Redis, memcached | 19.1 MB |
-| `areteacademy/brevis-gateway:0.31.0-slim` | `postgres`, local `files`, `auto_table` | **5.2 MB** |
+| `areteacademy/brevis-gateway:0.32.0` | six sinks, S3, GCS, Redis, memcached | 19.1 MB |
+| `areteacademy/brevis-gateway:0.32.0-slim` | `postgres`, local `files`, `auto_table` | **5.2 MB** |
 
 Both from one build of one tree, so the two tags are always the same commit.
 There is no `latest-slim` — `latest` is already a tag nobody should deploy.
