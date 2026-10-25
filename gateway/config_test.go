@@ -620,3 +620,23 @@ func TestTheGracePeriodExceedsTheDrainBudget(t *testing.T) {
 		}
 	}
 }
+
+// Under BREVIS_COMMUNICATION=internal the producer naming its table is the use
+// case: an internal team lands into the tables it creates, with no key. Local
+// is not opened further by it -- external with no auth still refuses, above.
+func TestAutoTableUnderInternalNeedsNoAuth(t *testing.T) {
+	yaml := strings.Replace(valid, "sink: {type: pubsub, project: p, topic: t}",
+		"sink: {type: auto_table, into: {type: postgres, dsn_from: D, write: append}}", 1)
+
+	t.Setenv("BREVIS_ENV", "prod")
+	t.Setenv("BREVIS_COMMUNICATION", "internal")
+	if _, err := load(t, yaml); err != nil {
+		t.Errorf("auto_table under internal with no auth was refused: %v", err)
+	}
+
+	t.Setenv("BREVIS_ENV", "local")
+	t.Setenv("BREVIS_COMMUNICATION", "external")
+	if _, err := load(t, yaml); err == nil {
+		t.Error("auto_table with no auth loaded locally under external")
+	}
+}

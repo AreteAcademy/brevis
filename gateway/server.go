@@ -176,6 +176,14 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 	s := &Server{cfg: cfg, mux: http.NewServeMux(), metrics: NewMetrics(),
 		streamAt: map[string]string{}}
 
+	// The door internal opened, said once where the deployment that opened it
+	// is watching. Nothing in the network enforces "internal": the variable is
+	// a declaration, and this line is its reminder.
+	if cfg.Listen.openInside() {
+		slog.Warn("endpoint open: BREVIS_COMMUNICATION=internal -- reach it only "+
+			"from inside", "addr", cfg.Listen.Addr)
+	}
+
 	// Bounded, because building a cloud client resolves credentials and that
 	// can hang: an unreachable metadata server leaves storage.NewClient
 	// waiting, and a pod hung in New is one that never reports why. Past this

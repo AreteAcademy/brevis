@@ -86,6 +86,13 @@ type Listen struct {
 	MaxConnAge time.Duration `yaml:"max_conn_age"`
 }
 
+func (l Listen) authenticated() bool { return l.Auth.Type != "" }
+
+// openInside is an endpoint with no key, opened by BREVIS_COMMUNICATION=internal.
+func (l Listen) openInside() bool {
+	return !l.authenticated() && l.communication == CommunicationInternal
+}
+
 // Stream is one endpoint and where what arrives at it goes.
 type Stream struct {
 	Name string `yaml:"name"`
@@ -825,11 +832,17 @@ func (c *Config) check() error {
 		// production dataset, without limit, and a typo becoming a table
 		// rather than an error. A NetworkPolicy does not cover it: that limits
 		// who reaches the port, not which table name they ask for.
-		if c.Streams[i].Sink.Type == SinkAutoTable && c.Listen.Auth.Type == "" {
+		//
+		// BREVIS_COMMUNICATION=internal is the exception, by decision: there
+		// the producer naming its table is the use case, and the deployment
+		// declared that only the cluster reaches the port. Local is not one.
+		if c.Streams[i].Sink.Type == SinkAutoTable && !c.Listen.authenticated() &&
+			comm != CommunicationInternal {
 			return fmt.Errorf("stream %q uses `auto_table` and `listen.auth` is "+
 				"empty. A producer that can name a table can create one, so this "+
-				"needs authentication even where an ordinary stream would not",
-				c.Streams[i].Name)
+				"needs authentication even where an ordinary stream would not -- "+
+				"unless BREVIS_COMMUNICATION=%s says only the cluster reaches it",
+				c.Streams[i].Name, CommunicationInternal)
 		}
 	}
 

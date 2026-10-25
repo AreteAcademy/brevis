@@ -1,7 +1,9 @@
 package gateway_test
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -148,5 +150,35 @@ func TestLocalWithTheVariableUnsetIsStillOpen(t *testing.T) {
 	ts := servingOpen(t, fmtConfig(unauthed, dir))
 	if code := postClick(t, ts, ""); code != http.StatusAccepted {
 		t.Errorf("a local gateway answered %d to a POST with no token", code)
+	}
+}
+
+// The door internal opened is said once at start, in the log of the
+// deployment that opened it -- and only there: a gateway with a key, or a
+// laptop, has no such door to mention.
+func TestAnEndpointOpenedByInternalSaysSoAtStart(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("GW_KEYS", "k")
+	for _, c := range []struct {
+		name, env, communication, yaml string
+		says                           bool
+	}{
+		{"internal, no auth", "prod", "internal", unauthed, true},
+		{"internal, bearer declared", "prod", "internal", authed, false},
+		{"local, no auth", "local", "external", unauthed, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Setenv("BREVIS_ENV", c.env)
+			t.Setenv("BREVIS_COMMUNICATION", c.communication)
+			var b bytes.Buffer
+			prev := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&b, &slog.HandlerOptions{Level: slog.LevelWarn})))
+			t.Cleanup(func() { slog.SetDefault(prev) })
+
+			servingOpen(t, fmtConfig(c.yaml, dir))
+			if said := strings.Contains(b.String(), "BREVIS_COMMUNICATION=internal"); said != c.says {
+				t.Errorf("said the endpoint is open: %v, want %v; the log: %s", said, c.says, b.String())
+			}
+		})
 	}
 }
