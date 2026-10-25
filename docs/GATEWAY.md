@@ -159,7 +159,9 @@ a minute old would be worse than the dashboard that updates.
 ## Who may write
 
 Required outside `BREVIS_ENV=local`, where the gateway **refuses to start**
-without it — the same rule the engine follows, spelled with the same word.
+without it — the same rule the engine follows, spelled with the same word —
+unless the deployment declares
+[`BREVIS_COMMUNICATION=internal`](#reached-only-from-inside-brevis_communication).
 
 ```yaml
 listen:
@@ -179,6 +181,30 @@ open relay — which is why the refusal is at boot and not a warning.
 
 Locally it stays open, because asking for a token on every
 `docker compose up` only teaches a team to turn authentication off.
+
+### Reached only from inside: `BREVIS_COMMUNICATION`
+
+A gateway that only the cluster reaches can leave the key out, so internal
+teams integrate with it without anybody handing out keys. The deployment says
+which side it serves, from the environment — never from the file, for the
+reason `BREVIS_ENV` is never in it: a file that could declare itself internal
+would be a file that turns off authentication.
+
+| `BREVIS_COMMUNICATION` | `listen.auth` declared | `listen.auth` absent |
+|---|---|---|
+| `internal` | enforced | **open**; `auto_table` allowed |
+| `external`, or unset | enforced | refuses to start, outside `BREVIS_ENV=local` |
+| anything else | refuses to start | refuses to start |
+
+- **Internal makes the key optional, not off.** A declared `bearer` is still
+  enforced: whoever wrote it believes the door is closed.
+- **An unknown value refuses to start**, naming the two. `interno`, `Internal`
+  or `true` falling silently to either side would be a door nobody decided on.
+- **The open door is logged once at start**, as a warning with the address:
+  `endpoint open: BREVIS_COMMUNICATION=internal -- reach it only from inside`.
+  Nothing in the network enforces "internal" — the variable is a declaration
+  by whoever deploys, and the Service, Ingress and NetworkPolicy are what make
+  it true.
 
 `keys_from` names the environment variable, never the keys: the same split
 `secrets:` makes in a workflow, and for the same reason — the file is in git.
@@ -708,9 +734,11 @@ well-formed event in the same request still lands. Per event and not per batch,
 deliberately: refusing at write time would bury the events of every other
 producer in the same flush window.
 
-**`auto_table` is refused on an endpoint with no `listen.auth`.** A producer
-that can name a table can create one. A NetworkPolicy does not cover it: that
-limits who reaches the port, not which table name they ask for.
+**`auto_table` is refused on an endpoint with no `listen.auth`** — locally
+too. A producer that can name a table can create one. A NetworkPolicy does not
+cover it: that limits who reaches the port, not which table name they ask for.
+The one exception is [`BREVIS_COMMUNICATION=internal`](#reached-only-from-inside-brevis_communication),
+where an internal producer naming its table is the use case.
 
 ### The metastore: a cache, and a coordinator
 

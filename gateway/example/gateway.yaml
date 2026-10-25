@@ -6,7 +6,9 @@ listen:
   max_body: 1MiB
 
   # Who may write. Required outside BREVIS_ENV=local, where the gateway
-  # refuses to start without it.
+  # refuses to start without it -- unless the deployment sets
+  # BREVIS_COMMUNICATION=internal: only the cluster reaches it, and the key
+  # becomes optional. Declared, it is enforced either way.
   #
   # `keys_from` names the ENVIRONMENT VARIABLE holding the accepted keys,
   # comma separated. The keys are never in this file -- the same split

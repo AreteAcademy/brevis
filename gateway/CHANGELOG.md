@@ -13,6 +13,21 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added: `BREVIS_COMMUNICATION=internal` makes `listen.auth` optional
+
+A gateway only the cluster reaches can leave the key out, so internal teams
+integrate without anybody handing out keys. Read from the environment, never
+from the file.
+
+- `internal`: an endpoint with no `listen.auth` starts outside local, and
+  `auto_table` is allowed on it. A declared `bearer` is still enforced. The
+  open endpoint is logged once at start, as a warning.
+- `external`, or unset: unchanged -- outside `BREVIS_ENV=local` no
+  `listen.auth` is no start, and the refusal now names `internal`.
+- Anything else refuses to start.
+
 ## [0.31.0] — 2026-10-14
 
 ### Added: `gateway deadletter ls` and `resend` (#86)
