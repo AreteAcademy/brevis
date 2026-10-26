@@ -28,6 +28,21 @@
 // for a pool -- and the pool's symptom is a step failed on the first network
 // blip, with a process still running.
 //
+// # Stopping
+//
+// SIGTERM drains rather than exits (#136): no new step -- a start is answered
+// 503 and /health turns 503 -- while the running ones go on, resumes and
+// cancels included, until each has ended and its exit has been read. Then it
+// exits 0. A step whose exit leaves with this process is a step the engine
+// runs again.
+//
+//	--drain-timeout 2h
+//
+// bounds it, 0 by default: the orchestrator's grace period is the real bound,
+// so set THAT -- terminationGracePeriodSeconds, TimeoutStopSec -- to the
+// longest step this host runs. Past the timeout, or on a second SIGTERM, what
+// is left is cancelled, process group and all, and the exit code is 1.
+//
 // # What it will not do
 //
 // It is not an orchestrator. It knows nothing of workflows, dependencies,
