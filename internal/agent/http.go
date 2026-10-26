@@ -26,7 +26,7 @@ func (a *Agent) Handler(log *slog.Logger) http.Handler {
 	mux.HandleFunc("POST /v1/exec", a.handleStart(log))
 	mux.HandleFunc("POST /v1/exec/{id}/resume", a.handleResume(log))
 	mux.HandleFunc("POST /v1/exec/{id}/cancel", a.handleCancel(log))
-	mux.HandleFunc("GET /health", health)
+	mux.HandleFunc("GET /health", a.health)
 	return a.advertised(a.authenticated(mux, log))
 }
 
@@ -43,8 +43,16 @@ func (a *Agent) Handler(log *slog.Logger) http.Handler {
 // liveness failure sends SIGTERM to a pod that may be holding hours of a
 // step's work, and this process is built the other way round: its own shutdown
 // lets running steps finish their streams.
-func health(w http.ResponseWriter, _ *http.Request) {
+//
+// The one state it does report is its own: a draining agent answers 503, so a
+// balancer stops sending it starts it would only refuse (#136).
+func (a *Agent) health(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	if a.isDraining() {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = io.WriteString(w, `{"status":"draining"}`)
+		return
+	}
 	_, _ = io.WriteString(w, `{"status":"ok"}`)
 }
 
@@ -112,6 +120,15 @@ func (a *Agent) handleStart(log *slog.Logger) http.HandlerFunc {
 			return
 		}
 		stream, err := a.Start(r.Context(), req)
+		if errors.Is(err, ErrDraining) {
+			// 503 and not 400: nothing about the request is wrong, and the
+			// engine sends it again -- to a replica, or to this one's
+			// replacement. Retry-After says how soon is reasonable.
+			log.Info("a step was refused: draining", "execution", req.ExecutionID)
+			w.Header().Set("Retry-After", "1")
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			return
+		}
 		if err != nil {
 			// 400, not 500: every refusal above is about what was ASKED for --
 			// a protocol this agent does not speak, an id already running, a

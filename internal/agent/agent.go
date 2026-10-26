@@ -159,6 +159,10 @@ type Agent struct {
 	// the end of its log here, or nowhere. An id is in `runs` or in `finished`
 	// at every instant from Start on -- never in neither.
 	finished map[string]*execution
+
+	// draining refuses new starts (#136). Under `mu`, the lock the reservation
+	// takes, so no start slips in between the check and the flip.
+	draining bool
 }
 
 // New builds an agent.
@@ -319,6 +323,11 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 
 	a.mu.Lock()
 	a.prune()
+	if a.draining {
+		a.mu.Unlock()
+		cancel()
+		return nil, ErrDraining
+	}
 	if _, running := a.runs[req.ExecutionID]; running {
 		a.mu.Unlock()
 		cancel()
