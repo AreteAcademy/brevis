@@ -147,6 +147,22 @@ agent:
   # and waits for the running ones to end and be read; this is when it is
   # killed anyway. Set it to the longest step this host runs, plus margin.
   terminationGracePeriodSeconds: 3600
+  # Where --state-dir lives: the pid records a cancel across a restart reads,
+  # and the finished steps a resume after one reads (#137). On a volume claimed
+  # per pod by default, because on an emptyDir a rollout loses both -- and the
+  # engine, finding a finished step gone, runs it again.
+  #
+  # persistent=false goes back to an emptyDir, for a cluster with no storage
+  # to give. The size bounds --keep-finished-max steps of --ring lines each; a
+  # write that does not fit is a warning, never a failed step. Empty
+  # storageClassName takes the cluster's default.
+  #
+  # Upgrading from a chart without this takes one step, once, because a
+  # StatefulSet's claims cannot change: kubectl delete statefulset <name> --cascade=orphan
+  state:
+    persistent: true
+    size: 1Gi
+    storageClassName: ""
   resources:
     requests: {cpu: 100m, memory: 128Mi}
     limits: {memory: 512Mi}

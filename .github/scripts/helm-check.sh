@@ -210,6 +210,54 @@ for arg in sys.argv[1:]:
     assert m.group(1) == grace, '%s: terminationGracePeriodSeconds %s, wanted %s' % (path, m.group(1), grace)
 PY
 
+# The agent's --state-dir holds the pid records a cancel reads and the
+# finished steps a resume reads (#137). On an emptyDir both are gone at every
+# rollout -- and an engine finding a finished step gone runs it again. So the
+# chart claims a volume by default, and an emptyDir only when asked for.
+agent_ephemeral="$(mktemp)"; agent_class="$(mktemp)"
+trap 'rm -f "$rendered" "$full" "$agent" "$agent_long" "$agent_ephemeral" "$agent_class"' EXIT
+$HELM template brevis "$CHART" --namespace data "${MIN[@]}" \
+  --set agent.enabled=true --set agent.tokenSecret=t \
+  --set agent.state.persistent=false > "$agent_ephemeral" || {
+  erro "the chart does not render with agent.state.persistent=false"; exit 1; }
+$KUBECONFORM -strict -kubernetes-version "$K8S_VERSION" "$agent_ephemeral" || erro "kubeconform rejected the ephemeral agent"
+$HELM template brevis "$CHART" --namespace data "${MIN[@]}" \
+  --set agent.enabled=true --set agent.tokenSecret=t \
+  --set agent.state.storageClassName=fast-ssd --set agent.state.size=5Gi > "$agent_class" || {
+  erro "the chart does not render with agent.state.storageClassName"; exit 1; }
+$KUBECONFORM -strict -kubernetes-version "$K8S_VERSION" "$agent_class" || erro "kubeconform rejected the agent with a storage class"
+python3 - "$agent:claim:1Gi" "$agent_ephemeral:emptyDir" "$agent_class:claim:5Gi:fast-ssd" <<'PY' \
+  || erro "an agent's --state-dir does not live where it should"
+import re, sys
+for arg in sys.argv[1:]:
+    path, want, *rest = arg.split(':')
+    doc = open(path).read()
+    docs = ['\n'.join(l for l in d.split('\n') if not l.strip().startswith('#'))
+            for d in doc.split('\n---')]
+    sts = [d for d in docs if re.search(r'^kind: StatefulSet$', d, re.M)]
+    assert len(sts) == 1, '%s: expected one StatefulSet, got %d' % (path, len(sts))
+    sts = sts[0]
+    ephemeral = re.search(r'- name: state\n\s+emptyDir:', sts)
+    claims = sts.split('volumeClaimTemplates:')[1] if 'volumeClaimTemplates:' in sts else ''
+    if want == 'emptyDir':
+        assert ephemeral, '%s: persistent=false and state is not an emptyDir' % path
+        assert not claims, '%s: persistent=false and a volume is still claimed' % path
+        continue
+    assert not ephemeral, '%s: state is an emptyDir, and a rollout loses it' % path
+    assert re.search(r'^\s+fsGroup: 65532$', sts, re.M), \
+        '%s: the claimed volume is root-owned and the agent, 65532, cannot write it' % path
+    assert re.search(r'name: state\b', claims), '%s: no volumeClaimTemplate named state' % path
+    assert 'ReadWriteOnce' in claims, '%s: the state claim is not ReadWriteOnce' % path
+    size = rest[0]
+    assert re.search(r'storage: %s\b' % size, claims), '%s: the state claim is not %s' % (path, size)
+    if len(rest) > 1:
+        assert re.search(r'storageClassName: "?%s"?' % rest[1], claims), \
+            '%s: storageClassName %s is not in the claim' % (path, rest[1])
+    else:
+        assert 'storageClassName' not in claims, \
+            '%s: a storageClassName was set without being asked for' % path
+PY
+
 # --- what has to be refused -------------------------------------------------
 recusa() {
   local desc="$1"; shift
@@ -228,6 +276,7 @@ recusa "concurrency=0"          "${MIN[@]}" --set scheduler.concurrency=0
 recusa "alerts with no webhook" "${MIN[@]}" --set alerts.enabled=true
 recusa "more than one scheduler" "${MIN[@]}" --set scheduler.replicas=2
 recusa "an unknown value"       "${MIN[@]}" --set nonsense=1
+recusa "an agent state size that is a number" "${MIN[@]}" --set agent.enabled=true --set agent.tokenSecret=t --set agent.state.size=1
 recusa "an agent grace period of 0" "${MIN[@]}" --set agent.enabled=true --set agent.tokenSecret=t --set agent.terminationGracePeriodSeconds=0
 
 if [ "$falhas" -gt 0 ]; then
