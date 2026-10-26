@@ -14,6 +14,53 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.37.0] — 2026-10-26
+
+### Fixed: SIGTERM drains an agent's running steps instead of killing them (#136)
+
+`brevis-agent` logged *"running steps keep their streams until they end"* and
+exited at once, taking every running `host:` step with it: `main` returned as
+soon as the server stopped, while the goroutine meant to wait was still waiting.
+A rolling restart of the agents failed the attempts it caught.
+
+On SIGTERM an agent now **drains**. It takes no new step — a start is answered
+`503`, and `/health` turns `503 draining` — while the running ones go on, their
+resumes and cancels included: an engine restarted in the same rollout comes back
+for the step it handed over and finds it. The agent leaves when each step has
+ended **and its exit has been read**; a step that ended while the engine was away
+would otherwise be answered "unknown execution" and run again. Then it exits `0`.
+
+`--drain-timeout` bounds it (default `0`: no limit, the orchestrator's grace
+period being the bound). Past it, or on a second SIGTERM, what is left is
+cancelled — the whole process group — and the agent exits `1`.
+
+### Fixed: a draining agent pod keeps its DNS name and its time (#136)
+
+Kubernetes drops a terminating pod from a headless Service's DNS, so the
+engine's resume of a step on a draining agent failed with `no such host`. The
+agent's Service now sets `publishNotReadyAddresses: true`, and its StatefulSet
+`terminationGracePeriodSeconds: 3600` — 30s would cut any real drain. In the
+chart: `agent.terminationGracePeriodSeconds`.
+
+### Changed: a start that ran nothing is sent again (#136)
+
+With not-ready pods published, a start can land on an agent that is draining or
+not yet listening. The engine now sends a start answered `503`, or refused at
+connect, again — five tries over about fifteen seconds. It cannot run a step
+twice: a start that did arrive makes the next one "already running" (#130).
+Resumes and cancels are unchanged. An agent that is really down now fails the
+attempt after those fifteen seconds rather than at once.
+
+### Upgrading
+
+No migration and no protocol change. **Apply the manifests** — or upgrade the
+chart — with the agents: without `publishNotReadyAddresses` and the grace
+period, the agent drains and Kubernetes still cuts it. Set
+`terminationGracePeriodSeconds` (systemd: `TimeoutStopSec`) to the longest step
+a host runs. See *When the agent stops* in `docs/KUBERNETES.md`.
+
+---
+
 ## [0.36.1] — 2026-10-23
 
 ### Fixed: two starts of one execution id at once no longer run twice (#130)
