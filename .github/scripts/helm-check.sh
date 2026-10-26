@@ -170,6 +170,46 @@ for b in doc.split('---'):
         assert '-task' not in b.split('subjects:')[-1], "a binding names the task account"
 PY
 
+# The agent drains on SIGTERM, and two things outside it decide whether that is
+# worth anything (#136). A pod that is terminating leaves the headless Service's
+# DNS unless publishNotReadyAddresses keeps it -- and the engine's resume of a
+# step handed over to it then finds "no such host". And the drain lasts only as
+# long as the grace period Kubernetes gives it, 30s unless said.
+#
+# Checked on the chart AND on the two plain manifests, which are copies of the
+# same decision and drift apart the first time one is edited alone.
+agent="$(mktemp)"; agent_long="$(mktemp)"
+trap 'rm -f "$rendered" "$full" "$agent" "$agent_long"' EXIT
+$HELM template brevis "$CHART" --namespace data "${MIN[@]}" \
+  --set agent.enabled=true --set agent.tokenSecret=t > "$agent" || {
+  erro "the chart does not render with the agent"; exit 1; }
+$KUBECONFORM -strict -kubernetes-version "$K8S_VERSION" "$agent" || erro "kubeconform rejected the agent"
+$HELM template brevis "$CHART" --namespace data "${MIN[@]}" \
+  --set agent.enabled=true --set agent.tokenSecret=t \
+  --set agent.terminationGracePeriodSeconds=7200 > "$agent_long" || {
+  erro "the chart does not render with agent.terminationGracePeriodSeconds"; exit 1; }
+python3 - "$agent:3600" "$agent_long:7200" \
+  "deployments/kubernetes/agent.yaml:3600" "examples/cluster/apps/60-agent.yaml:3600" <<'PY' \
+  || erro "an agent manifest would cut its own drain"
+import re, sys
+for arg in sys.argv[1:]:
+    path, grace = arg.rsplit(':', 1)
+    doc = open(path).read()
+    # Comments stripped: the argument for each setting is written next to it,
+    # and a grep would pass on the comment with the setting gone.
+    docs = ['\n'.join(l for l in d.split('\n') if not l.strip().startswith('#'))
+            for d in doc.split('\n---')]
+    svc = [d for d in docs if re.search(r'^kind: Service$', d, re.M) and 'clusterIP: None' in d]
+    sts = [d for d in docs if re.search(r'^kind: StatefulSet$', d, re.M)]
+    assert len(svc) == 1, '%s: expected one headless Service, got %d' % (path, len(svc))
+    assert len(sts) == 1, '%s: expected one StatefulSet, got %d' % (path, len(sts))
+    assert re.search(r'^\s+publishNotReadyAddresses: true$', svc[0], re.M), \
+        '%s: the headless Service drops a draining pod from DNS' % path
+    m = re.search(r'^\s+terminationGracePeriodSeconds: (\d+)$', sts[0], re.M)
+    assert m, '%s: no terminationGracePeriodSeconds, so 30s cuts the drain' % path
+    assert m.group(1) == grace, '%s: terminationGracePeriodSeconds %s, wanted %s' % (path, m.group(1), grace)
+PY
+
 # --- what has to be refused -------------------------------------------------
 recusa() {
   local desc="$1"; shift
@@ -188,6 +228,7 @@ recusa "concurrency=0"          "${MIN[@]}" --set scheduler.concurrency=0
 recusa "alerts with no webhook" "${MIN[@]}" --set alerts.enabled=true
 recusa "more than one scheduler" "${MIN[@]}" --set scheduler.replicas=2
 recusa "an unknown value"       "${MIN[@]}" --set nonsense=1
+recusa "an agent grace period of 0" "${MIN[@]}" --set agent.enabled=true --set agent.tokenSecret=t --set agent.terminationGracePeriodSeconds=0
 
 if [ "$falhas" -gt 0 ]; then
   echo "$falhas problem(s) with the chart."
