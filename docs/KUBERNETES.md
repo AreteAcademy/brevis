@@ -158,6 +158,7 @@ brevis-agent \
 | `--ring` | lines kept for a reconnect. Beyond this a dropped connection fails the step rather than resuming with a hole |
 | `--keep-finished` | how long a step stays resumable **after it ends** (default `1h`), so a connection that dropped at the end — or a scheduler that was down while it ended — still reads its exit code, its published context and the end of its log. In memory: an agent restart loses them |
 | `--keep-finished-max` | at most this many finished steps kept (default `200`), each with its ring; past it the oldest goes first |
+| `--drain-timeout` | on SIGTERM, how long to wait for the running steps to end **and be read** before cancelling them. Default `0`: as long as it takes, the orchestrator's grace period being the bound — see [When the agent stops](#when-the-agent-stops) |
 | `--advertise` | the address the engine comes back to for **this instance's** executions. Required behind a shared address, meaningless without one — see below |
 | `--insecure-no-token` | run with **no authentication at all**: anything that reaches the port runs any command. It has to be said, because an empty `--token-file` does not start |
 
@@ -188,18 +189,16 @@ replica that advertises somewhere else is ignored rather than followed.
 GET. A kubelet sends no `Authorization` header, so the probe either sits outside
 the guard or the pod it gates never goes Ready.
 
-It checks nothing. The agent has no dependency to be ready for — no database, no
-queue — so the only thing it can honestly report is that the listener is up,
-which answering at all settles.
+It checks nothing outside the process. The agent has no dependency to be ready
+for — no database, no queue — so it reports the one state it has: `200 ok` while
+it serves, `503 draining` once a SIGTERM has arrived.
 
-The manifests gate **readiness** with it, and deliberately not liveness. The
-engine reaches a pool through a headless Service whose DNS already filters on
-Ready; without the probe a replica is Ready the instant the container runs,
-before the listener binds, and a start lands on a connection refused. A liveness
-probe would also SIGTERM a pod that may be holding hours of a step's work, and
-this process is built the other way round — its shutdown lets running steps
-finish their streams. Taking a replica out of the Service is the strong action
-here; killing it is not the probe's to take.
+The manifests gate **readiness** with it, and deliberately not liveness. It does
+**not** decide DNS: the Service publishes not-ready pods, so a draining one keeps
+its name (below). It decides the **rollout** — a StatefulSet moves to the next
+pod only when the new one is Ready, and without the probe that is the instant the
+container runs, before the listener binds. A liveness probe would SIGTERM a pod
+that may be holding hours of a step's work, which is not the probe's to do.
 
 It is **not an orchestrator**. It knows nothing of workflows, dependencies,
 schedules or retries — an agent that learned any of that would be a second
@@ -208,6 +207,45 @@ orchestrator to keep in agreement with the first.
 **It has no TLS of its own.** Put it behind something that terminates TLS, or on
 a network where that is somebody else's job. A token on a plain socket is a
 token anybody on the path can read.
+
+### When the agent stops
+
+A rolling restart of the agents, or a node drain, sends each one SIGTERM while
+steps may be running on it. It **drains**:
+
+1. **No new step.** A start is answered `503`, before anything is reserved, and
+   `/health` turns `503 draining`.
+2. **The running steps go on**, and so do their resumes and cancels — the
+   listener stays up. An engine restarted in the same rollout comes back for the
+   step it handed over and finds it.
+3. **It waits for each step to end and its exit to be read.** Ended is not
+   enough: a step that ends while the engine is away has its exit only in the
+   agent's memory, and an agent that left then would answer the returning engine
+   "unknown execution" — which starts the step **again**. Read means the stream
+   reached the engine's socket to its last line; a step cancelled meanwhile is
+   not waited for.
+4. **Then it exits `0`.**
+
+Past `--drain-timeout`, or on a **second** SIGTERM, what is left is cancelled —
+the whole process group, as a cancel does — logged by id, and the agent exits
+`1`. Every minute of a drain it logs what it is still waiting for.
+
+**It needs the time to do it.** The bound is the orchestrator's: Kubernetes kills
+the pod when `terminationGracePeriodSeconds` runs out (30s unless said), systemd
+when `TimeoutStopSec` does (90s). The manifests here set **3600**, from
+`agent.terminationGracePeriodSeconds` in the chart; set it to the longest step
+the host runs, plus margin. On systemd, raise `TimeoutStopSec` to match.
+
+**A draining pod keeps its DNS name.** Kubernetes marks a terminating pod's
+endpoint not-ready, and a headless Service publishes only ready ones — so the
+name `--advertise` points at would vanish at SIGTERM, and the engine's resume
+would fail with `no such host` while the agent waits to be read. The agent's
+Service sets `publishNotReadyAddresses: true`. The cost is that a **start** can
+land on a pod that is draining or not yet bound; the engine sends a start
+answered `503` or refused **again** — five tries over about fifteen seconds —
+which cannot run it twice: a start that did arrive makes the next one "already
+running". Resumes and cancels are not retried that way; they belong to the agent
+holding the step.
 
 ### What the agent does, and what the engine still will not do
 
