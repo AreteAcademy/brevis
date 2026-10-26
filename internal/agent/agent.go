@@ -163,6 +163,12 @@ type Agent struct {
 	// draining refuses new starts (#136). Under `mu`, the lock the reservation
 	// takes, so no start slips in between the check and the flip.
 	draining bool
+
+	// awaited is what the drain waits for: `runs` as it was at Drain. changed
+	// is closed and replaced every time one of them settles, so Wait sleeps
+	// rather than polls.
+	awaited map[string]*execution
+	changed chan struct{}
 }
 
 // New builds an agent.
@@ -229,7 +235,8 @@ func New(opt Options) *Agent {
 	if opt.Now == nil {
 		opt.Now = time.Now
 	}
-	return &Agent{opt: opt, runs: map[string]*execution{}, finished: map[string]*execution{}}
+	return &Agent{opt: opt, runs: map[string]*execution{}, finished: map[string]*execution{},
+		changed: make(chan struct{})}
 }
 
 // execution is one step, from spawn to exit.
@@ -266,6 +273,11 @@ type execution struct {
 	// finishedAt is when it moved to the finished set, set under the agent's
 	// lock; retention is measured from it.
 	finishedAt time.Time
+
+	// settled is set, under mu, once nobody is owed this execution any more:
+	// its exit was read to the end, or it was cancelled or abandoned. A drain
+	// waits for it (#136).
+	settled bool
 }
 
 // prune drops the finished executions past their retention, and then the
@@ -444,7 +456,7 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 		a.mu.Unlock()
 	}()
 
-	return e.reader(0), nil
+	return a.reading(e, 0), nil
 }
 
 // abandon gives back the reservation of a step that never started: it leaves
@@ -459,6 +471,7 @@ func (a *Agent) abandon(e *execution) {
 	}
 	a.mu.Unlock()
 	e.close()
+	a.settle(e)
 }
 
 // publish turns what the step wrote into the marker the runner already reads.
@@ -543,7 +556,7 @@ func (a *Agent) Resume(execID string, after int64) (io.ReadCloser, error) {
 	if after+1 < first {
 		return nil, remote.GapError{Wanted: after + 1, Available: first}
 	}
-	return e.reader(after), nil
+	return a.reading(e, after), nil
 }
 
 // Cancel stops a step.
@@ -554,10 +567,13 @@ func (a *Agent) Cancel(execID string) error {
 	a.mu.Lock()
 	a.prune()
 	e := a.runs[execID]
-	_, done := a.finished[execID]
+	ended, done := a.finished[execID]
 	a.mu.Unlock()
 
+	// Cancelled is settled: whoever asked knows how it ends, and a drain does
+	// not wait for an exit nobody is coming to read (#136).
 	if done {
+		a.settle(ended)
 		// It finished: what was asked for is already true. Without this a
 		// finished execution fell to the state file below and, with no
 		// --state-dir, was answered "the process may still be running".
@@ -568,6 +584,7 @@ func (a *Agent) Cancel(execID string) error {
 		return a.cancelFromState(execID)
 	}
 	e.stop()
+	a.settle(e)
 	// The command is read under the execution's lock, like `exited`: since
 	// #130 an execution is visible from its reservation, before Start has
 	// spawned anything and while it is writing e.cmd. Nil means not spawned
