@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/AreteAcademy/brevis/internal/execution"
@@ -543,7 +544,21 @@ type HTTPAgent struct {
 	BaseURL string
 	Token   string
 	Client  *http.Client
+
+	// StartBackoff is the wait before each further try of a start that ran
+	// nothing (#136); its length + 1 is how many tries. Nil takes
+	// defaultStartBackoff. A test passes milliseconds.
+	StartBackoff []time.Duration
 }
+
+// defaultStartBackoff: five tries over about fifteen seconds. Long enough for a
+// rollout to move a replica out of the way or bring its replacement up; short
+// against a step that will run for minutes.
+var defaultStartBackoff = []time.Duration{time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second}
+
+// errUnavailable is a 503: the agent -- or a balancer with nobody behind it --
+// took nothing on. A draining agent answers it before reserving the id.
+var errUnavailable = errors.New("the agent is unavailable")
 
 func (a HTTPAgent) client() *http.Client {
 	if a.Client != nil {
@@ -555,12 +570,43 @@ func (a HTTPAgent) client() *http.Client {
 	return &http.Client{}
 }
 
+// Start sends a step, again when the answer says nothing ran (#136).
+//
+// Two answers say that: a 503 -- a draining agent refuses before it reserves
+// the id, and a balancer answers it with nobody behind -- and a refused
+// connection, which a pod published before it binds gives. During a rolling
+// restart of a pool both are ordinary, and failing an attempt over them would
+// spend a workflow's retries on a deploy.
+//
+// Sending again cannot run a step twice. If a first start did reach an agent
+// after all, the second gets "already running" (#130), not a second process.
+//
+// A start ONLY. A resume or a cancel is about an execution one particular
+// agent holds, and the engine's reconnect loop already decides about those.
 func (a HTTPAgent) Start(ctx context.Context, r StartRequest) (Session, error) {
-	stream, instance, err := a.send(ctx, a.BaseURL, "/v1/exec", r)
-	if err != nil {
-		return Session{}, err
+	backoff := a.StartBackoff
+	if backoff == nil {
+		backoff = defaultStartBackoff
 	}
-	return Session{Instance: instance, Stream: stream}, nil
+	for try := 0; ; try++ {
+		stream, instance, err := a.send(ctx, a.BaseURL, "/v1/exec", r)
+		if err == nil {
+			return Session{Instance: instance, Stream: stream}, nil
+		}
+		if try == len(backoff) || !ranNothing(err) {
+			return Session{}, err
+		}
+		select {
+		case <-time.After(backoff[try]):
+		case <-ctx.Done():
+			return Session{}, fmt.Errorf("%w (waiting to send the step again after: %w)", ctx.Err(), err)
+		}
+	}
+}
+
+// ranNothing reports whether a start's failure is one that took nothing on.
+func ranNothing(err error) bool {
+	return errors.Is(err, errUnavailable) || errors.Is(err, syscall.ECONNREFUSED)
 }
 
 func (a HTTPAgent) Resume(ctx context.Context, instance, execID string, r Resume) (io.ReadCloser, error) {
@@ -696,6 +742,9 @@ func (a HTTPAgent) send(ctx context.Context, base, path string, payload any) (io
 		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		_ = resp.Body.Close()
 		err := fmt.Errorf("the agent answered %s: %s", resp.Status, strings.TrimSpace(string(snippet)))
+		if resp.StatusCode == http.StatusServiceUnavailable {
+			err = fmt.Errorf("%w: %w", errUnavailable, err)
+		}
 		if resp.StatusCode == http.StatusNotFound {
 			// The agent has no execution by that id. Typed, because #125's
 			// reattach starts such a step again and must not mistake an
