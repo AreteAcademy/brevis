@@ -66,6 +66,13 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
+        {{- if .Values.agent.state.persistent }}
+        # A claimed volume comes up owned by root, and the agent runs as 65532:
+        # without this its state would fail to write, and that failure is only
+        # a warning. OnRootMismatch, so a full volume is not walked every start.
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        {{- end }}
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: agent
@@ -131,8 +138,31 @@ spec:
         - name: secrets
           secret: {secretName: {{ .Values.agent.secretsSecret }}}
         {{- end }}
+        {{- if not .Values.agent.state.persistent }}
+        # Lost at every rollout, and with it cancel and resume across a restart:
+        # asked for with agent.state.persistent=false.
         - name: state
           emptyDir: {}
+        {{- end }}
         - name: work
           emptyDir: {}
+  {{- if .Values.agent.state.persistent }}
+  # --state-dir on a volume that outlives the pod: the pid records a cancel
+  # reads and the finished steps a resume reads (#137). On an emptyDir a
+  # rollout loses both, and the engine runs a finished step again.
+  #
+  # IMMUTABLE on a StatefulSet that already exists. Upgrading from a chart that
+  # had an emptyDir takes, once: kubectl delete statefulset <name> --cascade=orphan
+  volumeClaimTemplates:
+    - metadata:
+        name: state
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with .Values.agent.state.storageClassName }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.agent.state.size }}
+  {{- end }}
 {{- end }}
