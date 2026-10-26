@@ -224,6 +224,20 @@ func stream_(w http.ResponseWriter, r *http.Request, body io.ReadCloser) {
 			}
 		}
 		if err != nil {
+			// Read to the end, every byte written and flushed: the exit is
+			// with the engine, as far as this side can know. A drain waits
+			// for exactly that (#136).
+			//
+			// Written is not received. A peer that hung up a moment ago, or
+			// vanished without a FIN, still takes bytes into the socket
+			// buffer, and this counts them as read. It is the nearest thing
+			// this side can observe without the engine acknowledging the
+			// exit, which would be a protocol change.
+			if errors.Is(err, io.EOF) {
+				if d, ok := body.(interface{ delivered() }); ok {
+					d.delivered()
+				}
+			}
 			return
 		}
 		// The engine hung up. The process goes on and the ring goes on filling,

@@ -101,7 +101,7 @@ func (e *execution) beat(every time.Duration, done <-chan struct{}) {
 // A pipe rather than a buffer, because the whole point is that it streams: a
 // step running for forty minutes must reach the engine as it goes, not when it
 // ends.
-func (e *execution) reader(after int64) io.ReadCloser {
+func (e *execution) reader(after int64) *readerClose {
 	pr, pw := io.Pipe()
 	go func() {
 		enc := json.NewEncoder(pw)
@@ -150,6 +150,19 @@ func (e *execution) reader(after int64) io.ReadCloser {
 type readerClose struct {
 	*io.PipeReader
 	writer *io.PipeWriter
+
+	// end runs when the stream was read through its last line and every byte
+	// went out. Only the writer side's clean close gets a reader to io.EOF --
+	// a Close or a failed write ends it with an error -- and that close comes
+	// after the exit line, so EOF means the exit was handed over.
+	end func()
+}
+
+// delivered is how stream_ reports that.
+func (r *readerClose) delivered() {
+	if r.end != nil {
+		r.end()
+	}
 }
 
 func (r *readerClose) Close() error {
