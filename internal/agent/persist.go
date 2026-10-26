@@ -125,6 +125,16 @@ func (a *Agent) writeWhole(path string, raw []byte, e *execution) error {
 	return nil
 }
 
+// drop lets a finished execution go, from memory and from disk in the same
+// step: what this process forgot, a restart must not remember. The caller
+// holds a.mu -- which is also what keeps a late write from undoing it.
+func (a *Agent) drop(execID string) {
+	delete(a.finished, execID)
+	if path := a.finishedPath(execID); path != "" {
+		_ = os.Remove(path)
+	}
+}
+
 // Restore reads back what the state directory holds, before the agent serves.
 //
 // It also adopts log for what the agent has to say about that directory later,
@@ -167,6 +177,15 @@ func (a *Agent) Restore(log *slog.Logger) error {
 		a.mu.Unlock()
 		restored++
 	}
+
+	// Retention as the process before would have applied it: --keep-finished
+	// from when each one finished, and the newest up to --keep-finished-max.
+	// What it lets go leaves the disk too.
+	a.mu.Lock()
+	before := len(a.finished)
+	a.prune()
+	restored -= before - len(a.finished)
+	a.mu.Unlock()
 	if restored > 0 {
 		log.Info("finished steps restored from the state directory", "count", restored)
 	}
