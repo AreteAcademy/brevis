@@ -29,6 +29,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -169,6 +170,10 @@ type Agent struct {
 	// rather than polls.
 	awaited map[string]*execution
 	changed chan struct{}
+
+	// log is for what the agent says outside a request: a finished step it
+	// could not write to the state directory. Restore sets it.
+	log *slog.Logger
 }
 
 // New builds an agent.
@@ -236,7 +241,7 @@ func New(opt Options) *Agent {
 		opt.Now = time.Now
 	}
 	return &Agent{opt: opt, runs: map[string]*execution{}, finished: map[string]*execution{},
-		changed: make(chan struct{})}
+		changed: make(chan struct{}), log: discard}
 }
 
 // execution is one step, from spawn to exit.
@@ -454,6 +459,9 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 		a.finished[req.ExecutionID] = e
 		a.prune()
 		a.mu.Unlock()
+
+		// To disk, so a restart does not lose it (#137).
+		a.persist(e)
 	}()
 
 	return a.reading(e, 0), nil
