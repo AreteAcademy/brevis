@@ -83,6 +83,10 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
+        # The claimed volume below comes up owned by root; this makes it the
+        # agent's. OnRootMismatch, so a full volume is not walked every start.
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: agent
@@ -122,7 +126,20 @@ spec:
           secret:
             secretName: brevis-agent-token
             items: [{key: token, path: token}]
-        - name: state
-          emptyDir: {}
         - name: work
           emptyDir: {}
+  # --state-dir on a volume that outlives the pod: the pid records a cancel
+  # reads and the finished steps a resume reads (#137). On an emptyDir a
+  # rollout loses both, and the engine runs a finished step again.
+  #
+  # IMMUTABLE on a StatefulSet that already exists. Upgrading from a manifest
+  # that had an emptyDir takes one step, once -- the pods keep running:
+  #   kubectl delete statefulset brevis-agent --cascade=orphan
+  volumeClaimTemplates:
+    - metadata:
+        name: state
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 1Gi

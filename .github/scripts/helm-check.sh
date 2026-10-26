@@ -213,7 +213,8 @@ PY
 # The agent's --state-dir holds the pid records a cancel reads and the
 # finished steps a resume reads (#137). On an emptyDir both are gone at every
 # rollout -- and an engine finding a finished step gone runs it again. So the
-# chart claims a volume by default, and an emptyDir only when asked for.
+# chart claims a volume by default, and an emptyDir only when asked for; the
+# plain manifests, which have no switch, always claim one.
 agent_ephemeral="$(mktemp)"; agent_class="$(mktemp)"
 trap 'rm -f "$rendered" "$full" "$agent" "$agent_long" "$agent_ephemeral" "$agent_class"' EXIT
 $HELM template brevis "$CHART" --namespace data "${MIN[@]}" \
@@ -226,7 +227,9 @@ $HELM template brevis "$CHART" --namespace data "${MIN[@]}" \
   --set agent.state.storageClassName=fast-ssd --set agent.state.size=5Gi > "$agent_class" || {
   erro "the chart does not render with agent.state.storageClassName"; exit 1; }
 $KUBECONFORM -strict -kubernetes-version "$K8S_VERSION" "$agent_class" || erro "kubeconform rejected the agent with a storage class"
-python3 - "$agent:claim:1Gi" "$agent_ephemeral:emptyDir" "$agent_class:claim:5Gi:fast-ssd" <<'PY' \
+python3 - "$agent:claim:1Gi" "$agent_ephemeral:emptyDir" "$agent_class:claim:5Gi:fast-ssd" \
+  "deployments/kubernetes/agent.yaml:claim:1Gi" "examples/cluster/apps/60-agent.yaml:claim:1Gi" \
+  "examples/cluster/apps/70-goapp.yaml:claim:1Gi" <<'PY' \
   || erro "an agent's --state-dir does not live where it should"
 import re, sys
 for arg in sys.argv[1:]:
