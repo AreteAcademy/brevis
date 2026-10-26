@@ -295,7 +295,7 @@ func (a *Agent) prune() {
 	cutoff := a.opt.Now().Add(-a.opt.KeepFinished)
 	for id, e := range a.finished {
 		if e.finishedAt.Before(cutoff) {
-			delete(a.finished, id)
+			a.drop(id)
 		}
 	}
 	for len(a.finished) > a.opt.KeepFinishedMax {
@@ -305,7 +305,7 @@ func (a *Agent) prune() {
 				oldest = id
 			}
 		}
-		delete(a.finished, oldest)
+		a.drop(oldest)
 	}
 }
 
@@ -357,7 +357,7 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	// every run of the workflow -- so a finished id is how its next run
 	// arrives. Refusing it failed every run of a host: step for --keep-finished
 	// after the one before. The new execution replaces what was kept.
-	delete(a.finished, req.ExecutionID)
+	a.drop(req.ExecutionID)
 	a.mu.Unlock()
 
 	// The file this step publishes through, on THIS host. Created before the
