@@ -173,3 +173,89 @@ func TestADrainTimeoutCancelsAndExitsOne(t *testing.T) {
 		t.Fatalf("the agent exited %d, wanted 1 (-1: still running)", code)
 	}
 }
+
+// The #137 repro: a step ends with nobody reading it, and the agent dies
+// without a drain -- a crash, an OOM, a kill -9. The agent that comes up on the
+// same --state-dir must answer the resume with how the step ended, not with
+// "unknown execution", which makes the engine run it again.
+func TestAFinishedStepSurvivesAKilledAgent(t *testing.T) {
+	state := t.TempDir()
+	before := runAgent(t, "--state-dir", state)
+	_ = before.start(t, "e2e-3", "echo done").Body.Close()
+
+	record := filepath.Join(state, "finished", "e2e-3.json")
+	deadline := time.Now().Add(10 * time.Second)
+	for _, err := os.Stat(record); err != nil; _, err = os.Stat(record) {
+		if time.Now().After(deadline) {
+			t.Fatalf("the finished step was never written to %s", record)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if err := before.cmd.Process.Signal(syscall.SIGKILL); err != nil {
+		t.Fatal(err)
+	}
+	// Waited for on done itself: a process killed by a signal has no exit
+	// code, and exited would say -1, "still running", for it.
+	select {
+	case err := <-before.done:
+		before.done <- err // for Cleanup
+	case <-time.After(5 * time.Second):
+		t.Fatal("the agent outlived SIGKILL")
+	}
+
+	after := runAgent(t, "--state-dir", state)
+	raw, _ := json.Marshal(remote.Resume{Protocol: remote.Protocol, After: 0, Reason: "e2e"})
+	resp, err := http.Post(after.url+"/v1/exec/e2e-3/resume", "application/json", //nolint:noctx
+		bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("the restarted agent answered the resume with %d", resp.StatusCode)
+	}
+
+	var sawDone, sawExit bool
+	s := bufio.NewScanner(resp.Body)
+	for s.Scan() {
+		l, err := remote.Decode(s.Bytes())
+		if err != nil {
+			t.Fatal(err)
+		}
+		sawDone = sawDone || strings.Contains(l.Message, "done")
+		if l.Kind == remote.KindExit {
+			sawExit = l.Code == 0
+		}
+	}
+	if !sawDone || !sawExit {
+		t.Fatalf("the resume after the restart lost the step (output %v, exit 0 %v)", sawDone, sawExit)
+	}
+}
+
+// A directory it cannot read is the one thing about its state that stops the
+// agent: coming up anyway would answer "unknown execution" for steps that are
+// on disk, and the engine would run them again.
+func TestAnUnreadableStateDirStopsTheStart(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds and runs the binary")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("root reads any directory")
+	}
+	state := t.TempDir()
+	finished := filepath.Join(state, "finished")
+	if err := os.Mkdir(finished, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(finished, 0o700) })
+
+	out, err := exec.Command(binary, "--listen", "127.0.0.1:0", "--insecure-no-token",
+		"--work-dir", t.TempDir(), "--state-dir", state).CombinedOutput()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 1 {
+		t.Fatalf("the agent ended with %v, wanted exit 1; output:\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "state directory could not be read") {
+		t.Errorf("the exit does not say why:\n%s", out)
+	}
+}
