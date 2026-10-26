@@ -293,6 +293,11 @@
         "resources": {
           "type": "object"
         },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How long Kubernetes lets an agent drain its running steps before killing it."
+        },
         "insecureNoToken": {
           "type": "boolean",
           "description": "Run with NO authentication. The agent refuses to start without a token unless this says otherwise."

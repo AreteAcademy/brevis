@@ -28,6 +28,10 @@ metadata:
 spec:
   # Headless: this exists for the per-pod DNS names, not for load balancing.
   clusterIP: None
+  # A draining pod keeps its DNS name, so the engine can still resume the step
+  # it handed over; without it a terminating pod drops out of DNS at SIGTERM.
+  # See deployments/kubernetes/agent.yaml (#136).
+  publishNotReadyAddresses: true
   selector:
     app.kubernetes.io/name: {{ include "brevis.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -56,6 +60,8 @@ spec:
         {{- include "brevis.labels" . | nindent 8 }}
         app.kubernetes.io/component: agent
     spec:
+      # How long a drain may last. Kubernetes' 30s default would cut it (#136).
+      terminationGracePeriodSeconds: {{ .Values.agent.terminationGracePeriodSeconds }}
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
@@ -89,9 +95,9 @@ spec:
             - name: POD_NAMESPACE
               valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
           ports: [{name: http, containerPort: 9443}]
-          # Readiness, not liveness: the headless Service's DNS filters on
-          # Ready, and a liveness failure would SIGTERM a pod holding a running
-          # step. See deployments/kubernetes/agent.yaml for the whole argument.
+          # Readiness, not liveness: it paces the rollout, and a liveness
+          # failure would SIGTERM a pod holding a running step. See
+          # deployments/kubernetes/agent.yaml for the whole argument.
           readinessProbe:
             httpGet: {path: /health, port: http}
             periodSeconds: 5

@@ -31,6 +31,14 @@ spec:
   # `brevis-agent-0.brevis-agent.dados.svc` is what --advertise points at, and
   # a ClusterIP Service does not create those names.
   clusterIP: None
+  # Draining pods stay in DNS (#136). Kubernetes marks a terminating pod's
+  # endpoint not-ready, and a headless Service publishes only ready ones -- so
+  # without this the pod's name vanishes the moment SIGTERM arrives, and the
+  # engine's resume of the step it handed over fails with "no such host" while
+  # the agent is draining exactly so it can be read. The cost, a start landing
+  # on a pod that is draining or not yet bound, the engine absorbs: it sends a
+  # start answered 503 or refused again.
+  publishNotReadyAddresses: true
   selector:
     app.kubernetes.io/name: brevis
     app.kubernetes.io/component: agent
@@ -55,6 +63,11 @@ spec:
         app.kubernetes.io/name: brevis
         app.kubernetes.io/component: agent
     spec:
+      # The drain is bounded by THIS (#136): on SIGTERM the agent waits for
+      # its running steps to end and be read, and Kubernetes kills it when the
+      # grace runs out -- 30s unless said, which cuts any real step. Set it to
+      # the longest step this host runs, plus margin.
+      terminationGracePeriodSeconds: 3600
       # It talks to nothing in the cluster's API, and it should not be able to.
       automountServiceAccountToken: false
       securityContext:
@@ -90,11 +103,12 @@ spec:
           ports: [{name: http, containerPort: 9443}]
           # READINESS AND NOT LIVENESS, and the asymmetry is the point.
           #
-          # The engine reaches a pool through a headless Service, whose DNS
-          # already filters on Ready -- there was simply nothing deciding it.
-          # Without this, a replica is Ready the instant the container runs,
-          # before the listener binds, and the engine dispatches a step into a
-          # connection refused.
+          # It no longer decides DNS -- the Service publishes not-ready pods,
+          # so a draining one keeps its name -- but it still decides the
+          # rollout: a StatefulSet moves to the next pod only when the new one
+          # is Ready, and without this that is the instant the container runs,
+          # before the listener binds. It turns 503 while the agent drains, for
+          # whatever else watches it (a balancer, `kubectl get`).
           #
           # A liveness probe would restart a wedged listener and would also
           # SIGTERM a pod holding hours of a step's work. This process is built

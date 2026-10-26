@@ -143,6 +143,10 @@ agent:
   # rather than running with it unset.
   secretsSecret: ""
   allowSecrets: []
+  # How long Kubernetes lets an agent drain. On SIGTERM it takes no new step
+  # and waits for the running ones to end and be read; this is when it is
+  # killed anyway. Set it to the longest step this host runs, plus margin.
+  terminationGracePeriodSeconds: 3600
   resources:
     requests: {cpu: 100m, memory: 128Mi}
     limits: {memory: 512Mi}
