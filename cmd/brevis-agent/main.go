@@ -149,6 +149,14 @@ func main() {
 		os.Exit(1)
 	}
 	a := agent.New(opt)
+	// What the process before finished and nobody read, read back BEFORE the
+	// socket: a resume arriving first would be answered "unknown execution",
+	// and the engine would run the step again (#137). A file that is wrong is
+	// said and removed; only a directory that cannot be read stops the start.
+	if err := a.Restore(log); err != nil {
+		log.Error("the state directory could not be read", "dir", *stateDir, "error", err)
+		os.Exit(1)
+	}
 
 	srv := &http.Server{
 		Handler: a.Handler(log),
