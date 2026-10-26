@@ -58,10 +58,9 @@
 package main
 
 import (
-	"context"
-	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -86,6 +85,7 @@ func main() {
 		keepMax    = flag.Int("keep-finished-max", 200, "at most this many finished steps are kept, each with its ring; past it the oldest goes first")
 		insecure   = flag.Bool("insecure-no-token", false, "run with NO authentication: anything that reaches the port runs any command. Say it out loud or do not do it")
 		advertise  = flag.String("advertise", "", "the address the engine should come back to for this instance's executions; required behind a shared address, meaningless without one")
+		drain      = flag.Duration("drain-timeout", 0, "on SIGTERM, how long to wait for the running steps to end and be read before cancelling them; 0 waits as long as it takes, leaving the bound to the orchestrator's grace period")
 		logLevel   = flag.String("log-level", "info", "debug, info, warn or error")
 	)
 	flag.Parse()
@@ -136,7 +136,6 @@ func main() {
 	a := agent.New(opt)
 
 	srv := &http.Server{
-		Addr:    *listen,
 		Handler: a.Handler(log),
 		// No WriteTimeout, deliberately. A step legitimately runs for hours and
 		// its stream is the response; a write timeout would cut it at an
@@ -146,24 +145,43 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	// SIGTERM stops accepting and lets the running steps finish their streams.
-	// Killing them would turn a rolling restart of this agent into a batch of
-	// failed runs on an engine that did nothing wrong.
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	// Bound BEFORE the log line, so "listening" is never said by a process that
+	// is about to fail on the port.
+	ln, err := net.Listen("tcp", *listen)
+	if err != nil {
+		log.Error("the listener could not start", "addr", *listen, "error", err)
+		os.Exit(1)
+	}
 
+	// SIGTERM drains: no new step, the running ones served to their end --
+	// resumes included, from an engine restarted in the same rollout -- and
+	// only then the exit. Killing them would turn a rolling restart of this
+	// agent into a batch of failed runs on an engine that did nothing wrong
+	// (#136). A SECOND signal is an operator saying "now".
+	//
+	// signal.Notify and not NotifyContext, which fires once: the second signal
+	// is the one that matters here. Buffered for both, so neither is dropped
+	// while the other is being handled.
+	signals := make(chan os.Signal, 2)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	stopping, forcing := make(chan struct{}), make(chan struct{})
 	go func() {
-		<-ctx.Done()
-		log.Info("shutting down; running steps keep their streams until they end")
-		shutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
-		defer cancel()
-		_ = srv.Shutdown(shutdown)
+		<-signals
+		close(stopping)
+		<-signals
+		close(forcing)
 	}()
 
-	log.Info("brevis-agent listening", "addr", *listen, "secrets", len(names),
-		"ring", *ring, "state", *stateDir != "")
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	log.Info("brevis-agent listening", "addr", ln.Addr().String(), "secrets", len(names),
+		"ring", *ring, "state", *stateDir != "", "drain_timeout", *drain)
+	// main returns only when Serve does: it is the drain, and the process
+	// leaving before it ends is the bug this replaced.
+	gaveUp, err := a.Serve(srv, ln, stopping, forcing, *drain, log)
+	if err != nil {
 		log.Error("the listener stopped", "error", err)
+		os.Exit(1)
+	}
+	if gaveUp > 0 {
 		os.Exit(1)
 	}
 }
