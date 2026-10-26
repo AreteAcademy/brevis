@@ -113,9 +113,11 @@ type Options struct {
 	// protocol's default.
 	AliveEvery time.Duration
 
-	// StateDir is where the execID -> pid map is written, so cancel survives
-	// this process restarting. Empty keeps it in memory only, and cancel is
-	// then best-effort across a restart.
+	// StateDir is what survives this process restarting: the execID -> pid
+	// map, so cancel still reaches a running step, and the finished
+	// executions, so a resume is still answered (#137). Empty keeps both in
+	// memory only: cancel is then best-effort across a restart, and a
+	// finished execution is forgotten by one.
 	StateDir string
 
 	// Shell runs the command. Empty is `/bin/sh -c`, matching the local

@@ -154,9 +154,9 @@ brevis-agent \
 | `--token-file` | the shared token, **from a file** and never a flag: a flag is in `ps` output for anybody on the host to read |
 | `--secrets-dir` | the store, as `<dir>/<name>/<key>` — the shape the kubelet mounts and Docker uses |
 | `--allow-secrets` | which names a step may ask for. **Empty denies every one** |
-| `--state-dir` | where the execution → pid map lives, so cancel survives the agent restarting |
+| `--state-dir` | what survives the agent restarting: the execution → pid map, so a cancel still reaches a running step, and the steps that **finished**, so a resume is still answered with how they ended. On Kubernetes it has to be a **persistent volume** — see [Its state on a persistent volume](#its-state-on-a-persistent-volume) |
 | `--ring` | lines kept for a reconnect. Beyond this a dropped connection fails the step rather than resuming with a hole |
-| `--keep-finished` | how long a step stays resumable **after it ends** (default `1h`), so a connection that dropped at the end — or a scheduler that was down while it ended — still reads its exit code, its published context and the end of its log. In memory: an agent restart loses them |
+| `--keep-finished` | how long a step stays resumable **after it ends** (default `1h`), so a connection that dropped at the end — or a scheduler that was down while it ended — still reads its exit code, its published context and the end of its log. With `--state-dir` they are also written there, and survive a restart with the same retention; without it an agent restart loses them |
 | `--keep-finished-max` | at most this many finished steps kept (default `200`), each with its ring; past it the oldest goes first |
 | `--drain-timeout` | on SIGTERM, how long to wait for the running steps to end **and be read** before cancelling them. Default `0`: as long as it takes, the orchestrator's grace period being the bound — see [When the agent stops](#when-the-agent-stops) |
 | `--advertise` | the address the engine comes back to for **this instance's** executions. Required behind a shared address, meaningless without one — see below |
@@ -247,6 +247,45 @@ which cannot run it twice: a start that did arrive makes the next one "already
 running". Resumes and cancels are not retried that way; they belong to the agent
 holding the step.
 
+**What a drain does not cover, `--state-dir` does.** A drain only happens on a
+SIGTERM. An agent that crashes, is OOM-killed or loses its node never drains,
+and a step that finished there with nobody reading it would be answered
+"unknown execution" — run again. So every finished step is also written to
+`<state-dir>/finished/` and read back when the agent starts, and the returning
+engine gets the same log, context and exit the process before would have given
+it. The two are layered on purpose: the drain does not trust the directory to
+outlive the pod, because the agent cannot know whether it does.
+
+#### Its state on a persistent volume
+
+On an `emptyDir` the state dies with the pod, which is every rollout. The chart
+and the manifests here claim a volume per pod instead — `ReadWriteOnce`,
+**1Gi**, the cluster's default StorageClass — and set `fsGroup: 65532`, since a
+claimed volume comes up owned by root and the agent does not run as root. In
+the chart: `agent.state.size`, `agent.state.storageClassName`, and
+`agent.state.persistent=false` to go back to an `emptyDir`, losing cancel and
+resume across a restart.
+
+1Gi holds `--keep-finished-max` (200) steps of `--ring` (10,000) lines of a few
+hundred bytes. A step whose lines are much longer can fill it; that write fails
+with a warning, the step itself is unaffected, and only its surviving a restart
+is lost.
+
+**Upgrading an agent that had an `emptyDir`** takes one step, once. A
+StatefulSet's `volumeClaimTemplates` cannot change, so the apply, `helm
+upgrade` or Argo sync is refused until the old object is gone:
+
+```bash
+kubectl -n <namespace> delete statefulset brevis-agent --cascade=orphan
+# then apply / helm upgrade / sync: the pods are replaced one at a time
+```
+
+The name is `brevis-agent` in the manifests here and from the chart installed as
+`brevis`; `kubectl get statefulset` lists yours. `--cascade=orphan` deletes the
+StatefulSet and leaves its pods running; the new one adopts them and rolls them,
+each one draining as above. What the old `emptyDir` held is lost in that one
+rollout.
+
 ### What the agent does, and what the engine still will not do
 
 The engine does **not** send secret values, and this executor did not become the
@@ -313,7 +352,8 @@ why:
 
 | the agent says | what happens |
 |---|---|
-| it has no execution by that id — it restarted, or kept it for less than `--keep-finished` (1h) | the step starts again, under the same id |
+| it has it, finished — even after an agent restart, with its state on a persistent volume | it is **followed** as before: its log, context and exit are read, and nothing runs again |
+| it has no execution by that id — it restarted without its state, or kept it for less than `--keep-finished` (1h) | the step starts again, under the same id |
 | it has it, but its ring no longer reaches the last line read — more than `--ring` lines written meanwhile | it is stopped on the agent and the attempt fails; the retry runs it under a new id |
 | nothing — the agent cannot be reached | the attempt fails |
 

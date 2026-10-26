@@ -70,6 +70,11 @@
 //   - CANCEL IS BEST-EFFORT ACROSS A RESTART unless --state-dir is set, and
 //     even then it refuses to signal a pid the OS has recycled rather than risk
 //     killing an unrelated process.
+//   - A FINISHED STEP IS FORGOTTEN BY A RESTART unless --state-dir is set: with
+//     it, each one is written there and read back on start, so a resume after a
+//     crash is answered with how it ended rather than "unknown execution",
+//     which makes the engine run it again (#137). The directory has to outlive
+//     the process -- on Kubernetes, a persistent volume, not an emptyDir.
 package main
 
 import (
@@ -94,7 +99,7 @@ func main() {
 		secretsDir = flag.String("secrets-dir", "", "root of the secret store: <dir>/<name>/<key>")
 		allowed    = flag.String("allow-secrets", "", "comma-separated secret names a step may ask for; empty denies every one")
 		workDir    = flag.String("work-dir", "", "where a step runs when it names no directory")
-		stateDir   = flag.String("state-dir", "", "where the execution -> pid map is kept, so cancel survives a restart")
+		stateDir   = flag.String("state-dir", "", "what survives a restart: the execution -> pid map, so cancel still reaches a running step, and the finished steps, so a resume is still answered; on Kubernetes a persistent volume")
 		ring       = flag.Int("ring", 10000, "lines kept for a resumed connection; beyond this a reconnect fails the step")
 		keep       = flag.Duration("keep-finished", time.Hour, "how long a finished step stays resumable, so a scheduler that was down while it ended can still read how it ended")
 		keepMax    = flag.Int("keep-finished-max", 200, "at most this many finished steps are kept, each with its ring; past it the oldest goes first")
