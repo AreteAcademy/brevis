@@ -9,20 +9,16 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
-// State desenha o estado de um Run.
+// State draws a run's or a step's status.
 //
-// The colours are desaturated on purpose: a dashboard's pure green and red fight
-// the parchment and shout louder than the information. The shape carries meaning
-// too — the dot is filled for what has finished and ringed for what is still
-// alive — so it does not depend on colour alone.
+// The colours are desaturated on purpose: a dashboard's pure green and red
+// shout louder than the information. The shape carries the meaning too -- see
+// Status -- so it does not depend on colour alone.
 templ State(status string) {
-	// A DOT AND A WORD (density-base DB3), in the state's colour: a tinted
-	// badge on every row of a table was the loudest thing on the screen for
-	// the least information.
-	<span class={ "inline-flex items-center gap-1.5 text-[12.5px] whitespace-nowrap", stateText(status) }>
-		<span class={ "h-[7px] w-[7px] shrink-0 rounded-full", stateDot(status) }></span>
-		{ stateLabel(status) }
-	</span>
+	// A MARK AND A WORD (density-base DB3), drawn by Status: a tinted badge
+	// on every row of a table was the loudest thing on the screen for the
+	// least information.
+	@Status(runKind(status))
 }
 
 // Retry marks a run on its second attempt or later: `↻N`, what it means in
@@ -39,10 +35,7 @@ templ Retry(attempt int) {
 // Dot is the minimal version, for dense tables where the label is already in
 // the column.
 templ Dot(status string) {
-	<span
-		class={ "inline-block h-2.5 w-2.5 rounded-full", stateDot(status) }
-		title={ stateLabel(status) }
-	></span>
+	@StatusMark(runKind(status))
 }
 
 func stateLabel(s string) string {
@@ -67,15 +60,6 @@ func stateLabel(s string) string {
 		return "never ran"
 	}
 	return s
-}
-
-// stateText is a state's word colour.
-func stateText(s string) string {
-	switch s {
-	case "success", "failed", "running", "queued", "retrying", "canceled", "skipped":
-		return "text-state-" + s
-	}
-	return "text-muted"
 }
 
 func stateClass(s string) string {

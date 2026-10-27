@@ -50,7 +50,7 @@ func TestSkippedHasItsOwnColourAndNotTheFallback(t *testing.T) {
 	}
 }
 
-// FRESHNESS IS A DOT AND A WORD too (screen-load-v2 LV1), like a run's state:
+// FRESHNESS IS A MARK AND A WORD too (screen-load-v2 LV1), like a run's state:
 // the badge it was is the one density-base left behind. The word and the
 // colour are the status' own.
 func TestFreshnessIsADotAndAWord(t *testing.T) {
@@ -62,7 +62,7 @@ func TestFreshnessIsADotAndAWord(t *testing.T) {
 	if strings.Contains(got, "rounded-card") || strings.Contains(got, "/13") {
 		t.Errorf("freshness is still a badge: %s", got)
 	}
-	for _, want := range []string{"h-[7px]", "bg-state-queued", "text-state-queued", "late</span>"} {
+	for _, want := range []string{"st-triangle", "text-state-queued", "late</span>"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("freshness lost %q: %s", want, got)
 		}
