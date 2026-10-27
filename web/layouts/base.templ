@@ -211,6 +211,7 @@ templ Base(p Page) {
 				</div>
 			</div>
 			@palette()
+			@shortcuts()
 			@toasts()
 			// The basic interactions (dialogs, chart tooltips) on every page. It
 			// sits at the end of the body so it does not block rendering — the
@@ -399,6 +400,17 @@ templ sidebar(active string, brand branding.Brand) {
 			<div class="min-w-0 flex-1">
 				@accountMenu(auth.De(ctx), brand)
 			</div>
+			<span class="block shrink-0" data-js>
+				<button
+					type="button"
+					data-dialogo="shortcuts"
+					aria-label="Keyboard shortcuts"
+					data-tip="Keyboard shortcuts (?)"
+					class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+				>
+					@components.Icon("keyboard", "h-4 w-4")
+				</button>
+			</span>
 			@themeSwitch()
 		</div>
 	</aside>
@@ -436,6 +448,9 @@ templ navLink(s section, active string) {
 			href={ templ.SafeURL(s.Href) }
 			aria-current="page"
 			data-tip={ s.Tip }
+			if s.GoKey != "" {
+				data-go-key={ s.GoKey }
+			}
 			class="flex h-8 items-center gap-2.5 rounded-card border border-line bg-surface-2 px-2.5 text-[0.85rem] font-medium text-ink"
 		>
 			@components.Icon(s.Icon, "h-4 w-4")
@@ -445,6 +460,9 @@ templ navLink(s section, active string) {
 		<a
 			href={ templ.SafeURL(s.Href) }
 			data-tip={ s.Tip }
+			if s.GoKey != "" {
+				data-go-key={ s.GoKey }
+			}
 			class="flex h-8 items-center gap-2.5 rounded-card border border-transparent px-2.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
 			@components.Icon(s.Icon, "h-4 w-4")
@@ -501,6 +519,41 @@ templ topbar(p Page) {
 	</header>
 }
 
+// shortcuts lists the keyboard's ways around the console, opened by `?` or
+// from the sidebar's foot. The section letters come from the sidebar's own
+// list, so a section that is not drawn has no letter here either.
+templ shortcuts() {
+	@components.Modal("shortcuts", "Keyboard shortcuts", nil) {
+		<dl class="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2.5 text-[0.85rem]">
+			@shortcutRow("Search, jump to anything, or run an action") {
+				@components.Kbd("⌘K")
+			}
+			@shortcutRow("Focus the list's search") {
+				@components.Kbd("/")
+			}
+			for _, s := range goKeys(ctx) {
+				@shortcutRow("Go to " + s.Name) {
+					@components.Kbd("g")
+					<span class="text-faint">then</span>
+					@components.Kbd(s.GoKey)
+				}
+			}
+			@shortcutRow("This list") {
+				@components.Kbd("?")
+			}
+			@shortcutRow("Close a dialog, a drawer or the search") {
+				@components.Kbd("Esc")
+			}
+		</dl>
+		<p class="mt-4 text-[0.78rem] text-muted">None of these fire while you are typing in a field, except ⌘K and Esc.</p>
+	}
+}
+
+templ shortcutRow(what string) {
+	<dt class="flex items-center gap-1.5">{ children... }</dt>
+	<dd class="text-ink-2">{ what }</dd>
+}
+
 // toasts is where a page says what just happened: a status region, so a
 // screen reader hears each toast, at the corner of the window. The server
 // draws a flash here (layouts.SetFlash); Brevis.toast adds the rest.
@@ -514,7 +567,7 @@ templ toasts() {
 
 // paletteIcons are the glyphs the palette's rows are drawn with: the
 // sections' own, and one per kind of thing it lists.
-var paletteIcons = []string{"layout-grid", "workflow", "history", "database", "plug", "terminal", "folder"}
+var paletteIcons = []string{"layout-grid", "workflow", "history", "database", "plug", "terminal", "folder", "sun"}
 
 // palette is the command palette: a native <dialog>, closed, that ui.js opens
 // on Cmd/Ctrl-K and fills from /api/palette.

@@ -748,12 +748,14 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 // search looks in, lower-cased here -- the list filter's contract -- so what
 // matches is decided in one place.
 type paletteItem struct {
-	Group string `json:"group"`
-	Label string `json:"label"`
-	Hint  string `json:"hint,omitempty"`
-	Href  string `json:"href"`
-	Icon  string `json:"icon"`
-	Text  string `json:"text"`
+	// Action, when set, is what the island does instead of following Href.
+	Action string `json:"action,omitempty"`
+	Group  string `json:"group"`
+	Label  string `json:"label"`
+	Hint   string `json:"hint,omitempty"`
+	Href   string `json:"href"`
+	Icon   string `json:"icon"`
+	Text   string `json:"text"`
 }
 
 func paletteEntry(group, label, hint, href, icon string) paletteItem {
@@ -777,6 +779,11 @@ func (u *UI) palette(w http.ResponseWriter, r *http.Request) {
 	for _, s := range layouts.Sections(ctx) {
 		items = append(items, paletteEntry("Sections", s.Name, s.Group, s.Href, s.Icon))
 	}
+	// Actions do something here rather than go somewhere. The theme is the
+	// console's own; the rest arrive with the screens that own them.
+	theme := paletteEntry("Actions", "Toggle theme", "dark or light", "#", "sun")
+	theme.Action = "toggle-theme"
+	items = append(items, theme)
 	if u.leitura != nil {
 		wfs, err := u.leitura.Workflows(ctx)
 		if err != nil {
