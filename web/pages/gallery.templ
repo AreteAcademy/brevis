@@ -78,6 +78,31 @@ templ Gallery() {
 					}
 				</div>
 			}
+			@gallerySection("Overlays") {
+				<div class="flex flex-wrap items-center gap-3">
+					@components.Button(components.ButtonSecondary, components.SizeSmall, templ.Attributes{"data-dialogo": "gallery-drawer"}) {
+						Open a drawer
+					}
+					@components.Button(components.ButtonSecondary, components.SizeSmall, templ.Attributes{"data-dialogo": "gallery-modal"}) {
+						Open a modal
+					}
+					@components.Switch("Follow live", true, nil)
+					@components.Switch("Follow live", false, nil)
+					@components.NavBadge("fail", "2")
+					@components.NavBadge("live", "3")
+				</div>
+				<div class="mt-3 flex max-w-md flex-col gap-2">
+					@components.Toast("ok", "orders_sync paused. It will not fire until resumed.", "Undo", "#")
+					@components.Toast("fail", "The run of orders_sync failed", "View logs", "#")
+				</div>
+				@components.Drawer("gallery-drawer", "Run orders_sync", galleryDrawerFoot()) {
+					<label class="block text-[0.8rem] text-ink-2" for="gallery-limit">Row limit</label>
+					<input id="gallery-limit" type="number" value="300" class="mt-1 h-8 w-full rounded-card border border-line bg-canvas px-2 text-sm"/>
+				}
+				@components.Modal("gallery-modal", "Pause orders_sync?", galleryDrawerFoot()) {
+					<p class="text-sm text-ink-2">It will not fire until somebody resumes it.</p>
+				}
+			}
 			@gallerySection("Badges") {
 				<div class="flex flex-wrap items-center gap-2">
 					for _, s := range []string{"success", "failed", "running", "queued", "retrying", "canceled", "skipped", ""} {
@@ -133,4 +158,16 @@ templ gallerySection(title string) {
 		<h2 class="mb-3 text-[0.68rem] font-medium tracking-[0.08em] text-faint uppercase">{ title }</h2>
 		{ children... }
 	</section>
+}
+
+// galleryDrawerFoot is the actions a drawer or modal keeps under its body.
+templ galleryDrawerFoot() {
+	<form method="dialog" class="contents">
+		@components.Button(components.ButtonSecondary, components.SizeSmall, nil) {
+			Cancel
+		}
+	</form>
+	@components.Button(components.ButtonPrimary, components.SizeSmall, nil) {
+		Run
+	}
 }

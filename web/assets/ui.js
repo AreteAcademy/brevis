@@ -17,7 +17,17 @@
         // A link opener (`href="#run"`) is the no-script path; with the
         // script the dialog opens and the URL keeps no hash.
         if (trigger.tagName === "A") e.preventDefault();
-        if (!d.open) d.showModal();
+        if (!d.open) {
+          opener.set(d, trigger);
+          d.showModal();
+          // A Drawer or a Modal opens on its first field -- where the reader
+          // starts -- and not on the close button, which comes first in the
+          // markup and which showModal() would otherwise pick.
+          var first = d.querySelector(
+            "[data-dialog-body] :is(input, select, textarea, button, a[href], [tabindex]):not([disabled]):not([tabindex='-1'])"
+          );
+          if (first) first.focus();
+        }
       }
       return;
     }
@@ -25,6 +35,85 @@
     // from its content on its own: the click's target IS the dialog itself when
     // the frame is hit.
     if (e.target.tagName === "DIALOG") e.target.close();
+  });
+
+  // THE FOCUS GOES BACK TO WHAT OPENED THE DIALOG. Browsers that implement
+  // the spec's "previously focused element" do it already; this is for the
+  // ones that leave the focus on <body>, where a keyboard user starts over
+  // from the top of the page. `close` does not bubble, hence the capture.
+  var opener = new WeakMap();
+  document.addEventListener(
+    "close",
+    function (e) {
+      var d = e.target;
+      if (!d || d.tagName !== "DIALOG") return;
+      var from = opener.get(d);
+      opener.delete(d);
+      if (from && from.isConnected && (document.activeElement === document.body || d.contains(document.activeElement))) {
+        from.focus();
+      }
+    },
+    true
+  );
+
+  // --- Toasts ------------------------------------------------------------------
+  //
+  // What just happened, in the corner, for 4.2s. The server draws a flash into
+  // #toasts with the page (layouts.SetFlash); a screen's own script calls
+  // Brevis.toast. The region is role="status", so either is announced.
+  var TOAST_MS = 4200;
+
+  function dismiss(t) {
+    setTimeout(function () {
+      t.classList.add("toast-leaving");
+      setTimeout(function () {
+        t.remove();
+      }, 220);
+    }, TOAST_MS);
+  }
+  document.querySelectorAll("#toasts .toast").forEach(dismiss);
+
+  window.Brevis = window.Brevis || {};
+  // Brevis.toast(message, {kind: "ok"|"fail"|"run", action: "Undo", onAction: fn})
+  window.Brevis.toast = function (message, opts) {
+    opts = opts || {};
+    var region = document.getElementById("toasts");
+    if (!region) return;
+    var shape = { fail: "st-diamond text-state-failed", run: "st-spin text-state-running" }[opts.kind] || "st-dot text-state-success";
+    var t = document.createElement("div");
+    t.className = "toast";
+    var mark = document.createElement("span");
+    mark.className = "st st-mark " + shape;
+    mark.setAttribute("aria-hidden", "true");
+    var text = document.createElement("span");
+    text.className = "min-w-0 flex-1";
+    text.textContent = message;
+    t.appendChild(mark);
+    t.appendChild(text);
+    if (opts.action && typeof opts.onAction === "function") {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "toast-action";
+      b.textContent = opts.action;
+      b.addEventListener("click", function () {
+        opts.onAction();
+        t.remove();
+      });
+      t.appendChild(b);
+    }
+    region.appendChild(t);
+    dismiss(t);
+  };
+
+  // --- Switches --------------------------------------------------------------
+  //
+  // components.Switch flips its own aria-checked; one marked data-manual is
+  // left to the screen's script, which knows whether the server agreed. Only
+  // the component's class: the older switches each carry their own handler.
+  document.addEventListener("click", function (e) {
+    var s = e.target && typeof e.target.closest === "function" ? e.target.closest('button.switch[role="switch"]') : null;
+    if (!s || s.hasAttribute("data-manual")) return;
+    s.setAttribute("aria-checked", s.getAttribute("aria-checked") === "true" ? "false" : "true");
   });
 
   // Opening by link: /runs#erro-<id> arrives with the dialog already open (the

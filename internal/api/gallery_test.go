@@ -44,6 +44,12 @@ func TestTheComponentGalleryShowsEveryComponent(t *testing.T) {
 		"Empty":           "Nothing here yet",
 		"Icon (database)": ">database<",
 		"Icon (terminal)": ">terminal<",
+		"Drawer":          `<dialog id="gallery-drawer" class="drawer"`,
+		"Modal":           `<dialog id="gallery-modal" class="modal"`,
+		"Toast":           `class="toast"`,
+		"Switch":          `class="switch"`,
+		"NavBadge (fail)": "nav-badge-fail",
+		"NavBadge (live)": "nav-badge-live",
 	} {
 		if !strings.Contains(body, marker) {
 			t.Errorf("the gallery does not show %s (no %s)", what, marker)
