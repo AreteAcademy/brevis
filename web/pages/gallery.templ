@@ -78,6 +78,22 @@ templ Gallery() {
 					}
 				</div>
 			}
+			@gallerySection("Logos") {
+				<div class="flex flex-wrap items-center gap-3">
+					for _, k := range components.LogoKeys() {
+						<span data-gallery-logo={ k } class="inline-flex items-center gap-1.5 text-[0.75rem] text-muted">
+							@components.Logo(k, 28)
+							{ k }
+						</span>
+					}
+				</div>
+				<div class="mt-3 flex items-center gap-2">
+					@components.Logo("bigquery", 18)
+					@components.Logo("bigquery", 28)
+					@components.Logo("bigquery", 40)
+					@components.Logo("acme_crm", 28)
+				</div>
+			}
 			@gallerySection("Overlays") {
 				<div class="flex flex-wrap items-center gap-3">
 					@components.Button(components.ButtonSecondary, components.SizeSmall, templ.Attributes{"data-dialogo": "gallery-drawer"}) {

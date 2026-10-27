@@ -1,0 +1,15 @@
+package components
+
+// Logo is a connector's or a language's mark at 18, 28 or 40px: the brand's
+// own drawing on a quiet tile, or a monogram where there is no mark. It is
+// named (role=img) for whoever cannot see it. See logo.go for the registry.
+templ Logo(key string, size int) {
+	{{ l := lookLogo(key) }}
+	if svg, ok := logoSVG[key]; ok {
+		<span class={ "cg", logoSize(size), l.paint.class() } role="img" aria-label={ l.title } title={ l.title }>
+			@templ.Raw(svg)
+		</span>
+	} else {
+		<span class={ "cg", "cg-mono", logoSize(size) } role="img" aria-label={ l.title } title={ l.title }>{ l.monogram }</span>
+	}
+}
