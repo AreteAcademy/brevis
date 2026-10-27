@@ -312,7 +312,7 @@ const defaultMaxPages = 1000
 
 // errStopped signals that the consumer broke out of the range loop. It is
 // never handed to the caller -- there is nobody left to hand it to.
-var errStopped = errors.New("consumer stopped iterating")
+var errStopped = core.ErrStopped
 
 // countingBody tallies what actually came off the wire.
 //
@@ -406,24 +406,45 @@ func (p *page) close() {
 
 // drainStream hands the page's response to the Streaming, and each record it
 // emits straight to the consumer.
+//
+// Once yield has said false, nothing may reach it again: a second call is a
+// panic in the runtime, and a fetcher that ignores emit's error, or returns a
+// failure of its own while closing up, would cause one. So after the stop
+// every emit answers ErrStopped without yielding, and whatever the function
+// returns is dropped -- there is nobody left to hand it to.
 func drainStream(source core.Source, p *page, yield func(core.Envelope, error) bool) (int, string, error) {
 	emitted := 0
+	// Atomic because an emit kept past the return may be called from any
+	// goroutine; while the function runs, it calls emit from its own.
+	var stopped, returned atomic.Bool
 	emit := func(r any) error {
+		switch {
+		case stopped.Load():
+			return errStopped
+		case returned.Load():
+			return errEmitAfterReturn
+		}
 		if !yield(core.Envelope{Payload: r}, nil) {
+			stopped.Store(true)
 			return errStopped
 		}
 		emitted++
 		return nil
 	}
-	if err := p.stream(p.response, emit); err != nil {
-		if errors.Is(err, errStopped) {
-			return emitted, "", errStopped
-		}
+	err := p.stream(p.response, emit)
+	returned.Store(true)
+	if stopped.Load() {
+		return emitted, "", errStopped
+	}
+	if err != nil {
 		return emitted, "", err
 	}
 	next, err := nextPageURL(source, p, emitted)
 	return emitted, next, err
 }
+
+var errEmitAfterReturn = errors.New("emit was called after the Stream returned; " +
+	"records are emitted while the function runs, from its own goroutine")
 
 // drainPage decodes one page, yielding every row. It reports how many rows it
 // emitted and the URL of the next page, if any.

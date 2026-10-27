@@ -255,3 +255,11 @@ const (
 	AbortOnError    = core.AbortOnError
 	ContinueOnError = core.ContinueOnError
 )
+
+// ErrStopped is what a Stream's emit returns once nobody is reading any more.
+// Return it, or an error that wraps it, and the read ends without a failure:
+//
+//	if err := emit(row); err != nil {
+//		return err
+//	}
+var ErrStopped = core.ErrStopped
