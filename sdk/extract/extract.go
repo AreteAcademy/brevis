@@ -82,6 +82,17 @@ type reading struct {
 	stream  core.Streaming
 }
 
+// name is what an error calls the fetcher's function, empty when there is none.
+func (rd reading) name() string {
+	switch {
+	case rd.stream != nil:
+		return "Stream"
+	case rd.records != nil:
+		return "Reading"
+	}
+	return ""
+}
+
 func fetch(ctx context.Context, source core.Source, rd reading) (iter.Seq2[core.Envelope, error], error) {
 	if source.URL == "" {
 		return nil, fmt.Errorf("URL is required")
@@ -90,10 +101,10 @@ func fetch(ctx context.Context, source core.Source, rd reading) (iter.Seq2[core.
 	// Both answer "which part of the response holds the records", and with
 	// Records set the decoder never sees the body DataKey unwrapped -- so
 	// DataKey would sit there doing nothing, which is worse than an error.
-	if rd.records != nil && source.DataKey != "" {
-		return nil, fmt.Errorf("the Reading and Source.DataKey both say where the records are, "+
-			"and the Reading wins -- DataKey would be ignored. Read the field inside it "+
-			"instead: sdk.ArrayAt(%q)(doc)", source.DataKey)
+	if name := rd.name(); name != "" && source.DataKey != "" {
+		return nil, fmt.Errorf("the %s and Source.DataKey both say where the records are, "+
+			"and the %s wins -- DataKey would be ignored. Read the field inside it "+
+			"instead: sdk.ArrayAt(%q)(doc)", name, name, source.DataKey)
 	}
 
 	if err := checkPagination(source); err != nil {

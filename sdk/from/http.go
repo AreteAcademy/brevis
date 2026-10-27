@@ -8,6 +8,7 @@ package from
 
 import (
 	"context"
+	"errors"
 	"io"
 	"iter"
 	"time"
@@ -142,6 +143,11 @@ func (h HTTP) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 	// The function decides what the body means, so no decoder runs and the
 	// Format does not matter -- as with Records.
 	if h.Stream != nil {
+		if h.Records != nil {
+			return nil, errors.New("from.HTTP has both Records and Stream, and only one can " +
+				"say what a response means -- the other would be ignored. Keep Stream for a " +
+				"response too large to hold as records, Records otherwise")
+		}
 		return extract.Stream(ctx, source, h.Stream)
 	}
 

@@ -212,3 +212,28 @@ func TestAStreamHandsItsRecordsOverInOrder(t *testing.T) {
 		t.Errorf("the preview does not show the three records:\n%s", preview.String())
 	}
 }
+
+// Records and Stream both say what a response means, and one of them would
+// be set and do nothing. Refused before any request, naming which to keep.
+func TestAStreamWithRecordsIsRefusedBeforeAnyRequest(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+	}))
+	defer srv.Close()
+
+	_, err := HTTP{
+		URL:     srv.URL,
+		Records: func(core.Response) ([]any, error) { return nil, nil },
+		Stream:  func(core.Response, func(any) error) error { return nil },
+	}.Read(context.Background(), core.ReadOptions{})
+	if err == nil {
+		t.Fatal("Records and Stream together were accepted; one of them would be ignored")
+	}
+	if !strings.Contains(err.Error(), "Records") || !strings.Contains(err.Error(), "Stream") {
+		t.Errorf("the error does not name the two fields: %v", err)
+	}
+	if calls != 0 {
+		t.Errorf("%d request(s) went out before the refusal", calls)
+	}
+}
