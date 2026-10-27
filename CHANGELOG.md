@@ -18,6 +18,38 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [Unreleased]
+
+### Added: `from.HTTP.Stream`, a Reading that hands its records over as it reads them (#140)
+
+`Records` returns every record of a response as one slice. For a format the
+SDK does not decode -- an `.xlsx` workbook, a zip with a CSV inside, a
+fixed-width file -- that slice can dwarf the body: a 27 MB workbook of 830,000
+rows as maps peaked above 1.5 GiB before the first record reached the
+transform, and on an agent host the kernel OOM-killed the agent with every
+step on it.
+
+`Stream func(r sdk.Response, emit func(any) error) error` emits each record as
+it reads it. Measured on 830,000 rows (a 40 MB body) with `FlushEvery: 5000`,
+peak heap went from 498 MB with `Records` to 146 MB.
+
+- The response is still whole: `Bytes`, `Object` and `JSON` work as before.
+  What no longer stays in memory is the records.
+- The bound holds end to end only with `Target.FlushEvery`. Without it `Load`
+  collects every record before writing, as it always has.
+- A refusal can only cover what was read so far: a `sdk.Reject` halfway
+  arrives after the records already emitted, with its type.
+- `emit` returns the new `sdk.ErrStopped` once nobody is reading. A repeated
+  emit after that, or one kept past the function's return, delivers nothing
+  -- never the runtime's panic for a yield after false.
+- `Records` with `Stream`, and `Stream` with `DataKey`, are refused before any
+  request.
+
+`Records`, `sdk.Reading` and the `extract` functions are unchanged; the new
+`extract.Stream` is what `from.HTTP` calls.
+
+---
+
 ## [0.86.1] — 2026-10-14
 
 ### Fixed: one Google client per process, not two per write (#87)

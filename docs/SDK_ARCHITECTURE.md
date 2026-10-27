@@ -132,7 +132,7 @@ secret in a query string.
 ### What belongs to the driver
 
 Everything else. `from.HTTP` has a URL, headers, retry, a `RateLimiter`,
-pagination, `Format` and `Records`; `from.Files` has a path, a format and a
+pagination, `Format`, and `Records` or `Stream`; `from.Files` has a path, a format and a
 `Store`. `bigquery.Table` has a project, a dataset, a table, GCS staging,
 `ClusterBy`, partitioning and `CreateSQL`; `to.Files` has a path, `PartitionBy`
 and `Compress`. **None of those fields appears on a driver that does not have
@@ -145,7 +145,7 @@ them** — that is the difference between one type per driver and a union struct
 ```
 from.X.Read()                     iter.Seq2[Envelope, error]  ← lazy
    │
-   ├─ Records / decoder           decides what the response carries
+   ├─ Records / Stream / decoder  decides what the response carries
    │
    ▼
 Transform (per record)            Accept, Rename, Compute, ComputeText,

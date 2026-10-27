@@ -1593,6 +1593,68 @@ document — and that path stays **streaming**, which matters for a large NDJSON
 or CSV. Setting `Records` buffers the response, because a function that decides
 what a response means has to see all of it.
 
+### A response too large to hold as records
+
+`Records` returns every record of a response at once. For a format the SDK does
+not decode — a workbook, a zip with a CSV inside, a fixed-width file — that can
+be far more than the body: a 27 MB workbook of 830,000 rows is well over a
+gigabyte as maps. `Stream` hands each record over as it reads it instead:
+
+```go
+From: from.HTTP{
+	URL: url,
+	Stream: func(r sdk.Response, emit func(any) error) error {
+		f, err := excelize.OpenReader(bytes.NewReader(r.Bytes()))
+		if err != nil {
+			return sdk.Reject("response %d is not a workbook: %v", r.Status, err)
+		}
+		defer f.Close()
+		rows, err := f.Rows(f.GetSheetName(0))
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			cols, err := rows.Columns()
+			if err != nil {
+				return err
+			}
+			if err := emit(record(header, cols)); err != nil {
+				return err // sdk.ErrStopped: nobody is reading any more
+			}
+		}
+		return rows.Error()
+	},
+},
+...
+Target: sdk.Target{To: table, FlushEvery: 5000},
+```
+
+(`excelize` is your fetcher's dependency, not the SDK's.)
+
+- **The response is still whole.** `Bytes`, `Object` and `JSON` work as in
+  `Records`, so a hash of the body as a publication id still works. What no
+  longer stays in memory is the records.
+- **Pair it with `Target.FlushEvery`.** Without it `Load` collects every record
+  before writing, and they pile up there instead. With it, batches are written
+  while the function is still reading. Measured on 830,000 rows (a 40 MB body),
+  peak heap was 498 MB with `Records` and 146 MB with `Stream` and
+  `FlushEvery: 5000`.
+- **Read the body with a scanner or a reader.** Splitting it whole —
+  `strings.Split(string(r.Bytes()), "\n")` — builds every line at once, and
+  that is the cost `Stream` exists to avoid.
+- **A refusal can come after records.** `Records` refuses a response before any
+  of its records goes out; `Stream` can only refuse what it has read so far. A
+  `sdk.Reject` halfway arrives after the records already emitted, and with
+  `FlushEvery` some batches may already be written. Check the status, an error
+  marker or the header row before the first `emit`.
+- **`emit` returns `sdk.ErrStopped` once nobody is reading** — the consumer
+  broke out of its loop, or the pipeline is ending. Return it. Calling `emit`
+  again after that delivers nothing, and so does an `emit` kept past the
+  function's return.
+- `Records` and `Stream` together are an error, and so is `Stream` with
+  `DataKey`. `Format` is not used: the function decides what the body means.
+
 ### Refusing, and being told apart
 
 ```go
