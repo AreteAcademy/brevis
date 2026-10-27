@@ -51,7 +51,11 @@ type HTTP struct {
 	Records core.Reading
 
 	// Stream is Records for a response too large to hold as records: it hands
-	// each one over as it reads it. See core.Streaming.
+	// each one over as it reads it, and with Target.FlushEvery they are written
+	// while it is still reading. See core.Streaming.
+	//
+	// Setting both is an error. Like Records, it decides what the body means,
+	// so Format is not used and DataKey is refused.
 	Stream core.Streaming
 
 	// Auth is how this source authenticates, and what keeps the credential

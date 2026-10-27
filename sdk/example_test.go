@@ -10,7 +10,13 @@
 package sdk_test
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 
 	"github.com/AreteAcademy/brevis/sdk"
 	"github.com/AreteAcademy/brevis/sdk/from"
@@ -148,4 +154,44 @@ func ExampleTarget() {
 		To:      bigquery.Table{Dataset: "bronze", Name: "pedidos"},
 		Columns: []string{"ingestion_id", "ingestion_loaded_at", "payload"},
 	}
+}
+
+// Stream hands each record over as it reads the response, for a format the
+// SDK does not decode -- a workbook, a zip, a fixed-width file -- that is too
+// large to hold as records. Read the body with a scanner or a reader, never
+// by splitting it whole, and pair it with Target.FlushEvery: the records are
+// written while the function is still reading.
+func ExampleStreaming() {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("0000001  Lisboa\n0000002  Porto\n"))
+	}))
+	defer srv.Close()
+
+	data, err := sdk.Extract(context.Background(), sdk.Source{From: from.HTTP{
+		URL: srv.URL + "/fixed-width.txt",
+		Stream: func(r sdk.Response, emit func(any) error) error {
+			lines := bufio.NewScanner(bytes.NewReader(r.Bytes()))
+			for lines.Scan() {
+				row := lines.Text()
+				if err := emit(map[string]any{"id": row[:7], "city": strings.TrimSpace(row[7:])}); err != nil {
+					return err // sdk.ErrStopped: nobody is reading any more
+				}
+			}
+			return lines.Err()
+		},
+	}})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	for env, err := range data.Records {
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println(env.Payload)
+	}
+	// Output:
+	// map[city:Lisboa id:0000001]
+	// map[city:Porto id:0000002]
 }
