@@ -81,3 +81,70 @@ func root(src map[string]string, name string) string {
 	}
 	return name
 }
+
+// THE ROLES THE 2.0 DESIGN NAMES EXIST, AND EVERY ONE IS STILL THE BRAND'S.
+//
+// The handoff speaks in roles -- bg, fg, subtle, border, ok, fail -- and the
+// screens built from it will too. They arrive as aliases and mixes over the
+// names branding.go writes, never as values, for the reason the test above
+// gives. Unlike that test, this one follows a role THROUGH other roles
+// (`subtle` is `faint`, which is a mix) until every leaf is a branded name, so
+// an alias of a literal cannot pass for an alias of the brand.
+//
+// `accent` is not on the list. The repository's `--color-accent` is the dim
+// gold a long-standing set of call sites paints with; the handoff's accent --
+// the one strong colour on a screen -- is what this file calls
+// `accent-strong`, and repainting `accent` to match a name would repaint every
+// screen at once.
+func TestTheDesignRolesArePaintedByTheBrand(t *testing.T) {
+	raw, err := os.ReadFile("../../internal/branding/branding.go")
+	if err != nil {
+		t.Fatalf("branding.go moved: %v", err)
+	}
+	branded := map[string]bool{}
+	for _, m := range regexp.MustCompile(`write\("--color-([a-z0-9-]+)"`).FindAllStringSubmatch(string(raw), -1) {
+		branded[m[1]] = true
+	}
+
+	src := sourceTokens(t)
+	refs := regexp.MustCompile(`var\(--color-([a-z0-9-]+)\)`)
+	var leaves func(name string, depth int) []string
+	leaves = func(name string, depth int) []string {
+		if branded[name] || depth > 8 {
+			return []string{name}
+		}
+		v, ok := src[name]
+		if !ok {
+			return []string{name}
+		}
+		found := refs.FindAllStringSubmatch(v, -1)
+		if len(found) == 0 {
+			return []string{name}
+		}
+		var out []string
+		for _, f := range found {
+			out = append(out, leaves(f[1], depth+1)...)
+		}
+		return out
+	}
+
+	for _, role := range []string{
+		"bg", "fg", "subtle", "border", "border-strong", "hover", "bar",
+		"accent-soft", "on-accent", "ok", "fail", "warn", "run",
+	} {
+		v, ok := src[role]
+		if !ok {
+			t.Errorf("--color-%s is not defined", role)
+			continue
+		}
+		if strings.Contains(v, "#") {
+			t.Errorf("--color-%s carries a literal colour (%s), which no brand can repaint", role, v)
+			continue
+		}
+		for _, leaf := range leaves(role, 0) {
+			if !branded[leaf] {
+				t.Errorf("--color-%s ends in --color-%s, which is nothing branding.go writes", role, leaf)
+			}
+		}
+	}
+}

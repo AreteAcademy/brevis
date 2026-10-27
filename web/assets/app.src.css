@@ -170,6 +170,38 @@
   --color-surface-3: color-mix(in srgb, var(--color-ink) 10%, var(--color-surface));
   --color-canvas-subtle: color-mix(in srgb, var(--color-surface) 60%, var(--color-parchment));
 
+  /* THE 2.0 DESIGN'S ROLES, BY THE NAMES ITS SCREENS USE.
+
+     Aliases and mixes only, for the reason above: every one ends in a name
+     internal/branding writes, and tokens_test.go follows each to its leaves.
+
+     There is no `accent` here because there already is one. The design's
+     accent -- the active menu item and the one primary action -- is
+     `accent-strong`, the lime; `accent` stays the dim gold its call sites
+     paint with. `on-accent` is the label on that lime, so it is the ground.
+
+     Two of the handoff's names were changed because Tailwind already owns
+     them: its foreground-on-accent name is an `accent-color` utility, and
+     its second border a border WIDTH. Either one written anywhere under web/
+     -- a test string, or this comment -- compiles into a rule nobody asked
+     for, so they are not spelled out here either.
+
+     `hover`, `bar` and `accent-soft` mix towards `transparent`: they are laid
+     over whatever ground is beneath, a row, a card or the page. */
+  --color-bg: var(--color-parchment);
+  --color-fg: var(--color-ink);
+  --color-subtle: var(--color-faint);
+  --color-border: var(--color-line);
+  --color-border-strong: color-mix(in srgb, var(--color-ink) 22%, var(--color-surface));
+  --color-hover: color-mix(in srgb, var(--color-ink) 4%, transparent);
+  --color-bar: color-mix(in srgb, var(--color-ink) 22%, transparent);
+  --color-accent-soft: color-mix(in srgb, var(--color-gold-strong) 14%, transparent);
+  --color-on-accent: var(--color-parchment);
+  --color-ok: var(--color-state-success);
+  --color-fail: var(--color-state-failed);
+  --color-warn: var(--color-state-queued);
+  --color-run: var(--color-state-running);
+
   /* States. Each one passes AA as TEXT on both grounds, because they are used
      as text on a pill and not only as a dot.
 

@@ -188,6 +188,33 @@ func TestEveryStateColourIsReadableAsAWord(t *testing.T) {
 	}
 }
 
+// THE DESIGN ROLES ARE READABLE WHERE THE 2.0 SCREENS DRAW THEM.
+//
+// fg and subtle are the primary and the dimmest text; the four state roles are
+// words on a pill; on-accent is the label ON the primary button, so its ground
+// is the accent itself.
+func TestTheDesignRolesAreReadableOnTheirGrounds(t *testing.T) {
+	tok := tokens(t)
+	const aa = 4.5
+
+	pairs := []struct{ fg, bg string }{{"on-accent", "accent-strong"}}
+	for _, fg := range []string{"fg", "subtle", "ok", "fail", "warn", "run"} {
+		for _, bg := range []string{"bg", "surface", "surface-2"} {
+			pairs = append(pairs, struct{ fg, bg string }{fg, bg})
+		}
+	}
+	for _, c := range pairs {
+		if _, ok := tok[c.fg]; !ok {
+			t.Errorf("--color-%s is not defined", c.fg)
+			continue
+		}
+		if got := ratio(t, tok, c.fg, c.bg); got < aa {
+			t.Errorf("%s on %s is %.2f:1, and body text needs %.1f:1 (%s / %s)",
+				c.fg, c.bg, got, aa, tok[c.fg], tok[c.bg])
+		}
+	}
+}
+
 // A REPORT RATHER THAN A VERDICT, for whoever is changing the palette: every
 // pair the tests above check, printed with its ratio.
 func TestContrastReport(t *testing.T) {
