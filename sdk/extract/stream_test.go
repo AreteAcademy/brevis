@@ -157,3 +157,84 @@ func TestAnEmitAfterTheStreamReturnedIsAnError(t *testing.T) {
 		t.Errorf("the consumer received %d records, want 1", got)
 	}
 }
+
+// A refusal halfway through a response comes after the records already
+// emitted, as the sequence's error -- still a rejection, so the log and the
+// alert can tell the source from the fetcher. And a plain failure arrives
+// the same way.
+func TestAFailureHalfwayArrivesAfterTheRecordsAlreadyEmitted(t *testing.T) {
+	for name, tc := range map[string]struct {
+		fail     error
+		rejected bool
+	}{
+		"a rejection":   {core.Reject("row 3 is a total line, not data"), true},
+		"a plain error": {errors.New("the workbook is truncated"), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var calls atomic.Int32
+			srv := sheet(t, &calls)
+			seq, err := Stream(context.Background(), core.Source{URL: srv.URL},
+				func(r core.Response, emit func(any) error) error {
+					for _, row := range []string{"a", "b"} {
+						if err := emit(row); err != nil {
+							return err
+						}
+					}
+					return tc.fail
+				})
+			if err != nil {
+				t.Fatalf("Stream: %v", err)
+			}
+
+			var got []any
+			var last error
+			for env, err := range seq {
+				if err != nil {
+					last = err
+					continue
+				}
+				got = append(got, env.Payload)
+			}
+
+			if len(got) != 2 {
+				t.Errorf("the consumer received %v before the failure, want a and b", got)
+			}
+			if !errors.Is(last, tc.fail) {
+				t.Errorf("the sequence ended with %v, want %v", last, tc.fail)
+			}
+			if errors.Is(last, core.ErrRejected) != tc.rejected {
+				t.Errorf("errors.Is(err, ErrRejected) = %v, want %v",
+					errors.Is(last, core.ErrRejected), tc.rejected)
+			}
+		})
+	}
+}
+
+// An empty window is a result, not a failure: a 204 the function emits
+// nothing for is zero records and no error.
+func TestNoEmitOnA204IsZeroRecords(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	var status int
+	seq, err := Stream(context.Background(), core.Source{URL: srv.URL},
+		func(r core.Response, emit func(any) error) error {
+			status = r.Status
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("Stream: %v", err)
+	}
+	n := 0
+	for _, err := range seq {
+		if err != nil {
+			t.Fatalf("iterating: %v", err)
+		}
+		n++
+	}
+	if status != http.StatusNoContent || n != 0 {
+		t.Errorf("status %d and %d records, want 204 and none", status, n)
+	}
+}
