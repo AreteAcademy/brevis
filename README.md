@@ -103,6 +103,8 @@ to the internet.
 **White label**: title, subtitle, phrase and palette come from a YAML
 (`brand.example.yaml` → `brand.yaml`, or `BREVIS_BRAND_FILE`). The colours
 override the CSS variables at runtime, so changing the theme recompiles nothing.
+The console is dark by default and has a light theme each visitor can switch
+to; `theme:` paints the dark one and the optional `theme_light:` the light one.
 The "Powered by Brevis" footer does not come from configuration — it comes from
 the code.
 
