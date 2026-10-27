@@ -238,3 +238,133 @@ func TestNoEmitOnA204IsZeroRecords(t *testing.T) {
 		t.Errorf("status %d and %d records, want 204 and none", status, n)
 	}
 }
+
+// emitRows emits every element of the "rows" array of a JSON page.
+func emitRows(r core.Response, emit func(any) error) error {
+	doc, err := r.Object()
+	if err != nil {
+		return err
+	}
+	rows, _ := doc["rows"].([]any)
+	for _, row := range rows {
+		if err := emit(row); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// OffsetKey without a PageSize advances by the rows the last page returned.
+// With a Stream that is what it emitted -- there is no slice to count -- and
+// an empty page is still the stop.
+func TestAStreamAdvancesTheOffsetByWhatItEmitted(t *testing.T) {
+	pages := map[string]string{
+		"0": "a\nb\nc",
+		"3": "d\ne",
+		"5": "",
+	}
+	var asked []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		off := r.URL.Query().Get("offset")
+		asked = append(asked, off)
+		_, _ = w.Write([]byte(pages[off]))
+	}))
+	defer srv.Close()
+
+	seq, err := Stream(context.Background(), core.Source{URL: srv.URL + "/?offset=0", OffsetKey: "offset"},
+		func(r core.Response, emit func(any) error) error {
+			for _, line := range strings.Split(string(r.Bytes()), "\n") {
+				if line == "" {
+					continue
+				}
+				if err := emit(line); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("Stream: %v", err)
+	}
+	var got []string
+	for env, err := range seq {
+		if err != nil {
+			t.Fatalf("iterating: %v", err)
+		}
+		got = append(got, env.Payload.(string))
+	}
+
+	if strings.Join(asked, ",") != "0,3,5" {
+		t.Errorf("offsets asked = %v, want 0, 3, 5", asked)
+	}
+	if strings.Join(got, "") != "abcde" {
+		t.Errorf("records = %v, want a to e", got)
+	}
+}
+
+// CursorKey reads the next cursor out of the page while the function still
+// gets the page whole, cursor and all.
+func TestAStreamFollowsTheCursorAndSeesThePageWhole(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("next") == "c2" { // the CursorKey names the parameter too
+			_, _ = w.Write([]byte(`{"next":"","rows":["c"]}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"next":"c2","rows":["a","b"]}`))
+	}))
+	defer srv.Close()
+
+	var bodies []string
+	seq, err := Stream(context.Background(), core.Source{URL: srv.URL, CursorKey: "next"},
+		func(r core.Response, emit func(any) error) error {
+			bodies = append(bodies, string(r.Bytes()))
+			return emitRows(r, emit)
+		})
+	if err != nil {
+		t.Fatalf("Stream: %v", err)
+	}
+	var got []string
+	for env, err := range seq {
+		if err != nil {
+			t.Fatalf("iterating: %v", err)
+		}
+		got = append(got, env.Payload.(string))
+	}
+
+	if strings.Join(got, "") != "abc" {
+		t.Errorf("records = %v, want a, b, c", got)
+	}
+	if len(bodies) != 2 || !strings.Contains(bodies[0], `"next":"c2"`) {
+		t.Errorf("the function did not see each page whole: %q", bodies)
+	}
+}
+
+// MoreKey saying false ends the walk on that page, without the extra request
+// an empty page would cost.
+func TestAStreamStopsWhereMoreKeySaysSo(t *testing.T) {
+	var asked []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page := r.URL.Query().Get("page")
+		asked = append(asked, page)
+		more := page == "1"
+		_, _ = fmt.Fprintf(w, `{"more":%t,"rows":["p%s"]}`, more, page)
+	}))
+	defer srv.Close()
+
+	seq, err := Stream(context.Background(),
+		core.Source{URL: srv.URL, PageKey: "page", MoreKey: "more"}, emitRows)
+	if err != nil {
+		t.Fatalf("Stream: %v", err)
+	}
+	n := 0
+	for _, err := range seq {
+		if err != nil {
+			t.Fatalf("iterating: %v", err)
+		}
+		n++
+	}
+
+	if strings.Join(asked, ",") != "1,2" || n != 2 {
+		t.Errorf("pages asked = %v and %d records, want 1, 2 and 2 records", asked, n)
+	}
+}
