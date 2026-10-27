@@ -1,6 +1,9 @@
 package agent
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 // Pending exposes what a drain is still waiting for, for the race test: from
 // outside, the only other way to see it is to wait and time out.
@@ -14,3 +17,8 @@ func (a *Agent) PersistDropped(id string) {
 	e.cond = sync.NewCond(&e.mu)
 	a.persist(e)
 }
+
+// StartMatches is the comparison a cancel across a restart makes, without a
+// process: its cases are about clocks, and a real process cannot be made to
+// start on a chosen fraction of a second.
+func StartMatches(recorded, reported time.Time) bool { return startMatches(recorded, reported) }

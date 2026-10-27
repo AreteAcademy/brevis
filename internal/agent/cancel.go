@@ -25,7 +25,8 @@ import (
 type pidRecord struct {
 	PID int `json:"pid"`
 
-	// StartedUnixNano is the moment THIS process began, as this agent saw it.
+	// StartedUnixNano is the moment THIS process began, as this agent saw it:
+	// read just before the fork.
 	// It is the discriminator: a recycled pid belongs to a process that started
 	// later, and the difference is visible without asking the OS anything
 	// clever.
@@ -111,11 +112,8 @@ func (a *Agent) cancelFromState(execID string) error {
 // sameProcess says whether the pid still belongs to the process that was
 // recorded.
 //
-// Compared by START TIME, which is what makes a recycled pid detectable. The
-// tolerance is a second: this agent reads the clock just after the fork and the
-// OS records it just before, so they differ by a little and always will. A
-// recycled pid belongs to a process that started minutes or days later, so a
-// second is not close to ambiguous.
+// Compared by START TIME, which is what makes a recycled pid detectable. See
+// startMatches for how close is close enough.
 func sameProcess(rec pidRecord) (bool, error) {
 	started, err := processStart(rec.PID)
 	if err != nil {
@@ -126,9 +124,24 @@ func sameProcess(rec pidRecord) (bool, error) {
 		// outcome a cancel wanted.
 		return false, nil
 	}
-	delta := started.Sub(time.Unix(0, rec.StartedUnixNano))
-	if delta < 0 {
-		delta = -delta
-	}
-	return delta < time.Second, nil
+	return startMatches(time.Unix(0, rec.StartedUnixNano), started), nil
+}
+
+// startMatches says whether the start `ps` reports is the one recorded.
+//
+// In WHOLE SECONDS, because that is all `ps` gives: it truncates. On Linux it
+// is also the boot time plus ticks since boot, and the boot time is a whole
+// second that can be off by one. The recorded instant is taken just before the
+// fork. So the same process is reported from one second before the recorded
+// second -- the boot time rounded down -- to two after: the fork crossing into
+// the next second, and the boot time rounded up. Comparing to the nanosecond
+// with a second of slack refused the step's own process whenever it started
+// near the turn of a second, and a cancel across a restart then left running
+// what the engine asked to stop.
+//
+// Three seconds is still nowhere near a recycled pid, which belongs to a
+// process that started after this one ended and the pid space came round.
+func startMatches(recorded, reported time.Time) bool {
+	delta := reported.Truncate(time.Second).Sub(recorded.Truncate(time.Second))
+	return delta >= -time.Second && delta <= 2*time.Second
 }

@@ -410,6 +410,9 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	}
 	// A cancel during the setup has already ended runCtx, and Start then
 	// fails here -- the step is abandoned, never spawned.
+	// Read BEFORE the fork, so the recorded second is never later than the
+	// one the OS gives the process; startMatches relies on that.
+	started := time.Now()
 	if err := cmd.Start(); err != nil {
 		_ = os.Remove(outputPath)
 		a.abandon(e)
@@ -417,7 +420,7 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	}
 	e.mu.Lock()
 	e.cmd = cmd
-	e.started = time.Now()
+	e.started = started
 	e.mu.Unlock()
 	a.remember(req.ExecutionID, cmd.Process.Pid, e.started)
 
