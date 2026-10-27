@@ -645,16 +645,54 @@
   // which is why that is checked by ancestry rather than by tag.
   // ------------------------------------------------------------------
 
+  // typing is whether a key is going into a field: then it is a character,
+  // never a shortcut. Every single-key shortcut below asks it first.
+  function typing(t) {
+    return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) ||
+      (typeof t.closest === "function" && !!t.closest(".CodeMirror")));
+  }
+
   document.addEventListener("keydown", function (e) {
     if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
-    var t = e.target;
-    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) ||
-        (typeof t.closest === "function" && t.closest(".CodeMirror")))) return;
+    if (typing(e.target)) return;
     var box = document.querySelector('[data-hotkey="/"]');
     if (!box) return;
     e.preventDefault();
     box.focus();
     if (typeof box.select === "function") box.select();
+  });
+
+  // ------------------------------------------------------------------
+  // `g` then a letter goes to a section; `?` lists the shortcuts
+  //
+  // The letters are on the sidebar's own links (data-go-key, from nav.go),
+  // so a section that is not drawn cannot be jumped to and there is no map
+  // here to disagree with the sidebar. The second key must come within a
+  // second and a half, the way a reader types it, or the `g` is forgotten.
+  // ------------------------------------------------------------------
+
+  var pendingG = 0;
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
+    if (document.querySelector("dialog[open]")) return;
+    if (e.key === "?") {
+      var list = document.getElementById("shortcuts");
+      if (list && typeof list.showModal === "function" && !list.open) {
+        e.preventDefault();
+        list.showModal();
+      }
+      return;
+    }
+    if (pendingG && Date.now() - pendingG < 1500) {
+      pendingG = 0;
+      var to = document.querySelector('#app-sidebar [data-go-key="' + e.key.toLowerCase() + '"]');
+      if (to) {
+        e.preventDefault();
+        window.location.assign(to.getAttribute("href"));
+      }
+      return;
+    }
+    pendingG = e.key === "g" ? Date.now() : 0;
   });
 
   // ------------------------------------------------------------------
@@ -1162,6 +1200,12 @@
       var it = shown[i];
       if (!it) return;
       dialog.close();
+      // An action is done here rather than followed.
+      if (it.action === "toggle-theme") {
+        var sw = document.querySelector("[data-theme-toggle]");
+        if (sw) sw.click();
+        return;
+      }
       if (beside) window.open(it.href, "_blank");
       else window.location.assign(it.href);
     }

@@ -48,7 +48,7 @@ func (f readsFake) Projects(context.Context) ([]postgres.ProjectSummary, error) 
 }
 
 type paletteItem struct {
-	Group, Label, Hint, Href, Icon, Text string
+	Group, Label, Hint, Href, Icon, Text, Action string
 }
 
 func palette(t *testing.T, ui *api.UI) (int, http.Header, []paletteItem) {
@@ -171,4 +171,17 @@ func TestTheIslandDrivesThePalette(t *testing.T) {
 	if n := strings.Count(js, `"/api/palette"`); n != 1 {
 		t.Errorf("the index is fetched from %d places; one is how it is fetched once", n)
 	}
+}
+
+// THE PALETTE DOES THINGS AS WELL AS GOING PLACES. An action is an item with
+// an `action` the island runs instead of following the href; the theme is
+// the first one, and the others arrive with the screens that own them.
+func TestThePaletteOffersToToggleTheTheme(t *testing.T) {
+	_, _, items := palette(t, dataUI(catalogFake{}))
+	for _, it := range items {
+		if it.Group == "Actions" && it.Label == "Toggle theme" && it.Action == "toggle-theme" {
+			return
+		}
+	}
+	t.Errorf("no Actions › Toggle theme in %+v", items)
 }

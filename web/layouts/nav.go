@@ -4,8 +4,10 @@ import "context"
 
 // section is one place in the sidebar. Tip is what the place is FOR, shown
 // on hover and focus: the name is the engine's word, the tip the reader's.
+// GoKey is the letter that goes there after `g` ("" for none); it is written
+// on the link, so the script has no map of its own to fall out of step.
 type section struct {
-	Href, Name, Key, Icon, Tip string
+	Href, Name, Key, Icon, Tip, GoKey string
 }
 
 // group is a labelled run of sections.
@@ -33,22 +35,22 @@ type group struct {
 // switcher above the sections; the page it opens is still /projects.
 func groups(ctx context.Context) []group {
 	data := []section{
-		{"/data/endpoints", "Endpoints", "endpoints", "plug", "Metrics published as an API, cached until the data changes"},
+		{"/data/endpoints", "Endpoints", "endpoints", "plug", "Metrics published as an API, cached until the data changes", ""},
 	}
 	if HasSQL(ctx) {
-		data = append(data, section{"/sql", "SQL", "sql", "terminal", "Query Postgres and BigQuery, read-only"})
+		data = append(data, section{"/sql", "SQL", "sql", "terminal", "Query Postgres and BigQuery, read-only", "s"})
 	}
 	all := []group{
 		{"Monitor", []section{
-			{"/", "Overview", "overview", "layout-grid", "The health of everything, what failed and what fires next"},
-			{"/runs", "Runs", "runs", "history", "Every time a workflow ran: timing, parameters and logs"},
+			{"/", "Overview", "overview", "layout-grid", "The health of everything, what failed and what fires next", "o"},
+			{"/runs", "Runs", "runs", "history", "Every time a workflow ran: timing, parameters and logs", "e"},
 		}},
 		{"Orchestrate", []section{
-			{"/workflows", "Workflows", "workflows", "workflow", "Schedules and the steps each one runs"},
+			{"/workflows", "Workflows", "workflows", "workflow", "Schedules and the steps each one runs", "w"},
 		}},
 		{"Ingest", []section{
-			{"/ingest/streams", "Streams", "streams", "cloud", "Gateway streams: HTTP events written as they arrive"},
-			{"/ingest/loads", "Loads", "loads", "download", "Steps that extract from HTTP, files and databases and write a destination"},
+			{"/ingest/streams", "Streams", "streams", "cloud", "Gateway streams: HTTP events written as they arrive", "t"},
+			{"/ingest/loads", "Loads", "loads", "download", "Steps that extract from HTTP, files and databases and write a destination", ""},
 		}},
 		{"Data", data},
 		{"Configure", nil},
@@ -63,7 +65,24 @@ func groups(ctx context.Context) []group {
 }
 
 // projects is the page the switcher opens. Not a section: see groups.
-var projects = section{"/projects", "Projects", "projects", "folder", "Every project and the workflows in it"}
+var projects = section{"/projects", "Projects", "projects", "folder", "Every project and the workflows in it", ""}
+
+// goKeys are the sections that have a letter, in the sidebar's order: what the
+// shortcuts modal lists. The letters are the handoff's (o, w, e for runs --
+// "execuções" --, s, t for streams -- "tempo real"), kept so the design and
+// the console teach the same keys; the catalog's d, Models' m and
+// Connections' c arrive with their screens.
+func goKeys(ctx context.Context) []section {
+	var out []section
+	for _, g := range groups(ctx) {
+		for _, s := range g.Sections {
+			if s.GoKey != "" {
+				out = append(out, s)
+			}
+		}
+	}
+	return out
+}
 
 // crumb is where a page sits: its section's group, the section, and the
 // page's own title when it is not the section itself (a workflow's name under
