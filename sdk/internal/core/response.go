@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -169,3 +170,9 @@ type Reading func(Response) ([]any, error)
 //
 // emit delivers one record. An error from it means stop reading: return it.
 type Streaming func(r Response, emit func(any) error) error
+
+// ErrStopped is what emit returns once nobody is reading any more: the
+// consumer broke out of its loop, or the pipeline is ending. Return it, or an
+// error that wraps it, and the read ends without a failure. Test for it with
+// errors.Is.
+var ErrStopped = errors.New("the consumer stopped reading")
