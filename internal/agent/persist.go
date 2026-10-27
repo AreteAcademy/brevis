@@ -195,6 +195,7 @@ func (a *Agent) Restore(log *slog.Logger) error {
 // readFinished builds an execution that is over: closed, exited and settled --
 // nothing runs, nothing will write to it, and no drain waits for it.
 func readFinished(path, id string, ring int) (*execution, error) {
+	// #nosec G304 -- a file Restore listed in this agent's own state directory
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
