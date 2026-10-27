@@ -10,10 +10,10 @@ import (
 // It was a top bar, and this test pinned that: the sections were few and
 // one level deep, and a column of them spent width on screens whose job is a
 // wide table. The owner reversed it on 2026-10-14 with the console redesign
-// (G1): three groups now -- Pipelines, Data, Workspace -- each with a label
-// and an icon, which a single row cannot carry without crowding, and a fixed
-// frame that holds still while the page beside it changes. The width is paid
-// knowingly; below 960px the sidebar becomes a drawer.
+// (G1): groups of sections, each with a label and an icon, which a single row
+// cannot carry without crowding, and a fixed frame that holds still while the
+// page beside it changes. The width is paid knowingly; below 860px the
+// sidebar becomes a drawer.
 //
 // A sidebar and a top bar contain the same links; `strings.Contains` cannot
 // tell them apart, and seven tests once passed on a panel that rendered
@@ -59,12 +59,12 @@ func TestTheSidebarHoldsStillAcrossANavigation(t *testing.T) {
 // EVERY SECTION, AND THE OPEN ONE SAID OUT LOUD. `aria-current` is what tells
 // somebody not looking at the highlight which section they are in.
 func TestTheSidebarCarriesEverySectionAndMarksTheOpenOne(t *testing.T) {
-	body := render(t, dataUI(catalogFake{}), "/ingest/loads")
+	body := sections(render(t, dataUI(catalogFake{}), "/ingest/loads"))
 
 	for _, want := range []string{
 		`href="/"`, `href="/workflows"`, `href="/runs"`,
-		`href="/projects"`, `href="/ingest/streams"`, `href="/ingest/loads"`,
-		"Overview", "Workflows", "Runs", "Projects", "Streams", "Loads",
+		`href="/ingest/streams"`, `href="/ingest/loads"`,
+		"Overview", "Workflows", "Runs", "Streams", "Loads",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the sidebar does not carry %q", want)
@@ -81,6 +81,17 @@ func TestTheSidebarCarriesEverySectionAndMarksTheOpenOne(t *testing.T) {
 	if !strings.Contains(tag, `href="/ingest/loads"`) {
 		t.Errorf("the marked section is not /ingest/loads: %q", tag)
 	}
+}
+
+// sections is the section navigation alone: the logo above it also links to
+// `/`, and the project switcher to /projects.
+func sections(body string) string {
+	at := strings.Index(body, `<nav aria-label="Sections"`)
+	if at < 0 {
+		return ""
+	}
+	body = body[at:]
+	return body[:strings.Index(body, "</nav>")]
 }
 
 // THE ACCOUNT MENU IS AT THE FOOT OF THE SIDEBAR, where a console's "who am
@@ -104,29 +115,24 @@ func TestTheAccountMenuIsInTheSidebar(t *testing.T) {
 	}
 }
 
-// THE SIDEBAR FOLLOWS THE DATA'S PATH: how it is built and what happened
-// (Pipelines: Overview, Workflows, Runs), what comes in (Ingest: Streams,
-// Loads), what reads it (Consume: Endpoints, SQL), and the Workspace. Groups
-// are announced as groups, so a screen reader hears "Ingest, group" before
-// "Streams".
-func TestTheSidebarGroupsSectionsByTheDatasPath(t *testing.T) {
-	body := render(t, dataUI(catalogFake{}).WithEndpoints(endpointsFake{}), "/ingest/loads")
-	for _, group := range []string{
-		`role="group" aria-label="Pipelines"`, `role="group" aria-label="Ingest"`,
-		`role="group" aria-label="Consume"`, `role="group" aria-label="Workspace"`,
-	} {
-		if !strings.Contains(body, group) {
-			t.Errorf("the sidebar has no %s", group)
-		}
-	}
-	// Inside the section navigation only: the logo also links to `/`, above it.
-	if at := strings.Index(body, `<nav aria-label="Sections"`); at >= 0 {
-		body = body[at:]
-	}
-	order := []string{`aria-label="Pipelines"`, `href="/"`, `href="/workflows"`, `href="/runs"`,
+// THE SIDEBAR IS GROUPED BY WHAT YOU CAME TO DO (UI 2.0): watch what
+// happened (Monitor: Overview, Runs), shape what runs (Orchestrate:
+// Workflows), see what comes in (Ingest: Streams, Loads), and reach the data
+// (Data: Endpoints, SQL). It replaced a grouping by the data's path, which
+// asked a reader to know the engine's model before finding a page.
+//
+// Groups are announced as groups, so a screen reader hears "Ingest, group"
+// before "Streams". A group with no section is not drawn: Configure arrives
+// with Connections, and an empty heading is a promise the console cannot
+// keep.
+func TestTheSidebarGroupsSectionsByIntent(t *testing.T) {
+	body := sections(render(t, dataUI(catalogFake{}).WithEndpoints(endpointsFake{}), "/ingest/loads"))
+	order := []string{
+		`aria-label="Monitor"`, `href="/"`, `href="/runs"`,
+		`aria-label="Orchestrate"`, `href="/workflows"`,
 		`aria-label="Ingest"`, `href="/ingest/streams"`, `href="/ingest/loads"`,
-		`aria-label="Consume"`, `href="/data/endpoints"`,
-		`aria-label="Workspace"`, `href="/projects"`}
+		`aria-label="Data"`, `href="/data/endpoints"`,
+	}
 	last := -1
 	for _, want := range order {
 		i := strings.Index(body, want)
@@ -137,6 +143,44 @@ func TestTheSidebarGroupsSectionsByTheDatasPath(t *testing.T) {
 			t.Errorf("%s is out of order", want)
 		}
 		last = i
+	}
+	for _, gone := range []string{`aria-label="Configure"`, `aria-label="Pipelines"`, `aria-label="Consume"`, `aria-label="Workspace"`, `href="/projects"`} {
+		if strings.Contains(body, gone) {
+			t.Errorf("the sections still carry %s", gone)
+		}
+	}
+}
+
+// EVERY SECTION SAYS WHAT IT IS FOR, on hover and on focus: a name like
+// "Loads" is the engine's word, and the hint is the reader's.
+func TestEverySectionSaysWhatItIsFor(t *testing.T) {
+	body := sections(render(t, dataUI(catalogFake{}).WithEndpoints(endpointsFake{}), "/ingest/loads"))
+	links := strings.Count(body, "<a ")
+	if links == 0 {
+		t.Fatal("the sidebar has no section links")
+	}
+	if tips := strings.Count(body, "data-tip="); tips != links {
+		t.Errorf("%d sections and %d hints: every section needs one", links, tips)
+	}
+}
+
+// PROJECTS IS A SWITCHER AT THE TOP, NOT A SECTION. A project is the scope a
+// reader works in, not one more place among the others; the list of them is
+// still a page, and the switcher opens it.
+func TestProjectsIsASwitcherAboveTheSections(t *testing.T) {
+	body := render(t, dataUI(catalogFake{}), "/ingest/loads")
+	aside, nav := strings.Index(body, "<aside"), strings.Index(body, `<nav aria-label="Sections"`)
+	sw := strings.Index(body, "data-project-switcher")
+	if sw < 0 {
+		t.Fatal("the sidebar has no project switcher")
+	}
+	if sw < aside || sw > nav {
+		t.Error("the project switcher is not between the brand and the sections")
+	}
+	tag := body[strings.LastIndex(body[:sw], "<a"):]
+	tag = tag[:strings.Index(tag, ">")]
+	if !strings.Contains(tag, `href="/projects"`) {
+		t.Errorf("the switcher does not open the projects: %s", tag)
 	}
 }
 
@@ -172,7 +216,7 @@ func TestTheTopBarSaysWhereYouAre(t *testing.T) {
 	for path, want := range map[string][2]string{
 		"/ingest/loads":   {"Ingest", "Loads"},
 		"/ingest/streams": {"Ingest", "Streams"},
-		"/data/endpoints": {"Consume", "Endpoints"},
+		"/data/endpoints": {"Data", "Endpoints"},
 	} {
 		body := render(t, ui, path)
 		at := strings.Index(body, `aria-label="Breadcrumb"`)
@@ -192,7 +236,7 @@ func TestTheTopBarSaysWhereYouAre(t *testing.T) {
 	}
 }
 
-// BELOW 960PX THE SIDEBAR IS A DRAWER, AND IT OPENS WITHOUT A SCRIPT.
+// BELOW 860PX THE SIDEBAR IS A DRAWER, AND IT OPENS WITHOUT A SCRIPT.
 //
 // 236px of a 390px phone is most of the screen, so on a narrow one the
 // sidebar leaves the flow and a button in the top bar brings it in. The
@@ -226,6 +270,11 @@ func TestBelowTheBreakpointTheSidebarIsADrawer(t *testing.T) {
 	_, css := get(t, ui, "/assets/app.css")
 	if !strings.Contains(css, ".app-sidebar:target") {
 		t.Error("the served sheet does not open the drawer on :target, so without a script it never opens")
+	}
+	// The UI 2.0 breakpoint. 960px sent a 900px laptop window to the drawer,
+	// where the sidebar still fits beside a table.
+	if !strings.Contains(css, "859.98px") || strings.Contains(css, "959.98px){.app-sidebar") {
+		t.Error("the drawer does not begin below 860px")
 	}
 	_, raw := get(t, ui, "/assets/ui.js")
 	js := strip(raw)

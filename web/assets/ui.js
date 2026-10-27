@@ -91,6 +91,61 @@
   window.addEventListener("scroll", hide, { passive: true });
   document.addEventListener("mouseleave", hide);
 
+  // --- Hints (`[data-tip]`) ---------------------------------------------------
+  //
+  // What a control is FOR, beside it, on hover AND on focus -- a keyboard user
+  // reaches the sidebar's sections by Tab and deserves the same sentence. Drawn
+  // here rather than by CSS because the sidebar scrolls, and a hint inside a
+  // scrolling box is clipped at its edge. While shown it describes its target
+  // (aria-describedby), so a screen reader hears it too.
+  var hint = null;
+  var hinted = null;
+
+  function showHint(target) {
+    if (!hint) {
+      hint = document.createElement("div");
+      hint.id = "ui-hint";
+      hint.className = "ui-hint";
+      hint.setAttribute("role", "tooltip");
+      document.body.appendChild(hint);
+    }
+    hideHint();
+    hint.textContent = target.getAttribute("data-tip");
+    hint.style.display = "block";
+    var r = target.getBoundingClientRect();
+    var left = r.right + 8;
+    if (left + hint.offsetWidth > window.innerWidth - 8) left = r.left - hint.offsetWidth - 8;
+    hint.style.left = Math.max(8, left) + "px";
+    hint.style.top = r.top + r.height / 2 - hint.offsetHeight / 2 + "px";
+    target.setAttribute("aria-describedby", "ui-hint");
+    hinted = target;
+  }
+
+  function hideHint() {
+    if (hint) hint.style.display = "none";
+    if (hinted) hinted.removeAttribute("aria-describedby");
+    hinted = null;
+  }
+
+  function hintTarget(e) {
+    return e.target && typeof e.target.closest === "function" ? e.target.closest("[data-tip]") : null;
+  }
+
+  document.addEventListener("mouseover", function (e) {
+    var t = hintTarget(e);
+    if (t && t !== hinted) showHint(t);
+    else if (!t && hinted && !hinted.matches(":focus-visible")) hideHint();
+  });
+  document.addEventListener("focusin", function (e) {
+    var t = hintTarget(e);
+    if (t && t.matches(":focus-visible")) showHint(t);
+  });
+  document.addEventListener("focusout", hideHint);
+  document.addEventListener("scroll", hideHint, { passive: true, capture: true });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") hideHint();
+  });
+
   // ------------------------------------------------------------------
   // The account menu
   //
@@ -447,7 +502,7 @@
   });
 
   // ------------------------------------------------------------------
-  // The navigation drawer, below 960px
+  // The navigation drawer, below 860px
   //
   // It already opens without this: the button is a link to #app-sidebar and
   // the sheet opens the drawer on `:target`. What this adds is what a link

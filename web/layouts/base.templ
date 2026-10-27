@@ -341,10 +341,27 @@ templ sidebar(active string, brand branding.Brand) {
 			href="#"
 			data-drawer-close
 			aria-label="Close navigation"
-			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink min-[960px]:hidden"
+			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink min-[860px]:hidden"
 		>
 			@components.Icon("x", "h-4 w-4")
 		</a>
+		</div>
+		// THE PROJECT SWITCHER: the scope a reader works in, above the places
+		// to go. It opens the list of projects, which is still a page.
+		<div class="px-2.5 pt-3">
+			<a
+				href={ templ.SafeURL(projects.Href) }
+				data-project-switcher
+				data-tip={ projects.Tip }
+				if active == projects.Key {
+					aria-current="page"
+				}
+				class="flex h-8 w-full items-center gap-2 rounded-card border border-line px-2.5 text-[0.8rem] text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
+			>
+				@components.Icon(projects.Icon, "h-3.5 w-3.5")
+				<span class="flex-1 truncate">{ projects.Name }</span>
+				@components.Icon("chevron-right", "h-3.5 w-3.5")
+			</a>
 		</div>
 		// THE PALETTE'S OPENER, only where a script will drive it (data-js):
 		// without one it would be a button that opens nothing.
@@ -417,6 +434,7 @@ templ navLink(s section, active string) {
 		<a
 			href={ templ.SafeURL(s.Href) }
 			aria-current="page"
+			data-tip={ s.Tip }
 			class="flex h-8 items-center gap-2.5 rounded-card border border-line bg-surface-2 px-2.5 text-[0.85rem] font-medium text-ink"
 		>
 			@components.Icon(s.Icon, "h-4 w-4")
@@ -425,6 +443,7 @@ templ navLink(s section, active string) {
 	} else {
 		<a
 			href={ templ.SafeURL(s.Href) }
+			data-tip={ s.Tip }
 			class="flex h-8 items-center gap-2.5 rounded-card border border-transparent px-2.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
 			@components.Icon(s.Icon, "h-4 w-4")
@@ -440,7 +459,7 @@ templ navLink(s section, active string) {
 // NOT A SECOND `aria-current`. The sidebar already marks the open section,
 // and a screen reader counting two "current page"s is told nothing.
 templ topbar(p Page) {
-	<header class="app-topbar flex h-13 shrink-0 items-center gap-3 border-b border-line-soft px-4 min-[960px]:px-6">
+	<header class="app-topbar flex h-13 shrink-0 items-center gap-3 border-b border-line-soft px-4 min-[860px]:px-6">
 		// THE DRAWER'S OPENER, on a narrow screen only. A link to the
 		// sidebar's id so `:target` opens it without a script; ui.js keeps
 		// the URL clean, says `aria-expanded` and moves the focus.
@@ -450,14 +469,16 @@ templ topbar(p Page) {
 			aria-controls="app-sidebar"
 			aria-expanded="false"
 			aria-label="Open navigation"
-			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink min-[960px]:hidden"
+			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink min-[860px]:hidden"
 		>
 			@components.Icon("menu", "h-4 w-4")
 		</a>
 		if c, ok := where(ctx, p.Active, crumbTitle(p)); ok {
 			<nav aria-label="Breadcrumb" class="flex min-w-0 items-center gap-1.5 text-[0.82rem]">
-				<span class="shrink-0 text-muted">{ c.Group }</span>
-				<span aria-hidden="true" class="text-faint">/</span>
+				if c.Group != "" {
+					<span class="shrink-0 text-muted">{ c.Group }</span>
+					<span aria-hidden="true" class="text-faint">/</span>
+				}
 				if c.Title != "" {
 					<a href={ templ.SafeURL(c.Section.Href) } class="shrink-0 text-muted transition-colors hover:text-ink">{ c.Section.Name }</a>
 					<span aria-hidden="true" class="text-faint">/</span>
