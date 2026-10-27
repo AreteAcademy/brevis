@@ -45,7 +45,9 @@
   var MUTED = themeVar("--color-muted", "#6e6254");
   var SURFACE = themeVar("--color-surface", "#fffdf8");
   var LINE = themeVar("--color-line", "#21180f1a");
-  var GOLD = themeVar("--color-gold", "#aa8450");
+  // Edges are neutral: the accent is the screen's one primary action, and a
+  // graph drawn in it competes with the button above it.
+  var EDGE = themeVar("--color-line-strong", "#4a553a");
 
   var COLOURS = {
     success: { ring: themeVar("--color-state-success", "#4c7a56"), label: "success" },
@@ -368,9 +370,9 @@
                 style: {
                   marginLeft: "auto", flexShrink: 0,
                   padding: "1px 6px", borderRadius: 3,
-                  border: "1px solid color-mix(in srgb, " + GOLD + " 45%, transparent)",
-                  background: "color-mix(in srgb, " + GOLD + " 10%, transparent)",
-                  color: themeVar("--color-gold-strong", "#8a693d"),
+                  border: "1px solid " + LINE,
+                  background: "transparent",
+                  color: MUTED,
                   fontSize: 9, fontWeight: 700, letterSpacing: "0.08em",
                   textTransform: "uppercase", whiteSpace: "nowrap",
                 },
@@ -1016,7 +1018,7 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
           minZoom: 0.2,
           proOptions: { hideAttribution: false },
           defaultEdgeOptions: {
-            style: { stroke: GOLD, strokeWidth: 1.4 },
+            style: { stroke: EDGE, strokeWidth: 1.4 },
             // Only edges that carry a label render one, and it has to read as
             // part of the drawing rather than as a tooltip that got stuck: the
             // parchment behind it is what keeps the arrow from striking through

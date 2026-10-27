@@ -43,7 +43,7 @@ templ configurations(v TargetView) {
 						· <span class="font-mono">{ c.Stream }</span>
 						· { c.Role } · published { c.PublishedAt.UTC().Format("Jan 2 15:04 UTC") }
 					} else {
-						step <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="font-medium text-ink hover:text-gold-strong">{ c.Workflow }</a>
+						step <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="font-medium text-ink hover:underline">{ c.Workflow }</a>
 						· { c.Node }
 					}
 				</span>
@@ -51,7 +51,7 @@ templ configurations(v TargetView) {
 			if !c.Described {
 				<p class="rounded-card border border-line bg-surface px-4 py-3 text-xs text-muted shadow-warm-sm sm:px-6">
 					This step did not describe itself. Only the Go SDK sends its configuration; a Python, dbt or shell step lands without one.
-					To see what it runs, open <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="text-accent-strong hover:underline">the workflow's definition</a>.
+					To see what it runs, open <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">the workflow's definition</a>.
 				</p>
 			} else {
 				<div class="divide-y divide-line-soft rounded-card border border-line bg-surface shadow-warm-sm">
@@ -113,7 +113,7 @@ templ configurations(v TargetView) {
 									<li class="text-xs" data-change>
 										<span class="tabular-nums text-muted">{ components.UTCStamp(&ch.At) }</span>
 										if ch.RunID != "" {
-											<a href={ templ.SafeURL("/runs/" + ch.RunID) } class="ml-2 font-mono text-gold-strong hover:underline">run { shortID(ch.RunID) }</a>
+											<a href={ templ.SafeURL("/runs/" + ch.RunID) } class="ml-2 font-mono text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">run { shortID(ch.RunID) }</a>
 										}
 										if ch.First && c.Gateway != "" {
 											<span class="ml-2 text-muted">First published</span>
@@ -183,7 +183,7 @@ templ tab(v TargetView, name, label string) {
 		<a
 			href={ templ.SafeURL(v.TabHref(name)) }
 			aria-current="page"
-			class="-mb-px border-b-2 border-gold-strong px-3 py-2 font-medium text-ink"
+			class="-mb-px border-b-2 border-ink px-3 py-2 font-medium text-ink"
 		>{ label }</a>
 	} else {
 		<a
@@ -321,7 +321,7 @@ templ recentLoads(v TargetView) {
 							<td class="px-3 py-2 text-right text-[0.78rem] tabular-nums">{ rowsText(l.Rows) }</td>
 							<td class="px-3 py-2 text-right text-[0.78rem] tabular-nums">{ rowsText(l.Bytes) }</td>
 							<td class="px-3 py-2 pr-4 text-[0.78rem]">
-								<a href={ templ.SafeURL("/runs/" + l.RunID) } class="font-mono text-accent-strong hover:underline">{ shortID(l.RunID) }</a>
+								<a href={ templ.SafeURL("/runs/" + l.RunID) } class="font-mono text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ shortID(l.RunID) }</a>
 							</td>
 						</tr>
 					}

@@ -36,7 +36,7 @@ templ Loads(v LoadsView) {
 			<div data-filter-scope class="overflow-hidden rounded-card border border-line bg-surface">
 				<div data-filter-empty class="px-6 py-10 text-center text-sm text-muted" hidden?={ v.Shown() > 0 }>
 					Nothing matches this filter.
-					<a href="/ingest/loads" class="ml-1 text-accent-strong hover:underline">Show every load</a>
+					<a href="/ingest/loads" class="ml-1 text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">Show every load</a>
 				</div>
 				if len(v.Groups) > 0 {
 					<div class="overflow-x-auto">

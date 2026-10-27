@@ -8,22 +8,24 @@ type ButtonKind int
 const (
 	// ButtonSecondary is the default: bordered, quiet, most buttons.
 	ButtonSecondary ButtonKind = iota
-	// ButtonPrimary is the one thing a screen most wants done: ink on the
-	// ground, the loudest thing that is not a colour.
+	// ButtonPrimary is the one thing a screen most wants done, in the accent:
+	// the lime is spent here, on the open section and on the focus ring, and
+	// nowhere else, so it always points at the next click. One per screen.
 	ButtonPrimary
 	// ButtonDanger is a verb that loses something.
 	ButtonDanger
-	// ButtonAccent is the brand's colour, and it is spent sparingly: the
-	// workbench's Run, which is the one verb that screen exists for.
-	ButtonAccent
 )
+
+// ButtonAccent is ButtonPrimary by its older name: it was the workbench's
+// Run, which is that screen's primary action, and the two are one kind now.
+const ButtonAccent = ButtonPrimary
 
 // ButtonSize is a button's height.
 type ButtonSize int
 
 const (
 	SizeRegular ButtonSize = iota // 32px
-	SizeSmall                     // 28px, in a table row or a dense toolbar
+	SizeSmall                     // 26px, in a table row or a dense toolbar
 )
 
 const buttonBase = "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-card font-medium whitespace-nowrap transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong disabled:pointer-events-none disabled:opacity-50"
@@ -35,16 +37,14 @@ func ButtonClass(k ButtonKind, s ButtonSize) string { return buttonClass(k, s) }
 func buttonClass(k ButtonKind, s ButtonSize) string {
 	size := "h-8 px-3 text-[0.82rem]"
 	if s == SizeSmall {
-		size = "h-7 px-2.5 text-[0.78rem]"
+		size = "h-[26px] px-2.5 text-[0.78rem]"
 	}
 	var kind string
 	switch k {
 	case ButtonPrimary:
-		kind = "bg-ink text-canvas hover:bg-ink/90"
+		kind = "bg-accent-strong text-on-accent hover:bg-accent-strong/90"
 	case ButtonDanger:
 		kind = "border border-line bg-surface text-state-failed hover:bg-state-failed/10"
-	case ButtonAccent:
-		kind = "bg-accent-strong text-canvas hover:bg-accent-strong/90"
 	default:
 		kind = "border border-line bg-surface text-ink hover:bg-surface-2"
 	}

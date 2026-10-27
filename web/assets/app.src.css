@@ -519,7 +519,7 @@ body {
   fill: transparent;
 }
 .grafico-alvo:hover .grafico-faixa {
-  fill: var(--color-accent-wash);
+  fill: var(--color-hover);
 }
 
 /* Tailwind's reset zeroes every element's margin, and with it the <dialog> loses
@@ -734,7 +734,7 @@ main[data-fill] > :last-child {
 
 .results-tab[aria-selected="true"] {
   color: var(--color-ink);
-  box-shadow: inset 0 -2px 0 var(--color-accent);
+  box-shadow: inset 0 -2px 0 var(--color-ink);
 }
 
 /* THE COMPLETION LIST, in this interface's palette rather than the addon's.
@@ -877,7 +877,7 @@ li.CodeMirror-hint-active {
    two conventions. */
 [data-tab-pick][aria-selected="true"] {
   color: var(--color-ink);
-  box-shadow: inset 0 -2px 0 var(--color-accent);
+  box-shadow: inset 0 -2px 0 var(--color-ink);
 }
 
 /* THE ONE BANNER THAT HAS TO BE SEEN.
@@ -1040,7 +1040,7 @@ dialog.run-drawer:not([open]):target {
    until the next refresh instead of fading. */
 @keyframes run-arrived {
   from {
-    background: var(--color-accent-wash);
+    background: color-mix(in srgb, var(--color-state-running) 12%, transparent);
   }
 }
 tr[data-run-new] {
@@ -1049,7 +1049,7 @@ tr[data-run-new] {
 @media (prefers-reduced-motion: reduce) {
   tr[data-run-new] {
     animation: none;
-    background: var(--color-accent-wash);
+    background: color-mix(in srgb, var(--color-state-running) 12%, transparent);
   }
 }
 
@@ -1105,7 +1105,7 @@ html[data-navigating] body::after {
   z-index: 60;
   width: 40%;
   height: 2px;
-  background: var(--color-accent-strong);
+  background: var(--color-ink-2);
   animation: navigating 900ms ease-in-out infinite;
   pointer-events: none;
 }

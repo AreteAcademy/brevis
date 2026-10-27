@@ -37,11 +37,12 @@ func TestAButtonDoesNotSubmitUnlessAsked(t *testing.T) {
 	}
 }
 
-// EACH KIND LOOKS LIKE ITSELF. Four kinds drawn the same would be one kind
-// with four names.
+// EACH KIND LOOKS LIKE ITSELF. Kinds drawn the same would be one kind with
+// several names -- which is what ButtonAccent now openly is: Primary's older
+// name, the same constant, not a fourth kind.
 func TestEveryButtonKindIsDistinct(t *testing.T) {
 	seen := map[string]ButtonKind{}
-	for _, k := range []ButtonKind{ButtonPrimary, ButtonSecondary, ButtonDanger, ButtonAccent} {
+	for _, k := range []ButtonKind{ButtonPrimary, ButtonSecondary, ButtonDanger} {
 		got := markup(t, Button(k, SizeRegular, nil))
 		if prev, ok := seen[got]; ok {
 			t.Errorf("%v draws exactly like %v", k, prev)
@@ -148,5 +149,31 @@ func TestSlashFocusesTheSearchExceptWhileTyping(t *testing.T) {
 		if !strings.Contains(js, want) {
 			t.Errorf("ui.js's slash handler never uses %s", want)
 		}
+	}
+}
+
+// THE PRIMARY ACTION IS THE ACCENT, and the label on it is the ground
+// colour that reads on it (on-accent, measured in contrast_test.go). The
+// workbench's Run was the only Accent button and is the SQL screen's primary
+// action, so the two kinds are one look.
+func TestThePrimaryActionIsTheAccent(t *testing.T) {
+	primary := buttonClass(ButtonPrimary, SizeRegular)
+	for _, want := range []string{"bg-accent-strong", "text-on-accent"} {
+		if !strings.Contains(primary, want) {
+			t.Errorf("the primary button lacks %s: %s", want, primary)
+		}
+	}
+	if ButtonAccent != ButtonPrimary {
+		t.Error("ButtonAccent is a kind of its own again, beside the primary action")
+	}
+}
+
+// 32px, and 26px where a row or a toolbar is dense: the design's two heights.
+func TestButtonsAreThirtyTwoOrTwentySixPixelsTall(t *testing.T) {
+	if c := buttonClass(ButtonSecondary, SizeRegular); !strings.Contains(c, "h-8 ") {
+		t.Errorf("a regular button is not 32px: %s", c)
+	}
+	if c := buttonClass(ButtonSecondary, SizeSmall); !strings.Contains(c, "h-[26px] ") {
+		t.Errorf("a small button is not 26px: %s", c)
 	}
 }

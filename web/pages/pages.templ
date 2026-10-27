@@ -96,7 +96,7 @@ templ Overview(d OverviewData) {
 							for _, r := range d.EmCurso {
 								<tr>
 									<td class="px-2.5 pl-3.5">
-										<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-mono text-[12px] text-ink hover:text-gold-strong">{ r.WorkflowSlug }</a>
+										<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-mono text-[12px] text-ink hover:underline">{ r.WorkflowSlug }</a>
 									</td>
 									<td class="px-2.5 text-muted">{ r.TriggerType }</td>
 									<td class="px-2.5 text-muted tabular-nums">{ components.When(startOrCreated(r)) }</td>
@@ -150,7 +150,7 @@ templ nextTriggers(d OverviewData) {
 					for _, p := range d.Proximas {
 						<tr>
 							<td class="px-2.5 pl-3.5">
-								<a href={ templ.SafeURL("/workflows/" + p.Workflow) } class="font-mono text-[12px] text-ink hover:text-gold-strong">{ p.Workflow }</a>
+								<a href={ templ.SafeURL("/workflows/" + p.Workflow) } class="font-mono text-[12px] text-ink hover:underline">{ p.Workflow }</a>
 							</td>
 							<td class="px-2.5 font-mono text-[11.5px] whitespace-nowrap text-muted">{ p.Cron }</td>
 							<td class="px-2.5 pr-3.5 text-right whitespace-nowrap">
@@ -178,10 +178,10 @@ templ th(text, extra string) {
 // active column — one in every header becomes noise.
 templ sortableTh(text, field string, f Filter, extra string) {
 	<th class={ "px-2.5 text-[11.5px] font-medium whitespace-nowrap", extra, columnColour(f, field) }>
-		<a href={ templ.SafeURL(f.WithSort(field)) } class="inline-flex items-center gap-1 hover:text-gold-strong">
+		<a href={ templ.SafeURL(f.WithSort(field)) } class="inline-flex items-center gap-1 hover:underline">
 			{ text }
 			if s := f.Arrow(field); s != "" {
-				<span class="text-gold">{ s }</span>
+				<span class="text-ink">{ s }</span>
 			} else {
 				<span class="text-line">↕</span>
 			}
@@ -206,7 +206,7 @@ templ pagination(p Pagination) {
 			if p.Pages() > 1 {
 				<nav class="flex items-center gap-1">
 					if p.Page > 1 {
-						<a href={ templ.SafeURL(p.PageLink(p.Page - 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">previous</a>
+						<a href={ templ.SafeURL(p.PageLink(p.Page - 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-line-strong hover:text-ink">previous</a>
 					} else {
 						<span class="rounded-card border border-line-soft px-3 py-1 text-line">previous</span>
 					}
@@ -214,11 +214,11 @@ templ pagination(p Pagination) {
 						if n == p.Page {
 							<span class="rounded-card border border-ink bg-ink px-3 py-1 font-medium text-surface">{ fmt.Sprint(n) }</span>
 						} else {
-							<a href={ templ.SafeURL(p.PageLink(n)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">{ fmt.Sprint(n) }</a>
+							<a href={ templ.SafeURL(p.PageLink(n)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-line-strong hover:text-ink">{ fmt.Sprint(n) }</a>
 						}
 					}
 					if p.Page < p.Pages() {
-						<a href={ templ.SafeURL(p.PageLink(p.Page + 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">next</a>
+						<a href={ templ.SafeURL(p.PageLink(p.Page + 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-line-strong hover:text-ink">next</a>
 					} else {
 						<span class="rounded-card border border-line-soft px-3 py-1 text-line">next</span>
 					}
@@ -470,7 +470,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 				<a
 					href={ templ.SafeURL(f.WithTag(t)) }
 					aria-label={ "Remove the tag " + t }
-					class="inline-flex h-8 items-center gap-1.5 rounded-card border border-accent bg-accent-wash px-2.5 text-[0.8rem] text-ink"
+					class="inline-flex h-8 items-center gap-1.5 rounded-card border border-line-strong bg-surface-2 px-2.5 text-[0.8rem] text-ink"
 				>
 					{ t }
 					<span class="text-muted">&times;</span>
@@ -485,7 +485,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 			<span class="mx-2 h-5 w-px bg-line"></span>
 			<a
 				href={ templ.SafeURL(f.With("project", "")) }
-				class="inline-flex items-center gap-1.5 rounded-card border border-accent bg-accent-wash px-3 py-1 text-xs text-ink"
+				class="inline-flex items-center gap-1.5 rounded-card border border-line-strong bg-surface-2 px-3 py-1 text-xs text-ink"
 			>
 				project: <span class="font-mono">{ f.Project }</span>
 				<span class="text-muted">&times;</span>
@@ -496,7 +496,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 		{ count(filtered, "workflow", "workflows") }
 		if filtered != total {
 			<span class="ml-2 text-sm text-muted">of { fmt.Sprint(total) }</span>
-			<a href="/workflows" class="ml-3 text-xs text-gold-strong hover:underline">clear filters</a>
+			<a href="/workflows" class="ml-3 text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">clear filters</a>
 		}
 	</p>
 	if len(ws) == 0 {
@@ -517,17 +517,17 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 				</thead>
 				<tbody class="divide-y divide-line-soft">
 					for _, w := range ws {
-						<tr class="transition-colors hover:bg-gold-wash">
+						<tr class="transition-colors hover:bg-hover">
 							<td class="py-3 pl-6">
 								@interruptor(w)
 							</td>
 							<td class="py-3 pr-3">
-								<a href={ templ.SafeURL("/workflows/" + w.Slug) } class="font-medium text-ink hover:text-gold-strong">
+								<a href={ templ.SafeURL("/workflows/" + w.Slug) } class="font-medium text-ink hover:underline">
 									{ w.Slug }
 								</a>
 								<a
 									href={ templ.SafeURL("/workflows?project=" + w.Project) }
-									class="text-xs text-muted hover:text-accent-strong hover:underline"
+									class="text-xs text-muted hover:text-ink hover:underline"
 								>{ w.Project }</a>
 							</td>
 							<td class="py-3 pr-3">
@@ -535,14 +535,14 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 									<span class="text-xs text-muted">manual trigger only</span>
 								} else {
 									<span class="inline-flex items-center gap-1.5 font-mono text-xs text-ink">
-										<svg class="h-3.5 w-3.5 text-gold" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+										<svg class="h-3.5 w-3.5 text-muted" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
 											<rect x="2" y="3" width="12" height="11" rx="2"></rect>
 											<path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke-linecap="round"></path>
 										</svg>
 										{ w.Cron }
 									</span>
 									if w.Catchup {
-										<span class="ml-2 text-[0.7rem] text-gold-strong">catchup</span>
+										<span class="ml-2 text-[0.7rem] text-muted">catchup</span>
 									}
 									if words := CronText(w.Cron); words != "" {
 										<p data-cron-text class="mt-0.5 text-[0.7rem] text-muted">{ words }{ zoneSuffix(w.Timezone) }</p>
@@ -562,7 +562,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 							<td class="py-3 pr-3">
 								if w.LastRunID != nil {
 									@recentRuns(recent[w.Slug])
-									<a href={ templ.SafeURL("/runs/" + *w.LastRunID) } class="mt-1 block text-[0.7rem] tabular-nums text-muted hover:text-gold-strong">
+									<a href={ templ.SafeURL("/runs/" + *w.LastRunID) } class="mt-1 block text-[0.7rem] tabular-nums text-muted hover:underline">
 										@components.ShortStamp(w.LastRunAt) · { count(w.TotalRuns, "run", "runs") }
 									</a>
 								} else {
@@ -640,7 +640,7 @@ templ tagPopover(tags []string, f Filter) {
 					for _, t := range tags {
 						<li data-filter-row data-filter-text={ strings.ToLower(t) }>
 							<label class="flex cursor-pointer items-center gap-2 rounded-[2px] px-1.5 py-1 text-[0.82rem] text-ink hover:bg-surface-2">
-								<input type="checkbox" name="tag" value={ t } checked?={ f.HasTag(t) } class="accent-accent-strong"/>
+								<input type="checkbox" name="tag" value={ t } checked?={ f.HasTag(t) } class="accent-ink"/>
 								{ t }
 							</label>
 						</li>
@@ -692,7 +692,7 @@ templ disparar(slug string) {
 			type="submit"
 			title="Run now"
 			aria-label={ "Run " + slug }
-			class="inline-flex h-8 w-8 items-center justify-center rounded-card border border-line text-gold-strong transition-colors hover:border-gold hover:bg-gold-wash"
+			class="inline-flex h-8 w-8 items-center justify-center rounded-card border border-line text-muted transition-colors hover:border-line-strong hover:bg-hover hover:text-ink"
 		>
 			<svg class="h-3.5 w-3.5" viewBox="0 0 12 12" fill="currentColor"><path d="M2.5 1.6v8.8L10 6z"></path></svg>
 		</button>
@@ -708,7 +708,7 @@ templ chip(rota, text string, active1 bool, ponto string) {
 			{ text }
 		</a>
 	} else {
-		<a href={ templ.SafeURL(rota) } class="inline-flex items-center gap-1.5 rounded-card border border-line bg-surface px-3.5 py-1.5 text-xs text-muted transition-colors hover:border-gold hover:text-ink">
+		<a href={ templ.SafeURL(rota) } class="inline-flex items-center gap-1.5 rounded-card border border-line bg-surface px-3.5 py-1.5 text-xs text-muted transition-colors hover:border-line-strong hover:text-ink">
 			if ponto != "" {
 				<span class={ "h-1.5 w-1.5 rounded-full", ponto }></span>
 			}
@@ -787,7 +787,7 @@ templ liveSwitch() {
 			type="button"
 			data-live-list="runs-list"
 			aria-pressed="false"
-			class="inline-flex h-8 items-center gap-2 rounded-card border border-line bg-surface px-3 text-[0.82rem] text-muted transition-colors duration-150 hover:text-ink aria-pressed:border-accent-strong aria-pressed:text-ink"
+			class="inline-flex h-8 items-center gap-2 rounded-card border border-line bg-surface px-3 text-[0.82rem] text-muted transition-colors duration-150 hover:text-ink aria-pressed:border-line-strong aria-pressed:bg-surface-2 aria-pressed:text-ink"
 		>
 			<span data-live-dot class="h-1.5 w-1.5 rounded-full bg-line-strong"></span>
 			Live
@@ -814,7 +814,7 @@ templ RunsList(runs []postgres.RunSummary, f RunFilter, counts map[string]int, t
 	<p class="mb-2 text-[13px] font-semibold text-ink">
 		{ count(total, "run", "runs") }
 		if f.Active() {
-			<a href="/runs" class="ml-3 text-xs text-gold-strong hover:underline">clear filters</a>
+			<a href="/runs" class="ml-3 text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">clear filters</a>
 		}
 	</p>
 	@runsTable(runs, Pagination{
@@ -826,8 +826,8 @@ templ RunsList(runs []postgres.RunSummary, f RunFilter, counts map[string]int, t
 // chart, for instance) with the way to remove it beside it — a filter you can
 // only take off by editing the URL is not a filter, it is a trap.
 templ filterApplied(label, value, remover string) {
-	<span class="inline-flex items-center gap-2 rounded-card border border-gold/40 bg-gold-wash px-3 py-1.5 text-xs text-ink">
-		<span class="text-gold-strong">{ label }:</span>
+	<span class="inline-flex items-center gap-2 rounded-card border border-line-strong bg-surface-2 px-3 py-1.5 text-xs text-ink">
+		<span class="text-muted">{ label }:</span>
 		<span class="font-medium">{ value }</span>
 		<a href={ templ.SafeURL(remover) } class="text-muted hover:text-ink" aria-label="Remove this filter">×</a>
 	</span>
@@ -861,7 +861,7 @@ templ Projects(ps []postgres.ProjectSummary) {
 				for _, p := range ps {
 					<a
 						href={ templ.SafeURL("/workflows?project=" + p.Slug) }
-						class="group rounded-card border border-line bg-surface p-5 transition-colors hover:border-accent"
+						class="group rounded-card border border-line bg-surface p-5 transition-colors hover:border-line-strong"
 					>
 						<div class="flex items-baseline justify-between gap-3">
 							<h3 class="display truncate text-base text-ink">{ p.Name }</h3>
@@ -879,7 +879,7 @@ templ Projects(ps []postgres.ProjectSummary) {
 						</dl>
 						<p class="mt-4 flex items-center justify-between text-xs text-muted">
 							<span>since { p.CreatedAt.Local().Format("2006-01-02") }</span>
-							<span class="text-accent-strong opacity-0 transition-opacity group-hover:opacity-100">
+							<span class="text-muted opacity-0 transition-opacity group-hover:opacity-100">
 								see the workflows &rarr;
 							</span>
 						</p>
@@ -925,7 +925,7 @@ templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
 				<tbody class="divide-y divide-line-soft">
 					{{ longest := longestDuration(runs) }}
 					for _, r := range runs {
-						<tr data-run-id={ r.ID } class="transition-colors hover:bg-gold-wash">
+						<tr data-run-id={ r.ID } class="transition-colors hover:bg-hover">
 							<td class="px-3 py-3 pl-6">
 								if o.Workflow {
 									@components.State(r.Status)
@@ -940,7 +940,7 @@ templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
 							</td>
 							if o.Workflow {
 								<td class="px-3 py-3">
-									<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-medium text-ink hover:text-gold-strong">
+									<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-medium text-ink hover:underline">
 										{ r.WorkflowSlug }
 									</a>
 								</td>
@@ -951,7 +951,7 @@ templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
 								{ components.Duration(r.Duration) }
 								if w := durationShare(r.Duration, longest); w != "" {
 									<span class="mt-1 block h-1 w-24 rounded-full bg-surface-2">
-										<span data-duration-bar style={ "width:" + w } class="block h-1 rounded-full bg-accent/70"></span>
+										<span data-duration-bar style={ "width:" + w } class="block h-1 rounded-full bg-bar"></span>
 									</span>
 								}
 							</td>
@@ -1283,7 +1283,7 @@ templ runHead(r run.Run, wait *postgres.Wait) {
 		if r.Attempt > 0 {
 			@components.Retry(r.Attempt)
 		}
-		<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="text-xs text-gold-strong hover:underline">see definition</a>
+		<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">see definition</a>
 		<span class="inline-flex items-center gap-1">
 			<span id="run-id" class="font-mono text-[0.7rem] text-muted/70">{ r.ID.String() }</span>
 			<span data-js>
@@ -2003,7 +2003,7 @@ templ waitLine(w *postgres.Wait) {
 				if i > 0 {
 					,
 				}
-				<a href={ templ.SafeURL("/runs/" + h.RunID.String()) } class="text-gold-strong hover:underline">{ h.Workflow }</a>
+				<a href={ templ.SafeURL("/runs/" + h.RunID.String()) } class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ h.Workflow }</a>
 				<span class="font-mono">since { components.UTCStamp(&h.Since) }</span>
 			}
 			if more := len(w.Holders) - len(firstHolders(w.Holders)); more > 0 {

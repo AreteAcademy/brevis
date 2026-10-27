@@ -88,8 +88,10 @@ templ Gallery() {
 					}
 					@components.Switch("Follow live", true, nil)
 					@components.Switch("Follow live", false, nil)
-					@components.NavBadge("fail", "2")
-					@components.NavBadge("live", "3")
+					// In the sidebar a badge sits at the row's end (margin-left:
+					// auto); here each gets a row of its own width.
+					<span class="inline-flex w-10">@components.NavBadge("fail", "2")</span>
+					<span class="inline-flex w-10">@components.NavBadge("live", "3")</span>
 				</div>
 				<div class="mt-3 flex max-w-md flex-col gap-2">
 					@components.Toast("ok", "orders_sync paused. It will not fire until resumed.", "Undo", "#")
