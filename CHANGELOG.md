@@ -18,7 +18,7 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
-## [Unreleased]
+## [0.87.0] — 2026-10-27
 
 ### Added: `from.HTTP.Stream`, a Reading that hands its records over as it reads them (#140)
 
