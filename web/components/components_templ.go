@@ -336,14 +336,14 @@ func PanelLink(title, count, href, label string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" class=\"ml-auto text-[12px] text-gold-strong hover:underline\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" class=\"ml-auto text-[12px] text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 132, Col: 104}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 132, Col: 153}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -412,14 +412,14 @@ func Empty(msg, hint string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if hint != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"mt-2 font-mono text-xs text-gold-strong\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"mt-2 font-mono text-xs text-muted\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(hint)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 147, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 147, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -474,7 +474,7 @@ func Tag(text, rota string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" class=\"inline-flex rounded-card border border-line bg-parchment px-2 py-0.5 text-[0.7rem] text-muted transition-colors hover:border-gold hover:text-gold-strong\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" class=\"inline-flex rounded-card border border-line bg-parchment px-2 py-0.5 text-[0.7rem] text-muted transition-colors hover:border-line-strong hover:text-ink\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -928,7 +928,7 @@ func RunsChart(buckets []postgres.Bucket) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "\" fill=\"none\" stroke=\"var(--color-gold)\" stroke-width=\"1.5\" stroke-linejoin=\"round\" opacity=\"0.9\"></path>   <text x=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "\" fill=\"none\" stroke=\"var(--color-ink-2)\" stroke-width=\"1.5\" stroke-linejoin=\"round\" opacity=\"0.9\"></path>   <text x=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -941,7 +941,7 @@ func RunsChart(buckets []postgres.Bucket) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\" y=\"12\" text-anchor=\"end\" class=\"fill-gold-strong text-[11px]\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\" y=\"12\" text-anchor=\"end\" class=\"fill-ink-2 text-[11px]\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1020,7 +1020,7 @@ func RunsChart(buckets []postgres.Bucket) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = legenda("var(--color-gold)", "average duration").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = legenda("var(--color-ink-2)", "average duration").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1948,7 +1948,7 @@ func ErrorDialog(runID, workflow, status, message string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "</p></div><form method=\"dialog\"><button autofocus class=\"rounded-card border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-gold hover:text-ink focus-visible:border-gold focus-visible:text-ink\" aria-label=\"Close\">close</button></form></div><div class=\"px-6 py-5\"><div class=\"mb-4 flex flex-wrap items-center gap-3 text-xs\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "</p></div><form method=\"dialog\"><button autofocus class=\"rounded-card border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-line-strong hover:text-ink focus-visible:border-gold focus-visible:text-ink\" aria-label=\"Close\">close</button></form></div><div class=\"px-6 py-5\"><div class=\"mb-4 flex flex-wrap items-center gap-3 text-xs\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1969,7 +1969,7 @@ func ErrorDialog(runID, workflow, status, message string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "\" class=\"text-gold-strong hover:underline\">open the run</a> <span class=\"font-mono text-[0.7rem] text-muted/70\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "\" class=\"text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink\">open the run</a> <span class=\"font-mono text-[0.7rem] text-muted/70\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2156,7 +2156,7 @@ func LoadTrend(series []TrendSeries, window string) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "\" class=\"fill-gold-strong/10\" stroke=\"none\"></polyline> <polyline points=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "\" class=\"fill-ink/10\" stroke=\"none\"></polyline> <polyline points=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2169,7 +2169,7 @@ func LoadTrend(series []TrendSeries, window string) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "\" class=\"stroke-gold-strong\" fill=\"none\" stroke-width=\"1.5\" vector-effect=\"non-scaling-stroke\"></polyline>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "\" class=\"stroke-ink-2\" fill=\"none\" stroke-width=\"1.5\" vector-effect=\"non-scaling-stroke\"></polyline>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2308,7 +2308,7 @@ func AboutButton(slug string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "\" title=\"What this workflow is for\" aria-label=\"What this workflow is for\" class=\"inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-line text-[0.7rem] font-semibold text-muted transition-colors hover:border-gold hover:text-ink focus-visible:border-gold focus-visible:text-ink\">?</a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "\" title=\"What this workflow is for\" aria-label=\"What this workflow is for\" class=\"inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-line text-[0.7rem] font-semibold text-muted transition-colors hover:border-line-strong hover:text-ink focus-visible:border-gold focus-visible:text-ink\">?</a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2363,7 +2363,7 @@ func AboutDialog(slug, description string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "</p></div><form method=\"dialog\"><button autofocus class=\"rounded-card border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-gold hover:text-ink focus-visible:border-gold focus-visible:text-ink\" aria-label=\"Close\">close</button></form></div><div class=\"max-h-[60vh] overflow-auto px-6 py-5\"><p class=\"max-w-prose text-sm leading-relaxed whitespace-pre-wrap text-ink\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "</p></div><form method=\"dialog\"><button autofocus class=\"rounded-card border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-line-strong hover:text-ink focus-visible:border-gold focus-visible:text-ink\" aria-label=\"Close\">close</button></form></div><div class=\"max-h-[60vh] overflow-auto px-6 py-5\"><p class=\"max-w-prose text-sm leading-relaxed whitespace-pre-wrap text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

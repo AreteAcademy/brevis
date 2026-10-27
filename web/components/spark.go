@@ -60,7 +60,7 @@ func Spark(values []*int64) templ.Component {
 			lastX, lastY = x, yy
 		}
 		_, err := fmt.Fprintf(w,
-			`<svg class="text-gold-strong" width="%.0f" height="%.0f" viewBox="0 0 %.0f %.0f" role="img" aria-label="rows per load, last %d loads">`+
+			`<svg class="text-ink-2" width="%.0f" height="%.0f" viewBox="0 0 %.0f %.0f" role="img" aria-label="rows per load, last %d loads">`+
 				`<path d="%s" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>`+
 				`<circle cx="%.1f" cy="%.1f" r="2" fill="currentColor"/></svg>`,
 			width, height, width, height, len(values), strings.TrimSpace(path.String()), lastX, lastY)

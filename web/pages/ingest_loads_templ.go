@@ -138,7 +138,7 @@ func Loads(v LoadsView) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, ">Nothing matches this filter. <a href=\"/ingest/loads\" class=\"ml-1 text-accent-strong hover:underline\">Show every load</a></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, ">Nothing matches this filter. <a href=\"/ingest/loads\" class=\"ml-1 text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink\">Show every load</a></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

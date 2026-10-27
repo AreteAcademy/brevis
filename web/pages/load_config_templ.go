@@ -81,7 +81,7 @@ func loadConfiguration(v LoadView) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"text-accent-strong hover:underline\">the workflow's definition</a>.</p>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink\">the workflow's definition</a>.</p>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1065,14 +1065,14 @@ func loadChanges(v LoadView) templ.Component {
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "\" class=\"ml-2 font-mono text-gold-strong hover:underline\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 105, "\" class=\"ml-2 font-mono text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var44 string
 						templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(shortID(ch.RunID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 263, Col: 129}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 263, Col: 178}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 						if templ_7745c5c3_Err != nil {
@@ -1223,7 +1223,7 @@ func loadPreview(v LoadView) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					if note != "" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, "<div data-js class=\"mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted\"><button type=\"button\" role=\"switch\" aria-checked=\"true\" data-null-toggle class=\"inline-flex items-center gap-2 text-ink\"><span aria-hidden=\"true\" class=\"relative inline-block h-[14px] w-[24px] rounded-full bg-line-strong transition-colors [[aria-checked=true]>&]:bg-accent-strong\"><span class=\"absolute top-[2px] left-[2px] h-[10px] w-[10px] rounded-full bg-surface transition-transform [[aria-checked=true]>span>&]:translate-x-[10px]\"></span></span> Hide null-only columns</button> <span data-null-note>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, "<div data-js class=\"mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted\"><button type=\"button\" role=\"switch\" aria-checked=\"true\" data-null-toggle class=\"inline-flex items-center gap-2 text-ink\"><span aria-hidden=\"true\" class=\"relative inline-block h-[14px] w-[24px] rounded-full bg-line-strong transition-colors [[aria-checked=true]>&]:bg-state-success\"><span class=\"absolute top-[2px] left-[2px] h-[10px] w-[10px] rounded-full bg-surface transition-transform [[aria-checked=true]>span>&]:translate-x-[10px]\"></span></span> Hide null-only columns</button> <span data-null-note>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -1506,14 +1506,14 @@ func loadRecent(v LoadView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 145, "\" class=\"font-mono text-[12px] text-accent-strong hover:underline\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 145, "\" class=\"font-mono text-[12px] text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var60 string
 				templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(shortID(l.RunID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 391, Col: 137}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 391, Col: 184}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var60))
 				if templ_7745c5c3_Err != nil {

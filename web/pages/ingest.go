@@ -947,7 +947,7 @@ func hashTabsCSS(host string, keys ...string) string {
 		b.WriteString(on + h + ` [data-tab-panel="` + first + `"]{display:none}`)
 		b.WriteString(on + h + ` [data-tab-panel="` + k + `"]{display:block}`)
 		b.WriteString(on + h + ` [data-tab="` + first + `"]{border-color:transparent;color:var(--color-muted)}`)
-		b.WriteString(on + h + ` [data-tab="` + k + `"]{border-color:var(--color-accent-strong);color:var(--color-ink)}`)
+		b.WriteString(on + h + ` [data-tab="` + k + `"]{border-color:var(--color-ink);color:var(--color-ink)}`)
 	}
 	return b.String()
 }

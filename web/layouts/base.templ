@@ -451,7 +451,7 @@ templ navLink(s section, active string) {
 			if s.GoKey != "" {
 				data-go-key={ s.GoKey }
 			}
-			class="flex h-8 items-center gap-2.5 rounded-card border border-line bg-surface-2 px-2.5 text-[0.85rem] font-medium text-ink"
+			class="flex h-8 items-center gap-2.5 rounded-card border border-line bg-surface-2 px-2.5 text-[0.85rem] font-medium text-ink shadow-[inset_2px_0_0_var(--color-accent-strong)]"
 		>
 			@components.Icon(s.Icon, "h-4 w-4")
 			{ s.Name }

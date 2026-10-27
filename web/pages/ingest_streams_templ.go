@@ -169,7 +169,7 @@ func Streams(v StreamsView) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, ">Nothing matches this filter. <a href=\"/ingest/streams\" class=\"ml-1 text-accent-strong hover:underline\">Show every stream</a></div><div id=\"stream-cards\" class=\"flex flex-col gap-8\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, ">Nothing matches this filter. <a href=\"/ingest/streams\" class=\"ml-1 text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink\">Show every stream</a></div><div id=\"stream-cards\" class=\"flex flex-col gap-8\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

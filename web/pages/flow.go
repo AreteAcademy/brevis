@@ -135,10 +135,11 @@ func flowIcon(kind string) string {
 	return "database"
 }
 
-// flowBorder marks the destination: the node the page is about.
+// flowBorder marks the destination: the node the page is about. In ink, not
+// the accent, which is the screen's one primary action.
 func flowBorder(kind string) string {
 	if kind == "destination" {
-		return "border-accent-strong"
+		return "border-ink-2"
 	}
 	return "border-line"
 }

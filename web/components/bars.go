@@ -64,7 +64,7 @@ func LoadBarsSized(bars []LoadBar, missed int, size string) templ.Component {
 				}
 				// Zero is red: counted, and empty -- the load a reader is
 				// looking for.
-				fill := "fill-gold-strong"
+				fill := "fill-bar"
 				if *b.Rows == 0 {
 					fill = "fill-state-failed"
 				}

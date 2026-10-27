@@ -129,7 +129,7 @@ templ PanelLink(title, count, href, label string) {
 				<span class="text-[11.5px] text-faint tabular-nums">{ count }</span>
 			}
 			if href != "" {
-				<a href={ templ.SafeURL(href) } class="ml-auto text-[12px] text-gold-strong hover:underline">{ label }</a>
+				<a href={ templ.SafeURL(href) } class="ml-auto text-[12px] text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ label }</a>
 			}
 		</header>
 		{ children... }
@@ -144,7 +144,7 @@ templ Empty(msg, hint string) {
 	<div class="rounded-card border border-dashed border-line px-6 py-12 text-center">
 		<p class="text-sm text-muted">{ msg }</p>
 		if hint != "" {
-			<p class="mt-2 font-mono text-xs text-gold-strong">{ hint }</p>
+			<p class="mt-2 font-mono text-xs text-muted">{ hint }</p>
 		}
 	</div>
 }
@@ -154,7 +154,7 @@ templ Tag(text, rota string) {
 	if rota != "" {
 		<a
 			href={ templ.SafeURL(rota) }
-			class="inline-flex rounded-card border border-line bg-parchment px-2 py-0.5 text-[0.7rem] text-muted transition-colors hover:border-gold hover:text-gold-strong"
+			class="inline-flex rounded-card border border-line bg-parchment px-2 py-0.5 text-[0.7rem] text-muted transition-colors hover:border-line-strong hover:text-ink"
 		>{ text }</a>
 	} else {
 		<span class="inline-flex rounded-card border border-line bg-parchment px-2 py-0.5 text-[0.7rem] text-muted">{ text }</span>
@@ -210,11 +210,11 @@ templ RunsChart(buckets []postgres.Bucket) {
 					</a>
 				}
 				if d := durationLine(buckets); d != "" {
-					<path d={ d } fill="none" stroke="var(--color-gold)" stroke-width="1.5" stroke-linejoin="round" opacity="0.9"></path>
+					<path d={ d } fill="none" stroke="var(--color-ink-2)" stroke-width="1.5" stroke-linejoin="round" opacity="0.9"></path>
 					// The duration curve has a scale of its own (see durationLine),
 					// so without this anchor it would be a line with no unit: the
 					// peak says what the highest point corresponds to.
-					<text x={ fmt.Sprint(chartWidth) } y="12" text-anchor="end" class="fill-gold-strong text-[11px]">
+					<text x={ fmt.Sprint(chartWidth) } y="12" text-anchor="end" class="fill-ink-2 text-[11px]">
 						{ "peak average duration: " + Duration(durationPeak(buckets)) }
 					</text>
 				}
@@ -227,7 +227,7 @@ templ RunsChart(buckets []postgres.Bucket) {
 			@legenda("var(--color-state-success)", "success")
 			@legenda("var(--color-state-failed)", "failed")
 			@legenda("var(--color-state-running)", "running")
-			@legenda("var(--color-gold)", "average duration")
+			@legenda("var(--color-ink-2)", "average duration")
 		</div>
 	}
 }
@@ -682,7 +682,7 @@ templ ErrorDialog(runID, workflow, status, message string) {
 			<form method="dialog">
 				<button
 					autofocus
-					class="rounded-card border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-gold hover:text-ink focus-visible:border-gold focus-visible:text-ink"
+					class="rounded-card border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-line-strong hover:text-ink focus-visible:border-gold focus-visible:text-ink"
 					aria-label="Close"
 				>close</button>
 			</form>
@@ -690,7 +690,7 @@ templ ErrorDialog(runID, workflow, status, message string) {
 		<div class="px-6 py-5">
 			<div class="mb-4 flex flex-wrap items-center gap-3 text-xs">
 				@State(status)
-				<a href={ templ.SafeURL("/runs/" + runID) } class="text-gold-strong hover:underline">open the run</a>
+				<a href={ templ.SafeURL("/runs/" + runID) } class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">open the run</a>
 				<span class="font-mono text-[0.7rem] text-muted/70">{ runID }</span>
 			</div>
 			<pre class="max-h-[50vh] overflow-auto rounded-card border border-state-failed/20 bg-state-failed/5 px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-state-failed">{ message }</pre>
@@ -730,10 +730,10 @@ templ LoadTrend(series []TrendSeries, window string) {
 						role="img"
 						aria-label={ s.Label + " over " + window }
 					>
-						<polyline points={ s.Area } class="fill-gold-strong/10" stroke="none"></polyline>
+						<polyline points={ s.Area } class="fill-ink/10" stroke="none"></polyline>
 						<polyline
 							points={ s.Path }
-							class="stroke-gold-strong"
+							class="stroke-ink-2"
 							fill="none"
 							stroke-width="1.5"
 							vector-effect="non-scaling-stroke"
@@ -777,7 +777,7 @@ templ AboutButton(slug string) {
 		data-dialogo={ "about-" + slug }
 		title="What this workflow is for"
 		aria-label="What this workflow is for"
-		class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-line text-[0.7rem] font-semibold text-muted transition-colors hover:border-gold hover:text-ink focus-visible:border-gold focus-visible:text-ink"
+		class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-line text-[0.7rem] font-semibold text-muted transition-colors hover:border-line-strong hover:text-ink focus-visible:border-gold focus-visible:text-ink"
 	>?</a>
 }
 
@@ -794,7 +794,7 @@ templ AboutDialog(slug, description string) {
 			<form method="dialog">
 				<button
 					autofocus
-					class="rounded-card border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-gold hover:text-ink focus-visible:border-gold focus-visible:text-ink"
+					class="rounded-card border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-line-strong hover:text-ink focus-visible:border-gold focus-visible:text-ink"
 					aria-label="Close"
 				>close</button>
 			</form>

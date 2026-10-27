@@ -18,7 +18,7 @@ templ loadConfiguration(v LoadView) {
 			@components.Panel("Configuration", "") {
 				<p data-config={ c.Key() } class="px-3.5 py-3 text-[12.5px] text-muted">
 					This step did not describe itself. Only the Go SDK sends its configuration; a Python, dbt or shell step lands without one.
-					To see what it runs, open <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="text-accent-strong hover:underline">the workflow's definition</a>.
+					To see what it runs, open <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">the workflow's definition</a>.
 				</p>
 			}
 		} else {
@@ -260,7 +260,7 @@ templ loadChanges(v LoadView) {
 							@components.ShortStamp(&ch.At)
 						</span>
 						if ch.RunID != "" {
-							<a href={ templ.SafeURL("/runs/" + ch.RunID) } class="ml-2 font-mono text-gold-strong hover:underline">{ shortID(ch.RunID) }</a>
+							<a href={ templ.SafeURL("/runs/" + ch.RunID) } class="ml-2 font-mono text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ shortID(ch.RunID) }</a>
 						}
 						if ch.First {
 							<span class="ml-2 text-muted">First recorded</span>
@@ -306,7 +306,7 @@ templ loadPreview(v LoadView) {
 						if note != "" {
 							<div data-js class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
 								<button type="button" role="switch" aria-checked="true" data-null-toggle class="inline-flex items-center gap-2 text-ink">
-									<span aria-hidden="true" class="relative inline-block h-[14px] w-[24px] rounded-full bg-line-strong transition-colors [[aria-checked=true]>&]:bg-accent-strong">
+									<span aria-hidden="true" class="relative inline-block h-[14px] w-[24px] rounded-full bg-line-strong transition-colors [[aria-checked=true]>&]:bg-state-success">
 										<span class="absolute top-[2px] left-[2px] h-[10px] w-[10px] rounded-full bg-surface transition-transform [[aria-checked=true]>span>&]:translate-x-[10px]"></span>
 									</span>
 									Hide null-only columns
@@ -388,7 +388,7 @@ templ loadRecent(v LoadView) {
 							<td class="px-2.5 text-right tabular-nums">{ rowsText(l.Rows) }</td>
 							<td class="px-2.5 text-right tabular-nums">{ rowsText(l.Bytes) }</td>
 							<td class="px-2.5 pr-3.5">
-								<a href={ templ.SafeURL("/runs/" + l.RunID) } class="font-mono text-[12px] text-accent-strong hover:underline">{ shortID(l.RunID) }</a>
+								<a href={ templ.SafeURL("/runs/" + l.RunID) } class="font-mono text-[12px] text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ shortID(l.RunID) }</a>
 							</td>
 						</tr>
 					}
