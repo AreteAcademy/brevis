@@ -211,6 +211,7 @@ templ Base(p Page) {
 				</div>
 			</div>
 			@palette()
+			@toasts()
 			// The basic interactions (dialogs, chart tooltips) on every page. It
 			// sits at the end of the body so it does not block rendering — the
 			// HTML already arrives complete, the script only enriches it.
@@ -498,6 +499,17 @@ templ topbar(p Page) {
 			</div>
 		}
 	</header>
+}
+
+// toasts is where a page says what just happened: a status region, so a
+// screen reader hears each toast, at the corner of the window. The server
+// draws a flash here (layouts.SetFlash); Brevis.toast adds the rest.
+templ toasts() {
+	<div id="toasts" role="status" aria-live="polite" class="toasts">
+		if f, ok := flashOf(ctx); ok {
+			@components.Toast(f.Kind, f.Message, "", "")
+		}
+	</div>
 }
 
 // paletteIcons are the glyphs the palette's rows are drawn with: the

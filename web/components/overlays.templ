@@ -1,0 +1,83 @@
+package components
+
+// Drawer is a panel that slides in from the right over the page: a form, a
+// detail, an explanation that does not deserve a page of its own.
+//
+// A NATIVE <dialog>, opened with showModal() by any `data-dialogo="<id>"`
+// control (ui.js), so focus containment, Escape and an inert page come with
+// the element. Its name is its heading (aria-labelledby). The close button is
+// a `method="dialog"` form, which closes it with no script, and it is NOT
+// autofocused: ui.js puts the focus on the body's first field, where the
+// reader starts, and gives it back to the opener on close.
+//
+// foot holds the drawer's actions, pinned under the scrolling body; nil for
+// none.
+templ Drawer(id, title string, foot templ.Component) {
+	@dialogFrame("drawer", id, title, foot) {
+		{ children... }
+	}
+}
+
+// Modal is a Drawer's centred sibling: to confirm, or a short form.
+templ Modal(id, title string, foot templ.Component) {
+	@dialogFrame("modal", id, title, foot) {
+		{ children... }
+	}
+}
+
+templ dialogFrame(kind, id, title string, foot templ.Component) {
+	<dialog id={ id } class={ kind } aria-labelledby={ id + "-title" }>
+		<header class="dialog-head">
+			<h2 id={ id + "-title" } class="text-[0.95rem] font-semibold text-ink">{ title }</h2>
+			<form method="dialog">
+				<button type="submit" aria-label="Close" class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+					@Icon("x", "h-4 w-4")
+				</button>
+			</form>
+		</header>
+		<div class="dialog-body" data-dialog-body>
+			{ children... }
+		</div>
+		if foot != nil {
+			<footer class="dialog-foot" data-dialog-foot>
+				@foot
+			</footer>
+		}
+	</dialog>
+}
+
+// Toast is one sentence saying what just happened, in its state's mark, with
+// an action when there is one ("Undo", "View logs"). kind is ok, fail or run.
+// It is drawn into the page's toast region -- by the server for a flash, by
+// Brevis.toast for a script -- and ui.js removes it after 4.2s.
+templ Toast(kind, message, action, href string) {
+	<div class="toast">
+		@StatusMark(toastKind(kind))
+		<span class="min-w-0 flex-1">{ message }</span>
+		if action != "" && href != "" {
+			<a href={ templ.SafeURL(href) } class="shrink-0 font-medium text-ink underline-offset-2 hover:underline">{ action }</a>
+		}
+	</div>
+}
+
+// Switch is an on/off control, announced as one: role=switch with its state
+// and a name. ui.js flips aria-checked on click; `data-manual` in attrs leaves
+// that to the screen's own script, for a switch whose state the server holds.
+templ Switch(label string, on bool, attrs templ.Attributes) {
+	<button type="button" role="switch" aria-checked={ boolText(on) } aria-label={ label } class="switch" { attrs... }>
+		<span class="switch-knob" aria-hidden="true"></span>
+	</button>
+}
+
+// NavBadge is a sidebar section's signal: a count that needs somebody (fail),
+// or a pulse that something is live (live).
+templ NavBadge(kind, text string) {
+	if kind == "live" {
+		<span class="nav-badge nav-badge-live">
+			<span class="st st-mark st-pulse text-state-success" aria-hidden="true"></span>
+			{ text }
+		</span>
+	} else {
+		<span class="nav-badge nav-badge-fail">{ text }</span>
+	}
+}
