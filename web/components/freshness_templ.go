@@ -12,8 +12,8 @@ import templruntime "github.com/a-h/templ/runtime"
 // words as well as colour: the colour helps whoever sees it, the word works for
 // everyone, screen readers and colour-blind operators included.
 //
-// A DOT AND A WORD (screen-load-v2 LV1), like State: the tinted badge was the
-// last one density-base left on the screen.
+// A MARK AND A WORD (screen-load-v2 LV1), drawn by Status like State: the
+// tinted badge was the last one density-base left on the screen.
 func Freshness(status string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -35,60 +35,7 @@ func Freshness(status string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var2 = []any{"inline-flex items-center gap-1.5 text-[12.5px] whitespace-nowrap", freshnessClass(status)}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<span class=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var2).String())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/freshness.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var4 = []any{"h-[7px] w-[7px] shrink-0 rounded-full", freshnessDot(status)}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var4...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<span class=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var4).String())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/freshness.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\"></span> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(FreshnessLabel(status))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/freshness.templ`, Line: 12, Col: 26}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</span>")
+		templ_7745c5c3_Err = Status(freshnessKind(status)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -113,41 +60,6 @@ func FreshnessLabel(s string) string {
 		return "unidentified"
 	}
 	return "no schedule"
-}
-
-// The run states' palette, so the console has one meaning per colour: green
-// is fine, amber is waiting on something, red needs a person, grey is a choice,
-// blue is live -- a gateway writing as events arrive, like a run executing.
-func freshnessClass(s string) string {
-	switch s {
-	case "on_time":
-		return "text-state-success"
-	case "late":
-		return "text-state-queued"
-	case "stale":
-		return "text-state-failed"
-	case "paused":
-		return "text-state-canceled"
-	case "continuous":
-		return "text-state-running"
-	}
-	return "text-muted"
-}
-
-func freshnessDot(s string) string {
-	switch s {
-	case "on_time":
-		return "bg-state-success"
-	case "late":
-		return "bg-state-queued"
-	case "stale":
-		return "bg-state-failed"
-	case "paused":
-		return "bg-state-canceled"
-	case "continuous":
-		return "bg-state-running"
-	}
-	return "bg-line-strong"
 }
 
 var _ = templruntime.GeneratedTemplate

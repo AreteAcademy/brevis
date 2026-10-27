@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"github.com/AreteAcademy/brevis/web/components"
 	"net/http"
 	"strings"
 	"testing"
@@ -47,5 +48,13 @@ func TestTheComponentGalleryShowsEveryComponent(t *testing.T) {
 		if !strings.Contains(body, marker) {
 			t.Errorf("the gallery does not show %s (no %s)", what, marker)
 		}
+	}
+	for _, k := range components.StatusKinds() {
+		if !strings.Contains(body, `data-gallery-status="`+k+`"`) {
+			t.Errorf("the gallery does not show the state %s", k)
+		}
+	}
+	if !strings.Contains(body, `role="img"`) {
+		t.Error("the gallery does not show a StatusMark")
 	}
 }

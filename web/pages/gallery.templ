@@ -66,6 +66,18 @@ templ Gallery() {
 					{Label: "Bytes billed", Value: "1.0", Unit: "GB", Icon: "hard-drive", Note: "per request"},
 				})
 			}
+			@gallerySection("States") {
+				<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+					for _, k := range components.StatusKinds() {
+						<span data-gallery-status={ k }>@components.Status(k)</span>
+					}
+				</div>
+				<div class="mt-2 flex flex-wrap items-center gap-3">
+					for _, k := range components.StatusKinds() {
+						@components.StatusMark(k)
+					}
+				</div>
+			}
 			@gallerySection("Badges") {
 				<div class="flex flex-wrap items-center gap-2">
 					for _, s := range []string{"success", "failed", "running", "queued", "retrying", "canceled", "skipped", ""} {

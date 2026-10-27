@@ -86,8 +86,9 @@ func TestEveryConsoleTableIsCompact(t *testing.T) {
 	}
 }
 
-// A STATE IS A DOT AND A WORD (density-base DB3), in the state's colour --
-// not a tinted badge in every row. A retry is `↻N`, its meaning in the
+// A STATE IS A MARK AND A WORD (density-base DB3), in the state's colour --
+// not a tinted badge in every row. The mark is the state's shape, drawn by
+// the stylesheet in the word's colour (see status.go). A retry is `↻N`, its meaning in the
 // tooltip, and nothing on a first try (attempt counts from 0).
 func TestAStateIsADotAndAWordAndARetryIsMarked(t *testing.T) {
 	var b strings.Builder
@@ -98,7 +99,7 @@ func TestAStateIsADotAndAWordAndARetryIsMarked(t *testing.T) {
 	if strings.Contains(got, "bg-state-failed/13") || strings.Contains(got, "rounded-card") {
 		t.Errorf("the state is still a badge: %s", got)
 	}
-	for _, want := range []string{"h-[7px]", "w-[7px]", "bg-state-failed", "text-state-failed", "failed</span>"} {
+	for _, want := range []string{"st-diamond", "text-state-failed", "failed</span>"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the state lacks %s: %s", want, got)
 		}

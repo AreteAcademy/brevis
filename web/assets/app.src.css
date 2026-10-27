@@ -1152,3 +1152,93 @@ table.ct > tbody > tr > td {
   padding-top: 4px;
   padding-bottom: 4px;
 }
+
+/* ---------------------------------------------------------------------------
+   STATE: A SHAPE, A WORD AND A COLOUR (web/components/status.go)
+
+   The mark is drawn here, in currentColor, so the word and the mark are
+   always the same colour and a class on the span is all a state needs. The
+   shapes are what somebody who cannot tell the colours apart reads: filled
+   is settled, a ring is waiting, a spinning ring is working, a diamond needs
+   a person, a triangle is late, a square is a choice, a pulse never ends.
+--------------------------------------------------------------------------- */
+.st {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.st::before {
+  content: "";
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+}
+.st-mark {
+  gap: 0;
+}
+.st-dot::before,
+.st-pulse::before {
+  border-radius: 50%;
+  background: currentColor;
+}
+.st-ring::before,
+.st-spin::before {
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+}
+.st-ring-dashed::before,
+.st-spin-dashed::before {
+  border-radius: 50%;
+  border: 1.5px dashed currentColor;
+}
+.st-spin::before {
+  border-right-color: transparent;
+}
+.st-spin::before,
+.st-spin-dashed::before {
+  animation: st-spin 0.9s linear infinite;
+}
+.st-diamond::before {
+  background: currentColor;
+  transform: rotate(45deg) scale(0.8);
+}
+.st-diamond-hollow::before {
+  border: 1.5px solid currentColor;
+  transform: rotate(45deg) scale(0.8);
+}
+.st-square::before {
+  border: 1.5px solid currentColor;
+  border-radius: 1px;
+}
+.st-triangle::before {
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.st-pulse::before {
+  animation: st-pulse 2s ease-out infinite;
+}
+@keyframes st-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes st-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 50%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+}
+/* Still, the spinner is a ring with a gap and the pulse a dot: the shape
+   still says it, without the motion. */
+@media (prefers-reduced-motion: reduce) {
+  .st-spin::before,
+  .st-spin-dashed::before,
+  .st-pulse::before {
+    animation: none;
+  }
+}

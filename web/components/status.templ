@@ -1,0 +1,16 @@
+package components
+
+// Status is a state the way every screen says it: a mark in a shape, the
+// word, both in the state's colour -- so nobody has to tell red from green to
+// read it. See statuses for the vocabulary.
+templ Status(kind string) {
+	{{ s := lookStatus(kind) }}
+	<span class={ "st", "st-" + s.shape, s.colour }>{ s.label }</span>
+}
+
+// StatusMark is the mark alone, for a dense column where the word is said
+// elsewhere; the word stays in the title and for screen readers.
+templ StatusMark(kind string) {
+	{{ s := lookStatus(kind) }}
+	<span class={ "st", "st-mark", "st-" + s.shape, s.colour } title={ s.label } role="img" aria-label={ s.label }></span>
+}
