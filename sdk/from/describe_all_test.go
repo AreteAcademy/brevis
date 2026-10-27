@@ -197,3 +197,16 @@ func TestAScrubbedURLKeepsItsOrdinarySegments(t *testing.T) {
 		t.Fatalf("url = %v", got["url"])
 	}
 }
+
+// A Stream is code, so /data says it is there and nothing more -- as it does
+// for Records.
+func TestAStreamingHTTPSourceSaysItIsSetByAFunction(t *testing.T) {
+	got := settings(t, from.HTTP{URL: "https://api.example.com/v1/sheet",
+		Stream: func(sdk.Response, func(any) error) error { return nil }})
+	if got["stream"] != "set by a function" {
+		t.Errorf("stream = %#v, want \"set by a function\"", got["stream"])
+	}
+	if _, listed := settings(t, from.HTTP{URL: "https://api.example.com/v1/sheet"})["stream"]; listed {
+		t.Error("without a Stream, stream is listed; an unset field is left out")
+	}
+}

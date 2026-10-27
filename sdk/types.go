@@ -22,6 +22,10 @@ type (
 	// carries, or a refusal saying why. See from.HTTP.Records.
 	Reading = core.Reading
 
+	// Streaming is a Reading that hands its records over as it reads them.
+	// See from.HTTP.Stream.
+	Streaming = core.Streaming
+
 	// Reader is a source: from.HTTP, and the drivers that follow it.
 	Reader = core.Reader
 

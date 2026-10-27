@@ -61,6 +61,7 @@ func (h HTTP) Configuration() []core.Setting {
 		{Key: "body", Value: core.SetByFunction(h.Body != nil)},
 		{Key: "format", Value: string(h.Format)},
 		{Key: "records", Value: core.SetByFunction(h.Records != nil)},
+		{Key: "stream", Value: core.SetByFunction(h.Stream != nil)},
 		{Key: "data_key", Value: h.DataKey},
 		{Key: "follow_links", Value: h.FollowLinks},
 		{Key: "cursor_key", Value: h.CursorKey},

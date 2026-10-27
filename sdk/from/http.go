@@ -49,6 +49,10 @@ type HTTP struct {
 	// a Postgres source has no Response to be handed one.
 	Records core.Reading
 
+	// Stream is Records for a response too large to hold as records: it hands
+	// each one over as it reads it. See core.Streaming.
+	Stream core.Streaming
+
 	// Auth is how this source authenticates, and what keeps the credential
 	// alive. A static key needs none of it -- put it in Header and be done.
 	//
@@ -134,6 +138,12 @@ type HTTP struct {
 // Read satisfies core.Reader.
 func (h HTTP) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.Envelope, error], error) {
 	source := h.source(opt)
+
+	// The function decides what the body means, so no decoder runs and the
+	// Format does not matter -- as with Records.
+	if h.Stream != nil {
+		return extract.Stream(ctx, source, h.Stream)
+	}
 
 	switch source.Format {
 	case "", core.FormatJSON:
