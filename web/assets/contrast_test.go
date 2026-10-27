@@ -22,18 +22,36 @@ import (
 
 var tokenLine = regexp.MustCompile(`--color-([a-z0-9-]+):\s*([^;]+);`)
 
-// tokens reads the `:root` block of the stylesheet SOURCE, which is where a
-// human edits and therefore where a mistake is made. One level of `var()` is
-// resolved, which is as deep as this file goes.
-func tokens(t *testing.T) map[string]string {
+// lightBlock is the light theme: one rule on <html>, written by the server
+// from the visitor's cookie, holding only what changes.
+var lightBlock = regexp.MustCompile(`(?s):root\[data-theme="light"\]\s*\{([^}]*)\}`)
+
+// themes are the two the console draws, and every check below runs on both.
+var themes = []string{"dark", "light"}
+
+// tokens reads the stylesheet SOURCE, which is where a human edits and
+// therefore where a mistake is made. The dark theme is every `--color-*`
+// outside the light block; the light theme is the dark one with the light
+// block laid over it, which is what the cascade does on <html>. One level of
+// `var()` is resolved, which is as deep as this file goes.
+func tokens(t *testing.T, theme string) map[string]string {
 	t.Helper()
 	raw, err := os.ReadFile("app.src.css")
 	if err != nil {
 		t.Fatalf("the stylesheet moved: %v", err)
 	}
+	light := lightBlock.FindStringSubmatch(string(raw))
+	if light == nil {
+		t.Fatalf(`app.src.css has no :root[data-theme="light"] block`)
+	}
 	out := map[string]string{}
-	for _, m := range tokenLine.FindAllStringSubmatch(string(raw), -1) {
+	for _, m := range tokenLine.FindAllStringSubmatch(lightBlock.ReplaceAllString(string(raw), ""), -1) {
 		out[m[1]] = strings.TrimSpace(m[2])
+	}
+	if theme == "light" {
+		for _, m := range tokenLine.FindAllStringSubmatch(light[1], -1) {
+			out[m[1]] = strings.TrimSpace(m[2])
+		}
 	}
 	for name, v := range out {
 		// ONLY A `var(` IS AN ALIAS. Trimming a trailing `)` off anything
@@ -132,7 +150,12 @@ func ratio(t *testing.T, tok map[string]string, fg, bg string) float64 {
 // allowance and is not claimed here, because almost nothing on these screens
 // is large.
 func TestEveryTextRoleIsReadableOnItsGround(t *testing.T) {
-	tok := tokens(t)
+	for _, theme := range themes {
+		t.Run(theme, func(t *testing.T) { textRolesReadable(t, tokens(t, theme)) })
+	}
+}
+
+func textRolesReadable(t *testing.T, tok map[string]string) {
 	const aa = 4.5
 
 	for _, c := range []struct{ fg, bg string }{
@@ -166,7 +189,12 @@ func TestEveryTextRoleIsReadableOnItsGround(t *testing.T) {
 // used as text on a pill and not only as a dot". A dot would need 3:1; a word
 // needs 4.5:1, and the word is what is there.
 func TestEveryStateColourIsReadableAsAWord(t *testing.T) {
-	tok := tokens(t)
+	for _, theme := range themes {
+		t.Run(theme, func(t *testing.T) { stateColoursReadable(t, tokens(t, theme)) })
+	}
+}
+
+func stateColoursReadable(t *testing.T, tok map[string]string) {
 	const aa = 4.5
 
 	states := []string{}
@@ -194,7 +222,12 @@ func TestEveryStateColourIsReadableAsAWord(t *testing.T) {
 // words on a pill; on-accent is the label ON the primary button, so its ground
 // is the accent itself.
 func TestTheDesignRolesAreReadableOnTheirGrounds(t *testing.T) {
-	tok := tokens(t)
+	for _, theme := range themes {
+		t.Run(theme, func(t *testing.T) { designRolesReadable(t, tokens(t, theme)) })
+	}
+}
+
+func designRolesReadable(t *testing.T, tok map[string]string) {
 	const aa = 4.5
 
 	pairs := []struct{ fg, bg string }{{"on-accent", "accent-strong"}}
@@ -218,10 +251,48 @@ func TestTheDesignRolesAreReadableOnTheirGrounds(t *testing.T) {
 // A REPORT RATHER THAN A VERDICT, for whoever is changing the palette: every
 // pair the tests above check, printed with its ratio.
 func TestContrastReport(t *testing.T) {
-	tok := tokens(t)
+	for _, theme := range themes {
+		t.Run(theme, func(t *testing.T) { contrastReport(t, tokens(t, theme)) })
+	}
+}
+
+func contrastReport(t *testing.T, tok map[string]string) {
 	for _, bg := range []string{"canvas", "surface", "surface-2"} {
 		for _, fg := range []string{"ink", "muted", "accent-strong"} {
 			t.Logf("%-14s on %-10s %.2f:1", fg, bg, ratio(t, tok, fg, bg))
+		}
+	}
+}
+
+// THE LIGHT THEME REPAINTS EVERY COLOUR, OR IT IS THE DARK ONE WITH A HOLE.
+//
+// The contrast checks above would pass on a light block that forgot a name,
+// because the dark value shows through and the dark values pass. So the light
+// block has to redefine every LITERAL the dark theme carries -- the ones
+// branding.go writes and the few it does not -- and the derived roles follow
+// on their own.
+func TestTheLightThemeRedefinesEveryLiteral(t *testing.T) {
+	raw, err := os.ReadFile("app.src.css")
+	if err != nil {
+		t.Fatalf("the stylesheet moved: %v", err)
+	}
+	light := lightBlock.FindStringSubmatch(string(raw))
+	if light == nil {
+		t.Fatalf(`app.src.css has no :root[data-theme="light"] block`)
+	}
+	redefined := map[string]bool{}
+	for _, m := range tokenLine.FindAllStringSubmatch(light[1], -1) {
+		redefined[m[1]] = true
+	}
+	for _, m := range tokenLine.FindAllStringSubmatch(lightBlock.ReplaceAllString(string(raw), ""), -1) {
+		name, v := m[1], m[2]
+		// The language chips are a fill under white text, the same on both
+		// grounds; they are not the page's palette.
+		if strings.HasPrefix(name, "lang-") || !strings.HasPrefix(strings.TrimSpace(v), "#") {
+			continue
+		}
+		if !redefined[name] {
+			t.Errorf("--color-%s is a literal in the dark theme and the light theme leaves it dark (%s)", name, v)
 		}
 	}
 }

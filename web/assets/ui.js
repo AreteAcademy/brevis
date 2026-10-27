@@ -120,6 +120,29 @@
     });
   });
 
+  // ------------------------------------------------------------------
+  // The theme switch
+  //
+  // The server chose the theme from the `brevis_theme` cookie before the page
+  // was painted; this only flips it in place and writes the cookie the next
+  // page will be drawn from. No request: the theme is a preference, not
+  // state anybody else reads.
+  //
+  // What reads a colour ONCE when it starts -- the DAG island -- keeps the
+  // old one until the next navigation.
+  // ------------------------------------------------------------------
+
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest && e.target.closest("[data-theme-toggle]");
+    if (!btn) return;
+    var next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+    document.documentElement.dataset.theme = next;
+    document.cookie = "brevis_theme=" + next + "; Path=/; Max-Age=31536000; SameSite=Lax";
+    var label = next === "light" ? "Switch to the dark theme" : "Switch to the light theme";
+    btn.setAttribute("aria-label", label);
+    btn.setAttribute("title", label);
+  });
+
 
   // ------------------------------------------------------------------
   // Live regions

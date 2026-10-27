@@ -103,7 +103,7 @@ type Island struct {
 templ Base(p Page) {
 	{{ brand := branding.De(ctx) }}
 	<!DOCTYPE html>
-	<html lang="en" class="h-full">
+	<html lang="en" class="h-full" data-theme={ Theme(ctx) }>
 		<head>
 			// THE PAGE KNOWS A SCRIPT WILL RUN BEFORE IT IS DRAWN. One line,
 			// first in the head and so ahead of any paint: `js` on <html> is
@@ -377,14 +377,37 @@ templ sidebar(active string, brand branding.Brand) {
 		</nav>
 		// WHO YOU ARE, AT THE FOOT, which is where a console keeps "who am I
 		// and how do I leave". The menu opens upwards from here.
-		<div class="shrink-0 border-t border-line-soft p-2.5">
-			@accountMenu(auth.De(ctx), brand)
+		<div class="flex shrink-0 items-center gap-1 border-t border-line-soft p-2.5">
+			<div class="min-w-0 flex-1">
+				@accountMenu(auth.De(ctx), brand)
+			</div>
+			@themeSwitch()
 		</div>
 	</aside>
 	// The drawer's backdrop: a click on it closes the drawer. A sibling AFTER
 	// the sidebar so `.app-sidebar:target ~` can show it with no script, and
 	// out of the tab order -- the close button is the keyboard's way out.
 	<a href="#" data-drawer-close class="app-drawer-backdrop" aria-hidden="true" tabindex="-1"></a>
+}
+
+// themeSwitch flips the theme in place and remembers it in the cookie the
+// server reads. Only where a script will drive it (data-js): without one it
+// would be a button that does nothing. Both glyphs are drawn and the CSS shows
+// the one for the theme the click leads to, so the script only flips the
+// attribute and the label.
+templ themeSwitch() {
+	<span class="block shrink-0" data-js>
+		<button
+			type="button"
+			data-theme-toggle
+			aria-label={ themeSwitchLabel(ctx) }
+			title={ themeSwitchLabel(ctx) }
+			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+		>
+			<span class="theme-to-light">@components.Icon("sun", "h-4 w-4")</span>
+			<span class="theme-to-dark">@components.Icon("moon", "h-4 w-4")</span>
+		</button>
+	</span>
 }
 
 templ navLink(s section, active string) {

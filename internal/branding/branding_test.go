@@ -158,3 +158,68 @@ func TestTheAttributionDoesNotComeFromConfiguration(t *testing.T) {
 		t.Error("a field in the YAML must not replace the attribution")
 	}
 }
+
+// A LIGHT THEME OF THE CLIENT'S OWN IS WRITTEN FOR THE LIGHT THEME ONLY.
+//
+// `theme:` has always been the console's colours, and the console was dark;
+// a client's dark ground written into the light theme would be dark text on
+// dark. So `theme_light:` is its own block, under the attribute the server
+// writes on <html>, and the dark one never reaches it.
+func TestALightThemeIsWrittenUnderTheLightAttribute(t *testing.T) {
+	m, err := branding.Load(writeFile(t, `
+title: Acme
+theme:
+  ink: "#101820"
+theme_light:
+  ink: "#202830"
+  accent_strong: "#3a4a10"
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := m.CSS()
+	i := strings.Index(css, `:root[data-theme="light"]{`)
+	if i < 0 {
+		t.Fatalf("no light block in:\n%s", css)
+	}
+	dark, light := css[:i], css[i:]
+	if !strings.Contains(light, "--color-ink:#202830") || !strings.Contains(light, "--color-gold-strong:#3a4a10") {
+		t.Errorf("the light block is missing the client's light colours:\n%s", light)
+	}
+	if strings.Contains(light, "#101820") {
+		t.Errorf("the dark ink reached the light block:\n%s", light)
+	}
+	if !strings.Contains(dark, "--color-ink:#101820") {
+		t.Errorf("the dark block lost the client's ink:\n%s", dark)
+	}
+}
+
+// WITHOUT ONE, NOTHING IS WRITTEN FOR LIGHT, and the product's light theme
+// applies -- including over a client's `theme:`, which describes a dark
+// console. And the hand-written ground gradient is the dark theme's alone.
+func TestWithoutALightThemeTheLightOneIsTheProducts(t *testing.T) {
+	m, err := branding.Load(writeFile(t, `
+title: Acme
+theme:
+  background: "#101010"
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := m.CSS()
+	if strings.Contains(css, `data-theme="light"]{--`) {
+		t.Errorf("a light block was written with no theme_light:\n%s", css)
+	}
+	if strings.Contains(css, "}body{") {
+		t.Errorf("the ground gradient applies to every theme, the light one included:\n%s", css)
+	}
+	if !strings.Contains(css, `:root:not([data-theme="light"]) body{`) {
+		t.Errorf("the ground gradient is not scoped to the dark theme:\n%s", css)
+	}
+}
+
+func TestAnInvalidLightColourIsRefused(t *testing.T) {
+	if _, err := branding.Load(writeFile(t, `theme_light: {ink: "#fff;} body{display:none"}`)); err == nil {
+		t.Error("an injected light colour was accepted")
+	}
+}

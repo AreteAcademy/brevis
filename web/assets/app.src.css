@@ -291,6 +291,53 @@
   color-scheme: dark;
 }
 
+/* THE LIGHT THEME, for the visitor who asks for it. The server writes
+   `data-theme` on <html> from the `brevis_theme` cookie, so the first paint
+   is already the right one and no script has to correct it.
+
+   Every literal of the dark theme is redefined here, and only those: the
+   derived roles are mixes and follow on their own. contrast_test.go checks
+   both halves -- that nothing is left dark, and that every text role still
+   reads at 4.5:1 on every ground.
+
+   The lime is the brand's, darkened until white reads on it: #c7d66d on a
+   light ground is a highlighter, not an accent. A client's brand.yaml
+   repaints this block through `theme_light:`, never through `theme:`, which
+   describes a dark console. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-parchment: #f5f6f0;
+  --color-parchment-soft: #eef0e8;
+  --color-surface: #ffffff;
+  --color-ink: #1b1f16;
+  --color-muted: #444a3c;
+  --color-line: #dcdfd4;
+  --color-line-soft: #e7e9e0;
+  --color-line-strong: #b4baa8;
+  --color-gold: #5f6d2c;
+  --color-gold-strong: #4a5714;
+  --color-gold-wash: #4a57141f;
+  --color-state-success: #2c6e3e;
+  --color-state-failed: #a8372a;
+  --color-state-running: #2b5f8a;
+  --color-state-queued: #7d5a0c;
+  --color-state-retrying: #8c4b1a;
+  --color-state-canceled: #5f6559;
+  --color-state-pending: #626858;
+  --color-state-skipped: #74518a;
+}
+
+/* The theme switch shows where a click leads: the sun on the dark theme, the
+   moon on the light one. Both are in the markup, so flipping the attribute is
+   all the script does. */
+.theme-to-dark,
+:root[data-theme="light"] .theme-to-light {
+  display: none;
+}
+:root[data-theme="light"] .theme-to-dark {
+  display: block;
+}
+
 body {
   background: var(--color-canvas);
 }

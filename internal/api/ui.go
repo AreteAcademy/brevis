@@ -1583,6 +1583,7 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	// context: every template reaches them without entering each page's
 	// signature.
 	ctx := layouts.WithSQL(branding.IntoContext(r.Context(), u.brand), u.preview.Configured())
+	ctx = layouts.WithTheme(ctx, r)
 	if err := c.Render(ctx, w); err != nil {
 		u.log.Error("rendering the page", "path", r.URL.Path, "error", err)
 	}
