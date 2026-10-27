@@ -28,6 +28,8 @@ func TestTheAccentIsSpentOnlyWhereItPointsAtSomething(t *testing.T) {
 		// The one primary action -- the Button's, and the sign-in page's own.
 		"bg-accent-strong":          {"components/controls.go": true, "pages/login.templ": true},
 		"hover:bg-accent-strong/90": {"components/controls.go": true, "pages/login.templ": true},
+		// brevis-sql's logo, which is the brand's mark.
+		"text-accent-strong": {"components/logo.go": true},
 		// The open section's bar.
 		"shadow-[inset_2px_0_0_var(--color-accent-strong)]": {"layouts/base.templ": true},
 	}

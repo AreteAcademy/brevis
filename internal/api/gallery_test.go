@@ -60,6 +60,11 @@ func TestTheComponentGalleryShowsEveryComponent(t *testing.T) {
 			t.Errorf("the gallery does not show the state %s", k)
 		}
 	}
+	for _, k := range components.LogoKeys() {
+		if !strings.Contains(body, `data-gallery-logo="`+k+`"`) {
+			t.Errorf("the gallery does not show the logo %s", k)
+		}
+	}
 	if !strings.Contains(body, `role="img"`) {
 		t.Error("the gallery does not show a StatusMark")
 	}

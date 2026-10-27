@@ -1429,3 +1429,69 @@ dialog.modal {
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   LOGOS (web/components/logo.templ)
+
+   A brand's mark on a quiet tile: the raised surface on the dark theme,
+   white on the light one, where most marks were drawn to sit. The mark takes
+   two thirds of the tile. A one-colour mark is in its brand colour (written
+   in the file); one too dark for the dark ground is drawn in ink, one too
+   light for the light ground is darkened there. A key with no mark is a
+   monogram in the same tile.
+--------------------------------------------------------------------------- */
+.cg {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-2);
+  vertical-align: middle;
+}
+:root[data-theme="light"] .cg {
+  background: var(--color-surface);
+}
+/* pandas' navy is invisible on a dark tile, and its own colours are the
+   mark: it keeps a white tile in both themes. */
+.cg.cg-on-white {
+  background: #ffffff;
+}
+.cg-18 {
+  width: 18px;
+  height: 18px;
+}
+.cg-28 {
+  width: 28px;
+  height: 28px;
+}
+.cg-40 {
+  width: 40px;
+  height: 40px;
+}
+.cg > svg {
+  width: 66%;
+  height: 66%;
+}
+.cg-dark > svg {
+  fill: var(--color-ink);
+}
+:root[data-theme="light"] .cg-light > svg {
+  filter: brightness(0.62) saturate(1.3);
+}
+.cg-mono {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-muted);
+  letter-spacing: -0.02em;
+}
+.cg-18.cg-mono {
+  font-size: 8px;
+}
+.cg-28.cg-mono {
+  font-size: 11px;
+}
+.cg-40.cg-mono {
+  font-size: 15px;
+}
