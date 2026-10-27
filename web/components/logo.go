@@ -27,12 +27,12 @@ var logoFiles embed.FS
 type logoPaint int
 
 const (
-	paintMono  logoPaint = iota // one colour, the brand's, written in the file
-	paintMulti                  // the mark's own colours
-	paintDark                   // a brand too dark for a dark ground: drawn in ink
-	paintLight                  // a brand too light for a light ground: darkened there
-	paintBrand                  // Brevis's own mark, in the accent
-	paintOnWhite                // its own colours, too dark for any dark tile: on white in both themes
+	paintMono    logoPaint = iota // one colour, the brand's, written in the file
+	paintMulti                    // the mark's own colours
+	paintDark                     // a brand too dark for a dark ground: drawn in ink
+	paintLight                    // a brand too light for a light ground: darkened there
+	paintBrand                    // Brevis's own mark, in the accent
+	paintOnWhite                  // its own colours, too dark for any dark tile: on white in both themes
 )
 
 func (p logoPaint) class() string {
