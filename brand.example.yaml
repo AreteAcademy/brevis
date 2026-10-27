@@ -55,3 +55,15 @@ theme:
   retrying: "#a35f28"
   canceled: "#8a8175"
   pending: "#a89b8a"
+
+# The console's LIGHT theme, for a visitor who switches to it (the button at the
+# sidebar's foot; the choice is kept in a cookie). Same keys as `theme:`, and
+# every one optional: what you leave out keeps the product's light value.
+#
+# It is its own block because `theme:` describes the default, dark console --
+# your dark ground carried into the light theme would be dark on dark. Without
+# `theme_light:` at all, the light theme is the product's, whatever `theme:` says.
+# theme_light:
+#   background: "#f5f6f0"
+#   ink: "#1b1f16"
+#   accent_strong: "#4a5714"   # the primary action and the open section: text on it is the background

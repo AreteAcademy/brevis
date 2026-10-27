@@ -89,6 +89,26 @@ in a bright office.
 | olive — labels, detail | `#7d8e50` | 5.1:1 |
 | green-2 — structural rule | `#38412b` | 1.7:1 |
 
+### The light theme
+
+The console also has a light theme, which a visitor switches to from the
+sidebar's foot (a cookie keeps the choice, and the server draws the page in it
+from the first paint). It is the same palette on a light footing: ground
+`#f5f6f0`, cards white, ink `#1b1f16`. The lime cannot stay `#c7d66d` there --
+on a light ground it is a highlighter, not an accent -- so it is darkened to
+`#4a5714`, the darkest it gets while still reading as the same green. The worst
+text pair in either theme, the dimmest text on the secondary ground, is
+4.69:1.
+
+### Where the lime goes
+
+Four places, and no others: the one primary action on a screen, the bar beside
+the open section, the mark itself, and the focus ring. Links are ink,
+underlined; a selected tab is underlined in ink; bars, charts and the DAG's
+edges are neutral. A test in `web/pages/accent_test.go` reads every template and
+refuses any other use, because an accent spent on everything stops pointing at
+anything.
+
 **Every ratio here is measured, not asserted.** `--green-2` at 1.7:1 is a
 hairline and nothing else: never text, never the outline of a control. That is
 what the olive is for. A palette whose contrast is claimed rather than computed

@@ -14,6 +14,47 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [Unreleased]
+
+### Added: the console's UI 2.0 foundation
+
+The shared layer the redesigned screens are built on. No screen is redesigned
+yet; every one gets the new frame.
+
+- **A light theme**, beside the dark default. The switch is at the sidebar's
+  foot, the choice is a cookie, and the server writes it on `<html>`, so the
+  page is never painted in the wrong one first. Every text colour reads at
+  4.5:1 or better in both, and a test holds it. `brand.yaml` gains an optional
+  `theme_light:`; without it, the light theme is the product's.
+- **The sidebar is grouped by what you came to do**: Monitor (Overview, Runs),
+  Orchestrate (Workflows), Ingest (Streams, Loads) and Data (Endpoints, SQL).
+  Projects is a switcher under the brand. Each section says what it is for on
+  hover and on keyboard focus. The sidebar becomes a drawer below 860px (it was
+  960px).
+- **Every state is a shape, a word and a colour** -- a diamond for failed, a
+  triangle for late, a spinning ring for running -- so none depends on telling
+  colours apart.
+- **Keyboard**: `g` then a letter goes to a section (`o` Overview, `e` Runs,
+  `w` Workflows, `t` Streams, `s` SQL), `?` lists the shortcuts, and the palette
+  (⌘K) gains actions, starting with Toggle theme. None fire while typing in a
+  field.
+- **Drawers, modals and toasts.** A dialog opens on its first field and gives
+  the focus back on close; a toast says what an action did, and a page can
+  hand one to the next across a redirect.
+- **Brand marks** for 28 connectors and languages, embedded in the binary, with
+  their licences.
+- With `prefers-reduced-motion`, nothing moves; a test checks every animation.
+
+### Changed
+
+- **The accent is spent in four places**: the primary action, the open
+  section, the mark and the focus ring. The primary button is now the lime
+  (it was ink); links are ink, underlined; tabs, chips, bars, charts and the
+  DAG's edges are neutral.
+- Small buttons are 26px (were 28px).
+
+---
+
 ## [0.38.0] — 2026-10-26
 
 ### Fixed: a step that finished survives an agent restart (#137)
