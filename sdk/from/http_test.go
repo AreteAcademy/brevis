@@ -155,3 +155,60 @@ func TestHTTPDescribeLeaksNoSecret(t *testing.T) {
 		t.Errorf("Describe apagou o que serve para depurar: %s", got)
 	}
 }
+
+// A Stream hands its records over as it reads them, and they arrive in the
+// order it emitted them -- counted, previewed, and with the response whole
+// (#140). The body is not one the SDK decodes: the function is what reads it.
+func TestAStreamHandsItsRecordsOverInOrder(t *testing.T) {
+	const body = "alpha\nbeta\ngamma"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Vendor", "acme")
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+
+	var seen core.Response
+	stats := &core.Stats{}
+	var preview strings.Builder
+	seq, err := HTTP{
+		URL:         srv.URL + "/v1/sheet",
+		RetryConfig: &core.RetryConfig{MaxAttempts: 1},
+		Stream: func(r core.Response, emit func(any) error) error {
+			seen = r
+			for _, line := range strings.Split(string(r.Bytes()), "\n") {
+				if err := emit(map[string]any{"line": line}); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}.Read(context.Background(), core.ReadOptions{
+		Stats: stats, Preview: 5, PreviewWriter: &preview,
+	})
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+
+	var got []string
+	for env, err := range seq {
+		if err != nil {
+			t.Fatalf("iterating: %v", err)
+		}
+		got = append(got, env.Payload.(map[string]any)["line"].(string))
+	}
+
+	if strings.Join(got, ",") != "alpha,beta,gamma" {
+		t.Errorf("records = %v, want alpha, beta, gamma in that order", got)
+	}
+	if string(seen.Bytes()) != body || seen.Status != http.StatusOK ||
+		seen.Header.Get("X-Vendor") != "acme" || !strings.HasSuffix(seen.URL, "/v1/sheet") {
+		t.Errorf("the Response did not arrive whole: status %d, header %v, url %q, body %q",
+			seen.Status, seen.Header, seen.URL, seen.Bytes())
+	}
+	if stats.Pages != 1 || stats.Bytes != int64(len(body)) {
+		t.Errorf("Stats = %+v, want 1 page and %d bytes", stats, len(body))
+	}
+	if !strings.Contains(preview.String(), "gamma") || !strings.Contains(preview.String(), "3 row") {
+		t.Errorf("the preview does not show the three records:\n%s", preview.String())
+	}
+}

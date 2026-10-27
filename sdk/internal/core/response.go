@@ -158,3 +158,14 @@ func snippet(b []byte) string {
 // passing a Reading buffers the response, because a function that decides what
 // a response means has to see all of it.
 type Reading func(Response) ([]any, error)
+
+// Streaming is a Reading that hands its records over as it reads them,
+// instead of returning them all at once (#140).
+//
+// The response is still whole -- Bytes, JSON and Object work as they do for a
+// Reading -- and what no longer stays in memory is the slice of records. That
+// is the difference for a workbook of 800,000 rows: the body is 27 MB, the
+// records as maps are well over a gigabyte.
+//
+// emit delivers one record. An error from it means stop reading: return it.
+type Streaming func(r Response, emit func(any) error) error

@@ -42,7 +42,7 @@ func CSV(ctx context.Context, source core.Source, records core.Reading) (iter.Se
 	if source.Format == "" {
 		source.Format = "csv"
 	}
-	return fetch(ctx, source, records)
+	return fetch(ctx, source, reading{records: records})
 }
 
 // NDJSON fetches and decodes newline-delimited JSON.
@@ -50,7 +50,7 @@ func NDJSON(ctx context.Context, source core.Source, records core.Reading) (iter
 	if source.Format == "" {
 		source.Format = "ndjson"
 	}
-	return fetch(ctx, source, records)
+	return fetch(ctx, source, reading{records: records})
 }
 
 // JSON fetches and decodes a JSON array or object stream.
@@ -58,7 +58,7 @@ func JSON(ctx context.Context, source core.Source, records core.Reading) (iter.S
 	if source.Format == "" {
 		source.Format = "json"
 	}
-	return fetch(ctx, source, records)
+	return fetch(ctx, source, reading{records: records})
 }
 
 // XML fetches and decodes XML data.
@@ -66,10 +66,23 @@ func XML(ctx context.Context, source core.Source, records core.Reading) (iter.Se
 	if source.Format == "" {
 		source.Format = "xml"
 	}
-	return fetch(ctx, source, records)
+	return fetch(ctx, source, reading{records: records})
 }
 
-func fetch(ctx context.Context, source core.Source, records core.Reading) (iter.Seq2[core.Envelope, error], error) {
+// Stream fetches and hands every successful response to fn, which emits the
+// records as it reads them. No decoder runs, so source.Format is not used.
+func Stream(ctx context.Context, source core.Source, fn core.Streaming) (iter.Seq2[core.Envelope, error], error) {
+	return fetch(ctx, source, reading{stream: fn})
+}
+
+// reading is what the fetcher said a response means: a Reading, a Streaming,
+// or neither, when the decoder decides.
+type reading struct {
+	records core.Reading
+	stream  core.Streaming
+}
+
+func fetch(ctx context.Context, source core.Source, rd reading) (iter.Seq2[core.Envelope, error], error) {
 	if source.URL == "" {
 		return nil, fmt.Errorf("URL is required")
 	}
@@ -77,7 +90,7 @@ func fetch(ctx context.Context, source core.Source, records core.Reading) (iter.
 	// Both answer "which part of the response holds the records", and with
 	// Records set the decoder never sees the body DataKey unwrapped -- so
 	// DataKey would sit there doing nothing, which is worse than an error.
-	if records != nil && source.DataKey != "" {
+	if rd.records != nil && source.DataKey != "" {
 		return nil, fmt.Errorf("the Reading and Source.DataKey both say where the records are, "+
 			"and the Reading wins -- DataKey would be ignored. Read the field inside it "+
 			"instead: sdk.ArrayAt(%q)(doc)", source.DataKey)
@@ -168,7 +181,7 @@ func fetch(ctx context.Context, source core.Source, records core.Reading) (iter.
 		firstURL = numbered
 	}
 
-	first, err := fetchPage(ctxTotal, client, source, records, firstURL, &bytesRead)
+	first, err := fetchPage(ctxTotal, client, source, rd, firstURL, &bytesRead)
 	if err != nil {
 		cancelTotal()
 		return nil, err
@@ -275,7 +288,7 @@ func fetch(ctx context.Context, source core.Source, records core.Reading) (iter.
 			}
 			seen[next] = true
 
-			page, err = fetchPage(ctxTotal, client, source, records, next, &bytesRead)
+			page, err = fetchPage(ctxTotal, client, source, rd, next, &bytesRead)
 			if err != nil {
 				yield(core.Envelope{}, fmt.Errorf("page %d: %w", pages+1, err))
 				return
@@ -365,6 +378,10 @@ type page struct {
 	// "the fetcher said none" from "the fetcher was not asked".
 	records    []any
 	hasRecords bool
+
+	// Set when a Streaming reads this page, with the response it is handed.
+	stream   core.Streaming
+	response core.Response
 }
 
 func (p *page) close() {
@@ -374,6 +391,27 @@ func (p *page) close() {
 	if p.release != nil {
 		p.release()
 	}
+}
+
+// drainStream hands the page's response to the Streaming, and each record it
+// emits straight to the consumer.
+func drainStream(source core.Source, p *page, yield func(core.Envelope, error) bool) (int, string, error) {
+	emitted := 0
+	emit := func(r any) error {
+		if !yield(core.Envelope{Payload: r}, nil) {
+			return errStopped
+		}
+		emitted++
+		return nil
+	}
+	if err := p.stream(p.response, emit); err != nil {
+		if errors.Is(err, errStopped) {
+			return emitted, "", errStopped
+		}
+		return emitted, "", err
+	}
+	next, err := nextPageURL(source, p, emitted)
+	return emitted, next, err
 }
 
 // drainPage decodes one page, yielding every row. It reports how many rows it
@@ -390,6 +428,10 @@ func drainPage(ctx context.Context, source core.Source, p *page, yield func(core
 		}
 		next, err := nextPageURL(source, p, len(p.records))
 		return len(p.records), next, err
+	}
+
+	if p.stream != nil {
+		return drainStream(source, p, yield)
 	}
 
 	decoder := NewDecoder(p.body, source)
@@ -586,7 +628,7 @@ func withQuery(rawURL, key, value string) (string, error) {
 // fetchPage performs one request, with retry, and prepares the response for
 // decoding. Everything that needs the whole body -- the guard, cursor paging
 // -- buffers it here so the streaming path below stays streaming.
-func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source, records core.Reading, pageURL string, bytesRead *int64) (*page, error) {
+func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source, rd reading, pageURL string, bytesRead *int64) (*page, error) {
 	var resp *http.Response
 	// release cancels the context of the attempt that produced resp. The body
 	// is still streaming under that context, so it must stay alive until the
@@ -696,7 +738,7 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 
 	// Anything that must see the whole body reads it here and hands the
 	// decoder an equivalent reader.
-	if records != nil || source.CursorKey != "" || source.DataKey != "" || source.MoreKey != "" {
+	if rd.records != nil || rd.stream != nil || source.CursorKey != "" || source.DataKey != "" || source.MoreKey != "" {
 		buffered, err := io.ReadAll(body)
 		if err != nil {
 			p.close()
@@ -704,8 +746,8 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 		}
 		_ = resp.Body.Close()
 
-		if records != nil {
-			found, err := records(core.NewResponse(
+		if rd.records != nil {
+			found, err := rd.records(core.NewResponse(
 				resp.StatusCode, resp.Header, redactURL(pageURL), buffered,
 				source.PreserveNumbers))
 			if err != nil {
@@ -715,6 +757,14 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 			}
 			p.records = found
 			p.hasRecords = true
+		}
+
+		// Not called here: a Streaming runs as the page is drained, so its
+		// records go to the consumer as they are read instead of into p.
+		if rd.stream != nil {
+			p.stream = rd.stream
+			p.response = core.NewResponse(resp.StatusCode, resp.Header,
+				redactURL(pageURL), buffered, source.PreserveNumbers)
 		}
 
 		if source.MoreKey != "" {
