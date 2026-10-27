@@ -47,6 +47,14 @@ type Brand struct {
 	Logo string `yaml:"logo"`
 
 	Theme Theme `yaml:"theme"`
+
+	// ThemeLight is the console's light theme, for the visitors who choose it.
+	//
+	// ITS OWN BLOCK, NOT A VARIANT OF Theme: `theme:` has always described a
+	// dark console, and a client's dark ground carried into the light theme
+	// would be dark text on dark. Nil leaves the light theme the product's.
+	// A field left empty keeps the product's value for that one colour.
+	ThemeLight *Theme `yaml:"theme_light"`
 }
 
 // Theme is the colours. Each field maps to a CSS variable Tailwind already
@@ -178,6 +186,15 @@ func (m Brand) Validate() error {
 			return fmt.Errorf("colour %s: %q is not a hex value (#rgb, #rrggbb or #rrggbbaa)", name, colour)
 		}
 	}
+	if m.ThemeLight != nil {
+		for name, colour := range m.ThemeLight.colours() {
+			// Empty is allowed here and only here: it keeps the product's
+			// light value for that colour.
+			if colour != "" && !hex.MatchString(colour) {
+				return fmt.Errorf("colour theme_light.%s: %q is not a hex value (#rgb, #rrggbb or #rrggbbaa)", name, colour)
+			}
+		}
+	}
 	if err := validateLogo(m.Logo); err != nil {
 		return err
 	}
@@ -222,49 +239,69 @@ func (t Theme) colours() map[string]string {
 
 // CSS returns the variables to inject into the <head>.
 //
-// Empty when the theme is the default: the compiled sheet already carries those
-// values, and repeating them would be bytes on every page to change nothing.
+// Empty when the theme is the default and there is no light theme: the
+// compiled sheet already carries those values, and repeating them would be
+// bytes on every page to change nothing.
+//
+// The dark block is `:root`, as it always was. The light one is
+// `:root[data-theme="light"]`, the attribute the server writes on <html> from
+// the visitor's cookie: it outranks `:root`, so a light visitor gets the light
+// colours whatever the dark block says.
 func (m Brand) CSS() string {
-	fallback := Default().Theme
-	if m.Theme == fallback {
+	dark := m.Theme != Default().Theme
+	if !dark && m.ThemeLight == nil {
 		return ""
 	}
 
 	var b strings.Builder
-	b.WriteString(":root{")
+	if dark {
+		b.WriteString(":root{")
+		writeTheme(&b, m.Theme)
+		// The body's background is a hand-written gradient in the source
+		// CSS, so it does not follow the variables on its own. It is the
+		// dark theme's: in the light one it would lay this ground under
+		// light colours.
+		fmt.Fprintf(&b, `}:root:not([data-theme="light"]) body{background:linear-gradient(180deg,%s 0%%,%s 44%%,%s 100%%);}`,
+			m.Theme.BackgroundSoft, m.Theme.Background, m.Theme.BackgroundSoft)
+	}
+	if m.ThemeLight != nil {
+		b.WriteString(`:root[data-theme="light"]{`)
+		writeTheme(&b, *m.ThemeLight)
+		b.WriteString("}")
+	}
+	return b.String()
+}
+
+// writeTheme writes one theme's declarations, skipping the colours it leaves
+// empty.
+func writeTheme(b *strings.Builder, t Theme) {
 	write := func(variable, value string) {
 		if value != "" {
-			fmt.Fprintf(&b, "%s:%s;", variable, value)
+			fmt.Fprintf(b, "%s:%s;", variable, value)
 		}
 	}
-	write("--color-parchment", m.Theme.Background)
-	write("--color-parchment-soft", m.Theme.BackgroundSoft)
-	write("--color-surface", m.Theme.Surface)
-	write("--color-ink", m.Theme.Ink)
-	write("--color-muted", m.Theme.Muted)
-	write("--color-gold", m.Theme.Accent)
-	write("--color-gold-strong", m.Theme.AccentStrong)
+	write("--color-parchment", t.Background)
+	write("--color-parchment-soft", t.BackgroundSoft)
+	write("--color-surface", t.Surface)
+	write("--color-ink", t.Ink)
+	write("--color-muted", t.Muted)
+	write("--color-gold", t.Accent)
+	write("--color-gold-strong", t.AccentStrong)
 
 	// Derived: line and highlight are the same colour with transparency.
 	// Computing them here, rather than asking the customer, keeps them from
 	// configuring a border that clashes with the ink they picked.
-	write("--color-line", withAlpha(m.Theme.Ink, "1a"))
-	write("--color-line-soft", withAlpha(m.Theme.Ink, "0d"))
-	write("--color-gold-wash", withAlpha(m.Theme.Accent, "14"))
+	write("--color-line", withAlpha(t.Ink, "1a"))
+	write("--color-line-soft", withAlpha(t.Ink, "0d"))
+	write("--color-gold-wash", withAlpha(t.Accent, "14"))
 
-	write("--color-state-success", m.Theme.Succeeded)
-	write("--color-state-failed", m.Theme.Failed)
-	write("--color-state-running", m.Theme.Running)
-	write("--color-state-queued", m.Theme.Queued)
-	write("--color-state-retrying", m.Theme.Retrying)
-	write("--color-state-canceled", m.Theme.Canceled)
-	write("--color-state-pending", m.Theme.Waiting)
-
-	// The body's background is a hand-written gradient in the source CSS, so it
-	// does not follow the variables on its own.
-	fmt.Fprintf(&b, "}body{background:linear-gradient(180deg,%s 0%%,%s 44%%,%s 100%%);}",
-		m.Theme.BackgroundSoft, m.Theme.Background, m.Theme.BackgroundSoft)
-	return b.String()
+	write("--color-state-success", t.Succeeded)
+	write("--color-state-failed", t.Failed)
+	write("--color-state-running", t.Running)
+	write("--color-state-queued", t.Queued)
+	write("--color-state-retrying", t.Retrying)
+	write("--color-state-canceled", t.Canceled)
+	write("--color-state-pending", t.Waiting)
 }
 
 // withAlpha appends the alpha channel to a 6-digit colour. Short formats, or ones
