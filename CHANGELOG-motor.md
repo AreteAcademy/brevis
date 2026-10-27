@@ -14,6 +14,62 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.38.0] — 2026-10-26
+
+### Fixed: a step that finished survives an agent restart (#137)
+
+A finished step was kept for `--keep-finished` in the agent's memory only. If
+it ended while the engine was away and the agent restarted before the engine
+came back — a rollout, a crash, an OOM — the resume was answered "unknown
+execution", and the engine ran the step **again**. The drain from 0.37.0 covers
+the step running at SIGTERM; it did not cover one that had already ended.
+
+With `--state-dir`, an agent now writes every finished step — its log, its
+published context and its exit — to `<state-dir>/finished/`, and reads them back
+when it starts, with the same `--keep-finished` and `--keep-finished-max`. A file
+it cannot read is logged and removed; it never stops the agent.
+
+### Changed: the agent's state is on a persistent volume (#137)
+
+On Kubernetes `--state-dir` was an `emptyDir`, so every rollout lost the finished
+steps — and the pid records that cancel across a restart has always relied on.
+The agent's StatefulSet now claims a `ReadWriteOnce` volume per pod, **1Gi** on
+the cluster's default StorageClass, and sets `fsGroup: 65532` so the agent can
+write it. In the chart: `agent.state.size`, `agent.state.storageClassName`, and
+`agent.state.persistent=false` to keep the `emptyDir` (and lose both across a
+restart). The same in `deployments/kubernetes/agent.yaml` and in
+`examples/cluster`.
+
+### Fixed: a cancel across a restart recognises the step's own process
+
+A cancel sent to an agent that restarted while the step ran compares the pid
+record's start time with what `ps` reports, so it never signals a recycled pid.
+`ps` reports whole seconds — on Linux, from a boot time that can be off by one —
+and the record was stamped after the fork: a step that started near the turn of
+a second was taken for a recycled pid, and the cancel refused to stop it. The
+record is now stamped before the fork and compared in whole seconds. Its format
+is unchanged.
+
+### Upgrading
+
+**One manual step, once, for an agent installed before 0.38.0.** A
+StatefulSet's `volumeClaimTemplates` cannot change, so the apply, `helm upgrade`
+or Argo CD sync is refused until the old StatefulSet is gone. Delete it without
+its pods, then apply as usual:
+
+```bash
+kubectl -n <namespace> delete statefulset brevis-agent --cascade=orphan
+# then kubectl apply / helm upgrade / sync: the pods are replaced one at a time
+```
+
+The pods keep running meanwhile, and each one drains as it is replaced. What the
+old `emptyDir` held is lost in that one rollout. The name is `brevis-agent` in
+the manifests here and from the chart installed as `brevis`.
+
+The cluster needs a default StorageClass, or set `agent.state.storageClassName`.
+No migration and no protocol change; the engine is unchanged. See *Its state on
+a persistent volume* in `docs/KUBERNETES.md`.
+
 ## [0.37.0] — 2026-10-26
 
 ### Fixed: SIGTERM drains an agent's running steps instead of killing them (#136)

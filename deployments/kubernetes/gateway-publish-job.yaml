@@ -71,7 +71,7 @@ spec:
           # The SAME version the engine runs: this talks to its DATABASE, and
           # a publish from one release against a schema migrated by another is
           # a skew with no error to read.
-          image: areteacademy/brevis:0.37.0-worker
+          image: areteacademy/brevis:0.38.0-worker
           args: ["gateway", "publish", "/manifest/manifest.json"]
           env:
             - name: BREVIS_DATABASE_URL
