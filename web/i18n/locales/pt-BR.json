@@ -1,4 +1,5 @@
 {
+  "lang.label": "Idioma",
   "nav.endpoints": "Endpoints",
   "nav.endpoints.tip": "Métricas publicadas como API, em cache até o dado mudar",
   "nav.group.configure": "Configurar",
@@ -21,6 +22,7 @@
   "nav.workflows": "Workflows",
   "nav.workflows.tip": "Agendamentos e os passos que cada um executa",
   "palette.label": "Buscar no console",
+  "palette.lang": "Idioma: {name}",
   "palette.navigate": "navegar",
   "palette.new_tab": "em nova aba",
   "palette.open": "abrir",

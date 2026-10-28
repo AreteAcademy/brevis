@@ -1,5 +1,6 @@
 {
   "_review": "needs a native speaker",
+  "lang.label": "Idioma",
   "nav.endpoints": "Endpoints",
   "nav.endpoints.tip": "Métricas publicadas como API, en caché hasta que cambian los datos",
   "nav.group.configure": "Configurar",
@@ -22,6 +23,7 @@
   "nav.workflows": "Workflows",
   "nav.workflows.tip": "Programaciones y los pasos que ejecuta cada una",
   "palette.label": "Buscar en la consola",
+  "palette.lang": "Idioma: {name}",
   "palette.navigate": "navegar",
   "palette.new_tab": "en una pestaña nueva",
   "palette.open": "abrir",

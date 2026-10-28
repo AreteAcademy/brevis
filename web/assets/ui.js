@@ -1206,6 +1206,14 @@
         if (sw) sw.click();
         return;
       }
+      // A language is the sidebar's own switcher pressed: the same POST, the
+      // same way back to this page.
+      if (it.action && it.action.indexOf("set-lang:") === 0) {
+        var lang = it.action.slice("set-lang:".length);
+        var b = document.querySelector('[data-lang-form] button[name="lang"][value="' + lang + '"]');
+        if (b) b.click();
+        return;
+      }
       if (beside) window.open(it.href, "_blank");
       else window.location.assign(it.href);
     }

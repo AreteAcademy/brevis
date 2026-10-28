@@ -1,4 +1,5 @@
 {
+  "lang.label": "Language",
   "nav.endpoints": "Endpoints",
   "nav.endpoints.tip": "Metrics published as an API, cached until the data changes",
   "nav.group.configure": "Configure",
@@ -21,6 +22,7 @@
   "nav.workflows": "Workflows",
   "nav.workflows.tip": "Schedules and the steps each one runs",
   "palette.label": "Search the console",
+  "palette.lang": "Language: {name}",
   "palette.navigate": "navigate",
   "palette.new_tab": "in a new tab",
   "palette.open": "open",

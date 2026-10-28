@@ -43,3 +43,18 @@ func themeSwitchLabel(ctx context.Context) string {
 	}
 	return i18n.T(ctx, "theme.to_light")
 }
+
+type uriKey struct{}
+
+// WithRequestURI carries the page's own address, so a control that posts and
+// comes back -- the language switcher -- knows where back is.
+func WithRequestURI(ctx context.Context, uri string) context.Context {
+	return context.WithValue(ctx, uriKey{}, uri)
+}
+
+func requestURI(ctx context.Context) string {
+	if u, ok := ctx.Value(uriKey{}).(string); ok && u != "" {
+		return u
+	}
+	return "/"
+}
