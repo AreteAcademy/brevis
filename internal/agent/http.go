@@ -124,8 +124,14 @@ func (a *Agent) handleStart(log *slog.Logger) http.HandlerFunc {
 			// 503 and not 400: nothing about the request is wrong, and the
 			// engine sends it again -- to a replica, or to this one's
 			// replacement. Retry-After says how soon is reasonable.
+			//
+			// The refusal names itself, because a balancer with nobody behind
+			// it answers 503 too, and closes the connection, because a
+			// kept-alive one carries the next start back here (#146).
 			log.Info("a step was refused: draining", "execution", req.ExecutionID)
 			w.Header().Set("Retry-After", "1")
+			w.Header().Set(remote.HeaderRefusal, remote.RefusalDraining)
+			w.Header().Set("Connection", "close")
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}

@@ -78,6 +78,17 @@ const Protocol = 1
 // agent at one address, and the engine keeps using the address it has.
 const HeaderInstance = "Brevis-Instance"
 
+// HeaderRefusal names why a start that ran nothing was refused (#146).
+//
+// The status alone cannot: 503 is what a draining agent answers, and also what
+// a balancer with nobody behind it answers. Only the first has a replica that
+// would run the step, so only the first is a reason to send it elsewhere
+// rather than to spend an attempt.
+const HeaderRefusal = "Brevis-Refusal"
+
+// RefusalDraining is HeaderRefusal's value for an agent on its way out.
+const RefusalDraining = "draining"
+
 // StartRequest is what the engine asks the agent to run.
 //
 // It is TaskExec's fields, minus everything that means nothing on a host the
