@@ -1250,7 +1250,7 @@ func cmdPrune() *cobra.Command {
 			fmt.Printf("  %s\n", report)
 			if dry {
 				fmt.Println("  nothing was changed; drop --dry-run to apply")
-			} else if report.Purged > 0 || report.Trimmed > 0 {
+			} else if report.Purged > 0 || report.Trimmed > 0 || report.Events > 0 {
 				// The space is REUSED, not returned, and saying so here saves
 				// somebody an afternoon wondering why the disk did not move.
 				fmt.Println("  the space is reusable; run VACUUM FULL to return it to the filesystem")
