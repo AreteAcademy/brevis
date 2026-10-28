@@ -21,17 +21,18 @@ brevis [comando] [flags]
 | [`migrate`](#migrate) | **sim** | **exigida** | schema |
 | [`publish`](#publish) | **sim** | **exigida** | grava workflow e agenda |
 | [`backfill`](#backfill) | **sim** | **exigida** | reprocessa um intervalo |
+| [`cancel`](#cancel) | **sim** | **exigida** | para uma execução |
 | [`run`](#run) | não | — | executa agora, na própria instância |
 | [`validate`](#validate) | não | — | valida YAML de workflow |
 | [`brand`](#brand) | não | — | valida YAML de marca |
 | [`hash`](#hash) | não | — | gera o hash da senha |
 | [`version`](#version) | não | — | versão, commit, build |
 
-Os cinco primeiros chamam a carga de configuração, que **falha no boot** sem
+Os seis primeiros chamam a carga de configuração, que **falha no boot** sem
 `BREVIS_DATABASE_URL`. Os outros cinco não a chamam — e é por isso que
 `validate` serve na CI, onde não há Postgres.
 
-Os mesmos cinco herdam a regra de credencial: com `BREVIS_ENV` diferente de
+Os mesmos seis herdam a regra de credencial: com `BREVIS_ENV` diferente de
 `local`, subir sem as três variáveis de autenticação é **erro de boot**.
 
 ---
@@ -235,6 +236,25 @@ brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true
 | `--param` | | vale para **todos** os slots do intervalo |
 
 `--to` inclui o dia inteiro: internamente o fim vira `23:59:59` daquela data.
+
+---
+
+## cancel
+
+Cancela uma execução que ainda espera ou que está rodando. No feed, quem
+cancelou aparece como `cli`.
+
+```bash
+brevis cancel 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13
+```
+
+| resposta | o que aconteceu |
+|---|---|
+| `canceled` | a execução esperava na fila; saiu dela e não vai rodar |
+| `cancel requested` | a execução está rodando; o dispatcher para os passos em até `--cancel-poll` (2 s) |
+| `already ended: <status>` | a execução já tinha terminado; nada muda |
+
+Uma execução cancelada não é retentada. Um id que não existe é erro.
 
 ---
 

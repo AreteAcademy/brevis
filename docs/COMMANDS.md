@@ -479,6 +479,36 @@ The central use case is exactly "reprocess the whole of January with
 
 ---
 
+## `brevis cancel`
+
+Cancels a run that is still waiting or is running, as the console's Cancel
+button does. The actor recorded -- and shown in the events feed -- is `cli`.
+
+```bash
+brevis cancel 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13
+```
+
+It says which of three things happened:
+
+```
+  canceled 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13
+  cancel requested for 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13; its dispatcher stops it
+  already ended: success (3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13)
+```
+
+- **canceled**: the run was waiting (`created`, `queued`, `retrying`) and its
+  item was not claimed. It leaves the queue in the same transaction and never
+  runs.
+- **cancel requested**: a dispatcher holds the run. The request is written on
+  the run, and the dispatcher reads it every `--cancel-poll` (see
+  [`brevis scheduler`](#brevis-scheduler)), stops the steps and writes
+  `canceled`. No attempt is spent and the run is not retried.
+- **already ended**: nothing changes. Asking twice keeps who asked first.
+
+An id that is not a UUID, or names no run, is an error.
+
+---
+
 ## `brevis prune`
 
 Applies the retention policy. It is the **only** thing in Brevis that deletes

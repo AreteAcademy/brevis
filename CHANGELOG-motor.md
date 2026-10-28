@@ -16,6 +16,23 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Added: canceling a run
+
+A run that should not be running can be stopped, from the console or the CLI.
+Until now the only way was to kill the process, and the run ended `failed` and
+was retried.
+
+- **A Cancel button** on the run's page while it is waiting or running, with a
+  confirmation. After the request the page says "Canceling…" until it stops.
+- **`brevis cancel <run-id>`** does the same from the CLI, as `cli`.
+- **A waiting run is canceled at once**, and leaves the queue. **A running run**
+  is asked: its dispatcher reads the requests every `--cancel-poll` (`2s` by
+  default), stops the steps and writes `canceled`. No attempt is spent, and a
+  canceled run is not retried.
+- **The events feed says who canceled**: the console user, `cli`, or nobody
+  when the console has no login.
+- **Migration 00030** adds `runs.cancel_requested_at` and `runs.canceled_by`.
+
 ### Fixed: a failed run records when it ended
 
 A run that failed for good kept `terminado_em` empty, so the events feed never
