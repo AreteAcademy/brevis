@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -247,5 +248,73 @@ func TestCancelOnAPoolReachesTheInstanceThatIsRunning(t *testing.T) {
 			"address, a cancel that does not address the instance is answered " +
 			"by whichever one picks up -- and it answers SUCCESS, because an " +
 			"execution it never had is an execution it cannot find running")
+	}
+}
+
+// The issue (#146): a pool of two behind one Service name, the engine holding
+// a kept-alive connection to the replica that then begins draining. Every
+// step after that runs on the other replica, and the draining one is asked at
+// most once -- the refusal that sent the engine elsewhere. Before, every
+// start went back down that connection and failed a run that never started.
+//
+// Real agents and the real executor; only the DNS is the test's, because the
+// two replicas are two ports on one address.
+func TestAPoolWithADrainingReplicaRunsEveryStepOnTheOther(t *testing.T) {
+	type replica struct {
+		agent  *agent.Agent
+		addr   string
+		starts atomic.Int32
+	}
+	newReplica := func() *replica {
+		r := &replica{agent: agent.New(agent.Options{Shell: []string{"/bin/sh", "-c"}})}
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if req.URL.Path == "/v1/exec" {
+				r.starts.Add(1)
+			}
+			r.agent.Handler(quiet()).ServeHTTP(w, req)
+		}))
+		t.Cleanup(srv.Close)
+		r.addr = srv.Listener.Addr().String()
+		return r
+	}
+	a, b := newReplica(), newReplica()
+
+	var mu sync.Mutex
+	pool := []string{a.addr}
+	lookup := func(context.Context, string, string) ([]string, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		return append([]string(nil), pool...), nil
+	}
+	e := &remote.Executor{
+		Host: "pool",
+		Agent: remote.HTTPAgent{BaseURL: "http://pool.test", Replicas: &remote.Replicas{Lookup: lookup},
+			StartBackoff: []time.Duration{time.Millisecond, time.Millisecond, time.Millisecond, time.Millisecond}},
+		LeaseLimit: 5 * time.Second,
+	}
+
+	// The connection the engine already holds, to the replica about to drain.
+	if got := last(run(t, e, task("before", "true"))); got.Kind != execution.EventSucceeded {
+		t.Fatalf("the step before the drain ended %s: %v", got.Kind, got.Err)
+	}
+
+	a.agent.Drain()
+	mu.Lock()
+	pool = []string{a.addr, b.addr}
+	mu.Unlock()
+
+	for i := range 10 {
+		got := last(run(t, e, task(fmt.Sprintf("during-%d", i), "true")))
+		if got.Kind != execution.EventSucceeded {
+			t.Fatalf("step %d ended %s: %v\n\nThe pool had a healthy replica the whole "+
+				"time. A step refused for draining went back to the draining one.",
+				i+1, got.Kind, got.Err)
+		}
+	}
+	if got := a.starts.Load() - 1; got > 1 {
+		t.Errorf("the draining replica was sent %d starts, wanted at most 1", got)
+	}
+	if got := b.starts.Load(); got != 10 {
+		t.Errorf("the healthy replica ran %d steps, wanted 10", got)
 	}
 }
