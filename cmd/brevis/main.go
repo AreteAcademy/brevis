@@ -664,6 +664,7 @@ type schedulerFlags struct {
 	concurrency, maxPods          int
 	maxAttempts                   int
 	retryBackoff, retryBackoffMax time.Duration
+	drainWait, drainRequeueDelay  time.Duration
 }
 
 func (f *schedulerFlags) bind(c *cobra.Command) {
@@ -683,15 +684,21 @@ func (f *schedulerFlags) bind(c *cobra.Command) {
 		"first delay between attempts, doubled on each one after it")
 	c.Flags().DurationVar(&f.retryBackoffMax, "retry-backoff-max", policy.BackoffMax,
 		"ceiling for that delay")
+	c.Flags().DurationVar(&f.drainWait, "drain-wait", policy.DrainWait,
+		"how long a run every draining agent refused waits in the queue without spending an attempt (0 spends one at once)")
+	c.Flags().DurationVar(&f.drainRequeueDelay, "drain-requeue-delay", policy.DrainRequeueDelay,
+		"delay before such a run is tried again")
 }
 
 // dispatcher is the policy these flags describe.
 func (f schedulerFlags) dispatcher() scheduler.Config {
 	return scheduler.Config{
 		Worker: workerName(os.Hostname, os.Getpid()), MaxConcorrente: f.concurrency,
-		MaxAttempts: f.maxAttempts,
-		BackoffBase: f.retryBackoff,
-		BackoffMax:  f.retryBackoffMax,
+		MaxAttempts:       f.maxAttempts,
+		BackoffBase:       f.retryBackoff,
+		BackoffMax:        f.retryBackoffMax,
+		DrainWait:         f.drainWait,
+		DrainRequeueDelay: f.drainRequeueDelay,
 	}
 }
 

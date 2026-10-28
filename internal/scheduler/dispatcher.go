@@ -61,6 +61,11 @@ type Repo interface {
 	// FailedSteps returns every failed node with its log, for the steps that
 	// declared `on_error`. A run with two parallel branches can have two.
 	FailedSteps(ctx context.Context, id uuid.UUID) (map[string]string, error)
+
+	// MarkDraining records that the run was sent back for a drain, the first
+	// time only, and returns how long it has waited since (#146). Spending an
+	// attempt forgets it.
+	MarkDraining(ctx context.Context, id uuid.UUID) (time.Duration, error)
 }
 
 // Config parameterises the dispatcher.
@@ -117,6 +122,21 @@ type Config struct {
 
 	// RecoveryInterval is how often the orphan sweep runs.
 	RecoveryInterval time.Duration
+
+	// DrainWait is how long a run nobody started -- every agent of a pool
+	// refused it for draining (#146) -- waits in the queue without spending
+	// an attempt. Measured from the first refusal, not the last, or a pool
+	// that never comes back would keep a run waiting forever without an
+	// alert. Zero turns it off: the refusal spends an attempt, as before.
+	//
+	// Left at zero by defaults(), unlike the rest, because zero is a choice
+	// here and not an omission; Defaults() carries the hour the flag shows.
+	DrainWait time.Duration
+
+	// DrainRequeueDelay is how long a deferred run stays out of the queue
+	// before it is tried again. An instant requeue would be a hot loop
+	// against a pool that is still draining.
+	DrainRequeueDelay time.Duration
 }
 
 // Defaults is the policy a Config left at zero gets.
@@ -129,6 +149,7 @@ type Config struct {
 func Defaults() Config {
 	var c Config
 	c.defaults()
+	c.DrainWait = time.Hour
 	return c
 }
 
@@ -156,6 +177,9 @@ func (c *Config) defaults() {
 	}
 	if c.RecoveryInterval <= 0 {
 		c.RecoveryInterval = time.Minute
+	}
+	if c.DrainRequeueDelay <= 0 {
+		c.DrainRequeueDelay = 30 * time.Second
 	}
 }
 
@@ -409,7 +433,59 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 		return
 	}
 
+	if errors.Is(err, execution.ErrNotStarted) && d.cfg.DrainWait > 0 {
+		err = d.waitOutDrain(done, it, err)
+		if err == nil {
+			return
+		}
+	}
+
 	d.fail(done, it, err)
+}
+
+// waitOutDrain sends back to the queue a run nobody started, for as long as
+// DrainWait allows (#146), and returns nil when it did. Past the ceiling, or
+// when the wait cannot be measured, it returns the error the attempt is
+// spent on.
+func (d *Dispatcher) waitOutDrain(ctx context.Context, it queue.Item, cause error) error {
+	waited, err := d.repo.MarkDraining(ctx, it.RunID)
+	if err != nil {
+		d.log.Error("marking the drain", "run", it.RunID, "error", err)
+		return cause
+	}
+	if waited >= d.cfg.DrainWait {
+		return fmt.Errorf("%w; the pool has been draining for %s, past --drain-wait %s",
+			cause, waited.Round(time.Second), d.cfg.DrainWait)
+	}
+	d.deferRun(ctx, it, cause, waited)
+	return nil
+}
+
+// deferRun is interrupt's twin for a drain: no attempt, no alert, the same
+// failed -> retrying -> queued edges. It differs in the wait. A shutdown left
+// nothing wrong behind it, while a pool that is draining is still draining a
+// moment later, so the run comes back after DrainRequeueDelay.
+//
+// The run attempt is untouched, so the steps it does run land on the rows
+// the refused start would have used, not beside them.
+func (d *Dispatcher) deferRun(ctx context.Context, it queue.Item, cause error, waited time.Duration) {
+	_ = d.repo.RecordError(ctx, it.RunID, fmt.Sprintf(
+		"not started: %s; every agent was draining, and the run went back to the queue "+
+			"without spending an attempt (waiting %s of --drain-wait %s)",
+		cause, waited.Round(time.Second), d.cfg.DrainWait))
+	for _, to := range []dom.Status{dom.StatusFailed, dom.StatusRetrying, dom.StatusQueued} {
+		if err := d.repo.Transicionar(ctx, it.RunID, to); err != nil {
+			d.log.Error("requeuing a deferred run", "run", it.RunID, "to", to, "error", err)
+			_ = d.queue.Done(ctx, it)
+			return
+		}
+	}
+	if err := d.queue.Release(ctx, it, d.cfg.DrainRequeueDelay); err != nil {
+		d.log.Error("handing a deferred run back to the queue", "run", it.RunID, "error", err)
+		return
+	}
+	d.log.Info("deferred, a host is draining", "run", it.RunID,
+		"waited", waited, "delay", d.cfg.DrainRequeueDelay)
 }
 
 // interrupt sends back to the queue a run this process stopped on its way
