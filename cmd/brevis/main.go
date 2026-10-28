@@ -1389,6 +1389,8 @@ func serve(ctx context.Context) error {
 		// the engine reads no API and no API reaches it.
 		WithEndpoints(postgres.NewEndpointRepo(pool)).
 		WithEndpointCalls(calls, cfg.Auth).
+		// How many workflows are failing, on the Runs section of every page.
+		WithFailing(runsRepo).
 		// The component gallery, for whoever is building the console.
 		WithGallery(cfg.Env == "local")
 	// `inseguro` follows the environment: locally the server listens on plain
