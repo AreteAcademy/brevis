@@ -29,15 +29,22 @@ func (l Level) String() string { return [...]string{"info", "warn", "err"}[l] }
 //     summary `PASS=4 WARN=0 ERROR=0` is a success;
 //   - slog's `level=ERROR`;
 //   - Python's and Node's `ValueError:` / `Error:`;
-//   - a deadline, and a non-zero exit;
-//   - Python's `Traceback`, which opens the story the last line finishes.
-var errorLine = []*regexp.Regexp{
+//   - a deadline;
+//   - and the frame lines below.
+var errorLine = append([]*regexp.Regexp{
 	regexp.MustCompile(`(?i)^\s*(error|fatal|fail(ed)?|panic|critical)\b`),
 	regexp.MustCompile(`(?i)^\s*failure in\b`),
 	regexp.MustCompile(`\b(ERROR|FATAL|CRITICAL|PANIC)\b([^=]|$)`),
 	regexp.MustCompile(`(?i)\blevel=(error|fatal|critical)\b`),
 	regexp.MustCompile(`\b\w*(Error|Exception):`),
 	regexp.MustCompile(`(?i)deadline exceeded`),
+}, frameLine...)
+
+// frameLine is an error line that frames the story without telling it: a
+// non-zero exit, which `go run` prints after every panic, and Python's
+// `Traceback`, which opens what the last line finishes. Red on the screen,
+// but the cause only when nothing else is.
+var frameLine = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\bexit (status|code) [1-9]\d*\b`),
 	regexp.MustCompile(`^\s*Traceback \(most recent call last\)`),
 }
