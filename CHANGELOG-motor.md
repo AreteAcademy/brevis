@@ -95,6 +95,13 @@ the run's attempts. Runs failed while a healthy replica stood beside it.
   attempt is spent as before. `--drain-wait 0` spends it at once.
 - Migration `00028` adds `runs.draining_since`.
 
+### Fixed: a step that succeeded no longer hangs in the executor (#147)
+
+Closing a `host:` step's stream while it was still being read could let that
+stray read take the end of the next response on the same connection, and a
+step that had already succeeded was waited on forever. Each stream now has a
+request of its own, and its reader is stopped before the body is closed.
+
 ### Changed
 
 - **The accent is spent in four places**: the primary action, the open
