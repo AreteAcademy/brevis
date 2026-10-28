@@ -40,7 +40,7 @@ func cmdEndpoints() *cobra.Command {
 				return err
 			}
 			defer pool.Close()
-			if err := postgres.NewEndpointRepo(pool).Publish(cmd.Context(), m, time.Now()); err != nil {
+			if err := postgres.NewEndpointRepo(pool).Publish(cmd.Context(), m, time.Now(), "cli"); err != nil {
 				return err
 			}
 			fmt.Printf("  published  %-24s %d endpoints\n", m.Name, len(m.Endpoints))
@@ -57,7 +57,7 @@ func cmdEndpoints() *cobra.Command {
 				return err
 			}
 			defer pool.Close()
-			removed, err := postgres.NewEndpointRepo(pool).Unpublish(cmd.Context(), args[0])
+			removed, err := postgres.NewEndpointRepo(pool).Unpublish(cmd.Context(), args[0], "cli")
 			if err != nil {
 				return err
 			}

@@ -40,7 +40,7 @@ func cmdGateway() *cobra.Command {
 				return err
 			}
 			defer pool.Close()
-			if err := postgres.NewGatewayRepo(pool).Publish(cmd.Context(), m, time.Now()); err != nil {
+			if err := postgres.NewGatewayRepo(pool).Publish(cmd.Context(), m, time.Now(), "cli"); err != nil {
 				return err
 			}
 			n := 0
@@ -61,7 +61,7 @@ func cmdGateway() *cobra.Command {
 				return err
 			}
 			defer pool.Close()
-			removed, err := postgres.NewGatewayRepo(pool).Unpublish(cmd.Context(), args[0])
+			removed, err := postgres.NewGatewayRepo(pool).Unpublish(cmd.Context(), args[0], "cli")
 			if err != nil {
 				return err
 			}
