@@ -102,9 +102,10 @@ func (r *RunRepo) Transicionar(ctx context.Context, id uuid.UUID, para dom.Statu
 
 	_, err = tx.Exec(ctx, `
 		UPDATE runs SET
-			status       = $2,
-			iniciado_em  = COALESCE($3, CASE WHEN $2 = 'queued' THEN NULL ELSE iniciado_em END),
-			terminado_em = COALESCE($4, CASE WHEN $2 = 'queued' THEN NULL ELSE terminado_em END)
+			status         = $2,
+			iniciado_em    = COALESCE($3, CASE WHEN $2 = 'queued' THEN NULL ELSE iniciado_em END),
+			terminado_em   = COALESCE($4, CASE WHEN $2 = 'queued' THEN NULL ELSE terminado_em END),
+			draining_since = CASE WHEN $2 = 'success' THEN NULL ELSE draining_since END
 		WHERE id = $1`,
 		id, para, iniciado, terminado)
 	if err != nil {
@@ -138,7 +139,9 @@ func (r *RunRepo) Attempt(ctx context.Context, id uuid.UUID, budget int,
 	defer tx.Rollback(ctx) //nolint:errcheck // no-op depois do commit
 
 	if err := tx.QueryRow(ctx,
-		`UPDATE runs SET attempt = attempt + 1 WHERE id = $1 RETURNING attempt`,
+		// The attempt ends a wait on a drain too (#146): the next refusal
+		// starts a ceiling of its own.
+		`UPDATE runs SET attempt = attempt + 1, draining_since = NULL WHERE id = $1 RETURNING attempt`,
 		id).Scan(&attempt); err != nil {
 		return 0, false, err
 	}
@@ -160,6 +163,23 @@ func (r *RunRepo) Attempt(ctx context.Context, id uuid.UUID, budget int,
 		}
 	}
 	return attempt, gaveUp, tx.Commit(ctx)
+}
+
+// MarkDraining records that the run went back to the queue because every agent
+// of a host was draining (#146), and returns how long ago that FIRST happened.
+//
+// The first instant is kept, not the latest: the dispatcher sends a run back
+// only while this is under its ceiling, and a run refused every thirty seconds
+// would otherwise never reach it. Measured by the database's clock on both
+// ends, so no process's clock is compared with another's. Spending an attempt
+// or succeeding clears it.
+func (r *RunRepo) MarkDraining(ctx context.Context, id uuid.UUID) (time.Duration, error) {
+	var seconds float64
+	err := r.pool.QueryRow(ctx, `
+		UPDATE runs SET draining_since = COALESCE(draining_since, now())
+		WHERE id = $1
+		RETURNING EXTRACT(EPOCH FROM now() - draining_since)::float8`, id).Scan(&seconds)
+	return time.Duration(seconds * float64(time.Second)), err
 }
 
 // RecordError stores the cause of the failure.
