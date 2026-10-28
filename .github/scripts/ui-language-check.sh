@@ -7,8 +7,15 @@
 # "Buscar workflow", and the column headers "Origem" and "Criado", all shipped
 # and all read by whoever operates an installation.
 #
-# It covers web/**/*.templ only, and only USER-VISIBLE text. The rest of the
-# repository keeps its deliberately Portuguese identifiers -- `criado_em`,
+# It covers web/**/*.templ, only USER-VISIBLE text, and the VALUES of the
+# English message catalog (web/i18n/locales/en.json): since the console speaks
+# three languages, much of its English lives there rather than in a template,
+# and an English catalog with Portuguese in it is the same leak in a new place.
+#
+# pt-BR.json and es.json are OUT, deliberately: they are the translations, and
+# Portuguese is what one of them is for.
+#
+# The rest of the repository keeps its deliberately Portuguese identifiers -- `criado_em`,
 # `saida`, `disparar`, `Transicionar` -- each documented where it lives. A
 # detector that flagged those would be turned off within a week, and a check
 # that is turned off is worse than one that never existed.
@@ -71,6 +78,20 @@ for path in sorted(pathlib.Path("web").rglob("*.templ")):
                 m = PT.search(text)
                 if m and text.strip():
                     bad.append((path, n, m.group(0), raw.strip()[:60]))
+
+# The English catalog: every message, and both forms of a plural one. A
+# placeholder ({name}) is not prose, so it is stripped like an interpolation.
+import json
+catalog = pathlib.Path("web/i18n/locales/en.json")
+for key, value in json.loads(catalog.read_text()).items():
+    if key.startswith("_"):
+        continue
+    forms = value.values() if isinstance(value, dict) else [value]
+    for text in forms:
+        m = PT.search(INTERPOLATION.sub(" ", text))
+        if m:
+            # Line 1: an annotation wants a number, and the key says where.
+            bad.append((catalog, 1, m.group(0), f"{key}: {text}"[:60]))
 
 if bad:
     for path, n, word, text in bad:
