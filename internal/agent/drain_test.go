@@ -61,6 +61,52 @@ func TestADrainingAgentRefusesAStartAndReservesNothing(t *testing.T) {
 	}
 }
 
+// The refusal names itself, and closes the connection (#146).
+//
+// A 503 alone is also what a balancer with nobody behind it answers, and the
+// engine treats the two differently: a draining agent has a replica that
+// would run the step. And the connection is closed so that no client -- the
+// engine's keep-alive above all -- sends the next start down the same one, to
+// the same agent, which is how a pool with a healthy replica failed ten runs.
+func TestADrainingRefusalSaysSoAndClosesTheConnection(t *testing.T) {
+	a := agent.New(agent.Options{Shell: []string{"/bin/sh", "-c"}})
+	srv := httptest.NewServer(a.Handler(quiet()))
+	t.Cleanup(srv.Close)
+
+	a.Drain()
+
+	resp := post(t, srv.URL+"/v1/exec", remote.StartRequest{
+		Protocol: remote.Protocol, ExecutionID: "d1", NodeID: "step", Command: "true",
+	})
+	if got := resp.Header.Get(remote.HeaderRefusal); got != remote.RefusalDraining {
+		t.Errorf("%s = %q, wanted %q", remote.HeaderRefusal, got, remote.RefusalDraining)
+	}
+	if !resp.Close {
+		t.Error("the connection was left open for the next start")
+	}
+}
+
+// Only the draining refusal says it: one about the request is not a reason to
+// try another agent, and leaves the connection alone.
+func TestAnotherRefusalIsNotMarkedDraining(t *testing.T) {
+	a := agent.New(agent.Options{Shell: []string{"/bin/sh", "-c"}})
+	srv := httptest.NewServer(a.Handler(quiet()))
+	t.Cleanup(srv.Close)
+
+	resp := post(t, srv.URL+"/v1/exec", remote.StartRequest{
+		Protocol: remote.Protocol + 1, ExecutionID: "d1", NodeID: "step", Command: "true",
+	})
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("a start in another protocol answered %d, wanted 400", resp.StatusCode)
+	}
+	if got := resp.Header.Get(remote.HeaderRefusal); got != "" {
+		t.Errorf("%s = %q on a 400, wanted none", remote.HeaderRefusal, got)
+	}
+	if resp.Close {
+		t.Error("a 400 closed the connection")
+	}
+}
+
 // The probe says so too, still without a token: a load balancer in front of a
 // pool stops sending starts here, which is cheaper than each one being refused.
 func TestHealthSaysDrainingToAProbeCarryingNoToken(t *testing.T) {
