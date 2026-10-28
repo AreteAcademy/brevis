@@ -28,6 +28,9 @@
 #     COMMENTS are checked like any other: excluding the whole file was too
 #     broad, and it hid a Portuguese comment in process_test.go for a day.
 #   - *_templ.go. Generated; fix the .templ and regenerate.
+#   - The console's message catalogs, web/i18n/locales/*.json. JSON is not an
+#     extension this reads; the English one is checked by ui-language-check,
+#     and pt-BR.json and es.json are Portuguese and Spanish on purpose.
 #   - The on-disk and wire formats listed in CONTRIBUTING.md -- the graph
 #     payload keys dag.js reads, postgres.Stage's tags, the migrations'
 #     columns, the checkpoint depot's file names. They are data, not prose,
