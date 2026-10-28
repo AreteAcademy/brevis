@@ -412,6 +412,7 @@ templ sidebar(active string, brand branding.Brand) {
 					@components.Icon("keyboard", "h-4 w-4")
 				</button>
 			</span>
+			@langSwitch()
 			@themeSwitch()
 		</div>
 	</aside>
@@ -439,6 +440,43 @@ templ themeSwitch() {
 			<span class="theme-to-dark">@components.Icon("moon", "h-4 w-4")</span>
 		</button>
 	</span>
+}
+
+// langSwitch chooses the console's language. A <details> menu of three
+// submit buttons in one form, so it needs no script at all: the server
+// remembers the choice and comes back to this page. ui.js closes it on Escape
+// and on a click elsewhere, as it does every [data-popover]. Each language is
+// named in itself and carries its own lang, so a screen reader says it right.
+templ langSwitch() {
+	{{ current := i18n.Lang(ctx) }}
+	<details class="relative shrink-0" data-popover>
+		<summary
+			aria-label={ i18n.T(ctx, "lang.label") }
+			data-tip={ i18n.T(ctx, "lang.label") }
+			class="flex h-8 cursor-pointer list-none items-center gap-1 rounded-card px-1.5 text-[0.72rem] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+		>
+			@components.Icon("globe", "h-4 w-4")
+			{ i18n.Codes[current] }
+		</summary>
+		<form method="post" action="/preferences/lang" data-lang-form class="absolute right-0 bottom-full z-20 mb-1 w-40 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-warm">
+			<input type="hidden" name="next" value={ requestURI(ctx) }/>
+			for _, lang := range i18n.Langs {
+				<button
+					type="submit"
+					name="lang"
+					value={ lang }
+					lang={ lang }
+					if lang == current {
+						aria-current="true"
+					}
+					class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[current=true]:text-ink"
+				>
+					<span>{ i18n.Names[lang] }</span>
+					<span class="font-mono text-[0.7rem] text-faint">{ i18n.Codes[lang] }</span>
+				</button>
+			}
+		</form>
+	</details>
 }
 
 templ navLink(s section, active string) {
@@ -568,7 +606,7 @@ templ toasts() {
 
 // paletteIcons are the glyphs the palette's rows are drawn with: the
 // sections' own, and one per kind of thing it lists.
-var paletteIcons = []string{"layout-grid", "workflow", "history", "database", "plug", "terminal", "folder", "sun"}
+var paletteIcons = []string{"layout-grid", "workflow", "history", "database", "plug", "terminal", "folder", "sun", "globe"}
 
 // palette is the command palette: a native <dialog>, closed, that ui.js opens
 // on Cmd/Ctrl-K and fills from /api/palette.

@@ -260,6 +260,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	// Effects by POST, not GET: a link that pauses a schedule would be fired by
 	// any browser prefetch or link crawler.
 	mux.HandleFunc("POST /workflows/{slug}/toggle", u.toggle)
+	mux.HandleFunc("POST /preferences/lang", u.chooseLang)
 	mux.HandleFunc("POST /workflows/{slug}/trigger", u.disparar)
 
 	// The JSON the React island fetches. It sits under /api so the URL makes
@@ -776,6 +777,8 @@ func paletteEntry(group, label, hint, href, icon string) paletteItem {
 // with each page that opens the palette.
 func (u *UI) palette(w http.ResponseWriter, r *http.Request) {
 	ctx := layouts.WithSQL(r.Context(), u.preview.Configured())
+	// In the reader's language, like the page that asked for it.
+	ctx = i18n.WithLang(ctx, i18n.Negotiate(r))
 	items := []paletteItem{}
 	for _, s := range layouts.Sections(ctx) {
 		items = append(items, paletteEntry("Sections", s.Name, s.Group, s.Href, s.Icon))
@@ -785,6 +788,11 @@ func (u *UI) palette(w http.ResponseWriter, r *http.Request) {
 	theme := paletteEntry("Actions", "Toggle theme", "dark or light", "#", "sun")
 	theme.Action = "toggle-theme"
 	items = append(items, theme)
+	for _, lang := range i18n.Langs {
+		it := paletteEntry("Actions", i18n.T(ctx, "palette.lang", "name", i18n.Names[lang]), i18n.Codes[lang], "#", "globe")
+		it.Action = "set-lang:" + lang
+		items = append(items, it)
+	}
 	if u.leitura != nil {
 		wfs, err := u.leitura.Workflows(ctx)
 		if err != nil {
@@ -1593,10 +1601,22 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	ctx := layouts.WithSQL(branding.IntoContext(r.Context(), u.brand), u.preview.Configured())
 	ctx = layouts.WithTheme(ctx, r)
 	ctx = i18n.WithLang(ctx, i18n.Negotiate(r))
+	ctx = layouts.WithRequestURI(ctx, r.URL.RequestURI())
 	ctx = layouts.TakeFlash(ctx, w, r)
 	if err := c.Render(ctx, w); err != nil {
 		u.log.Error("rendering the page", "path", r.URL.Path, "error", err)
 	}
+}
+
+// chooseLang remembers the reader's language and goes back to the page they
+// were on. A plain form POST, so it works with no script; `next` goes through
+// auth.Target, the login's own guard against an open redirect.
+func (u *UI) chooseLang(w http.ResponseWriter, r *http.Request) {
+	if !i18n.Remember(w, r.FormValue("lang")) {
+		http.Error(w, "unknown language", http.StatusBadRequest)
+		return
+	}
+	http.Redirect(w, r, auth.Target(r.FormValue(auth.NextParam)), http.StatusSeeOther)
 }
 
 // fragment is the part of a page a request asks for alone, from the

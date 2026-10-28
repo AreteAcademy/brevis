@@ -65,3 +65,23 @@ func byLanguage(tag string) string {
 	}
 	return ""
 }
+
+// Names are each language in itself -- "Português", not "Portuguese" -- so a
+// reader finds their own whatever the page is in.
+var Names = map[string]string{"en": "English", "pt-BR": "Português", "es": "Español"}
+
+// Codes are the short form the sidebar shows.
+var Codes = map[string]string{"en": "EN", "pt-BR": "PT", "es": "ES"}
+
+// Remember writes the reader's choice for a year, and says whether lang is
+// one the console speaks; it writes nothing when it is not.
+func Remember(w http.ResponseWriter, lang string) bool {
+	if _, ok := Names[lang]; !ok {
+		return false
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name: Cookie, Value: lang, Path: "/",
+		MaxAge: 365 * 24 * 3600, SameSite: http.SameSiteLaxMode,
+	})
+	return true
+}
