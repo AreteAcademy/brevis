@@ -1,7 +1,3 @@
-// Package diagnosis reads a run's logs for what went wrong: the line that
-// says why a step stopped, the level of every line, and where the first error
-// is. Pure functions over text the engine already stored -- computed when a
-// screen asks, so a better rule applies to every run ever recorded.
 package diagnosis
 
 import (

@@ -62,6 +62,20 @@ states' words, relative times, dates and numbers, and the sign-in page.
   redesigned.
 - The Spanish catalog is marked for a native speaker's review.
 
+### Added: what failed, and since when
+
+- **Runs counts the workflows failing** on every page: those whose last
+  finished run failed, paused ones included. A screen reader hears it as a
+  sentence. The count is read at most every 15 seconds.
+- **A run's whole log downloads as one text file**, `GET
+  /runs/{id}/log.txt`, linked from the run's step output: every attempt of
+  every step in the order they ran, each under a header with its state and
+  exit code. Behind the same login as every page.
+- Underneath, for the redesigned Runs and Overview screens: the line that
+  says why a run failed, the level of every log line, and how many times in
+  a row a workflow has failed. All computed when a page asks, so a better
+  rule applies to every run already recorded. The Slack alert is unchanged.
+
 ### Changed
 
 - **The accent is spent in four places**: the primary action, the open

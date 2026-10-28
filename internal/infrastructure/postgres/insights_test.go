@@ -14,7 +14,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/notify"
 )
 
-func insightsDB(t *testing.T) *postgres.Pool {
+func insightsDB(t testing.TB) *postgres.Pool {
 	t.Helper()
 	url := os.Getenv("BREVIS_TEST_DATABASE_URL")
 	if url == "" {

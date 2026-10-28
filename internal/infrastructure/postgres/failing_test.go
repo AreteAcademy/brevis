@@ -134,3 +134,35 @@ func TestLogsDaRunCarriesWhenEachAttemptStarted(t *testing.T) {
 		t.Errorf("StartedAt = %v, %v; want %v and zero", logs[0].StartedAt, logs[1].StartedAt, at)
 	}
 }
+
+// THE BADGE'S PRICE, per page drawn: 1,000 workflows with 50 runs each, a
+// fifth of them failing -- 50 that never passed, 100 on a streak, the rest
+// failing at random. Run with -bench; `make test-int` does not.
+func BenchmarkFailingWorkflows(b *testing.B) {
+	pool := insightsDB(b)
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO projects (id, slug, name) VALUES (gen_random_uuid(), 'bench', 'bench');
+		INSERT INTO workflows (id, project_id, slug, name)
+		SELECT gen_random_uuid(), (SELECT id FROM projects), 'wf_' || g, 'wf_' || g FROM generate_series(1, 1000) g;
+		INSERT INTO runs (id, workflow_slug, idempotency_key, status, definicao, criado_em, terminado_em)
+		SELECT gen_random_uuid(), 'wf_' || w, 'bench-' || w || '-' || d,
+		  CASE
+		    WHEN d = 50 AND w % 97 = 0 THEN 'running'
+		    WHEN d = 49 AND w % 89 = 0 THEN 'canceled'
+		    WHEN w BETWEEN 901 AND 950 THEN 'failed'
+		    WHEN w <= 100 AND d > 50 - (w % 10 + 1) THEN 'failed'
+		    WHEN random() < 0.05 THEN 'failed'
+		    ELSE 'success' END,
+		  '{}', now() - (50 - d) * interval '1 day', now() - (50 - d) * interval '1 day' + interval '3 minutes'
+		FROM generate_series(1, 1000) w, generate_series(1, 50) d;
+		ANALYZE runs; ANALYZE workflows`); err != nil {
+		b.Fatal(err)
+	}
+	repo := postgres.NewRunRepo(pool)
+	for b.Loop() {
+		if _, err := repo.FailingWorkflows(ctx); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
