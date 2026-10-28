@@ -45,6 +45,7 @@
   "palette.open_run": "Open run {id}…",
   "palette.placeholder": "Search workflows, destinations, endpoints…",
   "palette.results": "Results",
+  "run.download_log": "Download log",
   "shell.account": "Account",
   "shell.breadcrumb": "Breadcrumb",
   "shell.docs": "Documentation",

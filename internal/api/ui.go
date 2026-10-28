@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -14,9 +15,11 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/AreteAcademy/brevis/internal/alerts"
 	"github.com/AreteAcademy/brevis/internal/auth"
@@ -269,6 +272,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /runs/{id}/live", u.runLive)
 	mux.HandleFunc("GET /workflows/{slug}", u.workflow)
 	mux.HandleFunc("GET /runs/{id}", u.run)
+	mux.HandleFunc("GET /runs/{id}/log.txt", u.runLog)
 
 	// Effects by POST, not GET: a link that pauses a schedule would be fired by
 	// any browser prefetch or link crawler.
@@ -1416,6 +1420,67 @@ func (u *UI) run(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	u.render(w, r, pages.Run(p))
+}
+
+// runLog is the run's whole log as one text file: every attempt of every
+// step, in the order they ran, each under a header that says which it is and
+// how it ended. The file to keep, or to send to whoever owns the step.
+func (u *UI) runLog(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "not a run id", http.StatusBadRequest)
+		return
+	}
+	current, err := u.execs.Get(r.Context(), id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	logs, err := u.execs.LogsDaRun(r.Context(), id)
+	if err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Disposition",
+		`attachment; filename="`+fileSafe(current.WorkflowSlug)+"-"+id.String()[:8]+`.log"`)
+	var b strings.Builder
+	for i, l := range logs {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		step := l.NodeID
+		if l.MapIndex != run.Unmapped {
+			step += "[" + strconv.Itoa(l.MapIndex) + "]"
+		}
+		// Attempts are stored from 0; a reader counts from 1.
+		fmt.Fprintf(&b, "== %s · attempt %d · %s", step, l.Attempt+1, l.Status)
+		if l.ExitCode != nil {
+			fmt.Fprintf(&b, " · exit %d", *l.ExitCode)
+		}
+		b.WriteString("\n")
+		for _, text := range []string{l.Log, l.Err} {
+			if text != "" {
+				b.WriteString(strings.TrimSuffix(text, "\n") + "\n")
+			}
+		}
+	}
+	_, _ = io.WriteString(w, b.String())
+}
+
+// fileSafe keeps a file name to letters, digits, '-', '_' and '.': a slug is
+// the author's text, and a quote or a newline would break the header.
+func fileSafe(s string) string {
+	return strings.Map(func(c rune) rune {
+		if c < utf8.RuneSelf && (unicode.IsLetter(c) || unicode.IsDigit(c) || strings.ContainsRune("-_.", c)) {
+			return c
+		}
+		return '_'
+	}, s)
 }
 
 // runLive returns the run's two changing regions, already rendered.

@@ -52,6 +52,7 @@ type execsFake struct {
 	err     error
 	wait    *postgres.Wait
 	waitErr error
+	logs    []postgres.StepLog
 }
 
 func (e execsFake) WaitingOn(context.Context, uuid.UUID) (*postgres.Wait, error) {
@@ -60,7 +61,7 @@ func (e execsFake) WaitingOn(context.Context, uuid.UUID) (*postgres.Wait, error)
 
 func (e execsFake) Get(context.Context, uuid.UUID) (dom.Run, error) { return e.run, e.err }
 func (e execsFake) LogsDaRun(context.Context, uuid.UUID) ([]postgres.StepLog, error) {
-	return nil, nil
+	return e.logs, nil
 }
 
 func (e execsFake) NodeStates(context.Context, uuid.UUID) (map[string]postgres.NodeState, error) {
