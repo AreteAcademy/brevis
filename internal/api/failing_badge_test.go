@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AreteAcademy/brevis/internal/api"
 	"github.com/AreteAcademy/brevis/internal/branding"
@@ -78,5 +79,42 @@ func TestABadgeThatCannotBeReadIsLoggedAndLeftOut(t *testing.T) {
 	}
 	if !strings.Contains(logged.String(), "connection refused") {
 		t.Errorf("the error was not logged: %q", logged.String())
+	}
+}
+
+type countingFailing struct {
+	reads *int
+	err   error
+}
+
+func (c countingFailing) FailingWorkflows(context.Context) ([]postgres.FailingWorkflow, error) {
+	*c.reads++
+	return make([]postgres.FailingWorkflow, *c.reads), c.err
+}
+
+// THE COUNT IS READ AT MOST ONCE PER TTL: it costs ~6 ms with a thousand
+// workflows, and every page draws it. An answer is kept for the TTL; an
+// error is not, so the next page tries again.
+func TestTheFailingCountIsKeptForItsTTL(t *testing.T) {
+	reads, now := 0, time.Date(2026, 10, 28, 3, 0, 0, 0, time.UTC)
+	cached := api.CachedFailing(countingFailing{reads: &reads}, 15*time.Second, func() time.Time { return now })
+	ctx := context.Background()
+
+	a, _ := cached.FailingWorkflows(ctx)
+	now = now.Add(14 * time.Second)
+	b, _ := cached.FailingWorkflows(ctx)
+	if reads != 1 || len(a) != 1 || len(b) != 1 {
+		t.Errorf("within the TTL: %d reads, answers %d and %d; want 1 read", reads, len(a), len(b))
+	}
+	now = now.Add(2 * time.Second)
+	if c, _ := cached.FailingWorkflows(ctx); reads != 2 || len(c) != 2 {
+		t.Errorf("after the TTL: %d reads, answer %d; want a second read", reads, len(c))
+	}
+
+	failing := 0
+	broken := api.CachedFailing(countingFailing{reads: &failing, err: errors.New("down")}, 15*time.Second, func() time.Time { return now })
+	_, _ = broken.FailingWorkflows(ctx)
+	if _, err := broken.FailingWorkflows(ctx); err == nil || failing != 2 {
+		t.Errorf("an error was kept: %d reads, err %v", failing, err)
 	}
 }
