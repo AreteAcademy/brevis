@@ -131,6 +131,8 @@ brevis scheduler --interval 5s --concurrency 4 --max-pods 10
 | `--max-attempts` | int | `3` | attempts per **run**, counting the first |
 | `--retry-backoff` | duration | `30s` | first delay between attempts, doubled on each one after it |
 | `--retry-backoff-max` | duration | `1h` | ceiling for that delay |
+| `--drain-wait` | duration | `1h` | how long a run every draining agent refused waits in the queue **without spending an attempt**; `0` spends one at once |
+| `--drain-requeue-delay` | duration | `30s` | delay before such a run is tried again |
 
 With the defaults a failed run is attempted at **0s, 30s and 1m30s**, and the
 process says so at boot rather than leaving it to be composed from two numbers:
@@ -142,6 +144,14 @@ scheduler and dispatcher are up  max_attempts=3 retry_backoff=30s retry_at="0s, 
 The retry is per **run**, and it re-runs only the steps that failed. A
 rate-limited vendor API usually wants longer: `--retry-backoff 1m` puts the
 attempts at 0s, 1m and 3m.
+
+A run that **nothing started** is not a failure: when every agent of a `host:`
+pool refuses a step because it is draining, the run goes back to the queue
+with no attempt spent and no alert, and is tried again after
+`--drain-requeue-delay`. It waits that way for `--drain-wait`, counted from
+the first refusal; past it the pool is down rather than draining, and the
+attempt and the alert are spent as for any failure — see
+[KUBERNETES.md](KUBERNETES.md#when-the-agent-stops).
 
 `--concurrency` and `--max-pods` count different things, and that is deliberate:
 five runs with three parallel steps each would mean fifteen pods if the run

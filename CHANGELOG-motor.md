@@ -76,6 +76,25 @@ states' words, relative times, dates and numbers, and the sign-in page.
   a row a workflow has failed. All computed when a page asks, so a better
   rule applies to every run already recorded. The Slack alert is unchanged.
 
+### Fixed: a draining agent in a pool no longer fails runs (#146)
+
+A start refused by a draining agent behind a pool's Service name went back to
+the same agent, down the kept-alive connection, and every refusal spent one of
+the run's attempts. Runs failed while a healthy replica stood beside it.
+
+- **The refused start goes to another replica.** The engine resolves the name
+  itself and tries an address that refused for draining last, for 30 seconds.
+  The agent says `Brevis-Refusal: draining` and closes the connection; an agent
+  from 0.38 is recognised by its message. A bare `503` is still a failure.
+- **The engine speaks HTTP/1.1 to agents**, so no start waits on a connection
+  another step's stream holds.
+- **A step nobody started spends nothing.** When every replica is draining,
+  the step's attempts are kept, and the run goes back to the queue with no
+  attempt spent and no alert, for at most `--drain-wait` (default `1h`), tried
+  again every `--drain-requeue-delay` (default `30s`). Past the wait the
+  attempt is spent as before. `--drain-wait 0` spends it at once.
+- Migration `00028` adds `runs.draining_since`.
+
 ### Changed
 
 - **The accent is spent in four places**: the primary action, the open

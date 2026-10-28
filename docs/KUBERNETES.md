@@ -247,6 +247,30 @@ which cannot run it twice: a start that did arrive makes the next one "already
 running". Resumes and cancels are not retried that way; they belong to the agent
 holding the step.
 
+**A start refused for draining goes to another replica.** The engine resolves
+the Service's name itself and dials its addresses in turn, so a pool is not
+one address behind a kept-alive connection. A draining agent answers a start
+`503` with `Brevis-Refusal: draining` and closes the connection; the engine
+then sends that start, and the next ones for 30 seconds, to the other
+replicas, and tries the draining one last. A step reaches a draining pod at
+most once per drain. An agent from 0.38, which sends no header, is recognised
+by its message. Only an explicit draining refusal counts: a bare `503`, from a
+balancer with nobody behind it, is a host that is down.
+
+The engine talks to agents over HTTP/1.1. A connection carries one exchange at
+a time, so a start is never stuck on a connection held by another step's
+stream to the draining pod.
+
+**When every replica is draining**, the step was not started, and nothing is
+spent on it: the step's own attempts are not used, and the run goes back to
+the queue without spending one of its own and without an alert, to be tried
+again after `--drain-requeue-delay` (30s). It waits that way for at most
+`--drain-wait` (1h) from the first refusal; past that the pool counts as down,
+and the run fails its attempt as before, its error saying how long it waited.
+`--drain-wait 0` spends the attempt at once. A step that failed for real
+beside one that was refused makes the run an ordinary failure. See
+[COMMANDS.md](COMMANDS.md).
+
 **What a drain does not cover, `--state-dir` does.** A drain only happens on a
 SIGTERM. An agent that crashes, is OOM-killed or loses its node never drains,
 and a step that finished there with nobody reading it would be answered
