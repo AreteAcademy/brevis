@@ -30,7 +30,7 @@ func triggered(t *testing.T, tr wf.Trigger) (*scheduler.Scheduler, *postgres.Poo
 	if err := wRepo.Publicar(ctx, wf.Workflow{
 		Slug: "silver", Name: "silver", Kind: wf.KindChain,
 		Nodes: []wf.Node{{ID: "a", Run: "brevis-sql build"}}, Trigger: tr,
-	}, projeto); err != nil {
+	}, projeto, "test"); err != nil {
 		t.Fatal(err)
 	}
 	s := scheduler.NewScheduler(postgres.NewScheduleRepo(pool), wRepo,

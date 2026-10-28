@@ -37,10 +37,10 @@ func TestAPartialPublishMeetsTheGroupsPublishedMembers(t *testing.T) {
 	ctx := context.Background()
 	repo := postgres.NewWorkflowRepo(pool)
 	p := projectNamed(t, pool, "p")
-	if err := repo.Publicar(ctx, groupedWorkflow("daily", "jaffle_models", 1), p); err != nil {
+	if err := repo.Publicar(ctx, groupedWorkflow("daily", "jaffle_models", 1), p, "test"); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Publicar(ctx, groupedWorkflow("loose", "", 3), p); err != nil {
+	if err := repo.Publicar(ctx, groupedWorkflow("loose", "", 3), p, "test"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -64,7 +64,7 @@ func TestAWorkflowBeingRepublishedIsNotItsOwnRival(t *testing.T) {
 	ctx := context.Background()
 	repo := postgres.NewWorkflowRepo(pool)
 	p := projectNamed(t, pool, "p")
-	if err := repo.Publicar(ctx, groupedWorkflow("daily", "jaffle_models", 1), p); err != nil {
+	if err := repo.Publicar(ctx, groupedWorkflow("daily", "jaffle_models", 1), p, "test"); err != nil {
 		t.Fatal(err)
 	}
 	others, err := repo.PublishedGroupMembers(ctx, p, []string{"daily"}, false)
@@ -83,10 +83,10 @@ func TestPruneLeavesOnlyOtherProjectsMembers(t *testing.T) {
 	ctx := context.Background()
 	repo := postgres.NewWorkflowRepo(pool)
 	p, q := projectNamed(t, pool, "p"), projectNamed(t, pool, "q")
-	if err := repo.Publicar(ctx, groupedWorkflow("daily", "jaffle_models", 1), p); err != nil {
+	if err := repo.Publicar(ctx, groupedWorkflow("daily", "jaffle_models", 1), p, "test"); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Publicar(ctx, groupedWorkflow("theirs", "jaffle_models", 1), q); err != nil {
+	if err := repo.Publicar(ctx, groupedWorkflow("theirs", "jaffle_models", 1), q, "test"); err != nil {
 		t.Fatal(err)
 	}
 	others, err := repo.PublishedGroupMembers(ctx, p, []string{"every_15"}, true)

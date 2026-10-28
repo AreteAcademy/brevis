@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/AreteAcademy/brevis/internal/domain/events"
 )
@@ -257,4 +258,20 @@ func (r *EventRepo) RecentEvents(ctx context.Context, q EventQuery) ([]Event, st
 		return out, cursor{At: last.At, Rank: last.rank, Key: key}.String(), nil
 	}
 	return out, "", nil
+}
+
+// recordEvent writes an event in the action's own transaction: an action
+// without its event, or the reverse, would be the feed lying. Unexported on
+// purpose -- an event is only ever the side of an action.
+//
+// detail holds names, counts and flags only, never a configuration.
+func recordEvent(ctx context.Context, tx pgx.Tx, kind events.Kind, subject, actor string, detail map[string]any) error {
+	raw, err := json.Marshal(detail)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO events (kind, subject, actor, detail) VALUES ($1, $2, $3, $4)`,
+		kind, subject, actor, raw)
+	return err
 }
