@@ -567,7 +567,7 @@ func cmdPublish() *cobra.Command {
 
 			published := make([]string, 0, len(resolved))
 			for _, w := range resolved {
-				if err := repo.Publicar(ctx, w, idProjeto); err != nil {
+				if err := repo.Publicar(ctx, w, idProjeto, "cli"); err != nil {
 					return err
 				}
 				fmt.Printf("  published  %-24s %s\n", w.Slug, schedule(w.Schedule))
@@ -575,7 +575,7 @@ func cmdPublish() *cobra.Command {
 			}
 
 			if podar {
-				removed, err := repo.Podar(ctx, idProjeto, published)
+				removed, err := repo.Podar(ctx, idProjeto, published, "cli")
 				if err != nil {
 					return err
 				}

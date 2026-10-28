@@ -32,7 +32,7 @@ func TestEveryRunOfAGroupedWorkflowCarriesTheGroup(t *testing.T) {
 		Slug: "diario", Name: "diario", Kind: wf.KindChain, Schedule: "0 2 * * *",
 		MaxActive: 1, Group: "jaffle_models",
 		Nodes: []wf.Node{{ID: "a", Run: "echo ok"}},
-	}, projeto); err != nil {
+	}, projeto, "test"); err != nil {
 		t.Fatal(err)
 	}
 	runs := postgres.NewRunRepo(pool)
