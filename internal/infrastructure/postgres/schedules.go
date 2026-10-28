@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/AreteAcademy/brevis/internal/domain/events"
 	sch "github.com/AreteAcademy/brevis/internal/domain/schedule"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 )
@@ -203,23 +204,45 @@ func (r *ScheduleRepo) Active(ctx context.Context) ([]sch.Schedule, error) {
 // Pausing does NOT cancel what is already queued: materialized runs are accepted
 // work, and discarding them on a pause would surprise somebody who only wanted
 // to stop creating new ones.
-func (r *ScheduleRepo) SetActive(ctx context.Context, slug string, active1 bool) (bool, error) {
-	var resultado bool
-	err := r.pool.QueryRow(ctx, `
-		UPDATE schedules SET ativo = $2, atualizado_em = now()
-		WHERE workflow_slug = $1
-		RETURNING ativo`, slug, active1).Scan(&resultado)
-	return resultado, err
+//
+// actor is who did it, for the events feed: the console's operator, or "cli".
+func (r *ScheduleRepo) SetActive(ctx context.Context, slug string, active1 bool, actor string) (bool, error) {
+	return r.flip(ctx, "$3", "s.ativo IS DISTINCT FROM $3", slug, actor, active1)
 }
 
-// Alternar flips the current state in a single round trip to the database.
-func (r *ScheduleRepo) Toggle(ctx context.Context, slug string) (bool, error) {
-	var resultado bool
+// Toggle flips the current state in a single round trip to the database.
+func (r *ScheduleRepo) Toggle(ctx context.Context, slug, actor string) (bool, error) {
+	return r.flip(ctx, "NOT s.ativo", "true", slug, actor)
+}
+
+// flip sets the schedule's state to `to` when `changes` holds -- both SQL
+// over the current row -- and records the change in the events feed IN THE
+// SAME STATEMENT: a pause without its event, or the reverse, would be the
+// feed lying.
+//
+// The UPDATE decides whether anything changed, not a read before it: under
+// two operators clicking at once, Postgres re-checks an UPDATE's condition
+// against the row the other one left, where a read in the same statement
+// would still see the old one. When nothing changes, nothing is recorded and
+// the current state is returned.
+func (r *ScheduleRepo) flip(ctx context.Context, to, changes, slug, actor string, args ...any) (bool, error) {
+	var on bool
 	err := r.pool.QueryRow(ctx, `
-		UPDATE schedules SET ativo = NOT ativo, atualizado_em = now()
-		WHERE workflow_slug = $1
-		RETURNING ativo`, slug).Scan(&resultado)
-	return resultado, err
+		WITH after AS (
+		    UPDATE schedules s SET ativo = `+to+`, atualizado_em = now()
+		    WHERE s.workflow_slug = $1 AND `+changes+`
+		    RETURNING s.ativo
+		), recorded AS (
+		    INSERT INTO events (kind, subject, actor)
+		    SELECT CASE WHEN ativo THEN '`+string(events.ScheduleResumed)+`'
+		                ELSE '`+string(events.SchedulePaused)+`' END, $1, $2
+		    FROM after
+		)
+		SELECT ativo FROM after
+		UNION ALL
+		SELECT ativo FROM schedules WHERE workflow_slug = $1 AND NOT EXISTS (SELECT 1 FROM after)`,
+		append([]any{slug, actor}, args...)...).Scan(&on)
+	return on, err
 }
 
 func (r *ScheduleRepo) AdvanceSlot(ctx context.Context, slug string, slot time.Time) error {
