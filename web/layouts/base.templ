@@ -1,6 +1,7 @@
 package layouts
 
 import (
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/AreteAcademy/brevis/internal/auth"
 	"github.com/AreteAcademy/brevis/internal/branding"
 	"github.com/AreteAcademy/brevis/web/assets"
@@ -103,7 +104,7 @@ type Island struct {
 templ Base(p Page) {
 	{{ brand := branding.De(ctx) }}
 	<!DOCTYPE html>
-	<html lang="en" class="h-full" data-theme={ Theme(ctx) }>
+	<html lang={ i18n.Lang(ctx) } class="h-full" data-theme={ Theme(ctx) }>
 		<head>
 			// THE PAGE KNOWS A SCRIPT WILL RUN BEFORE IT IS DRAWN. One line,
 			// first in the head and so ahead of any paint: `js` on <html> is

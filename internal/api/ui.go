@@ -30,6 +30,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 	"github.com/AreteAcademy/brevis/web/assets"
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/AreteAcademy/brevis/web/layouts"
 	"github.com/AreteAcademy/brevis/web/pages"
 )
@@ -1591,6 +1592,7 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	// signature.
 	ctx := layouts.WithSQL(branding.IntoContext(r.Context(), u.brand), u.preview.Configured())
 	ctx = layouts.WithTheme(ctx, r)
+	ctx = i18n.WithLang(ctx, i18n.Negotiate(r))
 	ctx = layouts.TakeFlash(ctx, w, r)
 	if err := c.Render(ctx, w); err != nil {
 		u.log.Error("rendering the page", "path", r.URL.Path, "error", err)
