@@ -46,6 +46,7 @@
   "palette.open_run": "Abrir la ejecución {id}…",
   "palette.placeholder": "Buscar workflows, destinos, endpoints…",
   "palette.results": "Resultados",
+  "run.download_log": "Descargar log",
   "shell.account": "Cuenta",
   "shell.breadcrumb": "Dónde estás",
   "shell.docs": "Documentación",
