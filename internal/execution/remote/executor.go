@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strings"
 	"sync"
@@ -582,6 +583,11 @@ type HTTPAgent struct {
 	// nothing (#136); its length + 1 is how many tries. Nil takes
 	// defaultStartBackoff. A test passes milliseconds.
 	StartBackoff []time.Duration
+
+	// Replicas reaches a pool behind one name, and steers a start away from a
+	// replica that refused one for draining (#146). Nil dials the name as the
+	// system resolves it, which is one agent at one address.
+	Replicas *Replicas
 }
 
 // defaultStartBackoff: five tries over about fifteen seconds. Long enough for a
@@ -611,6 +617,9 @@ func (a HTTPAgent) client() *http.Client {
 	if a.Client != nil {
 		return a.Client
 	}
+	if a.Replicas != nil {
+		return a.Replicas.client()
+	}
 	// No overall timeout: a step legitimately runs for hours, and a client
 	// timeout would cut it at an arbitrary point. What catches a dead agent is
 	// the lease, which measures silence rather than duration.
@@ -636,9 +645,19 @@ func (a HTTPAgent) Start(ctx context.Context, r StartRequest) (Session, error) {
 		backoff = defaultStartBackoff
 	}
 	for try := 0; ; try++ {
-		stream, instance, err := a.send(ctx, a.BaseURL, "/v1/exec", r)
+		// Which address answered, for a pool to try the others next when it
+		// refused for draining (#146). Read from the connection, because the
+		// name the request went to is the whole pool's.
+		var at string
+		traced := httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
+			GotConn: func(c httptrace.GotConnInfo) { at = c.Conn.RemoteAddr().String() },
+		})
+		stream, instance, err := a.send(traced, a.BaseURL, "/v1/exec", r)
 		if err == nil {
 			return Session{Instance: instance, Stream: stream}, nil
+		}
+		if a.Replicas != nil && errors.Is(err, ErrAgentDraining) {
+			a.Replicas.drained(at)
 		}
 		if try == len(backoff) || !ranNothing(err) {
 			return Session{}, err
