@@ -377,9 +377,7 @@ func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 			if ctx.Err() != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
 				stopped = true
 			}
-			if firstFailure == nil {
-				firstFailure = fmt.Errorf("level %d: %w", i+1, err)
-			}
+			firstFailure = worse(firstFailure, fmt.Errorf("level %d: %w", i+1, err))
 		}
 	}
 	// Returning firstFailure here was #122: a cancel between levels found
@@ -535,10 +533,26 @@ func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string,
 		settle()
 	}
 
-	if len(errs) > 0 {
-		return errs[0]
+	var worst error
+	for _, err := range errs {
+		worst = worse(worst, err)
 	}
-	return nil
+	return worst
+}
+
+// worse is the failure a run reports of two: the first, unless it was a step
+// nobody started and the second is a step that failed (#146). A run is sent
+// back to wait for a drain only when nothing in it failed for real; a real
+// failure spends the attempt and raises the alert, whatever else happened
+// beside it.
+func worse(first, next error) error {
+	if first == nil {
+		return next
+	}
+	if next != nil && errors.Is(first, execution.ErrNotStarted) && !errors.Is(next, execution.ErrNotStarted) {
+		return next
+	}
+	return first
 }
 
 // fail records a step that could not even start: a gate that could not be read,
@@ -848,6 +862,13 @@ func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node, inst inst
 			return nil
 		}
 		if t == attempts {
+			break
+		}
+		// Nothing ran (#146): asking the same pool again in a few seconds
+		// spends attempts on a drain, not on the step. The run carries the
+		// reason up, and the dispatcher, which can wait without holding a
+		// slot, decides.
+		if errors.Is(last, execution.ErrNotStarted) {
 			break
 		}
 		// Does not insist once the context is gone: that would be a retry against a cancellation.

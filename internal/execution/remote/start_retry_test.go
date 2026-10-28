@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/execution"
 	"github.com/AreteAcademy/brevis/internal/execution/remote"
 )
 
@@ -127,6 +128,30 @@ func TestABare503IsNotDraining(t *testing.T) {
 	err := startOn(context.Background(), srv.URL)
 	if err == nil || errors.Is(err, remote.ErrAgentDraining) {
 		t.Fatalf("Start = %v, wanted an error that is not ErrAgentDraining", err)
+	}
+}
+
+// A step every agent refused for draining was not started, and the executor
+// says so in the one word the runner and the dispatcher read (#146). A bare
+// 503 does not: a host that is down is a failure.
+func TestAStepRefusedForDrainingIsNotStarted(t *testing.T) {
+	for _, c := range []struct {
+		header, body string
+		notStarted   bool
+	}{
+		{remote.RefusalDraining, "this agent is draining", true},
+		{"", "no healthy upstream", false},
+	} {
+		srv := refusing(t, c.header, c.body)
+		e := &remote.Executor{Host: "pool", Agent: remote.HTTPAgent{BaseURL: srv.URL, StartBackoff: fast}}
+		_, err := e.Execute(context.Background(), execution.TaskExec{
+			ExecutionID: "e", NodeID: "load", Command: "load.sh"})
+		if err == nil {
+			t.Fatalf("%q: Execute succeeded against a 503", c.body)
+		}
+		if got := errors.Is(err, execution.ErrNotStarted); got != c.notStarted {
+			t.Errorf("%q: ErrNotStarted is %v, wanted %v: %v", c.body, got, c.notStarted, err)
+		}
 	}
 }
 

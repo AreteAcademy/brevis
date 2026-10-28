@@ -127,6 +127,13 @@ func (e *Executor) Execute(ctx context.Context, t execution.TaskExec) (<-chan ex
 	session, err := e.Agent.Start(opened, req)
 	if err != nil {
 		stop()
+		if errors.Is(err, ErrAgentDraining) {
+			// Refused by every replica the tries reached, all of them on
+			// their way out: nothing ran, and nothing about the step is wrong
+			// (#146).
+			return nil, fmt.Errorf("the agent on %s refused the step: %w: %w",
+				e.Host, execution.ErrNotStarted, err)
+		}
 		return nil, fmt.Errorf("the agent on %s refused the step: %w", e.Host, err)
 	}
 
