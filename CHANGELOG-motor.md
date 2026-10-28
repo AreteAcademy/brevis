@@ -14,7 +14,7 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
-## [Unreleased]
+## [0.39.0] — 2026-10-28
 
 ### Added: the console's UI 2.0 foundation
 
