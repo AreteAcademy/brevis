@@ -242,7 +242,7 @@ templ accountMenu(operator string, brand branding.Brand) {
 				if operator != "" {
 					<span class="truncate">{ operator }</span>
 				} else {
-					<span class="truncate">Account</span>
+					<span class="truncate">{ i18n.T(ctx, "shell.account") }</span>
 				}
 			</span>
 			// Rotates when the menu opens, which is the only thing that says
@@ -292,7 +292,7 @@ templ accountMenu(operator string, brand branding.Brand) {
 					<path d="M3 2.5h6.5L13 6v7.5H3z"></path>
 					<path d="M9.5 2.5V6H13"></path>
 				</svg>
-				Documentation
+				{ i18n.T(ctx, "shell.docs") }
 			</a>
 			if operator != "" {
 				<form method="post" action="/logout">
@@ -307,7 +307,7 @@ templ accountMenu(operator string, brand branding.Brand) {
 							<path d="M9.5 11l2.5-3-2.5-3"></path>
 							<path d="M12 8H6"></path>
 						</svg>
-						Sign out
+						{ i18n.T(ctx, "shell.sign_out") }
 					</button>
 				</form>
 			}
@@ -343,7 +343,7 @@ templ sidebar(active string, brand branding.Brand) {
 		<a
 			href="#"
 			data-drawer-close
-			aria-label="Close navigation"
+			aria-label={ i18n.T(ctx, "shell.nav_close") }
 			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink min-[860px]:hidden"
 		>
 			@components.Icon("x", "h-4 w-4")
@@ -353,16 +353,16 @@ templ sidebar(active string, brand branding.Brand) {
 		// to go. It opens the list of projects, which is still a page.
 		<div class="px-2.5 pt-3">
 			<a
-				href={ templ.SafeURL(projects.Href) }
+				href={ templ.SafeURL(projectsPlace(ctx).Href) }
 				data-project-switcher
-				data-tip={ projects.Tip }
-				if active == projects.Key {
+				data-tip={ projectsPlace(ctx).Tip }
+				if active == projectsPlace(ctx).Key {
 					aria-current="page"
 				}
 				class="flex h-8 w-full items-center gap-2 rounded-card border border-line px-2.5 text-[0.8rem] text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
 			>
-				@components.Icon(projects.Icon, "h-3.5 w-3.5")
-				<span class="flex-1 truncate">{ projects.Name }</span>
+				@components.Icon(projectsPlace(ctx).Icon, "h-3.5 w-3.5")
+				<span class="flex-1 truncate">{ projectsPlace(ctx).Name }</span>
 				@components.Icon("chevron-right", "h-3.5 w-3.5")
 			</a>
 		</div>
@@ -377,11 +377,11 @@ templ sidebar(active string, brand branding.Brand) {
 				class="flex h-8 w-full items-center gap-2 rounded-card border border-line bg-surface px-2.5 text-[0.8rem] text-muted transition-colors hover:border-line-strong hover:text-ink"
 			>
 				@components.Icon("search", "h-3.5 w-3.5")
-				<span class="flex-1 truncate text-left">Search or jump to…</span>
+				<span class="flex-1 truncate text-left">{ i18n.T(ctx, "shell.search_open") }</span>
 				@components.Kbd("⌘K")
 			</button>
 		</span>
-		<nav aria-label="Sections" class="flex-1 overflow-y-auto px-2.5 py-3">
+		<nav aria-label={ i18n.T(ctx, "shell.sections") } class="flex-1 overflow-y-auto px-2.5 py-3">
 			// A GROUP IS ANNOUNCED AS ONE -- `role="group"` with its name -- so
 			// the label a sighted reader sees in small caps is heard too, and
 			// the visible copy is hidden from a screen reader rather than read
@@ -405,8 +405,8 @@ templ sidebar(active string, brand branding.Brand) {
 				<button
 					type="button"
 					data-dialogo="shortcuts"
-					aria-label="Keyboard shortcuts"
-					data-tip="Keyboard shortcuts (?)"
+					aria-label={ i18n.T(ctx, "shortcuts.title") }
+					data-tip={ i18n.T(ctx, "shortcuts.tip") }
 					class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 				>
 					@components.Icon("keyboard", "h-4 w-4")
@@ -488,13 +488,13 @@ templ topbar(p Page) {
 			data-drawer-open
 			aria-controls="app-sidebar"
 			aria-expanded="false"
-			aria-label="Open navigation"
+			aria-label={ i18n.T(ctx, "shell.nav_open") }
 			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink min-[860px]:hidden"
 		>
 			@components.Icon("menu", "h-4 w-4")
 		</a>
 		if c, ok := where(ctx, p.Active, crumbTitle(p)); ok {
-			<nav aria-label="Breadcrumb" class="flex min-w-0 items-center gap-1.5 text-[0.82rem]">
+			<nav aria-label={ i18n.T(ctx, "shell.breadcrumb") } class="flex min-w-0 items-center gap-1.5 text-[0.82rem]">
 				if c.Group != "" {
 					<span class="shrink-0 text-muted">{ c.Group }</span>
 					<span aria-hidden="true" class="text-faint">/</span>
@@ -524,29 +524,29 @@ templ topbar(p Page) {
 // from the sidebar's foot. The section letters come from the sidebar's own
 // list, so a section that is not drawn has no letter here either.
 templ shortcuts() {
-	@components.Modal("shortcuts", "Keyboard shortcuts", nil) {
+	@components.Modal("shortcuts", i18n.T(ctx, "shortcuts.title"), nil) {
 		<dl class="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2.5 text-[0.85rem]">
-			@shortcutRow("Search, jump to anything, or run an action") {
+			@shortcutRow(i18n.T(ctx, "shortcuts.palette")) {
 				@components.Kbd("⌘K")
 			}
-			@shortcutRow("Focus the list's search") {
+			@shortcutRow(i18n.T(ctx, "shortcuts.search")) {
 				@components.Kbd("/")
 			}
 			for _, s := range goKeys(ctx) {
-				@shortcutRow("Go to " + s.Name) {
+				@shortcutRow(i18n.T(ctx, "shortcuts.go", "name", s.Name)) {
 					@components.Kbd("g")
-					<span class="text-faint">then</span>
+					<span class="text-faint">{ i18n.T(ctx, "shortcuts.then") }</span>
 					@components.Kbd(s.GoKey)
 				}
 			}
-			@shortcutRow("This list") {
+			@shortcutRow(i18n.T(ctx, "shortcuts.list")) {
 				@components.Kbd("?")
 			}
-			@shortcutRow("Close a dialog, a drawer or the search") {
+			@shortcutRow(i18n.T(ctx, "shortcuts.close")) {
 				@components.Kbd("Esc")
 			}
 		</dl>
-		<p class="mt-4 text-[0.78rem] text-muted">None of these fire while you are typing in a field, except ⌘K and Esc.</p>
+		<p class="mt-4 text-[0.78rem] text-muted">{ i18n.T(ctx, "shortcuts.note") }</p>
 	}
 }
 
@@ -579,7 +579,7 @@ var paletteIcons = []string{"layout-grid", "workflow", "history", "database", "p
 // highlight. Rows and headings are <template>s, and the glyphs are drawn here
 // once: Tailwind reads templates, and the island clones rather than writes.
 templ palette() {
-	<dialog id="palette" aria-label="Search the console" class="palette rounded-panel border border-line bg-surface p-0 text-ink shadow-warm">
+	<dialog id="palette" aria-label={ i18n.T(ctx, "palette.label") } class="palette rounded-panel border border-line bg-surface p-0 text-ink shadow-warm">
 		<div class="flex items-center gap-2 border-b border-line-soft px-3">
 			<span class="text-muted">
 				@components.Icon("search", "h-4 w-4")
@@ -591,19 +591,19 @@ templ palette() {
 				aria-controls="palette-list"
 				aria-expanded="false"
 				aria-autocomplete="list"
-				aria-label="Search the console"
-				placeholder="Search workflows, destinations, endpoints…"
+				aria-label={ i18n.T(ctx, "palette.label") }
+				placeholder={ i18n.T(ctx, "palette.placeholder") }
 				autocomplete="off"
 				spellcheck="false"
 				class="h-11 min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-faint focus:outline-none"
 			/>
 			@components.Kbd("esc")
 		</div>
-		<div id="palette-list" role="listbox" aria-label="Results" class="max-h-[min(60vh,28rem)] overflow-y-auto p-1.5"></div>
+		<div id="palette-list" role="listbox" aria-label={ i18n.T(ctx, "palette.results") } class="max-h-[min(60vh,28rem)] overflow-y-auto p-1.5"></div>
 		<div class="flex flex-wrap gap-x-4 gap-y-1 border-t border-line-soft px-3 py-2 text-[0.72rem] text-muted">
-			<span class="flex items-center gap-1">@components.Kbd("↑↓") navigate</span>
-			<span class="flex items-center gap-1">@components.Kbd("↵") open</span>
-			<span class="flex items-center gap-1">@components.Kbd("⌘↵") in a new tab</span>
+			<span class="flex items-center gap-1">@components.Kbd("↑↓") { i18n.T(ctx, "palette.navigate") }</span>
+			<span class="flex items-center gap-1">@components.Kbd("↵") { i18n.T(ctx, "palette.open") }</span>
+			<span class="flex items-center gap-1">@components.Kbd("⌘↵") { i18n.T(ctx, "palette.new_tab") }</span>
 		</div>
 		<template data-palette-row>
 			<div

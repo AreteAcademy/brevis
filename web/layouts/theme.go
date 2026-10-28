@@ -3,6 +3,8 @@ package layouts
 import (
 	"context"
 	"net/http"
+
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // ThemeCookie names the visitor's choice of theme.
@@ -37,7 +39,7 @@ func Theme(ctx context.Context) string {
 // not.
 func themeSwitchLabel(ctx context.Context) string {
 	if Theme(ctx) == "light" {
-		return "Switch to the dark theme"
+		return i18n.T(ctx, "theme.to_dark")
 	}
-	return "Switch to the light theme"
+	return i18n.T(ctx, "theme.to_light")
 }

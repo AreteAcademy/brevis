@@ -1,13 +1,32 @@
 package layouts
 
-import "context"
+import (
+	"context"
+
+	"github.com/AreteAcademy/brevis/web/i18n"
+)
 
 // section is one place in the sidebar. Tip is what the place is FOR, shown
 // on hover and focus: the name is the engine's word, the tip the reader's.
 // GoKey is the letter that goes there after `g` ("" for none); it is written
 // on the link, so the script has no map of its own to fall out of step.
+//
+// Name and Tip are in the reader's language; en is the English name, which
+// is what a page still passes as its title until its screen is translated.
 type section struct {
 	Href, Name, Key, Icon, Tip, GoKey string
+	en                                string
+}
+
+// place is a section in ctx's language: its name and hint come from the
+// catalog under nav.<key> and nav.<key>.tip.
+func place(ctx context.Context, href, key, icon, goKey string) section {
+	return section{
+		Href: href, Key: key, Icon: icon, GoKey: goKey,
+		Name: i18n.T(ctx, "nav."+key),
+		Tip:  i18n.T(ctx, "nav."+key+".tip"),
+		en:   i18n.T(context.Background(), "nav."+key),
+	}
 }
 
 // group is a labelled run of sections.
@@ -34,26 +53,24 @@ type group struct {
 // PROJECTS IS NOT HERE. It is the scope a reader works in, drawn as a
 // switcher above the sections; the page it opens is still /projects.
 func groups(ctx context.Context) []group {
-	data := []section{
-		{"/data/endpoints", "Endpoints", "endpoints", "plug", "Metrics published as an API, cached until the data changes", ""},
-	}
+	data := []section{place(ctx, "/data/endpoints", "endpoints", "plug", "")}
 	if HasSQL(ctx) {
-		data = append(data, section{"/sql", "SQL", "sql", "terminal", "Query Postgres and BigQuery, read-only", "s"})
+		data = append(data, place(ctx, "/sql", "sql", "terminal", "s"))
 	}
 	all := []group{
-		{"Monitor", []section{
-			{"/", "Overview", "overview", "layout-grid", "The health of everything, what failed and what fires next", "o"},
-			{"/runs", "Runs", "runs", "history", "Every time a workflow ran: timing, parameters and logs", "e"},
+		{i18n.T(ctx, "nav.group.monitor"), []section{
+			place(ctx, "/", "overview", "layout-grid", "o"),
+			place(ctx, "/runs", "runs", "history", "e"),
 		}},
-		{"Orchestrate", []section{
-			{"/workflows", "Workflows", "workflows", "workflow", "Schedules and the steps each one runs", "w"},
+		{i18n.T(ctx, "nav.group.orchestrate"), []section{
+			place(ctx, "/workflows", "workflows", "workflow", "w"),
 		}},
-		{"Ingest", []section{
-			{"/ingest/streams", "Streams", "streams", "cloud", "Gateway streams: HTTP events written as they arrive", "t"},
-			{"/ingest/loads", "Loads", "loads", "download", "Steps that extract from HTTP, files and databases and write a destination", ""},
+		{i18n.T(ctx, "nav.group.ingest"), []section{
+			place(ctx, "/ingest/streams", "streams", "cloud", "t"),
+			place(ctx, "/ingest/loads", "loads", "download", ""),
 		}},
-		{"Data", data},
-		{"Configure", nil},
+		{i18n.T(ctx, "nav.group.data"), data},
+		{i18n.T(ctx, "nav.group.configure"), nil},
 	}
 	out := all[:0]
 	for _, g := range all {
@@ -64,8 +81,10 @@ func groups(ctx context.Context) []group {
 	return out
 }
 
-// projects is the page the switcher opens. Not a section: see groups.
-var projects = section{"/projects", "Projects", "projects", "folder", "Every project and the workflows in it", ""}
+// projectsPlace is the page the switcher opens. Not a section: see groups.
+func projectsPlace(ctx context.Context) section {
+	return place(ctx, "/projects", "projects", "folder", "")
+}
 
 // goKeys are the sections that have a letter, in the sidebar's order: what the
 // shortcuts modal lists. The letters are the handoff's (o, w, e for runs --
@@ -97,9 +116,9 @@ type crumb struct {
 func where(ctx context.Context, active, title string) (crumb, bool) {
 	// The projects page is opened from the switcher, not from a section, so
 	// it has no group to sit under: its breadcrumb is its own name.
-	if active == projects.Key {
+	if projects := projectsPlace(ctx); active == projects.Key {
 		c := crumb{Section: projects}
-		if title != projects.Name {
+		if title != projects.Name && title != projects.en {
 			c.Title = title
 		}
 		return c, true
@@ -108,7 +127,7 @@ func where(ctx context.Context, active, title string) (crumb, bool) {
 		for _, s := range g.Sections {
 			if s.Key == active {
 				c := crumb{Group: g.Name, Section: s}
-				if title != s.Name {
+				if title != s.Name && title != s.en {
 					c.Title = title
 				}
 				return c, true
