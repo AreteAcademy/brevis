@@ -45,6 +45,21 @@ yet; every one gets the new frame.
   their licences.
 - With `prefers-reduced-motion`, nothing moves; a test checks every animation.
 
+### Added: the console in Portuguese and Spanish
+
+The console's frame speaks English, Brazilian Portuguese and Spanish: the
+sidebar and its hints, the palette, the shortcuts, the account menu, the
+states' words, relative times, dates and numbers, and the sign-in page.
+
+- The language is the reader's choice (a globe at the sidebar's foot, or the
+  palette), remembered in a cookie; without one, the browser's
+  `Accept-Language` decides, and English is the default. The server draws the
+  page in it from the first paint, and `<html lang>` says which.
+- Choosing works with no script: a form that returns to the same page.
+- The pages' own content is still English; each screen is translated as it is
+  redesigned.
+- The Spanish catalog is marked for a native speaker's review.
+
 ### Changed
 
 - **The accent is spent in four places**: the primary action, the open
