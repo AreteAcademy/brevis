@@ -448,6 +448,8 @@ type StepLog struct {
 	Err        string
 	Log        string
 	DurationMs int64
+	// StartedAt is zero for a step that never started.
+	StartedAt time.Time
 	// Output is what the step published for the steps below it, the same
 	// value the graph shows on its node; nil when it published nothing.
 	Output json.RawMessage
@@ -463,7 +465,7 @@ func (r *RunRepo) LogsDaRun(ctx context.Context, runID uuid.UUID) ([]StepLog, er
 	rows, err := r.pool.Query(ctx, `
 		SELECT node_id, map_index, attempt, status, exit_code, erro, log,
 		       COALESCE(EXTRACT(EPOCH FROM (terminado_em - iniciado_em)) * 1000, 0)::bigint,
-		       saida
+		       saida, iniciado_em
 		FROM task_runs
 		WHERE run_id = $1
 		ORDER BY iniciado_em NULLS LAST, node_id, map_index, attempt`, runID)
@@ -475,9 +477,13 @@ func (r *RunRepo) LogsDaRun(ctx context.Context, runID uuid.UUID) ([]StepLog, er
 	var out []StepLog
 	for rows.Next() {
 		var p StepLog
+		var started *time.Time
 		if err := rows.Scan(&p.NodeID, &p.MapIndex, &p.Attempt, &p.Status, &p.ExitCode,
-			&p.Err, &p.Log, &p.DurationMs, &p.Output); err != nil {
+			&p.Err, &p.Log, &p.DurationMs, &p.Output, &started); err != nil {
 			return nil, err
+		}
+		if started != nil {
+			p.StartedAt = *started
 		}
 		out = append(out, p)
 	}
