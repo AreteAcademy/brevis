@@ -593,6 +593,20 @@ var defaultStartBackoff = []time.Duration{time.Second, 2 * time.Second, 4 * time
 // took nothing on. A draining agent answers it before reserving the id.
 var errUnavailable = errors.New("the agent is unavailable")
 
+// ErrAgentDraining is a 503 from an agent on its way out (#146), which another
+// replica of the same host would run. It wraps errUnavailable, so it is sent
+// again like any start that ran nothing.
+//
+// Kept apart from a bare 503 because that one is also a balancer with nobody
+// behind it -- a host that is down -- and only a refusal that says it is
+// draining is a reason to look for another replica instead of spending an
+// attempt.
+var ErrAgentDraining = fmt.Errorf("%w: it is draining", errUnavailable)
+
+// drainingSaid is how an agent from before HeaderRefusal (0.38) says it: the
+// opening of the message it answers the refusal with.
+const drainingSaid = "this agent is draining"
+
 func (a HTTPAgent) client() *http.Client {
 	if a.Client != nil {
 		return a.Client
@@ -776,7 +790,12 @@ func (a HTTPAgent) send(ctx context.Context, base, path string, payload any) (io
 		_ = resp.Body.Close()
 		err := fmt.Errorf("the agent answered %s: %s", resp.Status, strings.TrimSpace(string(snippet)))
 		if resp.StatusCode == http.StatusServiceUnavailable {
-			err = fmt.Errorf("%w: %w", errUnavailable, err)
+			cause := errUnavailable
+			if resp.Header.Get(HeaderRefusal) == RefusalDraining ||
+				strings.HasPrefix(strings.TrimSpace(string(snippet)), drainingSaid) {
+				cause = ErrAgentDraining
+			}
+			err = fmt.Errorf("%w: %w", cause, err)
 		}
 		if resp.StatusCode == http.StatusNotFound {
 			// The agent has no execution by that id. Typed, because #125's

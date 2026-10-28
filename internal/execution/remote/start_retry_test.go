@@ -83,6 +83,53 @@ func TestA503IsSentAgainFiveTimesAtMost(t *testing.T) {
 	}
 }
 
+// refusing is an agent that answers every start 503, with `header` as
+// Brevis-Refusal when it is not empty and `body` as the message.
+func refusing(t *testing.T, header, body string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if header != "" {
+			w.Header().Set(remote.HeaderRefusal, header)
+		}
+		http.Error(w, body, http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// A draining agent says so (#146), and the engine tells it apart from any
+// other 503: it has a replica that would run the step.
+func TestADrainingRefusalIsTyped(t *testing.T) {
+	srv := refusing(t, remote.RefusalDraining, "this agent is draining")
+	err := startOn(context.Background(), srv.URL)
+	if !errors.Is(err, remote.ErrAgentDraining) {
+		t.Fatalf("Start = %v, wanted ErrAgentDraining", err)
+	}
+}
+
+// An agent from 0.38 sends no header, only its message. Pinned here as it
+// was on the wire, not read from the agent package: the point is the old
+// agent's text, which does not change when the new one's does.
+func TestADrainingRefusalFromAnAgentWithoutTheHeaderIsTyped(t *testing.T) {
+	srv := refusing(t, "", "this agent is draining: it finishes the steps it has and takes no new one")
+	err := startOn(context.Background(), srv.URL)
+	if !errors.Is(err, remote.ErrAgentDraining) {
+		t.Fatalf("Start = %v, wanted ErrAgentDraining", err)
+	}
+}
+
+// A bare 503 -- a balancer with nobody behind it -- is NOT draining: nothing
+// says a replica would take the step, and treating it as one would let a host
+// that is down keep runs waiting without an attempt or an alert. It is still
+// sent again, as #136 has it.
+func TestABare503IsNotDraining(t *testing.T) {
+	srv := refusing(t, "", "no healthy upstream")
+	err := startOn(context.Background(), srv.URL)
+	if err == nil || errors.Is(err, remote.ErrAgentDraining) {
+		t.Fatalf("Start = %v, wanted an error that is not ErrAgentDraining", err)
+	}
+}
+
 // A pod Kubernetes now publishes before it is ready (publishNotReadyAddresses,
 // #136) refuses the connection until it binds; that too ran nothing.
 func TestARefusedConnectionIsTriedAgain(t *testing.T) {
