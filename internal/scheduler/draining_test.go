@@ -18,9 +18,9 @@ import (
 	"github.com/AreteAcademy/brevis/internal/scheduler"
 )
 
-// notStarted is what the runner returns when every agent of a pool refused a
+// errNotStarted is what the runner returns when every agent of a pool refused a
 // step for draining (#146).
-var notStarted = fmt.Errorf(`level 1: step "load": the agent on pool refused the step: %w`,
+var errNotStarted = fmt.Errorf(`level 1: step "load": the agent on pool refused the step: %w`,
 	execution.ErrNotStarted)
 
 // dispatching runs the dispatcher until `until` holds, then stops it and waits
@@ -58,7 +58,7 @@ func TestARunNotStartedForADrainIsDeferredForFree(t *testing.T) {
 	cfg.DrainWait, cfg.DrainRequeueDelay = time.Hour, time.Hour
 	d := scheduler.New(cfg, q, repo, func(context.Context, uuid.UUID) error {
 		calls.Add(1)
-		return notStarted
+		return errNotStarted
 	}, noLog())
 	d.Channel = alerts.ChannelSlack
 
@@ -103,7 +103,7 @@ func TestARunWaitingOnADrainPastTheCeilingSpendsItsAttempt(t *testing.T) {
 	cfg := oneAttempt
 	cfg.DrainWait, cfg.DrainRequeueDelay = time.Hour, time.Millisecond
 	d := scheduler.New(cfg, q, repo, func(context.Context, uuid.UUID) error {
-		return notStarted
+		return errNotStarted
 	}, noLog())
 	d.Channel = alerts.ChannelSlack
 
@@ -130,7 +130,7 @@ func TestWithoutADrainWaitANotStartedRunSpendsItsAttempt(t *testing.T) {
 	id := queuedRun(t, pool, q, "no-drain-wait")
 
 	d := scheduler.New(oneAttempt, q, repo, func(context.Context, uuid.UUID) error {
-		return notStarted
+		return errNotStarted
 	}, noLog())
 
 	dispatching(t, d, func() bool { return runOf(t, repo, id).Attempt > 0 })
@@ -162,7 +162,7 @@ func TestARunDeferredThenRunHasOneRowPerStep(t *testing.T) {
 			return err
 		}
 		if calls.Add(1) == 1 {
-			return notStarted
+			return errNotStarted
 		}
 		return nil
 	}, noLog())

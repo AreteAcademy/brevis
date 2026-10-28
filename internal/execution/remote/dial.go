@@ -124,6 +124,7 @@ func (r *Replicas) order(addrs []string) []string {
 
 	shuffle := r.shuffle
 	if shuffle == nil {
+		// #nosec G404 -- spreads starts across replicas; nothing depends on it being unpredictable
 		shuffle = func(s []string) { rand.Shuffle(len(s), func(i, j int) { s[i], s[j] = s[j], s[i] }) }
 	}
 	shuffle(fresh)
