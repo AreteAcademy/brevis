@@ -213,6 +213,8 @@ templ Base(p Page) {
 			</div>
 			@palette()
 			@shortcuts()
+			// The sentences ui.js writes itself, in this page's language.
+			@templ.Raw(`<script type="application/json" id="i18n">` + scriptMessages(ctx) + `</script>`)
 			@toasts()
 			// The basic interactions (dialogs, chart tooltips) on every page. It
 			// sits at the end of the body so it does not block rendering — the
@@ -232,7 +234,7 @@ templ Base(p Page) {
 templ accountMenu(operator string, brand branding.Brand) {
 	<details class="account-menu relative">
 		<summary
-			class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-card px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			class="flex cursor-pointer list-none items-center justify-between gap-1.5 rounded-card px-2 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
 			<span class="flex min-w-0 items-center gap-2">
 				<svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
@@ -240,7 +242,7 @@ templ accountMenu(operator string, brand branding.Brand) {
 					<path d="M2.5 14c0-2.6 2.5-4.2 5.5-4.2s5.5 1.6 5.5 4.2"></path>
 				</svg>
 				if operator != "" {
-					<span class="truncate">{ operator }</span>
+					<span class="truncate" title={ operator }>{ operator }</span>
 				} else {
 					<span class="truncate">{ i18n.T(ctx, "shell.account") }</span>
 				}
@@ -397,7 +399,7 @@ templ sidebar(active string, brand branding.Brand) {
 		</nav>
 		// WHO YOU ARE, AT THE FOOT, which is where a console keeps "who am I
 		// and how do I leave". The menu opens upwards from here.
-		<div class="flex shrink-0 items-center gap-1 border-t border-line-soft p-2.5">
+		<div class="flex shrink-0 items-center gap-0.5 border-t border-line-soft p-2">
 			<div class="min-w-0 flex-1">
 				@accountMenu(auth.De(ctx), brand)
 			</div>
@@ -453,7 +455,7 @@ templ langSwitch() {
 		<summary
 			aria-label={ i18n.T(ctx, "lang.label") }
 			data-tip={ i18n.T(ctx, "lang.label") }
-			class="flex h-8 cursor-pointer list-none items-center gap-1 rounded-card px-1.5 text-[0.72rem] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			class="flex h-8 cursor-pointer list-none items-center gap-0.5 rounded-card px-1 text-[0.72rem] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
 			@components.Icon("globe", "h-4 w-4")
 			{ i18n.Codes[current] }
@@ -639,9 +641,9 @@ templ palette() {
 		</div>
 		<div id="palette-list" role="listbox" aria-label={ i18n.T(ctx, "palette.results") } class="max-h-[min(60vh,28rem)] overflow-y-auto p-1.5"></div>
 		<div class="flex flex-wrap gap-x-4 gap-y-1 border-t border-line-soft px-3 py-2 text-[0.72rem] text-muted">
-			<span class="flex items-center gap-1">@components.Kbd("↑↓") { i18n.T(ctx, "palette.navigate") }</span>
-			<span class="flex items-center gap-1">@components.Kbd("↵") { i18n.T(ctx, "palette.open") }</span>
-			<span class="flex items-center gap-1">@components.Kbd("⌘↵") { i18n.T(ctx, "palette.new_tab") }</span>
+			<span class="flex items-center gap-1">@components.Kbd("↑↓")<span>{ i18n.T(ctx, "palette.navigate") }</span></span>
+			<span class="flex items-center gap-1">@components.Kbd("↵")<span>{ i18n.T(ctx, "palette.open") }</span></span>
+			<span class="flex items-center gap-1">@components.Kbd("⌘↵")<span>{ i18n.T(ctx, "palette.new_tab") }</span></span>
 		</div>
 		<template data-palette-row>
 			<div

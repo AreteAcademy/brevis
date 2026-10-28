@@ -48,7 +48,7 @@ func (f readsFake) Projects(context.Context) ([]postgres.ProjectSummary, error) 
 }
 
 type paletteItem struct {
-	Group, Label, Hint, Href, Icon, Text, Action string
+	Group, GroupLabel, Label, Hint, Href, Icon, Text, Action string
 }
 
 func palette(t *testing.T, ui *api.UI) (int, http.Header, []paletteItem) {

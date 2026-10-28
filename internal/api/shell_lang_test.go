@@ -29,6 +29,8 @@ func TestTheShellIsDrawnInTheReadersLanguage(t *testing.T) {
 			`aria-label="Mudar para o tema claro"`, `aria-label="Atalhos de teclado"`,
 			"Ir para Visão geral", `placeholder="Buscar workflows, destinos, endpoints…"`,
 			"A saúde de tudo, o que falhou e o que dispara a seguir",
+			// The palette's footer: each key, then what it does.
+			">navegar<", ">abrir<", ">em nova aba<",
 		},
 		"es": {
 			`aria-label="Monitorear"`, ">Resumen<", ">Ejecuciones<", ">Tiempo real<",
