@@ -14,6 +14,20 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [Unreleased]
+
+### Fixed: a failed run records when it ended
+
+A run that failed for good kept `terminado_em` empty, so the events feed never
+showed a `run.failed` and the insights' durations left every failure out. The
+engine now records it, and a retry clears it again when the run goes back to
+the queue.
+
+- **Migration 00029** fills it in for the runs that had already failed: the end
+  of their last step, or when they were created if no step ever ran.
+- **The insights' durations now count failed runs**, measured, like the
+  others, from when they were created.
+
 ## [0.39.0] — 2026-10-28
 
 ### Added: the console's UI 2.0 foundation
