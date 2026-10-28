@@ -1,12 +1,14 @@
 package components
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // State draws a run's or a step's status.
@@ -544,48 +546,27 @@ func hourTicks(buckets []postgres.Bucket) []Brand {
 
 // Duration picks the unit by order of magnitude. "0.4s" says more than "400ms" in
 // a column whose neighbour takes minutes.
+//
+// ENGLISH, for the screens that call it without a context; i18n.Elapsed is
+// the same in the page's language, and a screen moves to it when it is
+// translated.
 func Duration(d *time.Duration) string {
 	if d == nil {
 		return "—"
 	}
-	switch {
-	case *d < time.Second:
-		return fmt.Sprintf("%dms", d.Milliseconds())
-	case *d < time.Minute:
-		return fmt.Sprintf("%.1fs", d.Seconds())
-	case *d < time.Hour:
-		return fmt.Sprintf("%dm %02ds", int(d.Minutes()), int(d.Seconds())%60)
-	}
-	return fmt.Sprintf("%dh %02dm", int(d.Hours()), int(d.Minutes())%60)
+	return i18n.Elapsed(context.Background(), *d)
 }
 
 // When writes the instant relatively up to a day, and as an absolute date
 // afterwards. "3 min ago" answers the operations question; "Mar 12 04:00"
 // answers the audit one, and the boundary between the two sits around a day.
+//
+// English, like Duration; i18n.Since is the translated one.
 func When(t *time.Time) string {
 	if t == nil {
 		return "—"
 	}
-	d := time.Since(*t)
-	switch {
-	case d < 0:
-		return "in " + curto(-d)
-	case d < time.Minute:
-		return "now"
-	case d < 24*time.Hour:
-		return curto(d) + " ago"
-	}
-	return t.Local().Format("Jan 02 15:04")
-}
-
-func curto(d time.Duration) string {
-	switch {
-	case d < time.Hour:
-		return fmt.Sprintf("%d min", int(d.Minutes()))
-	case d < 24*time.Hour:
-		return fmt.Sprintf("%dh", int(d.Hours()))
-	}
-	return fmt.Sprintf("%dd", int(d.Hours()/24))
+	return i18n.Since(context.Background(), time.Now(), *t)
 }
 
 // Timestamp is the full date, for audit columns, in the timezone of WHOEVER
@@ -616,7 +597,7 @@ templ ShortStamp(t *time.Time) {
 	if t == nil {
 		<span class="text-faint">—</span>
 	} else {
-		<span title={ UTCStamp(t) } class="tabular-nums whitespace-nowrap">{ t.UTC().Format("Jan 2 15:04") }</span>
+		<span title={ UTCStamp(t) } class="tabular-nums whitespace-nowrap">{ i18n.Date(ctx, t.UTC(), "brief") }</span>
 	}
 }
 

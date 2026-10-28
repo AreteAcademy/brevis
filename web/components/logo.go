@@ -1,10 +1,13 @@
 package components
 
 import (
+	"context"
 	"embed"
 	"slices"
 	"strings"
 	"unicode"
+
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // The marks of the things Brevis connects to and the languages a step runs
@@ -123,6 +126,16 @@ func lookLogo(key string) logo {
 		}
 	}
 	return logo{title: key, monogram: string(letters)}
+}
+
+// logoTitle is a mark's name for a screen reader. A brand is its own name
+// in every language; the two monograms that are words are translated.
+func logoTitle(ctx context.Context, key string, l logo) string {
+	switch key {
+	case "file", "gateway":
+		return i18n.T(ctx, "logo."+key)
+	}
+	return l.title
 }
 
 func logoSize(size int) string {

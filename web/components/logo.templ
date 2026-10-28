@@ -10,6 +10,6 @@ templ Logo(key string, size int) {
 			@templ.Raw(svg)
 		</span>
 	} else {
-		<span class={ "cg", "cg-mono", logoSize(size) } role="img" aria-label={ l.title } title={ l.title }>{ l.monogram }</span>
+		<span class={ "cg", "cg-mono", logoSize(size) } role="img" aria-label={ logoTitle(ctx, key, l) } title={ logoTitle(ctx, key, l) }>{ l.monogram }</span>
 	}
 }

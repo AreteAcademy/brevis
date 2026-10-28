@@ -5,12 +5,12 @@ package components
 // read it. See statuses for the vocabulary.
 templ Status(kind string) {
 	{{ s := lookStatus(kind) }}
-	<span class={ "st", "st-" + s.shape, s.colour }>{ s.label }</span>
+	<span class={ "st", "st-" + s.shape, s.colour }>{ statusWord(ctx, kind, s) }</span>
 }
 
 // StatusMark is the mark alone, for a dense column where the word is said
 // elsewhere; the word stays in the title and for screen readers.
 templ StatusMark(kind string) {
 	{{ s := lookStatus(kind) }}
-	<span class={ "st", "st-mark", "st-" + s.shape, s.colour } title={ s.label } role="img" aria-label={ s.label }></span>
+	<span class={ "st", "st-mark", "st-" + s.shape, s.colour } title={ statusWord(ctx, kind, s) } role="img" aria-label={ statusWord(ctx, kind, s) }></span>
 }
