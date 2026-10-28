@@ -7,6 +7,25 @@
 (function () {
   "use strict";
 
+  // --- The page's sentences -------------------------------------------------
+  //
+  // What this file writes in words comes from the page: a JSON block the
+  // server wrote in the reader's language (i18n.ScriptKeys). A key it lacks
+  // shows as itself, which a test would catch first.
+  var messages = null;
+  function t(key, vars) {
+    if (!messages) {
+      try {
+        messages = JSON.parse((document.getElementById("i18n") || {}).textContent || "{}");
+      } catch (e) {
+        messages = {};
+      }
+    }
+    var text = messages[key] || "[" + key + "]";
+    for (var name in vars || {}) text = text.split("{" + name + "}").join(vars[name]);
+    return text;
+  }
+
   // --- Dialogos ------------------------------------------------------------
   document.addEventListener("click", function (e) {
     if (!e.target || typeof e.target.closest !== "function") return;
@@ -282,7 +301,7 @@
     var next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
     document.documentElement.dataset.theme = next;
     document.cookie = "brevis_theme=" + next + "; Path=/; Max-Age=31536000; SameSite=Lax";
-    var label = next === "light" ? "Switch to the dark theme" : "Switch to the light theme";
+    var label = next === "light" ? t("theme.to_dark") : t("theme.to_light");
     btn.setAttribute("aria-label", label);
     btn.setAttribute("title", label);
   });
@@ -714,8 +733,8 @@
     if (!src) return;
     navigator.clipboard.writeText(src.textContent).then(function () {
       var label = b.getAttribute("aria-label");
-      b.setAttribute("aria-label", "Copied");
-      b.setAttribute("title", "Copied");
+      b.setAttribute("aria-label", t("copy.done"));
+      b.setAttribute("title", t("copy.done"));
       b.setAttribute("data-copied", "");
       setTimeout(function () {
         b.setAttribute("aria-label", label);
@@ -1122,7 +1141,8 @@
     function rank(item, q) {
       var label = item.label.toLowerCase();
       if (label.indexOf(q) === 0) return 0;
-      var words = label.split(/[^a-z0-9]+/);
+      // Letters in any language: "Execuções" is one word, not three.
+      var words = label.split(/[^\p{L}\p{N}]+/u);
       for (var i = 0; i < words.length; i++) if (words[i].indexOf(q) === 0) return 1;
       return item.text.indexOf(q) >= 0 ? 2 : -1;
     }
@@ -1131,7 +1151,7 @@
       var q = raw.trim().toLowerCase();
       var out = [];
       if (UUID.test(q)) {
-        out.push({ group: "Runs", label: "Open run " + q.slice(0, 8) + "…", hint: q, href: "/runs/" + q, icon: "history" });
+        out.push({ group: "Runs", groupLabel: t("palette.group.runs"), label: t("palette.open_run", { id: q.slice(0, 8) }), hint: q, href: "/runs/" + q, icon: "history" });
       }
       if (!index) return out;
       if (q === "") return out.concat(index.filter(function (it) { return it.group === "Sections"; }));
@@ -1166,7 +1186,7 @@
       list.textContent = "";
       var last = "";
       shown.forEach(function (it, i) {
-        if (it.group !== last) { heading(it.group); last = it.group; }
+        if (it.group !== last) { heading(it.groupLabel || it.group); last = it.group; }
         var row = rowTpl.content.firstElementChild.cloneNode(true);
         row.id = "palette-opt-" + i;
         row.setAttribute("data-palette-index", String(i));
@@ -1176,7 +1196,7 @@
         list.appendChild(row);
       });
       if (shown.length === 0) {
-        heading(failed ? "Search is unavailable. Reload the page to try again." : index ? "Nothing matches." : "Loading…");
+        heading(failed ? t("palette.failed") : index ? t("palette.empty") : t("palette.loading"));
       }
       input.setAttribute("aria-expanded", shown.length > 0 ? "true" : "false");
       choose(Math.min(active, Math.max(0, shown.length - 1)));

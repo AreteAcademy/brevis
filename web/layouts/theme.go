@@ -2,6 +2,7 @@ package layouts
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/AreteAcademy/brevis/web/i18n"
@@ -57,4 +58,14 @@ func requestURI(ctx context.Context) string {
 		return u
 	}
 	return "/"
+}
+
+// scriptMessages is i18n.Script as JSON for a <script> block. encoding/json
+// escapes <, > and &, so no message can close the block it sits in.
+func scriptMessages(ctx context.Context) string {
+	raw, err := json.Marshal(i18n.Script(ctx))
+	if err != nil {
+		return "{}"
+	}
+	return string(raw)
 }

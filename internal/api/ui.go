@@ -752,12 +752,15 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 type paletteItem struct {
 	// Action, when set, is what the island does instead of following Href.
 	Action string `json:"action,omitempty"`
-	Group  string `json:"group"`
-	Label  string `json:"label"`
-	Hint   string `json:"hint,omitempty"`
-	Href   string `json:"href"`
-	Icon   string `json:"icon"`
-	Text   string `json:"text"`
+	// Group is the group's id, the same in every language: the island orders
+	// and filters by it. GroupLabel is what it shows.
+	Group      string `json:"group"`
+	GroupLabel string `json:"groupLabel"`
+	Label      string `json:"label"`
+	Hint       string `json:"hint,omitempty"`
+	Href       string `json:"href"`
+	Icon       string `json:"icon"`
+	Text       string `json:"text"`
 }
 
 func paletteEntry(group, label, hint, href, icon string) paletteItem {
@@ -842,6 +845,9 @@ func (u *UI) palette(w http.ResponseWriter, r *http.Request) {
 		for _, row := range pages.BuildEndpoints(all).Rows {
 			items = append(items, paletteEntry("Endpoints", row.Path, row.API, row.Href(), "plug"))
 		}
+	}
+	for i := range items {
+		items[i].GroupLabel = i18n.T(ctx, "palette.group."+strings.ToLower(items[i].Group))
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
