@@ -120,6 +120,7 @@ type UI struct {
 	// endpoints is what brevis-sql-api files were published with. Nil turns
 	// the pages off.
 	endpoints EndpointsReader
+	failing   FailingReader
 
 	// calls runs an endpoint for Try it; callsProtected says the console
 	// asks for a login. Both, or no Try it.
@@ -183,6 +184,18 @@ func (u *UI) WithEndpointCalls(c EndpointCaller, console auth.Credential) *UI {
 // explains itself.
 func (u *UI) WithGallery(on bool) *UI {
 	u.gallery = on
+	return u
+}
+
+// FailingReader is what the Runs section's badge counts: the workflows whose
+// last finished run failed.
+type FailingReader interface {
+	FailingWorkflows(ctx context.Context) ([]postgres.FailingWorkflow, error)
+}
+
+// WithFailing turns on the Runs section's badge. Without it there is none.
+func (u *UI) WithFailing(r FailingReader) *UI {
+	u.failing = r
 	return u
 }
 
@@ -1609,9 +1622,25 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	ctx = i18n.WithLang(ctx, i18n.Negotiate(r))
 	ctx = layouts.WithRequestURI(ctx, r.URL.RequestURI())
 	ctx = layouts.TakeFlash(ctx, w, r)
+	ctx = u.withFailing(ctx, r)
 	if err := c.Render(ctx, w); err != nil {
 		u.log.Error("rendering the page", "path", r.URL.Path, "error", err)
 	}
+}
+
+// withFailing counts the failing workflows for the sidebar's badge. A number
+// for decoration cannot take a page down: when it cannot be read, the error
+// is logged and the page is drawn without it.
+func (u *UI) withFailing(ctx context.Context, r *http.Request) context.Context {
+	if u.failing == nil {
+		return ctx
+	}
+	failing, err := u.failing.FailingWorkflows(ctx)
+	if err != nil {
+		u.log.Error("counting the failing workflows", "path", r.URL.Path, "error", err)
+		return ctx
+	}
+	return layouts.WithFailing(ctx, len(failing))
 }
 
 // chooseLang remembers the reader's language and goes back to the page they

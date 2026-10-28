@@ -25,3 +25,16 @@ func HasSQL(ctx context.Context) bool {
 	on, _ := ctx.Value(toolsKey{}).(bool)
 	return on
 }
+
+type failingKey struct{}
+
+// WithFailing carries how many workflows are failing now, for the Runs
+// section's badge. Absent is none, and none draws no badge.
+func WithFailing(ctx context.Context, n int) context.Context {
+	return context.WithValue(ctx, failingKey{}, n)
+}
+
+func failing(ctx context.Context) int {
+	n, _ := ctx.Value(failingKey{}).(int)
+	return n
+}

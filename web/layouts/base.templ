@@ -481,6 +481,18 @@ templ langSwitch() {
 	</details>
 }
 
+// sectionBadge is what a section has to say before it is opened: on Runs,
+// how many workflows are failing. The number is for the eye; a screen reader
+// hears the sentence, as part of the link's name.
+templ sectionBadge(s section) {
+	if n := failing(ctx); s.Key == "runs" && n > 0 {
+		<span class="sr-only">{ i18n.N(ctx, "nav.runs.failing", n) }</span>
+		<span aria-hidden="true" class="ml-auto inline-flex">
+			@components.NavBadge("fail", i18n.Number(ctx, int64(n)))
+		</span>
+	}
+}
+
 templ navLink(s section, active string) {
 	if s.Key == active {
 		// `aria-current` and not only the box: the shape says which section
@@ -496,6 +508,7 @@ templ navLink(s section, active string) {
 		>
 			@components.Icon(s.Icon, "h-4 w-4")
 			{ s.Name }
+			@sectionBadge(s)
 		</a>
 	} else {
 		<a
@@ -508,6 +521,7 @@ templ navLink(s section, active string) {
 		>
 			@components.Icon(s.Icon, "h-4 w-4")
 			{ s.Name }
+			@sectionBadge(s)
 		</a>
 	}
 }
