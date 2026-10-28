@@ -1314,12 +1314,14 @@ func remoteHosts(cfg config.Config, log *slog.Logger) map[string]execution.Execu
 	return out
 }
 
-// uiActions wires the screen's two effects — pause a schedule and run now — to
-// the components that already implement them. It exists to keep the `api.Actions`
-// interface small: the UI must not be able to do anything else to the system.
+// uiActions wires the screen's three effects — pause a schedule, run now and
+// cancel a run — to the components that already implement them. It exists to
+// keep the `api.Actions` interface small: the UI must not be able to do
+// anything else to the system.
 type uiActions struct {
 	schedules *postgres.ScheduleRepo
 	sched     *scheduler.Scheduler
+	runs      *postgres.RunRepo
 }
 
 func (a uiActions) Toggle(ctx context.Context, slug, actor string) (bool, error) {
@@ -1329,6 +1331,10 @@ func (a uiActions) Toggle(ctx context.Context, slug, actor string) (bool, error)
 func (a uiActions) Disparar(ctx context.Context, slug string, now time.Time,
 	params map[string]string) (uuid.UUID, error) {
 	return a.sched.Disparar(ctx, slug, now, params)
+}
+
+func (a uiActions) Cancel(ctx context.Context, id uuid.UUID, actor string) (postgres.CancelResult, error) {
+	return a.runs.RequestCancel(ctx, id, actor)
 }
 
 func serve(ctx context.Context) error {
@@ -1391,7 +1397,7 @@ func serve(ctx context.Context) error {
 		return err
 	}
 	ui := api.NewUI(postgres.NewReadRepo(pool), postgres.NewWorkflowRepo(pool),
-		runsRepo, uiActions{schedules: schedules, sched: sched},
+		runsRepo, uiActions{schedules: schedules, sched: sched, runs: runsRepo},
 		alerts.New(pool.Pool), postgres.NewReadRepo(pool), brand, log).
 		// Nil-safe when BREVIS_SQL_SERVE_URL is unset: Configured() is false
 		// and no Preview tab is drawn at all. The engine holds no warehouse

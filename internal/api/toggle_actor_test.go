@@ -13,6 +13,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/api"
 	"github.com/AreteAcademy/brevis/internal/auth"
 	"github.com/AreteAcademy/brevis/internal/branding"
+	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
 type toggleSpy struct{ actor *string }
@@ -43,4 +44,8 @@ func TestThePauseButtonPassesWhoPressedIt(t *testing.T) {
 			t.Errorf("signed in as %q, the schedule heard %q", user, actor)
 		}
 	}
+}
+
+func (toggleSpy) Cancel(context.Context, uuid.UUID, string) (postgres.CancelResult, error) {
+	return postgres.CancelResult{}, nil
 }

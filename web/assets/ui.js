@@ -890,6 +890,17 @@
     });
   });
 
+  // A form that asks first (`form[data-confirm]`): the attribute is the
+  // question, already in the page's language. Declined, nothing is sent.
+  // Delegated, because the run's head that holds Cancel is swapped by the
+  // live refresh; and registered before the handlers below, which leave a
+  // prevented submit alone. With no script the form posts without asking.
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form || typeof form.matches !== "function" || !form.matches("form[data-confirm]")) return;
+    if (!window.confirm(form.getAttribute("data-confirm"))) e.preventDefault();
+  });
+
   // ------------------------------------------------------------------
   // A GET form that swaps its answer
   //

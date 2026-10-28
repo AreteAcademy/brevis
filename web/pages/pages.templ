@@ -1255,6 +1255,25 @@ func rerunTitle(r run.Run) string {
 	return "Run this workflow again with this run's values"
 }
 
+// runCancel stops a run that can still be stopped (D3). In the head and not
+// beside Rerun, because the head is what the page refreshes: the button goes
+// away the moment the run ends, and "Canceling…" turns into `canceled` without
+// a reload. It asks first, because stopping cannot be undone.
+templ runCancel(r run.Run) {
+	if r.Status.InFlight() {
+		if r.CancelRequestedAt != nil {
+			<span data-canceling class="ms-auto text-xs text-muted">{ i18n.T(ctx, "run.canceling") }</span>
+		} else {
+			<form method="post" action={ templ.SafeURL("/runs/" + r.ID.String() + "/cancel") } data-confirm={ i18n.T(ctx, "run.cancel_confirm") } class="ms-auto">
+				<button type="submit" class={ components.ButtonClass(components.ButtonDanger, components.SizeSmall) }>
+					@components.Icon("square", "h-3 w-3")
+					{ i18n.T(ctx, "run.cancel") }
+				</button>
+			</form>
+		}
+	}
+}
+
 // RunLive is the same two regions, with no layout around them.
 //
 // It is HTML and not JSON on purpose: the alternative is a second rendering of
@@ -1291,6 +1310,7 @@ templ runHead(r run.Run, wait *postgres.Wait) {
 				@components.CopyIcon("#run-id", "Copy the run's id")
 			</span>
 		</span>
+		@runCancel(r)
 	</div>
 	@phases(PhasesOf(r, time.Now()))
 	if wait != nil {
