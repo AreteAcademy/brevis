@@ -197,7 +197,8 @@ func recentEventsQuery(q EventQuery) (string, []any, error) {
 		branches = append(branches, fmt.Sprintf(`(
 		    SELECT terminado_em, %d, id::text,
 		           CASE status WHEN 'success' THEN '%s' WHEN 'failed' THEN '%s' ELSE '%s' END,
-		           workflow_slug, '', id AS run_id, trigger_type, '{}'::jsonb
+		           workflow_slug, CASE status WHEN 'canceled' THEN canceled_by ELSE '' END,
+		           id AS run_id, trigger_type, '{}'::jsonb
 		    FROM runs r
 		    WHERE terminado_em IS NOT NULL AND status IN ('success', 'failed', 'canceled')
 		      AND (terminado_em, r.id) < (%s, %s)
