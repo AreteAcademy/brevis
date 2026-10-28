@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http/httptest"
 	"strings"
@@ -275,5 +276,27 @@ func TestAnUnknownExecutionIsSaidApart(t *testing.T) {
 		remote.Resume{Protocol: remote.Protocol})
 	if !errors.Is(err, remote.ErrUnknownExecution) {
 		t.Errorf("resuming an execution this agent never had: %v; wanted ErrUnknownExecution", err)
+	}
+}
+
+// A step that ended is over for the engine too, however many came before it on
+// the same connection.
+//
+// The executor used to close a stream while its reader was still inside Read.
+// Over a kept-alive connection that left a read in flight which, returning
+// EOF later, took the transport's signal meant for the NEXT response on the
+// same connection -- and that step, its exit already reported, never ended.
+// Instant steps in a row make the window wide: a thousand of them hung in five
+// runs out of six before the fix. A race, so a guard and not a proof.
+func TestQuickStepsInARowAllEnd(t *testing.T) {
+	a := agent.New(agent.Options{Shell: []string{"/bin/sh", "-c"}})
+	srv := httptest.NewServer(a.Handler(quiet()))
+	t.Cleanup(srv.Close)
+	e := &remote.Executor{Host: "one", Agent: remote.HTTPAgent{BaseURL: srv.URL}, LeaseLimit: 5 * time.Second}
+
+	for i := range 1000 {
+		if got := last(run(t, e, task(fmt.Sprintf("quick-%d", i), "true"))); got.Kind != execution.EventSucceeded {
+			t.Fatalf("step %d ended %s: %v", i+1, got.Kind, got.Err)
+		}
 	}
 }

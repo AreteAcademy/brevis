@@ -122,8 +122,10 @@ func (e *Executor) Execute(ctx context.Context, t execution.TaskExec) (<-chan ex
 		TimeoutSeconds: int(t.Timeout.Seconds()),
 	}
 
-	session, err := e.Agent.Start(ctx, req)
+	opened, stop := context.WithCancel(ctx)
+	session, err := e.Agent.Start(opened, req)
 	if err != nil {
+		stop()
 		return nil, fmt.Errorf("the agent on %s refused the step: %w", e.Host, err)
 	}
 
@@ -140,7 +142,7 @@ func (e *Executor) Execute(ctx context.Context, t execution.TaskExec) (<-chan ex
 	e.mu.Unlock()
 
 	events := make(chan execution.Event, 64)
-	go e.pump(ctx, cancel, t, session, events, 0)
+	go e.pump(ctx, cancel, t, session, stop, events, 0)
 	return events, nil
 }
 
@@ -162,16 +164,23 @@ var _ execution.Reattacher = (*Executor)(nil)
 // (the agent could not be reached).
 func (e *Executor) Reattach(ctx context.Context, t execution.TaskExec, h execution.Handover) (<-chan execution.Event, error) {
 	t.ExecutionID = h.ExecutionID
+	follow := func(after int64) (io.ReadCloser, context.CancelFunc, error) {
+		opened, stop := context.WithCancel(ctx)
+		stream, err := e.Agent.Resume(opened, h.Instance, h.ExecutionID, Resume{
+			Protocol: Protocol, After: after, Reason: "reattach after a scheduler restart",
+		})
+		if err != nil {
+			stop()
+			return nil, nil, err
+		}
+		return stream, stop, nil
+	}
 	var from int64
-	stream, err := e.Agent.Resume(ctx, h.Instance, h.ExecutionID, Resume{
-		Protocol: Protocol, After: from, Reason: "reattach after a scheduler restart",
-	})
+	stream, stop, err := follow(from)
 	var gap GapError
 	if errors.As(err, &gap) {
 		from = h.After
-		stream, err = e.Agent.Resume(ctx, h.Instance, h.ExecutionID, Resume{
-			Protocol: Protocol, After: from, Reason: "reattach after a scheduler restart",
-		})
+		stream, stop, err = follow(from)
 	}
 	if errors.As(err, &gap) {
 		return nil, fmt.Errorf("the step handed over on %s could not be followed: %w: %w",
@@ -190,7 +199,7 @@ func (e *Executor) Reattach(ctx context.Context, t execution.TaskExec, h executi
 	e.mu.Unlock()
 
 	events := make(chan execution.Event, 64)
-	go e.pump(ctx, cancel, t, Session{Instance: h.Instance, Stream: stream}, events, from)
+	go e.pump(ctx, cancel, t, Session{Instance: h.Instance, Stream: stream}, stop, events, from)
 	return events, nil
 }
 
@@ -212,12 +221,16 @@ const cancelTimeout = 10 * time.Second
 
 // pump reads the stream, resumes it when it breaks, and closes `events` once.
 //
+// `stop` ends the request the stream came from; see drain for why a stream is
+// stopped and never merely closed.
+//
 // `from` is the last line already accounted for: 0 for a stream that starts at
 // the beginning, the resume point for a reattach that could not -- so a drop
 // right after it resumes from there, and not into a gap the ring no longer
 // covers.
 func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
-	t execution.TaskExec, session Session, events chan<- execution.Event, from int64) {
+	t execution.TaskExec, session Session, stop context.CancelFunc,
+	events chan<- execution.Event, from int64) {
 
 	stream := session.Stream
 
@@ -236,7 +249,7 @@ func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
 
 	seen := from
 	for attempt := 0; ; attempt++ {
-		last, finished, err := e.drain(ctx, t, stream, events, seen)
+		last, finished, err := e.drain(ctx, t, stream, stop, events, seen)
 		_ = stream.Close()
 		seen = last
 
@@ -279,10 +292,12 @@ func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
 			return
 		}
 
-		next, rerr := e.Agent.Resume(ctx, session.Instance, t.ExecutionID, Resume{
+		opened, stopNext := context.WithCancel(ctx)
+		next, rerr := e.Agent.Resume(opened, session.Instance, t.ExecutionID, Resume{
 			Protocol: Protocol, After: seen, Reason: reasonOf(err),
 		})
 		if rerr != nil {
+			stopNext()
 			// A GapError arrives here like any other refusal and needs no
 			// branch of its own: it explains itself, and %v carries that whole
 			// explanation through. There WAS a special case for it, removed
@@ -293,7 +308,7 @@ func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
 				e.Host, seen, rerr))
 			return
 		}
-		stream = next
+		stream, stop = next, stopNext
 	}
 }
 
@@ -345,12 +360,30 @@ func (e *Executor) stopOnHost(execID, instance string) {
 //
 // It returns the last sequence it accepted, whether the step FINISHED (an exit
 // or a refusal, not merely a closed connection), and why it stopped.
+//
+// It returns only once its reader has, and that is the point of `stop`. The
+// reader may be inside Read when drain is done -- the exit line arrived and the
+// end of the stream is a moment behind it -- and closing the body under that
+// read hung steps that had already succeeded: net/http signals the end of a
+// body on a channel that is the CONNECTION's, and the stray read, returning
+// EOF later, took the signal meant for the next response on the same
+// kept-alive connection, whose reader then waited forever. So the request is
+// stopped, which drops the connection instead of reusing it, and the reader is
+// waited for; the caller closes the body after, with nobody reading it.
 func (e *Executor) drain(ctx context.Context, t execution.TaskExec, stream io.Reader,
-	events chan<- execution.Event, seen int64) (int64, bool, error) {
+	stop context.CancelFunc, events chan<- execution.Event, seen int64) (int64, bool, error) {
 
 	lines := make(chan Line)
 	errs := make(chan error, 1)
+	quit := make(chan struct{})
+	read := make(chan struct{})
+	defer func() {
+		close(quit)
+		stop()
+		<-read
+	}()
 	go func() {
+		defer close(read)
 		defer close(lines)
 		s := bufio.NewScanner(stream)
 		// The same ceiling the other two executors raised, and for the same
@@ -369,7 +402,7 @@ func (e *Executor) drain(ctx context.Context, t execution.TaskExec, stream io.Re
 			}
 			select {
 			case lines <- l:
-			case <-ctx.Done():
+			case <-quit:
 				return
 			}
 		}
