@@ -1,0 +1,15 @@
+{
+  "nav.group.monitor": "Monitor",
+  "nav.group.orchestrate": "Orchestrate",
+  "nav.group.ingest": "Ingest",
+  "nav.group.data": "Data",
+  "nav.group.configure": "Configure",
+  "nav.overview": "Overview",
+  "nav.runs": "Runs",
+  "nav.workflows": "Workflows",
+  "nav.streams": "Streams",
+  "nav.loads": "Loads",
+  "nav.endpoints": "Endpoints",
+  "nav.sql": "SQL",
+  "nav.projects": "Projects"
+}

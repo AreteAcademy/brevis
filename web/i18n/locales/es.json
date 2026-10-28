@@ -1,0 +1,16 @@
+{
+  "_review": "needs a native speaker",
+  "nav.group.monitor": "Monitorear",
+  "nav.group.orchestrate": "Orquestar",
+  "nav.group.ingest": "Ingerir",
+  "nav.group.data": "Datos",
+  "nav.group.configure": "Configurar",
+  "nav.overview": "Resumen",
+  "nav.runs": "Ejecuciones",
+  "nav.workflows": "Workflows",
+  "nav.streams": "Tiempo real",
+  "nav.loads": "Cargas batch",
+  "nav.endpoints": "Endpoints",
+  "nav.sql": "SQL",
+  "nav.projects": "Proyectos"
+}
