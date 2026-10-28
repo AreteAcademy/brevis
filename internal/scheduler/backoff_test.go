@@ -146,10 +146,21 @@ func TestABaseAboveTheCapIsTheCap(t *testing.T) {
 // stopped agreeing with defaults(), the help would describe a policy the
 // dispatcher does not have -- which is the same class as the node type the API
 // and the island disagreed about, and it shipped for two weeks.
+//
+// Save DrainWait, the one field where zero is a choice -- it turns the wait
+// off (#146) -- so a zeroed Config keeps it and Defaults() carries the hour.
 func TestDefaultsIsWhatAZeroConfigGets(t *testing.T) {
 	var zero Config
 	zero.defaults()
-	if Defaults() != zero {
-		t.Errorf("Defaults() = %+v, a zeroed Config gets %+v", Defaults(), zero)
+	if zero.DrainWait != 0 {
+		t.Errorf("a zeroed Config waits %s on a drain; zero has to mean off", zero.DrainWait)
+	}
+	policy := Defaults()
+	if policy.DrainWait <= 0 {
+		t.Errorf("Defaults() waits %s on a drain; the flag would turn it off", policy.DrainWait)
+	}
+	policy.DrainWait = 0
+	if policy != zero {
+		t.Errorf("Defaults() = %+v, a zeroed Config gets %+v", policy, zero)
 	}
 }

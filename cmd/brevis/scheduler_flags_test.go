@@ -29,6 +29,8 @@ func TestTheRetryFlagsReachTheDispatcher(t *testing.T) {
 		"--retry-backoff", "2m",
 		"--retry-backoff-max", "10m",
 		"--concurrency", "7",
+		"--drain-wait", "0",
+		"--drain-requeue-delay", "45s",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -45,6 +47,13 @@ func TestTheRetryFlagsReachTheDispatcher(t *testing.T) {
 	}
 	if cfg.MaxConcorrente != 7 {
 		t.Errorf("MaxConcorrente = %d", cfg.MaxConcorrente)
+	}
+	// Zero is a value here, not an omission: it turns the wait off (#146).
+	if cfg.DrainWait != 0 {
+		t.Errorf("DrainWait = %s, the flag said 0", cfg.DrainWait)
+	}
+	if cfg.DrainRequeueDelay != 45*time.Second {
+		t.Errorf("DrainRequeueDelay = %s, the flag said 45s", cfg.DrainRequeueDelay)
 	}
 }
 
@@ -76,6 +85,14 @@ func TestTheFlagDefaultsAreTheDispatchersDefaults(t *testing.T) {
 	if cfg.BackoffMax != policy.BackoffMax {
 		t.Errorf("--retry-backoff-max defaults to %s, the dispatcher to %s",
 			cfg.BackoffMax, policy.BackoffMax)
+	}
+	if cfg.DrainWait != policy.DrainWait || cfg.DrainWait == 0 {
+		t.Errorf("--drain-wait defaults to %s, the dispatcher to %s, and neither may be off",
+			cfg.DrainWait, policy.DrainWait)
+	}
+	if cfg.DrainRequeueDelay != policy.DrainRequeueDelay {
+		t.Errorf("--drain-requeue-delay defaults to %s, the dispatcher to %s",
+			cfg.DrainRequeueDelay, policy.DrainRequeueDelay)
 	}
 }
 
