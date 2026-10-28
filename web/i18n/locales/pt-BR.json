@@ -1,0 +1,15 @@
+{
+  "nav.group.monitor": "Monitorar",
+  "nav.group.orchestrate": "Orquestrar",
+  "nav.group.ingest": "Ingerir",
+  "nav.group.data": "Dados",
+  "nav.group.configure": "Configurar",
+  "nav.overview": "Visão geral",
+  "nav.runs": "Execuções",
+  "nav.workflows": "Workflows",
+  "nav.streams": "Tempo real",
+  "nav.loads": "Cargas batch",
+  "nav.endpoints": "Endpoints",
+  "nav.sql": "SQL",
+  "nav.projects": "Projetos"
+}
