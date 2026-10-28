@@ -76,6 +76,30 @@ states' words, relative times, dates and numbers, and the sign-in page.
   a row a workflow has failed. All computed when a page asks, so a better
   rule applies to every run already recorded. The Slack alert is unchanged.
 
+### Added: the events feed, as data
+
+What happened to an installation, in order, for the redesigned Overview's
+"Events" tab. Nothing on today's screens changes.
+
+- **A new `events` table** (migration 00026) records what no other table kept
+  a history of, each in the action's own transaction and with who did it:
+  - a workflow published or pruned;
+  - a schedule paused or resumed;
+  - a stream published;
+  - a gateway or an API taken down;
+  - an API's endpoints published.
+- **A publish is recorded only when it changed something**, so a CI that
+  republishes on every deploy does not fill the feed.
+- **Runs are read from `runs`**, as started and as ended. Migration 00027
+  indexes them by both times, `CONCURRENTLY`.
+- **Reading:** a page of 50 is one query and one index per source, with a
+  stable cursor and a filter by source. Measured at 0.3–0.6 ms with a million
+  runs and a hundred thousand events.
+- **Retention:** `brevis prune` deletes the events past the same
+  `--purge-after` as the runs, and its report counts them.
+- **The pause button now passes the signed-in operator** to the schedule.
+  `publish`, `gateway` and `endpoints` record `cli` as who did it.
+
 ### Fixed: a draining agent in a pool no longer fails runs (#146)
 
 A start refused by a draining agent behind a pool's Service name went back to

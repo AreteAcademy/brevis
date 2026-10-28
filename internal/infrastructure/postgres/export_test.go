@@ -29,3 +29,6 @@ func MigrateDownTo(ctx context.Context, url string, version int64) error {
 	}
 	return goose.DownToContext(ctx, db, ".", version)
 }
+
+// RecentEventsQuery is the feed's query and arguments, for a test to EXPLAIN.
+var RecentEventsQuery = recentEventsQuery

@@ -216,7 +216,7 @@ func TestCatalogTargetReturnsItsWritersAndLastLoads(t *testing.T) {
 func publish(t *testing.T, pool *postgres.Pool, streams ...catalog.ManifestStream) {
 	t.Helper()
 	m := catalog.Manifest{Kind: "gateway-manifest", Version: 1, Gateway: "edge", Streams: streams}
-	if err := postgres.NewGatewayRepo(pool).Publish(context.Background(), m, time.Date(2026, 10, 7, 18, 0, 0, 0, time.UTC)); err != nil {
+	if err := postgres.NewGatewayRepo(pool).Publish(context.Background(), m, time.Date(2026, 10, 7, 18, 0, 0, 0, time.UTC), "test"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -296,7 +296,7 @@ func TestTheDestinationPageCarriesTheGatewaysConfiguration(t *testing.T) {
 		},
 	}}}
 	at := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
-	if err := postgres.NewGatewayRepo(pool).Publish(ctx, m, at); err != nil {
+	if err := postgres.NewGatewayRepo(pool).Publish(ctx, m, at, "test"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -361,7 +361,7 @@ func TestTheDestinationPageReadsTheConfigurationsHistory(t *testing.T) {
 	}
 	repo := postgres.NewGatewayRepo(pool)
 	for i, every := range []string{"1m", "1m", "2m"} {
-		if err := repo.Publish(ctx, stream(every), at.Add(time.Duration(i)*time.Hour)); err != nil {
+		if err := repo.Publish(ctx, stream(every), at.Add(time.Duration(i)*time.Hour), "test"); err != nil {
 			t.Fatal(err)
 		}
 	}

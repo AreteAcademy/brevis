@@ -52,13 +52,13 @@ func TestPublishingAnAPIReplacesItsEndpoints(t *testing.T) {
 	at := time.Date(2026, 10, 12, 12, 0, 0, 0, time.UTC)
 
 	if err := repo.Publish(ctx, api("metrics", endpoint("clicks", "/v1/clicks", "postgres://a/marts/clicks"),
-		endpoint("orders", "/v1/orders", "postgres://a/marts/orders")), at); err != nil {
+		endpoint("orders", "/v1/orders", "postgres://a/marts/orders")), at, "test"); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Publish(ctx, api("other", endpoint("x", "/v1/x")), at); err != nil {
+	if err := repo.Publish(ctx, api("other", endpoint("x", "/v1/x")), at, "test"); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Publish(ctx, api("metrics", endpoint("clicks", "/v1/clicks", "postgres://a/marts/clicks")), at.Add(time.Hour)); err != nil {
+	if err := repo.Publish(ctx, api("metrics", endpoint("clicks", "/v1/clicks", "postgres://a/marts/clicks")), at.Add(time.Hour), "test"); err != nil {
 		t.Fatal(err)
 	}
 	all, err := repo.List(ctx)
@@ -87,7 +87,7 @@ func TestTheEndpointsOverATargetAreFound(t *testing.T) {
 	ctx := context.Background()
 	if err := repo.Publish(ctx, api("metrics",
 		endpoint("clicks", "/v1/clicks", "postgres://a/marts/clicks", "postgres://a/marts/dim"),
-		endpoint("orders", "/v1/orders", "postgres://a/marts/orders")), time.Now()); err != nil {
+		endpoint("orders", "/v1/orders", "postgres://a/marts/orders")), time.Now(), "test"); err != nil {
 		t.Fatal(err)
 	}
 	over, err := repo.Reading(ctx, "postgres://a/marts/dim")
@@ -100,10 +100,10 @@ func TestUnpublishingRemovesAnAPI(t *testing.T) {
 	pool := endpointsDB(t)
 	repo := postgres.NewEndpointRepo(pool)
 	ctx := context.Background()
-	if err := repo.Publish(ctx, api("metrics", endpoint("clicks", "/v1/clicks")), time.Now()); err != nil {
+	if err := repo.Publish(ctx, api("metrics", endpoint("clicks", "/v1/clicks")), time.Now(), "test"); err != nil {
 		t.Fatal(err)
 	}
-	n, err := repo.Unpublish(ctx, "metrics")
+	n, err := repo.Unpublish(ctx, "metrics", "test")
 	if err != nil || n != 1 {
 		t.Errorf("removed %d, %v", n, err)
 	}
@@ -121,7 +121,7 @@ func TestConcurrentPublishesOfOneAPITakeTurns(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			errs[i] = repo.Publish(context.Background(), api("metrics", endpoint("clicks", "/v1/clicks")), time.Now())
+			errs[i] = repo.Publish(context.Background(), api("metrics", endpoint("clicks", "/v1/clicks")), time.Now(), "test")
 		}(i)
 	}
 	wg.Wait()

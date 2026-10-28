@@ -3,11 +3,14 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
+	"github.com/AreteAcademy/brevis/internal/domain/events"
 	sch "github.com/AreteAcademy/brevis/internal/domain/schedule"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 )
@@ -23,7 +26,12 @@ func NewWorkflowRepo(p *Pool) *WorkflowRepo { return &WorkflowRepo{pool: p} }
 // the schedule would leave a workflow that never fires, and the schedule without
 // the graph would make the scheduler create runs for something that does not
 // exist.
-func (r *WorkflowRepo) Publicar(ctx context.Context, w wf.Workflow, projeto uuid.UUID) error {
+//
+// A publish that changed something -- a new workflow, a new graph, a new
+// schedule -- is in the events feed, in the same transaction, with actor as
+// who did it. One that changed nothing is not: a CI republishing everything on
+// every deploy must not fill the feed.
+func (r *WorkflowRepo) Publicar(ctx context.Context, w wf.Workflow, projeto uuid.UUID, actor string) error {
 	def, err := json.Marshal(w)
 	if err != nil {
 		return err
@@ -34,6 +42,32 @@ func (r *WorkflowRepo) Publicar(ctx context.Context, w wf.Workflow, projeto uuid
 		return err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // no-op depois do commit
+
+	// What is published now, read under the row's lock so a concurrent
+	// publish of the same workflow compares against this one's result.
+	var exists, graphChanged, scheduleChanged bool
+	err = tx.QueryRow(ctx, `
+		SELECT true, w.definicao IS DISTINCT FROM $3::jsonb,
+		       s.cron IS DISTINCT FROM NULLIF($4, '')
+		FROM workflows w LEFT JOIN schedules s ON s.workflow_slug = w.slug
+		WHERE w.project_id = $1 AND w.slug = $2
+		FOR UPDATE OF w`, projeto, w.Slug, def, w.Schedule).Scan(&exists, &graphChanged, &scheduleChanged)
+	if errors.Is(err, pgx.ErrNoRows) {
+		scheduleChanged = w.Schedule != ""
+	} else if err != nil {
+		return err
+	}
+	if !exists || graphChanged || scheduleChanged {
+		var project string
+		if err := tx.QueryRow(ctx, `SELECT slug FROM projects WHERE id = $1`, projeto).Scan(&project); err != nil {
+			return err
+		}
+		if err := recordEvent(ctx, tx, events.WorkflowPublished, w.Slug, actor, map[string]any{
+			"project": project, "new": !exists, "schedule_changed": scheduleChanged,
+		}); err != nil {
+			return err
+		}
+	}
 
 	_, err = tx.Exec(ctx, `
 		INSERT INTO workflows (id, project_id, slug, name, definicao)
@@ -127,11 +161,21 @@ func (r *WorkflowRepo) PublishedGroupMembers(ctx context.Context, projeto uuid.U
 // through a foreign key, precisely so it survives the definition's removal.
 // Deleting the runs along with it would be deleting the evidence of what
 // happened.
-func (r *WorkflowRepo) Podar(ctx context.Context, projeto uuid.UUID, manter []string) ([]string, error) {
+//
+// Each removal is in the events feed, written by the same statement that
+// deletes, with actor as who did it.
+func (r *WorkflowRepo) Podar(ctx context.Context, projeto uuid.UUID, manter []string, actor string) ([]string, error) {
 	rows, err := r.pool.Query(ctx, `
-		DELETE FROM workflows
-		WHERE project_id = $1 AND NOT (slug = ANY($2))
-		RETURNING slug`, projeto, manter)
+		WITH gone AS (
+		    DELETE FROM workflows
+		    WHERE project_id = $1 AND NOT (slug = ANY($2))
+		    RETURNING slug
+		), recorded AS (
+		    INSERT INTO events (kind, subject, actor, detail)
+		    SELECT $3, slug, $4, jsonb_build_object('project', (SELECT slug FROM projects WHERE id = $1))
+		    FROM gone
+		)
+		SELECT slug FROM gone`, projeto, manter, events.WorkflowRemoved, actor)
 	if err != nil {
 		return nil, err
 	}
@@ -203,23 +247,45 @@ func (r *ScheduleRepo) Active(ctx context.Context) ([]sch.Schedule, error) {
 // Pausing does NOT cancel what is already queued: materialized runs are accepted
 // work, and discarding them on a pause would surprise somebody who only wanted
 // to stop creating new ones.
-func (r *ScheduleRepo) SetActive(ctx context.Context, slug string, active1 bool) (bool, error) {
-	var resultado bool
-	err := r.pool.QueryRow(ctx, `
-		UPDATE schedules SET ativo = $2, atualizado_em = now()
-		WHERE workflow_slug = $1
-		RETURNING ativo`, slug, active1).Scan(&resultado)
-	return resultado, err
+//
+// actor is who did it, for the events feed: the console's operator, or "cli".
+func (r *ScheduleRepo) SetActive(ctx context.Context, slug string, active1 bool, actor string) (bool, error) {
+	return r.flip(ctx, "$3", "s.ativo IS DISTINCT FROM $3", slug, actor, active1)
 }
 
-// Alternar flips the current state in a single round trip to the database.
-func (r *ScheduleRepo) Toggle(ctx context.Context, slug string) (bool, error) {
-	var resultado bool
+// Toggle flips the current state in a single round trip to the database.
+func (r *ScheduleRepo) Toggle(ctx context.Context, slug, actor string) (bool, error) {
+	return r.flip(ctx, "NOT s.ativo", "true", slug, actor)
+}
+
+// flip sets the schedule's state to `to` when `changes` holds -- both SQL
+// over the current row -- and records the change in the events feed IN THE
+// SAME STATEMENT: a pause without its event, or the reverse, would be the
+// feed lying.
+//
+// The UPDATE decides whether anything changed, not a read before it: under
+// two operators clicking at once, Postgres re-checks an UPDATE's condition
+// against the row the other one left, where a read in the same statement
+// would still see the old one. When nothing changes, nothing is recorded and
+// the current state is returned.
+func (r *ScheduleRepo) flip(ctx context.Context, to, changes, slug, actor string, args ...any) (bool, error) {
+	var on bool
 	err := r.pool.QueryRow(ctx, `
-		UPDATE schedules SET ativo = NOT ativo, atualizado_em = now()
-		WHERE workflow_slug = $1
-		RETURNING ativo`, slug).Scan(&resultado)
-	return resultado, err
+		WITH after AS (
+		    UPDATE schedules s SET ativo = `+to+`, atualizado_em = now()
+		    WHERE s.workflow_slug = $1 AND `+changes+`
+		    RETURNING s.ativo
+		), recorded AS (
+		    INSERT INTO events (kind, subject, actor)
+		    SELECT CASE WHEN ativo THEN '`+string(events.ScheduleResumed)+`'
+		                ELSE '`+string(events.SchedulePaused)+`' END, $1, $2
+		    FROM after
+		)
+		SELECT ativo FROM after
+		UNION ALL
+		SELECT ativo FROM schedules WHERE workflow_slug = $1 AND NOT EXISTS (SELECT 1 FROM after)`,
+		append([]any{slug, actor}, args...)...).Scan(&on)
+	return on, err
 }
 
 func (r *ScheduleRepo) AdvanceSlot(ctx context.Context, slug string, slot time.Time) error {

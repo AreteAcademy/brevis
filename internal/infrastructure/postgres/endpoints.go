@@ -6,7 +6,10 @@ import (
 	"hash/fnv"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
+	"github.com/AreteAcademy/brevis/internal/domain/events"
 )
 
 // EndpointRepo stores what brevis-sql-api files were published with.
@@ -30,8 +33,12 @@ type PublishedEndpoint struct {
 // overlapping rollouts interleaving delete-then-insert put back a row the
 // other had just put back, and failed on its key. Other APIs are untouched.
 //
+// A publish that added, changed or removed an endpoint is one event in the
+// feed, in the same transaction, with actor as who published it; one that
+// changed nothing records nothing.
+//
 // The manifest must already have been through catalog.ParseEndpoints.
-func (r *EndpointRepo) Publish(ctx context.Context, m catalog.Endpoints, at time.Time) error {
+func (r *EndpointRepo) Publish(ctx context.Context, m catalog.Endpoints, at time.Time, actor string) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -40,14 +47,23 @@ func (r *EndpointRepo) Publish(ctx context.Context, m catalog.Endpoints, at time
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, endpointsLock(m.Name)); err != nil {
 		return err
 	}
+	before, err := publishedConfigs(ctx, tx, m.Name)
+	if err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx, `DELETE FROM api_endpoints WHERE api = $1`, m.Name); err != nil {
 		return err
 	}
+	changed := 0
 	for _, e := range m.Endpoints {
 		config, err := json.Marshal(e)
 		if err != nil {
 			return err
 		}
+		if old, ok := before[e.Name]; !ok || old != string(config) {
+			changed++
+		}
+		delete(before, e.Name)
 		reads := e.Reads
 		if reads == nil {
 			reads = []string{}
@@ -59,7 +75,44 @@ func (r *EndpointRepo) Publish(ctx context.Context, m catalog.Endpoints, at time
 			return err
 		}
 	}
+	// What is left in before is what this publish removed.
+	if changed += len(before); changed > 0 {
+		if err := recordEvent(ctx, tx, events.EndpointsPublished, m.Name, actor, map[string]any{
+			"changed": changed, "total": len(m.Endpoints),
+		}); err != nil {
+			return err
+		}
+	}
 	return tx.Commit(ctx)
+}
+
+// publishedConfigs is each endpoint of api as last published, by name, put
+// through the same marshalling as a new one: jsonb reorders keys and drops
+// spaces, and that is not a change.
+func publishedConfigs(ctx context.Context, tx pgx.Tx, api string) (map[string]string, error) {
+	rows, err := tx.Query(ctx, `SELECT name, config FROM api_endpoints WHERE api = $1`, api)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var name string
+		var raw []byte
+		if err := rows.Scan(&name, &raw); err != nil {
+			return nil, err
+		}
+		var e catalog.Endpoint
+		if err := json.Unmarshal(raw, &e); err != nil {
+			return nil, err
+		}
+		again, err := json.Marshal(e)
+		if err != nil {
+			return nil, err
+		}
+		out[name] = string(again)
+	}
+	return out, rows.Err()
 }
 
 // endpointsLock is the advisory lock key of one API's publish, in its own
@@ -72,12 +125,23 @@ func endpointsLock(api string) int64 {
 }
 
 // Unpublish removes a decommissioned API, reporting how many endpoints went.
-func (r *EndpointRepo) Unpublish(ctx context.Context, api string) (int64, error) {
-	tag, err := r.pool.Exec(ctx, `DELETE FROM api_endpoints WHERE api = $1`, api)
+// Taking down an API that had endpoints is in the events feed.
+func (r *EndpointRepo) Unpublish(ctx context.Context, api, actor string) (int64, error) {
+	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}
-	return tag.RowsAffected(), nil
+	defer func() { _ = tx.Rollback(ctx) }()
+	tag, err := tx.Exec(ctx, `DELETE FROM api_endpoints WHERE api = $1`, api)
+	if err != nil {
+		return 0, err
+	}
+	if n := tag.RowsAffected(); n > 0 {
+		if err := recordEvent(ctx, tx, events.EndpointsUnpublished, api, actor, map[string]any{"endpoints": n}); err != nil {
+			return 0, err
+		}
+	}
+	return tag.RowsAffected(), tx.Commit(ctx)
 }
 
 const endpointColumns = `api, name, path, tenant, config, reads, published_at`

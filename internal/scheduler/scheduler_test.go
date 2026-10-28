@@ -39,7 +39,7 @@ func build(t *testing.T, cron string, catchup bool) (*scheduler.Scheduler, *post
 		Slug: "diario", Name: "diario", Kind: wf.KindChain, Schedule: cron,
 		Nodes: []wf.Node{{ID: "a", Run: "echo ok"}},
 	}
-	if err := wRepo.Publicar(ctx, w, projeto); err != nil {
+	if err := wRepo.Publicar(ctx, w, projeto, "test"); err != nil {
 		t.Fatal(err)
 	}
 	if catchup {
@@ -213,7 +213,7 @@ func TestRepublishingPreservesTheMarker(t *testing.T) {
 		Slug: "diario", Name: "diario v2", Kind: wf.KindChain, Schedule: "0 3 * * *",
 		Nodes: []wf.Node{{ID: "a", Run: "echo v2"}},
 	}
-	if err := postgres.NewWorkflowRepo(pool).Publicar(ctx, w, projeto); err != nil {
+	if err := postgres.NewWorkflowRepo(pool).Publicar(ctx, w, projeto, "test"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -243,7 +243,7 @@ func TestPublishingWithNoCronRemovesTheSchedule(t *testing.T) {
 	}
 	w := wf.Workflow{Slug: "diario", Name: "diario", Kind: wf.KindChain,
 		Nodes: []wf.Node{{ID: "a", Run: "echo"}}}
-	if err := postgres.NewWorkflowRepo(pool).Publicar(ctx, w, projeto); err != nil {
+	if err := postgres.NewWorkflowRepo(pool).Publicar(ctx, w, projeto, "test"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -297,7 +297,7 @@ func TestPruningRemovesWhatLeftTheFolder(t *testing.T) {
 	sai := wf.Workflow{Slug: "vendors_ana_telemetry", Name: "ana", Schedule: "*/15 * * * *",
 		Nodes: []wf.Node{{ID: "run", Run: "echo x"}}}
 	for _, w := range []wf.Workflow{fica, sai} {
-		if err := repo.Publicar(ctx, w, projeto); err != nil {
+		if err := repo.Publicar(ctx, w, projeto, "test"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -309,7 +309,7 @@ func TestPruningRemovesWhatLeftTheFolder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	removed, err := repo.Podar(ctx, projeto, []string{fica.Slug})
+	removed, err := repo.Podar(ctx, projeto, []string{fica.Slug}, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,11 +360,11 @@ func TestPruningWithNoDifferenceRemovesNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := wf.Workflow{Slug: "so_esse", Name: "x", Nodes: []wf.Node{{ID: "a", Run: "echo"}}}
-	if err := repo.Publicar(ctx, w, projeto); err != nil {
+	if err := repo.Publicar(ctx, w, projeto, "test"); err != nil {
 		t.Fatal(err)
 	}
 
-	removed, err := repo.Podar(ctx, projeto, []string{"so_esse"})
+	removed, err := repo.Podar(ctx, projeto, []string{"so_esse"}, "test")
 	if err != nil {
 		t.Fatal(err)
 	}

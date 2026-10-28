@@ -54,15 +54,17 @@ type Retention struct {
 type PruneReport struct {
 	Trimmed int64
 	Purged  int64
-	DryRun  bool
+	// Events is how many of the events feed's rows went with the runs.
+	Events int64
+	DryRun bool
 }
 
 func (r PruneReport) String() string {
-	verb := "trimmed %d run(s), purged %d"
+	verb := "trimmed %d run(s), purged %d and %d event(s)"
 	if r.DryRun {
-		verb = "would trim %d run(s), would purge %d"
+		verb = "would trim %d run(s), would purge %d and %d event(s)"
 	}
-	return fmt.Sprintf(verb, r.Trimmed, r.Purged)
+	return fmt.Sprintf(verb, r.Trimmed, r.Purged, r.Events)
 }
 
 // DefaultBatch is the batch size when none is given. Large enough that a
@@ -113,8 +115,44 @@ func (r *RunRepo) Prune(ctx context.Context, p Retention, dry bool) (PruneReport
 			return out, fmt.Errorf("purge: %w", err)
 		}
 		out.Purged = purged
+
+		gone, err := r.purgeEvents(ctx, p.PurgeAfter, batch, dry)
+		if err != nil {
+			return out, fmt.Errorf("purge events: %w", err)
+		}
+		out.Events = gone
 	}
 	return out, nil
+}
+
+// purgeEvents deletes the events feed's rows older than the runs it keeps:
+// a feed that remembers a publish from before the oldest run would tell a
+// story with its middle missing. In batches, like the runs, through
+// events_at_idx.
+func (r *RunRepo) purgeEvents(ctx context.Context, after time.Duration, batch int, dry bool) (int64, error) {
+	if dry {
+		var n int64
+		err := r.pool.QueryRow(ctx,
+			`SELECT count(*) FROM events WHERE at < now() - $1::interval`, interval(after)).Scan(&n)
+		return n, err
+	}
+	var total int64
+	for {
+		tag, err := r.pool.Exec(ctx, `
+			DELETE FROM events WHERE id IN (
+				SELECT id FROM events WHERE at < now() - $1::interval LIMIT $2)`, interval(after), batch)
+		if err != nil {
+			return total, err
+		}
+		n := tag.RowsAffected()
+		total += n
+		if n < int64(batch) {
+			return total, nil
+		}
+		if err := ctx.Err(); err != nil {
+			return total, err
+		}
+	}
 }
 
 // trim empties the bulk columns on old task_runs.
