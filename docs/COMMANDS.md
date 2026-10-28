@@ -133,6 +133,7 @@ brevis scheduler --interval 5s --concurrency 4 --max-pods 10
 | `--retry-backoff-max` | duration | `1h` | ceiling for that delay |
 | `--drain-wait` | duration | `1h` | how long a run every draining agent refused waits in the queue **without spending an attempt**; `0` spends one at once |
 | `--drain-requeue-delay` | duration | `30s` | delay before such a run is tried again |
+| `--cancel-poll` | duration | `2s` | how often a request to cancel a running run is read; see [`brevis cancel`](#brevis-cancel) |
 
 With the defaults a failed run is attempted at **0s, 30s and 1m30s**, and the
 process says so at boot rather than leaving it to be composed from two numbers:

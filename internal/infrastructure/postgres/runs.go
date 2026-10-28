@@ -266,6 +266,18 @@ func (r *RunRepo) RequestCancel(ctx context.Context, id uuid.UUID, actor string)
 	}
 }
 
+// CancelRequested returns which of these runs someone asked to cancel. The
+// dispatcher asks it about the runs it holds, every CancelPoll: one query by
+// primary key, however many there are.
+func (r *RunRepo) CancelRequested(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id FROM runs WHERE id = ANY($1) AND cancel_requested_at IS NOT NULL`, ids)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+}
+
 // RecordError stores the cause of the failure.
 func (r *RunRepo) RecordError(ctx context.Context, id uuid.UUID, msg string) error {
 	_, err := r.pool.Exec(ctx, `UPDATE runs SET erro = $2 WHERE id = $1`, id, msg)
@@ -278,12 +290,13 @@ func (r *RunRepo) Get(ctx context.Context, id uuid.UUID) (dom.Run, error) {
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, workflow_slug, idempotency_key, status, attempt, definicao,
 		       trigger_type, logical_date, params, max_ativos, erro, criado_em, iniciado_em, terminado_em,
-		       auto_params, trigger_targets, COALESCE(grupo_concorrencia, '')
+		       auto_params, trigger_targets, COALESCE(grupo_concorrencia, ''),
+		       cancel_requested_at, canceled_by
 		FROM runs WHERE id = $1`, id).
 		Scan(&run.ID, &run.WorkflowSlug, &run.IdempotencyKey, &run.Status, &run.Attempt,
 			&run.Definition, &run.TriggerType, &run.LogicalDate, &run.Params, &run.MaxActive,
 			&run.Err, &run.CreatedAt, &run.StartedAt, &run.FinishedAt, &run.Auto,
-			&run.TriggerTargets, &run.Group)
+			&run.TriggerTargets, &run.Group, &run.CancelRequestedAt, &run.CanceledBy)
 	return run, err
 }
 

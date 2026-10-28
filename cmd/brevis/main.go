@@ -665,6 +665,7 @@ type schedulerFlags struct {
 	maxAttempts                   int
 	retryBackoff, retryBackoffMax time.Duration
 	drainWait, drainRequeueDelay  time.Duration
+	cancelPoll                    time.Duration
 }
 
 func (f *schedulerFlags) bind(c *cobra.Command) {
@@ -688,6 +689,8 @@ func (f *schedulerFlags) bind(c *cobra.Command) {
 		"how long a run every draining agent refused waits in the queue without spending an attempt (0 spends one at once)")
 	c.Flags().DurationVar(&f.drainRequeueDelay, "drain-requeue-delay", policy.DrainRequeueDelay,
 		"delay before such a run is tried again")
+	c.Flags().DurationVar(&f.cancelPoll, "cancel-poll", policy.CancelPoll,
+		"how often a request to cancel a running run is read")
 }
 
 // dispatcher is the policy these flags describe.
@@ -699,6 +702,7 @@ func (f schedulerFlags) dispatcher() scheduler.Config {
 		BackoffMax:        f.retryBackoffMax,
 		DrainWait:         f.drainWait,
 		DrainRequeueDelay: f.drainRequeueDelay,
+		CancelPoll:        f.cancelPoll,
 	}
 }
 

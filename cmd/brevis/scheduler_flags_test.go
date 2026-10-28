@@ -31,6 +31,7 @@ func TestTheRetryFlagsReachTheDispatcher(t *testing.T) {
 		"--concurrency", "7",
 		"--drain-wait", "0",
 		"--drain-requeue-delay", "45s",
+		"--cancel-poll", "5s",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -54,6 +55,9 @@ func TestTheRetryFlagsReachTheDispatcher(t *testing.T) {
 	}
 	if cfg.DrainRequeueDelay != 45*time.Second {
 		t.Errorf("DrainRequeueDelay = %s, the flag said 45s", cfg.DrainRequeueDelay)
+	}
+	if cfg.CancelPoll != 5*time.Second {
+		t.Errorf("CancelPoll = %s, the flag said 5s", cfg.CancelPoll)
 	}
 }
 
@@ -93,6 +97,10 @@ func TestTheFlagDefaultsAreTheDispatchersDefaults(t *testing.T) {
 	if cfg.DrainRequeueDelay != policy.DrainRequeueDelay {
 		t.Errorf("--drain-requeue-delay defaults to %s, the dispatcher to %s",
 			cfg.DrainRequeueDelay, policy.DrainRequeueDelay)
+	}
+	if cfg.CancelPoll != policy.CancelPoll {
+		t.Errorf("--cancel-poll defaults to %s, the dispatcher to %s",
+			cfg.CancelPoll, policy.CancelPoll)
 	}
 }
 

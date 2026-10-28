@@ -66,6 +66,9 @@ type Repo interface {
 	// time only, and returns how long it has waited since (#146). Spending an
 	// attempt forgets it.
 	MarkDraining(ctx context.Context, id uuid.UUID) (time.Duration, error)
+
+	// CancelRequested returns which of these runs someone asked to cancel.
+	CancelRequested(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error)
 }
 
 // Config parameterises the dispatcher.
@@ -137,6 +140,12 @@ type Config struct {
 	// before it is tried again. An instant requeue would be a hot loop
 	// against a pool that is still draining.
 	DrainRequeueDelay time.Duration
+
+	// CancelPoll is how often the dispatcher reads whether someone asked to
+	// cancel one of the runs it holds. The request is a column, and this is
+	// how long it can wait to be read: one query by primary key, and only
+	// while something is running.
+	CancelPoll time.Duration
 }
 
 // Defaults is the policy a Config left at zero gets.
@@ -181,6 +190,9 @@ func (c *Config) defaults() {
 	if c.DrainRequeueDelay <= 0 {
 		c.DrainRequeueDelay = 30 * time.Second
 	}
+	if c.CancelPoll <= 0 {
+		c.CancelPoll = 2 * time.Second
+	}
 }
 
 // Dispatcher drains the queue while respecting the maximum concurrency.
@@ -217,6 +229,10 @@ type Dispatcher struct {
 	mu    sync.Mutex
 	emVoo int
 	wg    sync.WaitGroup
+
+	// held is how to stop each run this dispatcher is executing, for when
+	// someone asks to cancel it. Guarded by mu.
+	held map[uuid.UUID]context.CancelCauseFunc
 }
 
 // The logger is given the worker's name once, here, so every line says which
@@ -225,7 +241,7 @@ type Dispatcher struct {
 func New(cfg Config, f *queue.Queue, r Repo, e Executar, log *slog.Logger) *Dispatcher {
 	cfg.defaults()
 	return &Dispatcher{cfg: cfg, queue: f, repo: r, executar: e,
-		log: log.With("worker", cfg.Worker)}
+		log: log.With("worker", cfg.Worker), held: map[uuid.UUID]context.CancelCauseFunc{}}
 }
 
 // Run drains the queue until the context is cancelled, then waits for in-flight
@@ -238,6 +254,9 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	// one: it is a safety net, not a hot path.
 	recovery := time.NewTicker(d.cfg.RecoveryInterval)
 	defer recovery.Stop()
+
+	cancels := time.NewTicker(d.cfg.CancelPoll)
+	defer cancels.Stop()
 
 	for {
 		select {
@@ -254,6 +273,8 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			} else if n > 0 {
 				d.log.Warn("orphaned runs recovered", "count", n)
 			}
+		case <-cancels.C:
+			d.stopCanceled(ctx)
 		}
 	}
 }
@@ -275,6 +296,12 @@ func (d *Dispatcher) RecoverOrphans(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	for _, it := range items {
+		// Asked to stop before its dispatcher died: what was asked is done,
+		// rather than an orphan failed and run again.
+		if d.askedToCancel(ctx, it) {
+			d.cancel(ctx, it)
+			continue
+		}
 		d.fail(ctx, it, errOrphan{worker: d.cfg.Worker, limite: d.cfg.Visibility})
 	}
 	// Until now a dead worker was a log line and nothing else, so "workers are
@@ -352,10 +379,22 @@ func (d *Dispatcher) claimCycle(ctx context.Context) error {
 }
 
 func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
+	// A request that came while the item was claimed, or that a dead
+	// dispatcher's item carried back to the queue: the run never starts.
+	if d.askedToCancel(ctx, it) {
+		d.cancel(ctx, it)
+		return
+	}
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusRunning); err != nil {
-		// An invalid transition here means another dispatcher took the same run,
-		// or that it was cancelled. Not our error: release and move on.
+		// An invalid transition here means another dispatcher took the same
+		// run, or that it has ended. Not our error. An ended run's item is
+		// done with: released, it would be claimed and refused again with no
+		// wait in between, forever.
 		d.log.Warn("could not mark running", "run", it.RunID, "error", err)
+		if r, gerr := d.repo.Get(ctx, it.RunID); gerr == nil && r.Status.Terminal() {
+			_ = d.queue.Done(ctx, it)
+			return
+		}
 		_ = d.queue.Release(ctx, it, 0)
 		return
 	}
@@ -381,7 +420,11 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 	runCtx, cancelRun := context.WithCancelCause(context.WithoutCancel(ctx))
 	unwatch := context.AfterFunc(ctx, func() { cancelRun(execution.ErrShutdown) })
 	stop := d.keepClaim(runCtx, it, func() { cancelRun(execution.ErrClaimLost) })
+	d.hold(it.RunID, cancelRun)
 	err := d.executar(runCtx, it.RunID)
+	d.release(it.RunID)
+	// Read before cancelRun(nil) below, which would make every cause "canceled".
+	cause := context.Cause(runCtx)
 	stop()
 	unwatch()
 	cancelRun(nil)
@@ -420,6 +463,15 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 		// gain.
 		_ = d.queue.Done(done, it)
 		d.measure(done, it.RunID, dom.StatusSuccess)
+		return
+	}
+
+	// Canceled, and so not failed: no attempt is spent and nothing is retried.
+	// Read from the cause and not from the error, which only says the
+	// context ended. A run that finished as the request arrived succeeded
+	// above, which is what it did.
+	if errors.Is(cause, execution.ErrCanceled) {
+		d.cancel(done, it)
 		return
 	}
 
@@ -486,6 +538,83 @@ func (d *Dispatcher) deferRun(ctx context.Context, it queue.Item, cause error, w
 	}
 	d.log.Info("deferred, a host is draining", "run", it.RunID,
 		"waited", waited, "delay", d.cfg.DrainRequeueDelay)
+}
+
+// hold and release keep how to stop each run this dispatcher is executing.
+func (d *Dispatcher) hold(id uuid.UUID, stop context.CancelCauseFunc) {
+	d.mu.Lock()
+	d.held[id] = stop
+	d.mu.Unlock()
+}
+
+func (d *Dispatcher) release(id uuid.UUID) {
+	d.mu.Lock()
+	delete(d.held, id)
+	d.mu.Unlock()
+}
+
+// stopCanceled reads whether someone asked to cancel a run this dispatcher is
+// executing, and stops each one with ErrCanceled: the executors stop its
+// steps, and process writes `canceled` when executar returns. Nothing is read
+// while nothing runs.
+func (d *Dispatcher) stopCanceled(ctx context.Context) {
+	d.mu.Lock()
+	ids := make([]uuid.UUID, 0, len(d.held))
+	for id := range d.held {
+		ids = append(ids, id)
+	}
+	d.mu.Unlock()
+	if len(ids) == 0 {
+		return
+	}
+
+	asked, err := d.repo.CancelRequested(ctx, ids)
+	if err != nil {
+		// The next poll asks again; a run is canceled late, not lost.
+		d.log.Warn("reading the cancel requests", "error", err)
+		return
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for _, id := range asked {
+		if stop, ok := d.held[id]; ok {
+			d.log.Info("canceling the run, as asked", "run", id)
+			stop(execution.ErrCanceled)
+			// Once: a step can take a while to die, and asking again every
+			// poll changes nothing but the log.
+			delete(d.held, id)
+		}
+	}
+}
+
+// askedToCancel says whether someone asked to cancel the item's run. An error
+// reading it says no: the run goes on, and the poll reads it again.
+func (d *Dispatcher) askedToCancel(ctx context.Context, it queue.Item) bool {
+	asked, err := d.repo.CancelRequested(ctx, []uuid.UUID{it.RunID})
+	if err != nil {
+		d.log.Warn("reading the cancel request", "run", it.RunID, "error", err)
+		return false
+	}
+	return len(asked) > 0
+}
+
+// cancel writes the end of a run someone asked to cancel: who asked in its
+// error, then `canceled`, and its item out of the queue. No attempt is spent
+// and no alert raised: nothing failed. The error goes first, as in fail, so a
+// run that reads `canceled` already says who stopped it.
+func (d *Dispatcher) cancel(ctx context.Context, it queue.Item) {
+	msg := "canceled"
+	if r, err := d.repo.Get(ctx, it.RunID); err == nil && r.CanceledBy != "" {
+		msg = "canceled by " + r.CanceledBy
+	}
+	if err := d.repo.RecordError(ctx, it.RunID, msg); err != nil {
+		d.log.Error("recording why the run ended", "run", it.RunID, "error", err)
+	}
+	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusCanceled); err != nil {
+		d.log.Error("marking canceled", "run", it.RunID, "error", err)
+	}
+	_ = d.queue.Done(ctx, it)
+	d.measure(ctx, it.RunID, dom.StatusCanceled)
 }
 
 // interrupt sends back to the queue a run this process stopped on its way
