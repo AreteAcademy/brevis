@@ -56,9 +56,9 @@ func Status(kind string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(s.label)
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(statusWord(ctx, kind, s))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/status.templ`, Line: 8, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/status.templ`, Line: 8, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -119,9 +119,9 @@ func StatusMark(kind string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(s.label)
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(statusWord(ctx, kind, s))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/status.templ`, Line: 15, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/status.templ`, Line: 15, Col: 92}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -132,9 +132,9 @@ func StatusMark(kind string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(s.label)
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(statusWord(ctx, kind, s))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/status.templ`, Line: 15, Col: 109}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/status.templ`, Line: 15, Col: 143}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {

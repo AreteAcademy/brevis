@@ -1,5 +1,11 @@
 package components
 
+import (
+	"context"
+
+	"github.com/AreteAcademy/brevis/web/i18n"
+)
+
 // status is how one state looks: the shape its mark is drawn in (a class
 // app.src.css draws with ::before), its colour as a text class -- the mark
 // takes currentColor, so word and mark never disagree -- and its word.
@@ -61,6 +67,15 @@ func lookStatus(kind string) status {
 		return s
 	}
 	return status{"ring", "text-muted", kind}
+}
+
+// statusWord is a kind's word in the page's language. A kind nobody
+// declared is its own name, which no catalog translates.
+func statusWord(ctx context.Context, kind string, s status) string {
+	if _, ok := statuses[kind]; !ok {
+		return s.label
+	}
+	return i18n.T(ctx, "state."+kind)
 }
 
 // runKind is a run's or a step's status as a Status kind: the engine says ""

@@ -1,5 +1,7 @@
 package components
 
+import "github.com/AreteAcademy/brevis/web/i18n"
+
 // Drawer is a panel that slides in from the right over the page: a form, a
 // detail, an explanation that does not deserve a page of its own.
 //
@@ -30,7 +32,7 @@ templ dialogFrame(kind, id, title string, foot templ.Component) {
 		<header class="dialog-head">
 			<h2 id={ id + "-title" } class="text-[0.95rem] font-semibold text-ink">{ title }</h2>
 			<form method="dialog">
-				<button type="submit" aria-label="Close" class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+				<button type="submit" aria-label={ i18n.T(ctx, "dialog.close") } class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
 					@Icon("x", "h-4 w-4")
 				</button>
 			</form>
