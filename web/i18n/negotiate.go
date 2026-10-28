@@ -11,9 +11,19 @@ import (
 // selector or the palette.
 const Cookie = "brevis_lang"
 
+// browserLanguage turns on the browser's Accept-Language as the default when
+// no choice was made.
+//
+// OFF UNTIL THE SCREENS ARE TRANSLATED. The shell speaks three languages and
+// the pages' content still one: a browser set to Portuguese would open a
+// console half in each, which reads as a defect to somebody who never asked
+// for it. Until the last screen is translated, only the reader's own choice
+// (the cookie) changes the language. Turn this on with that screen.
+var browserLanguage = false
+
 // Negotiate is the request's language: the cookie when it names one the
-// console speaks, else the best of the browser's Accept-Language, else
-// English.
+// console speaks, else -- once browserLanguage is on -- the best of the
+// browser's Accept-Language, else English.
 //
 // A REGION IS A HINT, NOT A REQUIREMENT. pt-PT reads the Brazilian catalog
 // far better than English, and es-MX the Spanish one, so a tag is matched by
@@ -25,6 +35,9 @@ func Negotiate(r *http.Request) string {
 				return l
 			}
 		}
+	}
+	if !browserLanguage {
+		return "en"
 	}
 	type choice struct {
 		lang string

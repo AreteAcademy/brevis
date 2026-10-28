@@ -9,7 +9,12 @@ import (
 // ENGLISH IS WHAT IS LEFT. A Portuguese from Portugal reads Brazilian
 // Portuguese better than English, and a Mexican reads the Spanish catalog; a
 // language the console does not speak is never a blank page.
+//
+// The browser's half is off while the screens are translated (see
+// browserLanguage); it is tested switched on, so it is ready the day it is.
 func TestNegotiateTakesTheCookieThenTheBrowserThenEnglish(t *testing.T) {
+	browserLanguage = true
+	t.Cleanup(func() { browserLanguage = false })
 	for _, c := range []struct {
 		cookie, accept, want string
 	}{
@@ -35,5 +40,21 @@ func TestNegotiateTakesTheCookieThenTheBrowserThenEnglish(t *testing.T) {
 		if got := Negotiate(r); got != c.want {
 			t.Errorf("cookie %q, Accept-Language %q: %s, want %s", c.cookie, c.accept, got, c.want)
 		}
+	}
+}
+
+// UNTIL THE SCREENS ARE TRANSLATED, ONLY A CHOICE CHANGES THE LANGUAGE. The
+// shell speaks three languages and the pages' content one, so a browser set
+// to Portuguese would open a console half in each that nobody asked for. A
+// reader who chooses Portuguese knows what they chose.
+func TestTheBrowsersLanguageWaitsForTheScreens(t *testing.T) {
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Accept-Language", "pt-BR,pt;q=0.9")
+	if got := Negotiate(r); got != "en" {
+		t.Errorf("a Portuguese browser with no choice made opens in %s", got)
+	}
+	r.Header.Add("Cookie", Cookie+"=pt-BR")
+	if got := Negotiate(r); got != "pt-BR" {
+		t.Errorf("a reader who chose Portuguese gets %s", got)
 	}
 }

@@ -52,9 +52,11 @@ sidebar and its hints, the palette, the shortcuts, the account menu, the
 states' words, relative times, dates and numbers, and the sign-in page.
 
 - The language is the reader's choice (a globe at the sidebar's foot, or the
-  palette), remembered in a cookie; without one, the browser's
-  `Accept-Language` decides, and English is the default. The server draws the
-  page in it from the first paint, and `<html lang>` says which.
+  palette), remembered in a cookie, and English is the default. The server
+  draws the page in it from the first paint, and `<html lang>` says which.
+  The browser's `Accept-Language` is not used yet: until the screens are
+  translated it would open a console half in each language for somebody who
+  never asked for one.
 - Choosing works with no script: a form that returns to the same page.
 - The pages' own content is still English; each screen is translated as it is
   redesigned.

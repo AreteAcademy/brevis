@@ -46,7 +46,8 @@ func TestThePageDeclaresTheLanguageItWasDrawnIn(t *testing.T) {
 	for _, c := range []struct{ cookie, accept, want string }{
 		{"", "", `lang="en"`},
 		{"pt-BR", "", `lang="pt-BR"`},
-		{"", "es-MX,es;q=0.9", `lang="es"`},
+		// The browser's language is not used yet: see i18n.browserLanguage.
+		{"", "es-MX,es;q=0.9", `lang="en"`},
 	} {
 		if tag := htmlTag(t, pageIn(t, ui, "/ingest/loads", c.cookie, c.accept, false)); !strings.Contains(tag, c.want) {
 			t.Errorf("cookie %q, accept %q: %s, want %s", c.cookie, c.accept, tag, c.want)
