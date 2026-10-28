@@ -85,7 +85,10 @@ func Why(steps []StepAttempt, runErr string) *Cause {
 		c.Excerpt = excerpt(at.Log, start)
 		c.Line = c.Excerpt[len(c.Excerpt)-1]
 	case at.Err != "":
-		c.Line, c.Source = at.Err, FromStepError
+		// The engine's error is a line and then the log's tail, for the
+		// alert; the line is the cause.
+		c.Line, _, _ = strings.Cut(at.Err, "\n")
+		c.Source = FromStepError
 	default:
 		c.Line, c.Source = runErr, FromRunError
 	}

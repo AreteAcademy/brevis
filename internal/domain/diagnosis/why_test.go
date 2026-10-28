@@ -166,3 +166,13 @@ func TestALargeLogIsNotCopied(t *testing.T) {
 		t.Errorf("Why allocated %d bytes for a %d-byte log; want it read in place", n, len(log))
 	}
 }
+
+// THE ENGINE'S ERROR IS ONE LINE AND A TAIL: `step "load": exited with code
+// 1`, then the log's last lines for the alert. As a cause, the line.
+func TestTheStepsErrorIsItsFirstLine(t *testing.T) {
+	a := failed("load", 0, "")
+	a.Err = "step \"load\": timed out after 10m\nfetching page 9\n"
+	if got := Why([]StepAttempt{a}, ""); got == nil || got.Line != `step "load": timed out after 10m` {
+		t.Errorf("Why = %+v; want the error's first line", got)
+	}
+}

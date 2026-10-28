@@ -117,3 +117,20 @@ func TestTheLogIsNotGivenToSomebodyNotSignedIn(t *testing.T) {
 		t.Errorf("signed out, the log = %d %q", rec.Code, rec.Body.String())
 	}
 }
+
+// THE ENGINE'S ERROR REPEATS THE LOG'S END: it is `step "load": exited with
+// code 1` and then the last lines, for the alert. In the file the log is
+// already there, so only the error's own line is added.
+func TestTheLogDoesNotRepeatTheTailTheEnginesErrorCarries(t *testing.T) {
+	log := "connecting\nValueError: order_id is null in 3 rows\n"
+	ui := logUI(execsFake{
+		run: dom.Run{ID: logRun, WorkflowSlug: "broken_ingest"},
+		logs: []postgres.StepLog{{NodeID: "load", MapIndex: dom.Unmapped, Status: "failed", ExitCode: exitCode(1),
+			Log: log, Err: "step \"load\": exited with code 1\n" + log}},
+	})
+	body, _ := io.ReadAll(download(t, ui, "/runs/"+logRun.String()+"/log.txt").Body)
+	want := "== load · attempt 1 · failed · exit 1\n" + log + "step \"load\": exited with code 1\n"
+	if string(body) != want {
+		t.Errorf("the log =\n%s\nwant\n%s", body, want)
+	}
+}
