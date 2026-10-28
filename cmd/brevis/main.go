@@ -664,6 +664,7 @@ type schedulerFlags struct {
 	concurrency, maxPods          int
 	maxAttempts                   int
 	retryBackoff, retryBackoffMax time.Duration
+	drainWait, drainRequeueDelay  time.Duration
 }
 
 func (f *schedulerFlags) bind(c *cobra.Command) {
@@ -683,15 +684,21 @@ func (f *schedulerFlags) bind(c *cobra.Command) {
 		"first delay between attempts, doubled on each one after it")
 	c.Flags().DurationVar(&f.retryBackoffMax, "retry-backoff-max", policy.BackoffMax,
 		"ceiling for that delay")
+	c.Flags().DurationVar(&f.drainWait, "drain-wait", policy.DrainWait,
+		"how long a run every draining agent refused waits in the queue without spending an attempt (0 spends one at once)")
+	c.Flags().DurationVar(&f.drainRequeueDelay, "drain-requeue-delay", policy.DrainRequeueDelay,
+		"delay before such a run is tried again")
 }
 
 // dispatcher is the policy these flags describe.
 func (f schedulerFlags) dispatcher() scheduler.Config {
 	return scheduler.Config{
 		Worker: workerName(os.Hostname, os.Getpid()), MaxConcorrente: f.concurrency,
-		MaxAttempts: f.maxAttempts,
-		BackoffBase: f.retryBackoff,
-		BackoffMax:  f.retryBackoffMax,
+		MaxAttempts:       f.maxAttempts,
+		BackoffBase:       f.retryBackoff,
+		BackoffMax:        f.retryBackoffMax,
+		DrainWait:         f.drainWait,
+		DrainRequeueDelay: f.drainRequeueDelay,
 	}
 }
 
@@ -1288,9 +1295,14 @@ func remoteHosts(cfg config.Config, log *slog.Logger) map[string]execution.Execu
 	}
 	out := make(map[string]execution.Executor, len(cfg.Hosts))
 	for name, addr := range cfg.Hosts {
+		// Replicas for every host, a single agent included: one address
+		// resolves to itself and is dialed as before, and a pool behind a
+		// Service gets its starts steered off a draining replica (#146).
+		agent := remote.HTTPAgent{BaseURL: strings.TrimRight(addr, "/"), Token: cfg.HostToken,
+			Replicas: &remote.Replicas{}}
 		out[name] = &remote.Executor{
 			Host:     name,
-			Agent:    remote.HTTPAgent{BaseURL: strings.TrimRight(addr, "/"), Token: cfg.HostToken},
+			Agent:    agent,
 			HandOver: cfg.HostHandover,
 		}
 	}

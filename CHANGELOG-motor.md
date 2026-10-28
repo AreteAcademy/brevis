@@ -100,6 +100,32 @@ What happened to an installation, in order, for the redesigned Overview's
 - **The pause button now passes the signed-in operator** to the schedule.
   `publish`, `gateway` and `endpoints` record `cli` as who did it.
 
+### Fixed: a draining agent in a pool no longer fails runs (#146)
+
+A start refused by a draining agent behind a pool's Service name went back to
+the same agent, down the kept-alive connection, and every refusal spent one of
+the run's attempts. Runs failed while a healthy replica stood beside it.
+
+- **The refused start goes to another replica.** The engine resolves the name
+  itself and tries an address that refused for draining last, for 30 seconds.
+  The agent says `Brevis-Refusal: draining` and closes the connection; an agent
+  from 0.38 is recognised by its message. A bare `503` is still a failure.
+- **The engine speaks HTTP/1.1 to agents**, so no start waits on a connection
+  another step's stream holds.
+- **A step nobody started spends nothing.** When every replica is draining,
+  the step's attempts are kept, and the run goes back to the queue with no
+  attempt spent and no alert, for at most `--drain-wait` (default `1h`), tried
+  again every `--drain-requeue-delay` (default `30s`). Past the wait the
+  attempt is spent as before. `--drain-wait 0` spends it at once.
+- Migration `00028` adds `runs.draining_since`.
+
+### Fixed: a step that succeeded no longer hangs in the executor (#147)
+
+Closing a `host:` step's stream while it was still being read could let that
+stray read take the end of the next response on the same connection, and a
+step that had already succeeded was waited on forever. Each stream now has a
+request of its own, and its reader is stopped before the body is closed.
+
 ### Changed
 
 - **The accent is spent in four places**: the primary action, the open

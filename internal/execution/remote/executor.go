@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strings"
 	"sync"
@@ -126,6 +127,13 @@ func (e *Executor) Execute(ctx context.Context, t execution.TaskExec) (<-chan ex
 	session, err := e.Agent.Start(opened, req)
 	if err != nil {
 		stop()
+		if errors.Is(err, ErrAgentDraining) {
+			// Refused by every replica the tries reached, all of them on
+			// their way out: nothing ran, and nothing about the step is wrong
+			// (#146).
+			return nil, fmt.Errorf("the agent on %s refused the step: %w: %w",
+				e.Host, execution.ErrNotStarted, err)
+		}
 		return nil, fmt.Errorf("the agent on %s refused the step: %w", e.Host, err)
 	}
 
@@ -582,6 +590,11 @@ type HTTPAgent struct {
 	// nothing (#136); its length + 1 is how many tries. Nil takes
 	// defaultStartBackoff. A test passes milliseconds.
 	StartBackoff []time.Duration
+
+	// Replicas reaches a pool behind one name, and steers a start away from a
+	// replica that refused one for draining (#146). Nil dials the name as the
+	// system resolves it, which is one agent at one address.
+	Replicas *Replicas
 }
 
 // defaultStartBackoff: five tries over about fifteen seconds. Long enough for a
@@ -593,9 +606,26 @@ var defaultStartBackoff = []time.Duration{time.Second, 2 * time.Second, 4 * time
 // took nothing on. A draining agent answers it before reserving the id.
 var errUnavailable = errors.New("the agent is unavailable")
 
+// ErrAgentDraining is a 503 from an agent on its way out (#146), which another
+// replica of the same host would run. It wraps errUnavailable, so it is sent
+// again like any start that ran nothing.
+//
+// Kept apart from a bare 503 because that one is also a balancer with nobody
+// behind it -- a host that is down -- and only a refusal that says it is
+// draining is a reason to look for another replica instead of spending an
+// attempt.
+var ErrAgentDraining = fmt.Errorf("%w: it is draining", errUnavailable)
+
+// drainingSaid is how an agent from before HeaderRefusal (0.38) says it: the
+// opening of the message it answers the refusal with.
+const drainingSaid = "this agent is draining"
+
 func (a HTTPAgent) client() *http.Client {
 	if a.Client != nil {
 		return a.Client
+	}
+	if a.Replicas != nil {
+		return a.Replicas.client()
 	}
 	// No overall timeout: a step legitimately runs for hours, and a client
 	// timeout would cut it at an arbitrary point. What catches a dead agent is
@@ -622,9 +652,19 @@ func (a HTTPAgent) Start(ctx context.Context, r StartRequest) (Session, error) {
 		backoff = defaultStartBackoff
 	}
 	for try := 0; ; try++ {
-		stream, instance, err := a.send(ctx, a.BaseURL, "/v1/exec", r)
+		// Which address answered, for a pool to try the others next when it
+		// refused for draining (#146). Read from the connection, because the
+		// name the request went to is the whole pool's.
+		var at string
+		traced := httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
+			GotConn: func(c httptrace.GotConnInfo) { at = c.Conn.RemoteAddr().String() },
+		})
+		stream, instance, err := a.send(traced, a.BaseURL, "/v1/exec", r)
 		if err == nil {
 			return Session{Instance: instance, Stream: stream}, nil
+		}
+		if a.Replicas != nil && errors.Is(err, ErrAgentDraining) {
+			a.Replicas.drained(at)
 		}
 		if try == len(backoff) || !ranNothing(err) {
 			return Session{}, err
@@ -776,7 +816,12 @@ func (a HTTPAgent) send(ctx context.Context, base, path string, payload any) (io
 		_ = resp.Body.Close()
 		err := fmt.Errorf("the agent answered %s: %s", resp.Status, strings.TrimSpace(string(snippet)))
 		if resp.StatusCode == http.StatusServiceUnavailable {
-			err = fmt.Errorf("%w: %w", errUnavailable, err)
+			cause := errUnavailable
+			if resp.Header.Get(HeaderRefusal) == RefusalDraining ||
+				strings.HasPrefix(strings.TrimSpace(string(snippet)), drainingSaid) {
+				cause = ErrAgentDraining
+			}
+			err = fmt.Errorf("%w: %w", cause, err)
 		}
 		if resp.StatusCode == http.StatusNotFound {
 			// The agent has no execution by that id. Typed, because #125's

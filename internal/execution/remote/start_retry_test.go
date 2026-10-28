@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/execution"
 	"github.com/AreteAcademy/brevis/internal/execution/remote"
 )
 
@@ -80,6 +81,77 @@ func TestA503IsSentAgainFiveTimesAtMost(t *testing.T) {
 	}
 	if got := n.Load(); got != 5 {
 		t.Errorf("%d requests, wanted 5", got)
+	}
+}
+
+// refusing is an agent that answers every start 503, with `header` as
+// Brevis-Refusal when it is not empty and `body` as the message.
+func refusing(t *testing.T, header, body string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if header != "" {
+			w.Header().Set(remote.HeaderRefusal, header)
+		}
+		http.Error(w, body, http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// A draining agent says so (#146), and the engine tells it apart from any
+// other 503: it has a replica that would run the step.
+func TestADrainingRefusalIsTyped(t *testing.T) {
+	srv := refusing(t, remote.RefusalDraining, "this agent is draining")
+	err := startOn(context.Background(), srv.URL)
+	if !errors.Is(err, remote.ErrAgentDraining) {
+		t.Fatalf("Start = %v, wanted ErrAgentDraining", err)
+	}
+}
+
+// An agent from 0.38 sends no header, only its message. Pinned here as it
+// was on the wire, not read from the agent package: the point is the old
+// agent's text, which does not change when the new one's does.
+func TestADrainingRefusalFromAnAgentWithoutTheHeaderIsTyped(t *testing.T) {
+	srv := refusing(t, "", "this agent is draining: it finishes the steps it has and takes no new one")
+	err := startOn(context.Background(), srv.URL)
+	if !errors.Is(err, remote.ErrAgentDraining) {
+		t.Fatalf("Start = %v, wanted ErrAgentDraining", err)
+	}
+}
+
+// A bare 503 -- a balancer with nobody behind it -- is NOT draining: nothing
+// says a replica would take the step, and treating it as one would let a host
+// that is down keep runs waiting without an attempt or an alert. It is still
+// sent again, as #136 has it.
+func TestABare503IsNotDraining(t *testing.T) {
+	srv := refusing(t, "", "no healthy upstream")
+	err := startOn(context.Background(), srv.URL)
+	if err == nil || errors.Is(err, remote.ErrAgentDraining) {
+		t.Fatalf("Start = %v, wanted an error that is not ErrAgentDraining", err)
+	}
+}
+
+// A step every agent refused for draining was not started, and the executor
+// says so in the one word the runner and the dispatcher read (#146). A bare
+// 503 does not: a host that is down is a failure.
+func TestAStepRefusedForDrainingIsNotStarted(t *testing.T) {
+	for _, c := range []struct {
+		header, body string
+		notStarted   bool
+	}{
+		{remote.RefusalDraining, "this agent is draining", true},
+		{"", "no healthy upstream", false},
+	} {
+		srv := refusing(t, c.header, c.body)
+		e := &remote.Executor{Host: "pool", Agent: remote.HTTPAgent{BaseURL: srv.URL, StartBackoff: fast}}
+		_, err := e.Execute(context.Background(), execution.TaskExec{
+			ExecutionID: "e", NodeID: "load", Command: "load.sh"})
+		if err == nil {
+			t.Fatalf("%q: Execute succeeded against a 503", c.body)
+		}
+		if got := errors.Is(err, execution.ErrNotStarted); got != c.notStarted {
+			t.Errorf("%q: ErrNotStarted is %v, wanted %v: %v", c.body, got, c.notStarted, err)
+		}
 	}
 }
 

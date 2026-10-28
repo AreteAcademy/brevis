@@ -37,6 +37,13 @@ var (
 	ErrLostTrack = errors.New("the step's output can no longer be read from where it was left")
 )
 
+// ErrNotStarted is a step that nothing ran: where it was sent refused it before
+// starting anything, for a reason that is not the step's -- every agent of a
+// pool draining (#146). The runner does not spend the step's attempts on it,
+// and a run whose only failures are these is one the dispatcher sends back to
+// the queue without spending the run's.
+var ErrNotStarted = errors.New("the step was not started")
+
 // Executor runs a task and reports what happens.
 type Executor interface {
 	Name() string
