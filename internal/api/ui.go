@@ -106,7 +106,8 @@ type CatalogReader interface {
 // the UI must not be able to do anything more to the system than pause a
 // schedule and ask for a run now.
 type Actions interface {
-	Toggle(ctx context.Context, slug string) (bool, error)
+	// Toggle pauses or resumes; actor is who pressed it, for the events feed.
+	Toggle(ctx context.Context, slug, actor string) (bool, error)
 	Disparar(ctx context.Context, slug string, now time.Time, params map[string]string) (uuid.UUID, error)
 }
 
@@ -1579,7 +1580,7 @@ func (u *UI) waitOf(ctx context.Context, current run.Run) *postgres.Wait {
 
 func (u *UI) toggle(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
-	active1, err := u.actions.Toggle(r.Context(), slug)
+	active1, err := u.actions.Toggle(r.Context(), slug, auth.De(r.Context()))
 	if err != nil {
 		u.failure(w, r, err)
 		return

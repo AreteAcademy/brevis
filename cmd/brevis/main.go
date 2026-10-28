@@ -1306,8 +1306,8 @@ type uiActions struct {
 	sched     *scheduler.Scheduler
 }
 
-func (a uiActions) Toggle(ctx context.Context, slug string) (bool, error) {
-	return a.schedules.Toggle(ctx, slug)
+func (a uiActions) Toggle(ctx context.Context, slug, actor string) (bool, error) {
+	return a.schedules.Toggle(ctx, slug, actor)
 }
 
 func (a uiActions) Disparar(ctx context.Context, slug string, now time.Time,

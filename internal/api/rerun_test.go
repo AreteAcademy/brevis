@@ -24,7 +24,7 @@ import (
 // triggerSpy is the scheduler as the trigger sees it, keeping what it got.
 type triggerSpy struct{ got map[string]string }
 
-func (s *triggerSpy) Toggle(context.Context, string) (bool, error) { return false, nil }
+func (s *triggerSpy) Toggle(context.Context, string, string) (bool, error) { return false, nil }
 func (s *triggerSpy) Disparar(_ context.Context, _ string, _ time.Time, params map[string]string) (uuid.UUID, error) {
 	s.got = params
 	return uuid.New(), nil
