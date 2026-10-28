@@ -1,5 +1,3 @@
-// Package events names what can happen to an installation, for the console's
-// events feed: the closed list of kinds, and which source each belongs to.
 package events
 
 // Kind is what happened, as stored in events.kind: `<thing>.<what>`.

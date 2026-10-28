@@ -249,3 +249,47 @@ func TestEveryBranchOfTheFeedReadsAnIndex(t *testing.T) {
 		})
 	}
 }
+
+// THE FEED'S PRICE, per page of 50: a year of an installation with a million
+// runs over a thousand workflows and a hundred thousand events. Run with
+// -bench; `make test-int` does not.
+func BenchmarkRecentEvents(b *testing.B) {
+	pool := insightsDB(b)
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO runs (id, workflow_slug, idempotency_key, status, definicao, trigger_type,
+		                  criado_em, iniciado_em, terminado_em)
+		SELECT gen_random_uuid(), 'wf_' || (g % 1000), 'bench-' || g,
+		       CASE WHEN g % 20 = 0 THEN 'failed' WHEN g % 97 = 0 THEN 'canceled' ELSE 'success' END,
+		       '{}', 'schedule',
+		       now() - g * interval '30 seconds', now() - g * interval '30 seconds',
+		       now() - g * interval '30 seconds' + interval '2 minutes'
+		FROM generate_series(1, 1000000) g;
+		INSERT INTO events (at, kind, subject, actor)
+		SELECT now() - g * interval '5 minutes',
+		       (ARRAY['workflow.published', 'schedule.paused', 'stream.published', 'endpoints.published'])[g % 4 + 1],
+		       'subject_' || (g % 500), 'cli'
+		FROM generate_series(1, 100000) g;
+		ANALYZE runs; ANALYZE events`); err != nil {
+		b.Fatal(err)
+	}
+	repo := postgres.NewEventRepo(pool)
+	_, cursor, err := repo.RecentEvents(ctx, postgres.EventQuery{Limit: 50})
+	if err != nil {
+		b.Fatal(err)
+	}
+	for name, q := range map[string]postgres.EventQuery{
+		"everything":     {Limit: 50},
+		"after a cursor": {Limit: 50, Before: cursor},
+		"workflows":      {Limit: 50, Source: events.FromWorkflow},
+		"streams":        {Limit: 50, Source: events.FromStream},
+	} {
+		b.Run(name, func(b *testing.B) {
+			for b.Loop() {
+				if _, _, err := repo.RecentEvents(ctx, q); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
