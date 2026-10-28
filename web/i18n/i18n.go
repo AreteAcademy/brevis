@@ -12,6 +12,20 @@
 // A message is TEXT. The template escapes it like any other string, and a
 // catalog never carries HTML.
 //
+// MAKING A SCREEN TRANSLATABLE is three steps, and the tests hold each one:
+//
+//  1. Replace a sentence in the template with i18n.T(ctx, "screen.what"), or
+//     i18n.N for a count; a date, a number or "3 min ago" goes through Date,
+//     Number, Decimal, Since or Elapsed instead of fmt or time.Format.
+//  2. Add the key to all three files in locales/, with the same placeholders.
+//     English is the default and the fallback; a key it lacks shows as [key].
+//  3. If ui.js writes the sentence, add the key to ScriptKeys too, and read it
+//     there with t("screen.what").
+//
+// Product and engine terms are never translated (BigQuery, dbt, gateway,
+// slot, dead letter, Workflows...); keys_test.go holds that, and that no key
+// is missing or unused. es.json still needs a native speaker's review.
+//
 // NO LIBRARY. The three languages share one plural rule (one for 1, other for
 // everything else), placeholders are named, and that is all this needs -- a
 // dependency would add packages to an engine whose size a gate watches.

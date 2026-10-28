@@ -8,7 +8,10 @@ contributor in Berlin or Osaka reads the same comment as the person who wrote it
 and a comment nobody can read is a comment that stops being maintained.
 
 The website's user-facing documentation is translated to Portuguese, English and
-Spanish. Everything else, including this repository, is English only.
+Spanish, and so is the console a person operates: its words live in message
+catalogs (`web/i18n/locales/`), English first, and a template asks for a key --
+`i18n.T(ctx, "nav.overview")` -- rather than writing a sentence. Everything
+else, including this repository, is English only.
 
 A few names stay Portuguese on purpose, and each one says so where it lives:
 the on-disk and wire formats. The `Param` JSON keys, `postgres.Stage`'s tags, the
