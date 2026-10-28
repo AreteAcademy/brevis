@@ -53,7 +53,7 @@ func TestPublishingAGatewayReplacesItsRows(t *testing.T) {
 	}}
 
 	for i := 0; i < 2; i++ {
-		if err := repo.Publish(ctx, manifest(clicks, tables), at); err != nil {
+		if err := repo.Publish(ctx, manifest(clicks, tables), at, "test"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -71,14 +71,14 @@ func TestPublishingAGatewayReplacesItsRows(t *testing.T) {
 		t.Errorf("routes=%v target=%v", routes, tgt)
 	}
 
-	if err := repo.Publish(ctx, manifest(clicks), at); err != nil {
+	if err := repo.Publish(ctx, manifest(clicks), at, "test"); err != nil {
 		t.Fatal(err)
 	}
 	if n := countRows(t, pool, "edge"); n != 2 {
 		t.Fatalf("after dropping /v1/tables: rows = %d, want 2", n)
 	}
 
-	removed, err := repo.Unpublish(ctx, "edge")
+	removed, err := repo.Unpublish(ctx, "edge", "test")
 	if err != nil || removed != 2 || countRows(t, pool, "edge") != 0 {
 		t.Fatalf("unpublish removed %d, err %v", removed, err)
 	}
@@ -92,10 +92,10 @@ func TestPublishingOneGatewayLeavesTheOthers(t *testing.T) {
 	other := manifest(catalog.ManifestStream{Path: "/v1/x", Destinations: []catalog.ManifestDestination{
 		{Role: "sink", Kind: "pubsub", Target: target("pubsub://acme/x")}}})
 	other.Gateway = "internal"
-	if err := repo.Publish(ctx, other, time.Now()); err != nil {
+	if err := repo.Publish(ctx, other, time.Now(), "test"); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Publish(ctx, manifest(), time.Now()); err != nil {
+	if err := repo.Publish(ctx, manifest(), time.Now(), "test"); err != nil {
 		t.Fatal(err)
 	}
 	if countRows(t, pool, "internal") != 1 {
@@ -141,7 +141,7 @@ func TestPublishingAConfigurationKeepsOneCopyAndAHistoryOfChanges(t *testing.T) 
 	history := `SELECT count(*) FROM gateway_config_history WHERE gateway = 'edge' AND stream_path = '/v1/tables'`
 
 	for i := range 2 {
-		if err := repo.Publish(ctx, v2(configured("1m", nil)), at.Add(time.Duration(i)*time.Hour)); err != nil {
+		if err := repo.Publish(ctx, v2(configured("1m", nil)), at.Add(time.Duration(i)*time.Hour), "test"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -152,7 +152,7 @@ func TestPublishingAConfigurationKeepsOneCopyAndAHistoryOfChanges(t *testing.T) 
 		t.Fatalf("history after two equal publishes = %d, want 1", n)
 	}
 
-	if err := repo.Publish(ctx, v2(configured("2m", nil)), at.Add(2*time.Hour)); err != nil {
+	if err := repo.Publish(ctx, v2(configured("2m", nil)), at.Add(2*time.Hour), "test"); err != nil {
 		t.Fatal(err)
 	}
 	if n := count(t, pool, history); n != 2 {
@@ -177,10 +177,10 @@ func TestRewordedNotesReplaceTheOldOnesWithoutAVersion(t *testing.T) {
 	repo := postgres.NewGatewayRepo(pool)
 	at := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
 
-	if err := repo.Publish(ctx, v2(configured("1m", map[string]string{"": "first words"})), at); err != nil {
+	if err := repo.Publish(ctx, v2(configured("1m", map[string]string{"": "first words"})), at, "test"); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Publish(ctx, v2(configured("1m", map[string]string{"": "second words"})), at.Add(time.Hour)); err != nil {
+	if err := repo.Publish(ctx, v2(configured("1m", map[string]string{"": "second words"})), at.Add(time.Hour), "test"); err != nil {
 		t.Fatal(err)
 	}
 	if n := count(t, pool, `SELECT count(*) FROM gateway_config_history`); n != 1 {
@@ -204,7 +204,7 @@ func TestAVersionOnePublishHasNoConfiguration(t *testing.T) {
 	old := catalog.ManifestStream{Path: "/v1/clicks", Destinations: []catalog.ManifestDestination{
 		{Role: "sink", Kind: "pubsub", Target: target("pubsub://acme/clicks")}}}
 
-	if err := repo.Publish(ctx, manifest(old), time.Now()); err != nil {
+	if err := repo.Publish(ctx, manifest(old), time.Now(), "test"); err != nil {
 		t.Fatal(err)
 	}
 	if n := count(t, pool, `SELECT count(*) FROM gateway_streams WHERE config_hash IS NULL`); n != 1 {
@@ -221,10 +221,10 @@ func TestUnpublishingKeepsTheHistory(t *testing.T) {
 	pool := gatewaysDB(t)
 	ctx := context.Background()
 	repo := postgres.NewGatewayRepo(pool)
-	if err := repo.Publish(ctx, v2(configured("1m", nil)), time.Now()); err != nil {
+	if err := repo.Publish(ctx, v2(configured("1m", nil)), time.Now(), "test"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := repo.Unpublish(ctx, "edge"); err != nil {
+	if _, err := repo.Unpublish(ctx, "edge", "test"); err != nil {
 		t.Fatal(err)
 	}
 	if n := count(t, pool, `SELECT count(*) FROM gateway_streams`); n != 0 {
@@ -256,7 +256,7 @@ func TestConcurrentPublishesOfOneGatewayAllSucceed(t *testing.T) {
 				defer wg.Done()
 				<-start
 				stamp := at.Add(time.Duration(round*4+i) * time.Second)
-				if err := repo.Publish(ctx, v2(configured(every, nil)), stamp); err != nil {
+				if err := repo.Publish(ctx, v2(configured(every, nil)), stamp, "test"); err != nil {
 					t.Errorf("round %d: %v", round, err)
 				}
 			}()
@@ -282,14 +282,14 @@ func TestStreamConfigsAreEveryStreamsCurrentConfiguration(t *testing.T) {
 	pool := gatewaysDB(t)
 	ctx := context.Background()
 	repo := postgres.NewGatewayRepo(pool)
-	if err := repo.Publish(ctx, v2(configured("1m", map[string]string{"buffer.flush.every": "a minute"})), time.Now()); err != nil {
+	if err := repo.Publish(ctx, v2(configured("1m", map[string]string{"buffer.flush.every": "a minute"})), time.Now(), "test"); err != nil {
 		t.Fatal(err)
 	}
 	old := catalog.ManifestStream{Path: "/v1/clicks", Destinations: []catalog.ManifestDestination{
 		{Role: "sink", Kind: "pubsub", Target: target("pubsub://acme/clicks")}}}
 	other := manifest(old)
 	other.Gateway = "legacy_edge"
-	if err := repo.Publish(ctx, other, time.Now()); err != nil {
+	if err := repo.Publish(ctx, other, time.Now(), "test"); err != nil {
 		t.Fatal(err)
 	}
 
