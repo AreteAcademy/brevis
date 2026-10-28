@@ -1288,9 +1288,14 @@ func remoteHosts(cfg config.Config, log *slog.Logger) map[string]execution.Execu
 	}
 	out := make(map[string]execution.Executor, len(cfg.Hosts))
 	for name, addr := range cfg.Hosts {
+		// Replicas for every host, a single agent included: one address
+		// resolves to itself and is dialed as before, and a pool behind a
+		// Service gets its starts steered off a draining replica (#146).
+		agent := remote.HTTPAgent{BaseURL: strings.TrimRight(addr, "/"), Token: cfg.HostToken,
+			Replicas: &remote.Replicas{}}
 		out[name] = &remote.Executor{
 			Host:     name,
-			Agent:    remote.HTTPAgent{BaseURL: strings.TrimRight(addr, "/"), Token: cfg.HostToken},
+			Agent:    agent,
 			HandOver: cfg.HostHandover,
 		}
 	}
