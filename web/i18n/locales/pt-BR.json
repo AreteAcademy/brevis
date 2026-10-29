@@ -49,6 +49,7 @@
   "run.cancel_confirm": "Cancelar esta execução? Os passos param agora, e ela não é retentada.",
   "run.canceling": "Cancelando…",
   "run.download_log": "Baixar log",
+  "runs.running": "executando…",
   "shell.account": "Conta",
   "shell.breadcrumb": "Onde você está",
   "shell.docs": "Documentação",

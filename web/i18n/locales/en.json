@@ -49,6 +49,7 @@
   "run.cancel_confirm": "Cancel this run? Its steps stop now, and it is not retried.",
   "run.canceling": "Canceling…",
   "run.download_log": "Download log",
+  "runs.running": "running…",
   "shell.account": "Account",
   "shell.breadcrumb": "Breadcrumb",
   "shell.docs": "Documentation",

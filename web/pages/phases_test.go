@@ -101,7 +101,7 @@ func TestTheRunPageIsDenseWithNothingLost(t *testing.T) {
 	r.Auto.AdjustedAt = created
 	r.Auto.Date = "2026-10-15"
 	r.Auto.ScheduledAt = &slot
-	page := draw(t, Run(RunPage{Run: r}))
+	page := draw(t, Runs(RunsScreen{Detail: &RunPage{Run: r}}))
 
 	if !strings.Contains(page, "data-timeline") || strings.Count(page, "data-phase=") != 4 {
 		t.Error("the phases are not a four-step timeline")

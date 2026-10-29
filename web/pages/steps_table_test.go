@@ -19,7 +19,7 @@ func TestStepOutputIsATableWithNothingLost(t *testing.T) {
 	code := 3
 	logs = append(logs, postgres.StepLog{NodeID: "discover", MapIndex: run.Unmapped, Attempt: 1, Status: "failed",
 		ExitCode: &code, Err: "exited with code 3", Log: "line one\nline two", DurationMs: 1500})
-	page := draw(t, Run(RunPage{Run: r, Logs: logs}))
+	page := draw(t, Runs(RunsScreen{Detail: &RunPage{Run: r, Logs: logs}}))
 
 	at := strings.Index(page, "data-step-table")
 	if at < 0 {

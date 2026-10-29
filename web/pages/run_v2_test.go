@@ -15,7 +15,7 @@ import (
 func TestTheRunsCrumbNamesTheRunAndItsIdCopies(t *testing.T) {
 	id := uuid.MustParse("2c7233f8-efc9-4f37-896d-2943d10c0346")
 	r := run.Run{ID: id, Status: run.StatusSuccess, WorkflowSlug: "daily_sales", CreatedAt: created}
-	page := draw(t, Run(RunPage{Run: r}))
+	page := draw(t, Runs(RunsScreen{Detail: &RunPage{Run: r}}))
 
 	at := strings.Index(page, `aria-label="Breadcrumb"`)
 	if at < 0 {

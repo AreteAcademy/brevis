@@ -1,0 +1,156 @@
+package pages
+
+import (
+	"strings"
+	"time"
+
+	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
+	"github.com/AreteAcademy/brevis/web/layouts"
+)
+
+// RunsScreen is Runs as one screen (screen-runs): the list as a column, and
+// beside it the run that is open. /runs opens the newest; /runs/{id} opens
+// that one, on the list or not -- an alert from last week has to land on its
+// run, not on whatever ran last.
+type RunsScreen struct {
+	Runs   []postgres.RunSummary
+	Filter RunFilter
+	Counts map[string]int
+	Total  int
+
+	// Detail is the open run; nil when there is none to open.
+	Detail *RunPage
+}
+
+// open is the open run's id, "" with none.
+func (s RunsScreen) open() string {
+	if s.Detail == nil {
+		return ""
+	}
+	return s.Detail.Run.ID.String()
+}
+
+// Open is the address of a run with this filter kept: opening a run must not
+// lose the list it was picked from.
+func (f RunFilter) Open(id string) string {
+	return strings.Replace(f.url("", "", false), "/runs", "/runs/"+id, 1)
+}
+
+func runsCrumb(s RunsScreen) string {
+	if s.Detail == nil {
+		return ""
+	}
+	return runCrumb(s.Detail.Run)
+}
+
+func runsIsland(s RunsScreen) layouts.Island {
+	if s.Detail == nil {
+		return layouts.Island{}
+	}
+	return runIsland(*s.Detail)
+}
+
+// Runs fills the shell, and each pane scrolls on its own: the list stays where
+// it was while a long log is read beside it. Below 1000px the list goes on top.
+templ Runs(s RunsScreen) {
+	@layouts.Base(layouts.Page{
+		Title: "Runs", Active: "runs", Fill: true, Crumb: runsCrumb(s), Island: runsIsland(s),
+	}) {
+		<div data-runs-screen class="-mx-3 -mb-10 flex min-h-0 flex-1 flex-col min-[860px]:-mx-6 min-[1001px]:flex-row">
+			<aside data-runs-list class="flex max-h-[300px] shrink-0 flex-col border-b border-line min-[1001px]:max-h-none min-[1001px]:w-[340px] min-[1001px]:border-r min-[1001px]:border-b-0">
+				<div class="flex items-center justify-between gap-3 px-4 pt-4 pb-2">
+					<h1 class="text-[20px] leading-tight font-semibold tracking-[-0.018em] text-ink">
+						Runs
+						<span class="ml-1.5 font-mono text-[13px] font-normal text-muted tabular-nums">{ i18n.Number(ctx, int64(s.Total)) }</span>
+					</h1>
+					@liveSwitch()
+				</div>
+				<div id="runs-list" class="min-h-0 flex-1 overflow-y-auto">
+					@RunsList(s)
+				</div>
+			</aside>
+			<section class="min-h-0 min-w-0 flex-1 overflow-y-auto px-3 pt-4 pb-10 min-[860px]:px-6">
+				if s.Detail != nil {
+					@RunDetail(*s.Detail)
+				} else {
+					@components.Empty("No run yet.", "brevis scheduler")
+				}
+			</section>
+		</div>
+	}
+}
+
+// RunsList is the column's region: the filter with its counts, the runs and
+// their pages. It is the fragment (X-Brevis-Fragment: rows) the Live switch
+// fetches and swaps, so it marks the open run itself.
+templ RunsList(s RunsScreen) {
+	{{ f := s.Filter }}
+	<div class="flex flex-wrap items-center gap-2 px-4 pb-2">
+		<div class="max-w-full overflow-x-auto whitespace-nowrap">
+			@components.Segmented("State", runStateOptions(f, s.Counts))
+		</div>
+		if f.Workflow != "" {
+			@filterApplied("workflow", f.Workflow, f.With("workflow", ""))
+		}
+		if f.Label != "" {
+			@filterApplied("period", f.Label, f.With("from", "")+"&to=")
+		}
+		if f.Active() {
+			<a href="/runs" class="text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">clear filters</a>
+		}
+	</div>
+	if len(s.Runs) == 0 {
+		@components.Empty("No run yet.", "brevis scheduler")
+	} else {
+		<nav aria-label="Runs" class="border-t border-line-soft">
+			for _, r := range s.Runs {
+				@runItem(r, f, r.ID == s.open())
+			}
+		</nav>
+		@pagination(Pagination{Page: f.Page, PerPage: f.PerPage, Total: s.Total, PageLink: f.WithPage})
+	}
+}
+
+// runItem is one line to scan: the state's shape, the workflow, how long
+// ago, the slot's hour and how long it took -- or that it is still running.
+// The open one is marked by a bar on its edge as well as a background, so it
+// does not depend on telling two greys apart.
+templ runItem(r postgres.RunSummary, f RunFilter, current bool) {
+	<a
+		href={ templ.SafeURL(f.Open(r.ID)) }
+		data-run-id={ r.ID }
+		data-status={ r.Status }
+		if current {
+			aria-current="true"
+		}
+		class="grid grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-0.5 border-b border-line-soft px-4 py-2.5 transition-colors hover:bg-surface-2 aria-[current=true]:bg-surface-2 aria-[current=true]:shadow-[inset_2px_0_0_var(--color-ink)]"
+	>
+		<span class="row-span-2 flex justify-center">
+			@components.Dot(r.Status)
+		</span>
+		<span class="flex min-w-0 items-center">
+			<span class="truncate font-mono text-[13px] text-ink">{ r.WorkflowSlug }</span>
+			@components.Retry(r.Attempt)
+		</span>
+		<span class="text-[11.5px] whitespace-nowrap text-faint">{ i18n.Since(ctx, time.Now(), r.CreatedAt) }</span>
+		<span class="col-start-2 col-end-4 flex gap-2 font-mono text-[11.5px] text-muted tabular-nums">
+			<span>{ itemHour(r) }</span>
+			if r.Duration != nil {
+				<span>{ i18n.Elapsed(ctx, *r.Duration) }</span>
+			} else if r.Status == "running" {
+				<span>{ i18n.T(ctx, "runs.running") }</span>
+			}
+		</span>
+	</a>
+}
+
+// itemHour is the hour of the slot a run stands for, in UTC like every slot;
+// a run with no slot (a manual one) gives the hour it was made.
+func itemHour(r postgres.RunSummary) string {
+	if r.LogicalDate != nil {
+		return r.LogicalDate.UTC().Format("15:04")
+	}
+	return r.CreatedAt.UTC().Format("15:04")
+}

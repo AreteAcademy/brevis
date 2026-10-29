@@ -42,7 +42,7 @@ func TestRerunParamsKeepTheRunsValues(t *testing.T) {
 
 func rerunPage(r run.Run, w *wf.Workflow) string {
 	var b strings.Builder
-	_ = Run(RunPage{Run: r, Workflow: w}).Render(context.Background(), &b)
+	_ = Runs(RunsScreen{Detail: &RunPage{Run: r, Workflow: w}}).Render(context.Background(), &b)
 	return b.String()
 }
 

@@ -967,6 +967,31 @@ func nextRuns(schedules []postgres.ScheduleSummary, now time.Time, limite int,
 }
 
 func (u *UI) runs(w http.ResponseWriter, r *http.Request) {
+	u.runsScreen(w, r, nil)
+}
+
+// run is the same screen with one run open: the address alerts and old links
+// carry. An id that names no run is a 404, before anything else is read.
+func (u *UI) run(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if u.execs == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if _, err := u.execs.Get(r.Context(), id); err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	u.runsScreen(w, r, &id)
+}
+
+// runsScreen draws Runs: the list as the filter asks, and the open run --
+// open, or the newest on the list when the address names none.
+func (u *UI) runsScreen(w http.ResponseWriter, r *http.Request, open *uuid.UUID) {
 	q := r.URL.Query()
 	f := pages.RunFilter{
 		State:    validState(q.Get("state")),
@@ -990,30 +1015,57 @@ func (u *UI) runs(w http.ResponseWriter, r *http.Request) {
 		State: f.State, Workflow: f.Workflow, De: de, Ate: ate,
 		Limite: f.PerPage, Offset: (f.Page - 1) * f.PerPage,
 	}
-	total, err := u.leitura.CountRuns(r.Context(), query)
+	runs, total, counts, err := u.runsList(r.Context(), query)
 	if err != nil {
 		u.failure(w, r, err)
 		return
 	}
-	runs, err := u.leitura.Runs(r.Context(), query)
-	if err != nil {
-		u.failure(w, r, err)
-		return
+	screen := pages.RunsScreen{Runs: runs, Filter: f, Counts: counts, Total: total}
+	// The open run: the one the address names, or the newest on the list.
+	if open == nil && len(runs) > 0 {
+		if id, err := uuid.Parse(runs[0].ID); err == nil {
+			open = &id
+		}
 	}
-	// The counts are the same filter WITHOUT its state, so each choice says
-	// what its link would show.
-	byState := query
-	byState.State, byState.Limite, byState.Offset = "", 0, 0
-	counts, err := u.leitura.CountRunsByState(r.Context(), byState)
-	if err != nil {
-		u.failure(w, r, err)
-		return
+	if open != nil && u.execs != nil {
+		current, err := u.execs.Get(r.Context(), *open)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		p := u.detail(r.Context(), current)
+		screen.Detail = &p
 	}
 	if fragment(r) == "rows" {
-		u.render(w, r, pages.RunsList(runs, f, counts, total))
+		u.render(w, r, pages.RunsList(screen))
 		return
 	}
-	u.render(w, r, pages.Runs(runs, f, counts, total))
+	u.render(w, r, pages.Runs(screen))
+}
+
+// runsList reads the column: the page of runs, how many there are, and the
+// counts per state -- the same filter WITHOUT its state, so each choice says
+// what its link would show. No reader is an empty column: a process wired
+// for the run alone still opens it.
+func (u *UI) runsList(ctx context.Context, query postgres.RunFilter) ([]postgres.RunSummary, int, map[string]int, error) {
+	if u.leitura == nil {
+		return nil, 0, nil, nil
+	}
+	total, err := u.leitura.CountRuns(ctx, query)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	runs, err := u.leitura.Runs(ctx, query)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	byState := query
+	byState.State, byState.Limite, byState.Offset = "", 0, 0
+	counts, err := u.leitura.CountRunsByState(ctx, byState)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	return runs, total, counts, nil
 }
 
 // validState refuses any state outside §7's machine.
@@ -1400,31 +1452,24 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 
 // run is a run's page. The header comes from the database on the server; the DAG
 // with each step's state arrives by fetch, and only that needs JavaScript.
-func (u *UI) run(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	run, err := u.execs.Get(r.Context(), id)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	p := u.runPage(r.Context(), run)
+// detail is the open run with everything its page draws once: the graph it
+// embeds and the current workflow for Rerun. The live refresh reads runPage
+// alone.
+func (u *UI) detail(ctx context.Context, run run.Run) pages.RunPage {
+	p := u.runPage(ctx, run)
 	// A one-step run has its step as a line, and no graph to embed.
 	if p.Step == nil {
-		p.Graph = u.runSeed(r.Context(), run)
+		p.Graph = u.runSeed(ctx, run)
 	}
 	// The CURRENT workflow, for Rerun: what the trigger resolves against. A
 	// workflow that is gone is a page without the button, not a refusal --
 	// its runs stay readable.
 	if u.defs != nil {
-		if def, err := u.defs.Definition(r.Context(), run.WorkflowSlug); err == nil {
+		if def, err := u.defs.Definition(ctx, run.WorkflowSlug); err == nil {
 			p.Workflow = &def
 		}
 	}
-	u.render(w, r, pages.Run(p))
+	return p
 }
 
 // runLog is the run's whole log as one text file: every attempt of every

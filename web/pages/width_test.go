@@ -53,8 +53,8 @@ func TestTheContentWrapperFollowsTheHeader(t *testing.T) {
 			// THE WORKBENCH HAS NO PAGE HEADER: it is the one Fill page, and
 			// its panes take the height a title would. Its own test holds
 			// that (TestTheWorkbenchSpendsNoHeightOnATitle).
-			if s.name == "sql" {
-				t.Skip("the Fill page draws no page header")
+			if fillers[s.name] {
+				t.Skip("a Fill page draws no page header")
 			}
 			page := draw(t, s.c)
 			// The PAGE header, not the bar: there are two <header>s in
@@ -85,7 +85,7 @@ func screens() []screen {
 	return []screen{
 		{"overview", Overview(OverviewData{})},
 		{"workflows", Workflows(nil, nil, Filter{}, WorkflowCounts{}, nil, 0, 0)},
-		{"runs", Runs(nil, RunFilter{}, nil, 0)},
+		{"runs", Runs(RunsScreen{})},
 		{"projects", Projects(nil)},
 		{"loads", Loads(LoadsView{})},
 		{"load", Load(LoadView{})},
@@ -93,7 +93,7 @@ func screens() []screen {
 		{"stream", StreamPage(StreamView{})},
 		{"sql", SQL(SQLView{Targets: []string{"postgres://warehouse/db"}})},
 		{"workflow", Workflow(WorkflowPage{Def: wf.Workflow{Slug: "x"}})},
-		{"run", Run(RunPage{Run: run.Run{}})},
+		{"run", Runs(RunsScreen{Detail: &RunPage{Run: run.Run{}}})},
 	}
 }
 
@@ -106,22 +106,27 @@ func draw(t *testing.T, c templ.Component) string {
 	return b.String()
 }
 
-// ONE SCREEN FILLS THE SHELL, AND IT IS THE WORKBENCH.
+// TWO SCREENS FILL THE SHELL: THE WORKBENCH AND RUNS.
 //
 // `Fill` is a flag, which is the shape W0 deleted -- so it is worth saying
 // exactly how it differs. `Wide` could be set by nine screens and five forgot;
 // its wrong value was INVISIBLE, because a capped page looks deliberate.
-// `Fill` has one caller, and forgetting it gives a page that scrolls like
-// every other page -- visible in a second. This refuses the other failure:
-// a second screen quietly acquiring it.
-func TestOnlyTheWorkbenchFillsTheShell(t *testing.T) {
+// `Fill` has a named list of callers, and forgetting it gives a page that
+// scrolls like every other page -- visible in a second. This refuses the other
+// failure: a screen quietly acquiring it.
+//
+// Runs joined with screen-runs: a list beside a run, each pane scrolling on
+// its own, so the list stays put while a long log is read beside it.
+var fillers = map[string]bool{"sql": true, "runs": true, "run": true}
+
+func TestOnlyTheNamedScreensFillTheShell(t *testing.T) {
 	for _, s := range screens() {
 		page := draw(t, s.c)
 		fills := strings.Contains(page, "data-fill")
-		if s.name == "sql" && !fills {
-			t.Error("the workbench does not ask the shell for the whole viewport")
+		if fillers[s.name] && !fills {
+			t.Errorf("%s does not ask the shell for the whole viewport", s.name)
 		}
-		if s.name != "sql" && fills {
+		if !fillers[s.name] && fills {
 			t.Errorf("%s asks to fill the shell", s.name)
 		}
 	}

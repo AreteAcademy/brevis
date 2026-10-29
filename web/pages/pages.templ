@@ -771,14 +771,6 @@ func (f RunFilter) Active() bool {
 	return f.State != "" || f.Workflow != "" || f.De != "" || f.Ate != ""
 }
 
-templ Runs(runs []postgres.RunSummary, f RunFilter, counts map[string]int, total int) {
-	@layouts.Base(layouts.Page{Title: "Runs", Kicker: "History", Active: "runs", Actions: liveSwitch()}) {
-		<div id="runs-list">
-			@RunsList(runs, f, counts, total)
-		</div>
-	}
-}
-
 // liveSwitch follows the list as runs arrive. Hidden until ui.js can drive it
 // -- with no script it would be a switch that does nothing -- and off until
 // somebody turns it on; ui.js remembers the choice.
@@ -794,33 +786,6 @@ templ liveSwitch() {
 			Live
 		</button>
 	</span>
-}
-
-// RunsList is the list's region: the filter with its counts, the count, the
-// table and its pages. It is the page's fragment (X-Brevis-Fragment: rows),
-// which the Live switch fetches and swaps.
-templ RunsList(runs []postgres.RunSummary, f RunFilter, counts map[string]int, total int) {
-	<div class="mb-3 flex flex-wrap items-center gap-2">
-		<div class="max-w-full overflow-x-auto whitespace-nowrap">
-			@components.Segmented("State", runStateOptions(f, counts))
-		</div>
-		if f.Workflow != "" {
-			<span class="mx-2 h-5 w-px bg-line"></span>
-			@filterApplied("workflow", f.Workflow, f.With("workflow", ""))
-		}
-		if f.Label != "" {
-			@filterApplied("period", f.Label, f.With("from", "")+"&to=")
-		}
-	</div>
-	<p class="mb-2 text-[13px] font-semibold text-ink">
-		{ count(total, "run", "runs") }
-		if f.Active() {
-			<a href="/runs" class="ml-3 text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">clear filters</a>
-		}
-	</p>
-	@runsTable(runs, Pagination{
-		Page: f.Page, PerPage: f.PerPage, Total: total, PageLink: f.WithPage,
-	})
 }
 
 // filterApplied shows a slice that came from another screen (a click on the
@@ -1173,14 +1138,18 @@ templ Workflow(p WorkflowPage) {
 	}
 }
 
-// Run shows one run. The header comes from the server already rendered; only the
-// DAG with each step's state depends on JavaScript.
-templ Run(p RunPage) {
+// RunDetail is the open run, beside the list (screen-runs). The header comes
+// from the server already rendered; only the DAG with each step's state
+// depends on JavaScript.
+templ RunDetail(p RunPage) {
 	{{ r := p.Run }}
-	@layouts.Base(layouts.Page{
-		Title: r.WorkflowSlug, Kicker: "Run", Active: "runs", Crumb: runCrumb(r),
-		Island: runIsland(p), Actions: rerunAction(p),
-	}) {
+	<div data-run-detail={ r.ID.String() }>
+		<div class="mb-3 flex flex-wrap items-start justify-between gap-3">
+			<h2 class="font-mono text-[22px] leading-tight font-medium break-all text-ink">{ r.WorkflowSlug }</h2>
+			if rerunAction(p) != nil {
+				@rerunAction(p)
+			}
+		</div>
 		// Two regions the server refreshes, and the graph between them.
 		//
 		// The DAG polled and everything around it did not: the drawing showed a
@@ -1213,7 +1182,7 @@ templ Run(p RunPage) {
 			{{ w, dropped := rerunWorkflow(p) }}
 			@runDrawer(w, rerunDrawerText(r, dropped))
 		}
-	}
+	</div>
 }
 
 // rerunAction is the run page's verb (screen-run-v2 RV2): Rerun, posting to
