@@ -391,23 +391,23 @@ func TestTheOverviewsChartSitsBesideTheNextTriggers(t *testing.T) {
 	}
 }
 
-// THE RECENT RUNS SIT IN A PANEL with "see all", each run linked.
-func TestTheOverviewsRecentRunsAreAPanel(t *testing.T) {
+// THE RECENT RUNS ARE A TAB with the way to all of them, each run linked.
+func TestTheOverviewsRecentRunsAreATab(t *testing.T) {
 	now := time.Date(2026, 10, 17, 3, 48, 0, 0, time.UTC)
 	recent := []postgres.RunSummary{{ID: "8d36ef6e-0000-0000-0000-000000000001", WorkflowSlug: "daily_sales", Status: "success", TriggerType: "schedule", CreatedAt: now.Add(-time.Hour)}}
-	idle := draw(t, Overview(OverviewData{Window: ParseWindow(""), Now: now, Recentes: recent}))
-	at := strings.Index(idle, ">Recent runs<")
+	page := draw(t, Overview(OverviewData{Window: ParseWindow(""), Now: now, Recentes: recent}))
+	at := strings.Index(page, `id="recent" data-tab-panel="recent"`)
 	if at < 0 {
-		t.Fatal("no recent runs panel")
+		t.Fatal("no recent runs tab")
 	}
-	panel := idle[strings.LastIndex(idle[:at], "<section"):]
-	if !strings.Contains(panel[:strings.Index(panel, "</header>")], `href="/runs"`) {
-		t.Error("\"see all\" is not in the recent runs' heading")
+	panel := page[at:]
+	panel = panel[:strings.Index(panel, "</section>")]
+	for _, want := range []string{`href="/runs"`, `href="/runs/8d36ef6e-0000-0000-0000-000000000001"`, ">Workflow<"} {
+		if !strings.Contains(panel, want) {
+			t.Errorf("the recent runs lost %s", want)
+		}
 	}
-	if !strings.Contains(panel, `href="/runs/8d36ef6e-0000-0000-0000-000000000001"`) || !strings.Contains(panel, ">Workflow<") {
-		t.Error("the recent runs lost their link or their Workflow column")
-	}
-	if strings.Contains(idle, ">In progress<") || strings.Contains(idle, "data-overview-meta") {
+	if strings.Contains(page, ">In progress<") || strings.Contains(page, "data-overview-meta") {
 		t.Error("the In progress panel or the status line is still drawn: the KPIs say what runs")
 	}
 }

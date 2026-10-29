@@ -35,6 +35,10 @@ type OverviewData struct {
 	Now time.Time
 	// Attention is what needs the reader, the page's first section.
 	Attention Attention
+	// Events are the event log's, newest first; Logos what each recent run's
+	// workflow runs in.
+	Events []postgres.Event
+	Logos  map[string][]string
 }
 
 // ProximaExecucao is a future trigger, already computed from the cron.
@@ -803,6 +807,8 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 type runsOpts struct {
 	Workflow bool
 	Bare     bool
+	// Logos are what each workflow runs in, by slug; nil draws none.
+	Logos map[string][]string
 }
 
 templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
@@ -827,7 +833,7 @@ templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
 				<tbody class="divide-y divide-line-soft">
 					{{ longest := longestDuration(runs) }}
 					for _, r := range runs {
-						<tr data-run-id={ r.ID } class="transition-colors hover:bg-hover">
+						<tr data-run-id={ r.ID } data-status={ r.Status } class="transition-colors hover:bg-hover">
 							<td class="px-3 py-3 pl-6">
 								if o.Workflow {
 									@components.State(r.Status)
@@ -842,9 +848,14 @@ templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
 							</td>
 							if o.Workflow {
 								<td class="px-3 py-3">
-									<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-medium text-ink hover:underline">
-										{ r.WorkflowSlug }
-									</a>
+									<span class="inline-flex items-center gap-1.5">
+										for _, k := range o.Logos[r.WorkflowSlug] {
+											@components.Logo(k, 18)
+										}
+										<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-medium text-ink hover:underline">
+											{ r.WorkflowSlug }
+										</a>
+									</span>
 								</td>
 							}
 							<td class="px-3 py-3 text-xs text-muted">{ r.TriggerType }</td>

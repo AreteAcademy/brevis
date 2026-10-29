@@ -128,6 +128,7 @@ type UI struct {
 	// the pages off.
 	endpoints EndpointsReader
 	failing   FailingReader
+	events    EventsReader
 
 	// calls runs an endpoint for Try it; callsProtected says the console
 	// asks for a login. Both, or no Try it.
@@ -201,6 +202,17 @@ type FailingReader interface {
 	// FailureStreak is how many times in a row a workflow failed, for the
 	// open run's "why it failed".
 	FailureStreak(ctx context.Context, slug string) (int, error)
+}
+
+// EventsReader reads the event log: what the installation did, newest first.
+type EventsReader interface {
+	RecentEvents(ctx context.Context, q postgres.EventQuery) ([]postgres.Event, string, error)
+}
+
+// WithEvents turns on the Overview's event log. Without it the tab is empty.
+func (u *UI) WithEvents(r EventsReader) *UI {
+	u.events = r
+	return u
 }
 
 // WithFailing turns on the Runs section's badge. Without it there is none.
@@ -902,7 +914,7 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 		u.failure(w, r, err)
 		return
 	}
-	recentes, err := u.leitura.LatestRuns(ctx, 10)
+	recentes, err := u.leitura.LatestRuns(ctx, 20)
 	if err != nil {
 		u.failure(w, r, err)
 		return
@@ -927,6 +939,8 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 		Recentes:  recentes,
 		Pending:   pending,
 		Attention: u.attention(ctx),
+		Events:    u.eventLog(ctx),
+		Logos:     u.runsLogos(ctx, recentes),
 	}))
 }
 

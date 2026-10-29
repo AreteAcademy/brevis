@@ -156,3 +156,17 @@ func (u *UI) lateTargets(ctx context.Context, failing []postgres.FailingWorkflow
 	}
 	return targets, 0
 }
+
+// eventLog is the last FeedShown events. A log that cannot be read is an
+// empty tab, not a page error: the rest of the Overview still answers.
+func (u *UI) eventLog(ctx context.Context) []postgres.Event {
+	if u.events == nil {
+		return nil
+	}
+	evs, _, err := u.events.RecentEvents(ctx, postgres.EventQuery{Limit: pages.FeedShown})
+	if err != nil {
+		u.log.Warn("the event log is unavailable", "error", err)
+		return nil
+	}
+	return evs
+}

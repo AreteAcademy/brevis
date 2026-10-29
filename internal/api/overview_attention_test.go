@@ -291,3 +291,28 @@ func TestALateTargetNeedsYou(t *testing.T) {
 		t.Error("a late target reads as all is well")
 	}
 }
+
+type eventsFake struct {
+	evs   []postgres.Event
+	asked *postgres.EventQuery
+}
+
+func (f eventsFake) RecentEvents(_ context.Context, q postgres.EventQuery) ([]postgres.Event, string, error) {
+	*f.asked = q
+	return f.evs, "", nil
+}
+
+// THE OVERVIEW READS THE EVENT LOG, the last fifty -- the feed events-feed
+// built, on a screen for the first time.
+func TestTheOverviewReadsTheEventLog(t *testing.T) {
+	var asked postgres.EventQuery
+	ui, _ := attentionUI(t)
+	ui.WithEvents(eventsFake{asked: &asked, evs: []postgres.Event{{At: time.Now(), Kind: "schedule.paused", Subject: "daily", Actor: "ana"}}})
+	_, body := get(t, ui, "/")
+	if asked.Limit != 50 {
+		t.Errorf("the log asked for %d events; wanted 50", asked.Limit)
+	}
+	if !strings.Contains(body, "Schedule of ") || !strings.Contains(body, ">daily</code>") || !strings.Contains(body, "by ana") {
+		t.Error("the event is not in the log")
+	}
+}

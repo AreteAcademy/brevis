@@ -1339,6 +1339,30 @@
     });
   }
   // ------------------------------------------------------------------
+  // The Overview's recent runs, filtered on the page (screen-overview T6)
+  //
+  // The server drew twenty rows, each with its state; All / Failed /
+  // Running shows the ones that match, Running meaning in flight -- the same
+  // three questions as the Runs screen. A filter of twenty rows is not worth
+  // a request.
+  // ------------------------------------------------------------------
+
+  var inFlightStates = { running: true, queued: true, retrying: true };
+  document.addEventListener("click", function (e) {
+    var b = e.target && typeof e.target.closest === "function" ? e.target.closest("[data-recent-filter]") : null;
+    if (!b) return;
+    var panel = b.closest("[data-tab-panel]") || document;
+    var want = b.getAttribute("data-recent-filter");
+    panel.querySelectorAll("[data-recent-filter]").forEach(function (x) {
+      x.setAttribute("aria-pressed", x === b ? "true" : "false");
+    });
+    panel.querySelectorAll("tr[data-status]").forEach(function (tr) {
+      var s = tr.getAttribute("data-status");
+      tr.hidden = !(want === "all" || (want === "running" ? inFlightStates[s] : s === want));
+    });
+  });
+
+  // ------------------------------------------------------------------
   // The run's log in the browser (screen-runs T6)
   //
   // The server drew every line with its number and level; this filters what
