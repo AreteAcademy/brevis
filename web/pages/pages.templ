@@ -1143,7 +1143,9 @@ templ Workflow(p WorkflowPage) {
 // depends on JavaScript.
 templ RunDetail(p RunPage) {
 	{{ r := p.Run }}
-	<div data-run-detail={ r.ID.String() }>
+	// data-crumb is the bar's last item, which ui.js writes when this pane
+	// is swapped in: the bar is the layout's, and is not part of the swap.
+	<div data-run-detail={ r.ID.String() } data-crumb={ runCrumb(r) }>
 		<div class="mb-3 flex flex-wrap items-start justify-between gap-3">
 			<h2 class="font-mono text-[22px] leading-tight font-medium break-all text-ink">{ r.WorkflowSlug }</h2>
 			if rerunAction(p) != nil {

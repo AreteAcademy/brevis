@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"strings"
 	"testing"
@@ -280,4 +281,62 @@ type countingDefs struct {
 func (d countingDefs) Definition(context.Context, string) (wf.Workflow, error) {
 	*d.calls++
 	return d.w, nil
+}
+
+func detailGet(t *testing.T, ui *api.UI, path string) (int, string) {
+	t.Helper()
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	r := httptest.NewRequest(http.MethodGet, path, nil)
+	r.Header.Set("X-Brevis-Fragment", "detail")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, r)
+	return rec.Code, rec.Body.String()
+}
+
+// OPENING ANOTHER RUN SWAPS THE PANE, NOT THE PAGE. The same address with
+// X-Brevis-Fragment: detail answers the open run alone -- no layout, no list
+// -- carrying the breadcrumb's last item for ui.js to write in the bar.
+func TestARunsDetailIsAFragment(t *testing.T) {
+	code, frag := detailGet(t, screenUI(), "/runs/"+older.String())
+	if code != http.StatusOK {
+		t.Fatalf("answered %d", code)
+	}
+	if strings.Contains(frag, "<html") || strings.Contains(frag, "data-runs-list") {
+		t.Error("the fragment carries the page or the list")
+	}
+	if _, detail := selected(frag); detail != older.String() {
+		t.Errorf("the fragment opens %q", detail)
+	}
+	if !strings.Contains(frag, `data-crumb="environment_alert · 11111111"`) {
+		t.Error("the fragment does not carry its breadcrumb")
+	}
+	if code, _ := detailGet(t, screenUI(), "/runs/"+uuid.NewString()); code != http.StatusNotFound {
+		t.Errorf("an unknown run's fragment answered %d", code)
+	}
+}
+
+// The page is ready for the swap: the pane has an id, the bar's last crumb a
+// marker, and the scripts know the fragment, the history and the graph.
+func TestTheRunsScreenIsReadyToSwap(t *testing.T) {
+	ui := screenUI()
+	_, page := get(t, ui, "/runs")
+	for _, want := range []string{`id="run-pane"`, `data-crumb-current`} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the page has no %s", want)
+		}
+	}
+	_, js := get(t, ui, "/assets/ui.js")
+	for _, want := range []string{`"X-Brevis-Fragment": "detail"`, "pushState", "popstate", "BrevisDag", "ArrowDown"} {
+		if !strings.Contains(strip(js), want) {
+			t.Errorf("ui.js has no %s", want)
+		}
+	}
+	if strings.Contains(js, "tr[data-run-id]") {
+		t.Error("the Live list still looks for table rows")
+	}
+	_, dag := get(t, ui, "/assets/dag.js")
+	if !strings.Contains(dag, "window.BrevisDag") {
+		t.Error("dag.js does not expose mount and unmount")
+	}
 }

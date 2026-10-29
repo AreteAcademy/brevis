@@ -327,11 +327,15 @@
   var LIVE_RUNNING = 2000; // the graph's own cadence, so the page moves together
   var LIVE_FAILED = 10000; // failed is not terminal -- a retry is coming, slowly
 
-  document.querySelectorAll("[data-live]").forEach(function (host) {
+  // follow polls one live host, and keeps on it how to stop: the Runs screen
+  // swaps the open run without a reload, and the old run's host must stop
+  // polling when it leaves the page.
+  function follow(host) {
     var url = host.dataset.live;
     if (!url) return;
     var timer = null;
     var last = "";
+    var stopped = false;
 
     // The indicator. It is only ever SHOWN by the script: with JavaScript off
     // the page is static and saying "following this run" would be a lie.
@@ -348,7 +352,7 @@
     }
 
     function schedule(ms) {
-      if (!ms) return;
+      if (!ms || stopped) return;
       timer = setTimeout(tick, ms);
     }
 
@@ -366,6 +370,7 @@
           return r.text();
         })
         .then(function (html) {
+          if (stopped) return;
           // Nothing changed: skip the swap entirely. Replacing identical HTML
           // still resets a text selection and interrupts a screen reader, and
           // most polls of a running step change nothing.
@@ -411,16 +416,23 @@
         });
     }
 
-    document.addEventListener("visibilitychange", function () {
-      if (!document.hidden && timer) {
+    function visible() {
+      if (!document.hidden && timer && !stopped) {
         clearTimeout(timer);
         tick();
       }
-    });
+    }
+    document.addEventListener("visibilitychange", visible);
 
+    host._stopLive = function () {
+      stopped = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", visible);
+    };
     say("following this run", true);
     schedule(LIVE_RUNNING);
-  });
+  }
+  document.querySelectorAll("[data-live]").forEach(follow);
 
   // ------------------------------------------------------------------
   // A list that follows itself (`[data-live-list]`)
@@ -476,15 +488,15 @@
         .then(function (html) {
           if (html !== last) {
             var seen = {};
-            region.querySelectorAll("tr[data-run-id]").forEach(function (tr) {
-              seen[tr.getAttribute("data-run-id")] = true;
+            region.querySelectorAll("[data-run-id]").forEach(function (el) {
+              seen[el.getAttribute("data-run-id")] = true;
             });
             var first = last === "";
             last = html;
             region.innerHTML = html;
             if (!first) {
-              region.querySelectorAll("tr[data-run-id]").forEach(function (tr) {
-                if (!seen[tr.getAttribute("data-run-id")]) tr.setAttribute("data-run-new", "");
+              region.querySelectorAll("[data-run-id]").forEach(function (el) {
+                if (!seen[el.getAttribute("data-run-id")]) el.setAttribute("data-run-new", "");
               });
             }
           }
@@ -527,7 +539,8 @@
   // The input keeps holding the real value -- the chips are a view of it -- so
   // there is one source of truth and the form submits correctly even if this
   // code throws halfway.
-  document.querySelectorAll("input[data-lista]").forEach(function (input) {
+  document.querySelectorAll("input[data-lista]").forEach(listChips);
+  function listChips(input) {
     var caixa = document.createElement("div");
     caixa.className = "flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-parchment-soft px-2 py-1.5";
     var entrada = document.createElement("input");
@@ -607,7 +620,7 @@
     });
 
     desenha();
-  });
+  }
 
   // ------------------------------------------------------------------
   // The navigation drawer, below 860px
@@ -1294,6 +1307,104 @@
       if (row) go(+row.getAttribute("data-palette-index"), e.metaKey || e.ctrlKey);
     });
   }
+  // ------------------------------------------------------------------
+  // The Runs screen opens another run in place (screen-runs)
+  //
+  // A click on the list fetches that run's pane (X-Brevis-Fragment: detail)
+  // and swaps it in; the list stays where it was, scrolled where it was. The
+  // address follows (pushState), so Back and Forward walk the runs opened,
+  // and a reload opens the same one.
+  //
+  // What the old pane started is stopped first -- its live refresh, its
+  // graph's polling -- and what the new one needs is started: those two, and
+  // the drawer's chips and preview. Everything else on the page is delegated
+  // to the document and needs nothing.
+  //
+  // Any doubt navigates instead: a failed fetch, an expired session, or a
+  // graph whose scripts this page never loaded (it opened on a one-step run).
+  // The item is a real link, so that is just the click it always was.
+  // ------------------------------------------------------------------
+
+  var runPane = document.getElementById("run-pane");
+  var runColumn = document.querySelector("[data-runs-list]");
+
+  function runIdOf(path) {
+    var m = /^\/runs\/([0-9a-f-]{36})$/.exec(path);
+    return m ? m[1] : "";
+  }
+
+  function markOpen(id) {
+    runColumn.querySelectorAll("a[data-run-id]").forEach(function (a) {
+      if (a.getAttribute("data-run-id") === id) a.setAttribute("aria-current", "true");
+      else a.removeAttribute("aria-current");
+    });
+  }
+
+  function openRun(href, push) {
+    fetch(href, { headers: { "X-Brevis-Fragment": "detail" } })
+      .then(function (r) {
+        if (r.redirected || !r.ok) throw new Error("not a fragment");
+        return r.text();
+      })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        if (doc.querySelector("#dag") && !window.BrevisDag) throw new Error("no graph scripts");
+
+        runPane.querySelectorAll("[data-live]").forEach(function (host) {
+          if (host._stopLive) host._stopLive();
+        });
+        if (window.BrevisDag) window.BrevisDag.unmount(runPane);
+        runPane.innerHTML = html;
+        runPane.scrollTop = 0;
+
+        runPane.querySelectorAll("[data-live]").forEach(follow);
+        runPane.querySelectorAll("input[data-lista]").forEach(listChips);
+        runPane.querySelectorAll("form[data-run-form]").forEach(runPreview);
+        if (window.BrevisDag) window.BrevisDag.mount(runPane.querySelector("#dag"));
+
+        if (push) history.pushState({ run: true }, "", href);
+        var url = new URL(href, window.location.href);
+        markOpen(runIdOf(url.pathname));
+        var detail = runPane.querySelector("[data-crumb]");
+        var crumb = document.querySelector("[data-crumb-current]");
+        if (detail && crumb) crumb.textContent = detail.getAttribute("data-crumb");
+      })
+      .catch(function () {
+        window.location.href = href;
+      });
+  }
+
+  if (runPane && runColumn && window.fetch && window.history && history.pushState) {
+    document.addEventListener("click", function (e) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var a = e.target && typeof e.target.closest === "function" ? e.target.closest("a[data-run-id]") : null;
+      if (!a || !runColumn.contains(a)) return;
+      e.preventDefault();
+      if (a.getAttribute("aria-current") === "true") return;
+      openRun(a.href, true);
+    });
+
+    // Back and Forward between runs swap the pane again. Anything else -- the
+    // bare /runs, which opens the newest -- is a page of its own.
+    window.addEventListener("popstate", function () {
+      if (runIdOf(window.location.pathname)) openRun(window.location.href, false);
+      else window.location.reload();
+    });
+
+    // Up and Down walk the list; Enter is the link's own.
+    runColumn.addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
+      var items = Array.prototype.slice.call(runColumn.querySelectorAll("a[data-run-id]"));
+      if (!items.length) return;
+      var at = items.indexOf(document.activeElement);
+      if (at < 0) at = items.findIndex(function (a) { return a.getAttribute("aria-current") === "true"; });
+      var next = e.key === "ArrowDown" ? Math.min(at + 1, items.length - 1) : Math.max(at - 1, 0);
+      e.preventDefault();
+      items[next].focus();
+    });
+  }
+
   // ------------------------------------------------------------------
   // A click is acknowledged (nav-latency NL3)
   //

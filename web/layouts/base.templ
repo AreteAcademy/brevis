@@ -556,10 +556,12 @@ templ topbar(p Page) {
 				if c.Title != "" {
 					<a href={ templ.SafeURL(c.Section.Href) } class="shrink-0 text-muted transition-colors hover:text-ink">{ c.Section.Name }</a>
 					<span aria-hidden="true" class="text-faint">/</span>
+					// data-crumb-current is what a screen that swaps its own
+					// content (Runs) writes into when what is open changes.
 					if p.Crumb != "" {
-						<span class="truncate font-mono text-[0.78rem] text-ink">{ c.Title }</span>
+						<span data-crumb-current class="truncate font-mono text-[0.78rem] text-ink">{ c.Title }</span>
 					} else {
-						<span class="truncate text-ink">{ c.Title }</span>
+						<span data-crumb-current class="truncate text-ink">{ c.Title }</span>
 					}
 				} else {
 					<span class="truncate text-ink">{ c.Section.Name }</span>

@@ -114,7 +114,7 @@ templ Runs(s RunsScreen) {
 					@RunsList(s)
 				</div>
 			</aside>
-			<section class="min-h-0 min-w-0 flex-1 overflow-y-auto px-3 pt-4 pb-10 min-[860px]:px-6">
+			<section id="run-pane" class="min-h-0 min-w-0 flex-1 overflow-y-auto px-3 pt-4 pb-10 min-[860px]:px-6">
 				// With no run open the pane is blank: the column already says
 				// why -- nothing ran yet, or the search found nothing -- and a
 				// second message beside it would say it twice.
@@ -124,6 +124,12 @@ templ Runs(s RunsScreen) {
 			</section>
 		</div>
 	}
+}
+
+// RunPane is the open run alone, for the fragment (X-Brevis-Fragment:
+// detail) that ui.js swaps in when another run is opened from the list.
+templ RunPane(p RunPage) {
+	@RunDetail(p)
 }
 
 // RunsList is the column's region: the search, the three questions, the runs

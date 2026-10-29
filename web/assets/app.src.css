@@ -1043,11 +1043,11 @@ dialog.run-drawer:not([open]):target {
     background: color-mix(in srgb, var(--color-state-running) 12%, transparent);
   }
 }
-tr[data-run-new] {
+[data-run-new] {
   animation: run-arrived 2.5s ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  tr[data-run-new] {
+  [data-run-new] {
     animation: none;
     background: color-mix(in srgb, var(--color-state-running) 12%, transparent);
   }

@@ -992,6 +992,17 @@ func (u *UI) run(w http.ResponseWriter, r *http.Request) {
 // runsScreen draws Runs: the list as the filter asks, and the open run --
 // open, or the newest on the list when the address names none.
 func (u *UI) runsScreen(w http.ResponseWriter, r *http.Request, open *uuid.UUID) {
+	// Another run opened from the list: its pane alone, and nothing of the
+	// list is read -- the list on the screen is the one it was picked from.
+	if fragment(r) == "detail" && open != nil {
+		current, err := u.execs.Get(r.Context(), *open)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		u.render(w, r, pages.RunPane(u.detail(r.Context(), current)))
+		return
+	}
 	q := r.URL.Query()
 	f := pages.RunFilter{
 		State:    validState(q.Get("state")),
