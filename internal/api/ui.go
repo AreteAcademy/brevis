@@ -923,7 +923,7 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 		Now:       time.Now(),
 		Ind:       ind,
 		Buckets:   buckets,
-		Proximas:  nextRuns(schedules, time.Now(), 8, u.log),
+		Proximas:  u.withLogos(ctx, nextRuns(schedules, time.Now(), 8, u.log)),
 		Recentes:  recentes,
 		Pending:   pending,
 		Attention: u.attention(ctx),

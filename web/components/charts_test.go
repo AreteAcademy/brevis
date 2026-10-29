@@ -63,7 +63,7 @@ func TestTheGridLinesAreEquidistant(t *testing.T) {
 // case in which the chart matters most.
 func TestTheSmallestBarSurvives(t *testing.T) {
 	buckets := []postgres.Bucket{{Succeeded: 400, Failed: 1}}
-	b := bars(buckets)[0]
+	b := bars(context.Background(), buckets)[0]
 	if b.HFailed < 2 {
 		t.Errorf("altura da falha = %d, sumiria da tela", b.HFailed)
 	}
@@ -71,35 +71,6 @@ func TestTheSmallestBarSurvives(t *testing.T) {
 		t.Errorf("pilha desalinhada: falha termina em %d e sucesso comeca em %d",
 			b.YFailed+b.HFailed, b.YSucceeded)
 	}
-}
-
-// The duration curve must not join two peaks across an empty hour: that would
-// invent duration where there was no run at all.
-func TestTheDurationLineBreaksOnAGap(t *testing.T) {
-	base := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
-	buckets := []postgres.Bucket{
-		{Start: base, Succeeded: 1, MeanDuration: time.Second},
-		{Start: base.Add(time.Hour)},
-		{Start: base.Add(2 * time.Hour), Succeeded: 1, MeanDuration: 2 * time.Second},
-	}
-	d := durationLine(buckets)
-	if countM(d) != 2 {
-		t.Errorf("path %q should have two starts (M), one per segment", d)
-	}
-
-	if durationLine(bucketsWith(3)) != "" {
-		t.Error("with no measured duration there should be no curve")
-	}
-}
-
-func countM(s string) int {
-	n := 0
-	for _, r := range s {
-		if r == 'M' {
-			n++
-		}
-	}
-	return n
 }
 
 func TestTheDurationPicksItsUnit(t *testing.T) {
@@ -142,8 +113,34 @@ func TestADayBucketReadsAsADay(t *testing.T) {
 	if !strings.Contains(got, `aria-label="Runs per day"`) {
 		t.Error("the chart does not say it is per day")
 	}
-	want := "/runs?de=" + url.QueryEscape("2026-10-17T00:00:00Z") + "&amp;ate=" + url.QueryEscape("2026-10-18T00:00:00Z")
+	// from and to, which /runs reads: de and ate were read by nothing, and a
+	// click on a bar opened every run.
+	want := "/runs?from=" + url.QueryEscape("2026-10-17T00:00:00Z") + "&amp;to=" + url.QueryEscape("2026-10-18T00:00:00Z")
 	if !strings.Contains(got, want) {
 		t.Errorf("the last bar does not open its whole day (%s)", want)
+	}
+}
+
+// A BAR SAYS ITS SLICE: the interval, then success, failed and running, each
+// said even at zero so two tooltips read alike. The average-duration line is
+// gone -- the Overview asks how many and how they ended.
+func TestARunsBarSaysItsSlice(t *testing.T) {
+	hour := time.Date(2026, 10, 17, 23, 0, 0, 0, time.Local)
+	buckets := []postgres.Bucket{
+		{Start: hour.Add(-time.Hour), Succeeded: 0},
+		{Start: hour, Succeeded: 3, Failed: 1, Running: 1, Queued: 1, MeanDuration: time.Minute},
+	}
+	var b strings.Builder
+	if err := RunsChart(buckets).Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	got := b.String()
+	if !strings.Contains(got, "23h–00h · success 3 · failed 1 · running 2") {
+		t.Error("a bar does not say its interval and its three counts")
+	}
+	for _, gone := range []string{"average duration", "peak average"} {
+		if strings.Contains(got, gone) {
+			t.Errorf("the chart still draws %q", gone)
+		}
 	}
 }

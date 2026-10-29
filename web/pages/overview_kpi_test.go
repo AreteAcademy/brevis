@@ -57,3 +57,30 @@ func TestTheNumbersWithNothingYet(t *testing.T) {
 		t.Error("an empty overview offers a link to no failure, or a next trigger")
 	}
 }
+
+// WHAT FIRES NEXT, AS A READER SAYS IT: what the workflow runs in, when --
+// green when it is about to -- the schedule in words and the cron, and the
+// way to all the workflows.
+func TestTheNextTriggersSayWhenInWords(t *testing.T) {
+	now := time.Date(2026, 10, 17, 3, 48, 0, 0, time.UTC)
+	page := draw(t, Overview(OverviewData{Window: ParseWindow(""), Now: now, Proximas: []NextRun{
+		{Workflow: "vendors_fire_meteosat", Cron: "*/5 * * * *", When: now.Add(40 * time.Second), Logos: []string{"python"}},
+		{Workflow: "id_verification", Cron: "0 4 * * *", When: now.Add(12 * time.Minute)},
+	}}))
+	next := page[strings.Index(page, "data-next-triggers"):]
+	next = next[:strings.Index(next, "</section>")]
+	for _, want := range []string{
+		`aria-label="Python"`, "vendors_fire_meteosat", "in &lt;1m", "text-state-success", "*/5 * * * *",
+		CronText("0 4 * * *"), "in 12m", `href="/workflows"`, "All workflows",
+	} {
+		if !strings.Contains(next, want) {
+			t.Errorf("the next triggers lack %s", want)
+		}
+	}
+	if strings.Count(next, "text-state-success") != 1 {
+		t.Error("a trigger twelve minutes away is green")
+	}
+	if strings.Contains(page, "Count and average duration") {
+		t.Error("the chart still explains a duration it no longer draws")
+	}
+}

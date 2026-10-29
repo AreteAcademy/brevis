@@ -179,19 +179,20 @@ const (
 	bottomMargin    = 26
 )
 
-// RunsChart draws one stacked column per hour, with the average-duration line on
-// top — the two readings the Overview screen has to cross: "how many" and
-// "quanto tempo".
+// RunsChart draws one stacked column per bucket -- success, failed, in flight
+// -- the Overview's "how many, and how did they end" (screen-overview T5). The
+// average-duration line it carried is gone: the duration is a KPI, and a
+// second scale on one chart is a chart nobody reads twice.
 templ RunsChart(buckets []postgres.Bucket) {
 	if len(buckets) == 0 {
-		@Empty("No run in the window.", "brevis scheduler")
+		@Empty(i18n.T(ctx, "chart.empty"), "brevis scheduler")
 	} else {
 		<div class="overflow-x-auto">
 			<svg
 				viewBox={ fmt.Sprintf("0 0 %d %d", chartWidth, chartHeight) }
 				class="h-[240px] w-full min-w-[560px]"
 				role="img"
-				aria-label={ "Runs per " + grainWord(buckets) }
+				aria-label={ chartLabel(ctx, buckets) }
 			>
 				// A horizontal grid: four lines are enough to give scale without
 				// virar papel milimetrado.
@@ -199,7 +200,7 @@ templ RunsChart(buckets []postgres.Bucket) {
 					<line x1={ fmt.Sprint(margemEsq) } y1={ fmt.Sprint(l.Y) } x2={ fmt.Sprint(chartWidth) } y2={ fmt.Sprint(l.Y) } stroke="var(--color-ink)" stroke-opacity="0.08"></line>
 					<text x="0" y={ fmt.Sprint(l.Y + 4) } class="fill-muted text-[11px]">{ l.Label }</text>
 				}
-				for _, b := range bars(buckets) {
+				for _, b := range bars(ctx, buckets) {
 					// The whole column is the target, not just the bar: with a
 					// single run the bar is 2px tall, and demanding exact aim
 					// tornaria o grafico decorativo.
@@ -211,25 +212,15 @@ templ RunsChart(buckets []postgres.Bucket) {
 						<title>{ b.Tooltip }</title>
 					</a>
 				}
-				if d := durationLine(buckets); d != "" {
-					<path d={ d } fill="none" stroke="var(--color-ink-2)" stroke-width="1.5" stroke-linejoin="round" opacity="0.9"></path>
-					// The duration curve has a scale of its own (see durationLine),
-					// so without this anchor it would be a line with no unit: the
-					// peak says what the highest point corresponds to.
-					<text x={ fmt.Sprint(chartWidth) } y="12" text-anchor="end" class="fill-ink-2 text-[11px]">
-						{ "peak average duration: " + Duration(durationPeak(buckets)) }
-					</text>
-				}
 				for _, m := range hourTicks(buckets) {
 					<text x={ fmt.Sprint(m.X) } y={ fmt.Sprint(chartHeight - 6) } text-anchor="middle" class="fill-muted text-[11px]">{ m.Label }</text>
 				}
 			</svg>
 		</div>
 		<div class="mt-3 flex flex-wrap gap-4 text-xs text-muted">
-			@legenda("var(--color-state-success)", "success")
-			@legenda("var(--color-state-failed)", "failed")
-			@legenda("var(--color-state-running)", "running")
-			@legenda("var(--color-ink-2)", "average duration")
+			@legenda("var(--color-state-success)", i18n.T(ctx, "chart.success"))
+			@legenda("var(--color-state-failed)", i18n.T(ctx, "chart.failed"))
+			@legenda("var(--color-state-running)", i18n.T(ctx, "chart.running"))
 		</div>
 	}
 }
@@ -366,7 +357,7 @@ func gridLines(buckets []postgres.Bucket) []GridLine {
 	return out
 }
 
-func bars(buckets []postgres.Bucket) []Bar {
+func bars(ctx context.Context, buckets []postgres.Bucket) []Bar {
 	span := bucketSpan(buckets)
 	max := ceiling(buckets)
 	util := chartHeight - bottomMargin
@@ -401,7 +392,7 @@ func bars(buckets []postgres.Bucket) []Bar {
 		bar := Bar{
 			X: x, Width: width,
 			BandX: bandStart, BandWidth: int(step),
-			Tooltip: bucketTooltip(b, span), Link: bucketLink(b, span),
+			Tooltip: bucketTooltip(ctx, b, span), Link: bucketLink(b, span),
 		}
 		base -= hs
 		bar.YSucceeded, bar.HSucceeded = base, hs
@@ -448,77 +439,30 @@ func bucketLabel(b postgres.Bucket, span time.Duration, hourLayout string) strin
 func bucketLink(b postgres.Bucket, span time.Duration) string {
 	de := b.Start.UTC().Format(time.RFC3339)
 	ate := b.Start.Add(span).UTC().Format(time.RFC3339)
-	return "/runs?de=" + url.QueryEscape(de) + "&ate=" + url.QueryEscape(ate)
+	// from and to, which /runs reads. It said de and ate, which nothing read,
+	// so a click on a bar opened every run.
+	return "/runs?from=" + url.QueryEscape(de) + "&to=" + url.QueryEscape(ate)
 }
 
-func bucketTooltip(b postgres.Bucket, span time.Duration) string {
-	partes := []string{bucketLabel(b, span, "Jan 2 15h")}
-	if b.Succeeded > 0 {
-		partes = append(partes, fmt.Sprintf("%d success", b.Succeeded))
+// bucketTooltip is a bar's slice in words: its interval, then success,
+// failed and running, each said even at zero, so two tooltips read alike.
+func bucketTooltip(ctx context.Context, b postgres.Bucket, span time.Duration) string {
+	label := bucketLabel(b, span, "")
+	if span < 24*time.Hour {
+		label = b.Start.Local().Format("15h") + "–" + b.Start.Add(span).Local().Format("15h")
 	}
-	if b.Failed > 0 {
-		partes = append(partes, fmt.Sprintf("%d failed", b.Failed))
-	}
-	if n := b.Running + b.Queued; n > 0 {
-		partes = append(partes, fmt.Sprintf("%d running", n))
-	}
-	if b.MeanDuration > 0 {
-		partes = append(partes, "avg "+Duration(&b.MeanDuration))
-	}
-	if len(partes) == 1 {
-		return partes[0] + " · no runs"
-	}
-	return strings.Join(partes, " · ")
+	return i18n.T(ctx, "chart.tip", "slice", label, "ok", b.Succeeded, "failed", b.Failed, "running", b.Running+b.Queued)
 }
 
-// durationPeak is the curve's largest value — the secondary scale's reference.
-func durationPeak(buckets []postgres.Bucket) *time.Duration {
-	var maior time.Duration
-	for _, b := range buckets {
-		if b.MeanDuration > maior {
-			maior = b.MeanDuration
-		}
+// chartLabel names the chart for whoever cannot see it: runs per hour, or
+// per day.
+func chartLabel(ctx context.Context, buckets []postgres.Bucket) string {
+	if grainWord(buckets) == "day" {
+		return i18n.T(ctx, "chart.per_day")
 	}
-	if maior == 0 {
-		return nil
-	}
-	return &maior
+	return i18n.T(ctx, "chart.per_hour")
 }
 
-// durationLine normalizes the average duration by its OWN scale, not by the
-// count's: they are different magnitudes, and what matters here is the curve's
-// shape.
-func durationLine(buckets []postgres.Bucket) string {
-	var maior time.Duration
-	for _, b := range buckets {
-		if b.MeanDuration > maior {
-			maior = b.MeanDuration
-		}
-	}
-	if maior == 0 {
-		return ""
-	}
-
-	util := chartHeight - bottomMargin
-	area := chartWidth - margemEsq
-	step := float64(area) / float64(len(buckets))
-
-	var b strings.Builder
-	command := "M"
-	for i, bl := range buckets {
-		if bl.MeanDuration == 0 {
-			// It cuts the line rather than joining two peaks over a gap, which
-			// would invent a duration for an hour with no run at all.
-			command = "M"
-			continue
-		}
-		x := margemEsq + int(float64(i)*step+step/2)
-		y := util - int(float64(util)*0.86*float64(bl.MeanDuration)/float64(maior))
-		fmt.Fprintf(&b, "%s%d %d ", command, x, y)
-		command = "L"
-	}
-	return strings.TrimSpace(b.String())
-}
 
 func hourTicks(buckets []postgres.Bucket) []Brand {
 	span := bucketSpan(buckets)

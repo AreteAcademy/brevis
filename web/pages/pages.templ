@@ -43,6 +43,8 @@ type NextRun struct {
 	Cron     string
 	Timezone string
 	When   time.Time
+	// Logos are what the workflow runs in.
+	Logos []string
 }
 
 
@@ -64,35 +66,42 @@ templ windowToggleT(current Window) {
 	</nav>
 }
 
-// nextTriggers are the eight soonest triggers: the workflow, its cron, and
-// when -- "in 12m" and the time.
+// nextTriggers are the eight soonest triggers (screen-overview T5): what the
+// workflow runs in and its name, when -- green when it is about to fire, so
+// the reader can watch it -- the schedule in words and the cron.
 templ nextTriggers(d OverviewData) {
-	@components.PanelLink("Next triggers", fmt.Sprint(len(d.Proximas)), "/workflows", "workflows") {
-		if len(d.Proximas) == 0 {
-			<div class="px-3.5 py-3">
-				@components.Empty("No active schedule.", "brevis publish file.yaml")
-			</div>
-		} else {
-			<table class="ct w-full text-[12.5px]">
-				<tbody class="divide-y divide-line-soft">
+	<section data-next-triggers>
+		@components.PanelLink(i18n.T(ctx, "overview.next.title"), "", "/workflows", i18n.T(ctx, "overview.next.all")+" →") {
+			if len(d.Proximas) == 0 {
+				<div class="px-3.5 py-3">
+					@components.Empty(i18n.T(ctx, "overview.next.none"), "brevis publish file.yaml")
+				</div>
+			} else {
+				<ul class="divide-y divide-line-soft">
 					for _, p := range d.Proximas {
-						<tr>
-							<td class="px-2.5 pl-3.5">
-								<a href={ templ.SafeURL("/workflows/" + p.Workflow) } class="font-mono text-[12px] text-ink hover:underline">{ p.Workflow }</a>
-							</td>
-							<td class="px-2.5 font-mono text-[11.5px] whitespace-nowrap text-muted">{ p.Cron }</td>
-							<td class="px-2.5 pr-3.5 text-right whitespace-nowrap">
-								<span class="text-ink">in { untilText(p.When.Sub(d.Now)) }</span>
-								<span class="ml-1.5 text-[11.5px] text-faint">
-									@components.ShortStamp(&p.When)
-								</span>
-							</td>
-						</tr>
+						{{ in := p.When.Sub(d.Now) }}
+						<li class="px-3.5 py-2.5">
+							<div class="flex items-center gap-2">
+								for _, k := range p.Logos {
+									@components.Logo(k, 18)
+								}
+								<a href={ templ.SafeURL("/workflows/" + p.Workflow) } class="min-w-0 truncate font-mono text-[13px] text-ink hover:underline">{ p.Workflow }</a>
+								if in < 2*time.Minute {
+									<span title={ components.UTCStamp(&p.When) } class="ml-auto shrink-0 text-[12.5px] font-medium whitespace-nowrap text-state-success">{ i18n.T(ctx, "time.in", "span", untilText(in)) }</span>
+								} else {
+									<span title={ components.UTCStamp(&p.When) } class="ml-auto shrink-0 text-[12.5px] whitespace-nowrap text-ink">{ i18n.T(ctx, "time.in", "span", untilText(in)) }</span>
+								}
+							</div>
+							<div class="mt-0.5 flex items-baseline justify-between gap-3 text-[12px]">
+								<span class="min-w-0 truncate text-muted">{ CronText(p.Cron) }</span>
+								<span class="shrink-0 font-mono text-[11.5px] text-faint">{ p.Cron }</span>
+							</div>
+						</li>
 					}
-				</tbody>
-			</table>
+				</ul>
+			}
 		}
-	}
+	</section>
 }
 
 // th is a column header. The vertical breathing room (py-4) is deliberate:

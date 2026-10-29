@@ -27,11 +27,8 @@ templ Overview(d OverviewData) {
 		// THE CHART AND WHAT RUNS NEXT, SIDE BY SIDE (screen-overview-v2 OV3):
 		// the donut's four counts are in the strip now.
 		<div class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_380px]">
-			@components.Panel(chartTitle(d.Window), "") {
+			@components.Panel(chartTitle(ctx, d.Window), "") {
 				<div class="px-3.5 py-3">
-					<p class="mb-3 text-[12.5px] text-muted">
-						Count and average duration over the { d.Window.Label }.
-					</p>
 					@components.RunsChart(d.Buckets)
 				</div>
 			}

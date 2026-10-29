@@ -7,6 +7,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/domain/runtimes"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/pages"
 )
 
 // logosShown is how many marks a Runs item carries: what a workflow runs in
@@ -53,4 +54,24 @@ func (u *UI) runsLogos(ctx context.Context, runs []postgres.RunSummary) map[stri
 		}
 	}
 	return out
+}
+
+// withLogos gives each next trigger what its workflow runs in, reading each
+// workflow once.
+func (u *UI) withLogos(ctx context.Context, next []pages.NextRun) []pages.NextRun {
+	if u.defs == nil {
+		return next
+	}
+	seen := map[string][]string{}
+	for i, n := range next {
+		logos, done := seen[n.Workflow]
+		if !done {
+			if def, err := u.defs.Definition(ctx, n.Workflow); err == nil {
+				logos = workflowLogos(def)
+			}
+			seen[n.Workflow] = logos
+		}
+		next[i].Logos = logos
+	}
+	return next
 }

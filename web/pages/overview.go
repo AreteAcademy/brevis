@@ -1,9 +1,12 @@
 package pages
 
 import (
+	"context"
+
 	"time"
 
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // Window is the span the Overview reads (screen-overview-v2): its key in the
@@ -37,9 +40,9 @@ func ParseWindow(key string) Window {
 }
 
 // chartTitle names the chart by its grain.
-func chartTitle(w Window) string {
+func chartTitle(ctx context.Context, w Window) string {
 	if w.Grain == postgres.ByDay {
-		return "Runs per day"
+		return i18n.T(ctx, "chart.per_day")
 	}
-	return "Runs per hour"
+	return i18n.T(ctx, "chart.per_hour")
 }

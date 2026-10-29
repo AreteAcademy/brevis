@@ -383,7 +383,8 @@ func TestTheOverviewsChartSitsBesideTheNextTriggers(t *testing.T) {
 	}
 	next := page[at:]
 	next = next[:strings.Index(next, "</section>")]
-	for _, want := range []string{`href="/workflows/id_verification"`, "15 * * * *", "in 12m", "Oct 17 04:00", `class="ct `} {
+	// The time itself is the "in 12m"'s tooltip (screen-overview T5).
+	for _, want := range []string{`href="/workflows/id_verification"`, "15 * * * *", "in 12m", `title="2026-10-17 04:00:00 UTC"`} {
 		if !strings.Contains(next, want) {
 			t.Errorf("the next triggers lost %s", want)
 		}
