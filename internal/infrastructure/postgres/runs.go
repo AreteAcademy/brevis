@@ -96,7 +96,8 @@ func (r *RunRepo) Transicionar(ctx context.Context, id uuid.UUID, para dom.Statu
 	switch para {
 	case dom.StatusRunning:
 		iniciado = now
-	case dom.StatusSuccess, dom.StatusCanceled:
+	case dom.StatusSuccess, dom.StatusFailed, dom.StatusCanceled:
+		// A retry takes a failed run back to the queue, and queued clears it.
 		terminado = now
 	}
 
