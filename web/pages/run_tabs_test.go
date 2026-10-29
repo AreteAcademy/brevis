@@ -1,14 +1,17 @@
 package pages
 
 import (
+	"context"
 	"strings"
 	"testing"
 
+	"github.com/a-h/templ"
 	"github.com/google/uuid"
 
 	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 func failedRunPage() RunPage {
@@ -140,4 +143,94 @@ func TestWhyItFailedGoesToTheErrorInTheLog(t *testing.T) {
 	if strings.Contains(between(headOf(t, p), "data-why", "</section>"), "data-goto-error") {
 		t.Error("a cause with no line in the log offers to go there")
 	}
+}
+
+func multiStep(t *testing.T) RunPage {
+	t.Helper()
+	p := failedRunPage()
+	p.Run.Definition = []byte(`{"slug":"environment_alert","nodes":[{"id":"build","run":"sh -c 'echo building'"},{"id":"test","run":"sh test.sh"},{"id":"notify","action":"slack.post"}],"edges":[{"from":"build","to":"test"},{"from":"test","to":"notify"}]}`)
+	p.Graph = `{"nodes":[]}`
+	return p
+}
+
+// THE GRAPH IS THE STEPS TAB'S, and lives outside the live body: the refresh
+// redraws the body every time a step ends, and a React root inside it would
+// be torn out from under itself. Its scripts come with the tab, not the page.
+func TestTheGraphIsInTheStepsTabAndLoadsWithIt(t *testing.T) {
+	page := draw(t, Runs(RunsScreen{Detail: ptr(multiStep(t))}))
+	graph := between(page, "data-run-graph", "</div>")
+	if !strings.Contains(page, `data-tab-panel="steps" data-run-graph`) || !strings.Contains(graph, `data-island-js=`) || !strings.Contains(graph, "dag.js") {
+		t.Errorf("the graph is not a Steps panel carrying its scripts: %.300s", graph)
+	}
+	body := between(page, `id="run-body"`, `id="run-pane-end"`)
+	if strings.Contains(body, `id="dag"`) {
+		t.Error("the graph is inside the live body")
+	}
+	if strings.Contains(page, "react-dom.js\"></script>") || strings.Contains(page, "<script src=\"/assets/dag.js") {
+		t.Error("the page loads the graph's scripts before its tab opens")
+	}
+}
+
+func ptr(p RunPage) *RunPage { return &p }
+
+// THE STEPS TABLE SAYS WHAT EACH STEP RAN, where it said what it published:
+// that is the Published context tab's now, whole.
+func TestTheStepsTableSaysTheCommand(t *testing.T) {
+	page := draw(t, RunPane(multiStep(t)))
+	table := between(page, "data-step-table", `id="params"`)
+	for _, want := range []string{">Command<", "sh test.sh", "sh -c &#39;echo building&#39;"} {
+		if !strings.Contains(table, want) {
+			t.Errorf("the steps table lacks %s", want)
+		}
+	}
+	if strings.Contains(table, ">Output<") || strings.Contains(table, "no output recorded") {
+		t.Error("the table still carries what the steps published")
+	}
+}
+
+// PUBLISHED CONTEXT, PER STEP: the JSON, formatted, with its size -- or why
+// there is none: still running, failed before publishing, published nothing.
+func TestThePublishedContextTab(t *testing.T) {
+	p := multiStep(t)
+	p.Logs[0].Output = []byte(`{"rows":1284,"target":"bronze.inpe"}`)
+	tab := between(draw(t, RunPane(p)), `id="context" data-tab-panel="context"`, "</section>")
+	for _, want := range []string{
+		"build", "&#34;rows&#34;: 1284", "36 bytes",
+		"test", "Failed before publishing",
+		"notify", "Still running",
+	} {
+		if !strings.Contains(tab, want) {
+			t.Errorf("the context tab lacks %s", want)
+		}
+	}
+	p.Logs[0].Output = nil
+	if !strings.Contains(between(draw(t, RunPane(p)), `id="context" data-tab-panel="context"`, "</section>"), "Published nothing") {
+		t.Error("a step that published nothing does not say so")
+	}
+}
+
+// THE PARAMETERS TAB: the auto params, each with what it means in the
+// reader's language, and the values this run was given.
+func TestTheParametersTabExplainsAndLists(t *testing.T) {
+	p := multiStep(t)
+	p.Run.Params = map[string]string{"load_full": "true", "region": "br"}
+	tab := between(drawIn(t, "pt-BR", RunPane(p)), `id="params" data-tab-panel="params"`, `id="context"`)
+	for _, want := range []string{"adjusted_at", "o relógio a usar no lugar de now()", "load_full", "true", "region", "br"} {
+		if !strings.Contains(tab, want) {
+			t.Errorf("the parameters tab lacks %s", want)
+		}
+	}
+	p.Run.Params = nil
+	if !strings.Contains(between(draw(t, RunPane(p)), `id="params" data-tab-panel="params"`, `id="context"`), "This run was given no parameters") {
+		t.Error("a run with no parameters does not say so")
+	}
+}
+
+func drawIn(t *testing.T, lang string, c templ.Component) string {
+	t.Helper()
+	var b strings.Builder
+	if err := c.Render(i18n.WithLang(context.Background(), lang), &b); err != nil {
+		t.Fatal(err)
+	}
+	return b.String()
 }

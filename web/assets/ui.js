@@ -876,11 +876,18 @@
     if (!bar || !panels.length) return;
     var found = false;
     panels.forEach(function (p) { if (p.getAttribute("data-tab-panel") === key) found = true; });
-    if (!found) key = panels[0].getAttribute("data-tab-panel");
+    // With no tab named, the first TAB -- not the first panel: a tab can
+    // have more than one panel (the Runs graph sits before its body), and
+    // the first in the page need not be the first tab's.
+    if (!found) {
+      var first = bar.querySelector("[data-tab]");
+      key = first ? first.getAttribute("data-tab") : panels[0].getAttribute("data-tab-panel");
+    }
     document.documentElement.dataset.hash = key;
     bar.querySelectorAll("[data-tab]").forEach(function (t) {
       t.setAttribute("aria-selected", t.getAttribute("data-tab") === key ? "true" : "false");
     });
+    mountGraph();
   }
   function showAllTabs() {
     document.querySelectorAll("[data-hash-tabs]").forEach(function (host) {
@@ -1506,10 +1513,46 @@
   // the drawer's chips and preview. Everything else on the page is delegated
   // to the document and needs nothing.
   //
-  // Any doubt navigates instead: a failed fetch, an expired session, or a
-  // graph whose scripts this page never loaded (it opened on a one-step run).
-  // The item is a real link, so that is just the click it always was.
+  // Any doubt navigates instead: a failed fetch, an expired session. The
+  // item is a real link, so that is just the click it always was.
   // ------------------------------------------------------------------
+
+  // The graph comes with the Steps tab (screen-runs T7). It is mounted when
+  // its box is on the screen -- React Flow measures it -- and its scripts,
+  // ~350 KB of React, are fetched the first time, in their order, from the
+  // list the page wrote on it (data-island-js): a page opened on a log does
+  // not pay for a drawing nobody asked for.
+  var graphLoading = false;
+  function mountGraph() {
+    var root = document.getElementById("dag");
+    if (!root || root._dag || root.offsetParent === null) return;
+    if (window.BrevisDag) {
+      window.BrevisDag.mount(root);
+      return;
+    }
+    var host = root.closest("[data-island-js]");
+    if (!host || graphLoading) return;
+    graphLoading = true;
+    (host.getAttribute("data-island-css") || "").split(" ").filter(Boolean).forEach(function (href) {
+      var link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      document.head.appendChild(link);
+    });
+    var srcs = (host.getAttribute("data-island-js") || "").split(" ").filter(Boolean);
+    (function next(i) {
+      if (i >= srcs.length) {
+        graphLoading = false;
+        mountGraph();
+        return;
+      }
+      var script = document.createElement("script");
+      script.src = srcs[i];
+      script.onload = function () { next(i + 1); };
+      script.onerror = function () { graphLoading = false; };
+      document.body.appendChild(script);
+    })(0);
+  }
 
   var runPane = document.getElementById("run-pane");
   var runColumn = document.querySelector("[data-runs-list]");
@@ -1533,9 +1576,6 @@
         return r.text();
       })
       .then(function (html) {
-        var doc = new DOMParser().parseFromString(html, "text/html");
-        if (doc.querySelector("#dag") && !window.BrevisDag) throw new Error("no graph scripts");
-
         runPane.querySelectorAll("[data-live]").forEach(function (host) {
           if (host._stopLive) host._stopLive();
         });
@@ -1546,8 +1586,7 @@
         runPane.querySelectorAll("[data-live]").forEach(follow);
         runPane.querySelectorAll("input[data-lista]").forEach(listChips);
         runPane.querySelectorAll("form[data-run-form]").forEach(runPreview);
-        if (window.BrevisDag) window.BrevisDag.mount(runPane.querySelector("#dag"));
-        showAllTabs();
+        showAllTabs(); // which mounts the graph, if its tab is open
         applyAllLogs(runPane);
 
         if (push) history.pushState({ run: true }, "", href);

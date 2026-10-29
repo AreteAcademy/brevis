@@ -79,19 +79,6 @@ func TestAMappedStepIsOneEntryWithItsInstancesNamed(t *testing.T) {
 	}
 }
 
-// What a step published is on the screen, as it is on its node in the flow.
-func TestAStepsOutputIsShown(t *testing.T) {
-	r, logs := reportedRun(t)
-	discover := StepOutputs(r, logs)[1]
-	want := []OutputLine{
-		{Key: "partitions", Value: `["2026-09-05","2026-09-06","2026-09-07"]`},
-		{Key: "source_dir", Value: "/data/incoming"},
-	}
-	if !reflect.DeepEqual(discover.Rows[0].Output, want) {
-		t.Errorf("output = %#v, want %#v", discover.Rows[0].Output, want)
-	}
-}
-
 // A definition the page cannot read still shows every log, in the order they
 // came: the section is the place somebody looks when everything else broke.
 func TestAnUnreadableDefinitionStillShowsEveryLog(t *testing.T) {

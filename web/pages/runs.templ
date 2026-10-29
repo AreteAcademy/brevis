@@ -88,11 +88,11 @@ func runsCrumb(s RunsScreen) string {
 	return runCrumb(s.Detail.Run)
 }
 
-func runsIsland(s RunsScreen) layouts.Island {
-	if s.Detail == nil {
-		return layouts.Island{}
-	}
-	return runIsland(*s.Detail)
+// runsIsland is none: the graph's scripts come with the Steps tab
+// (data-island-js on the graph), so a page opened on a log does not load
+// React to show it.
+func runsIsland(RunsScreen) layouts.Island {
+	return layouts.Island{}
 }
 
 // Runs fills the shell, and each pane scrolls on its own: the list stays where

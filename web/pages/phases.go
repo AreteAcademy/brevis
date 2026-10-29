@@ -3,6 +3,7 @@ package pages
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -90,25 +91,39 @@ func phaseBar(state string) string {
 
 // autoItems are a run's auto params as the grid shows them, in the order and
 // with the words the cards had; an absent one is left out, as before.
-func autoItems(r run.Run) []components.KVItem {
+func autoItems(ctx context.Context, r run.Run) []components.KVItem {
 	a := r.Auto
 	items := []components.KVItem{
-		{Key: "adjusted_at", Value: components.UTCStamp(&a.AdjustedAt), Note: "the clock to read instead of now()"},
-		{Key: "date", Value: a.Date, Note: "the UTC day of adjusted_at — the partition"},
-		{Key: "delay", Value: lateness(a.DelaySeconds), Note: "how late this attempt started"},
+		{Key: "adjusted_at", Value: components.UTCStamp(&a.AdjustedAt), Note: i18n.T(ctx, "auto.adjusted_at")},
+		{Key: "date", Value: a.Date, Note: i18n.T(ctx, "auto.date")},
+		{Key: "delay", Value: lateness(a.DelaySeconds), Note: i18n.T(ctx, "auto.delay")},
 	}
 	add := func(key string, t *time.Time, note string) {
 		if t != nil {
 			items = append(items, components.KVItem{Key: key, Value: components.UTCStamp(t), Note: note})
 		}
 	}
-	add("scheduled_at", a.ScheduledAt, "the slot this run represents")
-	add("started_at", a.StartedAt, "when this attempt began")
-	add("interval_start", a.IntervalStart, "the window this run covers, from")
-	add("interval_end", a.IntervalEnd, "…up to, excluded")
-	items = append(items, components.KVItem{Key: "previous_error", Value: fmt.Sprint(a.PreviousError), Note: "did the run before this one fail"})
-	add("previous_success_at", a.PreviousSuccessAt, "how far back to catch up from")
+	add("scheduled_at", a.ScheduledAt, i18n.T(ctx, "auto.scheduled_at"))
+	add("started_at", a.StartedAt, i18n.T(ctx, "auto.started_at"))
+	add("interval_start", a.IntervalStart, i18n.T(ctx, "auto.interval_start"))
+	add("interval_end", a.IntervalEnd, i18n.T(ctx, "auto.interval_end"))
+	items = append(items, components.KVItem{Key: "previous_error", Value: fmt.Sprint(a.PreviousError), Note: i18n.T(ctx, "auto.previous_error")})
+	add("previous_success_at", a.PreviousSuccessAt, i18n.T(ctx, "auto.previous_success_at"))
 	return items
+}
+
+// usedParams are the values this run was given, sorted by name.
+func usedParams(r run.Run) []components.KVItem {
+	names := make([]string, 0, len(r.Params))
+	for k := range r.Params {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	out := make([]components.KVItem, 0, len(names))
+	for _, k := range names {
+		out = append(out, components.KVItem{Key: k, Value: r.Params[k]})
+	}
+	return out
 }
 
 // firstLine is an error's first line, for the line that opens to the rest.
@@ -158,4 +173,15 @@ func runDuration(ctx context.Context, r run.Run) string {
 		return "—"
 	}
 	return i18n.Elapsed(ctx, r.FinishedAt.Sub(*r.StartedAt))
+}
+
+// contextState says why a step has no published context.
+func contextState(ctx context.Context, state string) string {
+	switch state {
+	case "running":
+		return i18n.T(ctx, "run.context.running")
+	case "failed":
+		return i18n.T(ctx, "run.context.failed")
+	}
+	return i18n.T(ctx, "run.context.none")
 }

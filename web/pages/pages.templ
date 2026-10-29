@@ -1169,12 +1169,25 @@ templ RunDetail(p RunPage) {
 			<span class="h-1.5 w-1.5 rounded-full bg-state-running"></span>
 			<span data-live-label>following this run</span>
 		</p>
-		if p.Step == nil {
-			@dag("/api/runs/"+r.ID.String()+"/graph", p.Graph)
-		}
-		@templ.Raw("<style>" + hashTabsCSS("run-tabs", "logs", "steps", "params") + "</style>")
-		<div id="run-body">
-			@runBody(p)
+		// THE TABS (screen-runs T5, T7). Three regions in one tab set: the
+		// bar and the body are the live refresh's, the graph is not. It is a
+		// Steps panel of its own OUTSIDE the body, because the body is
+		// redrawn when a step ends, and a React root inside it would be torn
+		// out from under itself. Its scripts come with the tab (ui.js reads
+		// data-island-*): the page does not pay for React to show a log.
+		@templ.Raw("<style>" + hashTabsCSS("run-tabs", "logs", "steps", "params", "context") + "</style>")
+		<div id="run-tabs" data-hash-tabs>
+			<div id="run-tabs-bar" data-hash-tabs-bar data-js class="mb-3">
+				@runTabsBar(p)
+			</div>
+			if p.Step == nil {
+				<div data-tab-panel="steps" data-run-graph data-island-js={ strings.Join(dagAssets.JS, " ") } data-island-css={ strings.Join(dagAssets.CSS, " ") } class="mb-3">
+					@dag("/api/runs/"+r.ID.String()+"/graph", p.Graph)
+				</div>
+			}
+			<div id="run-body">
+				@runBody(p)
+			</div>
 		</div>
 		if p.Workflow != nil && len(p.Workflow.Params) > 0 {
 			{{ w, dropped := rerunWorkflow(p) }}
@@ -1254,6 +1267,9 @@ templ RunLive(p RunPage) {
 	// stopping there would freeze the screen in the middle of one.
 	<div data-live-target="run-head" data-terminal={ fmt.Sprint(r.Status.Terminal()) }>
 		@runHead(p)
+	</div>
+	<div data-live-target="run-tabs-bar">
+		@runTabsBar(p)
 	</div>
 	<div data-live-target="run-body">
 		@runBody(p)
@@ -1389,38 +1405,80 @@ templ phases(ps []Phase) {
 	</ol>
 }
 
-// runBody is the run's tabs (screen-runs T5): Logs first, then its steps,
-// then its parameters. Tabs by the hash -- a link can open one, and the CSS
-// written beside the live region shows it before the first paint -- and
-// stacked, each with its heading, where no script runs. Inside the live
-// region, so a step that ends adds its lines without a reload.
+// runTabsBar is the tabs, each with its count. Live, so "Logs 17" grows as
+// steps end.
+templ runTabsBar(p RunPage) {
+	@components.Tabs(i18n.T(ctx, "run.tabs"), []components.Tab{
+		{Key: "logs", Label: i18n.T(ctx, "run.tab.logs"), Count: fmt.Sprint(RunLogOf(p.Logs, p.Cause).Lines), Selected: true},
+		{Key: "steps", Label: i18n.T(ctx, "run.tab.steps"), Count: fmt.Sprint(len(StepOutputs(p.Run, p.Logs)))},
+		{Key: "params", Label: i18n.T(ctx, "run.tab.params"), Count: fmt.Sprint(len(autoItems(ctx, p.Run)) + len(p.Run.Params))},
+		{Key: "context", Label: i18n.T(ctx, "run.tab.context")},
+	})
+}
+
+// runBody is the run's tab panels (screen-runs T5, T7): Logs first, then its
+// steps, its parameters and what each step published. Shown by the hash --
+// a link can open one, and the CSS beside the tabs shows it before the first
+// paint -- and stacked, each with its heading, where no script runs. Inside
+// the live region, so a step that ends adds its lines without a reload.
 templ runBody(p RunPage) {
-	{{ log := RunLogOf(p.Logs, p.Cause) }}
-	<div id="run-tabs" data-hash-tabs>
-		<div data-hash-tabs-bar data-js class="mb-3">
-			@components.Tabs(i18n.T(ctx, "run.tabs"), []components.Tab{
-				{Key: "logs", Label: i18n.T(ctx, "run.tab.logs"), Count: fmt.Sprint(log.Lines), Selected: true},
-				{Key: "steps", Label: i18n.T(ctx, "run.tab.steps"), Count: fmt.Sprint(len(StepOutputs(p.Run, p.Logs)))},
-				{Key: "params", Label: i18n.T(ctx, "run.tab.params"), Count: fmt.Sprint(len(autoItems(p.Run)))},
-			})
-		</div>
-		<section id="logs" data-tab-panel="logs" class="mb-3">
-			<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.logs") }</h2>
-			@logsPanel(p.Run, log)
-		</section>
-		<section id="steps" data-tab-panel="steps" class="mb-3">
-			<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.steps") }</h2>
-			if p.Step != nil {
-				@stepLine(*p.Step)
+	<section id="logs" data-tab-panel="logs" class="mb-3">
+		<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.logs") }</h2>
+		@logsPanel(p.Run, RunLogOf(p.Logs, p.Cause))
+	</section>
+	<section id="steps" data-tab-panel="steps" class="mb-3">
+		<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.steps") }</h2>
+		if p.Step != nil {
+			@stepLine(*p.Step)
+		}
+		@stepsOutput(p.Run, p.Logs)
+		@alertsRaised(p.Raised)
+	</section>
+	<section id="params" data-tab-panel="params" class="mb-3">
+		<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.params") }</h2>
+		@autoParams(p.Run)
+		@paramsUsed(p.Run)
+	</section>
+	<section id="context" data-tab-panel="context" class="mb-3">
+		<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.context") }</h2>
+		@publishedContext(ContextOf(p.Run, p.Logs))
+	</section>
+}
+
+// paramsUsed is what this run was given -- the values Rerun starts from.
+templ paramsUsed(r run.Run) {
+	<section class="mt-3">
+		@components.Panel(i18n.T(ctx, "run.params.used"), "") {
+			if len(r.Params) == 0 {
+				<p class="px-3.5 py-3 text-[12.5px] text-muted">{ i18n.T(ctx, "run.params.none") }</p>
+			} else {
+				@components.KV(usedParams(r))
 			}
-			@stepsOutput(p.Run, p.Logs)
-			@alertsRaised(p.Raised)
-		</section>
-		<section id="params" data-tab-panel="params" class="mb-3">
-			<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.params") }</h2>
-			@autoParams(p.Run)
-		</section>
-	</div>
+		}
+	</section>
+}
+
+// publishedContext is what each step published for the steps below it
+// ($BREVIS_OUTPUT), whole and formatted -- or why there is none.
+templ publishedContext(entries []ContextEntry) {
+	if len(entries) == 0 {
+		<p class="rounded-card border border-line bg-surface px-3.5 py-3 text-[12.5px] text-muted">{ i18n.T(ctx, "run.log.empty") }</p>
+	}
+	for _, e := range entries {
+		<div data-context={ e.Step } class="mb-2 overflow-hidden rounded-card border border-line bg-surface">
+			<div class="flex items-center justify-between gap-3 border-b border-line-soft px-3.5 py-2 text-[12.5px]">
+				<span class="font-mono text-ink">{ e.Step }</span>
+				if e.JSON != "" {
+					<span class="text-[11.5px] text-faint">{ i18n.N(ctx, "run.context.bytes", e.Bytes) }</span>
+				}
+			</div>
+			if e.JSON != "" {
+				<pre class="max-h-[24rem] overflow-auto px-3.5 py-2.5 font-mono text-[12px] leading-relaxed text-ink">{ e.JSON }</pre>
+			} else {
+				<p class="px-3.5 py-2.5 text-[12.5px] text-muted">{ contextState(ctx, e.State) }</p>
+			}
+		</div>
+	}
 }
 
 // logsPanel is the run's log as one (screen-runs T5): each attempt under its
@@ -1492,15 +1550,6 @@ templ logsPanel(r run.Run, log RunLog) {
 			</div>
 		}
 	</div>
-}
-
-// runIsland is the graph's island for a run that has a graph. A one-step run
-// draws its step as a line, and loads no React for a canvas with one box.
-func runIsland(p RunPage) layouts.Island {
-	if p.Step != nil {
-		return layouts.Island{}
-	}
-	return dagAssets
 }
 
 // stepLine is a one-step run's step (screen-run-v2 RV3): what the graph's one
@@ -1591,13 +1640,10 @@ templ stepLine(l StepLine) {
 // late AND that it still read the right window -- which is exactly the pair
 // somebody stares at after finding a gap in a table.
 templ autoParams(r run.Run) {
-	<section class="mt-3">
-		@components.Panel("Auto params", "read by any step as $BREVIS_AUTO_*") {
-			@components.KV(autoItems(r))
-			<p class="border-t border-line-soft px-3.5 py-2 text-[12px] text-faint">
-				The engine works these out for every run. No workflow declares them, and
-				every step can read them — as <code class="font-mono">$BREVIS_AUTO_*</code>.
-			</p>
+	<section>
+		@components.Panel(i18n.T(ctx, "run.params.auto"), i18n.T(ctx, "run.params.auto_hint")) {
+			@components.KV(autoItems(ctx, r))
+			<p class="border-t border-line-soft px-3.5 py-2 text-[12px] text-faint">{ i18n.T(ctx, "run.params.auto_note") }</p>
 		}
 	</section>
 }
@@ -1746,7 +1792,7 @@ templ stepsOutput(r run.Run, logs []postgres.StepLog) {
 							<span role="columnheader"><span class="sr-only">Retry</span></span>
 							<span role="columnheader">Exit</span>
 							<span role="columnheader" class="text-right">Duration</span>
-							<span role="columnheader">Output</span>
+							<span role="columnheader">{ i18n.T(ctx, "run.steps.command") }</span>
 						</div>
 						for _, g := range groups {
 							if g.Mapped {
@@ -1839,23 +1885,7 @@ templ stepCells(p StepRow, opens bool) {
 			{ durationMs(p.DurationMs) }
 		}
 	</span>
-	<span role="cell" title={ outputTitle(p.Output) } class="min-w-0 truncate font-mono text-[12px] text-muted">
-		// What the step published, as its node in the flow shows it.
-		for i, o := range p.Output {
-			if i > 0 {
-				<span aria-hidden="true" class="px-1 text-faint">·</span>
-			}
-			<span class="text-faint">{ o.Key }</span> { o.Value }
-		}
-		// The log's absence, said as the cards said it: a step that wrote
-		// nothing is different from one whose log was lost with its pod.
-		if p.Log == "" {
-			if len(p.Output) > 0 {
-				<span aria-hidden="true" class="px-1 text-faint">·</span>
-			}
-			<span class="text-faint italic">no output recorded</span>
-		}
-	</span>
+	<span role="cell" title={ p.Command } class="min-w-0 truncate font-mono text-[12px] text-muted">{ p.Command }</span>
 }
 
 // dag is the island's mount point. The height is fixed on purpose: with `h-full`

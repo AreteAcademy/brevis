@@ -1,10 +1,10 @@
 package pages
 
 import (
+	"bytes"
 	"encoding/json"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/domain/runcontext"
@@ -24,7 +24,9 @@ type StepOutput struct {
 	Status string
 	// Ok and Total count a mapped step's instances, the flow's "2/3".
 	Ok, Total int
-	Rows      []StepRow
+	// Command is what the step runs, as the flow's node subtitles it.
+	Command string
+	Rows    []StepRow
 }
 
 // StepRow is one attempt of one instance.
@@ -32,12 +34,9 @@ type StepRow struct {
 	postgres.StepLog
 	// Item is what a mapped instance ran for -- the element of the list it
 	// maps over, as the step received it in BREVIS_MAP_VALUE.
-	Item   string
-	Output []OutputLine
+	Item    string
+	Command string
 }
-
-// OutputLine is one key a step published.
-type OutputLine struct{ Key, Value string }
 
 // StepOutputs groups a run's logs by step, in the graph's order.
 //
@@ -68,7 +67,7 @@ func StepOutputs(r run.Run, logs []postgres.StepLog) []StepOutput {
 			at[l.NodeID] = i
 			out = append(out, StepOutput{Node: l.NodeID})
 		}
-		out[i].Rows = append(out[i].Rows, StepRow{StepLog: l, Output: outputLines(l.Output)})
+		out[i].Rows = append(out[i].Rows, StepRow{StepLog: l})
 		if l.MapIndex != run.Unmapped {
 			out[i].Mapped = true
 		}
@@ -86,8 +85,16 @@ func StepOutputs(r run.Run, logs []postgres.StepLog) []StepOutput {
 	})
 
 	items := mappedItems(def, logs)
+	commands := map[string]string{}
+	for _, n := range def.Nodes {
+		commands[n.ID] = commandOf(n)
+	}
 	for i := range out {
 		g := &out[i]
+		g.Command = commands[g.Node]
+		for j := range g.Rows {
+			g.Rows[j].Command = g.Command
+		}
 		sort.SliceStable(g.Rows, func(a, b int) bool {
 			if g.Rows[a].MapIndex != g.Rows[b].MapIndex {
 				return g.Rows[a].MapIndex < g.Rows[b].MapIndex
@@ -169,33 +176,6 @@ func plainValue(raw json.RawMessage) string {
 	return string(raw)
 }
 
-// outputLines is what a step published, key by key, sorted by key: a JSON
-// object has no order of its own to keep.
-func outputLines(raw json.RawMessage) []OutputLine {
-	var values map[string]json.RawMessage
-	if len(raw) == 0 || json.Unmarshal(raw, &values) != nil {
-		return nil
-	}
-	out := make([]OutputLine, 0, len(values))
-	for k, v := range values {
-		out = append(out, OutputLine{Key: k, Value: plainValue(compact(v))})
-	}
-	sort.Slice(out, func(a, b int) bool { return out[a].Key < out[b].Key })
-	return out
-}
-
-func compact(raw json.RawMessage) json.RawMessage {
-	var v any
-	if json.Unmarshal(raw, &v) != nil {
-		return raw
-	}
-	b, err := json.Marshal(v)
-	if err != nil {
-		return raw
-	}
-	return b
-}
-
 // worst is the status a node shows for its instances' last attempts: one
 // failure makes the node failed, as it does in the flow.
 //
@@ -227,15 +207,70 @@ func worst(last map[int]string) string {
 	return status
 }
 
-// outputTitle is a row's published values whole, for the cell that cuts them
-// short.
-func outputTitle(out []OutputLine) string {
-	var b strings.Builder
-	for i, o := range out {
-		if i > 0 {
-			b.WriteString("\n")
-		}
-		b.WriteString(o.Key + " " + o.Value)
+// commandOf is what a step runs, as its node in the flow says it: the action,
+// the command line, or "marker" for a step that runs nothing.
+func commandOf(n wf.Node) string {
+	switch {
+	case n.Marker:
+		return "marker"
+	case n.Action != "":
+		return n.Action
 	}
-	return b.String()
+	return n.Run
+}
+
+// ContextEntry is what one step -- one instance of a mapped one -- published
+// for the steps below it, as its last attempt left it.
+type ContextEntry struct {
+	Step string
+	// JSON is the published value, indented; empty with nothing published.
+	JSON  string
+	Bytes int
+	// State says why there is no JSON: "running", "failed" or "none".
+	State string
+}
+
+// ContextOf is the run's published context, step by step in the flow's
+// order: for each instance, the latest attempt that published -- what the
+// run's context holds -- and, when none did, why, from its last attempt.
+func ContextOf(r run.Run, logs []postgres.StepLog) []ContextEntry {
+	var out []ContextEntry
+	for _, g := range StepOutputs(r, logs) {
+		last := map[int]postgres.StepLog{}
+		published := map[int]postgres.StepLog{}
+		var order []int
+		for _, row := range g.Rows {
+			if _, seen := last[row.MapIndex]; !seen {
+				order = append(order, row.MapIndex)
+			}
+			last[row.MapIndex] = row.StepLog
+			if len(row.Output) > 0 {
+				published[row.MapIndex] = row.StepLog
+			}
+		}
+		for _, i := range order {
+			l, ok := published[i]
+			if !ok {
+				l = last[i]
+			}
+			e := ContextEntry{Step: StepName(l.NodeID, l.MapIndex), Bytes: len(l.Output)}
+			switch {
+			case len(l.Output) > 0:
+				var b bytes.Buffer
+				if json.Indent(&b, l.Output, "", "  ") == nil {
+					e.JSON = b.String()
+				} else {
+					e.JSON = string(l.Output)
+				}
+			case l.Status == string(run.StatusRunning) || l.Status == string(run.StatusQueued) || l.Status == "pending":
+				e.State = "running"
+			case l.Status == string(run.StatusFailed):
+				e.State = "failed"
+			default:
+				e.State = "none"
+			}
+			out = append(out, e)
+		}
+	}
+	return out
 }

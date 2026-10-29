@@ -1073,7 +1073,12 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
     }
   }
 
-  // For the Runs screen, which swaps the open run without reloading (ui.js).
+  // For the Runs screen, which swaps the open run without reloading and
+  // mounts the graph when its tab opens (ui.js).
   window.BrevisDag = { mount: mount, unmount: unmount };
-  mount(document.getElementById("dag"));
+
+  // A graph in a hidden tab waits for it: React Flow measures its box, and a
+  // box with no size draws an empty canvas.
+  var first = document.getElementById("dag");
+  if (first && first.offsetParent !== null) mount(first);
 })();
