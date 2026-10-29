@@ -1,0 +1,13 @@
+package components
+
+// Text is a line of text as a component, for a slot that takes one -- a
+// Stat's Foot.
+templ Text(s string) {
+	{ s }
+}
+
+// Link is a quiet link as a component, for a slot that takes one -- "2
+// workflows still failing →" under a number.
+templ Link(href, label string) {
+	<a href={ templ.SafeURL(href) } class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ label }</a>
+}

@@ -16,6 +16,33 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: the Overview answers what needs you first
+
+The Overview's first section is what needs you now, and the rest of the
+screen follows the UI 2.0 design.
+
+- **Needs your attention** lists each workflow whose last run failed. Every
+  item has why it failed in one line, read from the log as the run page
+  reads it; how many times in a row; "View log"; and "Rerun", which comes
+  back to the Overview with a toast that links to the new run.
+- **It also lists the destinations whose data stopped coming,** as `/data`
+  judges them. A destination whose writer is already failing is left out.
+- **The section follows itself every ten seconds:** a rerun shows as going,
+  and the item leaves once the workflow passes. Eight items are drawn, and
+  the rest are counted with a link. With nothing to show, a card says so.
+- **Four numbers:** the success rate, with the retries under it; the failures,
+  with "N workflows still failing"; what runs and waits now; and the next
+  trigger.
+- **The runs chart** stacks success, failed and in flight. Clicking a bar now
+  opens that hour's or day's runs: the link used parameter names `/runs` did
+  not read, so it opened every run.
+- **The next triggers** show what each workflow runs in, its schedule in
+  words, and when it fires, in green when about to.
+- **Recent runs and the event log are tabs.** The recent runs filter by All,
+  Failed or Running on the page. The event log is the events feed, on a
+  screen for the first time.
+- In English, Portuguese and Spanish, every word of it.
+
 ### Changed: Runs is one screen
 
 The list and the run are one screen now, the first of the UI 2.0 screens.

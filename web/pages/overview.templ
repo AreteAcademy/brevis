@@ -1,0 +1,203 @@
+package pages
+
+import (
+	"fmt"
+	"net/url"
+	"time"
+
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
+	"github.com/AreteAcademy/brevis/web/layouts"
+)
+
+// Overview is the screen that answers, at a glance and in this order, what
+// needs the reader, how the runs are going, what fires next and what just
+// happened (screen-overview).
+templ Overview(d OverviewData) {
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "overview.title"), Active: "overview", Actions: windowToggle(d.Window)}) {
+		<p class="mb-3 -mt-1 max-w-3xl text-[13px] text-muted">{ i18n.T(ctx, "overview.lede") }</p>
+		// The section follows itself every ten seconds: a rerun shows as
+		// going, and the item leaves once its workflow passes.
+		<div id="attention" data-live="/overview/attention" data-live-every="10000">
+			@attention(d.Attention, d.Now)
+		</div>
+		<div data-kpis>
+			@components.Stats(overviewKPIs(ctx, d))
+		</div>
+		// THE CHART AND WHAT RUNS NEXT, SIDE BY SIDE (screen-overview-v2 OV3):
+		// the donut's four counts are in the strip now.
+		<div class="mt-3 grid grid-cols-1 gap-3 min-[1101px]:grid-cols-[1fr_380px]">
+			@components.Panel(chartTitle(ctx, d.Window), "") {
+				<div class="px-3.5 py-3">
+					@components.RunsChart(d.Buckets)
+				</div>
+			}
+			@nextTriggers(d)
+		</div>
+		// WHAT JUST HAPPENED, TWO WAYS (screen-overview T6): the recent runs,
+		// filtered on the page, and the event log -- everything the installation
+		// did, runs and publishes alike. Tabs by the hash; stacked with no
+		// script.
+		@templ.Raw("<style>" + hashTabsCSS("overview-tabs", "recent", "events") + "</style>")
+		<div id="overview-tabs" data-hash-tabs class="mt-3 overflow-hidden rounded-card border border-line bg-surface">
+			<div data-hash-tabs-bar data-js class="px-3.5 pt-1">
+				@components.Tabs(i18n.T(ctx, "overview.tabs"), []components.Tab{
+					{Key: "recent", Label: i18n.T(ctx, "overview.recent"), Selected: true},
+					{Key: "events", Label: i18n.T(ctx, "overview.events"), Count: fmt.Sprint(len(d.Events))},
+				})
+			</div>
+			<section id="recent" data-tab-panel="recent">
+				<h2 data-panel-heading class="px-3.5 pt-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "overview.recent") }</h2>
+				<div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5">
+					<div data-js role="group" aria-label={ i18n.T(ctx, "runs.state") } class="inline-flex rounded-card border border-line p-0.5">
+						<button type="button" data-recent-filter="all" aria-pressed="true" class="rounded-[5px] px-2.5 py-1 text-[12.5px] text-muted hover:text-ink aria-pressed:bg-surface-2 aria-pressed:text-ink">{ i18n.T(ctx, "runs.all") }</button>
+						<button type="button" data-recent-filter="failed" aria-pressed="false" class="rounded-[5px] px-2.5 py-1 text-[12.5px] text-muted hover:text-ink aria-pressed:bg-surface-2 aria-pressed:text-ink">{ i18n.T(ctx, "runs.failed") }</button>
+						<button type="button" data-recent-filter="running" aria-pressed="false" class="rounded-[5px] px-2.5 py-1 text-[12.5px] text-muted hover:text-ink aria-pressed:bg-surface-2 aria-pressed:text-ink">{ i18n.T(ctx, "runs.in_flight") }</button>
+					</div>
+					<a href="/runs" class="ml-auto text-[12.5px] text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "overview.all_runs") } &rarr;</a>
+				</div>
+				@runsTableWith(d.Recentes, Pagination{}, runsOpts{Workflow: true, Bare: true, Logos: d.Logos})
+			</section>
+			<section id="events" data-tab-panel="events">
+				<h2 data-panel-heading class="px-3.5 pt-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "overview.events") }</h2>
+				@eventLog(FeedOf(ctx, d.Events))
+			</section>
+		</div>
+	}
+}
+
+// attention is "Needs your attention", always the first section: each
+// workflow whose last run failed, with why in one line and the way to its
+// log -- or, when there is none, a card that says all is well, since an
+// empty space reads as a section that failed to load.
+templ attention(a Attention, now time.Time) {
+	<section data-attention class="mb-3">
+		if a.Total() == 0 {
+			<div data-attention-empty class="flex items-start gap-3 rounded-card border border-state-success/30 bg-state-success/5 px-4 py-3">
+				@components.Icon("check", "mt-0.5 h-4 w-4 shrink-0 text-state-success")
+				<div>
+					<p class="text-[13.5px] font-medium text-ink">{ i18n.T(ctx, "overview.attention.none") }</p>
+					<p class="mt-0.5 text-[12.5px] text-muted">{ i18n.T(ctx, "overview.attention.none_hint") }</p>
+				</div>
+			</div>
+		} else {
+			<div class="overflow-hidden rounded-card border border-state-failed/40 bg-state-failed/5">
+				<header class="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-state-failed/20 px-4 py-2.5">
+					@components.Icon("triangle-alert", "h-4 w-4 shrink-0 self-center text-state-failed")
+					<h2 class="text-[14px] font-medium text-ink">{ i18n.T(ctx, "overview.attention") }</h2>
+					<span class="font-mono text-[12px] text-muted tabular-nums">{ fmt.Sprint(a.Total()) }</span>
+					<span class="text-[12.5px] text-muted">{ i18n.T(ctx, "overview.attention.hint") }</span>
+				</header>
+				<ul>
+					for _, it := range a.Items {
+						<li data-attention-item={ it.Workflow } class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-state-failed/15 px-4 py-3 last:border-b-0">
+							@components.Dot("failed")
+							<div class="min-w-0 flex-1 max-[640px]:basis-[calc(100%-2rem)]">
+								<p class="text-[13px]">
+									<span class="font-mono text-ink">{ it.Workflow }</span>
+									<span class="ml-1 text-[12.5px] text-muted">
+										{ i18n.T(ctx, "overview.failed") } { i18n.Since(ctx, now, it.FailedAt) }
+										if s := streakText(ctx, it.Streak); s != "" {
+											· { s }
+										}
+									</span>
+								</p>
+								if it.Cause != nil {
+									<p class="mt-0.5 truncate text-[12.5px] text-ink-2">
+										{ whyTitle(ctx, it.Cause) }
+										if it.Cause.Line != "" {
+											— <code class="font-mono text-[12px] text-state-failed">{ it.Cause.Line }</code>
+										}
+									</p>
+								}
+							</div>
+							<div class="flex shrink-0 items-center gap-2">
+								<a href={ templ.SafeURL("/runs/" + it.RunID.String() + "#logs") } class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>{ i18n.T(ctx, "overview.view_log") }</a>
+								if it.Rerunning != "" {
+									<a href={ templ.SafeURL("/runs/" + it.Rerunning) } class="inline-flex items-center gap-1.5 text-[12.5px] text-state-running hover:underline">
+										@components.Dot("running")
+										{ i18n.T(ctx, "overview.rerunning") }
+									</a>
+								} else if it.Rerunnable {
+									<form method="post" action={ templ.SafeURL("/workflows/" + it.Workflow + "/trigger") }>
+										<input type="hidden" name="back" value="/"/>
+										for _, k := range sortedKeys(it.Params) {
+											<input type="hidden" name={ "param." + k } value={ it.Params[k] }/>
+										}
+										<button type="submit" class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>
+											@components.Icon("refresh-cw", "h-3 w-3")
+											{ i18n.T(ctx, "overview.rerun") }
+										</button>
+									</form>
+								}
+							</div>
+						</li>
+					}
+				</ul>
+				if a.More > 0 {
+					<a href="/runs?state=failed" class="block border-t border-state-failed/20 px-4 py-2 text-[12.5px] text-ink hover:underline">{ i18n.N(ctx, "overview.attention.more", a.More) } &rarr;</a>
+				}
+				if len(a.Targets) > 0 {
+					<ul class="border-t border-state-failed/20">
+						for _, tg := range a.Targets {
+							<li data-attention-target={ tg.Target } class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-state-failed/15 px-4 py-3 last:border-b-0">
+								@components.StatusMark(string(tg.Status))
+								<div class="min-w-0 flex-1 max-[640px]:basis-[calc(100%-2rem)]">
+									<p class="text-[13px]">
+										<span class="font-mono break-all text-ink">{ tg.Target }</span>
+										<span class="ml-1 text-[12.5px] text-muted">{ components.StateWord(ctx, string(tg.Status)) }</span>
+									</p>
+									<p class="mt-0.5 text-[12.5px] text-ink-2">{ i18n.T(ctx, "overview.target.missed", "workflow", tg.Workflow, "when", i18n.Since(ctx, now, tg.Missed)) }</p>
+								</div>
+								<a href={ templ.SafeURL("/data/target?u=" + url.QueryEscape(tg.Target)) } class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>{ i18n.T(ctx, "overview.open_catalog") }</a>
+							</li>
+						}
+					</ul>
+				}
+				if a.TargetsMore > 0 {
+					<a href="/data?status=attention" class="block border-t border-state-failed/20 px-4 py-2 text-[12.5px] text-ink hover:underline">{ i18n.N(ctx, "overview.target.more", a.TargetsMore) } &rarr;</a>
+				}
+			</div>
+		}
+	</section>
+}
+
+// AttentionLive is the section alone, for the page that follows it.
+templ AttentionLive(a Attention, now time.Time) {
+	<div data-live-target="attention">
+		@attention(a, now)
+	</div>
+}
+
+// eventLog is everything the installation did, newest first: the time, where
+// from, what happened with its subject as code, who did it, and a run's state.
+// Each line leads to its run or its workflow, when it has one.
+templ eventLog(lines []FeedLine) {
+	if len(lines) == 0 {
+		<p class="px-3.5 py-4 text-[12.5px] text-muted">{ i18n.T(ctx, "overview.events.none") }</p>
+	} else {
+		<ol class="divide-y divide-line-soft border-t border-line-soft">
+			for _, l := range lines {
+				<li data-event={ l.Source } class="grid grid-cols-[auto_6.5rem_minmax(0,1fr)_auto] items-center gap-x-3 px-3.5 py-2 text-[12.5px] max-[640px]:grid-cols-[auto_minmax(0,1fr)]">
+					<span title={ components.UTCStamp(&l.At) } class="font-mono text-[12px] text-muted tabular-nums">{ l.At.Local().Format("15:04") }</span>
+					<span class="text-muted max-[640px]:hidden">{ l.Source }</span>
+					<span class="min-w-0 truncate text-ink-2">
+						if l.Href != "" {
+							<a href={ templ.SafeURL(l.Href) } class="hover:underline">{ l.Before }<code class="font-mono text-[12px] text-ink">{ l.Subject }</code>{ l.After }</a>
+						} else {
+							{ l.Before }<code class="font-mono text-[12px] text-ink">{ l.Subject }</code>{ l.After }
+						}
+						if l.Actor != "" {
+							<span class="text-muted"> · { i18n.T(ctx, "overview.events.by", "actor", l.Actor) }</span>
+						}
+					</span>
+					<span class="max-[640px]:hidden">
+						if l.State != "" {
+							@components.Dot(l.State)
+						}
+					</span>
+				</li>
+			}
+		</ol>
+	}
+}

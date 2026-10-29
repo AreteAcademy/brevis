@@ -333,6 +333,10 @@
   function follow(host) {
     var url = host.dataset.live;
     if (!url) return;
+    // A fixed pace, when the host gives one: a list that never ends -- the
+    // Overview's attention -- has no "running" or "failed" of its own to set
+    // it, and reading "failed" in the text is English.
+    var every = Number(host.dataset.liveEvery) || 0;
     var timer = null;
     var last = "";
     var stopped = false;
@@ -361,7 +365,7 @@
       // is traffic for a screen behind another window; the visibility listener
       // below catches up the moment it comes back.
       if (document.hidden) {
-        schedule(LIVE_RUNNING);
+        schedule(every || LIVE_RUNNING);
         return;
       }
       fetch(url, { headers: { Accept: "text/html" } })
@@ -375,7 +379,7 @@
           // still resets a text selection and interrupts a screen reader, and
           // most polls of a running step change nothing.
           if (html === last) {
-            schedule(LIVE_RUNNING);
+            schedule(every || LIVE_RUNNING);
             return;
           }
 
@@ -383,7 +387,7 @@
           // under it closes it mid-sentence, so the refresh waits -- the run
           // has not gone anywhere.
           if (document.querySelector("dialog[open]")) {
-            schedule(LIVE_RUNNING);
+            schedule(every || LIVE_RUNNING);
             return;
           }
 
@@ -417,7 +421,7 @@
             say(t("run.live.finished"), false);
             return;
           }
-          schedule(failed ? LIVE_FAILED : LIVE_RUNNING);
+          schedule(every || (failed ? LIVE_FAILED : LIVE_RUNNING));
         })
         .catch(function () {
           // A refresh that fails is not worth a message on the screen: the
@@ -440,8 +444,8 @@
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", visible);
     };
-    say(t("run.live.following"), true);
-    schedule(LIVE_RUNNING);
+    if (!every) say(t("run.live.following"), true);
+    schedule(every || LIVE_RUNNING);
   }
   document.querySelectorAll("[data-live]").forEach(follow);
 
@@ -1334,6 +1338,30 @@
       if (row) go(+row.getAttribute("data-palette-index"), e.metaKey || e.ctrlKey);
     });
   }
+  // ------------------------------------------------------------------
+  // The Overview's recent runs, filtered on the page (screen-overview T6)
+  //
+  // The server drew twenty rows, each with its state; All / Failed /
+  // Running shows the ones that match, Running meaning in flight -- the same
+  // three questions as the Runs screen. A filter of twenty rows is not worth
+  // a request.
+  // ------------------------------------------------------------------
+
+  var inFlightStates = { running: true, queued: true, retrying: true };
+  document.addEventListener("click", function (e) {
+    var b = e.target && typeof e.target.closest === "function" ? e.target.closest("[data-recent-filter]") : null;
+    if (!b) return;
+    var panel = b.closest("[data-tab-panel]") || document;
+    var want = b.getAttribute("data-recent-filter");
+    panel.querySelectorAll("[data-recent-filter]").forEach(function (x) {
+      x.setAttribute("aria-pressed", x === b ? "true" : "false");
+    });
+    panel.querySelectorAll("tr[data-status]").forEach(function (tr) {
+      var s = tr.getAttribute("data-status");
+      tr.hidden = !(want === "all" || (want === "running" ? inFlightStates[s] : s === want));
+    });
+  });
+
   // ------------------------------------------------------------------
   // The run's log in the browser (screen-runs T6)
   //

@@ -1,12 +1,14 @@
 package pages
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // RecentRuns is how many of a workflow's last runs its row draws.
@@ -123,47 +125,51 @@ func scheduleZone(sum *postgres.WorkflowSummary) string {
 	return sum.Timezone
 }
 
-// overviewStats are the Overview's four numbers as one strip (density-base
-// DB4): the same figures and notes the four cards had, each label with its
-// state's dot; the failure dot only when there is a failure, as the card only
-// turned red then.
-func overviewStats(d OverviewData) []components.Stat {
+// overviewKPIs are the Overview's four numbers (screen-overview T4): how much
+// passed in the window, what failed and how many workflows still are failing,
+// what runs and waits now, and what fires next. The retries the strip had
+// stay, under the success rate.
+func overviewKPIs(ctx context.Context, d OverviewData) []components.Stat {
 	i := d.Ind
-	failDot := ""
+	finished := i.Succeeded + i.Failed
+	success := components.Stat{Label: i18n.T(ctx, "overview.kpi.success"), Sub: windowLabel(ctx, d.Window), Dot: "bg-state-success", Value: "—"}
+	failures := components.Stat{Label: i18n.T(ctx, "overview.kpi.failures"), Value: i18n.Number(ctx, int64(i.Failed))}
+	if finished > 0 {
+		success.Value = percent(ctx, i.Succeeded, finished)
+		success.Note = i18n.T(ctx, "overview.kpi.of", "n", i18n.Number(ctx, int64(i.Succeeded)), "total", i18n.Number(ctx, int64(finished)))
+		success.Bar = []components.BarSegment{{Share: float64(i.Succeeded) / float64(finished), Class: "bg-state-success"}}
+		failures.Note = percent(ctx, i.Failed, finished)
+	}
+	if i.Retried > 0 {
+		success.Foot = components.Text(i18n.N(ctx, "overview.kpi.retried", i.Retried))
+	}
 	if i.Failed > 0 {
-		failDot = "bg-state-failed"
+		failures.Dot, failures.Tone = "bg-state-failed", "text-state-failed"
 	}
-	share := func(n, of int) []components.BarSegment {
-		if of == 0 {
-			return nil
-		}
-		return []components.BarSegment{{Share: float64(n) / float64(of)}}
+	if n := len(d.Attention.Items) + d.Attention.More; n > 0 {
+		failures.Foot = components.Link("/runs?state=failed", i18n.N(ctx, "overview.kpi.still_failing", n)+" →")
 	}
-	success := components.Stat{Label: "Success rate", Value: pct(i.Ratio(i.Succeeded)), Dot: "bg-state-success",
-		Note: fmt.Sprintf("%d of %d finished", i.Succeeded, i.Succeeded+i.Failed)}
-	if bar := share(i.Succeeded, i.Succeeded+i.Failed); bar != nil {
-		bar[0].Class = "bg-state-success"
-		success.Bar = bar
+	running := components.Stat{Label: i18n.T(ctx, "overview.kpi.running"), Dot: "bg-state-running",
+		Value: i18n.Number(ctx, int64(i.Running)), Note: i18n.N(ctx, "overview.kpi.queued", d.Pending)}
+	if i.MeanDuration > 0 {
+		running.Foot = components.Text(i18n.T(ctx, "overview.kpi.mean", "span", i18n.Elapsed(ctx, i.MeanDuration)))
 	}
-	retried := components.Stat{Label: "Needed a retry", Value: fmt.Sprint(i.Retried), Dot: "bg-state-retrying",
-		Note: fmt.Sprintf("of %d", i.Total)}
-	if bar := share(i.Retried, i.Total); bar != nil {
-		bar[0].Class = "bg-state-retrying"
-		retried.Bar = bar
-	}
-	next := components.Stat{Label: "Next trigger", Value: "no schedule"}
+	next := components.Stat{Label: i18n.T(ctx, "overview.kpi.next"), Value: i18n.T(ctx, "overview.kpi.no_schedule")}
 	if len(d.Proximas) > 0 {
 		p := d.Proximas[0]
-		next.Value, next.Note = "in "+untilText(p.When.Sub(d.Now)), p.Workflow
+		in := p.When.Sub(d.Now)
+		next.Value, next.Note = i18n.T(ctx, "time.in", "span", untilText(in)), p.Workflow
+		// Green when it is about to: the reader can watch it happen.
+		if in < 2*time.Minute {
+			next.Tone = "text-state-success"
+		}
 	}
-	return []components.Stat{
-		success,
-		retried,
-		{Label: "Failure rate", Value: pct(i.Ratio(i.Failed)), Dot: failDot, Note: failureNote(i.Failed)},
-		{Label: "Running · queued", Value: fmt.Sprintf("%d · %d", i.Running, i.Pending), Dot: "bg-state-running",
-			Note: meanDuration(i.MeanDuration) + " · " + fmt.Sprintf("%d items queued", d.Pending)},
-		next,
-	}
+	return []components.Stat{success, failures, running, next}
+}
+
+// percent is part of whole as the reader's language writes a percentage.
+func percent(ctx context.Context, part, whole int) string {
+	return i18n.Decimal(ctx, 100*float64(part)/float64(whole), 1) + "%"
 }
 
 // WorkflowPage is what a workflow's page is drawn from (screen-workflow-v2).

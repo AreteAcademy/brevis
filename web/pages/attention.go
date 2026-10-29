@@ -1,0 +1,132 @@
+package pages
+
+import (
+	"context"
+	"sort"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/AreteAcademy/brevis/internal/domain/catalog"
+	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
+	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/i18n"
+)
+
+// AttentionShown is how many failing workflows "Needs your attention" draws.
+// Each one's cause is a read of its last run's log, and a section that reads
+// every log of a bad night is a page that takes a minute; past eight, the
+// list says how many more there are and where.
+const AttentionShown = 8
+
+// Attention is what needs the reader (screen-overview): the workflows whose
+// last finished run failed, the most pressing first.
+type Attention struct {
+	Items []AttentionItem
+	// More is how many failing workflows are not drawn.
+	More int
+
+	// Targets are the destinations whose data stopped coming; TargetsMore is
+	// how many more there are.
+	Targets     []TargetItem
+	TargetsMore int
+}
+
+// Total is everything that needs the reader, drawn or not.
+func (a Attention) Total() int { return len(a.Items) + a.More + len(a.Targets) + a.TargetsMore }
+
+// TargetItem is a destination whose data stopped coming: which writer missed
+// its run, and when.
+type TargetItem struct {
+	Target   string
+	Status   catalog.Status
+	Workflow string
+	Missed   time.Time
+}
+
+// AttentionTargets are the destinations that need the reader, stale before
+// late, as /data judges them (BuildData) -- one rule for "late", not two. A
+// destination whose writer is already failing is left out: that is why it is
+// late, and the workflow's item says so.
+func AttentionTargets(rows []DataRow, failing map[string]bool) []TargetItem {
+	var out []TargetItem
+	for _, r := range rows {
+		if r.Status != catalog.Stale && r.Status != catalog.Late {
+			continue
+		}
+		var late *WriterView
+		failingWriter := false
+		for i := range r.Writers {
+			w := &r.Writers[i]
+			failingWriter = failingWriter || failing[w.Workflow]
+			if late == nil && w.Verdict.Status == r.Status {
+				late = w
+			}
+		}
+		if failingWriter || late == nil {
+			continue
+		}
+		out = append(out, TargetItem{Target: r.Target, Status: r.Status, Workflow: late.Workflow, Missed: late.Verdict.Missed})
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return out[i].Status == catalog.Stale && out[j].Status != catalog.Stale
+	})
+	return out
+}
+
+// AttentionItem is one workflow that failed: when, how many times in a row,
+// and why -- read from that run's log, as its own page reads it.
+type AttentionItem struct {
+	Workflow string
+	RunID    uuid.UUID
+	FailedAt time.Time
+	Streak   int
+	Cause    *diagnosis.Cause
+
+	// Rerunnable is whether Rerun is offered -- not for a workflow that is
+	// gone -- and Params are the values it sends: the failed run's, as far as
+	// the workflow still declares them.
+	Rerunnable bool
+	Params     map[string]string
+	// Rerunning is the workflow's run in flight, if any: then the item says
+	// so and links to it instead of offering another.
+	Rerunning string
+}
+
+// OrderFailing puts what needs the reader first: a workflow failing again and
+// again before one that failed once, and within each, the latest first.
+func OrderFailing(fs []postgres.FailingWorkflow) []postgres.FailingWorkflow {
+	out := append([]postgres.FailingWorkflow(nil), fs...)
+	sort.SliceStable(out, func(i, j int) bool {
+		ri, rj := out[i].Streak >= 2, out[j].Streak >= 2
+		if ri != rj {
+			return ri
+		}
+		return out[i].FailedAt.After(out[j].FailedAt)
+	})
+	return out
+}
+
+// streakText says how many times in a row: nothing the first time, "2nd time
+// in a row" the second -- the one ordinal every language here has -- and a
+// count from the third on.
+func streakText(ctx context.Context, n int) string {
+	switch {
+	case n < 2:
+		return ""
+	case n == 2:
+		return i18n.T(ctx, "overview.second_time")
+	}
+	return i18n.N(ctx, "run.why.streak", n)
+}
+
+// sortedKeys are a map's keys in order, so a form's fields do not move
+// between two draws of the same item.
+func sortedKeys(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}

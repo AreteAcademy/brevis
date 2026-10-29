@@ -28,12 +28,17 @@ type OverviewData struct {
 	Window    Window
 	Ind       postgres.Indicators
 	Buckets    []postgres.Bucket
-	EmCurso   []postgres.RunSummary
 	Proximas  []NextRun
 	Recentes  []postgres.RunSummary
 	Pending int
 	// Now is the page's clock, for "next trigger in 12m".
 	Now time.Time
+	// Attention is what needs the reader, the page's first section.
+	Attention Attention
+	// Events are the event log's, newest first; Logos what each recent run's
+	// workflow runs in.
+	Events []postgres.Event
+	Logos  map[string][]string
 }
 
 // ProximaExecucao is a future trigger, already computed from the cron.
@@ -42,84 +47,10 @@ type NextRun struct {
 	Cron     string
 	Timezone string
 	When   time.Time
+	// Logos are what the workflow runs in.
+	Logos []string
 }
 
-templ Overview(d OverviewData) {
-	@layouts.Base(layouts.Page{Title: "Overview", Kicker: "Dashboard", Active: "overview", Actions: windowToggle(d.Window)}) {
-		// ONE LINE UNDER THE TITLE (screen-overview-v2 OV2): the window the
-		// page reads, and whether anything runs right now.
-		<p data-overview-meta class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
-			<span>{ d.Window.Label }</span>
-			<span class="text-faint">·</span>
-			// Running and queued said apart, each linked to its own filter: a
-			// queued run called "running" opened an empty list.
-			{{ running, retrying, queued := inFlightCounts(d.EmCurso) }}
-			if running+retrying+queued == 0 {
-				<span class="inline-flex items-center gap-1.5"><span class="h-[7px] w-[7px] rounded-full bg-line-strong"></span>nothing running</span>
-			}
-			if running > 0 {
-				<a href="/runs?state=running" class="inline-flex items-center gap-1.5 text-state-running hover:underline"><span class="h-[7px] w-[7px] rounded-full bg-state-running"></span>{ fmt.Sprint(running) } running</a>
-			}
-			if retrying > 0 {
-				<a href="/runs?state=retrying" class="inline-flex items-center gap-1.5 text-state-retrying hover:underline"><span class="h-[7px] w-[7px] rounded-full bg-state-retrying"></span>{ fmt.Sprint(retrying) } retrying</a>
-			}
-			if queued > 0 {
-				<a href="/runs?state=queued" class="inline-flex items-center gap-1.5 text-state-queued hover:underline"><span class="h-[7px] w-[7px] rounded-full bg-state-queued"></span>{ fmt.Sprint(queued) } queued</a>
-			}
-		</p>
-		@components.Stats(overviewStats(d))
-		// THE CHART AND WHAT RUNS NEXT, SIDE BY SIDE (screen-overview-v2 OV3):
-		// the donut's four counts are in the strip now.
-		<div class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_380px]">
-			@components.Panel(chartTitle(d.Window), "") {
-				<div class="px-3.5 py-3">
-					<p class="mb-3 text-[12.5px] text-muted">
-						Count and average duration over the { d.Window.Label }.
-					</p>
-					@components.RunsChart(d.Buckets)
-				</div>
-			}
-			@nextTriggers(d)
-		</div>
-		// IN PROGRESS ONLY WHEN SOMETHING RUNS (screen-overview-v2 OV4): the
-		// head says "nothing running" otherwise.
-		if len(d.EmCurso) > 0 {
-			<section class="mt-3">
-				@components.PanelLink("In progress", fmt.Sprint(len(d.EmCurso)), "/runs", "all runs") {
-					<table class="ct w-full text-[12.5px]">
-						<thead>
-							<tr class="text-left">
-								@th("Workflow", "pl-3.5")
-								@th("Trigger", "")
-								@th("Started", "")
-								@th("State", "pr-3.5 text-right")
-							</tr>
-						</thead>
-						<tbody class="divide-y divide-line-soft">
-							for _, r := range d.EmCurso {
-								<tr>
-									<td class="px-2.5 pl-3.5">
-										<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-mono text-[12px] text-ink hover:underline">{ r.WorkflowSlug }</a>
-									</td>
-									<td class="px-2.5 text-muted">{ r.TriggerType }</td>
-									<td class="px-2.5 text-muted tabular-nums">{ components.When(startOrCreated(r)) }</td>
-									<td class="px-2.5 pr-3.5 text-right">
-										@components.State(r.Status)
-									</td>
-								</tr>
-							}
-						</tbody>
-					</table>
-				}
-			</section>
-		}
-		<section class="mt-3">
-			@components.PanelLink("Recent runs", "", "/runs", "see all") {
-				@runsTableWith(d.Recentes, Pagination{}, runsOpts{Workflow: true, Bare: true})
-			}
-		</section>
-	}
-}
 
 // windowToggle is the Overview's three windows, as links: GET, shareable,
 // the open one marked.
@@ -128,46 +59,53 @@ func windowToggle(w Window) templ.Component {
 }
 
 templ windowToggleT(current Window) {
-	<nav aria-label="Window" class="flex items-center rounded-card border border-line text-[12px]">
+	<nav aria-label={ i18n.T(ctx, "window.label") } class="flex items-center rounded-card border border-line text-[12px]">
 		for _, w := range overviewWindows {
 			if w.Key == current.Key {
-				<a href={ templ.SafeURL("/?window=" + w.Key) } aria-current="page" class="bg-surface-2 px-2.5 py-1 font-medium text-ink">{ w.Key }</a>
+				<a href={ templ.SafeURL("/?window=" + w.Key) } aria-current="page" class="bg-surface-2 px-2.5 py-1 font-medium text-ink">{ windowShort(ctx, w) }</a>
 			} else {
-				<a href={ templ.SafeURL("/?window=" + w.Key) } class="px-2.5 py-1 text-muted hover:text-ink">{ w.Key }</a>
+				<a href={ templ.SafeURL("/?window=" + w.Key) } class="px-2.5 py-1 text-muted hover:text-ink">{ windowShort(ctx, w) }</a>
 			}
 		}
 	</nav>
 }
 
-// nextTriggers are the eight soonest triggers: the workflow, its cron, and
-// when -- "in 12m" and the time.
+// nextTriggers are the eight soonest triggers (screen-overview T5): what the
+// workflow runs in and its name, when -- green when it is about to fire, so
+// the reader can watch it -- the schedule in words and the cron.
 templ nextTriggers(d OverviewData) {
-	@components.PanelLink("Next triggers", fmt.Sprint(len(d.Proximas)), "/workflows", "workflows") {
-		if len(d.Proximas) == 0 {
-			<div class="px-3.5 py-3">
-				@components.Empty("No active schedule.", "brevis publish file.yaml")
-			</div>
-		} else {
-			<table class="ct w-full text-[12.5px]">
-				<tbody class="divide-y divide-line-soft">
+	<section data-next-triggers>
+		@components.PanelLink(i18n.T(ctx, "overview.next.title"), "", "/workflows", i18n.T(ctx, "overview.next.all")+" →") {
+			if len(d.Proximas) == 0 {
+				<div class="px-3.5 py-3">
+					@components.Empty(i18n.T(ctx, "overview.next.none"), "brevis publish file.yaml")
+				</div>
+			} else {
+				<ul class="divide-y divide-line-soft">
 					for _, p := range d.Proximas {
-						<tr>
-							<td class="px-2.5 pl-3.5">
-								<a href={ templ.SafeURL("/workflows/" + p.Workflow) } class="font-mono text-[12px] text-ink hover:underline">{ p.Workflow }</a>
-							</td>
-							<td class="px-2.5 font-mono text-[11.5px] whitespace-nowrap text-muted">{ p.Cron }</td>
-							<td class="px-2.5 pr-3.5 text-right whitespace-nowrap">
-								<span class="text-ink">in { untilText(p.When.Sub(d.Now)) }</span>
-								<span class="ml-1.5 text-[11.5px] text-faint">
-									@components.ShortStamp(&p.When)
-								</span>
-							</td>
-						</tr>
+						{{ in := p.When.Sub(d.Now) }}
+						<li class="px-3.5 py-2.5">
+							<div class="flex items-center gap-2">
+								for _, k := range p.Logos {
+									@components.Logo(k, 18)
+								}
+								<a href={ templ.SafeURL("/workflows/" + p.Workflow) } class="min-w-0 truncate font-mono text-[13px] text-ink hover:underline">{ p.Workflow }</a>
+								if in < 2*time.Minute {
+									<span title={ components.UTCStamp(&p.When) } class="ml-auto shrink-0 text-[12.5px] font-medium whitespace-nowrap text-state-success">{ i18n.T(ctx, "time.in", "span", untilText(in)) }</span>
+								} else {
+									<span title={ components.UTCStamp(&p.When) } class="ml-auto shrink-0 text-[12.5px] whitespace-nowrap text-ink">{ i18n.T(ctx, "time.in", "span", untilText(in)) }</span>
+								}
+							</div>
+							<div class="mt-0.5 flex items-baseline justify-between gap-3 text-[12px]">
+								<span class="min-w-0 truncate text-muted">{ CronTextIn(ctx, p.Cron) }</span>
+								<span class="shrink-0 font-mono text-[11.5px] text-faint">{ p.Cron }</span>
+							</div>
+						</li>
 					}
-				</tbody>
-			</table>
+				</ul>
+			}
 		}
-	}
+	</section>
 }
 
 // th is a column header. The vertical breathing room (py-4) is deliberate:
@@ -869,6 +807,8 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 type runsOpts struct {
 	Workflow bool
 	Bare     bool
+	// Logos are what each workflow runs in, by slug; nil draws none.
+	Logos map[string][]string
 }
 
 templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
@@ -879,21 +819,21 @@ templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
 			<table class="ct w-full text-sm">
 				<thead>
 					<tr class="border-b border-line bg-parchment-soft/60 text-left">
-						@th("State", "pl-6")
+						@th(i18n.T(ctx, "runs.col.state"), "pl-6")
 						if o.Workflow {
-							@th("Workflow", "")
+							@th(i18n.T(ctx, "runs.col.workflow"), "")
 						}
-						@th("Trigger", "")
-						@th("Slot", "")
-						@th("Duration", "")
-						@th("Created", "text-right")
+						@th(i18n.T(ctx, "runs.col.trigger"), "")
+						@th(i18n.T(ctx, "runs.col.slot"), "")
+						@th(i18n.T(ctx, "runs.col.duration"), "")
+						@th(i18n.T(ctx, "runs.col.created"), "text-right")
 						@th("", "w-16 pr-6")
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-line-soft">
 					{{ longest := longestDuration(runs) }}
 					for _, r := range runs {
-						<tr data-run-id={ r.ID } class="transition-colors hover:bg-hover">
+						<tr data-run-id={ r.ID } data-status={ r.Status } class="transition-colors hover:bg-hover">
 							<td class="px-3 py-3 pl-6">
 								if o.Workflow {
 									@components.State(r.Status)
@@ -908,12 +848,17 @@ templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
 							</td>
 							if o.Workflow {
 								<td class="px-3 py-3">
-									<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-medium text-ink hover:underline">
-										{ r.WorkflowSlug }
-									</a>
+									<span class="inline-flex items-center gap-1.5">
+										for _, k := range o.Logos[r.WorkflowSlug] {
+											@components.Logo(k, 18)
+										}
+										<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-medium text-ink hover:underline">
+											{ r.WorkflowSlug }
+										</a>
+									</span>
 								</td>
 							}
-							<td class="px-3 py-3 text-xs text-muted">{ r.TriggerType }</td>
+							<td class="px-3 py-3 text-xs text-muted">{ triggerWord(ctx, r.TriggerType) }</td>
 							<td class="px-3 py-3 text-xs tabular-nums text-muted">@components.ShortStamp(r.LogicalDate)</td>
 							<td class="px-3 py-3 text-xs tabular-nums text-muted">
 								{ components.Duration(r.Duration) }
@@ -924,7 +869,7 @@ templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
 								}
 							</td>
 							<td class="px-3 py-3 text-right text-xs text-muted">
-								{ components.When(&r.CreatedAt) }
+								{ i18n.Since(ctx, time.Now(), r.CreatedAt) }
 							</td>
 							<td class="px-3 py-3 pr-6 text-right">
 								if r.Err != "" {
@@ -1313,7 +1258,7 @@ templ runHead(p RunPage) {
 	<dl class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px]">
 		<div class="flex items-baseline gap-1.5">
 			<dt class="text-muted">{ i18n.T(ctx, "run.trigger") }</dt>
-			<dd class="text-ink">{ r.TriggerType }</dd>
+			<dd class="text-ink">{ triggerWord(ctx, r.TriggerType) }</dd>
 		</div>
 		if r.LogicalDate != nil {
 			<div class="flex items-baseline gap-1.5">

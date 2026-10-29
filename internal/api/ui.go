@@ -25,7 +25,6 @@ import (
 	"github.com/AreteAcademy/brevis/internal/auth"
 	"github.com/AreteAcademy/brevis/internal/branding"
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
-	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	sch "github.com/AreteAcademy/brevis/internal/domain/schedule"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
@@ -129,6 +128,7 @@ type UI struct {
 	// the pages off.
 	endpoints EndpointsReader
 	failing   FailingReader
+	events    EventsReader
 
 	// calls runs an endpoint for Try it; callsProtected says the console
 	// asks for a login. Both, or no Try it.
@@ -204,6 +204,17 @@ type FailingReader interface {
 	FailureStreak(ctx context.Context, slug string) (int, error)
 }
 
+// EventsReader reads the event log: what the installation did, newest first.
+type EventsReader interface {
+	RecentEvents(ctx context.Context, q postgres.EventQuery) ([]postgres.Event, string, error)
+}
+
+// WithEvents turns on the Overview's event log. Without it the tab is empty.
+func (u *UI) WithEvents(r EventsReader) *UI {
+	u.events = r
+	return u
+}
+
 // WithFailing turns on the Runs section's badge. Without it there is none.
 func (u *UI) WithFailing(r FailingReader) *UI {
 	u.failing = r
@@ -253,6 +264,7 @@ func NewUI(l Leitura, d Definitions, e RunsChart, a Actions, al AlertsReader,
 // Registrar wires the routes into the mux.
 func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /{$}", u.overview) // {$} matches the EXACT root, not the prefix
+	mux.HandleFunc("GET /overview/attention", u.overviewAttention)
 	mux.HandleFunc("GET /runs", u.runs)
 	mux.HandleFunc("GET /workflows", u.workflows)
 	mux.HandleFunc("GET /projects", u.projetos)
@@ -902,12 +914,7 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 		u.failure(w, r, err)
 		return
 	}
-	emCurso, err := u.leitura.InFlight(ctx, 8)
-	if err != nil {
-		u.failure(w, r, err)
-		return
-	}
-	recentes, err := u.leitura.LatestRuns(ctx, 10)
+	recentes, err := u.leitura.LatestRuns(ctx, 20)
 	if err != nil {
 		u.failure(w, r, err)
 		return
@@ -924,14 +931,16 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u.render(w, r, pages.Overview(pages.OverviewData{
-		Window:   window,
-		Now:      time.Now(),
-		Ind:      ind,
-		Buckets:  buckets,
-		EmCurso:  emCurso,
-		Proximas: nextRuns(schedules, time.Now(), 8, u.log),
-		Recentes: recentes,
-		Pending:  pending,
+		Window:    window,
+		Now:       time.Now(),
+		Ind:       ind,
+		Buckets:   buckets,
+		Proximas:  u.withLogos(ctx, nextRuns(schedules, time.Now(), 8, u.log)),
+		Recentes:  recentes,
+		Pending:   pending,
+		Attention: u.attention(ctx),
+		Events:    u.eventLog(ctx),
+		Logos:     u.runsLogos(ctx, recentes),
 	}))
 }
 
@@ -1635,14 +1644,7 @@ func (u *UI) whyItFailed(ctx context.Context, p *pages.RunPage) {
 	if p.Run.Status != run.StatusFailed && p.Run.Status != run.StatusRetrying {
 		return
 	}
-	attempts := make([]diagnosis.StepAttempt, 0, len(p.Logs))
-	for _, l := range p.Logs {
-		attempts = append(attempts, diagnosis.StepAttempt{
-			Step: l.NodeID, MapIndex: l.MapIndex, Attempt: l.Attempt, Status: l.Status,
-			ExitCode: l.ExitCode, Err: l.Err, Log: l.Log, StartedAt: l.StartedAt,
-		})
-	}
-	p.Cause = diagnosis.Why(attempts, p.Run.Err)
+	p.Cause = causeOf(p.Logs, p.Run.Err)
 	if p.Run.Status == run.StatusFailed && u.failing != nil {
 		n, err := u.failing.FailureStreak(ctx, p.Run.WorkflowSlug)
 		if err != nil {
@@ -1758,7 +1760,30 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u.log.Info("manual run created", "workflow", slug, "run", id)
+	// A rerun from a list -- the Overview's "Needs your attention" -- goes
+	// back to it, saying the run was made and where to follow it: the list
+	// is what the reader is watching.
+	if back := localPath(r.PostForm.Get("back")); back != "" {
+		ctx := i18n.WithLang(r.Context(), i18n.Negotiate(r))
+		layouts.SetFlashLink(w, "run", i18n.T(ctx, "overview.rerun_created", "workflow", slug),
+			i18n.T(ctx, "overview.follow"), "/runs/"+id.String())
+		http.Redirect(w, r, back, http.StatusSeeOther)
+		return
+	}
 	http.Redirect(w, r, "/runs/"+id.String(), http.StatusSeeOther)
+}
+
+// localPath is p when it is a path on this site, "" otherwise. A redirect
+// to wherever the form said is a phishing link with this console's name on
+// it: no scheme, no host, no "//" or "\" a browser reads as one.
+func localPath(p string) string {
+	if !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.ContainsRune(p, '\\') {
+		return ""
+	}
+	if u, err := url.Parse(p); err != nil || u.Scheme != "" || u.Host != "" {
+		return ""
+	}
+	return p
 }
 
 // voltar returns the operator to the screen they clicked from, keeping the filters.

@@ -1,9 +1,12 @@
 package pages
 
 import (
+	"context"
+
 	"time"
 
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // Window is the span the Overview reads (screen-overview-v2): its key in the
@@ -37,26 +40,51 @@ func ParseWindow(key string) Window {
 }
 
 // chartTitle names the chart by its grain.
-func chartTitle(w Window) string {
+func chartTitle(ctx context.Context, w Window) string {
 	if w.Grain == postgres.ByDay {
-		return "Runs per day"
+		return i18n.T(ctx, "chart.per_day")
 	}
-	return "Runs per hour"
+	return i18n.T(ctx, "chart.per_hour")
 }
 
-// inFlightCounts splits the runs in flight by state, for the head: running,
-// retrying and queued are three filters on /runs, and one word for all of
-// them sent a queued run to an empty "running" list.
-func inFlightCounts(runs []postgres.RunSummary) (running, retrying, queued int) {
-	for _, r := range runs {
-		switch r.Status {
-		case "running":
-			running++
-		case "retrying":
-			retrying++
-		case "queued":
-			queued++
-		}
+// windowLabel is a window as the reader's language says it: "last 7 days".
+func windowLabel(ctx context.Context, w Window) string {
+	switch w.Key {
+	case "7d":
+		return i18n.T(ctx, "window.7d")
+	case "30d":
+		return i18n.T(ctx, "window.30d")
 	}
-	return running, retrying, queued
+	return i18n.T(ctx, "window.24h")
+}
+
+// windowShort is a window on its toggle: "24h", "7 days".
+func windowShort(ctx context.Context, w Window) string {
+	switch w.Key {
+	case "7d":
+		return i18n.T(ctx, "window.short.7d")
+	case "30d":
+		return i18n.T(ctx, "window.short.30d")
+	}
+	return i18n.T(ctx, "window.short.24h")
+}
+
+// triggerWord is how a run was started, in the reader's language. A kind this
+// version does not know is shown as the engine wrote it.
+func triggerWord(ctx context.Context, t string) string {
+	switch t {
+	case "schedule":
+		return i18n.T(ctx, "trigger.schedule")
+	case "manual":
+		return i18n.T(ctx, "trigger.manual")
+	case "backfill":
+		return i18n.T(ctx, "trigger.backfill")
+	case "api":
+		return i18n.T(ctx, "trigger.api")
+	case "retry":
+		return i18n.T(ctx, "trigger.retry")
+	case "landed":
+		return i18n.T(ctx, "trigger.landed")
+	}
+	return t
 }

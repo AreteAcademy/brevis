@@ -1979,7 +1979,7 @@ func toasts() templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if f, ok := flashOf(ctx); ok {
-			templ_7745c5c3_Err = components.Toast(f.Kind, f.Message, "", "").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = components.Toast(f.Kind, f.Message, f.Action, f.Href).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -364,56 +364,6 @@ func TestTheTestEventExampleFollowsTheFormat(t *testing.T) {
 	}
 }
 
-// THE OVERVIEW'S FOUR NUMBERS ARE ONE STRIP (density-base DB4): the same four
-// -- success rate, failure rate, running, queued -- and their notes, in a
-// Stats strip instead of four 42px cards.
-func TestTheOverviewsNumbersAreAStrip(t *testing.T) {
-	// FIVE CELLS (screen-overview-v2 OV2): the four it had -- Running and
-	// Queued now one cell, the queue depth beside them -- plus the retries
-	// and the next trigger.
-	now := time.Date(2026, 10, 17, 3, 48, 0, 0, time.UTC)
-	page := draw(t, Overview(OverviewData{
-		Ind:      postgres.Indicators{Total: 15, Succeeded: 9, Failed: 1, Running: 2, Pending: 3, Retried: 4, MeanDuration: 90 * time.Second},
-		Pending:  3,
-		Window:   ParseWindow(""),
-		Now:      now,
-		Proximas: []NextRun{{Workflow: "id_verification", Cron: "0 4 * * *", When: now.Add(12 * time.Minute)}},
-	}))
-	at := strings.Index(page, "<dl")
-	if at < 0 {
-		t.Fatal("the numbers are not a Stats strip")
-	}
-	strip := page[at : at+strings.Index(page[at:], "</dl>")]
-	for _, want := range []string{"Success rate", "90.0%", "9 of 10 finished", "Failure rate", "10.0%",
-		"Running · queued", ">2 · 3<", "3 items queued", "1m 30s",
-		"Needed a retry", ">4<", "of 15", "Next trigger", "in 12m", "id_verification"} {
-		if !strings.Contains(strip, want) {
-			t.Errorf("the strip lacks %s", want)
-		}
-	}
-	if strings.Count(strip, "bg-surface px-3.5") != 5 {
-		t.Errorf("the strip has %d cells, want 5", strings.Count(strip, "bg-surface px-3.5"))
-	}
-	if strings.Contains(page, "text-[2.6rem]") {
-		t.Error("a 42px metric card is still drawn")
-	}
-	meta := page[strings.Index(page, "data-overview-meta"):]
-	meta = meta[:strings.Index(meta, "</p>")]
-	if !strings.Contains(meta, "last 24 hours") || !strings.Contains(meta, "nothing running") {
-		t.Errorf("the meta line = %s", meta)
-	}
-	for _, w := range []string{`href="/?window=7d"`, `href="/?window=30d"`, `aria-current="page"`} {
-		if !strings.Contains(page, w) {
-			t.Errorf("the window toggle has no %s", w)
-		}
-	}
-
-	none := draw(t, Overview(OverviewData{Window: ParseWindow(""), Now: now}))
-	if !strings.Contains(none, "no schedule") {
-		t.Error("with no schedule the next trigger cell is not \"no schedule\"")
-	}
-}
-
 // BESIDE THE CHART, WHAT RUNS NEXT (screen-overview-v2 OV3): the eight
 // soonest triggers, each its workflow, cron and time -- where the donut was;
 // the donut's four counts are in the strip.
@@ -433,57 +383,31 @@ func TestTheOverviewsChartSitsBesideTheNextTriggers(t *testing.T) {
 	}
 	next := page[at:]
 	next = next[:strings.Index(next, "</section>")]
-	for _, want := range []string{`href="/workflows/id_verification"`, "15 * * * *", "in 12m", "Oct 17 04:00", `class="ct `} {
+	// The time itself is the "in 12m"'s tooltip (screen-overview T5).
+	for _, want := range []string{`href="/workflows/id_verification"`, "15 * * * *", "in 12m", `title="2026-10-17 04:00:00 UTC"`} {
 		if !strings.Contains(next, want) {
 			t.Errorf("the next triggers lost %s", want)
 		}
 	}
 }
 
-// IN PROGRESS ONLY WHEN SOMETHING RUNS (screen-overview-v2 OV4): an empty
-// panel took half a row to say nothing, which the head's "nothing running"
-// now says. With a run in flight it is there, each run linked. The recent
-// runs sit in a panel with "see all". Nothing the Overview showed is lost.
-func TestInProgressShowsOnlyWhenSomethingRuns(t *testing.T) {
+// THE RECENT RUNS ARE A TAB with the way to all of them, each run linked.
+func TestTheOverviewsRecentRunsAreATab(t *testing.T) {
 	now := time.Date(2026, 10, 17, 3, 48, 0, 0, time.UTC)
-	started := now.Add(-time.Minute)
 	recent := []postgres.RunSummary{{ID: "8d36ef6e-0000-0000-0000-000000000001", WorkflowSlug: "daily_sales", Status: "success", TriggerType: "schedule", CreatedAt: now.Add(-time.Hour)}}
-
-	idle := draw(t, Overview(OverviewData{Window: ParseWindow(""), Now: now, Recentes: recent}))
-	if strings.Contains(idle, ">In progress<") || strings.Contains(idle, "Nothing running right now") {
-		t.Error("an empty In progress panel is drawn")
-	}
-	at := strings.Index(idle, ">Recent runs<")
+	page := draw(t, Overview(OverviewData{Window: ParseWindow(""), Now: now, Recentes: recent}))
+	at := strings.Index(page, `id="recent" data-tab-panel="recent"`)
 	if at < 0 {
-		t.Fatal("no recent runs panel")
+		t.Fatal("no recent runs tab")
 	}
-	panel := idle[strings.LastIndex(idle[:at], "<section"):]
-	if !strings.Contains(panel[:strings.Index(panel, "</header>")], `href="/runs"`) {
-		t.Error("\"see all\" is not in the recent runs' heading")
-	}
-	if !strings.Contains(panel, `href="/runs/8d36ef6e-0000-0000-0000-000000000001"`) || !strings.Contains(panel, ">Workflow<") {
-		t.Error("the recent runs lost their link or their Workflow column")
-	}
-
-	busy := draw(t, Overview(OverviewData{Window: ParseWindow(""), Now: now, Recentes: recent,
-		EmCurso: []postgres.RunSummary{{ID: "a1", WorkflowSlug: "orders_sync", Status: "running", TriggerType: "manual", CreatedAt: started, StartedAt: &started}}}))
-	at = strings.Index(busy, ">In progress<")
-	if at < 0 {
-		t.Fatal("a run in flight has no In progress panel")
-	}
-	for _, want := range []string{`href="/runs/a1"`, "orders_sync", "manual", "running"} {
-		if !strings.Contains(busy[at:], want) {
-			t.Errorf("In progress lost %s", want)
+	panel := page[at:]
+	panel = panel[:strings.Index(panel, "</section>")]
+	for _, want := range []string{`href="/runs"`, `href="/runs/8d36ef6e-0000-0000-0000-000000000001"`, ">Workflow<"} {
+		if !strings.Contains(panel, want) {
+			t.Errorf("the recent runs lost %s", want)
 		}
 	}
-	if !strings.Contains(busy, "1 running") || !strings.Contains(busy, `href="/runs?state=running"`) {
-		t.Error("the head does not say what runs")
-	}
-	queued := draw(t, Overview(OverviewData{Window: ParseWindow(""), Now: now,
-		EmCurso: []postgres.RunSummary{{ID: "q1", WorkflowSlug: "daily_sales", Status: "queued", CreatedAt: now}}}))
-	meta := queued[strings.Index(queued, "data-overview-meta"):]
-	meta = meta[:strings.Index(meta, "</p>")]
-	if strings.Contains(meta, "running") || !strings.Contains(meta, "1 queued") || !strings.Contains(meta, `href="/runs?state=queued"`) {
-		t.Errorf("a queued run is not said as queued: %s", meta)
+	if strings.Contains(page, ">In progress<") || strings.Contains(page, "data-overview-meta") {
+		t.Error("the In progress panel or the status line is still drawn: the KPIs say what runs")
 	}
 }

@@ -22,3 +22,26 @@ func TestSetFlashWritesWhatTheNextPageReads(t *testing.T) {
 		}
 	}
 }
+
+// A flash can carry a link -- "Follow" to the run a POST made -- and a "|"
+// in its message does not break it; a link off this site is not drawn.
+func TestAFlashCarriesItsLink(t *testing.T) {
+	read := func(set func(http.ResponseWriter)) Flash {
+		rec := httptest.NewRecorder()
+		set(rec)
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		for _, c := range rec.Result().Cookies() {
+			req.AddCookie(c)
+		}
+		f, _ := readFlash(req)
+		return f
+	}
+	f := read(func(w http.ResponseWriter) { SetFlashLink(w, "run", "Rerun of a | b created", "Follow", "/runs/1") })
+	if f.Message != "Rerun of a | b created" || f.Action != "Follow" || f.Href != "/runs/1" {
+		t.Errorf("read back %+v", f)
+	}
+	f = read(func(w http.ResponseWriter) { SetFlashLink(w, "run", "x", "Follow", "//evil.example") })
+	if f.Href != "" {
+		t.Errorf("a link off this site is drawn: %+v", f)
+	}
+}

@@ -617,7 +617,7 @@ templ shortcutRow(what string) {
 templ toasts() {
 	<div id="toasts" role="status" aria-live="polite" class="toasts">
 		if f, ok := flashOf(ctx); ok {
-			@components.Toast(f.Kind, f.Message, "", "")
+			@components.Toast(f.Kind, f.Message, f.Action, f.Href)
 		}
 	</div>
 }
