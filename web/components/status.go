@@ -78,6 +78,14 @@ func statusWord(ctx context.Context, kind string, s status) string {
 	return i18n.T(ctx, "state."+kind)
 }
 
+// StateWord is a run's or a step's status in the reader's language, as the
+// State mark says it -- for a line of text that names a state without the
+// mark beside it.
+func StateWord(ctx context.Context, status string) string {
+	kind := runKind(status)
+	return statusWord(ctx, kind, lookStatus(kind))
+}
+
 // runKind is a run's or a step's status as a Status kind: the engine says ""
 // for a node that never ran.
 func runKind(s string) string {

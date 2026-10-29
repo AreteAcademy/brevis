@@ -1574,7 +1574,11 @@ func (u *UI) runLive(w http.ResponseWriter, r *http.Request) {
 	// the first is not.
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := pages.RunLive(u.runPage(r.Context(), current)).Render(r.Context(), w); err != nil {
+	// In the reader's language, as the page it refreshes: drawn without it,
+	// the first refresh turned a Portuguese run page English. Only the
+	// language -- render would also take a flash meant for the next page.
+	ctx := i18n.WithLang(r.Context(), i18n.Negotiate(r))
+	if err := pages.RunLive(u.runPage(ctx, current)).Render(ctx, w); err != nil {
 		u.log.Warn("rendering the live fragment", "run", id, "error", err)
 	}
 }

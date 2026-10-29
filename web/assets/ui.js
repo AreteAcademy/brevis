@@ -414,7 +414,7 @@
           // about it will change again -- and the indicator says so rather
           // than just disappearing, which would look like a failure.
           if (terminal) {
-            say("this run is finished", false);
+            say(t("run.live.finished"), false);
             return;
           }
           schedule(failed ? LIVE_FAILED : LIVE_RUNNING);
@@ -440,7 +440,7 @@
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", visible);
     };
-    say("following this run", true);
+    say(t("run.live.following"), true);
     schedule(LIVE_RUNNING);
   }
   document.querySelectorAll("[data-live]").forEach(follow);

@@ -26,15 +26,15 @@ type Phase struct {
 // is running, a finished one is over -- and the times fill in the details:
 // the slot, how late it started, the time running (as of now, so the live
 // region's refresh moves it), and how it ended.
-func PhasesOf(r run.Run, now time.Time) []Phase {
-	made := Phase{Key: "scheduled", Label: "Triggered", State: "done",
+func PhasesOf(ctx context.Context, r run.Run, now time.Time) []Phase {
+	made := Phase{Key: "scheduled", Label: i18n.T(ctx, "run.phase.triggered"), State: "done",
 		Detail: components.UTCStamp(&r.CreatedAt)}
 	if r.LogicalDate != nil {
-		made.Label, made.Detail = "Scheduled", "slot "+components.UTCStamp(r.LogicalDate)
+		made.Label, made.Detail = i18n.T(ctx, "run.phase.scheduled"), "slot "+components.UTCStamp(r.LogicalDate)
 	}
-	started := Phase{Key: "started", Label: "Started", State: "pending"}
-	running := Phase{Key: "running", Label: "Running", State: "pending"}
-	finished := Phase{Key: "finished", Label: "Finished", State: "pending"}
+	started := Phase{Key: "started", Label: i18n.T(ctx, "run.phase.started"), State: "pending"}
+	running := Phase{Key: "running", Label: i18n.T(ctx, "run.phase.running"), State: "pending"}
+	finished := Phase{Key: "finished", Label: i18n.T(ctx, "run.phase.finished"), State: "pending"}
 
 	// How late it started: after its SLOT for a scheduled run -- the same
 	// number as its `delay` auto param, so the page does not show two delays
@@ -45,29 +45,29 @@ func PhasesOf(r run.Run, now time.Time) []Phase {
 	}
 	if r.StartedAt != nil {
 		wait := r.StartedAt.Sub(from)
-		started.Detail = "+" + components.Duration(&wait)
+		started.Detail = "+" + i18n.Elapsed(ctx, wait)
 	}
 
 	switch r.Status {
 	case run.StatusCreated, run.StatusQueued, run.StatusPending:
 		started.State = "current"
 		waited := now.Sub(from)
-		started.Detail = "waiting " + components.Duration(&waited)
+		started.Detail = i18n.T(ctx, "run.phase.waiting", "span", i18n.Elapsed(ctx, waited))
 	case run.StatusRunning, run.StatusRetrying:
 		started.State, running.State = "done", "current"
 		if r.StartedAt != nil {
 			ran := now.Sub(*r.StartedAt)
-			running.Detail = components.Duration(&ran)
+			running.Detail = i18n.Elapsed(ctx, ran)
 		}
 	case run.StatusSuccess, run.StatusFailed, run.StatusCanceled:
 		started.State, running.State = "done", "done"
 		if r.StartedAt != nil && r.FinishedAt != nil {
 			ran := r.FinishedAt.Sub(*r.StartedAt)
-			running.Detail = components.Duration(&ran)
+			running.Detail = i18n.Elapsed(ctx, ran)
 		}
-		finished.State, finished.Detail = "done", "succeeded"
+		finished.State, finished.Detail = "done", i18n.T(ctx, "run.phase.succeeded")
 		if r.Status != run.StatusSuccess {
-			finished.State, finished.Detail = "failed", string(r.Status)
+			finished.State, finished.Detail = "failed", components.StateWord(ctx, string(r.Status))
 		}
 		if r.FinishedAt != nil {
 			finished.Detail += " · " + components.UTCStamp(r.FinishedAt)

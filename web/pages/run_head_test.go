@@ -141,3 +141,17 @@ func TestTheTimelineBarsSayHowEachPhaseWent(t *testing.T) {
 		t.Error("each phase does not have its bar")
 	}
 }
+
+// THE TIMELINE IS TWO BY TWO UNTIL ITS PANE HAS ROOM FOR FOUR: the pane, not
+// the window -- beside the list, a wide window still gives the run a narrow
+// pane.
+func TestTheTimelineFollowsItsPane(t *testing.T) {
+	page := draw(t, Runs(RunsScreen{Detail: ptr(failedWith(nil, 0))}))
+	if !strings.Contains(page, `id="run-pane" class="@container`) {
+		t.Error("the run's pane is not a container")
+	}
+	ol := between(page, "data-timeline", ">")
+	if !strings.Contains(ol, "grid-cols-2") || !strings.Contains(ol, "@2xl:grid-cols-4") {
+		t.Errorf("the timeline does not follow its pane: %s", ol)
+	}
+}

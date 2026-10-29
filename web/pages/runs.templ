@@ -99,13 +99,13 @@ func runsIsland(RunsScreen) layouts.Island {
 // it was while a long log is read beside it. Below 1000px the list goes on top.
 templ Runs(s RunsScreen) {
 	@layouts.Base(layouts.Page{
-		Title: "Runs", Active: "runs", Fill: true, Crumb: runsCrumb(s), Island: runsIsland(s),
+		Title: i18n.T(ctx, "runs.title"), Active: "runs", Fill: true, Crumb: runsCrumb(s), Island: runsIsland(s),
 	}) {
 		<div data-runs-screen class="-mx-3 -mb-10 flex min-h-0 flex-1 flex-col min-[860px]:-mx-6 min-[1001px]:flex-row">
 			<aside data-runs-list class="flex max-h-[300px] shrink-0 flex-col border-b border-line min-[1001px]:max-h-none min-[1001px]:w-[340px] min-[1001px]:border-r min-[1001px]:border-b-0">
 				<div class="flex items-center justify-between gap-3 px-4 pt-4 pb-2">
 					<h1 class="text-[20px] leading-tight font-semibold tracking-[-0.018em] text-ink">
-						Runs
+						{ i18n.T(ctx, "runs.title") }
 						<span class="ml-1.5 font-mono text-[13px] font-normal text-muted tabular-nums">{ i18n.Number(ctx, int64(s.Total)) }</span>
 					</h1>
 					@liveSwitch()
@@ -114,7 +114,7 @@ templ Runs(s RunsScreen) {
 					@RunsList(s)
 				</div>
 			</aside>
-			<section id="run-pane" class="min-h-0 min-w-0 flex-1 overflow-y-auto px-3 pt-4 pb-10 min-[860px]:px-6">
+			<section id="run-pane" class="@container min-h-0 min-w-0 flex-1 overflow-y-auto px-3 pt-4 pb-10 min-[860px]:px-6">
 				// With no run open the pane is blank: the column already says
 				// why -- nothing ran yet, or the search found nothing -- and a
 				// second message beside it would say it twice.
@@ -139,22 +139,22 @@ templ RunsList(s RunsScreen) {
 	{{ f := s.Filter }}
 	@runsSearch(f)
 	<div class="flex flex-wrap items-center gap-2 px-4 pb-2">
-		@components.Segmented("State", runsSegment(ctx, f, s.Counts))
+		@components.Segmented(i18n.T(ctx, "runs.state"), runsSegment(ctx, f, s.Counts))
 		if offSegment(f.State) {
-			@filterApplied("state", f.State, f.With("state", ""))
+			@filterApplied(i18n.T(ctx, "runs.state"), f.State, f.With("state", ""))
 		}
 		if f.Label != "" {
-			@filterApplied("period", f.Label, f.With("from", "")+"&to=")
+			@filterApplied(i18n.T(ctx, "runs.period"), f.Label, f.With("from", "")+"&to=")
 		}
 	</div>
 	if len(s.Runs) == 0 {
 		if f.Active() {
 			@components.Empty(i18n.T(ctx, "runs.none"), "")
 		} else {
-			@components.Empty("No run yet.", "brevis scheduler")
+			@components.Empty(i18n.T(ctx, "runs.empty"), "brevis scheduler")
 		}
 	} else {
-		<nav aria-label="Runs" class="border-t border-line-soft">
+		<nav aria-label={ i18n.T(ctx, "runs.title") } class="border-t border-line-soft">
 			for _, r := range s.Runs {
 				@runItem(r, f, r.ID == s.open(), s.Logos[r.WorkflowSlug])
 			}

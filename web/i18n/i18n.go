@@ -194,6 +194,7 @@ var ScriptKeys = []string{
 	"copy.done",
 	"palette.empty", "palette.loading", "palette.failed", "palette.open_run",
 	"palette.group.runs",
+	"run.live.following", "run.live.finished",
 }
 
 // Script is ScriptKeys in ctx's language, for the page's i18n block.

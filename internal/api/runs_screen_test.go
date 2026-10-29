@@ -389,3 +389,20 @@ func TestTheLogsToolsAreWired(t *testing.T) {
 		t.Error("a filtered line is not hidden over its grid")
 	}
 }
+
+// THE LIVE REFRESH SPEAKS THE PAGE'S LANGUAGE. It drew in English whatever
+// the reader had chosen, so the first refresh turned a Portuguese run page
+// English under them.
+func TestTheLiveRefreshKeepsTheLanguage(t *testing.T) {
+	mux := http.NewServeMux()
+	screenUI().Registrar(mux)
+	r := httptest.NewRequest(http.MethodGet, "/runs/"+older.String()+"/live", nil)
+	r.AddCookie(&http.Cookie{Name: "brevis_lang", Value: "pt-BR"})
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, r)
+	for _, want := range []string{"Gatilho", "Ver workflow"} {
+		if !strings.Contains(rec.Body.String(), want) {
+			t.Errorf("the live refresh in Portuguese lacks %q", want)
+		}
+	}
+}

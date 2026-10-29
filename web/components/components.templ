@@ -28,7 +28,7 @@ templ State(status string) {
 templ Retry(attempt int) {
 	if attempt > 0 {
 		<span
-			title={ fmt.Sprintf("attempt %d of this run", attempt+1) }
+			title={ i18n.T(ctx, "run.retry_title", "n", attempt+1) }
 			class="ml-1.5 inline-flex h-[17px] cursor-help items-center rounded-[4px] bg-state-retrying/13 px-[5px] font-mono text-[11px] font-medium text-state-retrying"
 		>↻{ fmt.Sprint(attempt + 1) }</span>
 	}
