@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
@@ -35,5 +36,40 @@ func TestTheStreakIsSaidAsAReaderCountsIt(t *testing.T) {
 		if got := streakText(ctx, n); got != want {
 			t.Errorf("streak %d says %q; wanted %q", n, got, want)
 		}
+	}
+}
+
+func row(target string, status catalog.Status, workflow string) DataRow {
+	missed := time.Now().Add(-90 * time.Minute)
+	return DataRow{
+		CatalogEntry: postgres.CatalogEntry{Target: target},
+		Status:       status,
+		Writers: []WriterView{{
+			CatalogWriter: postgres.CatalogWriter{Workflow: workflow},
+			Verdict:       catalog.Verdict{Status: status, Missed: missed},
+		}},
+	}
+}
+
+// A DESTINATION NEEDS YOU WHEN ITS DATA STOPPED COMING: stale before late,
+// what is on time not at all -- and not when the workflow that writes it is
+// already in the list, failing: that is why it is late, and saying it twice
+// is noise.
+func TestTheTargetsThatNeedYou(t *testing.T) {
+	got := AttentionTargets([]DataRow{
+		row("bq.late_one", catalog.Late, "a"),
+		row("bq.fine", catalog.OnTime, "b"),
+		row("bq.stale_one", catalog.Stale, "c"),
+		row("bq.because_failing", catalog.Stale, "broken"),
+	}, map[string]bool{"broken": true})
+	var order []string
+	for _, it := range got {
+		order = append(order, it.Target)
+	}
+	if strings.Join(order, ",") != "bq.stale_one,bq.late_one" {
+		t.Errorf("targets needing attention: %v", order)
+	}
+	if got[0].Workflow != "c" || got[0].Missed.IsZero() || got[0].Status != catalog.Stale {
+		t.Errorf("the stale target lost its writer or its missed slot: %+v", got[0])
 	}
 }

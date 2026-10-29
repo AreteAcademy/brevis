@@ -262,3 +262,32 @@ func TestARerunInFlightIsSaid(t *testing.T) {
 		t.Error("a rerun in flight is not said, or another is offered")
 	}
 }
+
+// A destination whose data stopped coming needs you too, with the way to its
+// page in the catalog.
+func TestALateTargetNeedsYou(t *testing.T) {
+	late := []postgres.CatalogEntry{{
+		Target: "postgres://db/public/orders", Kind: "postgres",
+		Writers: []postgres.CatalogWriter{{Workflow: "orders_sync", Node: "load",
+			LastLoaded: time.Now().Add(-90 * time.Minute), HasSchedule: true,
+			Cron: "0 * * * *", Timezone: "UTC", Active: true}},
+	}}
+	ui := api.NewUI(overviewReads{asked: &struct {
+		span  time.Duration
+		grain postgres.Grain
+		n     int
+	}{}}, nil, nil, nil, nil, catalogFake{entries: late}, branding.Default(), slog.New(slog.DiscardHandler)).WithFailing(failingList{})
+	_, body := get(t, ui, "/")
+	att := attentionOf(t, body)
+	for _, want := range []string{
+		`data-attention-target="postgres://db/public/orders"`, "orders_sync missed",
+		`href="/data/target?u=postgres%3A%2F%2Fdb%2Fpublic%2Forders"`, "Open in catalog", ">1<",
+	} {
+		if !strings.Contains(att, want) {
+			t.Errorf("the attention lacks %s", want)
+		}
+	}
+	if strings.Contains(att, "Nothing needs you right now") {
+		t.Error("a late target reads as all is well")
+	}
+}

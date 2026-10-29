@@ -41,15 +41,24 @@ func (u *UI) freshFailing(ctx context.Context) ([]postgres.FailingWorkflow, erro
 // failure that cannot be read is an item without its why, not a page error:
 // the section exists to be there on a bad night.
 func (u *UI) attention(ctx context.Context) pages.Attention {
-	if u.failing == nil {
-		return pages.Attention{}
+	var failing []postgres.FailingWorkflow
+	if u.failing != nil {
+		var err error
+		if failing, err = u.freshFailing(ctx); err != nil {
+			u.log.Warn("the failing workflows are unavailable", "error", err)
+		}
 	}
-	failing, err := u.freshFailing(ctx)
-	if err != nil {
-		u.log.Warn("the failing workflows are unavailable", "error", err)
-		return pages.Attention{}
-	}
+	out := u.failingItems(ctx, failing)
+	out.Targets, out.TargetsMore = u.lateTargets(ctx, failing)
+	return out
+}
+
+// failingItems are the failing workflows, the first AttentionShown with why.
+func (u *UI) failingItems(ctx context.Context, failing []postgres.FailingWorkflow) pages.Attention {
 	ordered := pages.OrderFailing(failing)
+	if len(ordered) == 0 {
+		return pages.Attention{}
+	}
 	rerunning := u.inFlightBySlug(ctx)
 	var out pages.Attention
 	for i, f := range ordered {
@@ -123,4 +132,27 @@ func (u *UI) overviewAttention(w http.ResponseWriter, r *http.Request) {
 	if err := pages.AttentionLive(u.attention(ctx), time.Now()).Render(ctx, w); err != nil {
 		u.log.Warn("rendering the attention fragment", "error", err)
 	}
+}
+
+// lateTargets are the catalog's destinations whose data stopped coming,
+// judged as /data judges them, the first AttentionShown and how many more.
+// A catalog that cannot be read is a section without them.
+func (u *UI) lateTargets(ctx context.Context, failing []postgres.FailingWorkflow) ([]pages.TargetItem, int) {
+	if u.catalog == nil {
+		return nil, 0
+	}
+	entries, err := u.catalog.Catalog(ctx)
+	if err != nil {
+		u.log.Warn("the catalog is unavailable", "error", err)
+		return nil, 0
+	}
+	broken := make(map[string]bool, len(failing))
+	for _, f := range failing {
+		broken[f.Slug] = true
+	}
+	targets := pages.AttentionTargets(pages.BuildData(entries, time.Now()).Rows, broken)
+	if len(targets) > pages.AttentionShown {
+		return targets[:pages.AttentionShown], len(targets) - pages.AttentionShown
+	}
+	return targets, 0
 }

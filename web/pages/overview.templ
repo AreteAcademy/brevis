@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/AreteAcademy/brevis/web/components"
@@ -165,6 +166,26 @@ templ attention(a Attention, now time.Time) {
 				</ul>
 				if a.More > 0 {
 					<a href="/runs?state=failed" class="block border-t border-state-failed/20 px-4 py-2 text-[12.5px] text-ink hover:underline">{ i18n.N(ctx, "overview.attention.more", a.More) } &rarr;</a>
+				}
+				if len(a.Targets) > 0 {
+					<ul class="border-t border-state-failed/20">
+						for _, tg := range a.Targets {
+							<li data-attention-target={ tg.Target } class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-state-failed/15 px-4 py-3 last:border-b-0">
+								@components.StatusMark(string(tg.Status))
+								<div class="min-w-0 flex-1">
+									<p class="text-[13px]">
+										<span class="font-mono break-all text-ink">{ tg.Target }</span>
+										<span class="ml-1 text-[12.5px] text-muted">{ components.StateWord(ctx, string(tg.Status)) }</span>
+									</p>
+									<p class="mt-0.5 text-[12.5px] text-ink-2">{ i18n.T(ctx, "overview.target.missed", "workflow", tg.Workflow, "when", i18n.Since(ctx, now, tg.Missed)) }</p>
+								</div>
+								<a href={ templ.SafeURL("/data/target?u=" + url.QueryEscape(tg.Target)) } class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>{ i18n.T(ctx, "overview.open_catalog") }</a>
+							</li>
+						}
+					</ul>
+				}
+				if a.TargetsMore > 0 {
+					<a href="/data?status=attention" class="block border-t border-state-failed/20 px-4 py-2 text-[12.5px] text-ink hover:underline">{ i18n.N(ctx, "overview.target.more", a.TargetsMore) } &rarr;</a>
 				}
 			</div>
 		}

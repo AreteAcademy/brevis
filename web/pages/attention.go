@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/web/i18n"
@@ -24,10 +25,54 @@ type Attention struct {
 	Items []AttentionItem
 	// More is how many failing workflows are not drawn.
 	More int
+
+	// Targets are the destinations whose data stopped coming; TargetsMore is
+	// how many more there are.
+	Targets     []TargetItem
+	TargetsMore int
 }
 
-// Total is every failing workflow, drawn or not.
-func (a Attention) Total() int { return len(a.Items) + a.More }
+// Total is everything that needs the reader, drawn or not.
+func (a Attention) Total() int { return len(a.Items) + a.More + len(a.Targets) + a.TargetsMore }
+
+// TargetItem is a destination whose data stopped coming: which writer missed
+// its run, and when.
+type TargetItem struct {
+	Target   string
+	Status   catalog.Status
+	Workflow string
+	Missed   time.Time
+}
+
+// AttentionTargets are the destinations that need the reader, stale before
+// late, as /data judges them (BuildData) -- one rule for "late", not two. A
+// destination whose writer is already failing is left out: that is why it is
+// late, and the workflow's item says so.
+func AttentionTargets(rows []DataRow, failing map[string]bool) []TargetItem {
+	var out []TargetItem
+	for _, r := range rows {
+		if r.Status != catalog.Stale && r.Status != catalog.Late {
+			continue
+		}
+		var late *WriterView
+		failingWriter := false
+		for i := range r.Writers {
+			w := &r.Writers[i]
+			failingWriter = failingWriter || failing[w.Workflow]
+			if late == nil && w.Verdict.Status == r.Status {
+				late = w
+			}
+		}
+		if failingWriter || late == nil {
+			continue
+		}
+		out = append(out, TargetItem{Target: r.Target, Status: r.Status, Workflow: late.Workflow, Missed: late.Verdict.Missed})
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return out[i].Status == catalog.Stale && out[j].Status != catalog.Stale
+	})
+	return out
+}
 
 // AttentionItem is one workflow that failed: when, how many times in a row,
 // and why -- read from that run's log, as its own page reads it.
