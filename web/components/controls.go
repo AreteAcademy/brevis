@@ -80,7 +80,17 @@ type SegOption struct {
 // Tab is one tab in a tablist.
 type Tab struct {
 	Key, Label string
-	Selected   bool
+	// Count is drawn quieter beside the label ("Logs 17"); empty draws none.
+	Count    string
+	Selected bool
+}
+
+// tabCount draws a tab's count quieter than its label, and nothing without one.
+func tabCount(count string) string {
+	if count == "" {
+		return "hidden"
+	}
+	return "ml-1.5 font-mono text-[11px] text-faint tabular-nums"
 }
 
 func ariaBool(b bool) string {

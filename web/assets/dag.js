@@ -1047,16 +1047,38 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
     );
   }
 
-  var root = document.getElementById("dag");
-  if (root) {
-    // The embedded graph is read BEFORE React takes the element over, and the
-    // canvas is sized from it, so React Flow is born in the right box.
+  // mount draws the graph in a #dag element. The embedded graph is read
+  // BEFORE React takes the element over, and the canvas is sized from it, so
+  // React Flow is born in the right box.
+  function mount(root) {
+    if (!root || root._dag) return;
     var seed = null;
     var carrier = root.querySelector("script[data-graph]");
     if (carrier) {
       try { seed = JSON.parse(carrier.textContent); } catch (e) { seed = null; }
     }
     if (seed) sizeCanvas(seed.nodes || []);
-    ReactDOM.createRoot(root).render(h(Graph, { src: root.dataset.src, seed: seed }));
+    root._dag = ReactDOM.createRoot(root);
+    root._dag.render(h(Graph, { src: root.dataset.src, seed: seed }));
   }
+
+  // unmount takes down the graph inside a region about to be replaced. It is
+  // what stops the old run's graph from polling: the effect's cleanup clears
+  // its timer, and a graph left mounted in a detached node polls forever.
+  function unmount(region) {
+    var root = region && region.querySelector("#dag");
+    if (root && root._dag) {
+      root._dag.unmount();
+      root._dag = null;
+    }
+  }
+
+  // For the Runs screen, which swaps the open run without reloading and
+  // mounts the graph when its tab opens (ui.js).
+  window.BrevisDag = { mount: mount, unmount: unmount };
+
+  // A graph in a hidden tab waits for it: React Flow measures its box, and a
+  // box with no size draws an empty canvas.
+  var first = document.getElementById("dag");
+  if (first && first.offsetParent !== null) mount(first);
 })();

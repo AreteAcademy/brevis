@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -45,7 +46,7 @@ func TestPhasesFollowTheRunsTimes(t *testing.T) {
 			map[string]string{"running": "30.0s", "finished": "failed"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			ps := PhasesOf(c.r, now)
+			ps := PhasesOf(context.Background(), c.r, now)
 			if got := states(ps); got != c.want {
 				t.Fatalf("phases = %s\nwant     %s", got, c.want)
 			}
@@ -61,18 +62,18 @@ func TestPhasesFollowTheRunsTimes(t *testing.T) {
 // A SCHEDULED RUN NAMES ITS SLOT; one triggered by hand says so instead.
 func TestTheFirstPhaseSaysHowTheRunWasMade(t *testing.T) {
 	slot := created
-	ps := PhasesOf(run.Run{Status: run.StatusQueued, CreatedAt: created, LogicalDate: &slot, TriggerType: "schedule"}, created)
+	ps := PhasesOf(context.Background(), run.Run{Status: run.StatusQueued, CreatedAt: created, LogicalDate: &slot, TriggerType: "schedule"}, created)
 	if ps[0].Label != "Scheduled" || !strings.Contains(ps[0].Detail, "2026-10-15 04:00") {
 		t.Errorf("a scheduled run's first phase is %+v", ps[0])
 	}
 	// How late it started is counted from the slot, as its `delay` auto param
 	// is: created 1s after the slot and started 3s after it is "+3.0s".
-	ps = PhasesOf(run.Run{Status: run.StatusSuccess, CreatedAt: created.Add(time.Second), LogicalDate: &slot,
+	ps = PhasesOf(context.Background(), run.Run{Status: run.StatusSuccess, CreatedAt: created.Add(time.Second), LogicalDate: &slot,
 		StartedAt: at(3 * time.Second), FinishedAt: at(4 * time.Second)}, created)
 	if ps[1].Detail != "+3.0s" {
 		t.Errorf("a scheduled run started %q after its slot, want +3.0s", ps[1].Detail)
 	}
-	ps = PhasesOf(run.Run{Status: run.StatusQueued, CreatedAt: created, TriggerType: "manual"}, created)
+	ps = PhasesOf(context.Background(), run.Run{Status: run.StatusQueued, CreatedAt: created, TriggerType: "manual"}, created)
 	if ps[0].Label != "Triggered" {
 		t.Errorf("a manual run's first phase is %+v", ps[0])
 	}
@@ -101,7 +102,7 @@ func TestTheRunPageIsDenseWithNothingLost(t *testing.T) {
 	r.Auto.AdjustedAt = created
 	r.Auto.Date = "2026-10-15"
 	r.Auto.ScheduledAt = &slot
-	page := draw(t, Run(RunPage{Run: r}))
+	page := draw(t, Runs(RunsScreen{Detail: &RunPage{Run: r}}))
 
 	if !strings.Contains(page, "data-timeline") || strings.Count(page, "data-phase=") != 4 {
 		t.Error("the phases are not a four-step timeline")

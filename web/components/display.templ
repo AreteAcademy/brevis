@@ -1,6 +1,10 @@
 package components
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/AreteAcademy/brevis/web/i18n"
+)
 
 // Stats is a strip of numbers -- an endpoint's limits, a screen's headline
 // figures -- in one bordered band rather than one card each, which is what
@@ -102,7 +106,7 @@ templ CodeBlock(id, code string, attrs templ.Attributes) {
 	<div class="relative">
 		<pre id={ id } class="overflow-x-auto rounded-card border border-line bg-canvas-subtle p-3 pr-11 font-mono text-[0.75rem] leading-relaxed text-ink" { attrs... }><code>{ code }</code></pre>
 		<span class="absolute top-1.5 right-1.5" data-js>
-			@IconButton("Copy", "copy", templ.Attributes{"data-copy": "#" + id})
+			@IconButton(i18n.T(ctx, "copy.label"), "copy", templ.Attributes{"data-copy": "#" + id})
 		</span>
 	</div>
 }
@@ -118,7 +122,7 @@ templ KV(items []KVItem) {
 				<div class="flex items-center gap-1.5 font-mono text-[11px] tracking-[0.02em] text-faint">
 					{ it.Key }
 					<span data-js class="ml-auto opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-						@CopyIcon("#kv-"+it.Key, "Copy "+it.Key)
+						@CopyIcon("#kv-"+it.Key, i18n.T(ctx, "copy.key", "key", it.Key))
 					</span>
 				</div>
 				<div id={ "kv-" + it.Key } title={ it.Value } class="mt-0.5 truncate font-mono text-[12.5px] text-ink">{ it.Value }</div>

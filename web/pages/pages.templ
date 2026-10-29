@@ -1,12 +1,14 @@
 package pages
 
 import (
+	"context"
 	"github.com/AreteAcademy/brevis/web/assets"
 	"fmt"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/alerts"
@@ -771,14 +773,6 @@ func (f RunFilter) Active() bool {
 	return f.State != "" || f.Workflow != "" || f.De != "" || f.Ate != ""
 }
 
-templ Runs(runs []postgres.RunSummary, f RunFilter, counts map[string]int, total int) {
-	@layouts.Base(layouts.Page{Title: "Runs", Kicker: "History", Active: "runs", Actions: liveSwitch()}) {
-		<div id="runs-list">
-			@RunsList(runs, f, counts, total)
-		</div>
-	}
-}
-
 // liveSwitch follows the list as runs arrive. Hidden until ui.js can drive it
 // -- with no script it would be a switch that does nothing -- and off until
 // somebody turns it on; ui.js remembers the choice.
@@ -791,36 +785,9 @@ templ liveSwitch() {
 			class="inline-flex h-8 items-center gap-2 rounded-card border border-line bg-surface px-3 text-[0.82rem] text-muted transition-colors duration-150 hover:text-ink aria-pressed:border-line-strong aria-pressed:bg-surface-2 aria-pressed:text-ink"
 		>
 			<span data-live-dot class="h-1.5 w-1.5 rounded-full bg-line-strong"></span>
-			Live
+			{ i18n.T(ctx, "runs.live") }
 		</button>
 	</span>
-}
-
-// RunsList is the list's region: the filter with its counts, the count, the
-// table and its pages. It is the page's fragment (X-Brevis-Fragment: rows),
-// which the Live switch fetches and swaps.
-templ RunsList(runs []postgres.RunSummary, f RunFilter, counts map[string]int, total int) {
-	<div class="mb-3 flex flex-wrap items-center gap-2">
-		<div class="max-w-full overflow-x-auto whitespace-nowrap">
-			@components.Segmented("State", runStateOptions(f, counts))
-		</div>
-		if f.Workflow != "" {
-			<span class="mx-2 h-5 w-px bg-line"></span>
-			@filterApplied("workflow", f.Workflow, f.With("workflow", ""))
-		}
-		if f.Label != "" {
-			@filterApplied("period", f.Label, f.With("from", "")+"&to=")
-		}
-	</div>
-	<p class="mb-2 text-[13px] font-semibold text-ink">
-		{ count(total, "run", "runs") }
-		if f.Active() {
-			<a href="/runs" class="ml-3 text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">clear filters</a>
-		}
-	</p>
-	@runsTable(runs, Pagination{
-		Page: f.Page, PerPage: f.PerPage, Total: total, PageLink: f.WithPage,
-	})
 }
 
 // filterApplied shows a slice that came from another screen (a click on the
@@ -830,7 +797,7 @@ templ filterApplied(label, value, remover string) {
 	<span class="inline-flex items-center gap-2 rounded-card border border-line-strong bg-surface-2 px-3 py-1.5 text-xs text-ink">
 		<span class="text-muted">{ label }:</span>
 		<span class="font-medium">{ value }</span>
-		<a href={ templ.SafeURL(remover) } class="text-muted hover:text-ink" aria-label="Remove this filter">×</a>
+		<a href={ templ.SafeURL(remover) } class="text-muted hover:text-ink" aria-label={ i18n.T(ctx, "runs.remove_filter") }>×</a>
 	</span>
 }
 
@@ -1173,14 +1140,14 @@ templ Workflow(p WorkflowPage) {
 	}
 }
 
-// Run shows one run. The header comes from the server already rendered; only the
-// DAG with each step's state depends on JavaScript.
-templ Run(p RunPage) {
+// RunDetail is the open run, beside the list (screen-runs). The header comes
+// from the server already rendered; only the DAG with each step's state
+// depends on JavaScript.
+templ RunDetail(p RunPage) {
 	{{ r := p.Run }}
-	@layouts.Base(layouts.Page{
-		Title: r.WorkflowSlug, Kicker: "Run", Active: "runs", Crumb: runCrumb(r),
-		Island: runIsland(p), Actions: rerunAction(p),
-	}) {
+	// data-crumb is the bar's last item, which ui.js writes when this pane
+	// is swapped in: the bar is the layout's, and is not part of the swap.
+	<div data-run-detail={ r.ID.String() } data-crumb={ runCrumb(r) }>
 		// Two regions the server refreshes, and the graph between them.
 		//
 		// The DAG polled and everything around it did not: the drawing showed a
@@ -1190,7 +1157,7 @@ templ Run(p RunPage) {
 		// returns BOTH of these already rendered, on the cadence the graph
 		// already uses. See RunLive.
 		<div id="run-head" data-live={ "/runs/" + r.ID.String() + "/live" }>
-			@runHead(r, p.Wait)
+			@runHead(p)
 		</div>
 		// The indicator sits OUTSIDE the swapped region, because a region that
 		// replaces its own contents would replace this too and lose whatever
@@ -1201,19 +1168,35 @@ templ Run(p RunPage) {
 		// which is the behaviour this whole change is meant to remove.
 		<p id="live-indicator" class="mb-3 -mt-3 hidden items-center gap-1.5 text-[0.7rem] text-muted">
 			<span class="h-1.5 w-1.5 rounded-full bg-state-running"></span>
-			<span data-live-label>following this run</span>
+			<span data-live-label>{ i18n.T(ctx, "run.live.following") }</span>
 		</p>
-		if p.Step == nil {
-			@dag("/api/runs/"+r.ID.String()+"/graph", p.Graph)
-		}
-		<div id="run-body">
-			@runBody(p)
+		// THE TABS (screen-runs T5, T7). Three regions in one tab set: the
+		// bar and the body are the live refresh's, the graph is not. It is a
+		// Steps panel of its own OUTSIDE the body, because the body is
+		// redrawn when a step ends, and a React root inside it would be torn
+		// out from under itself. Its scripts come with the tab (ui.js reads
+		// data-island-*): the page does not pay for React to show a log.
+		@templ.Raw("<style>" + hashTabsCSS("run-tabs", "logs", "steps", "params", "context") + "</style>")
+		<div id="run-tabs" data-hash-tabs>
+			<div id="run-tabs-bar" data-hash-tabs-bar data-js class="mb-3">
+				@runTabsBar(p)
+			</div>
+			if p.Step == nil {
+				// data-js: with no script there is no React, and the box would be
+				// 380px of nothing above the steps.
+				<div data-tab-panel="steps" data-run-graph data-js data-island-js={ strings.Join(dagAssets.JS, " ") } data-island-css={ strings.Join(dagAssets.CSS, " ") } class="mb-3">
+					@dag("/api/runs/"+r.ID.String()+"/graph", p.Graph)
+				</div>
+			}
+			<div id="run-body">
+				@runBody(p)
+			</div>
 		</div>
 		if p.Workflow != nil && len(p.Workflow.Params) > 0 {
 			{{ w, dropped := rerunWorkflow(p) }}
 			@runDrawer(w, rerunDrawerText(r, dropped))
 		}
-	}
+	</div>
 }
 
 // rerunAction is the run page's verb (screen-run-v2 RV2): Rerun, posting to
@@ -1232,9 +1215,9 @@ func rerunAction(p RunPage) templ.Component {
 
 templ rerunNow(r run.Run) {
 	<form method="post" action={ templ.SafeURL("/workflows/" + r.WorkflowSlug + "/trigger") } class="inline">
-		<button type="submit" data-rerun title={ rerunTitle(r) } class={ components.ButtonClass(components.ButtonSecondary, components.SizeRegular) }>
+		<button type="submit" data-rerun title={ rerunTitle(ctx, r) } class={ components.ButtonClass(components.ButtonSecondary, components.SizeRegular) }>
 			@components.Icon("refresh-cw", "h-3.5 w-3.5")
-			Rerun
+			{ i18n.T(ctx, "run.rerun") }
 		</button>
 	</form>
 }
@@ -1242,17 +1225,17 @@ templ rerunNow(r run.Run) {
 // A link and not a GET form: it opens the dialog on this page, and
 // `data-no-prefetch` keeps the hover from fetching anything for it.
 templ rerunLink(r run.Run) {
-	<a href="#run" data-rerun data-dialogo="run" data-no-prefetch aria-haspopup="dialog" title={ rerunTitle(r) } class={ components.ButtonClass(components.ButtonSecondary, components.SizeRegular) }>
+	<a href="#run" data-rerun data-dialogo="run" data-no-prefetch aria-haspopup="dialog" title={ rerunTitle(ctx, r) } class={ components.ButtonClass(components.ButtonSecondary, components.SizeRegular) }>
 		@components.Icon("refresh-cw", "h-3.5 w-3.5")
-		Rerun…
+		{ i18n.T(ctx, "run.rerun_more") }
 	</a>
 }
 
-func rerunTitle(r run.Run) string {
-	if note := rerunNote(r); note != "" {
-		return note
+func rerunTitle(ctx context.Context, r run.Run) string {
+	if r.LogicalDate != nil {
+		return i18n.T(ctx, "run.rerun_note", "slot", components.UTCStamp(r.LogicalDate))
 	}
-	return "Run this workflow again with this run's values"
+	return i18n.T(ctx, "run.rerun_title")
 }
 
 // runCancel stops a run that can still be stopped (D3). In the head and not
@@ -1286,64 +1269,130 @@ templ RunLive(p RunPage) {
 	// than the step's: a failed run is a retry away from running again, and
 	// stopping there would freeze the screen in the middle of one.
 	<div data-live-target="run-head" data-terminal={ fmt.Sprint(r.Status.Terminal()) }>
-		@runHead(r, p.Wait)
+		@runHead(p)
+	</div>
+	<div data-live-target="run-tabs-bar">
+		@runTabsBar(p)
 	</div>
 	<div data-live-target="run-body">
 		@runBody(p)
 	</div>
 }
 
-templ runHead(r run.Run, wait *postgres.Wait) {
-	<div class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-		@components.State(string(r.Status))
-		<span class="text-muted">{ r.TriggerType }</span>
-		if r.LogicalDate != nil {
-			<span class="font-mono text-xs text-muted">slot { components.UTCStamp(r.LogicalDate) }</span>
-		}
-		if r.Attempt > 0 {
-			@components.Retry(r.Attempt)
-		}
-		<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">see definition</a>
-		<span class="inline-flex items-center gap-1">
-			<span id="run-id" class="font-mono text-[0.7rem] text-muted/70">{ r.ID.String() }</span>
-			<span data-js>
-				@components.CopyIcon("#run-id", "Copy the run's id")
-			</span>
-		</span>
-		@runCancel(r)
+// runHead is the open run's head (screen-runs T4), inside the live region so
+// all of it moves with the run: the state, what the workflow runs in and its
+// name, the verbs this state allows, how it was started, for which slot and
+// how long it took -- then why it failed, and its timeline.
+templ runHead(p RunPage) {
+	{{ r := p.Run }}
+	<div class="mb-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+		<div class="min-w-0">
+			<div class="mb-1 flex items-center text-sm">
+				@components.State(string(r.Status))
+				@components.Retry(r.Attempt)
+			</div>
+			<h2 class="flex min-w-0 items-center gap-2 font-mono text-[22px] leading-tight font-medium text-ink">
+				for _, k := range p.Logos {
+					@components.Logo(k, 28)
+				}
+				<span class="break-all">{ r.WorkflowSlug }</span>
+			</h2>
+		</div>
+		<div data-run-actions class="flex shrink-0 items-center gap-3">
+			<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="inline-flex items-center gap-1 text-[13px] text-muted transition-colors hover:text-ink">
+				{ i18n.T(ctx, "run.view_workflow") }
+				<span aria-hidden="true">&rarr;</span>
+			</a>
+			if r.Status.InFlight() {
+				@runCancel(r)
+			} else if rerunAction(p) != nil {
+				@rerunAction(p)
+			}
+		</div>
 	</div>
-	@phases(PhasesOf(r, time.Now()))
-	if wait != nil {
-		@waitLine(wait)
-	}
-	if r.Err != "" {
-		// ONE LINE THAT OPENS (density-base DB6): the attempt and the error's
-		// first line, the whole text inside -- a stack trace no longer pushes
-		// the page down before anyone asked for it.
+	<dl class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px]">
+		<div class="flex items-baseline gap-1.5">
+			<dt class="text-muted">{ i18n.T(ctx, "run.trigger") }</dt>
+			<dd class="text-ink">{ r.TriggerType }</dd>
+		</div>
+		if r.LogicalDate != nil {
+			<div class="flex items-baseline gap-1.5">
+				<dt class="text-muted">{ i18n.T(ctx, "run.slot") }</dt>
+				<dd class="font-mono text-[12.5px] text-ink-2">{ components.UTCStamp(r.LogicalDate) }</dd>
+			</div>
+		}
+		<div class="flex items-baseline gap-1.5">
+			<dt class="text-muted">{ i18n.T(ctx, "run.duration") }</dt>
+			<dd class="text-ink">{ runDuration(ctx, r) }</dd>
+		</div>
+		<div class="flex items-center gap-1">
+			<dt class="sr-only">ID</dt>
+			<dd title={ r.ID.String() } class="font-mono text-[12px] text-muted">{ r.ID.String()[:8] }</dd>
+			<span id="run-id" hidden>{ r.ID.String() }</span>
+			<span data-js>
+				@components.CopyIcon("#run-id", i18n.T(ctx, "run.copy_id"))
+			</span>
+		</div>
+	</dl>
+	if showsWhy(p) {
+		@runWhy(p.Cause, p.Streak)
+	} else if r.Err != "" {
+		// ONE LINE THAT OPENS (density-base DB6), where there is no cause to
+		// put in its place -- a canceled run's error is who stopped it.
 		<details data-run-error class="mb-3 rounded-card border border-state-failed/30 bg-state-failed/5">
 			<summary class="flex h-[34px] cursor-pointer list-none items-center gap-2 px-3 text-[12.5px] [&::-webkit-details-marker]:hidden">
 				@components.Icon("triangle-alert", "h-3.5 w-3.5 text-state-failed")
 				@components.Retry(r.Attempt)
 				<span class="min-w-0 truncate font-mono text-[12px] text-state-failed">{ firstLine(r.Err) }</span>
-				<span class="ml-auto shrink-0 text-[11.5px] text-faint">details</span>
+				<span class="ml-auto shrink-0 text-[11.5px] text-faint">{ i18n.T(ctx, "run.error.details") }</span>
 			</summary>
 			<pre class="overflow-auto border-t border-state-failed/20 px-3 py-2.5 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-state-failed">{ r.Err }</pre>
 		</details>
 	}
+	@phases(PhasesOf(ctx, r, time.Now()))
+	if p.Wait != nil {
+		@waitLine(p.Wait)
+	}
+}
+
+// runWhy is why the run failed (screen-runs T4): the step and how it exited,
+// how many times in a row when it is not the first, and the lines before the
+// cause, in the run's own words. No prose explains them: the words that would
+// come from a model, and this page shows only what the run said.
+templ runWhy(c *diagnosis.Cause, streak int) {
+	<section data-why class="mb-3 rounded-card border border-state-failed/40 bg-state-failed/5 px-4 py-3">
+		<div class="flex items-start gap-2.5">
+			@components.Icon("triangle-alert", "mt-0.5 h-4 w-4 shrink-0 text-state-failed")
+			<div class="min-w-0 flex-1">
+				<div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+					<h3 class="text-[14px] font-medium text-ink">{ whyTitle(ctx, c) }</h3>
+					// Only when the cause is a line of the log: one read from
+					// the engine's error has no line to go to.
+					if c.LineNo > 0 {
+						<button type="button" data-js data-goto-error class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>{ i18n.T(ctx, "run.why.goto") }</button>
+					}
+				</div>
+				if streak >= 2 {
+					<p class="mt-0.5 text-[12.5px] text-muted">{ i18n.N(ctx, "run.why.streak", streak) }</p>
+				}
+				<pre class="mt-2 overflow-x-auto font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-state-failed">{ whyExcerpt(c) }</pre>
+			</div>
+		</div>
+	</section>
 }
 
 // phases is the run's life as a strip: made, started, running, finished, the
 // current one marked. It sits in the live head, so it moves with the run.
 templ phases(ps []Phase) {
-	// A TIMELINE ON ONE RULE (density-base DB6): each phase a dot on the line,
-	// its name and its value -- the four boxes it was, a third the height.
-	<ol data-phases data-timeline class="mb-3 grid grid-cols-2 gap-y-3 rounded-card border border-line bg-surface px-3.5 py-3 sm:grid-cols-4">
-		for i, p := range ps {
-			<li data-phase={ p.Key } data-phase-state={ p.State } class="relative min-w-0 pt-3 pr-3">
-				if i < len(ps)-1 {
-					<span aria-hidden="true" class="absolute top-1 right-0 left-1 h-px bg-line-strong"></span>
-				}
-				<span aria-hidden="true" class={ "absolute top-0 left-0 h-[9px] w-[9px] rounded-full", phaseDot(p.State) }></span>
+	// FOUR STEPS WITH A BAR ON TOP (screen-runs T4): the bar's colour is how
+	// the phase went -- done, failed, going, not yet -- so the strip reads
+	// from across the room, and the label and value sit under it.
+	// Two by two until the PANE -- not the window -- has room for four: beside
+	// the list, a wide window still gives the run a narrow pane.
+	<ol data-phases data-timeline class="mb-3 grid grid-cols-2 overflow-hidden rounded-card border border-line bg-surface @2xl:grid-cols-4">
+		for _, p := range ps {
+			<li data-phase={ p.Key } data-phase-state={ p.State } class="relative min-w-0 border-b border-line-soft px-3.5 pt-3 pb-2.5 odd:border-r @2xl:border-b-0 @2xl:not-last:border-r">
+				<span data-phase-bar aria-hidden="true" class={ "absolute top-0 right-0 left-0 h-[2px]", phaseBar(p.State) }></span>
 				if p.State == "current" {
 					<p class="text-[11.5px] font-medium text-ink">{ p.Label }</p>
 				} else {
@@ -1361,22 +1410,151 @@ templ phases(ps []Phase) {
 	</ol>
 }
 
-templ runBody(p RunPage) {
-	if p.Step != nil {
-		@stepLine(*p.Step)
-	}
-	@autoParams(p.Run)
-	@alertsRaised(p.Raised)
-	@stepsOutput(p.Run, p.Logs)
+// runTabsBar is the tabs, each with its count. Live, so "Logs 17" grows as
+// steps end.
+templ runTabsBar(p RunPage) {
+	@components.Tabs(i18n.T(ctx, "run.tabs"), []components.Tab{
+		{Key: "logs", Label: i18n.T(ctx, "run.tab.logs"), Count: fmt.Sprint(RunLogOf(p.Logs, p.Cause).Lines), Selected: true},
+		{Key: "steps", Label: i18n.T(ctx, "run.tab.steps"), Count: fmt.Sprint(len(StepOutputs(p.Run, p.Logs)))},
+		{Key: "params", Label: i18n.T(ctx, "run.tab.params"), Count: fmt.Sprint(len(autoItems(ctx, p.Run)) + len(p.Run.Params))},
+		{Key: "context", Label: i18n.T(ctx, "run.tab.context")},
+	})
 }
 
-// runIsland is the graph's island for a run that has a graph. A one-step run
-// draws its step as a line, and loads no React for a canvas with one box.
-func runIsland(p RunPage) layouts.Island {
-	if p.Step != nil {
-		return layouts.Island{}
+// runBody is the run's tab panels (screen-runs T5, T7): Logs first, then its
+// steps, its parameters and what each step published. Shown by the hash --
+// a link can open one, and the CSS beside the tabs shows it before the first
+// paint -- and stacked, each with its heading, where no script runs. Inside
+// the live region, so a step that ends adds its lines without a reload.
+templ runBody(p RunPage) {
+	<section id="logs" data-tab-panel="logs" class="mb-3">
+		<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.logs") }</h2>
+		@logsPanel(p.Run, RunLogOf(p.Logs, p.Cause))
+	</section>
+	<section id="steps" data-tab-panel="steps" class="mb-3">
+		<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.steps") }</h2>
+		if p.Step != nil {
+			@stepLine(*p.Step)
+		}
+		@stepsOutput(p.Run, p.Logs)
+		@alertsRaised(p.Raised)
+	</section>
+	<section id="params" data-tab-panel="params" class="mb-3">
+		<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.params") }</h2>
+		@autoParams(p.Run)
+		@paramsUsed(p.Run)
+	</section>
+	<section id="context" data-tab-panel="context" class="mb-3">
+		<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.context") }</h2>
+		@publishedContext(ContextOf(p.Run, p.Logs))
+	</section>
+}
+
+// paramsUsed is what this run was given -- the values Rerun starts from.
+templ paramsUsed(r run.Run) {
+	<section class="mt-3">
+		@components.Panel(i18n.T(ctx, "run.params.used"), "") {
+			if len(r.Params) == 0 {
+				<p class="px-3.5 py-3 text-[12.5px] text-muted">{ i18n.T(ctx, "run.params.none") }</p>
+			} else {
+				@components.KV(usedParams(r))
+			}
+		}
+	</section>
+}
+
+// publishedContext is what each step published for the steps below it
+// ($BREVIS_OUTPUT), whole and formatted -- or why there is none.
+templ publishedContext(entries []ContextEntry) {
+	if len(entries) == 0 {
+		<p class="rounded-card border border-line bg-surface px-3.5 py-3 text-[12.5px] text-muted">{ i18n.T(ctx, "run.log.empty") }</p>
 	}
-	return dagAssets
+	for _, e := range entries {
+		<div data-context={ e.Step } class="mb-2 overflow-hidden rounded-card border border-line bg-surface">
+			<div class="flex items-center justify-between gap-3 border-b border-line-soft px-3.5 py-2 text-[12.5px]">
+				<span class="font-mono text-ink">{ e.Step }</span>
+				if e.JSON != "" {
+					<span class="text-[11.5px] text-faint">{ i18n.N(ctx, "run.context.bytes", e.Bytes) }</span>
+				}
+			</div>
+			if e.JSON != "" {
+				<pre class="max-h-[24rem] overflow-auto px-3.5 py-2.5 font-mono text-[12px] leading-relaxed text-ink">{ e.JSON }</pre>
+			} else {
+				<p class="px-3.5 py-2.5 text-[12.5px] text-muted">{ contextState(ctx, e.State) }</p>
+			}
+		</div>
+	}
+}
+
+// logsPanel is the run's log as one (screen-runs T5): each attempt under its
+// heading, each line numbered with the level it reads as, the line the run
+// failed on marked for the head's "go to the error", and the lines a huge
+// log leaves out counted, with the whole log one click away.
+templ logsPanel(r run.Run, log RunLog) {
+	<div data-log data-run={ r.ID.String() } class="overflow-hidden rounded-card border border-line bg-surface">
+		<div data-log-tools class="flex flex-wrap items-center gap-2 border-b border-line-soft px-3 py-2">
+			// The tools are the script's (screen-runs T6): with none, a search
+			// box that searches nothing is worse than no box. ui.js keeps
+			// what they hold through the live refresh.
+			<label data-js class="relative min-w-[12rem] flex-1">
+				<span class="sr-only">{ i18n.T(ctx, "run.log.search") }</span>
+				@components.Icon("search", "pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-faint")
+				<input type="search" data-log-search placeholder={ i18n.T(ctx, "run.log.search") } autocomplete="off" class="h-8 w-full rounded-card border border-line bg-canvas pr-2 pl-8 text-[13px] text-ink placeholder:text-faint focus:border-line-strong focus:outline-none"/>
+			</label>
+			<div data-js role="group" aria-label={ i18n.T(ctx, "run.log.level") } class="inline-flex rounded-card border border-line p-0.5">
+				for _, lv := range logLevels {
+					<button type="button" data-log-level={ lv } aria-pressed={ fmt.Sprint(lv == "all") } class="rounded-[5px] px-2.5 py-1 text-[12.5px] text-muted hover:text-ink aria-pressed:bg-surface-2 aria-pressed:text-ink">{ logLevelLabel(ctx, lv) }</button>
+				}
+			</div>
+			<span class="ml-auto"></span>
+			<button type="button" data-js data-log-wrap aria-pressed="false" class="rounded-card px-2.5 py-1 text-[12.5px] text-muted hover:text-ink aria-pressed:bg-surface-2 aria-pressed:text-ink">{ i18n.T(ctx, "run.log.wrap") }</button>
+			<button type="button" data-js data-log-copy class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>
+				@components.Icon("copy", "h-3 w-3")
+				<span data-label>{ i18n.T(ctx, "run.log.copy") }</span>
+			</button>
+			<a href={ templ.SafeURL("/runs/" + r.ID.String() + "/log.txt") } download class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>
+				@components.Icon("download", "h-3 w-3")
+				{ i18n.T(ctx, "run.download_log") }
+			</a>
+		</div>
+		if len(log.Blocks) == 0 {
+			<p class="px-3.5 py-3 text-[12.5px] text-muted">{ i18n.T(ctx, "run.log.empty") }</p>
+		} else {
+			<div data-log-lines class="max-h-[70vh] overflow-auto pb-1 font-mono text-[12px] leading-[1.65]">
+				for _, b := range log.Blocks {
+					<div data-log-step class="sticky top-0 border-b border-line-soft bg-surface-2 px-3 py-1 text-[11.5px] text-muted">
+						{ b.Step } · { i18n.T(ctx, "run.log.attempt", "n", b.Attempt) }
+						if b.Status != "" {
+							· { components.StateWord(ctx, b.Status) }
+						}
+						if b.ExitCode != nil {
+							· exit { fmt.Sprint(*b.ExitCode) }
+						}
+					</div>
+					if b.Running {
+						<div class="px-3 py-1 font-sans text-faint">{ i18n.T(ctx, "run.log.running", "step", b.Step) }</div>
+					}
+					for _, it := range b.Items {
+						if it.Gap > 0 {
+							<div data-log-gap class="px-3 py-1 font-sans text-[11.5px] text-faint italic">{ i18n.N(ctx, "run.log.gap", it.Gap) }</div>
+						} else {
+							<div
+								data-n={ fmt.Sprint(it.N) }
+								data-level={ it.Level }
+								if it.Cause {
+									id="log-cause"
+								}
+								class={ "grid grid-cols-[3.5rem_minmax(0,1fr)] gap-x-3 px-3", logLevelClass(it.Level) }
+							>
+								<span aria-hidden="true" class="text-right text-faint tabular-nums select-none">{ fmt.Sprint(it.N) }</span>
+								<span data-text class="whitespace-pre">{ it.Text }</span>
+							</div>
+						}
+					}
+				}
+			</div>
+		}
+	</div>
 }
 
 // stepLine is a one-step run's step (screen-run-v2 RV3): what the graph's one
@@ -1386,7 +1564,7 @@ func runIsland(p RunPage) layouts.Island {
 // a running step's stages advance with the page.
 templ stepLine(l StepLine) {
 	<section data-step-line class="mb-3">
-		@components.Panel("Steps", "1") {
+		@components.Panel(i18n.T(ctx, "run.tab.steps"), "1") {
 			<div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2.5 text-[12.5px]">
 				if l.Status == "" {
 					// A definition, not a run: a hollow mark with no state.
@@ -1400,7 +1578,7 @@ templ stepLine(l StepLine) {
 				}
 				if l.Runtime != "" {
 					if l.RuntimeInferred {
-						<span title="inferred from the command" class="rounded-[4px] border border-dashed border-line-strong px-1.5 font-mono text-[11px] text-ink-2">{ runtimeLabel(l.Runtime) }</span>
+						<span title={ i18n.T(ctx, "run.step.inferred") } class="rounded-[4px] border border-dashed border-line-strong px-1.5 font-mono text-[11px] text-ink-2">{ runtimeLabel(l.Runtime) }</span>
 					} else {
 						<span class="rounded-[4px] border border-line-strong px-1.5 font-mono text-[11px] text-ink-2">{ runtimeLabel(l.Runtime) }</span>
 					}
@@ -1467,13 +1645,10 @@ templ stepLine(l StepLine) {
 // late AND that it still read the right window -- which is exactly the pair
 // somebody stares at after finding a gap in a table.
 templ autoParams(r run.Run) {
-	<section class="mt-3">
-		@components.Panel("Auto params", "read by any step as $BREVIS_AUTO_*") {
-			@components.KV(autoItems(r))
-			<p class="border-t border-line-soft px-3.5 py-2 text-[12px] text-faint">
-				The engine works these out for every run. No workflow declares them, and
-				every step can read them — as <code class="font-mono">$BREVIS_AUTO_*</code>.
-			</p>
+	<section>
+		@components.Panel(i18n.T(ctx, "run.params.auto"), i18n.T(ctx, "run.params.auto_hint")) {
+			@components.KV(autoItems(ctx, r))
+			<p class="border-t border-line-soft px-3.5 py-2 text-[12px] text-faint">{ i18n.T(ctx, "run.params.auto_note") }</p>
 		}
 	</section>
 }
@@ -1504,7 +1679,7 @@ templ alertsRaised(raised []alerts.Record) {
 		// error opening under it like the run's -- the words, channel, tries
 		// and dates the cards carried.
 		<section data-alerts class="mt-3">
-			@components.Panel("Alerts", fmt.Sprint(len(raised))) {
+			@components.Panel(i18n.T(ctx, "run.alerts"), fmt.Sprint(len(raised))) {
 				for _, a := range raised {
 					if a.Err != "" {
 						// Shown even on a delivered alert's history? No: the
@@ -1532,16 +1707,16 @@ templ alertsRaised(raised []alerts.Record) {
 
 templ alertLine(a alerts.Record) {
 	@components.State(alertTone(a.State()))
-	<span class="min-w-0 truncate text-ink">{ alertWording(a) }</span>
+	<span class="min-w-0 truncate text-ink">{ alertWording(ctx, a) }</span>
 	<span class="font-mono text-[12px] text-muted">{ a.Channel }</span>
 	if a.Attempts > 0 {
-		<span class="text-[11.5px] text-muted">{ attemptWord(a.Attempts) }</span>
+		<span class="text-[11.5px] text-muted">{ i18n.N(ctx, "run.alert.tries", a.Attempts) }</span>
 	}
 	<span class="ml-auto shrink-0 text-[11.5px] text-faint">
 		if a.DeliveredAt != nil {
 			@components.ShortStamp(a.DeliveredAt)
 		} else {
-			raised
+			{ i18n.T(ctx, "run.alert.raised") }
 			@components.ShortStamp(&a.CreatedAt)
 		}
 	</span>
@@ -1564,25 +1739,18 @@ func alertTone(state string) string {
 // "sending" on its own is ambiguous in the way that matters: it is also what a
 // row looks like when nothing is draining the outbox, so it says which process
 // is supposed to.
-func alertWording(a alerts.Record) string {
-	subject := "run failed"
+func alertWording(ctx context.Context, a alerts.Record) string {
+	subject := i18n.T(ctx, "run.alert.run")
 	if a.Kind == alerts.KindStep && a.NodeID != "" {
-		subject = "step " + a.NodeID + " failed"
+		subject = i18n.T(ctx, "run.alert.step", "step", a.NodeID)
 	}
 	switch a.State() {
 	case "delivered":
-		return subject + " — delivered"
+		return i18n.T(ctx, "run.alert.delivered", "subject", subject)
 	case "undelivered":
-		return subject + " — never delivered"
+		return i18n.T(ctx, "run.alert.undelivered", "subject", subject)
 	}
-	return subject + " — waiting for `brevis alert`"
-}
-
-func attemptWord(n int) string {
-	if n == 1 {
-		return "1 try"
-	}
-	return fmt.Sprint(n) + " tries"
+	return i18n.T(ctx, "run.alert.waiting", "subject", subject)
 }
 
 // duracaoMs adapts the milliseconds the query returns to the existing formatter,
@@ -1612,17 +1780,17 @@ templ stepsOutput(r run.Run, logs []postgres.StepLog) {
 		// because a row that opens is not something a <tr> can do; the roles
 		// say it is a table all the same.
 		<section class="mt-3">
-			@components.PanelLink("Step output", count(len(groups), "step", "steps"),
-				"/runs/"+r.ID.String()+"/log.txt", i18n.T(ctx, "run.download_log")) {
+			// The download is the Logs tab's, beside the log it downloads.
+			@components.Panel(i18n.T(ctx, "run.steps.output"), i18n.N(ctx, "run.steps.count", len(groups))) {
 				<div class="overflow-x-auto">
-					<div data-step-table role="table" aria-label="Step output" class="min-w-[44rem] text-[12.5px]">
+					<div data-step-table role="table" aria-label={ i18n.T(ctx, "run.steps.output") } class="min-w-[44rem] text-[12.5px]">
 						<div role="row" class={ "h-[30px] border-b border-line-soft text-[11.5px] font-medium text-faint", stepGrid }>
-							<span role="columnheader">Step</span>
-							<span role="columnheader">State</span>
-							<span role="columnheader"><span class="sr-only">Retry</span></span>
-							<span role="columnheader">Exit</span>
-							<span role="columnheader" class="text-right">Duration</span>
-							<span role="columnheader">Output</span>
+							<span role="columnheader">{ i18n.T(ctx, "run.steps.step") }</span>
+							<span role="columnheader">{ i18n.T(ctx, "run.steps.state") }</span>
+							<span role="columnheader"><span class="sr-only">{ i18n.T(ctx, "run.steps.retry") }</span></span>
+							<span role="columnheader">{ i18n.T(ctx, "run.steps.exit") }</span>
+							<span role="columnheader" class="text-right">{ i18n.T(ctx, "run.steps.duration") }</span>
+							<span role="columnheader">{ i18n.T(ctx, "run.steps.command") }</span>
 						</div>
 						for _, g := range groups {
 							if g.Mapped {
@@ -1666,20 +1834,15 @@ const stepGrid = "grid grid-cols-[minmax(9rem,1.3fr)_6.5rem_2.5rem_3rem_4.5rem_m
 // named by the item it ran for. A row with neither an error nor a log has
 // nothing to open, and is a plain row.
 templ stepRow(p StepRow) {
-	if p.Err != "" || p.Log != "" {
+	// The row opens on its error alone: the log is the Logs tab's, whole and
+	// numbered, and drawing it here too made a ten-megabyte log a
+	// twenty-megabyte page (screen-runs T5).
+	if p.Err != "" {
 		<details data-step-row role="rowgroup" class="group/row border-b border-line-soft last:border-b-0">
 			<summary role="row" class={ "h-[34px] cursor-pointer list-none hover:bg-surface-2 [&::-webkit-details-marker]:hidden", stepGrid }>
 				@stepCells(p, true)
 			</summary>
-			if p.Err != "" {
-				<p class="mx-3.5 mb-2 rounded-card bg-state-failed/5 px-3 py-2 text-[12px] text-state-failed">{ p.Err }</p>
-			}
-			if p.Log != "" {
-				// `overflow-auto` with a maximum height: a dbt output
-				// with hundreds of lines must not push the rest of the
-				// page off the screen.
-				<pre class="mx-3.5 mb-2.5 max-h-[28rem] overflow-auto rounded-card bg-surface-2 px-3 py-2.5 font-mono text-[0.7rem] leading-relaxed whitespace-pre text-ink">{ p.Log }</pre>
-			}
+			<p class="mx-3.5 mb-2 rounded-card bg-state-failed/5 px-3 py-2 text-[12px] text-state-failed">{ p.Err }</p>
 		</details>
 	} else {
 		<div data-step-row role="row" class={ "h-[34px] border-b border-line-soft last:border-b-0", stepGrid }>
@@ -1720,23 +1883,7 @@ templ stepCells(p StepRow, opens bool) {
 			{ durationMs(p.DurationMs) }
 		}
 	</span>
-	<span role="cell" title={ outputTitle(p.Output) } class="min-w-0 truncate font-mono text-[12px] text-muted">
-		// What the step published, as its node in the flow shows it.
-		for i, o := range p.Output {
-			if i > 0 {
-				<span aria-hidden="true" class="px-1 text-faint">·</span>
-			}
-			<span class="text-faint">{ o.Key }</span> { o.Value }
-		}
-		// The log's absence, said as the cards said it: a step that wrote
-		// nothing is different from one whose log was lost with its pod.
-		if p.Log == "" {
-			if len(p.Output) > 0 {
-				<span aria-hidden="true" class="px-1 text-faint">·</span>
-			}
-			<span class="text-faint italic">no output recorded</span>
-		}
-	</span>
+	<span role="cell" title={ p.Command } class="min-w-0 truncate font-mono text-[12px] text-muted">{ p.Command }</span>
 }
 
 // dag is the island's mount point. The height is fixed on purpose: with `h-full`
@@ -2012,28 +2159,28 @@ func openNote(i postgres.Indicators) string {
 // a dispatcher slot, --max-pods or a retry's backoff gets no line at all.
 templ waitLine(w *postgres.Wait) {
 	<p class="mb-3 -mt-2 text-xs text-muted" data-wait>
-		<span class="text-state-queued">Waiting for</span>
+		<span class="text-state-queued">{ i18n.T(ctx, "run.wait.for") }</span>
 		if w.Group != "" {
-			concurrency group <code class="font-mono text-ink">{ w.Group }</code>
+			{ i18n.T(ctx, "run.wait.group") } <code class="font-mono text-ink">{ w.Group }</code>
 		} else {
-			this workflow's own concurrency
+			{ i18n.T(ctx, "run.wait.own") }
 		}
-		(limit { fmt.Sprint(w.Limit) })
+		({ i18n.T(ctx, "run.wait.limit", "n", w.Limit) })
 		if len(w.Holders) > 0 {
-			— held by
+			— { i18n.T(ctx, "run.wait.held_by") }
 			for i, h := range firstHolders(w.Holders) {
 				if i > 0 {
 					,
 				}
 				<a href={ templ.SafeURL("/runs/" + h.RunID.String()) } class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ h.Workflow }</a>
-				<span class="font-mono">since { components.UTCStamp(&h.Since) }</span>
+				<span class="font-mono">{ i18n.T(ctx, "run.wait.since", "at", components.UTCStamp(&h.Since)) }</span>
 			}
 			if more := len(w.Holders) - len(firstHolders(w.Holders)); more > 0 {
-				and { fmt.Sprint(more) } more
+				{ i18n.T(ctx, "run.wait.more", "n", more) }
 			}
 		}
 		if w.Ahead > 0 {
-			<span>· { aheadOf(w.Ahead) } ahead of it in the queue</span>
+			<span>· { i18n.N(ctx, "run.wait.ahead", w.Ahead) }</span>
 		}
 	</p>
 }
@@ -2046,9 +2193,3 @@ func firstHolders(hs []postgres.Holder) []postgres.Holder {
 	return hs
 }
 
-func aheadOf(n int) string {
-	if n == 1 {
-		return "1 run"
-	}
-	return fmt.Sprintf("%d runs", n)
-}

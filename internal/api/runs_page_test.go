@@ -22,12 +22,22 @@ type runsReads struct {
 	runs   []postgres.RunSummary
 	counts map[string]int
 	asked  *postgres.RunFilter
+	// listed keeps the filter the page was read with; total stands in for a
+	// longer list than the page holds.
+	listed *postgres.RunFilter
+	total  int
 }
 
-func (f runsReads) Runs(context.Context, postgres.RunFilter) ([]postgres.RunSummary, error) {
+func (f runsReads) Runs(_ context.Context, q postgres.RunFilter) ([]postgres.RunSummary, error) {
+	if f.listed != nil {
+		*f.listed = q
+	}
 	return f.runs, nil
 }
 func (f runsReads) CountRuns(context.Context, postgres.RunFilter) (int, error) {
+	if f.total > 0 {
+		return f.total, nil
+	}
 	return len(f.runs), nil
 }
 func (f runsReads) CountRunsByState(_ context.Context, q postgres.RunFilter) (map[string]int, error) {
@@ -43,58 +53,14 @@ func runsUI(reads runsReads) *api.UI {
 	return api.NewUI(reads, nil, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
 }
 
-// THE STATE FILTER IS SEGMENTED, EACH CHOICE WITH ITS COUNT -- read with the
-// rest of the filter (the workflow here) and without the state, or every
-// other choice would read 0.
-func TestTheRunsStatesCountWhatEachWouldShow(t *testing.T) {
-	var asked postgres.RunFilter
-	ui := runsUI(runsReads{
-		counts: map[string]int{"success": 7, "failed": 2, "running": 1},
-		asked:  &asked,
-	})
-	_, body := get(t, ui, "/runs?workflow=daily_sales&state=failed")
-	if asked.State != "" || asked.Workflow != "daily_sales" {
-		t.Errorf("the counts were read with %+v", asked)
-	}
-	if !strings.Contains(body, `aria-label="State"`) {
-		t.Fatal("the state filter is not Segmented")
-	}
-	for _, s := range []struct{ label, count string }{
-		{"Any state", "10"}, {"Success", "7"}, {"Failure", "2"}, {"Running", "1"}, {"Queued", "0"},
-	} {
-		if !segment(s.label, s.count).MatchString(body) {
-			t.Errorf("the filter does not say %s %s", s.label, s.count)
-		}
-	}
-	if regexp.MustCompile(`>\s*Retrying\s*<`).MatchString(body) {
-		t.Error("a state with no run is offered beyond the usual four")
-	}
-	if !strings.Contains(body, `href="/runs?state=success&amp;workflow=daily_sales"`) {
-		t.Error("a state choice drops the workflow")
-	}
-}
-
-// THE DURATION GETS A BAR, AGAINST THE PAGE'S LONGEST RUN: the eye finds the
-// slow one before reading a number. A run with no duration has no bar.
-// A RETRY SAYS SO: `attempt` counts from 0, so the second try is "attempt 2"
-// and a first try says nothing.
-func TestTheRunsRowsBarTheirDurationAndNameARetry(t *testing.T) {
+// A RETRY SAYS SO: `attempt` counts from 0, so the second try is ↻2, its
+// meaning in the tooltip, and a first try says nothing.
+func TestARunsItemMarksARetry(t *testing.T) {
 	ui := runsUI(runsReads{runs: []postgres.RunSummary{
 		{ID: "a", WorkflowSlug: "slow", Status: "success", Duration: dur(4 * time.Minute)},
 		{ID: "b", WorkflowSlug: "half", Status: "failed", Duration: dur(2 * time.Minute), Attempt: 1},
-		{ID: "c", WorkflowSlug: "queued", Status: "queued"},
 	}})
 	_, body := get(t, ui, "/runs")
-	for _, want := range []string{`data-duration-bar style="width:100%;"`, `data-duration-bar style="width:50%;"`} {
-		if !strings.Contains(body, want) {
-			t.Errorf("no %s", want)
-		}
-	}
-	if strings.Count(body, "data-duration-bar") != 2 {
-		t.Error("a run with no duration has a bar")
-	}
-	// `↻2`, its meaning in the tooltip (density-base DB3), where "attempt 2"
-	// was written out in the row.
 	if strings.Count(body, "↻2") != 1 || !strings.Contains(body, `title="attempt 2 of this run"`) || strings.Contains(body, "↻1") {
 		t.Error("the retry is not marked once as ↻2")
 	}
@@ -114,9 +80,8 @@ func rowsGet(t *testing.T, ui *api.UI, path string) (int, string) {
 // THE LIST CAN BE FOLLOWED LIVE. The page carries a "Live" switch, hidden
 // until ui.js can drive it, and the list sits in one region; the same URL
 // with X-Brevis-Fragment: rows answers that region alone -- the filter with
-// its counts, the table, the pages and the error dialogs a new failure needs
-// -- for ui.js to swap every few seconds. Each row says which run it is, so a
-// new one can be told from the rest.
+// its counts, the runs and the pages -- for ui.js to swap every few seconds.
+// Each item says which run it is, so a new one can be told from the rest.
 func TestTheRunsListCanBeFollowedLive(t *testing.T) {
 	ui := runsUI(runsReads{
 		runs: []postgres.RunSummary{
@@ -143,7 +108,6 @@ func TestTheRunsListCanBeFollowedLive(t *testing.T) {
 	}
 	for _, want := range []string{
 		`aria-label="State"`, `data-run-id="11111111-0000-0000-0000-000000000001"`,
-		`id="erro-11111111-0000-0000-0000-000000000001"`,
 	} {
 		if !strings.Contains(frag, want) {
 			t.Errorf("the fragment has no %s", want)

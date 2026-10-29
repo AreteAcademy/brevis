@@ -47,6 +47,16 @@ func (f readsFake) Projects(context.Context) ([]postgres.ProjectSummary, error) 
 	return f.projects, nil
 }
 
+// An empty Runs column, for the tests that open one run and read nothing of
+// the list beside it.
+func (f readsFake) Runs(context.Context, postgres.RunFilter) ([]postgres.RunSummary, error) {
+	return nil, nil
+}
+func (f readsFake) CountRuns(context.Context, postgres.RunFilter) (int, error) { return 0, nil }
+func (f readsFake) CountRunsByState(context.Context, postgres.RunFilter) (map[string]int, error) {
+	return nil, nil
+}
+
 type paletteItem struct {
 	Group, GroupLabel, Label, Hint, Href, Icon, Text, Action string
 }

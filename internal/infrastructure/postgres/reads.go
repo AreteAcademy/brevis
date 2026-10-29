@@ -517,7 +517,12 @@ func (r *ReadRepo) WorkflowRuns(ctx context.Context, slug string, limite int) ([
 
 // RunFilter is the run screen's query. Empty fields do not filter.
 type RunFilter struct {
-	State    string
+	State string
+	// States is several at once -- "in flight" is three -- and is ORed with
+	// nothing: State and States are not meant together.
+	States []string
+	// Workflow is a piece of the slug, matched without case. The whole slug
+	// other screens link with is a piece of itself, so their links still land.
 	Workflow string
 	De       *time.Time
 	Ate      *time.Time
@@ -537,8 +542,11 @@ func (f RunFilter) where() (string, []any) {
 	if f.State != "" {
 		put("status = $%d", f.State)
 	}
+	if len(f.States) > 0 {
+		put("status = ANY($%d)", f.States)
+	}
 	if f.Workflow != "" {
-		put("workflow_slug = $%d", f.Workflow)
+		put(`workflow_slug ILIKE $%d ESCAPE '\'`, "%"+likeLiteral(f.Workflow)+"%")
 	}
 	if f.De != nil {
 		put("criado_em >= $%d", *f.De)
@@ -547,6 +555,12 @@ func (f RunFilter) where() (string, []any) {
 		put("criado_em < $%d", *f.Ate)
 	}
 	return strings.Join(cond, " AND "), args
+}
+
+// likeLiteral makes typed text match itself in a LIKE: a `%` or `_` in the
+// search box is a character somebody is looking for, not a wildcard.
+func likeLiteral(s string) string {
+	return strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(s)
 }
 
 // Runs lists runs with filtering and pagination.

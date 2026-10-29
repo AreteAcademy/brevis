@@ -16,6 +16,28 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: Runs is one screen
+
+The list and the run are one screen now, the first of the UI 2.0 screens.
+`/runs` and `/runs/{id}` are both it -- old links and alerts still land on
+their run -- and each pane scrolls on its own.
+
+- **The list** is a column: search a piece of a workflow's name (`/`), All /
+  Failed / Running (in flight: running, queued, retrying), Newer and Older,
+  and what each workflow runs in. Opening a run swaps the pane without a
+  reload; Back, Forward and the arrow keys walk the runs.
+- **Why it failed** opens a failed run: the step and how it exited, the
+  lines before the cause, how many times in a row, and a button that goes
+  to the line in the log.
+- **The run's log is one**, numbered through every attempt, each line with
+  its level: search, Warnings and Errors, Wrap, Copy and Download. A huge
+  log shows each attempt's last 2,000 lines and the cause; the download has
+  it all. The live refresh keeps the search, the filter and the place.
+- **Tabs**: Logs, Steps (the graph and what each step ran), Parameters (the
+  auto params explained, and the values given), Published context.
+- **The page loads no React** until the Steps tab is opened.
+- In English, Portuguese and Spanish, every word of it.
+
 ### Added: canceling a run
 
 A run that should not be running can be stopped, from the console or the CLI.

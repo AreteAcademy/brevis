@@ -19,6 +19,8 @@ type failingFake struct {
 	err error
 }
 
+func (f failingFake) FailureStreak(context.Context, string) (int, error) { return 0, nil }
+
 func (f failingFake) FailingWorkflows(context.Context) ([]postgres.FailingWorkflow, error) {
 	return make([]postgres.FailingWorkflow, f.n), f.err
 }
@@ -86,6 +88,8 @@ type countingFailing struct {
 	reads *int
 	err   error
 }
+
+func (c countingFailing) FailureStreak(context.Context, string) (int, error) { return 0, nil }
 
 func (c countingFailing) FailingWorkflows(context.Context) ([]postgres.FailingWorkflow, error) {
 	*c.reads++
