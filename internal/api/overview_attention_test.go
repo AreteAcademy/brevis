@@ -105,7 +105,7 @@ func TestTheOverviewOpensWithWhatNeedsYou(t *testing.T) {
 		failed{"vendors_alert_ipma", time.Hour, 3, "Timeout of 60s fetching https://api.ipma.pt\n", nil},
 	)
 	_, body := get(t, ui, "/")
-	if strings.Index(body, "data-attention") > strings.Index(body, "data-overview-meta") {
+	if strings.Index(body, "data-attention") > strings.Index(body, "data-kpis") {
 		t.Error("what needs you is not the first section")
 	}
 	att := attentionOf(t, body)

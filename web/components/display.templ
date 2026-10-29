@@ -51,6 +51,11 @@ templ Stats(items []Stat) {
 						}
 					</dd>
 				}
+				if s.Foot != nil {
+					<dd class="mt-1.5 text-[12px] text-muted">
+						@s.Foot
+					</dd>
+				}
 			</div>
 		}
 	</dl>

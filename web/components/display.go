@@ -28,6 +28,9 @@ type Stat struct {
 	Body templ.Component
 	// Title is the cell's tooltip: how to read what it shows.
 	Title string
+	// Foot is a line under the value -- a link to what the number counts,
+	// the context it needs; nil draws none.
+	Foot templ.Component
 }
 
 // BarSegment is one part of a Stat's bar: its share of the whole (0..1) and

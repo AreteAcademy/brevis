@@ -902,11 +902,6 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 		u.failure(w, r, err)
 		return
 	}
-	emCurso, err := u.leitura.InFlight(ctx, 8)
-	if err != nil {
-		u.failure(w, r, err)
-		return
-	}
 	recentes, err := u.leitura.LatestRuns(ctx, 10)
 	if err != nil {
 		u.failure(w, r, err)
@@ -928,7 +923,6 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 		Now:       time.Now(),
 		Ind:       ind,
 		Buckets:   buckets,
-		EmCurso:   emCurso,
 		Proximas:  nextRuns(schedules, time.Now(), 8, u.log),
 		Recentes:  recentes,
 		Pending:   pending,
