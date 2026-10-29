@@ -252,6 +252,7 @@ func NewUI(l Leitura, d Definitions, e RunsChart, a Actions, al AlertsReader,
 // Registrar wires the routes into the mux.
 func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /{$}", u.overview) // {$} matches the EXACT root, not the prefix
+	mux.HandleFunc("GET /overview/attention", u.overviewAttention)
 	mux.HandleFunc("GET /runs", u.runs)
 	mux.HandleFunc("GET /workflows", u.workflows)
 	mux.HandleFunc("GET /projects", u.projetos)
@@ -1751,7 +1752,30 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u.log.Info("manual run created", "workflow", slug, "run", id)
+	// A rerun from a list -- the Overview's "Needs your attention" -- goes
+	// back to it, saying the run was made and where to follow it: the list
+	// is what the reader is watching.
+	if back := localPath(r.PostForm.Get("back")); back != "" {
+		ctx := i18n.WithLang(r.Context(), i18n.Negotiate(r))
+		layouts.SetFlashLink(w, "run", i18n.T(ctx, "overview.rerun_created", "workflow", slug),
+			i18n.T(ctx, "overview.follow"), "/runs/"+id.String())
+		http.Redirect(w, r, back, http.StatusSeeOther)
+		return
+	}
 	http.Redirect(w, r, "/runs/"+id.String(), http.StatusSeeOther)
+}
+
+// localPath is p when it is a path on this site, "" otherwise. A redirect
+// to wherever the form said is a phishing link with this console's name on
+// it: no scheme, no host, no "//" or "\" a browser reads as one.
+func localPath(p string) string {
+	if !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.ContainsRune(p, '\\') {
+		return ""
+	}
+	if u, err := url.Parse(p); err != nil || u.Scheme != "" || u.Host != "" {
+		return ""
+	}
+	return p
 }
 
 // voltar returns the operator to the screen they clicked from, keeping the filters.

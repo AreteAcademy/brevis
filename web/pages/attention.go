@@ -37,6 +37,15 @@ type AttentionItem struct {
 	FailedAt time.Time
 	Streak   int
 	Cause    *diagnosis.Cause
+
+	// Rerunnable is whether Rerun is offered -- not for a workflow that is
+	// gone -- and Params are the values it sends: the failed run's, as far as
+	// the workflow still declares them.
+	Rerunnable bool
+	Params     map[string]string
+	// Rerunning is the workflow's run in flight, if any: then the item says
+	// so and links to it instead of offering another.
+	Rerunning string
 }
 
 // OrderFailing puts what needs the reader first: a workflow failing again and
@@ -64,4 +73,15 @@ func streakText(ctx context.Context, n int) string {
 		return i18n.T(ctx, "overview.second_time")
 	}
 	return i18n.N(ctx, "run.why.streak", n)
+}
+
+// sortedKeys are a map's keys in order, so a form's fields do not move
+// between two draws of the same item.
+func sortedKeys(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }

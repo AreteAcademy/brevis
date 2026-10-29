@@ -2,9 +2,12 @@ package api
 
 import (
 	"context"
+	"net/http"
+	"time"
 
 	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/AreteAcademy/brevis/web/pages"
 )
 
@@ -47,6 +50,7 @@ func (u *UI) attention(ctx context.Context) pages.Attention {
 		return pages.Attention{}
 	}
 	ordered := pages.OrderFailing(failing)
+	rerunning := u.inFlightBySlug(ctx)
 	var out pages.Attention
 	for i, f := range ordered {
 		if i == pages.AttentionShown {
@@ -59,9 +63,64 @@ func (u *UI) attention(ctx context.Context) pages.Attention {
 				if logs, err := u.execs.LogsDaRun(ctx, f.RunID); err == nil {
 					it.Cause = causeOf(logs, r.Err)
 				}
+				it.Params, it.Rerunnable = u.rerunValues(ctx, r.WorkflowSlug, r.Params)
 			}
 		}
+		it.Rerunning = rerunning[f.Slug]
 		out.Items = append(out.Items, it)
 	}
 	return out
+}
+
+// rerunValues are what Rerun sends: the failed run's values the workflow
+// still declares -- the trigger refuses a name it no longer knows, and a
+// rerun that answers 400 is worse than one that drops a dead value. A
+// workflow that is gone cannot be rerun.
+func (u *UI) rerunValues(ctx context.Context, slug string, used map[string]string) (map[string]string, bool) {
+	if u.defs == nil || u.actions == nil {
+		return nil, false
+	}
+	def, err := u.defs.Definition(ctx, slug)
+	if err != nil {
+		return nil, false
+	}
+	out := map[string]string{}
+	for _, p := range def.Params {
+		if v, ok := used[p.Name]; ok {
+			out[p.Name] = v
+		}
+	}
+	return out, true
+}
+
+// inFlightBySlug is each workflow's run in flight, if any: a failing workflow
+// whose rerun is going says so instead of offering another.
+func (u *UI) inFlightBySlug(ctx context.Context) map[string]string {
+	if u.leitura == nil {
+		return nil
+	}
+	runs, err := u.leitura.InFlight(ctx, 100)
+	if err != nil {
+		u.log.Warn("the runs in flight are unavailable", "error", err)
+		return nil
+	}
+	out := map[string]string{}
+	for _, r := range runs {
+		if _, seen := out[r.WorkflowSlug]; !seen {
+			out[r.WorkflowSlug] = r.ID
+		}
+	}
+	return out
+}
+
+// overviewAttention is "Needs your attention" alone, for the page to follow.
+// In the reader's language and drawn directly: render would also take a
+// flash meant for the next page.
+func (u *UI) overviewAttention(w http.ResponseWriter, r *http.Request) {
+	ctx := i18n.WithLang(r.Context(), i18n.Negotiate(r))
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := pages.AttentionLive(u.attention(ctx), time.Now()).Render(ctx, w); err != nil {
+		u.log.Warn("rendering the attention fragment", "error", err)
+	}
 }

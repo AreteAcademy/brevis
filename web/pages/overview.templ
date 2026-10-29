@@ -15,7 +15,11 @@ import (
 templ Overview(d OverviewData) {
 	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "overview.title"), Active: "overview", Actions: windowToggle(d.Window)}) {
 		<p class="mb-3 -mt-1 max-w-3xl text-[13px] text-muted">{ i18n.T(ctx, "overview.lede") }</p>
-		@attention(d.Attention, d.Now)
+		// The section follows itself every ten seconds: a rerun shows as
+		// going, and the item leaves once its workflow passes.
+		<div id="attention" data-live="/overview/attention" data-live-every="10000">
+			@attention(d.Attention, d.Now)
+		</div>
 		// ONE LINE UNDER THE TITLE (screen-overview-v2 OV2): the window the
 		// page reads, and whether anything runs right now.
 		<p data-overview-meta class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
@@ -96,7 +100,7 @@ templ Overview(d OverviewData) {
 // log -- or, when there is none, a card that says all is well, since an
 // empty space reads as a section that failed to load.
 templ attention(a Attention, now time.Time) {
-	<section id="attention" data-attention class="mb-3">
+	<section data-attention class="mb-3">
 		if a.Total() == 0 {
 			<div data-attention-empty class="flex items-start gap-3 rounded-card border border-state-success/30 bg-state-success/5 px-4 py-3">
 				@components.Icon("check", "mt-0.5 h-4 w-4 shrink-0 text-state-success")
@@ -136,7 +140,26 @@ templ attention(a Attention, now time.Time) {
 									</p>
 								}
 							</div>
-							<a href={ templ.SafeURL("/runs/" + it.RunID.String() + "#logs") } class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>{ i18n.T(ctx, "overview.view_log") }</a>
+							<div class="flex shrink-0 items-center gap-2">
+								<a href={ templ.SafeURL("/runs/" + it.RunID.String() + "#logs") } class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>{ i18n.T(ctx, "overview.view_log") }</a>
+								if it.Rerunning != "" {
+									<a href={ templ.SafeURL("/runs/" + it.Rerunning) } class="inline-flex items-center gap-1.5 text-[12.5px] text-state-running hover:underline">
+										@components.Dot("running")
+										{ i18n.T(ctx, "overview.rerunning") }
+									</a>
+								} else if it.Rerunnable {
+									<form method="post" action={ templ.SafeURL("/workflows/" + it.Workflow + "/trigger") }>
+										<input type="hidden" name="back" value="/"/>
+										for _, k := range sortedKeys(it.Params) {
+											<input type="hidden" name={ "param." + k } value={ it.Params[k] }/>
+										}
+										<button type="submit" class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>
+											@components.Icon("refresh-cw", "h-3 w-3")
+											{ i18n.T(ctx, "overview.rerun") }
+										</button>
+									</form>
+								}
+							</div>
 						</li>
 					}
 				</ul>
@@ -146,4 +169,11 @@ templ attention(a Attention, now time.Time) {
 			</div>
 		}
 	</section>
+}
+
+// AttentionLive is the section alone, for the page that follows it.
+templ AttentionLive(a Attention, now time.Time) {
+	<div data-live-target="attention">
+		@attention(a, now)
+	</div>
 }
