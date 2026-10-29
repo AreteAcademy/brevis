@@ -399,6 +399,8 @@
             if (block.textContent.indexOf("failed") >= 0) failed = true;
           });
 
+          showAllTabs();
+
           // Terminal stops the polling for good. The run is over and nothing
           // about it will change again -- and the indicator says so rather
           // than just disappearing, which would look like a failure.
@@ -854,29 +856,38 @@
   // Overview. This keeps `data-hash` and `aria-selected` current on a tab's
   // click and on hashchange. With no script the panels stack, each an anchor
   // with its heading, and the tab bar is never shown (data-js).
-  document.querySelectorAll("[data-hash-tabs]").forEach(function (host) {
+  //
+  // The click is the document's, not the bar's: on the Runs screen the tabs
+  // sit inside a region the live refresh redraws, and a listener on the old
+  // bar would leave the new one dead. showTabs is called again after such a
+  // redraw, for the same reason.
+  function showTabs(host, key) {
     var bar = host.querySelector("[data-hash-tabs-bar]");
     var panels = host.querySelectorAll("[data-tab-panel]");
     if (!bar || !panels.length) return;
-    function show(key) {
-      var found = false;
-      panels.forEach(function (p) { if (p.getAttribute("data-tab-panel") === key) found = true; });
-      if (!found) key = panels[0].getAttribute("data-tab-panel");
-      document.documentElement.dataset.hash = key;
-      bar.querySelectorAll("[data-tab]").forEach(function (t) {
-        t.setAttribute("aria-selected", t.getAttribute("data-tab") === key ? "true" : "false");
-      });
-    }
-    bar.addEventListener("click", function (e) {
-      var t = e.target && typeof e.target.closest === "function" ? e.target.closest("[data-tab]") : null;
-      if (!t) return;
-      var key = t.getAttribute("data-tab");
-      history.replaceState(history.state, "", "#" + key);
-      show(key);
+    var found = false;
+    panels.forEach(function (p) { if (p.getAttribute("data-tab-panel") === key) found = true; });
+    if (!found) key = panels[0].getAttribute("data-tab-panel");
+    document.documentElement.dataset.hash = key;
+    bar.querySelectorAll("[data-tab]").forEach(function (t) {
+      t.setAttribute("aria-selected", t.getAttribute("data-tab") === key ? "true" : "false");
     });
-    window.addEventListener("hashchange", function () { show(location.hash.slice(1)); });
-    show(location.hash.slice(1));
+  }
+  function showAllTabs() {
+    document.querySelectorAll("[data-hash-tabs]").forEach(function (host) {
+      showTabs(host, location.hash.slice(1));
+    });
+  }
+  document.addEventListener("click", function (e) {
+    var t = e.target && typeof e.target.closest === "function" ? e.target.closest("[data-hash-tabs-bar] [data-tab]") : null;
+    var host = t && t.closest("[data-hash-tabs]");
+    if (!host) return;
+    var key = t.getAttribute("data-tab");
+    history.replaceState(history.state, "", "#" + key);
+    showTabs(host, key);
   });
+  window.addEventListener("hashchange", showAllTabs);
+  showAllTabs();
 
   // A preview's empty columns (`[data-null-toggle]`, screen-load-v2 LV4):
   // the server marked them, the CSS hides them while the preview carries
@@ -1361,6 +1372,7 @@
         runPane.querySelectorAll("input[data-lista]").forEach(listChips);
         runPane.querySelectorAll("form[data-run-form]").forEach(runPreview);
         if (window.BrevisDag) window.BrevisDag.mount(runPane.querySelector("#dag"));
+        showAllTabs();
 
         if (push) history.pushState({ run: true }, "", href);
         var url = new URL(href, window.location.href);

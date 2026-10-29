@@ -11,9 +11,9 @@ import (
 
 // STEP OUTPUT IS A TABLE WHOSE ROWS OPEN (screen-run-v2 RV4): one 34px row per
 // attempt under a 30px header -- step, state, retry, exit, duration, what it
-// published -- and every field the cards showed is still there: the error and
-// the log open under their row, with no script. A mapped step is one row that
-// opens to its instances.
+// published -- and every field the cards showed is still there: the error
+// opens under its row, with no script, and the log is the Logs tab's
+// (screen-runs T5). A mapped step is one row that opens to its instances.
 func TestStepOutputIsATableWithNothingLost(t *testing.T) {
 	r, logs := reportedRun(t)
 	code := 3
@@ -37,13 +37,17 @@ func TestStepOutputIsATableWithNothingLost(t *testing.T) {
 	}
 	text := strings.Join(strings.Fields(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(table, " ")), " ")
 	for _, want := range []string{"discover", "partitions", "/data/incoming", "↻2", "1.5s",
-		"exited with code 3", "line one", "line two", "load", "2/3 ok", "2026-09-05", "2026-09-07", "no output recorded"} {
+		"exited with code 3", "load", "2/3 ok", "2026-09-05", "2026-09-07", "no output recorded"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the table lost %q", want)
 		}
 	}
 	if !strings.Contains(table, `data-col="exit" class="font-mono text-[12px] text-muted">3</span>`) {
 		t.Error("the exit code is not in its column")
+	}
+	logTab := page[strings.Index(page, `id="logs" data-tab-panel`):strings.Index(page, `id="steps" data-tab-panel`)]
+	if !strings.Contains(logTab, "line one") || !strings.Contains(logTab, "line two") {
+		t.Error("the step's log is not in the Logs tab")
 	}
 	if !strings.Contains(table, "<details data-step-group") {
 		t.Error("the mapped step is not one row that opens")

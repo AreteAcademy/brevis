@@ -1172,6 +1172,7 @@ templ RunDetail(p RunPage) {
 		if p.Step == nil {
 			@dag("/api/runs/"+r.ID.String()+"/graph", p.Graph)
 		}
+		@templ.Raw("<style>" + hashTabsCSS("run-tabs", "logs", "steps", "params") + "</style>")
 		<div id="run-body">
 			@runBody(p)
 		</div>
@@ -1381,13 +1382,90 @@ templ phases(ps []Phase) {
 	</ol>
 }
 
+// runBody is the run's tabs (screen-runs T5): Logs first, then its steps,
+// then its parameters. Tabs by the hash -- a link can open one, and the CSS
+// written beside the live region shows it before the first paint -- and
+// stacked, each with its heading, where no script runs. Inside the live
+// region, so a step that ends adds its lines without a reload.
 templ runBody(p RunPage) {
-	if p.Step != nil {
-		@stepLine(*p.Step)
-	}
-	@autoParams(p.Run)
-	@alertsRaised(p.Raised)
-	@stepsOutput(p.Run, p.Logs)
+	{{ log := RunLogOf(p.Logs, p.Cause) }}
+	<div id="run-tabs" data-hash-tabs>
+		<div data-hash-tabs-bar data-js class="mb-3">
+			@components.Tabs(i18n.T(ctx, "run.tabs"), []components.Tab{
+				{Key: "logs", Label: i18n.T(ctx, "run.tab.logs"), Count: fmt.Sprint(log.Lines), Selected: true},
+				{Key: "steps", Label: i18n.T(ctx, "run.tab.steps"), Count: fmt.Sprint(len(StepOutputs(p.Run, p.Logs)))},
+				{Key: "params", Label: i18n.T(ctx, "run.tab.params"), Count: fmt.Sprint(len(autoItems(p.Run)))},
+			})
+		</div>
+		<section id="logs" data-tab-panel="logs" class="mb-3">
+			<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.logs") }</h2>
+			@logsPanel(p.Run, log)
+		</section>
+		<section id="steps" data-tab-panel="steps" class="mb-3">
+			<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.steps") }</h2>
+			if p.Step != nil {
+				@stepLine(*p.Step)
+			}
+			@stepsOutput(p.Run, p.Logs)
+			@alertsRaised(p.Raised)
+		</section>
+		<section id="params" data-tab-panel="params" class="mb-3">
+			<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "run.tab.params") }</h2>
+			@autoParams(p.Run)
+		</section>
+	</div>
+}
+
+// logsPanel is the run's log as one (screen-runs T5): each attempt under its
+// heading, each line numbered with the level it reads as, the line the run
+// failed on marked for the head's "go to the error", and the lines a huge
+// log leaves out counted, with the whole log one click away.
+templ logsPanel(r run.Run, log RunLog) {
+	<div data-log class="overflow-hidden rounded-card border border-line bg-surface">
+		<div data-log-tools class="flex items-center justify-end gap-2 border-b border-line-soft px-3 py-2">
+			<a href={ templ.SafeURL("/runs/" + r.ID.String() + "/log.txt") } download class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>
+				@components.Icon("download", "h-3 w-3")
+				{ i18n.T(ctx, "run.download_log") }
+			</a>
+		</div>
+		if len(log.Blocks) == 0 {
+			<p class="px-3.5 py-3 text-[12.5px] text-muted">{ i18n.T(ctx, "run.log.empty") }</p>
+		} else {
+			<div data-log-lines class="max-h-[70vh] overflow-auto pb-1 font-mono text-[12px] leading-[1.65]">
+				for _, b := range log.Blocks {
+					<div data-log-step class="sticky top-0 border-b border-line-soft bg-surface-2 px-3 py-1 text-[11.5px] text-muted">
+						{ b.Step } · { i18n.T(ctx, "run.log.attempt", "n", b.Attempt) }
+						if b.Status != "" {
+							· { b.Status }
+						}
+						if b.ExitCode != nil {
+							· exit { fmt.Sprint(*b.ExitCode) }
+						}
+					</div>
+					if b.Running {
+						<div class="px-3 py-1 font-sans text-faint">{ i18n.T(ctx, "run.log.running", "step", b.Step) }</div>
+					}
+					for _, it := range b.Items {
+						if it.Gap > 0 {
+							<div data-log-gap class="px-3 py-1 font-sans text-[11.5px] text-faint italic">{ i18n.N(ctx, "run.log.gap", it.Gap) }</div>
+						} else {
+							<div
+								data-n={ fmt.Sprint(it.N) }
+								data-level={ it.Level }
+								if it.Cause {
+									id="log-cause"
+								}
+								class={ "grid grid-cols-[3.5rem_minmax(0,1fr)] gap-x-3 px-3", logLevelClass(it.Level) }
+							>
+								<span aria-hidden="true" class="text-right text-faint tabular-nums select-none">{ fmt.Sprint(it.N) }</span>
+								<span class="whitespace-pre">{ it.Text }</span>
+							</div>
+						}
+					}
+				}
+			</div>
+		}
+	</div>
 }
 
 // runIsland is the graph's island for a run that has a graph. A one-step run
@@ -1686,20 +1764,15 @@ const stepGrid = "grid grid-cols-[minmax(9rem,1.3fr)_6.5rem_2.5rem_3rem_4.5rem_m
 // named by the item it ran for. A row with neither an error nor a log has
 // nothing to open, and is a plain row.
 templ stepRow(p StepRow) {
-	if p.Err != "" || p.Log != "" {
+	// The row opens on its error alone: the log is the Logs tab's, whole and
+	// numbered, and drawing it here too made a ten-megabyte log a
+	// twenty-megabyte page (screen-runs T5).
+	if p.Err != "" {
 		<details data-step-row role="rowgroup" class="group/row border-b border-line-soft last:border-b-0">
 			<summary role="row" class={ "h-[34px] cursor-pointer list-none hover:bg-surface-2 [&::-webkit-details-marker]:hidden", stepGrid }>
 				@stepCells(p, true)
 			</summary>
-			if p.Err != "" {
-				<p class="mx-3.5 mb-2 rounded-card bg-state-failed/5 px-3 py-2 text-[12px] text-state-failed">{ p.Err }</p>
-			}
-			if p.Log != "" {
-				// `overflow-auto` with a maximum height: a dbt output
-				// with hundreds of lines must not push the rest of the
-				// page off the screen.
-				<pre class="mx-3.5 mb-2.5 max-h-[28rem] overflow-auto rounded-card bg-surface-2 px-3 py-2.5 font-mono text-[0.7rem] leading-relaxed whitespace-pre text-ink">{ p.Log }</pre>
-			}
+			<p class="mx-3.5 mb-2 rounded-card bg-state-failed/5 px-3 py-2 text-[12px] text-state-failed">{ p.Err }</p>
 		</details>
 	} else {
 		<div data-step-row role="row" class={ "h-[34px] border-b border-line-soft last:border-b-0", stepGrid }>

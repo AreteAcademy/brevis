@@ -1526,24 +1526,11 @@ func (u *UI) runLog(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(&b, " · exit %d", *l.ExitCode)
 		}
 		b.WriteString("\n")
-		for _, text := range []string{l.Log, ownLine(l.Err, l.Log)} {
-			if text != "" {
-				b.WriteString(strings.TrimSuffix(text, "\n") + "\n")
-			}
+		if text := pages.AttemptText(l); text != "" {
+			b.WriteString(text + "\n")
 		}
 	}
 	_, _ = io.WriteString(w, b.String())
-}
-
-// ownLine is what the engine's error for a step adds to its log. The error is
-// a line and then the log's last lines, for the alert; when those are the end
-// of log, only the line is new.
-func ownLine(stepErr, log string) string {
-	line, tail, ok := strings.Cut(stepErr, "\n")
-	if ok && log != "" && strings.HasSuffix(strings.TrimRight(log, "\n"), strings.TrimRight(tail, "\n")) {
-		return line
-	}
-	return stepErr
 }
 
 // fileSafe keeps a file name to letters, digits, '-', '_' and '.': a slug is

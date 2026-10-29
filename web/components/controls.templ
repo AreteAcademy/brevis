@@ -105,7 +105,7 @@ templ Tabs(label string, tabs []Tab) {
 				data-tab={ tb.Key }
 				aria-selected={ ariaBool(tb.Selected) }
 				class="-mb-px shrink-0 border-b-2 border-transparent px-3 py-2 text-[0.82rem] whitespace-nowrap text-muted transition-colors duration-150 hover:text-ink aria-selected:border-ink aria-selected:text-ink"
-			>{ tb.Label }</button>
+			>{ tb.Label }<span class={ tabCount(tb.Count) }>{ tb.Count }</span></button>
 		}
 	</div>
 }
