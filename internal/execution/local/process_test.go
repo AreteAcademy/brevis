@@ -3,8 +3,11 @@ package local
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
@@ -143,4 +146,47 @@ func hasLog(events []execution.Event, msg, stream string) bool {
 		}
 	}
 	return false
+}
+
+// A STEP IS STOPPED WITH EVERYTHING ITS SHELL STARTED. Killing only the `sh -c`
+// left its child orphaned, holding stdout: the step did not end until the
+// child did, and a run canceled from the console stayed `running` for as long
+// as the child's sleep.
+func TestStoppingAStepKillsWhatItsShellStarted(t *testing.T) {
+	p := executor(t)
+	ctx, stop := context.WithCancel(context.Background())
+	defer stop()
+	ev, err := p.Execute(ctx, execution.TaskExec{
+		ExecutionID: "6", NodeID: "n", Command: "sleep 30 & echo $!; wait",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var child int
+	for e := range ev {
+		if e.Kind == execution.EventLog {
+			if child, err = strconv.Atoi(strings.TrimSpace(e.Message)); err != nil {
+				t.Fatalf("the child's pid: %v", err)
+			}
+			break
+		}
+	}
+	stop()
+
+	ended := make(chan struct{})
+	go func() { defer close(ended); collectOutput(t, ev) }()
+	select {
+	case <-ended:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the step had not ended 5s after it was stopped; its child holds stdout")
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for syscall.Kill(child, 0) == nil {
+		if time.Now().After(deadline) {
+			_ = syscall.Kill(child, syscall.SIGKILL)
+			t.Fatalf("the shell's child %d outlived the step", child)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }

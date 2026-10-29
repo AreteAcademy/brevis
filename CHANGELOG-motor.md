@@ -33,6 +33,14 @@ was retried.
   when the console has no login.
 - **Migration 00030** adds `runs.cancel_requested_at` and `runs.canceled_by`.
 
+### Fixed: stopping a local step stops what its shell started
+
+The local executor (`BREVIS_ENV=local`, and `brevis run`) killed only the
+`sh -c`. A child it had started was orphaned holding stdout, and the step --
+canceled, timed out or shut down -- did not end until the child did. Each step
+now runs in its own process group and the whole group is killed, as the remote
+agent already did. `brevis run` stops its steps on Ctrl-C.
+
 ### Fixed: a failed run records when it ended
 
 A run that failed for good kept `terminado_em` empty, so the events feed never

@@ -447,7 +447,12 @@ func cmdRun() *cobra.Command {
 				Env:    config.TasksEnvironment(config.TaskEnvFromEnvironment()),
 				Report: consoleReporter{},
 			}
-			if err := runner.Run(cmd.Context(), w); err != nil {
+			// Ctrl-C stops the steps. Each runs in its own process group, so
+			// the terminal's signal no longer reaches them; the context is
+			// what kills the group.
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+			if err := runner.Run(ctx, w); err != nil {
 				return err
 			}
 			fmt.Printf("\nworkflow %s finished\n", w.Slug)

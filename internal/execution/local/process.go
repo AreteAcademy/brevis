@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
@@ -116,6 +117,12 @@ func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-
 	// argv. Accepting the line is the point of `run:`.
 	cmd := exec.CommandContext(ctx, p.shell, "-c", t.Command)
 	cmd.Dir = t.WorkDir
+	// Its own process group, and the context kills the whole group: the shell
+	// AND whatever it spawned, as the agent does. Killing only the shell left
+	// its child orphaned, holding stdout, and the step -- canceled, timed out
+	// or shut down -- did not end until the child did.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 
 	// An explicit environment, without inheriting the parent process's: the
 	// orchestrator carries credentials a task must not see by accident.
