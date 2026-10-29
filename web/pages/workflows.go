@@ -132,7 +132,7 @@ func scheduleZone(sum *postgres.WorkflowSummary) string {
 func overviewKPIs(ctx context.Context, d OverviewData) []components.Stat {
 	i := d.Ind
 	finished := i.Succeeded + i.Failed
-	success := components.Stat{Label: i18n.T(ctx, "overview.kpi.success"), Sub: d.Window.Label, Dot: "bg-state-success", Value: "—"}
+	success := components.Stat{Label: i18n.T(ctx, "overview.kpi.success"), Sub: windowLabel(ctx, d.Window), Dot: "bg-state-success", Value: "—"}
 	failures := components.Stat{Label: i18n.T(ctx, "overview.kpi.failures"), Value: i18n.Number(ctx, int64(i.Failed))}
 	if finished > 0 {
 		success.Value = percent(ctx, i.Succeeded, finished)

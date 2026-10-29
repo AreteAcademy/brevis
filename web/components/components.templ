@@ -580,14 +580,14 @@ templ ErrorButton(runID string) {
 	<a
 		href={ templ.SafeURL("#erro-" + runID) }
 		data-dialogo={ "erro-" + runID }
-		title="See the error"
+		title={ i18n.T(ctx, "run.error.see") }
 		class="inline-flex items-center gap-1 rounded-card border border-state-failed/30 bg-state-failed/5 px-2.5 py-1 text-[0.7rem] font-medium text-state-failed transition-colors hover:bg-state-failed/10"
 	>
 		<svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6">
 			<circle cx="6" cy="6" r="4.6"></circle>
 			<path d="M6 3.4v3M6 8.4v.2" stroke-linecap="round"></path>
 		</svg>
-		failure
+		{ i18n.T(ctx, "run.error.button") }
 	</a>
 }
 
@@ -598,7 +598,7 @@ templ ErrorDialog(runID, workflow, status, message string) {
 	>
 		<div class="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
 			<div>
-				<p class="text-[11.5px] text-muted">Run failure</p>
+				<p class="text-[11.5px] text-muted">{ i18n.T(ctx, "run.error.title") }</p>
 				<p class="display mt-1 text-2xl">{ workflow }</p>
 			</div>
 			// `method="dialog"` closes without JavaScript: the browser itself is
@@ -608,14 +608,14 @@ templ ErrorDialog(runID, workflow, status, message string) {
 				<button
 					autofocus
 					class="rounded-card border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-line-strong hover:text-ink focus-visible:border-gold focus-visible:text-ink"
-					aria-label="Close"
-				>close</button>
+					aria-label={ i18n.T(ctx, "dialog.close") }
+				>{ i18n.T(ctx, "dialog.close_word") }</button>
 			</form>
 		</div>
 		<div class="px-6 py-5">
 			<div class="mb-4 flex flex-wrap items-center gap-3 text-xs">
 				@State(status)
-				<a href={ templ.SafeURL("/runs/" + runID) } class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">open the run</a>
+				<a href={ templ.SafeURL("/runs/" + runID) } class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "run.error.open") }</a>
 				<span class="font-mono text-[0.7rem] text-muted/70">{ runID }</span>
 			</div>
 			<pre class="max-h-[50vh] overflow-auto rounded-card border border-state-failed/20 bg-state-failed/5 px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-state-failed">{ message }</pre>

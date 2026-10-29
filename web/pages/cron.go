@@ -1,9 +1,12 @@
 package pages
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // CronText says a schedule in words -- "every day at 04:00" -- for the few
@@ -15,7 +18,13 @@ import (
 // The shapes: every N minutes (N dividing the hour), hourly at :MM, every
 // day, weekdays (1-5) and one day of the month (up to the 28th, which every
 // month has) at HH:MM. The hour is the schedule's own timezone's.
-func CronText(expr string) string {
+//
+// In English: the screens that have not moved to the catalog yet call this;
+// CronTextIn is the same sentence in the reader's language.
+func CronText(expr string) string { return CronTextIn(context.Background(), expr) }
+
+// CronTextIn is CronText in the context's language.
+func CronTextIn(ctx context.Context, expr string) string {
 	f := strings.Fields(expr)
 	if len(f) != 5 {
 		return ""
@@ -27,7 +36,7 @@ func CronText(expr string) string {
 
 	if hour == "*" && dom == "*" && dow == "*" {
 		if min == "*" {
-			return "every minute"
+			return i18n.T(ctx, "cron.every_minute")
 		}
 		if step, ok := strings.CutPrefix(min, "*/"); ok {
 			n, ok := number(step, 1, 30)
@@ -35,12 +44,12 @@ func CronText(expr string) string {
 				return ""
 			}
 			if n == 1 {
-				return "every minute"
+				return i18n.T(ctx, "cron.every_minute")
 			}
-			return fmt.Sprintf("every %d minutes", n)
+			return i18n.T(ctx, "cron.every_n", "n", n)
 		}
 		if m, ok := number(min, 0, 59); ok {
-			return fmt.Sprintf("hourly at :%02d", m)
+			return i18n.T(ctx, "cron.hourly", "m", fmt.Sprintf("%02d", m))
 		}
 		return ""
 	}
@@ -53,12 +62,12 @@ func CronText(expr string) string {
 	at := fmt.Sprintf("%02d:%02d", h, m)
 	switch {
 	case dom == "*" && dow == "*":
-		return "every day at " + at
+		return i18n.T(ctx, "cron.daily", "at", at)
 	case dom == "*" && dow == "1-5":
-		return "weekdays at " + at
+		return i18n.T(ctx, "cron.weekdays", "at", at)
 	case dow == "*":
 		if d, ok := number(dom, 1, 28); ok {
-			return fmt.Sprintf("on day %d of every month at %s", d, at)
+			return i18n.T(ctx, "cron.monthly", "d", d, "at", at)
 		}
 	}
 	return ""

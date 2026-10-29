@@ -59,12 +59,12 @@ func windowToggle(w Window) templ.Component {
 }
 
 templ windowToggleT(current Window) {
-	<nav aria-label="Window" class="flex items-center rounded-card border border-line text-[12px]">
+	<nav aria-label={ i18n.T(ctx, "window.label") } class="flex items-center rounded-card border border-line text-[12px]">
 		for _, w := range overviewWindows {
 			if w.Key == current.Key {
-				<a href={ templ.SafeURL("/?window=" + w.Key) } aria-current="page" class="bg-surface-2 px-2.5 py-1 font-medium text-ink">{ w.Key }</a>
+				<a href={ templ.SafeURL("/?window=" + w.Key) } aria-current="page" class="bg-surface-2 px-2.5 py-1 font-medium text-ink">{ windowShort(ctx, w) }</a>
 			} else {
-				<a href={ templ.SafeURL("/?window=" + w.Key) } class="px-2.5 py-1 text-muted hover:text-ink">{ w.Key }</a>
+				<a href={ templ.SafeURL("/?window=" + w.Key) } class="px-2.5 py-1 text-muted hover:text-ink">{ windowShort(ctx, w) }</a>
 			}
 		}
 	</nav>
@@ -97,7 +97,7 @@ templ nextTriggers(d OverviewData) {
 								}
 							</div>
 							<div class="mt-0.5 flex items-baseline justify-between gap-3 text-[12px]">
-								<span class="min-w-0 truncate text-muted">{ CronText(p.Cron) }</span>
+								<span class="min-w-0 truncate text-muted">{ CronTextIn(ctx, p.Cron) }</span>
 								<span class="shrink-0 font-mono text-[11.5px] text-faint">{ p.Cron }</span>
 							</div>
 						</li>
@@ -819,14 +819,14 @@ templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
 			<table class="ct w-full text-sm">
 				<thead>
 					<tr class="border-b border-line bg-parchment-soft/60 text-left">
-						@th("State", "pl-6")
+						@th(i18n.T(ctx, "runs.col.state"), "pl-6")
 						if o.Workflow {
-							@th("Workflow", "")
+							@th(i18n.T(ctx, "runs.col.workflow"), "")
 						}
-						@th("Trigger", "")
-						@th("Slot", "")
-						@th("Duration", "")
-						@th("Created", "text-right")
+						@th(i18n.T(ctx, "runs.col.trigger"), "")
+						@th(i18n.T(ctx, "runs.col.slot"), "")
+						@th(i18n.T(ctx, "runs.col.duration"), "")
+						@th(i18n.T(ctx, "runs.col.created"), "text-right")
 						@th("", "w-16 pr-6")
 					</tr>
 				</thead>
@@ -858,7 +858,7 @@ templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
 									</span>
 								</td>
 							}
-							<td class="px-3 py-3 text-xs text-muted">{ r.TriggerType }</td>
+							<td class="px-3 py-3 text-xs text-muted">{ triggerWord(ctx, r.TriggerType) }</td>
 							<td class="px-3 py-3 text-xs tabular-nums text-muted">@components.ShortStamp(r.LogicalDate)</td>
 							<td class="px-3 py-3 text-xs tabular-nums text-muted">
 								{ components.Duration(r.Duration) }
@@ -869,7 +869,7 @@ templ runsTableWith(runs []postgres.RunSummary, p Pagination, o runsOpts) {
 								}
 							</td>
 							<td class="px-3 py-3 text-right text-xs text-muted">
-								{ components.When(&r.CreatedAt) }
+								{ i18n.Since(ctx, time.Now(), r.CreatedAt) }
 							</td>
 							<td class="px-3 py-3 pr-6 text-right">
 								if r.Err != "" {
@@ -1258,7 +1258,7 @@ templ runHead(p RunPage) {
 	<dl class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px]">
 		<div class="flex items-baseline gap-1.5">
 			<dt class="text-muted">{ i18n.T(ctx, "run.trigger") }</dt>
-			<dd class="text-ink">{ r.TriggerType }</dd>
+			<dd class="text-ink">{ triggerWord(ctx, r.TriggerType) }</dd>
 		</div>
 		if r.LogicalDate != nil {
 			<div class="flex items-baseline gap-1.5">

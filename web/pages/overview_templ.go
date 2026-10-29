@@ -83,7 +83,7 @@ func Overview(d OverviewData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div>  <div class=\"mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_380px]\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div>  <div class=\"mt-3 grid grid-cols-1 gap-3 min-[1101px]:grid-cols-[1fr_380px]\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -403,7 +403,7 @@ func attention(a Attention, now time.Time) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"min-w-0 flex-1\"><p class=\"text-[13px]\"><span class=\"font-mono text-ink\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"min-w-0 flex-1 max-[640px]:basis-[calc(100%-2rem)]\"><p class=\"text-[13px]\"><span class=\"font-mono text-ink\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -739,7 +739,7 @@ func attention(a Attention, now time.Time) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<div class=\"min-w-0 flex-1\"><p class=\"text-[13px]\"><span class=\"font-mono break-all text-ink\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<div class=\"min-w-0 flex-1 max-[640px]:basis-[calc(100%-2rem)]\"><p class=\"text-[13px]\"><span class=\"font-mono break-all text-ink\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
