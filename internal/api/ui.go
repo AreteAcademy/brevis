@@ -25,7 +25,6 @@ import (
 	"github.com/AreteAcademy/brevis/internal/auth"
 	"github.com/AreteAcademy/brevis/internal/branding"
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
-	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	sch "github.com/AreteAcademy/brevis/internal/domain/schedule"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
@@ -924,14 +923,15 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u.render(w, r, pages.Overview(pages.OverviewData{
-		Window:   window,
-		Now:      time.Now(),
-		Ind:      ind,
-		Buckets:  buckets,
-		EmCurso:  emCurso,
-		Proximas: nextRuns(schedules, time.Now(), 8, u.log),
-		Recentes: recentes,
-		Pending:  pending,
+		Window:    window,
+		Now:       time.Now(),
+		Ind:       ind,
+		Buckets:   buckets,
+		EmCurso:   emCurso,
+		Proximas:  nextRuns(schedules, time.Now(), 8, u.log),
+		Recentes:  recentes,
+		Pending:   pending,
+		Attention: u.attention(ctx),
 	}))
 }
 
@@ -1635,14 +1635,7 @@ func (u *UI) whyItFailed(ctx context.Context, p *pages.RunPage) {
 	if p.Run.Status != run.StatusFailed && p.Run.Status != run.StatusRetrying {
 		return
 	}
-	attempts := make([]diagnosis.StepAttempt, 0, len(p.Logs))
-	for _, l := range p.Logs {
-		attempts = append(attempts, diagnosis.StepAttempt{
-			Step: l.NodeID, MapIndex: l.MapIndex, Attempt: l.Attempt, Status: l.Status,
-			ExitCode: l.ExitCode, Err: l.Err, Log: l.Log, StartedAt: l.StartedAt,
-		})
-	}
-	p.Cause = diagnosis.Why(attempts, p.Run.Err)
+	p.Cause = causeOf(p.Logs, p.Run.Err)
 	if p.Run.Status == run.StatusFailed && u.failing != nil {
 		n, err := u.failing.FailureStreak(ctx, p.Run.WorkflowSlug)
 		if err != nil {

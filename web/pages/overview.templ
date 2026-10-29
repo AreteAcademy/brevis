@@ -1,0 +1,149 @@
+package pages
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
+	"github.com/AreteAcademy/brevis/web/layouts"
+)
+
+// Overview is the screen that answers, at a glance and in this order, what
+// needs the reader, how the runs are going, what fires next and what just
+// happened (screen-overview).
+templ Overview(d OverviewData) {
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "overview.title"), Active: "overview", Actions: windowToggle(d.Window)}) {
+		<p class="mb-3 -mt-1 max-w-3xl text-[13px] text-muted">{ i18n.T(ctx, "overview.lede") }</p>
+		@attention(d.Attention, d.Now)
+		// ONE LINE UNDER THE TITLE (screen-overview-v2 OV2): the window the
+		// page reads, and whether anything runs right now.
+		<p data-overview-meta class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
+			<span>{ d.Window.Label }</span>
+			<span class="text-faint">·</span>
+			// Running and queued said apart, each linked to its own filter: a
+			// queued run called "running" opened an empty list.
+			{{ running, retrying, queued := inFlightCounts(d.EmCurso) }}
+			if running+retrying+queued == 0 {
+				<span class="inline-flex items-center gap-1.5"><span class="h-[7px] w-[7px] rounded-full bg-line-strong"></span>nothing running</span>
+			}
+			if running > 0 {
+				<a href="/runs?state=running" class="inline-flex items-center gap-1.5 text-state-running hover:underline"><span class="h-[7px] w-[7px] rounded-full bg-state-running"></span>{ fmt.Sprint(running) } running</a>
+			}
+			if retrying > 0 {
+				<a href="/runs?state=retrying" class="inline-flex items-center gap-1.5 text-state-retrying hover:underline"><span class="h-[7px] w-[7px] rounded-full bg-state-retrying"></span>{ fmt.Sprint(retrying) } retrying</a>
+			}
+			if queued > 0 {
+				<a href="/runs?state=queued" class="inline-flex items-center gap-1.5 text-state-queued hover:underline"><span class="h-[7px] w-[7px] rounded-full bg-state-queued"></span>{ fmt.Sprint(queued) } queued</a>
+			}
+		</p>
+		@components.Stats(overviewStats(d))
+		// THE CHART AND WHAT RUNS NEXT, SIDE BY SIDE (screen-overview-v2 OV3):
+		// the donut's four counts are in the strip now.
+		<div class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_380px]">
+			@components.Panel(chartTitle(d.Window), "") {
+				<div class="px-3.5 py-3">
+					<p class="mb-3 text-[12.5px] text-muted">
+						Count and average duration over the { d.Window.Label }.
+					</p>
+					@components.RunsChart(d.Buckets)
+				</div>
+			}
+			@nextTriggers(d)
+		</div>
+		// IN PROGRESS ONLY WHEN SOMETHING RUNS (screen-overview-v2 OV4): the
+		// head says "nothing running" otherwise.
+		if len(d.EmCurso) > 0 {
+			<section class="mt-3">
+				@components.PanelLink("In progress", fmt.Sprint(len(d.EmCurso)), "/runs", "all runs") {
+					<table class="ct w-full text-[12.5px]">
+						<thead>
+							<tr class="text-left">
+								@th("Workflow", "pl-3.5")
+								@th("Trigger", "")
+								@th("Started", "")
+								@th("State", "pr-3.5 text-right")
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-line-soft">
+							for _, r := range d.EmCurso {
+								<tr>
+									<td class="px-2.5 pl-3.5">
+										<a href={ templ.SafeURL("/runs/" + r.ID) } class="font-mono text-[12px] text-ink hover:underline">{ r.WorkflowSlug }</a>
+									</td>
+									<td class="px-2.5 text-muted">{ r.TriggerType }</td>
+									<td class="px-2.5 text-muted tabular-nums">{ components.When(startOrCreated(r)) }</td>
+									<td class="px-2.5 pr-3.5 text-right">
+										@components.State(r.Status)
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				}
+			</section>
+		}
+		<section class="mt-3">
+			@components.PanelLink("Recent runs", "", "/runs", "see all") {
+				@runsTableWith(d.Recentes, Pagination{}, runsOpts{Workflow: true, Bare: true})
+			}
+		</section>
+	}
+}
+
+// attention is "Needs your attention", always the first section: each
+// workflow whose last run failed, with why in one line and the way to its
+// log -- or, when there is none, a card that says all is well, since an
+// empty space reads as a section that failed to load.
+templ attention(a Attention, now time.Time) {
+	<section id="attention" data-attention class="mb-3">
+		if a.Total() == 0 {
+			<div data-attention-empty class="flex items-start gap-3 rounded-card border border-state-success/30 bg-state-success/5 px-4 py-3">
+				@components.Icon("check", "mt-0.5 h-4 w-4 shrink-0 text-state-success")
+				<div>
+					<p class="text-[13.5px] font-medium text-ink">{ i18n.T(ctx, "overview.attention.none") }</p>
+					<p class="mt-0.5 text-[12.5px] text-muted">{ i18n.T(ctx, "overview.attention.none_hint") }</p>
+				</div>
+			</div>
+		} else {
+			<div class="overflow-hidden rounded-card border border-state-failed/40 bg-state-failed/5">
+				<header class="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-state-failed/20 px-4 py-2.5">
+					@components.Icon("triangle-alert", "h-4 w-4 shrink-0 self-center text-state-failed")
+					<h2 class="text-[14px] font-medium text-ink">{ i18n.T(ctx, "overview.attention") }</h2>
+					<span class="font-mono text-[12px] text-muted tabular-nums">{ fmt.Sprint(a.Total()) }</span>
+					<span class="text-[12.5px] text-muted">{ i18n.T(ctx, "overview.attention.hint") }</span>
+				</header>
+				<ul>
+					for _, it := range a.Items {
+						<li data-attention-item={ it.Workflow } class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-state-failed/15 px-4 py-3 last:border-b-0">
+							@components.Dot("failed")
+							<div class="min-w-0 flex-1">
+								<p class="text-[13px]">
+									<span class="font-mono text-ink">{ it.Workflow }</span>
+									<span class="ml-1 text-[12.5px] text-muted">
+										{ i18n.T(ctx, "overview.failed") } { i18n.Since(ctx, now, it.FailedAt) }
+										if s := streakText(ctx, it.Streak); s != "" {
+											· { s }
+										}
+									</span>
+								</p>
+								if it.Cause != nil {
+									<p class="mt-0.5 truncate text-[12.5px] text-ink-2">
+										{ whyTitle(ctx, it.Cause) }
+										if it.Cause.Line != "" {
+											— <code class="font-mono text-[12px] text-state-failed">{ it.Cause.Line }</code>
+										}
+									</p>
+								}
+							</div>
+							<a href={ templ.SafeURL("/runs/" + it.RunID.String() + "#logs") } class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>{ i18n.T(ctx, "overview.view_log") }</a>
+						</li>
+					}
+				</ul>
+				if a.More > 0 {
+					<a href="/runs?state=failed" class="block border-t border-state-failed/20 px-4 py-2 text-[12.5px] text-ink hover:underline">{ i18n.N(ctx, "overview.attention.more", a.More) } &rarr;</a>
+				}
+			</div>
+		}
+	</section>
+}

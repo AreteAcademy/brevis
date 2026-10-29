@@ -48,3 +48,9 @@ func (c *cachedFailing) FailingWorkflows(ctx context.Context) ([]postgres.Failin
 func (c *cachedFailing) FailureStreak(ctx context.Context, slug string) (int, error) {
 	return c.r.FailureStreak(ctx, slug)
 }
+
+// Fresh reads past the cache, for the Overview's list: a workflow that just
+// passed must leave it at the next look.
+func (c *cachedFailing) Fresh(ctx context.Context) ([]postgres.FailingWorkflow, error) {
+	return c.r.FailingWorkflows(ctx)
+}
