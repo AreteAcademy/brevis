@@ -392,14 +392,23 @@
           var terminal = false;
           var failed = false;
 
+          // A region whose HTML did not change is left alone -- the run's
+          // body is the same poll after poll while a step runs, and
+          // redrawing it resets a search being typed and a log being read.
+          // What does change keeps the log's place (keepLog).
+          var kept = keepLog();
           doc.querySelectorAll("[data-live-target]").forEach(function (block) {
             var target = document.getElementById(block.dataset.liveTarget);
-            if (target) target.innerHTML = block.innerHTML;
+            if (target && target._live !== block.innerHTML) {
+              target.innerHTML = block.innerHTML;
+              target._live = block.innerHTML;
+            }
             if (block.dataset.terminal === "true") terminal = true;
             if (block.textContent.indexOf("failed") >= 0) failed = true;
           });
 
           showAllTabs();
+          restoreLog(kept);
 
           // Terminal stops the polling for good. The run is over and nothing
           // about it will change again -- and the indicator says so rather
@@ -1319,6 +1328,172 @@
     });
   }
   // ------------------------------------------------------------------
+  // The run's log in the browser (screen-runs T6)
+  //
+  // The server drew every line with its number and level; this filters what
+  // is already there. A search marks what it finds (<mark>, the text escaped
+  // first), the level shows the warnings or the errors, Wrap breaks long
+  // lines, and Copy takes the lines that show, as text.
+  //
+  // What they hold is kept per run, not in the markup: the live refresh
+  // redraws the log when a step ends, and a search somebody is typing, or the
+  // place somebody is reading, must survive it (keepLog / restoreLog).
+  //
+  // "Go to the error in the log" opens the Logs tab, clears a filter that
+  // would hide the line, brings it to the middle and lights it for 1.6s --
+  // without the motion where the reader asked for less.
+  // ------------------------------------------------------------------
+
+  var logStates = {};
+  function logStateOf(log) {
+    var id = log.getAttribute("data-run") || "";
+    return logStates[id] || (logStates[id] = { q: "", level: "all", wrap: false });
+  }
+
+  function escapeHTML(s) {
+    return s.replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  function markText(text, q) {
+    var lower = text.toLowerCase(), out = "", at = 0, i;
+    while ((i = lower.indexOf(q, at)) >= 0) {
+      out += escapeHTML(text.slice(at, i)) + "<mark>" + escapeHTML(text.slice(i, i + q.length)) + "</mark>";
+      at = i + q.length;
+    }
+    return out + escapeHTML(text.slice(at));
+  }
+
+  function applyLog(log) {
+    var st = logStateOf(log);
+    var q = st.q.toLowerCase();
+    var search = log.querySelector("[data-log-search]");
+    if (search && search.value !== st.q) search.value = st.q;
+    log.querySelectorAll("[data-log-level]").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-log-level") === st.level ? "true" : "false");
+    });
+    var wrap = log.querySelector("[data-log-wrap]");
+    if (wrap) wrap.setAttribute("aria-pressed", st.wrap ? "true" : "false");
+    if (st.wrap) log.setAttribute("data-wrap", "");
+    else log.removeAttribute("data-wrap");
+
+    log.querySelectorAll("[data-n]").forEach(function (line) {
+      var span = line.querySelector("[data-text]");
+      if (!span) return;
+      if (line._text === undefined) line._text = span.textContent;
+      var text = line._text;
+      var show = (st.level === "all" || line.getAttribute("data-level") === st.level) &&
+        (!q || text.toLowerCase().indexOf(q) >= 0);
+      line.hidden = !show;
+      if (q && show) span.innerHTML = markText(text, q);
+      else if (span.firstElementChild) span.textContent = text;
+    });
+    // A gap counts lines that are not here, so it matches nothing.
+    var filtering = q !== "" || st.level !== "all";
+    log.querySelectorAll("[data-log-gap]").forEach(function (g) { g.hidden = filtering; });
+  }
+
+  function applyAllLogs(root) {
+    (root || document).querySelectorAll("[data-log]").forEach(applyLog);
+  }
+
+  // keepLog notes where the reader is before a live redraw: how far down the
+  // log, and the search box's caret when it has the focus.
+  function keepLog() {
+    var lines = document.querySelector("[data-log-lines]");
+    var box = document.activeElement;
+    var typing = box && box.hasAttribute && box.hasAttribute("data-log-search");
+    return {
+      scroll: lines ? lines.scrollTop : 0,
+      caret: typing ? [box.selectionStart, box.selectionEnd] : null,
+    };
+  }
+
+  function restoreLog(kept) {
+    applyAllLogs();
+    var lines = document.querySelector("[data-log-lines]");
+    if (lines) lines.scrollTop = kept.scroll;
+    var box = document.querySelector("[data-log-search]");
+    if (kept.caret && box && document.activeElement !== box) {
+      box.focus();
+      box.setSelectionRange(kept.caret[0], kept.caret[1]);
+    }
+  }
+
+  var logTimer = null;
+  document.addEventListener("input", function (e) {
+    var box = e.target && typeof e.target.closest === "function" ? e.target.closest("[data-log-search]") : null;
+    var log = box && box.closest("[data-log]");
+    if (!log) return;
+    logStateOf(log).q = box.value;
+    clearTimeout(logTimer);
+    logTimer = setTimeout(function () { applyLog(log); }, 80);
+  });
+
+  function goToError() {
+    var line = document.getElementById("log-cause");
+    var log = line && line.closest("[data-log]");
+    if (!log) return;
+    if (line.hidden) {
+      var st = logStateOf(log);
+      st.q = "";
+      st.level = "all";
+      applyLog(log);
+    }
+    history.replaceState(history.state, "", "#logs");
+    showAllTabs();
+    var still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    line.scrollIntoView({ block: "center", behavior: still ? "auto" : "smooth" });
+    line.removeAttribute("data-flash");
+    void line.offsetWidth; // restart the light on a second click
+    line.setAttribute("data-flash", "");
+    setTimeout(function () { line.removeAttribute("data-flash"); }, 1600);
+  }
+
+  document.addEventListener("click", function (e) {
+    var el = e.target && typeof e.target.closest === "function" ? e.target : null;
+    if (!el) return;
+    if (el.closest("[data-goto-error]")) {
+      goToError();
+      return;
+    }
+    var log = el.closest("[data-log]");
+    if (!log) return;
+    var st = logStateOf(log);
+    var level = el.closest("[data-log-level]");
+    if (level) {
+      st.level = level.getAttribute("data-log-level");
+      applyLog(log);
+      return;
+    }
+    if (el.closest("[data-log-wrap]")) {
+      st.wrap = !st.wrap;
+      applyLog(log);
+      return;
+    }
+    var copy = el.closest("[data-log-copy]");
+    if (copy && navigator.clipboard) {
+      var text = [];
+      log.querySelectorAll("[data-n]").forEach(function (line) {
+        if (!line.hidden) text.push(line._text !== undefined ? line._text : line.querySelector("[data-text]").textContent);
+      });
+      navigator.clipboard.writeText(text.join("\n")).then(function () {
+        var label = copy.querySelector("[data-label]");
+        var was = label.textContent;
+        label.textContent = t("copy.done");
+        copy.setAttribute("data-copied", "");
+        setTimeout(function () {
+          label.textContent = was;
+          copy.removeAttribute("data-copied");
+        }, 1500);
+      });
+    }
+  });
+
+  applyAllLogs();
+
+  // ------------------------------------------------------------------
   // The Runs screen opens another run in place (screen-runs)
   //
   // A click on the list fetches that run's pane (X-Brevis-Fragment: detail)
@@ -1373,6 +1548,7 @@
         runPane.querySelectorAll("form[data-run-form]").forEach(runPreview);
         if (window.BrevisDag) window.BrevisDag.mount(runPane.querySelector("#dag"));
         showAllTabs();
+        applyAllLogs(runPane);
 
         if (push) history.pushState({ run: true }, "", href);
         var url = new URL(href, window.location.href);

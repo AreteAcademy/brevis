@@ -1495,3 +1495,36 @@ dialog.modal {
 .cg-40.cg-mono {
   font-size: 15px;
 }
+
+/* The run's log (screen-runs T6). A filtered line is `hidden`, which the
+   line's own `grid` would otherwise win over; Wrap breaks long lines; a
+   search's <mark> is the accent, faint; "go to the error" lights the line
+   for 1.6s, and outlines it instead where the reader asked for less motion. */
+[data-log] [hidden] {
+  display: none !important;
+}
+[data-log][data-wrap] [data-text] {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+[data-log] mark {
+  background: color-mix(in srgb, var(--color-gold) 35%, transparent);
+  color: inherit;
+  border-radius: 2px;
+}
+@keyframes log-flash {
+  from,
+  40% {
+    background: color-mix(in srgb, var(--color-state-failed) 35%, transparent);
+  }
+}
+[data-log] [data-flash] {
+  animation: log-flash 1.6s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-log] [data-flash] {
+    animation: none;
+    outline: 2px solid var(--color-state-failed);
+    outline-offset: -2px;
+  }
+}

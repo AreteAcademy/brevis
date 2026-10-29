@@ -95,3 +95,49 @@ func TestAHugeLogIsABoundedPage(t *testing.T) {
 		t.Error("the lines left out are not counted")
 	}
 }
+
+// THE LOG'S TOOLS ARE THE SCRIPT'S: a search, the three levels, wrapping and
+// a copy of what shows -- each hidden where no script runs, since a search
+// box that searches nothing is worse than none. The download is a plain link.
+func TestTheLogsToolsAreThereWhereAScriptRuns(t *testing.T) {
+	p := failedRunPage()
+	panel := between(draw(t, RunPane(p)), `id="logs" data-tab-panel="logs"`, `id="steps" data-tab-panel="steps"`)
+	if !strings.Contains(panel, `data-log data-run="a91f03c2-0000-4000-8000-000000000000"`) {
+		t.Error("the log does not say whose it is")
+	}
+	// Each tool, or the group it sits in, carries data-js.
+	for _, wrapper := range []struct{ open, tool string }{
+		{`<label data-js`, `data-log-search`},
+		{`<div data-js role="group"`, `data-log-level="err"`},
+		{`<button type="button" data-js data-log-wrap`, `data-log-wrap`},
+		{`<button type="button" data-js data-log-copy`, `data-log-copy`},
+	} {
+		at, tool := strings.Index(panel, wrapper.open), strings.Index(panel, wrapper.tool)
+		if at < 0 || tool < at {
+			t.Errorf("%s is not inside %s", wrapper.tool, wrapper.open)
+		}
+	}
+	for _, lv := range []string{`data-log-level="all" aria-pressed="true"`, `data-log-level="warn" aria-pressed="false"`} {
+		if !strings.Contains(panel, lv) {
+			t.Errorf("no %s", lv)
+		}
+	}
+	if !strings.Contains(panel, `<span data-text class="whitespace-pre">Error: 1 test failed</span>`) {
+		t.Error("a line's text is not marked for the search")
+	}
+}
+
+// "GO TO THE ERROR" IS ON THE CAUSE, when the cause is a line of the log --
+// and only then: a cause read from the engine's error has no line to go to.
+func TestWhyItFailedGoesToTheErrorInTheLog(t *testing.T) {
+	head := headOf(t, failedRunPage())
+	why := between(head, "data-why", "</section>")
+	if !strings.Contains(why, "data-goto-error") || !strings.Contains(why, "Go to the error in the log") {
+		t.Error("why it failed has no way to the error in the log")
+	}
+	p := failedRunPage()
+	p.Cause.LineNo = 0
+	if strings.Contains(between(headOf(t, p), "data-why", "</section>"), "data-goto-error") {
+		t.Error("a cause with no line in the log offers to go there")
+	}
+}

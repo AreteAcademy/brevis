@@ -1345,7 +1345,14 @@ templ runWhy(c *diagnosis.Cause, streak int) {
 		<div class="flex items-start gap-2.5">
 			@components.Icon("triangle-alert", "mt-0.5 h-4 w-4 shrink-0 text-state-failed")
 			<div class="min-w-0 flex-1">
-				<h3 class="text-[14px] font-medium text-ink">{ whyTitle(ctx, c) }</h3>
+				<div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+					<h3 class="text-[14px] font-medium text-ink">{ whyTitle(ctx, c) }</h3>
+					// Only when the cause is a line of the log: one read from
+					// the engine's error has no line to go to.
+					if c.LineNo > 0 {
+						<button type="button" data-js data-goto-error class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>{ i18n.T(ctx, "run.why.goto") }</button>
+					}
+				</div>
 				if streak >= 2 {
 					<p class="mt-0.5 text-[12.5px] text-muted">{ i18n.N(ctx, "run.why.streak", streak) }</p>
 				}
@@ -1421,8 +1428,27 @@ templ runBody(p RunPage) {
 // failed on marked for the head's "go to the error", and the lines a huge
 // log leaves out counted, with the whole log one click away.
 templ logsPanel(r run.Run, log RunLog) {
-	<div data-log class="overflow-hidden rounded-card border border-line bg-surface">
-		<div data-log-tools class="flex items-center justify-end gap-2 border-b border-line-soft px-3 py-2">
+	<div data-log data-run={ r.ID.String() } class="overflow-hidden rounded-card border border-line bg-surface">
+		<div data-log-tools class="flex flex-wrap items-center gap-2 border-b border-line-soft px-3 py-2">
+			// The tools are the script's (screen-runs T6): with none, a search
+			// box that searches nothing is worse than no box. ui.js keeps
+			// what they hold through the live refresh.
+			<label data-js class="relative min-w-[12rem] flex-1">
+				<span class="sr-only">{ i18n.T(ctx, "run.log.search") }</span>
+				@components.Icon("search", "pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-faint")
+				<input type="search" data-log-search placeholder={ i18n.T(ctx, "run.log.search") } autocomplete="off" class="h-8 w-full rounded-card border border-line bg-canvas pr-2 pl-8 text-[13px] text-ink placeholder:text-faint focus:border-line-strong focus:outline-none"/>
+			</label>
+			<div data-js role="group" aria-label={ i18n.T(ctx, "run.log.level") } class="inline-flex rounded-card border border-line p-0.5">
+				for _, lv := range logLevels {
+					<button type="button" data-log-level={ lv } aria-pressed={ fmt.Sprint(lv == "all") } class="rounded-[5px] px-2.5 py-1 text-[12.5px] text-muted hover:text-ink aria-pressed:bg-surface-2 aria-pressed:text-ink">{ logLevelLabel(ctx, lv) }</button>
+				}
+			</div>
+			<span class="ml-auto"></span>
+			<button type="button" data-js data-log-wrap aria-pressed="false" class="rounded-card px-2.5 py-1 text-[12.5px] text-muted hover:text-ink aria-pressed:bg-surface-2 aria-pressed:text-ink">{ i18n.T(ctx, "run.log.wrap") }</button>
+			<button type="button" data-js data-log-copy class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>
+				@components.Icon("copy", "h-3 w-3")
+				<span data-label>{ i18n.T(ctx, "run.log.copy") }</span>
+			</button>
 			<a href={ templ.SafeURL("/runs/" + r.ID.String() + "/log.txt") } download class={ components.ButtonClass(components.ButtonSecondary, components.SizeSmall) }>
 				@components.Icon("download", "h-3 w-3")
 				{ i18n.T(ctx, "run.download_log") }
@@ -1458,7 +1484,7 @@ templ logsPanel(r run.Run, log RunLog) {
 								class={ "grid grid-cols-[3.5rem_minmax(0,1fr)] gap-x-3 px-3", logLevelClass(it.Level) }
 							>
 								<span aria-hidden="true" class="text-right text-faint tabular-nums select-none">{ fmt.Sprint(it.N) }</span>
-								<span class="whitespace-pre">{ it.Text }</span>
+								<span data-text class="whitespace-pre">{ it.Text }</span>
 							</div>
 						}
 					}

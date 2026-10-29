@@ -373,3 +373,19 @@ func TestTheOpenRunSaysWhyItFailedLiveToo(t *testing.T) {
 }
 
 func intp(n int) *int { return &n }
+
+// The log's tools are driven by ui.js, and the sheet hides a filtered line
+// even where the line's own grid would show it.
+func TestTheLogsToolsAreWired(t *testing.T) {
+	ui := screenUI()
+	_, js := get(t, ui, "/assets/ui.js")
+	for _, want := range []string{"data-log-search", "data-log-level", "data-log-wrap", "data-log-copy", "data-goto-error", "log-cause", "prefers-reduced-motion", "keepLog"} {
+		if !strings.Contains(js, want) {
+			t.Errorf("ui.js has no %s", want)
+		}
+	}
+	_, css := get(t, ui, "/assets/app.css")
+	if !regexp.MustCompile(`\[data-log\]\s*\[hidden\]\s*\{\s*display:\s*none\s*!important`).MatchString(css) {
+		t.Error("a filtered line is not hidden over its grid")
+	}
+}
