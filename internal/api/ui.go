@@ -1015,12 +1015,18 @@ func (u *UI) runsScreen(w http.ResponseWriter, r *http.Request, open *uuid.UUID)
 		State: f.State, Workflow: f.Workflow, De: de, Ate: ate,
 		Limite: f.PerPage, Offset: (f.Page - 1) * f.PerPage,
 	}
+	// "Running" is in flight: a run waiting in the queue, or for its retry, is
+	// as unfinished as one whose step is going.
+	if f.State == "running" {
+		query.State, query.States = "", pages.InFlight
+	}
 	runs, total, counts, err := u.runsList(r.Context(), query)
 	if err != nil {
 		u.failure(w, r, err)
 		return
 	}
-	screen := pages.RunsScreen{Runs: runs, Filter: f, Counts: counts, Total: total}
+	screen := pages.RunsScreen{Runs: runs, Filter: f, Counts: counts, Total: total,
+		Logos: u.runsLogos(r.Context(), runs)}
 	// The open run: the one the address names, or the newest on the list.
 	if open == nil && len(runs) > 0 {
 		if id, err := uuid.Parse(runs[0].ID); err == nil {
@@ -1060,7 +1066,7 @@ func (u *UI) runsList(ctx context.Context, query postgres.RunFilter) ([]postgres
 		return nil, 0, nil, err
 	}
 	byState := query
-	byState.State, byState.Limite, byState.Offset = "", 0, 0
+	byState.State, byState.States, byState.Limite, byState.Offset = "", nil, 0, 0
 	counts, err := u.leitura.CountRunsByState(ctx, byState)
 	if err != nil {
 		return nil, 0, nil, err

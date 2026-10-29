@@ -15,6 +15,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/api"
 	"github.com/AreteAcademy/brevis/internal/branding"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
+	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
@@ -147,4 +148,136 @@ func TestARunsItemSaysWhatAndWhen(t *testing.T) {
 	if !strings.Contains(failed, `data-status="failed"`) {
 		t.Errorf("the failed item has no state mark:\n%s", failed)
 	}
+}
+
+// THREE CHOICES, BECAUSE THERE ARE THREE QUESTIONS: everything, what broke,
+// what is still going. "Running" is in flight -- queued and retrying too --
+// and each count is read with the rest of the filter and without the state.
+func TestTheRunsSegmentIsAllFailedRunning(t *testing.T) {
+	var asked postgres.RunFilter
+	ui := runsUI(runsReads{
+		counts: map[string]int{"success": 7, "failed": 2, "running": 1, "queued": 2, "retrying": 1},
+		asked:  &asked,
+	})
+	_, body := get(t, ui, "/runs?workflow=fire&state=failed")
+	if asked.State != "" || len(asked.States) != 0 || asked.Workflow != "fire" {
+		t.Errorf("the counts were read with %+v", asked)
+	}
+	for _, s := range []struct{ label, count string }{{"All", "13"}, {"Failed", "2"}, {"Running", "4"}} {
+		if !segment(s.label, s.count).MatchString(body) {
+			t.Errorf("the segment does not say %s %s", s.label, s.count)
+		}
+	}
+	for _, gone := range []string{">Success<", ">Queued<", "Any state"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("the segment still offers %s", gone)
+		}
+	}
+	if !strings.Contains(body, `href="/runs?state=running&amp;workflow=fire"`) {
+		t.Error("Running does not keep the search")
+	}
+}
+
+func TestRunningMeansInFlight(t *testing.T) {
+	var listed postgres.RunFilter
+	_, _ = get(t, runsUI(runsReads{listed: &listed}), "/runs?state=running")
+	if listed.State != "" || strings.Join(listed.States, ",") != "running,queued,retrying" {
+		t.Errorf("Running listed %+v", listed)
+	}
+}
+
+// A state the segment does not offer -- a link from the Overview to the
+// canceled ones, say -- still filters, and says so where it can be taken off.
+func TestAnotherStateIsAFilterYouCanRemove(t *testing.T) {
+	var listed postgres.RunFilter
+	_, body := get(t, runsUI(runsReads{listed: &listed}), "/runs?state=canceled")
+	if listed.State != "canceled" {
+		t.Errorf("listed %+v", listed)
+	}
+	if !strings.Contains(body, ">canceled<") || !strings.Contains(body, `href="/runs" class="text-muted hover:text-ink" aria-label="Remove this filter"`) {
+		t.Error("the canceled filter is not shown with its ×")
+	}
+}
+
+// THE SEARCH IS A FORM: it works with no script, `/` reaches it, and it keeps
+// the state that was chosen.
+func TestTheRunsSearchIsAFormOnTheWorkflow(t *testing.T) {
+	_, body := get(t, runsUI(runsReads{}), "/runs?state=failed&workflow=fire")
+	form := regexp.MustCompile(`(?s)<form[^>]*method="get"[^>]*action="/runs"[^>]*>.*?</form>`).FindString(body)
+	if form == "" {
+		t.Fatal("no search form")
+	}
+	for _, want := range []string{`name="workflow"`, `value="fire"`, `data-hotkey="/"`, `type="hidden" name="state" value="failed"`} {
+		if !strings.Contains(form, want) {
+			t.Errorf("the search lacks %s", want)
+		}
+	}
+}
+
+// PAGES ARE OLDER AND NEWER: a column has no room for page numbers, and the
+// list is read from the top.
+func TestTheRunsColumnPagesOlderAndNewer(t *testing.T) {
+	runs := make([]postgres.RunSummary, 25)
+	for i := range runs {
+		runs[i] = postgres.RunSummary{ID: uuid.NewString(), WorkflowSlug: "w", Status: "success", CreatedAt: time.Now()}
+	}
+	_, body := get(t, runsUI(runsReads{runs: runs, total: 60}), "/runs?page=2&workflow=w")
+	for _, want := range []string{`href="/runs?workflow=w"`, `href="/runs?page=3&amp;workflow=w"`, ">Newer<", ">Older<", "26–50 of 60"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the pages lack %s", want)
+		}
+	}
+	_, last := get(t, runsUI(runsReads{runs: runs[:10], total: 60}), "/runs?page=3")
+	if strings.Contains(last, `href="/runs?page=4"`) {
+		t.Error("the last page offers an older one")
+	}
+}
+
+// A filter that finds nothing says so -- and not "no run yet", which would
+// read as an empty installation.
+func TestASearchThatFindsNothingSaysSo(t *testing.T) {
+	_, body := get(t, runsUI(runsReads{}), "/runs?workflow=nope")
+	if !strings.Contains(body, "No runs") || !strings.Contains(body, "adjust the filter or the search") {
+		t.Error("an empty search does not say what to do")
+	}
+	if strings.Contains(body, "No run yet") {
+		t.Error("an empty search reads as an empty installation")
+	}
+}
+
+// AN ITEM CARRIES WHAT ITS WORKFLOW RUNS IN: the tool first (dbt), then the
+// language, two at most -- from the definition, read once per workflow.
+func TestARunsItemCarriesItsWorkflowsLogos(t *testing.T) {
+	def := wf.Workflow{Slug: "models", Nodes: []wf.Node{
+		{ID: "build", Run: "dbt build"}, {ID: "fetch", Run: "python fetch.py"}, {ID: "x", Run: "node x.js"},
+	}}
+	calls := 0
+	ui := api.NewUI(runsReads{runs: []postgres.RunSummary{
+		{ID: uuid.NewString(), WorkflowSlug: "models", Status: "success", CreatedAt: time.Now()},
+		{ID: uuid.NewString(), WorkflowSlug: "models", Status: "failed", CreatedAt: time.Now()},
+	}}, countingDefs{w: def, calls: &calls}, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+	_, body := get(t, ui, "/runs")
+	nav := body[strings.Index(body, `aria-label="Runs"`):]
+	item := nav[:strings.Index(nav, "</a>")]
+	for _, want := range []string{`aria-label="dbt"`, `aria-label="Python"`} {
+		if !strings.Contains(item, want) {
+			t.Errorf("the item has no %s logo:\n%s", want, item)
+		}
+	}
+	if strings.Contains(item, `aria-label="Node.js"`) {
+		t.Error("a third logo")
+	}
+	if calls != 1 {
+		t.Errorf("the definition was read %d times for one workflow", calls)
+	}
+}
+
+type countingDefs struct {
+	w     wf.Workflow
+	calls *int
+}
+
+func (d countingDefs) Definition(context.Context, string) (wf.Workflow, error) {
+	*d.calls++
+	return d.w, nil
 }

@@ -22,12 +22,22 @@ type runsReads struct {
 	runs   []postgres.RunSummary
 	counts map[string]int
 	asked  *postgres.RunFilter
+	// listed keeps the filter the page was read with; total stands in for a
+	// longer list than the page holds.
+	listed *postgres.RunFilter
+	total  int
 }
 
-func (f runsReads) Runs(context.Context, postgres.RunFilter) ([]postgres.RunSummary, error) {
+func (f runsReads) Runs(_ context.Context, q postgres.RunFilter) ([]postgres.RunSummary, error) {
+	if f.listed != nil {
+		*f.listed = q
+	}
 	return f.runs, nil
 }
 func (f runsReads) CountRuns(context.Context, postgres.RunFilter) (int, error) {
+	if f.total > 0 {
+		return f.total, nil
+	}
 	return len(f.runs), nil
 }
 func (f runsReads) CountRunsByState(_ context.Context, q postgres.RunFilter) (map[string]int, error) {
@@ -41,37 +51,6 @@ func dur(d time.Duration) *time.Duration { return &d }
 
 func runsUI(reads runsReads) *api.UI {
 	return api.NewUI(reads, nil, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
-}
-
-// THE STATE FILTER IS SEGMENTED, EACH CHOICE WITH ITS COUNT -- read with the
-// rest of the filter (the workflow here) and without the state, or every
-// other choice would read 0.
-func TestTheRunsStatesCountWhatEachWouldShow(t *testing.T) {
-	var asked postgres.RunFilter
-	ui := runsUI(runsReads{
-		counts: map[string]int{"success": 7, "failed": 2, "running": 1},
-		asked:  &asked,
-	})
-	_, body := get(t, ui, "/runs?workflow=daily_sales&state=failed")
-	if asked.State != "" || asked.Workflow != "daily_sales" {
-		t.Errorf("the counts were read with %+v", asked)
-	}
-	if !strings.Contains(body, `aria-label="State"`) {
-		t.Fatal("the state filter is not Segmented")
-	}
-	for _, s := range []struct{ label, count string }{
-		{"Any state", "10"}, {"Success", "7"}, {"Failure", "2"}, {"Running", "1"}, {"Queued", "0"},
-	} {
-		if !segment(s.label, s.count).MatchString(body) {
-			t.Errorf("the filter does not say %s %s", s.label, s.count)
-		}
-	}
-	if regexp.MustCompile(`>\s*Retrying\s*<`).MatchString(body) {
-		t.Error("a state with no run is offered beyond the usual four")
-	}
-	if !strings.Contains(body, `href="/runs?state=success&amp;workflow=daily_sales"`) {
-		t.Error("a state choice drops the workflow")
-	}
 }
 
 // A RETRY SAYS SO: `attempt` counts from 0, so the second try is ↻2, its
