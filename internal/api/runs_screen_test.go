@@ -340,3 +340,36 @@ func TestTheRunsScreenIsReadyToSwap(t *testing.T) {
 		t.Error("dag.js does not expose mount and unmount")
 	}
 }
+
+// streakFailing answers the streak the head reads for a failed run.
+type streakFailing struct {
+	failingFake
+	streak int
+}
+
+func (f streakFailing) FailureStreak(context.Context, string) (int, error) { return f.streak, nil }
+
+// THE OPEN RUN SAYS WHY IT FAILED, read from its steps' logs -- the page and
+// its live refresh alike, since a run that fails while watched has to say why
+// without a reload. The workflow comes along, so the refresh that turns a
+// running run into a finished one draws its Rerun.
+func TestTheOpenRunSaysWhyItFailedLiveToo(t *testing.T) {
+	id := uuid.New()
+	e := execsFake{
+		run: dom.Run{ID: id, WorkflowSlug: "environment_alert", Status: dom.StatusFailed},
+		logs: []postgres.StepLog{{NodeID: "test", MapIndex: dom.Unmapped, Status: "failed", ExitCode: intp(1),
+			Log: "1 of 2 PASS a\n2 of 2 FAIL 14 not_null_alerts_id\nError: 1 test failed\n"}},
+	}
+	ui := api.NewUI(readsFake{}, defsFake{w: wf.Workflow{Slug: "environment_alert"}}, e, nil, nil, catalogFake{},
+		branding.Default(), slog.New(slog.DiscardHandler)).WithFailing(streakFailing{streak: 2})
+	for _, path := range []string{"/runs/" + id.String(), "/runs/" + id.String() + "/live"} {
+		_, body := get(t, ui, path)
+		for _, want := range []string{"data-why", "Step test failed (exit 1)", "Error: 1 test failed", "Failed 2 times in a row", "data-rerun"} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s lacks %q", path, want)
+			}
+		}
+	}
+}
+
+func intp(n int) *int { return &n }

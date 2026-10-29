@@ -42,3 +42,9 @@ func (c *cachedFailing) FailingWorkflows(ctx context.Context) ([]postgres.Failin
 	c.list, c.at, c.held = list, c.now(), true
 	return list, nil
 }
+
+// FailureStreak is not cached: it is one workflow's, read for the run open on
+// the screen, and a stale count beside a fresh failure would contradict it.
+func (c *cachedFailing) FailureStreak(ctx context.Context, slug string) (int, error) {
+	return c.r.FailureStreak(ctx, slug)
+}

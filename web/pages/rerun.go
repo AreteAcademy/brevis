@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
 	"slices"
 
 	"github.com/AreteAcademy/brevis/internal/alerts"
@@ -30,6 +31,14 @@ type RunPage struct {
 	// Workflow is the CURRENT definition, for Rerun: what the trigger resolves
 	// against. Nil when the workflow is gone, and then there is no Rerun.
 	Workflow *wf.Workflow
+
+	// Logos is what the workflow runs in, as the Runs list shows it.
+	Logos []string
+
+	// Cause is why a failed or retrying run failed; nil when there is nothing
+	// to say. Streak is how many times in a row its workflow failed.
+	Cause  *diagnosis.Cause
+	Streak int
 }
 
 // RerunParams is the drawer's fields for a rerun: the workflow's params as it

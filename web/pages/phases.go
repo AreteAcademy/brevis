@@ -1,12 +1,16 @@
 package pages
 
 import (
+	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // Phase is one step of a run's life on the run page's strip: how it was made,
@@ -71,8 +75,8 @@ func PhasesOf(r run.Run, now time.Time) []Phase {
 	return []Phase{made, started, running, finished}
 }
 
-// phaseDot is a phase's marker colour.
-func phaseDot(state string) string {
+// phaseBar is a phase's bar colour.
+func phaseBar(state string) string {
 	switch state {
 	case "done":
 		return "bg-state-success"
@@ -113,4 +117,45 @@ func firstLine(s string) string {
 		return s[:i]
 	}
 	return s
+}
+
+// showsWhy is whether the head says why the run failed: a failed run, or a
+// retrying one with the failure that sent it back.
+func showsWhy(p RunPage) bool {
+	return p.Cause != nil && (p.Run.Status == run.StatusFailed || p.Run.Status == run.StatusRetrying)
+}
+
+// whyTitle names what stopped the run: its step, and how the step exited
+// when it did; "The run failed" when it died before any step.
+func whyTitle(ctx context.Context, c *diagnosis.Cause) string {
+	if c.Step == "" {
+		return i18n.T(ctx, "run.why.run")
+	}
+	step := c.Step
+	if c.MapIndex != run.Unmapped {
+		step += "[" + strconv.Itoa(c.MapIndex) + "]"
+	}
+	if c.ExitCode != nil {
+		return i18n.T(ctx, "run.why.step_exit", "step", step, "code", *c.ExitCode)
+	}
+	return i18n.T(ctx, "run.why.step", "step", step)
+}
+
+// whyExcerpt is the lines before the cause and the cause, or the cause alone.
+func whyExcerpt(c *diagnosis.Cause) string {
+	if len(c.Excerpt) > 0 {
+		return strings.Join(c.Excerpt, "\n")
+	}
+	return c.Line
+}
+
+// runDuration is how long the run took, "in progress" while it runs.
+func runDuration(ctx context.Context, r run.Run) string {
+	if r.Status.InFlight() {
+		return i18n.T(ctx, "run.in_progress")
+	}
+	if r.StartedAt == nil || r.FinishedAt == nil {
+		return "—"
+	}
+	return i18n.Elapsed(ctx, r.FinishedAt.Sub(*r.StartedAt))
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/alerts"
@@ -1146,12 +1147,6 @@ templ RunDetail(p RunPage) {
 	// data-crumb is the bar's last item, which ui.js writes when this pane
 	// is swapped in: the bar is the layout's, and is not part of the swap.
 	<div data-run-detail={ r.ID.String() } data-crumb={ runCrumb(r) }>
-		<div class="mb-3 flex flex-wrap items-start justify-between gap-3">
-			<h2 class="font-mono text-[22px] leading-tight font-medium break-all text-ink">{ r.WorkflowSlug }</h2>
-			if rerunAction(p) != nil {
-				@rerunAction(p)
-			}
-		</div>
 		// Two regions the server refreshes, and the graph between them.
 		//
 		// The DAG polled and everything around it did not: the drawing showed a
@@ -1161,7 +1156,7 @@ templ RunDetail(p RunPage) {
 		// returns BOTH of these already rendered, on the cadence the graph
 		// already uses. See RunLive.
 		<div id="run-head" data-live={ "/runs/" + r.ID.String() + "/live" }>
-			@runHead(r, p.Wait)
+			@runHead(p)
 		</div>
 		// The indicator sits OUTSIDE the swapped region, because a region that
 		// replaces its own contents would replace this too and lose whatever
@@ -1257,40 +1252,73 @@ templ RunLive(p RunPage) {
 	// than the step's: a failed run is a retry away from running again, and
 	// stopping there would freeze the screen in the middle of one.
 	<div data-live-target="run-head" data-terminal={ fmt.Sprint(r.Status.Terminal()) }>
-		@runHead(r, p.Wait)
+		@runHead(p)
 	</div>
 	<div data-live-target="run-body">
 		@runBody(p)
 	</div>
 }
 
-templ runHead(r run.Run, wait *postgres.Wait) {
-	<div class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-		@components.State(string(r.Status))
-		<span class="text-muted">{ r.TriggerType }</span>
+// runHead is the open run's head (screen-runs T4), inside the live region so
+// all of it moves with the run: the state, what the workflow runs in and its
+// name, the verbs this state allows, how it was started, for which slot and
+// how long it took -- then why it failed, and its timeline.
+templ runHead(p RunPage) {
+	{{ r := p.Run }}
+	<div class="mb-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+		<div class="min-w-0">
+			<div class="mb-1 flex items-center text-sm">
+				@components.State(string(r.Status))
+				@components.Retry(r.Attempt)
+			</div>
+			<h2 class="flex min-w-0 items-center gap-2 font-mono text-[22px] leading-tight font-medium text-ink">
+				for _, k := range p.Logos {
+					@components.Logo(k, 28)
+				}
+				<span class="break-all">{ r.WorkflowSlug }</span>
+			</h2>
+		</div>
+		<div data-run-actions class="flex shrink-0 items-center gap-3">
+			<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="inline-flex items-center gap-1 text-[13px] text-muted transition-colors hover:text-ink">
+				{ i18n.T(ctx, "run.view_workflow") }
+				<span aria-hidden="true">&rarr;</span>
+			</a>
+			if r.Status.InFlight() {
+				@runCancel(r)
+			} else if rerunAction(p) != nil {
+				@rerunAction(p)
+			}
+		</div>
+	</div>
+	<dl class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px]">
+		<div class="flex items-baseline gap-1.5">
+			<dt class="text-muted">{ i18n.T(ctx, "run.trigger") }</dt>
+			<dd class="text-ink">{ r.TriggerType }</dd>
+		</div>
 		if r.LogicalDate != nil {
-			<span class="font-mono text-xs text-muted">slot { components.UTCStamp(r.LogicalDate) }</span>
+			<div class="flex items-baseline gap-1.5">
+				<dt class="text-muted">{ i18n.T(ctx, "run.slot") }</dt>
+				<dd class="font-mono text-[12.5px] text-ink-2">{ components.UTCStamp(r.LogicalDate) }</dd>
+			</div>
 		}
-		if r.Attempt > 0 {
-			@components.Retry(r.Attempt)
-		}
-		<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">see definition</a>
-		<span class="inline-flex items-center gap-1">
-			<span id="run-id" class="font-mono text-[0.7rem] text-muted/70">{ r.ID.String() }</span>
+		<div class="flex items-baseline gap-1.5">
+			<dt class="text-muted">{ i18n.T(ctx, "run.duration") }</dt>
+			<dd class="text-ink">{ runDuration(ctx, r) }</dd>
+		</div>
+		<div class="flex items-center gap-1">
+			<dt class="sr-only">ID</dt>
+			<dd title={ r.ID.String() } class="font-mono text-[12px] text-muted">{ r.ID.String()[:8] }</dd>
+			<span id="run-id" hidden>{ r.ID.String() }</span>
 			<span data-js>
 				@components.CopyIcon("#run-id", "Copy the run's id")
 			</span>
-		</span>
-		@runCancel(r)
-	</div>
-	@phases(PhasesOf(r, time.Now()))
-	if wait != nil {
-		@waitLine(wait)
-	}
-	if r.Err != "" {
-		// ONE LINE THAT OPENS (density-base DB6): the attempt and the error's
-		// first line, the whole text inside -- a stack trace no longer pushes
-		// the page down before anyone asked for it.
+		</div>
+	</dl>
+	if showsWhy(p) {
+		@runWhy(p.Cause, p.Streak)
+	} else if r.Err != "" {
+		// ONE LINE THAT OPENS (density-base DB6), where there is no cause to
+		// put in its place -- a canceled run's error is who stopped it.
 		<details data-run-error class="mb-3 rounded-card border border-state-failed/30 bg-state-failed/5">
 			<summary class="flex h-[34px] cursor-pointer list-none items-center gap-2 px-3 text-[12.5px] [&::-webkit-details-marker]:hidden">
 				@components.Icon("triangle-alert", "h-3.5 w-3.5 text-state-failed")
@@ -1301,20 +1329,41 @@ templ runHead(r run.Run, wait *postgres.Wait) {
 			<pre class="overflow-auto border-t border-state-failed/20 px-3 py-2.5 font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-state-failed">{ r.Err }</pre>
 		</details>
 	}
+	@phases(PhasesOf(r, time.Now()))
+	if p.Wait != nil {
+		@waitLine(p.Wait)
+	}
+}
+
+// runWhy is why the run failed (screen-runs T4): the step and how it exited,
+// how many times in a row when it is not the first, and the lines before the
+// cause, in the run's own words. No prose explains them: the words that would
+// come from a model, and this page shows only what the run said.
+templ runWhy(c *diagnosis.Cause, streak int) {
+	<section data-why class="mb-3 rounded-card border border-state-failed/40 bg-state-failed/5 px-4 py-3">
+		<div class="flex items-start gap-2.5">
+			@components.Icon("triangle-alert", "mt-0.5 h-4 w-4 shrink-0 text-state-failed")
+			<div class="min-w-0 flex-1">
+				<h3 class="text-[14px] font-medium text-ink">{ whyTitle(ctx, c) }</h3>
+				if streak >= 2 {
+					<p class="mt-0.5 text-[12.5px] text-muted">{ i18n.N(ctx, "run.why.streak", streak) }</p>
+				}
+				<pre class="mt-2 overflow-x-auto font-mono text-[12px] leading-relaxed whitespace-pre-wrap text-state-failed">{ whyExcerpt(c) }</pre>
+			</div>
+		</div>
+	</section>
 }
 
 // phases is the run's life as a strip: made, started, running, finished, the
 // current one marked. It sits in the live head, so it moves with the run.
 templ phases(ps []Phase) {
-	// A TIMELINE ON ONE RULE (density-base DB6): each phase a dot on the line,
-	// its name and its value -- the four boxes it was, a third the height.
-	<ol data-phases data-timeline class="mb-3 grid grid-cols-2 gap-y-3 rounded-card border border-line bg-surface px-3.5 py-3 sm:grid-cols-4">
-		for i, p := range ps {
-			<li data-phase={ p.Key } data-phase-state={ p.State } class="relative min-w-0 pt-3 pr-3">
-				if i < len(ps)-1 {
-					<span aria-hidden="true" class="absolute top-1 right-0 left-1 h-px bg-line-strong"></span>
-				}
-				<span aria-hidden="true" class={ "absolute top-0 left-0 h-[9px] w-[9px] rounded-full", phaseDot(p.State) }></span>
+	// FOUR STEPS WITH A BAR ON TOP (screen-runs T4): the bar's colour is how
+	// the phase went -- done, failed, going, not yet -- so the strip reads
+	// from across the room, and the label and value sit under it.
+	<ol data-phases data-timeline class="mb-3 grid grid-cols-2 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-4">
+		for _, p := range ps {
+			<li data-phase={ p.Key } data-phase-state={ p.State } class="relative min-w-0 border-line-soft px-3.5 pt-3 pb-2.5 not-last:border-r">
+				<span data-phase-bar aria-hidden="true" class={ "absolute top-0 right-0 left-0 h-[2px]", phaseBar(p.State) }></span>
 				if p.State == "current" {
 					<p class="text-[11.5px] font-medium text-ink">{ p.Label }</p>
 				} else {

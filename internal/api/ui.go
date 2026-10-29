@@ -25,6 +25,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/auth"
 	"github.com/AreteAcademy/brevis/internal/branding"
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
+	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	sch "github.com/AreteAcademy/brevis/internal/domain/schedule"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
@@ -198,6 +199,9 @@ func (u *UI) WithGallery(on bool) *UI {
 // last finished run failed.
 type FailingReader interface {
 	FailingWorkflows(ctx context.Context) ([]postgres.FailingWorkflow, error)
+	// FailureStreak is how many times in a row a workflow failed, for the
+	// open run's "why it failed".
+	FailureStreak(ctx context.Context, slug string) (int, error)
 }
 
 // WithFailing turns on the Runs section's badge. Without it there is none.
@@ -1478,14 +1482,6 @@ func (u *UI) detail(ctx context.Context, run run.Run) pages.RunPage {
 	if p.Step == nil {
 		p.Graph = u.runSeed(ctx, run)
 	}
-	// The CURRENT workflow, for Rerun: what the trigger resolves against. A
-	// workflow that is gone is a page without the button, not a refusal --
-	// its runs stay readable.
-	if u.defs != nil {
-		if def, err := u.defs.Definition(ctx, run.WorkflowSlug); err == nil {
-			p.Workflow = &def
-		}
-	}
 	return p
 }
 
@@ -1626,7 +1622,43 @@ func (u *UI) runPage(ctx context.Context, current run.Run) pages.RunPage {
 			u.log.Warn("the run's alerts are unavailable", "run", current.ID, "error", err)
 		}
 	}
+	// The CURRENT workflow, for Rerun and the head's logos: what the trigger
+	// resolves against. Read here and not only for the page, because the
+	// refresh that turns a running run into a finished one draws its Rerun.
+	// A workflow that is gone is a head without the button, not a refusal --
+	// its runs stay readable.
+	if u.defs != nil {
+		if def, err := u.defs.Definition(ctx, current.WorkflowSlug); err == nil {
+			p.Workflow = &def
+			p.Logos = workflowLogos(def)
+		}
+	}
+	u.whyItFailed(ctx, &p)
 	return p
+}
+
+// whyItFailed reads why a failed or retrying run failed, from the logs the
+// page already has, and how many times in a row its workflow has failed. A
+// streak that cannot be read is a head without that line.
+func (u *UI) whyItFailed(ctx context.Context, p *pages.RunPage) {
+	if p.Run.Status != run.StatusFailed && p.Run.Status != run.StatusRetrying {
+		return
+	}
+	attempts := make([]diagnosis.StepAttempt, 0, len(p.Logs))
+	for _, l := range p.Logs {
+		attempts = append(attempts, diagnosis.StepAttempt{
+			Step: l.NodeID, MapIndex: l.MapIndex, Attempt: l.Attempt, Status: l.Status,
+			ExitCode: l.ExitCode, Err: l.Err, Log: l.Log, StartedAt: l.StartedAt,
+		})
+	}
+	p.Cause = diagnosis.Why(attempts, p.Run.Err)
+	if p.Run.Status == run.StatusFailed && u.failing != nil {
+		n, err := u.failing.FailureStreak(ctx, p.Run.WorkflowSlug)
+		if err != nil {
+			u.log.Warn("the workflow's failure streak is unavailable", "workflow", p.Run.WorkflowSlug, "error", err)
+		}
+		p.Streak = n
+	}
 }
 
 // waitOf asks what holds a queued run, on the terms of the logs and alerts: a

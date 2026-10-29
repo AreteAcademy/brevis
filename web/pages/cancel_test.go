@@ -14,7 +14,7 @@ import (
 func head(t *testing.T, r run.Run) string {
 	t.Helper()
 	var b strings.Builder
-	if err := runHead(r, nil).Render(context.Background(), &b); err != nil {
+	if err := runHead(RunPage{Run: r}).Render(context.Background(), &b); err != nil {
 		t.Fatal(err)
 	}
 	return b.String()
