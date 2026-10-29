@@ -1720,17 +1720,18 @@ brevis [command] [flags]
 | [`migrate`](#migrate) | **yes** | **required** | schema |
 | [`publish`](#publish) | **yes** | **required** | stores workflow and schedule |
 | [`backfill`](#backfill) | **yes** | **required** | reprocesses a range |
+| [`cancel`](#cancel) | **yes** | **required** | stops a run |
 | [`run`](#run) | no | — | runs now, on the instance itself |
 | [`validate`](#validate) | no | — | validates workflow YAML |
 | [`brand`](#brand) | no | — | validates branding YAML |
 | [`hash`](#hash) | no | — | generates the password hash |
 | [`version`](#version) | no | — | version, commit, build |
 
-The first five load configuration, which **fails at boot** without
+The first six load configuration, which **fails at boot** without
 `BREVIS_DATABASE_URL`. The other five do not — which is why `validate` works in
 CI, where there is no Postgres.
 
-Those same five inherit the credentials rule: with `BREVIS_ENV` other than
+Those same six inherit the credentials rule: with `BREVIS_ENV` other than
 `local`, coming up without the three authentication variables is a **boot
 error**.
 
@@ -1940,6 +1941,25 @@ brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true
 
 `--to` includes the whole day: internally the end becomes `23:59:59` of that
 date.
+
+---
+
+## cancel
+
+Cancels a run that is still waiting or is running. The events feed shows `cli`
+as who canceled it.
+
+```bash
+brevis cancel 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13
+```
+
+| answer | what happened |
+|---|---|
+| `canceled` | the run was waiting in the queue; it left it and will not run |
+| `cancel requested` | the run is running; its dispatcher stops the steps within `--cancel-poll` (2s) |
+| `already ended: <status>` | the run had already ended; nothing changes |
+
+A canceled run is not retried. An id that does not exist is an error.
 
 ---
 
