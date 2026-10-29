@@ -183,6 +183,101 @@ func (r *RunRepo) MarkDraining(ctx context.Context, id uuid.UUID) (time.Duration
 	return time.Duration(seconds * float64(time.Second)), err
 }
 
+// ErrRunNotFound is a cancel asked of a run that does not exist.
+var ErrRunNotFound = errors.New("run not found")
+
+// CancelOutcome is what asking to cancel a run did.
+type CancelOutcome int
+
+const (
+	// CancelDone: the run was still waiting, and it is canceled now.
+	CancelDone CancelOutcome = iota + 1
+	// CancelRequested: a dispatcher holds the run, and stops it when it reads
+	// the request.
+	CancelRequested
+	// CancelAlreadyEnded: nothing changed; Status says how it ended.
+	CancelAlreadyEnded
+)
+
+// CancelResult is the outcome, and the run's status after it.
+type CancelResult struct {
+	Outcome CancelOutcome
+	Status  dom.Status
+}
+
+// RequestCancel cancels a run that is still waiting, or asks the dispatcher
+// that holds it to.
+//
+// The run's row is locked first, the lock Transicionar takes, so a cancel and
+// a dispatcher starting the run are serialized: whichever comes second sees
+// the other. A run is waiting when its item is unclaimed, or when it has none
+// yet (`created`); its item is deleted in this same transaction, because an
+// item left behind would be claimed and refused `running` forever. A claimed
+// item is a dispatcher's, even before it marks the run `running`.
+//
+// A failed run has ended: a failure that will be retried is back in the queue
+// in the same breath. canceled_by keeps who asked first.
+func (r *RunRepo) RequestCancel(ctx context.Context, id uuid.UUID, actor string) (CancelResult, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return CancelResult{}, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op depois do commit
+
+	var status dom.Status
+	var claimed *bool
+	if err := tx.QueryRow(ctx, `
+		SELECT status, (SELECT reivindicado_em IS NOT NULL FROM queue_items WHERE run_id = $1)
+		FROM runs WHERE id = $1 FOR UPDATE`, id).Scan(&status, &claimed); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return CancelResult{}, fmt.Errorf("run %s: %w", id, ErrRunNotFound)
+		}
+		return CancelResult{}, err
+	}
+
+	switch {
+	case !status.InFlight():
+		return CancelResult{Outcome: CancelAlreadyEnded, Status: status}, nil
+
+	case status != dom.StatusRunning && (claimed == nil || !*claimed):
+		if err := dom.Validate(status, dom.StatusCanceled); err != nil {
+			return CancelResult{}, fmt.Errorf("run %s: %w", id, err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM queue_items WHERE run_id = $1`, id); err != nil {
+			return CancelResult{}, err
+		}
+		if _, err := tx.Exec(ctx, `
+			UPDATE runs SET status = 'canceled', terminado_em = now(),
+			                cancel_requested_at = now(), canceled_by = $2
+			WHERE id = $1`, id, actor); err != nil {
+			return CancelResult{}, err
+		}
+		return CancelResult{Outcome: CancelDone, Status: dom.StatusCanceled}, tx.Commit(ctx)
+
+	default:
+		if _, err := tx.Exec(ctx, `
+			UPDATE runs SET
+				canceled_by         = CASE WHEN cancel_requested_at IS NULL THEN $2 ELSE canceled_by END,
+				cancel_requested_at = COALESCE(cancel_requested_at, now())
+			WHERE id = $1`, id, actor); err != nil {
+			return CancelResult{}, err
+		}
+		return CancelResult{Outcome: CancelRequested, Status: status}, tx.Commit(ctx)
+	}
+}
+
+// CancelRequested returns which of these runs someone asked to cancel. The
+// dispatcher asks it about the runs it holds, every CancelPoll: one query by
+// primary key, however many there are.
+func (r *RunRepo) CancelRequested(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id FROM runs WHERE id = ANY($1) AND cancel_requested_at IS NOT NULL`, ids)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+}
+
 // RecordError stores the cause of the failure.
 func (r *RunRepo) RecordError(ctx context.Context, id uuid.UUID, msg string) error {
 	_, err := r.pool.Exec(ctx, `UPDATE runs SET erro = $2 WHERE id = $1`, id, msg)
@@ -195,12 +290,13 @@ func (r *RunRepo) Get(ctx context.Context, id uuid.UUID) (dom.Run, error) {
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, workflow_slug, idempotency_key, status, attempt, definicao,
 		       trigger_type, logical_date, params, max_ativos, erro, criado_em, iniciado_em, terminado_em,
-		       auto_params, trigger_targets, COALESCE(grupo_concorrencia, '')
+		       auto_params, trigger_targets, COALESCE(grupo_concorrencia, ''),
+		       cancel_requested_at, canceled_by
 		FROM runs WHERE id = $1`, id).
 		Scan(&run.ID, &run.WorkflowSlug, &run.IdempotencyKey, &run.Status, &run.Attempt,
 			&run.Definition, &run.TriggerType, &run.LogicalDate, &run.Params, &run.MaxActive,
 			&run.Err, &run.CreatedAt, &run.StartedAt, &run.FinishedAt, &run.Auto,
-			&run.TriggerTargets, &run.Group)
+			&run.TriggerTargets, &run.Group, &run.CancelRequestedAt, &run.CanceledBy)
 	return run, err
 }
 

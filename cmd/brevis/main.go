@@ -62,7 +62,7 @@ func raiz() *cobra.Command {
 		SilenceErrors: true,
 	}
 	c.AddCommand(cmdServe(), cmdMigrate(), cmdValidate(), cmdBrand(), cmdHash(), cmdRun(), cmdPublish(), cmdGateway(), cmdEndpoints(),
-		cmdScheduler(), cmdAlert(), cmdReport(), cmdBackfill(), cmdPrune(), cmdVersion())
+		cmdScheduler(), cmdAlert(), cmdReport(), cmdBackfill(), cmdCancel(), cmdPrune(), cmdVersion())
 	return c
 }
 
@@ -447,7 +447,12 @@ func cmdRun() *cobra.Command {
 				Env:    config.TasksEnvironment(config.TaskEnvFromEnvironment()),
 				Report: consoleReporter{},
 			}
-			if err := runner.Run(cmd.Context(), w); err != nil {
+			// Ctrl-C stops the steps. Each runs in its own process group, so
+			// the terminal's signal no longer reaches them; the context is
+			// what kills the group.
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+			if err := runner.Run(ctx, w); err != nil {
 				return err
 			}
 			fmt.Printf("\nworkflow %s finished\n", w.Slug)
@@ -665,6 +670,7 @@ type schedulerFlags struct {
 	maxAttempts                   int
 	retryBackoff, retryBackoffMax time.Duration
 	drainWait, drainRequeueDelay  time.Duration
+	cancelPoll                    time.Duration
 }
 
 func (f *schedulerFlags) bind(c *cobra.Command) {
@@ -688,6 +694,8 @@ func (f *schedulerFlags) bind(c *cobra.Command) {
 		"how long a run every draining agent refused waits in the queue without spending an attempt (0 spends one at once)")
 	c.Flags().DurationVar(&f.drainRequeueDelay, "drain-requeue-delay", policy.DrainRequeueDelay,
 		"delay before such a run is tried again")
+	c.Flags().DurationVar(&f.cancelPoll, "cancel-poll", policy.CancelPoll,
+		"how often a request to cancel a running run is read")
 }
 
 // dispatcher is the policy these flags describe.
@@ -699,6 +707,7 @@ func (f schedulerFlags) dispatcher() scheduler.Config {
 		BackoffMax:        f.retryBackoffMax,
 		DrainWait:         f.drainWait,
 		DrainRequeueDelay: f.drainRequeueDelay,
+		CancelPoll:        f.cancelPoll,
 	}
 }
 
@@ -1310,12 +1319,14 @@ func remoteHosts(cfg config.Config, log *slog.Logger) map[string]execution.Execu
 	return out
 }
 
-// uiActions wires the screen's two effects — pause a schedule and run now — to
-// the components that already implement them. It exists to keep the `api.Actions`
-// interface small: the UI must not be able to do anything else to the system.
+// uiActions wires the screen's three effects — pause a schedule, run now and
+// cancel a run — to the components that already implement them. It exists to
+// keep the `api.Actions` interface small: the UI must not be able to do
+// anything else to the system.
 type uiActions struct {
 	schedules *postgres.ScheduleRepo
 	sched     *scheduler.Scheduler
+	runs      *postgres.RunRepo
 }
 
 func (a uiActions) Toggle(ctx context.Context, slug, actor string) (bool, error) {
@@ -1325,6 +1336,10 @@ func (a uiActions) Toggle(ctx context.Context, slug, actor string) (bool, error)
 func (a uiActions) Disparar(ctx context.Context, slug string, now time.Time,
 	params map[string]string) (uuid.UUID, error) {
 	return a.sched.Disparar(ctx, slug, now, params)
+}
+
+func (a uiActions) Cancel(ctx context.Context, id uuid.UUID, actor string) (postgres.CancelResult, error) {
+	return a.runs.RequestCancel(ctx, id, actor)
 }
 
 func serve(ctx context.Context) error {
@@ -1387,7 +1402,7 @@ func serve(ctx context.Context) error {
 		return err
 	}
 	ui := api.NewUI(postgres.NewReadRepo(pool), postgres.NewWorkflowRepo(pool),
-		runsRepo, uiActions{schedules: schedules, sched: sched},
+		runsRepo, uiActions{schedules: schedules, sched: sched, runs: runsRepo},
 		alerts.New(pool.Pool), postgres.NewReadRepo(pool), brand, log).
 		// Nil-safe when BREVIS_SQL_SERVE_URL is unset: Configured() is false
 		// and no Preview tab is drawn at all. The engine holds no warehouse

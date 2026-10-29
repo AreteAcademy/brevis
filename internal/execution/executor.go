@@ -20,6 +20,9 @@ import (
 var (
 	ErrShutdown  = errors.New("the scheduler is shutting down")
 	ErrClaimLost = errors.New("this scheduler lost the run's claim to another")
+	// ErrCanceled: someone asked to cancel the run. Like a lost claim, and
+	// unlike a shutdown, it is never handed over: the steps stop.
+	ErrCanceled = errors.New("someone canceled the run")
 )
 
 // Why a handed-over step cannot be followed (#125), kept apart because the

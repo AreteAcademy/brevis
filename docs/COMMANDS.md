@@ -133,6 +133,7 @@ brevis scheduler --interval 5s --concurrency 4 --max-pods 10
 | `--retry-backoff-max` | duration | `1h` | ceiling for that delay |
 | `--drain-wait` | duration | `1h` | how long a run every draining agent refused waits in the queue **without spending an attempt**; `0` spends one at once |
 | `--drain-requeue-delay` | duration | `30s` | delay before such a run is tried again |
+| `--cancel-poll` | duration | `2s` | how often a request to cancel a running run is read; see [`brevis cancel`](#brevis-cancel) |
 
 With the defaults a failed run is attempted at **0s, 30s and 1m30s**, and the
 process says so at boot rather than leaving it to be composed from two numbers:
@@ -475,6 +476,36 @@ YYYY-MM-DD`).
 
 The central use case is exactly "reprocess the whole of January with
 `load_full=true`".
+
+---
+
+## `brevis cancel`
+
+Cancels a run that is still waiting or is running, as the console's Cancel
+button does. The actor recorded -- and shown in the events feed -- is `cli`.
+
+```bash
+brevis cancel 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13
+```
+
+It says which of three things happened:
+
+```
+  canceled 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13
+  cancel requested for 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13; its dispatcher stops it
+  already ended: success (3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13)
+```
+
+- **canceled**: the run was waiting (`created`, `queued`, `retrying`) and its
+  item was not claimed. It leaves the queue in the same transaction and never
+  runs.
+- **cancel requested**: a dispatcher holds the run. The request is written on
+  the run, and the dispatcher reads it every `--cancel-poll` (see
+  [`brevis scheduler`](#brevis-scheduler)), stops the steps and writes
+  `canceled`. No attempt is spent and the run is not retried.
+- **already ended**: nothing changes. Asking twice keeps who asked first.
+
+An id that is not a UUID, or names no run, is an error.
 
 ---
 

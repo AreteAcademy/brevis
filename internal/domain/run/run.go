@@ -64,6 +64,14 @@ type Run struct {
 	// the clock to read instead of now(), the window it covers, how late it
 	// was, and whether the run before it failed. See AutoParams.
 	Auto AutoParams
+
+	// CancelRequestedAt is when someone first asked to cancel the run; nil
+	// when nobody did. A run asked while a dispatcher held it is still going
+	// until the dispatcher reads the request and stops its steps.
+	CancelRequestedAt *time.Time
+	// CanceledBy is who asked first: a console user, `cli`, or empty for a
+	// console without login.
+	CanceledBy string
 }
 
 // TaskRun is the execution of one node inside a Run.

@@ -102,13 +102,16 @@ type CatalogReader interface {
 	StreamConfigs(ctx context.Context) (map[postgres.StreamKey]*postgres.WriterConfig, error)
 }
 
-// Actions are the two effects the screen triggers. A small interface on purpose:
-// the UI must not be able to do anything more to the system than pause a
-// schedule and ask for a run now.
+// Actions are the three effects the screen triggers. A small interface on
+// purpose: the UI must not be able to do anything more to the system than
+// pause a schedule, ask for a run now, and stop one.
 type Actions interface {
 	// Toggle pauses or resumes; actor is who pressed it, for the events feed.
 	Toggle(ctx context.Context, slug, actor string) (bool, error)
 	Disparar(ctx context.Context, slug string, now time.Time, params map[string]string) (uuid.UUID, error)
+	// Cancel stops a run, or asks the dispatcher holding it to; actor is who
+	// pressed it.
+	Cancel(ctx context.Context, id uuid.UUID, actor string) (postgres.CancelResult, error)
 }
 
 // UI registers the server-rendered pages and the JSON the React island consumes.
@@ -274,6 +277,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /workflows/{slug}", u.workflow)
 	mux.HandleFunc("GET /runs/{id}", u.run)
 	mux.HandleFunc("GET /runs/{id}/log.txt", u.runLog)
+	mux.HandleFunc("POST /runs/{id}/cancel", u.cancel)
 
 	// Effects by POST, not GET: a link that pauses a schedule would be fired by
 	// any browser prefetch or link crawler.
@@ -1587,6 +1591,27 @@ func (u *UI) toggle(w http.ResponseWriter, r *http.Request) {
 	}
 	u.log.Info("schedule toggled", "workflow", slug, "active", active1)
 	u.voltar(w, r)
+}
+
+// cancel stops a run, and comes back to it: its page says what became of it,
+// `canceled` or "Canceling…" while its dispatcher stops the steps.
+func (u *UI) cancel(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	got, err := u.actions.Cancel(r.Context(), id, auth.De(r.Context()))
+	if errors.Is(err, postgres.ErrRunNotFound) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	u.log.Info("run cancel asked", "run", id, "outcome", got.Outcome, "status", got.Status)
+	http.Redirect(w, r, "/runs/"+id.String(), http.StatusSeeOther)
 }
 
 // paramsFromForm reads the `param.`-prefixed fields of the trigger form.

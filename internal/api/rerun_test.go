@@ -19,6 +19,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/branding"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
+	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
 // triggerSpy is the scheduler as the trigger sees it, keeping what it got.
@@ -110,4 +111,8 @@ func TestARerunPostsTheRunsValuesBack(t *testing.T) {
 	if !maps.Equal(spy.got, want) {
 		t.Errorf("the rerun sent %v, want %v", spy.got, want)
 	}
+}
+
+func (s *triggerSpy) Cancel(context.Context, uuid.UUID, string) (postgres.CancelResult, error) {
+	return postgres.CancelResult{}, nil
 }
