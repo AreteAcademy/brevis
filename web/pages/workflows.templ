@@ -586,15 +586,32 @@ templ workflowMeta(p WorkflowPage) {
 	</p>
 }
 
-// yearOfRuns is the workflow's calendar.
-templ yearOfRuns(st WorkflowStats, slug string) {
-	@components.Panel("A year of runs", "") {
+// yearOfRuns is the workflow's calendar (screen-workflows T7): what the year
+// was, in a line, then a square per day. A day that ran opens its runs in the
+// Runs tab below, on this page.
+templ yearOfRuns(p WorkflowPage) {
+	{{ v := yearView(ctx, p) }}
+	{{ s := v.Summary }}
+	@components.Panel(i18n.T(ctx, "calendar.title"), "") {
 		<div class="px-3.5 py-3">
-			<p class="mb-3 text-[12.5px] text-muted">
-				One square per day. The colour is the day&#39;s worst outcome, not how
-				much ran &mdash; the question a calendar answers is when this broke.
+			<p class="mb-2 text-[12.5px] text-muted">{ i18n.T(ctx, "calendar.lead") }</p>
+			<p data-calendar-summary class="mb-3 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-[12.5px] text-muted">
+				<span><strong class="font-semibold text-ink tabular-nums">{ i18n.Number(ctx, int64(s.RanDays)) }</strong> { i18n.N(ctx, "calendar.ran_days", s.RanDays) }</span>
+				<span><strong class="font-semibold text-ink tabular-nums">{ i18n.Number(ctx, int64(s.FailedDays)) }</strong> { i18n.T(ctx, "calendar.failed_days") }</span>
+				if s.RanDays > 0 {
+					<span><strong class="font-semibold text-ink tabular-nums">{ i18n.Number(ctx, int64(s.Streak)) }</strong> { i18n.N(ctx, "calendar.streak", s.Streak) }</span>
+				}
+				if s.LastFailure != nil {
+					<span>
+						{ i18n.T(ctx, "calendar.last_failure") } <strong class="font-medium text-ink">{ i18n.Date(ctx, *s.LastFailure, "day") }</strong>
+						<a href={ templ.SafeURL(dayHref(p.Def.Slug, *s.LastFailure)) } class="ml-1 text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "calendar.see") }</a>
+					</span>
+				}
+				if s.Since != nil {
+					<span>{ i18n.T(ctx, "calendar.since") } <strong class="font-medium text-ink">{ i18n.Date(ctx, *s.Since, "day") }</strong></span>
+				}
 			</p>
-			@components.Heatmap(st.Days, slug)
+			@components.Heatmap(v)
 		</div>
 	}
 }
@@ -673,17 +690,18 @@ templ Workflow(p WorkflowPage) {
 		<div class="mb-3">
 			@components.Stats(workflowPageStats(ctx, p))
 		</div>
-		// ONE STEP IS A LINE, BESIDE ITS CALENDAR (screen-workflow-v2 WV3);
-		// two or more are the graph, the calendar under it.
+		// ONE STEP IS A LINE (screen-workflow-v2 WV3), two or more are the
+		// graph; the calendar is under either, at its own width -- beside a
+		// step it had half the page and hid this month behind a scroll.
 		if p.Step != nil {
-			<div class="grid grid-cols-1 items-start gap-3 min-[1180px]:grid-cols-2">
-				@stepLine(*p.Step)
-				@yearOfRuns(st, w.Slug)
+			@stepLine(*p.Step)
+			<div class="mt-3">
+				@yearOfRuns(p)
 			</div>
 		} else {
 			@dag("/api/workflows/"+w.Slug+"/graph", graph)
 			<div class="mt-3">
-				@yearOfRuns(st, w.Slug)
+				@yearOfRuns(p)
 			</div>
 		}
 		@workflowTabs(p)

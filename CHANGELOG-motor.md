@@ -32,6 +32,13 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   with Copy. It is not the author's file -- comments and the order of the
   keys are gone -- but publishing it publishes the same workflow, which a
   round trip over every example holds.
+- **A year of runs** is 53 weeks, Monday to Sunday, in 12px squares, this
+  week's days to come drawn faint, each day's tooltip saying how many ran and
+  how it went. Above it, what the year was: the days with runs, with a
+  failure, how many in a row without one, the last failure (with a link to
+  it) and since when it runs. A day that ran opens its runs in the Runs tab of
+  the same page, marked in the grid; where the grid scrolls, it opens at this
+  week. A one-step workflow's calendar is under its step, at its own width.
 - In English, Portuguese and Spanish.
 
 ### Changed: the Workflows list

@@ -419,3 +419,15 @@ func zoneName(zone string) string {
 	}
 	return zone
 }
+
+// dayHref is a day's runs on the workflow's own page: the Runs tab, narrowed
+// to that UTC day.
+func dayHref(slug string, day time.Time) string {
+	return "/workflows/" + url.PathEscape(slug) + "?day=" + day.Format("2006-01-02") + "#runs"
+}
+
+// yearView is the workflow's calendar, its days opening on its own page.
+func yearView(ctx context.Context, p WorkflowPage) components.CalendarView {
+	return components.Calendar(ctx, p.Stats.Days, p.Now,
+		func(d time.Time) string { return dayHref(p.Def.Slug, d) }, p.Day)
+}

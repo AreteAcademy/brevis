@@ -331,3 +331,38 @@ func TestAWorkflowsDefinitionTabIsItsYAML(t *testing.T) {
 		}
 	}
 }
+
+// THE CALENDAR OPENS A DAY'S RUNS ON THE PAGE ITSELF (screen-workflows T7): a
+// day that ran links to ?day=…#runs, the day chosen is marked, and the
+// summary above the grid says how the year went.
+func TestTheCalendarOpensADayOnThePage(t *testing.T) {
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	failed := today.AddDate(0, 0, -5)
+	reads := workflowReads{
+		readsFake: readsFake{workflows: []postgres.WorkflowSummary{{Slug: "daily_sales", Project: "analytics"}}},
+		days: []postgres.Day{
+			{Date: today.AddDate(0, 0, -20), Total: 1, Succeeded: 1},
+			{Date: failed, Total: 2, Succeeded: 1, Failed: 1},
+			{Date: today, Total: 1, Succeeded: 1},
+		},
+	}
+	ui := api.NewUI(reads, defsFake{w: wf.Workflow{Slug: "daily_sales"}}, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+	day := failed.Format("2006-01-02")
+	_, body := get(t, ui, "/workflows/daily_sales?day="+day)
+	if !strings.Contains(body, `href="/workflows/daily_sales?day=`+day+`#runs"`) {
+		t.Error("a day that ran does not open its runs on the page")
+	}
+	if !strings.Contains(body, `data-day="`+day+`"><rect`) || !strings.Contains(body, "data-selected") {
+		t.Error("the chosen day is not marked")
+	}
+	at := strings.Index(body, "data-calendar-summary")
+	if at < 0 {
+		t.Fatal("the calendar has no summary")
+	}
+	summary := body[at : at+strings.Index(body[at:], "</p>")]
+	for _, want := range []string{">3<", "days with runs", ">1<", "with a failure", ">5<", "days in a row without failure", "last failure", `href="/workflows/daily_sales?day=` + day + `#runs"`, "running since"} {
+		if !strings.Contains(summary, want) {
+			t.Errorf("the summary has no %q", want)
+		}
+	}
+}

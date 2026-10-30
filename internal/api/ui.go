@@ -1460,7 +1460,8 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 	} else {
 		u.log.Warn("the workflow's indicators are unavailable", "workflow", slug, "error", err)
 	}
-	if days, err := u.leitura.RunsPerDay(r.Context(), slug, 364); err == nil {
+	// 53 weeks and the days of this one: the calendar's whole grid.
+	if days, err := u.leitura.RunsPerDay(r.Context(), slug, 53*7); err == nil {
 		stats.Days = days
 	} else {
 		u.log.Warn("the workflow's calendar is unavailable", "workflow", slug, "error", err)

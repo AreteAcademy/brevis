@@ -150,6 +150,16 @@
   openFromHash();
   window.addEventListener("hashchange", openFromHash);
 
+  // --- The calendar starts at this week ------------------------------------
+  //
+  // A year of squares is wider than a phone. Where it scrolls, it opens at
+  // its end -- this week -- rather than at a year ago: the recent days are
+  // the ones a reader came for.
+  document.querySelectorAll("svg[data-calendar]").forEach(function (svg) {
+    var box = svg.parentElement;
+    if (box && box.scrollWidth > box.clientWidth) box.scrollLeft = box.scrollWidth;
+  });
+
   // --- The charts' tooltip --------------------------------------------------
   //
   // The SVG's <title> does show the value, but only after a second of hovering

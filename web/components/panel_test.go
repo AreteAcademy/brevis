@@ -143,7 +143,8 @@ func TestTheKPIStripIsCompact(t *testing.T) {
 
 // THE SMALL CHARTS ARE SMALL (density-base DB5): rows per load is 44px tall
 // with bars of about 22px, not stretched across the panel; the year of runs is
-// 8px squares at their own size, 53 weeks in about 550px.
+// 12px squares at their own size (screen-workflows T7), 53 weeks in about
+// 820px.
 func TestTheSmallChartsAreSmall(t *testing.T) {
 	four := int64(4)
 	var b strings.Builder
@@ -155,16 +156,16 @@ func TestTheSmallChartsAreSmall(t *testing.T) {
 	}
 
 	b.Reset()
-	if err := Heatmap(nil, "x").Render(context.Background(), &b); err != nil {
+	if err := Heatmap(Calendar(context.Background(), nil, time.Now(), nil, nil)).Render(context.Background(), &b); err != nil {
 		t.Fatal(err)
 	}
 	got := b.String()
-	if !strings.Contains(got, `width="8"`) || strings.Contains(got, `width="11"`) || strings.Contains(got, "h-[132px]") {
-		t.Errorf("the heatmap is not 8px squares at its own size")
+	if !strings.Contains(got, `width="12"`) || strings.Contains(got, "h-[132px]") {
+		t.Errorf("the heatmap is not 12px squares at its own size")
 	}
 	w := got[strings.Index(got, `<svg width="`)+len(`<svg width="`):]
 	w = w[:strings.Index(w, `"`)]
-	if n, _ := strconv.Atoi(w); n < 500 || n > 600 {
-		t.Errorf("the heatmap is %spx wide, want about 550", w)
+	if n, _ := strconv.Atoi(w); n < 780 || n > 860 {
+		t.Errorf("the heatmap is %spx wide, want about 820", w)
 	}
 }

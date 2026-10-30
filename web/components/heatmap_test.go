@@ -1,174 +1,172 @@
 package components
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 func day(t time.Time, total, ok, failed, open int) postgres.Day {
 	return postgres.Day{Date: t, Total: total, Succeeded: ok, Failed: failed, Open: open}
 }
 
-// TestEveryDayInTheSpanGetsASquare.
-//
-// The grid is drawn from the DATE RANGE, not from the rows: a day with no run
-// still needs a square, or the calendar closes the gap and a reader counts the
-// missing week as time that did not exist.
-func TestEveryDayInTheSpanGetsASquare(t *testing.T) {
-	squares, _, _, _ := Calendar(nil, "w", 364)
+// thursday is a fixed today, 2026-10-29, a Thursday.
+var thursday = time.Date(2026, 10, 29, 15, 0, 0, 0, time.UTC)
 
-	if len(squares) < 364 {
-		t.Fatalf("%d squares for a 364-day span", len(squares))
-	}
-	// Every one of them is empty, and none is a link: there is nothing to open.
-	for _, s := range squares {
-		if !s.Empty {
-			t.Fatalf("%s is not empty and no run was given", s.Date.Format("2006-01-02"))
-		}
-		if s.Link != "" {
-			t.Fatalf("a day with no run links to %s", s.Link)
-		}
-	}
+func dayLink(d time.Time) string { return "/w?day=" + d.Format("2006-01-02") }
 
-	// And the days are consecutive, with no repeat and no gap. An off-by-one in
-	// the loop would draw a year that skips a day a week, which looks fine.
-	for i := 1; i < len(squares); i++ {
-		want := squares[i-1].Date.AddDate(0, 0, 1)
-		if !squares[i].Date.Equal(want) {
-			t.Fatalf("after %s comes %s", squares[i-1].Date.Format("2006-01-02"),
-				squares[i].Date.Format("2006-01-02"))
+func calendar(days []postgres.Day) CalendarView {
+	return Calendar(context.Background(), days, thursday, dayLink, nil)
+}
+
+// A YEAR IS 53 WEEKS, MONDAY TO SUNDAY, ending with this week: every day gets
+// a square, in order, with no gap -- a missing day would close the grid and a
+// reader would count the week as time that did not exist -- and the days of
+// this week still to come are drawn, as days to come.
+func TestTheCalendarIsFiftyThreeWeeksMondayFirst(t *testing.T) {
+	v := calendar(nil)
+	if len(v.Squares) != 53*7 {
+		t.Fatalf("%d squares, want 53 weeks of 7", len(v.Squares))
+	}
+	first, last := v.Squares[0].Date, v.Squares[len(v.Squares)-1].Date
+	if first.Weekday() != time.Monday || last.Weekday() != time.Sunday {
+		t.Errorf("the grid runs %s to %s, want Monday to Sunday", first.Weekday(), last.Weekday())
+	}
+	if !last.Equal(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("the grid ends %s, want this week's Sunday", last)
+	}
+	for i := 1; i < len(v.Squares); i++ {
+		if !v.Squares[i].Date.Equal(v.Squares[i-1].Date.AddDate(0, 0, 1)) {
+			t.Fatalf("a gap after %s", v.Squares[i-1].Date)
+		}
+	}
+	for _, s := range v.Squares {
+		if s.Date.Weekday() == time.Monday && s.Y != calTop {
+			t.Fatalf("a Monday at y=%d, want the top row", s.Y)
+		}
+		if future := s.Date.After(time.Date(2026, 10, 29, 0, 0, 0, 0, time.UTC)); s.Future != future {
+			t.Fatalf("%s: future = %v", s.Date.Format("2006-01-02"), s.Future)
 		}
 	}
 }
 
-// TestTheGridStartsOnASundayAndEndsToday.
-//
-// Starting exactly `span` days back would put the first column mid-week, and
-// every month label one square out from the week it names.
-func TestTheGridStartsOnASundayAndEndsToday(t *testing.T) {
-	squares, _, _, _ := Calendar(nil, "w", 364)
-	if got := squares[0].Date.Weekday(); got != time.Sunday {
-		t.Errorf("the grid starts on a %s", got)
-	}
-	today := time.Now().UTC().Truncate(24 * time.Hour)
-	if last := squares[len(squares)-1].Date; !last.Equal(today) {
-		t.Errorf("the grid ends on %s and today is %s",
-			last.Format("2006-01-02"), today.Format("2006-01-02"))
-	}
-}
-
-// TestTheColourIsTheWorstOutcome.
-//
-// The whole decision behind this chart. A day with twenty successes and one
-// failure is RED: the question a calendar answers is "when did this break", and
-// a colour that averaged the day away would answer "how busy was it" -- which
-// the bar chart already does.
+// THE COLOUR IS THE DAY'S WORST OUTCOME, not its volume: the question is when
+// it broke. A failure outranks a run still open, which outranks success.
 func TestTheColourIsTheWorstOutcome(t *testing.T) {
-	today := time.Now().UTC().Truncate(24 * time.Hour)
-	for _, c := range []struct {
-		name string
-		d    postgres.Day
-		want string
-	}{
-		{"all succeeded", day(today, 20, 20, 0, 0), "success"},
-		{"one failure among twenty", day(today, 21, 20, 1, 0), "failed"},
-		{"still open", day(today, 3, 2, 0, 1), "queued"},
-		{"open AND failed is failed", day(today, 5, 3, 1, 1), "failed"},
+	d := func(n int) time.Time { return time.Date(2026, 10, n, 0, 0, 0, 0, time.UTC) }
+	v := calendar([]postgres.Day{
+		day(d(20), 5, 5, 0, 0), day(d(21), 5, 3, 1, 1), day(d(22), 5, 4, 0, 1),
+	})
+	fill := map[string]string{}
+	for _, s := range v.Squares {
+		fill[s.Date.Format("2006-01-02")] = s.Fill
+	}
+	for date, want := range map[string]string{
+		"2026-10-20": "var(--color-state-success)",
+		"2026-10-21": "var(--color-state-failed)",
+		"2026-10-22": "var(--color-state-queued)",
+		"2026-10-23": "var(--color-surface-2)",
 	} {
-		t.Run(c.name, func(t *testing.T) {
-			squares, _, _, _ := Calendar([]postgres.Day{c.d}, "w", 364)
-			last := squares[len(squares)-1]
-			if !strings.Contains(last.Fill, c.want) {
-				t.Errorf("fill = %s, wanted the %s colour", last.Fill, c.want)
-			}
-			if last.Empty {
-				t.Error("a day with runs was drawn as empty")
-			}
-		})
+		if fill[date] != want {
+			t.Errorf("%s is %s, want %s", date, fill[date], want)
+		}
 	}
 }
 
-// A day that ran links to that day's runs; a day that did not has nothing to
-// open, and a link to an empty list is a click that teaches people not to click.
+// ONLY A DAY WITH RUNS OPENS THEM, where its caller says; the day chosen is
+// marked.
 func TestOnlyADayWithRunsIsALink(t *testing.T) {
-	today := time.Now().UTC().Truncate(24 * time.Hour)
-	squares, _, _, _ := Calendar([]postgres.Day{day(today, 2, 2, 0, 0)}, "daily_sales", 364)
-	last := squares[len(squares)-1]
+	ran := time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC)
+	v := Calendar(context.Background(), []postgres.Day{day(ran, 1, 1, 0, 0)}, thursday, dayLink, &ran)
+	for _, s := range v.Squares {
+		switch {
+		case s.Date.Equal(ran):
+			if s.Link != "/w?day=2026-10-20" || !s.Selected {
+				t.Errorf("the day that ran: link %q, selected %v", s.Link, s.Selected)
+			}
+		case s.Link != "" || s.Selected:
+			t.Fatalf("%s: link %q, selected %v", s.Date.Format("2006-01-02"), s.Link, s.Selected)
+		}
+	}
+}
 
-	// The list reads `from` and `to` as RFC 3339, and `to` is EXCLUSIVE. The
-	// first version of this link invented `&day=`, which the list does not
-	// read at all -- it would have shown every run of the workflow with the
-	// date silently dropped, which is worse than no link because the reader
-	// believes it.
-	for _, want := range []string{
-		"workflow=daily_sales",
-		"from=" + today.Format(time.RFC3339),
-		"to=" + today.AddDate(0, 0, 1).Format(time.RFC3339),
+// THE TOOLTIP SAYS THE DAY, HOW MANY RAN AND HOW IT WENT, in the reader's
+// language.
+func TestTheTooltipSaysTheDayInTheReadersLanguage(t *testing.T) {
+	days := []postgres.Day{day(time.Date(2026, 10, 29, 0, 0, 0, 0, time.UTC), 1, 1, 0, 0)}
+	for lang, want := range map[string]string{
+		"en":    "Thu, Oct 29, 2026 · 1 run · all succeeded",
+		"pt-BR": "qui, 29 out 2026 · 1 execução · tudo certo",
 	} {
-		if !strings.Contains(last.Link, want) {
-			t.Errorf("link %q does not carry %q", last.Link, want)
+		v := Calendar(i18n.WithLang(context.Background(), lang), days, thursday, dayLink, nil)
+		var got string
+		for _, s := range v.Squares {
+			if s.Date.Day() == 29 && s.Date.Month() == time.October && s.Date.Year() == 2026 {
+				got = s.Tooltip
+			}
 		}
-	}
-	if strings.Contains(last.Link, "day=") {
-		t.Errorf("the link uses a parameter the runs list does not read: %q", last.Link)
-	}
-	if squares[0].Link != "" {
-		t.Errorf("an empty day links to %q", squares[0].Link)
+		if got != want {
+			t.Errorf("%s: %q, want %q", lang, got, want)
+		}
 	}
 }
 
-// The tooltip says the counts, because the colour only says the worst outcome.
-// "Red" without a number is a day somebody has to go and look at.
-func TestTheTooltipCarriesTheNumbers(t *testing.T) {
-	today := time.Now().UTC().Truncate(24 * time.Hour)
-	squares, _, _, _ := Calendar([]postgres.Day{day(today, 21, 20, 1, 0)}, "w", 364)
-	got := squares[len(squares)-1].Tooltip
-	for _, want := range []string{today.Format("2006-01-02"), "21 runs", "1 failed"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("tooltip %q does not mention %q", got, want)
-		}
+// THE SUMMARY ANSWERS THE QUESTIONS BEFORE THE GRID: how many days it ran,
+// how many failed, how long since the last failure, when that was, and since
+// when it runs.
+func TestTheCalendarSummarisesTheYear(t *testing.T) {
+	d := func(m time.Month, n int) time.Time { return time.Date(2026, m, n, 0, 0, 0, 0, time.UTC) }
+	v := calendar([]postgres.Day{
+		day(d(9, 1), 2, 2, 0, 0), day(d(10, 9), 2, 1, 1, 0), day(d(10, 28), 1, 1, 0, 0),
+	})
+	s := v.Summary
+	if s.RanDays != 3 || s.FailedDays != 1 || s.Streak != 20 {
+		t.Errorf("summary = %+v, want 3 days, 1 failed, 20 in a row", s)
 	}
-	// And the singular reads as a singular.
-	one, _, _, _ := Calendar([]postgres.Day{day(today, 1, 1, 0, 0)}, "w", 364)
-	if !strings.Contains(one[len(one)-1].Tooltip, "1 run,") {
-		t.Errorf("a single run reads %q", one[len(one)-1].Tooltip)
+	if s.LastFailure == nil || !s.LastFailure.Equal(d(10, 9)) || s.Since == nil || !s.Since.Equal(d(9, 1)) {
+		t.Errorf("last failure %v, since %v", s.LastFailure, s.Since)
+	}
+
+	clean := calendar([]postgres.Day{day(d(10, 20), 1, 1, 0, 0)})
+	if clean.Summary.LastFailure != nil || clean.Summary.Streak != 10 {
+		t.Errorf("a workflow that never failed: %+v, want 10 days since it began", clean.Summary)
 	}
 }
 
-// The month labels sit above the week their month starts in, and there are
-// roughly twelve of them over a year. A label per column would be noise; none
-// at all would make the year unreadable.
+// THE MONTHS ARE LABELLED ONCE EACH, in the reader's language, inside the
+// canvas, and nothing is drawn outside it.
 func TestTheMonthsAreLabelledOnceEach(t *testing.T) {
-	_, months, w, h := Calendar(nil, "w", 364)
-	if len(months) < 10 || len(months) > 12 {
-		t.Errorf("%d month labels over 52 weeks", len(months))
+	v := Calendar(i18n.WithLang(context.Background(), "pt-BR"), nil, thursday, dayLink, nil)
+	if len(v.Months) < 11 || len(v.Months) > 13 {
+		t.Errorf("%d month labels over 53 weeks", len(v.Months))
 	}
 	seen := map[string]bool{}
-	for _, m := range months {
+	for _, m := range v.Months {
 		if seen[m.Label] {
 			t.Errorf("%s is labelled twice", m.Label)
 		}
 		seen[m.Label] = true
-		if m.X < 0 || m.X > w {
-			t.Errorf("%s is drawn at x=%d, outside a %d-wide canvas", m.Label, m.X, w)
+		if m.X < 0 || m.X > v.Width {
+			t.Errorf("%s at x=%d, outside %d", m.Label, m.X, v.Width)
 		}
 	}
-	if h != calTop+7*cellStep {
-		t.Errorf("height = %d, and there are seven weekdays", h)
+	if !seen["out"] && !seen["set"] {
+		t.Errorf("the months are not Portuguese: %v", v.Months)
 	}
-}
-
-// Every square is inside the canvas the viewBox declares. An overflow here is
-// invisible in a unit test of the numbers and shows up as a row cut in half.
-func TestNothingIsDrawnOutsideTheCanvas(t *testing.T) {
-	squares, _, w, h := Calendar(nil, "w", 364)
-	for _, s := range squares {
-		if s.X < 0 || s.X+cellSize > w || s.Y < 0 || s.Y+cellSize > h {
-			t.Fatalf("%s at (%d,%d) falls outside %dx%d",
-				s.Date.Format("2006-01-02"), s.X, s.Y, w, h)
+	labels := []string{}
+	for _, w := range v.Weekdays {
+		labels = append(labels, w.Label)
+	}
+	if strings.Join(labels, " ") != "seg qua sex" {
+		t.Errorf("the weekdays are %v", labels)
+	}
+	for _, s := range v.Squares {
+		if s.X < 0 || s.X+calCell > v.Width || s.Y < 0 || s.Y+calCell > v.Height {
+			t.Fatalf("%s at (%d,%d) falls outside %dx%d", s.Date.Format("2006-01-02"), s.X, s.Y, v.Width, v.Height)
 		}
 	}
 }
