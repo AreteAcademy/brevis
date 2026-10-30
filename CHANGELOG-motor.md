@@ -44,6 +44,18 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   graph. A run's graph gains the stage labels and the focus and keeps its
   inspector. `/api/workflows/{slug}/graph` carries each step's
   `last_status`, `last_duration_ms` and `connects`.
+- **Run with parameters** is a 560px drawer: the slot (now or one of the
+  schedule's past slots), the parameters by `group`, each with its own
+  control -- a switch for a boolean, − and + for an integer, the pattern
+  shown under its field, a select for an enum, boxes or chips for a list --
+  its name, `uses`, default, `title` and description. Each value is checked
+  in the browser by the server's own rules and again by the server; what
+  changed is marked and its `warn` shown; the footer counts what changed and
+  what is invalid, and Run waits while a value is. The payload and the same
+  by the CLI (a curl when there is a slot) follow every change; Restore
+  defaults puts every control back; ⌘↵ runs. A refused value stays in the
+  drawer. Every control posts with no script. A run's Rerun is the same
+  drawer, pre-filled, with no slot.
 - **A year of runs** is 53 weeks, Monday to Sunday, in 12px squares, this
   week's days to come drawn faint, each day's tooltip saying how many ran and
   how it went. Above it, what the year was: the days with runs, with a

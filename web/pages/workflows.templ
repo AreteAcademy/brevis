@@ -482,29 +482,7 @@ templ runNow(r RunNow) {
 				<input type="hidden" name="back" value={ r.Back }/>
 			}
 			if len(slots) > 0 {
-				<fieldset class="space-y-2">
-					<legend class="mb-1.5 font-medium text-ink">{ i18n.T(ctx, "workflows.run_now.slot") }</legend>
-					<div class="inline-flex h-8 items-center gap-0.5 rounded-card border border-line bg-surface p-0.5">
-						<label class="run-when">
-							<input type="radio" name="when" value="now" checked class="sr-only"/>
-							{ i18n.T(ctx, "workflows.run_now.now") }
-						</label>
-						<label class="run-when">
-							<input type="radio" name="when" value="slot" class="sr-only"/>
-							{ i18n.T(ctx, "workflows.run_now.other") }
-						</label>
-					</div>
-					<div data-slot-pick hidden class="space-y-2">
-						<select name="slot" aria-label={ i18n.T(ctx, "workflows.run_now.slot") } class="h-8 w-full rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink">
-							for _, sl := range slots {
-								<option value={ sl.At.Format(time.RFC3339) }>{ slotLabel(ctx, sl, r.Zone) }</option>
-							}
-							<option value="other">{ i18n.T(ctx, "workflows.run_now.another") }</option>
-						</select>
-						<input type="datetime-local" name="slot_at" step="60" data-slot-other hidden aria-label={ i18n.T(ctx, "workflows.run_now.another") } class="h-8 w-full rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink"/>
-						<p class="text-xs text-muted">{ i18n.T(ctx, "workflows.run_now.zone", "zone", zoneName(r.Zone)) }</p>
-					</div>
-				</fieldset>
+				@slotPicker(r, slots)
 			} else {
 				<p class="text-muted">{ i18n.T(ctx, "workflows.run_now.manual") }</p>
 			}
@@ -678,7 +656,7 @@ templ Workflow(p WorkflowPage) {
 		}
 		@workflowMeta(p)
 		if len(w.Params) > 0 {
-			@runDrawer(w, runDrawerText)
+			@runDrawer(w, drawerOf(p))
 		} else if p.Sum != nil {
 			@runNow(RunNow{Slug: w.Slug, Cron: p.Sum.Cron, Zone: p.Sum.Timezone, Now: p.Now})
 		} else {
@@ -982,108 +960,231 @@ templ runLink() {
 	</a>
 }
 
-// runDrawer asks for a run's parameters: the fields the params declare, the
-// payload they make (filled by ui.js, so it is hidden with no script rather
-// than wrong), and Run, posting to the same trigger the ▶ does. A native
-// <dialog>: Esc closes it and the focus goes back to Run….
+// runDrawer asks for a run's parameters (screen-workflows T9): the slot, when
+// there is a schedule to choose one of; the params by group, each with its own
+// control; what will be sent, as JSON and by the CLI; and Run. A native
+// <dialog>: Esc closes it and the focus goes back to Run…. It posts to the
+// trigger the ▶ does, with its script (data-run-now), so a refused value or
+// slot is said here and the drawer stays open; with none, the form posts.
+//
+// Every control works with no script. ui.js adds what a script can: which
+// values changed, their checks -- the server's rules, which the fields carry
+// as attributes -- the payload and the CLI line, Restore defaults and ⌘↵.
 templ runDrawer(w wf.Workflow, t drawerText) {
 	<dialog
 		id="run"
 		aria-labelledby="run-title"
-		class="run-drawer fixed inset-y-0 right-0 left-auto m-0 h-full max-h-none w-[min(440px,100vw)] border-l border-line bg-surface p-0 text-ink backdrop:bg-ink/40"
+		class="run-drawer fixed inset-y-0 right-0 left-auto m-0 h-full max-h-none w-[min(560px,100vw)] border-l border-line bg-surface p-0 text-ink backdrop:bg-ink/40"
 	>
 		<form
 			method="post"
 			action={ templ.SafeURL("/workflows/" + w.Slug + "/trigger") }
 			data-run-form
+			data-run-now
+			data-slug={ w.Slug }
+			data-project={ t.Project }
+			data-msg-integer={ i18n.T(ctx, "drawer.check.integer") }
+			data-msg-boolean={ i18n.T(ctx, "drawer.check.boolean") }
+			data-msg-enum={ i18n.T(ctx, "drawer.check.enum") }
+			data-msg-pattern={ i18n.T(ctx, "drawer.check.pattern") }
+			data-msg-chars={ i18n.T(ctx, "drawer.check.chars") }
+			data-msg-required={ i18n.T(ctx, "drawer.check.required") }
+			data-say-defaults={ i18n.T(ctx, "drawer.status.defaults") }
+			data-say-changed-one={ i18n.N(ctx, "drawer.status.changed", 1, "n", "{n}") }
+			data-say-changed={ i18n.N(ctx, "drawer.status.changed", 2, "n", "{n}") }
+			data-say-invalid-one={ i18n.N(ctx, "drawer.status.invalid", 1, "n", "{n}") }
+			data-say-invalid={ i18n.N(ctx, "drawer.status.invalid", 2, "n", "{n}") }
 			class="flex h-full flex-col"
 		>
-			<div class="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
+			<div class="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
 				<div class="min-w-0">
-					<p id="run-title" class="text-[0.95rem] font-medium text-ink">{ t.Title }</p>
-					<p class="truncate font-mono text-[0.75rem] text-muted">{ w.Slug }</p>
+					<p class="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">
+						if t.Rerun {
+							{ i18n.T(ctx, "drawer.title.rerun") }
+						} else {
+							{ i18n.T(ctx, "drawer.title.run") }
+						}
+					</p>
+					<p id="run-title" class="mt-0.5 truncate font-mono text-[1rem] font-medium text-ink">{ w.Slug }</p>
+					if !t.Rerun {
+						<p class="mt-1 text-[12.5px] text-muted">{ i18n.T(ctx, "drawer.lead") }</p>
+					}
 				</div>
-				<button type="submit" formmethod="dialog" formnovalidate aria-label="Close" class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+				<button type="submit" formmethod="dialog" formnovalidate aria-label={ i18n.T(ctx, "dialog.close") } class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
 					@components.Icon("x", "h-4 w-4")
 				</button>
 			</div>
 			<div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-				if t.Note != "" {
-					<p data-rerun-note class="rounded-card border border-line-soft bg-surface-2 px-3 py-2 text-[12px] text-muted">{ t.Note }</p>
+				if t.Slot != nil && t.Slot.Cron != "" {
+					@slotPicker(*t.Slot, RecentSlots(t.Slot.Cron, t.Slot.Zone, t.Slot.Now, recentSlotsShown))
+					<p class="flex gap-2 rounded-card border border-line-soft bg-surface-2 px-3 py-2 text-[12px] text-muted">
+						@components.Icon("info", "mt-0.5 h-3.5 w-3.5")
+						{ i18n.T(ctx, "drawer.slot.note") }
+					</p>
 				}
-				for _, p := range w.Params {
-					@paramField(p)
+				if t.NoteSlot != nil {
+					<p data-rerun-note class="rounded-card border border-line-soft bg-surface-2 px-3 py-2 text-[12px] text-muted">{ i18n.T(ctx, "drawer.rerun.note", "slot", components.UTCStamp(t.NoteSlot)) }</p>
+				}
+				for _, g := range paramGroups(w.Params) {
+					<div class="space-y-2.5">
+						if g.Name != "" {
+							<h3 data-param-group={ g.Name } class="pt-1 text-[13px] font-semibold text-ink">{ g.Name }</h3>
+						}
+						for _, p := range g.Params {
+							@paramField(p)
+						}
+					</div>
 				}
 				for _, name := range t.Dropped {
-					<p class="font-mono text-[0.8rem] text-faint">{ name } <span class="font-sans text-[0.72rem]">not in the current definition, not sent</span></p>
+					<p class="font-mono text-[0.8rem] text-faint">{ name } <span class="font-sans text-[0.72rem]">{ i18n.T(ctx, "drawer.dropped") }</span></p>
 				}
-				<div data-run-preview hidden>
-					<p class="mb-1.5 text-[0.75rem] text-muted">Payload</p>
-					<pre class="overflow-x-auto rounded-card border border-line-soft bg-canvas px-3 py-2 font-mono text-[0.75rem] text-ink-2"><code></code></pre>
-				</div>
+				<details open data-run-preview hidden class="rounded-card border border-line-soft">
+					<summary class="cursor-pointer px-3 py-2 text-[0.78rem] text-muted">{ i18n.T(ctx, "drawer.payload") }</summary>
+					<div class="space-y-2 px-3 pb-3">
+						<pre class="overflow-x-auto rounded-card border border-line-soft bg-canvas px-3 py-2 font-mono text-[0.75rem] text-ink-2"><code></code></pre>
+						<p class="text-[0.75rem] text-muted">{ i18n.T(ctx, "drawer.cli") }</p>
+						<pre data-run-cli class="overflow-x-auto rounded-card border border-line-soft bg-canvas px-3 py-2 font-mono text-[0.75rem] text-ink-2"></pre>
+					</div>
+				</details>
+				<p data-run-error role="alert" hidden class="rounded-card border border-state-failed/40 bg-state-failed/10 px-3 py-2 text-[12.5px] text-state-failed"></p>
 			</div>
-			<div class="flex justify-end gap-2 border-t border-line px-5 py-3">
+			<div class="flex items-center gap-3 border-t border-line px-5 py-3">
+				<p data-run-status aria-live="polite" class="min-w-0 flex-1 truncate text-[12.5px] text-muted"></p>
+				<button type="button" data-run-reset data-js class="text-[12.5px] text-ink hover:underline">{ i18n.T(ctx, "drawer.reset") }</button>
 				<button type="submit" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
 					@components.Icon("play", "h-3.5 w-3.5")
-					{ t.Button }
+					if t.Rerun {
+						{ i18n.T(ctx, "drawer.button.rerun") }
+					} else {
+						{ i18n.T(ctx, "drawer.button.run") }
+					}
+					<kbd data-js class="ml-1 rounded border border-current/30 px-1 font-sans text-[10px] opacity-70">⌘↵</kbd>
 				</button>
 			</div>
 		</form>
 	</dialog>
 }
 
-// paramField is one parameter's field. The drawer is the trigger WITH values
-// — the difference between running the workflow and reprocessing a window.
+// slotPicker is "Now" or "Another slot": the schedule's last slots, each
+// with the window it processes, or a date and time of one's own. The Run
+// dialog and the drawer share it, and ui.js shows what was asked for.
+templ slotPicker(r RunNow, slots []Slot) {
+			<fieldset class="space-y-2">
+				<legend class="mb-1.5 font-medium text-ink">{ i18n.T(ctx, "workflows.run_now.slot") }</legend>
+				<div class="inline-flex h-8 items-center gap-0.5 rounded-card border border-line bg-surface p-0.5">
+					<label class="run-when">
+						<input type="radio" name="when" value="now" checked class="sr-only"/>
+						{ i18n.T(ctx, "workflows.run_now.now") }
+					</label>
+					<label class="run-when">
+						<input type="radio" name="when" value="slot" class="sr-only"/>
+						{ i18n.T(ctx, "workflows.run_now.other") }
+					</label>
+				</div>
+				<div data-slot-pick hidden class="space-y-2">
+					<select name="slot" aria-label={ i18n.T(ctx, "workflows.run_now.slot") } class="h-8 w-full rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink">
+						for _, sl := range slots {
+							<option value={ sl.At.Format(time.RFC3339) }>{ slotLabel(ctx, sl, r.Zone) }</option>
+						}
+						<option value="other">{ i18n.T(ctx, "workflows.run_now.another") }</option>
+					</select>
+					<input type="datetime-local" name="slot_at" step="60" data-slot-other hidden aria-label={ i18n.T(ctx, "workflows.run_now.another") } class="h-8 w-full rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink"/>
+					<p class="text-xs text-muted">{ i18n.T(ctx, "workflows.run_now.zone", "zone", zoneName(r.Zone)) }</p>
+				</div>
+			</fieldset>
+}
+
+// paramField is one parameter (screen-workflows T9): its name, a mark that
+// lights when it differs from its default, the connector it bills and its
+// default; its title and description; its control; and, under it, its
+// error and its warning. The card carries the server's rules for its value
+// as attributes -- type, enum, pattern -- which is what ui.js checks against,
+// so the browser refuses what the server would refuse again, and no rule is
+// written twice by hand.
 //
-// The fields come from the YAML's declaration, and the `name` carries a `param.`
-// prefix so it does not collide with the form's own future fields. Types become
-// controls: a boolean is a select, an integer is a number, an enum is a select —
-// each refusing in the browser what the server would refuse again afterwards.
-//
-// A title is the label, with the name beside it -- the name is what the CLI and
-// the template know the param by. A warning is a hint under the field: what a
-// value other than the default costs.
+// The `name` carries a `param.` prefix so it does not collide with the
+// form's own fields. Every control posts with no script: a boolean is a
+// select (a switch drives it with one), an integer a number, an enum a
+// select, a list its boxes or its comma-separated text.
 templ paramField(p wf.Param) {
-	<label class="flex flex-col gap-1">
-		if p.Title != "" {
-			<span class="flex items-baseline gap-2">
-				<span class="text-[0.82rem] font-medium text-ink">{ p.Title }</span>
-				<span class="font-mono text-[0.72rem] text-faint">{ p.Name }</span>
-			</span>
-		} else {
-			<span class="font-mono text-[0.8rem] text-ink">{ p.Name }</span>
-		}
-		if p.Description != "" {
-			<span class="text-[0.72rem] text-muted">{ p.Description }</span>
-		}
-		if p.Type == wf.ParamBool {
-			<select name={ "param." + p.Name } class="h-8 rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink">
-				@option("false", p.Default)
-				@option("true", p.Default)
-			</select>
-		} else if p.Type.IsList() && len(p.Enum) > 0 {
-			@listaComEnum(p)
-		} else if p.Type.IsList() {
-			@listaLivre(p)
-		} else if len(p.Enum) > 0 {
-			<select name={ "param." + p.Name } class="h-8 rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink">
-				for _, v := range p.Enum {
-					@option(v, p.Default)
+	<div
+		data-param={ p.Name }
+		data-field={ "param." + p.Name }
+		data-default={ p.Default }
+		data-type={ string(p.Type) }
+		data-enum={ strings.Join(p.Enum, ",") }
+		data-pattern={ p.Pattern }
+		class="rounded-card border border-line bg-surface px-3.5 py-3"
+	>
+		<div class="flex flex-wrap items-center gap-2">
+			<span class="font-mono text-[13px] font-medium text-ink">{ p.Name }</span>
+			<span data-param-changed hidden title={ i18n.T(ctx, "drawer.changed") } class="h-2 w-2 rounded-full bg-warn"></span>
+			if p.Uses != "" {
+				<span class="inline-flex items-center gap-1 text-[12.5px] text-ink">
+					@components.Logo(p.Uses, 18)
+					{ components.LogoTitle(ctx, p.Uses) }
+				</span>
+			}
+			<span class="ml-auto text-xs text-muted">
+				if p.Default != "" {
+					{ i18n.T(ctx, "drawer.default", "value", p.Default) }
+				} else {
+					{ i18n.T(ctx, "workflow.params.required") }
 				}
-			</select>
-		} else {
-			<input
-				type={ fieldType(p) }
-				name={ "param." + p.Name }
-				value={ p.Default }
-				placeholder={ p.Pattern }
-				class="h-8 rounded-card border border-line bg-surface px-2.5 font-mono text-[0.82rem] text-ink placeholder:text-faint focus:border-accent-strong focus:outline-none"
-			/>
+			</span>
+		</div>
+		if p.Title != "" || p.Description != "" {
+			<p class="mt-1 text-[12.5px] text-muted">
+				if p.Title != "" {
+					<strong class="font-medium text-ink">{ p.Title }.</strong>
+				}
+				{ p.Description }
+			</p>
 		}
+		<div class="mt-2">
+			switch {
+				case p.Type == wf.ParamBool:
+					<select name={ "param." + p.Name } data-no-js class="h-8 rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink">
+						@option("false", p.Default)
+						@option("true", p.Default)
+					</select>
+					<span data-js class="inline-flex items-center gap-2">
+						<button type="button" role="switch" aria-checked={ boolText(p.Default == "true") } aria-label={ p.Name } data-bool-for={ "param." + p.Name } data-manual class="switch"><span class="switch-knob" aria-hidden="true"></span></button>
+						<code data-bool-value class="font-mono text-[12px] text-ink-2">{ boolValue(p.Default) }</code>
+					</span>
+				case p.Type == wf.ParamInteger:
+					<span class="inline-flex items-stretch">
+						<button type="button" data-step="-1" data-js aria-label="−" class="w-8 rounded-l-card border border-line text-muted hover:bg-hover hover:text-ink">−</button>
+						<input type="number" name={ "param." + p.Name } value={ p.Default } step="1" inputmode="numeric" class="h-8 w-28 border-y border-line bg-surface px-2.5 text-center font-mono text-[0.82rem] text-ink focus:border-accent-strong focus:outline-none max-[0px]:border-x"/>
+						<button type="button" data-step="1" data-js aria-label="+" class="w-8 rounded-r-card border border-line text-muted hover:bg-hover hover:text-ink">+</button>
+					</span>
+				case p.Type.IsList() && len(p.Enum) > 0:
+					@listaComEnum(p)
+				case p.Type.IsList():
+					@listaLivre(p)
+				case len(p.Enum) > 0:
+					<select name={ "param." + p.Name } class="h-8 rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink">
+						for _, v := range p.Enum {
+							@option(v, p.Default)
+						}
+					</select>
+				default:
+					<input
+						type="text"
+						name={ "param." + p.Name }
+						value={ p.Default }
+						class="h-8 w-full rounded-card border border-line bg-surface px-2.5 font-mono text-[0.82rem] text-ink placeholder:text-faint focus:border-accent-strong focus:outline-none"
+					/>
+			}
+		</div>
+		if p.Pattern != "" {
+			<p class="mt-1 text-xs text-faint">{ i18n.T(ctx, "drawer.pattern") } <code class="font-mono text-ink-2">{ p.Pattern }</code></p>
+		}
+		<p data-param-error role="alert" hidden class="mt-1 text-xs text-state-failed"></p>
 		if p.Warn != "" {
-			<span data-param-warn class="text-[0.72rem] text-warn">{ p.Warn }</span>
+			<p data-param-warn class="mt-1 text-xs text-warn">{ p.Warn }</p>
 		}
-	</label>
+	</div>
 }
 
 // A list with an enum is a multi-select, and checkboxes are what a browser
@@ -1120,7 +1221,7 @@ templ listaLivre(p wf.Param) {
 		name={ "param." + p.Name }
 		value={ p.Default }
 		data-lista={ string(p.Type.ElementType()) }
-		placeholder="one, two, three"
+		placeholder={ i18n.T(ctx, "drawer.list.placeholder") }
 		class="rounded-xl border border-line bg-parchment-soft px-3 py-2 font-mono text-sm text-ink placeholder:text-muted/60"
 	/>
 }
@@ -1144,11 +1245,3 @@ func marcado(value, deflt string) bool {
 	return false
 }
 
-// fieldType picks the browser's control. `number` for an integer makes a
-// phone's keyboard open right and blocks a letter before the server has to.
-func fieldType(p wf.Param) string {
-	if p.Type == wf.ParamInteger {
-		return "number"
-	}
-	return "text"
-}

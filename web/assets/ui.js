@@ -1071,10 +1071,13 @@
   document.addEventListener("submit", function (e) {
     var form = e.target;
     if (!form || typeof form.matches !== "function" || !form.matches("form[data-run-now]")) return;
+    // The drawer's close is a submit too (method=dialog): it closes, and
+    // posts nothing.
+    if (e.submitter && e.submitter.getAttribute("formmethod") === "dialog") return;
     if (!window.fetch || !window.FormData) return;
     e.preventDefault();
     var error = form.querySelector("[data-run-error]");
-    var button = form.querySelector('[type="submit"]');
+    var button = form.querySelector('[type="submit"]:not([formmethod])');
     if (button) button.disabled = true;
     fetch(form.getAttribute("action"), {
       method: "POST",
@@ -1109,29 +1112,189 @@
     if (form && typeof form.requestSubmit === "function") form.requestSubmit();
   });
 
-  // The Run… drawer's payload (`form[data-run-form]`): the params as the
-  // trigger will read them -- each `param.` field, a list's values joined with
-  // commas and blanks dropped, as paramsFromForm does on the server. Hidden in
-  // the markup, so with no script there is no preview rather than a stale one.
-  function runPreview(form) {
-    var box = form.querySelector("[data-run-preview]");
-    if (!box || !window.FormData) return;
-    var params = {};
-    var data = new FormData(form);
-    data.forEach(function (_, name) {
-      if (name.indexOf("param.") !== 0 || params.hasOwnProperty(name.slice(6))) return;
-      params[name.slice(6)] = data.getAll(name).map(function (v) { return String(v).trim(); })
-        .filter(function (v) { return v !== ""; }).join(",");
+  // ------------------------------------------------------------------
+  // The Run… drawer (`form[data-run-form]`, screen-workflows T9)
+  //
+  // Every control posts with no script. This adds what a script can, from
+  // what the server wrote on each field (`[data-param]`): its type, its enum,
+  // its pattern and its default. Each value is checked by the server's own
+  // rules -- an integer, true or false, one of the enum, the pattern, or only
+  // the safe characters when there is none -- and checked again by the
+  // server; what differs from the default is marked, and its warning shown;
+  // the footer counts both, and Run waits while a value is invalid. The
+  // payload is the params as the trigger will read them -- a list joined
+  // with commas, blanks dropped, as paramsFromForm does -- with the slot when
+  // one is chosen, and the same by the CLI. Restore defaults puts every
+  // control back; ⌘↵ runs.
+  // ------------------------------------------------------------------
+
+  var SAFE = /^[A-Za-z0-9_.:\/=,+@\- ]*$/;
+
+  function joined(values) {
+    return values.map(function (v) { return String(v).trim(); }).filter(function (v) { return v !== ""; }).join(",");
+  }
+  function fieldValue(form, field) {
+    return joined(new FormData(form).getAll(field.getAttribute("data-field")));
+  }
+  function checkValue(form, field, value) {
+    var type = field.getAttribute("data-type") || "string";
+    var list = type.indexOf("list|") === 0;
+    var elem = list ? type.slice(5) : type;
+    var allowed = (field.getAttribute("data-enum") || "").split(",").filter(Boolean);
+    var pattern = field.getAttribute("data-pattern");
+    if (value === "") return field.getAttribute("data-default") === "" && !list ? form.dataset.msgRequired : "";
+    var items = list ? value.split(",") : [value];
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (elem === "integer" && !/^-?\d+$/.test(item)) return form.dataset.msgInteger;
+      if (elem === "boolean" && item !== "true" && item !== "false") return form.dataset.msgBoolean;
+      if (allowed.length && allowed.indexOf(item) < 0) return form.dataset.msgEnum;
+      if (pattern) {
+        try { if (!new RegExp(pattern).test(item)) return form.dataset.msgPattern; } catch (e) { /* the server says */ }
+      } else if (elem === "string" && !SAFE.test(item)) {
+        return form.dataset.msgChars;
+      }
+    }
+    return "";
+  }
+  // chosenSlot is the slot the drawer asks for, or "".
+  function chosenSlot(form) {
+    var when = form.querySelector('input[name="when"]:checked');
+    if (!when || when.value !== "slot") return "";
+    var slot = form.querySelector('select[name="slot"]');
+    if (!slot) return "";
+    if (slot.value !== "other") return slot.value;
+    var at = form.querySelector('input[name="slot_at"]');
+    return at ? at.value : "";
+  }
+  function quote(v) { return /^[A-Za-z0-9_.:\/=,+@-]+$/.test(v) ? v : "'" + v.replace(/'/g, "'\\''") + "'"; }
+  function say(form, key, n) {
+    var text = form.dataset[n === 1 ? key + "One" : key] || "";
+    return text.replace("{n}", n);
+  }
+
+  function runState(form) {
+    var changed = 0, invalid = 0, params = {}, given = [];
+    form.querySelectorAll("[data-param]").forEach(function (field) {
+      var name = field.getAttribute("data-param");
+      var value = fieldValue(form, field);
+      var isChanged = value !== joined((field.getAttribute("data-default") || "").split(","));
+      var problem = checkValue(form, field, value);
+      params[name] = value;
+      if (isChanged) {
+        changed++;
+        given.push([name, value]);
+      }
+      if (problem) invalid++;
+      var mark = field.querySelector("[data-param-changed]");
+      if (mark) mark.hidden = !isChanged;
+      var warn = field.querySelector("[data-param-warn]");
+      if (warn) warn.hidden = !isChanged;
+      var error = field.querySelector("[data-param-error]");
+      if (error) {
+        error.textContent = problem || "";
+        error.hidden = !problem;
+      }
     });
-    box.querySelector("code").textContent = JSON.stringify({ params: params }, null, 2);
+
+    var status = form.querySelector("[data-run-status]");
+    if (status) {
+      status.textContent = invalid ? say(form, "sayInvalid", invalid)
+        : changed ? "● " + say(form, "sayChanged", changed) : form.dataset.sayDefaults || "";
+      status.classList.toggle("text-state-failed", invalid > 0);
+      status.classList.toggle("text-warn", !invalid && changed > 0);
+    }
+    var run = form.querySelector('[type="submit"]:not([formmethod])');
+    if (run) run.disabled = invalid > 0;
+
+    var box = form.querySelector("[data-run-preview]");
+    if (!box) return;
+    var slot = chosenSlot(form);
+    var payload = { params: params };
+    if (slot) payload.slot = slot;
+    box.querySelector("code").textContent = JSON.stringify(payload, null, 2);
+    var cli = box.querySelector("[data-run-cli]");
+    if (cli) {
+      var slug = form.dataset.slug, project = form.dataset.project;
+      if (slot) {
+        // The CLI has no slot: the trigger takes it, as a curl.
+        cli.textContent = ["curl -X POST " + location.origin + "/workflows/" + slug + "/trigger", "-d slot=" + quote(slot)]
+          .concat(given.map(function (g) { return "-d " + quote("param." + g[0] + "=" + g[1]); })).join(" \\\n  ");
+      } else {
+        cli.textContent = ["brevis run " + slug].concat(project ? ["--project " + quote(project)] : [])
+          .concat(given.map(function (g) { return "--param " + quote(g[0] + "=" + g[1]); })).join(" ");
+      }
+    }
     box.hidden = false;
   }
-  document.querySelectorAll("form[data-run-form]").forEach(runPreview);
+
+  // A boolean's switch drives its select, which is what posts.
+  function syncSwitches(form) {
+    form.querySelectorAll("[data-bool-for]").forEach(function (sw) {
+      var select = form.querySelector('select[name="' + sw.getAttribute("data-bool-for") + '"]');
+      if (!select) return;
+      sw.setAttribute("aria-checked", select.value === "true" ? "true" : "false");
+      var shown = sw.parentElement.querySelector("[data-bool-value]");
+      if (shown) shown.textContent = select.value;
+    });
+  }
+
+  document.querySelectorAll("form[data-run-form]").forEach(function (form) {
+    syncSwitches(form);
+    runState(form);
+  });
   ["input", "change"].forEach(function (type) {
     document.addEventListener(type, function (e) {
       var form = e.target && typeof e.target.closest === "function" ? e.target.closest("form[data-run-form]") : null;
-      if (form) runPreview(form);
+      if (form) runState(form);
     });
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!e.target || typeof e.target.closest !== "function") return;
+    var form = e.target.closest("form[data-run-form]");
+    if (!form) return;
+    var sw = e.target.closest("[data-bool-for]");
+    if (sw) {
+      var select = form.querySelector('select[name="' + sw.getAttribute("data-bool-for") + '"]');
+      if (select) {
+        select.value = select.value === "true" ? "false" : "true";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        syncSwitches(form);
+      }
+      return;
+    }
+    var step = e.target.closest("[data-step]");
+    if (step) {
+      var input = step.parentElement.querySelector('input[type="number"]');
+      if (input) {
+        input.value = (parseInt(input.value, 10) || 0) + parseInt(step.getAttribute("data-step"), 10);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      return;
+    }
+    if (e.target.closest("[data-run-reset]")) {
+      form.querySelectorAll("[data-param]").forEach(function (field) {
+        var name = field.getAttribute("data-field"), dflt = field.getAttribute("data-default") || "";
+        var items = dflt.split(",").map(function (v) { return v.trim(); });
+        field.querySelectorAll('[name="' + name + '"]').forEach(function (el) {
+          if (el.type === "checkbox") el.checked = items.indexOf(el.value) >= 0;
+          else if (el.type !== "hidden") el.value = dflt;
+          if (el.hasAttribute("data-lista")) el.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+      });
+      syncSwitches(form);
+      runState(form);
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
+    var form = e.target && typeof e.target.closest === "function" ? e.target.closest("form[data-run-form]") : null;
+    if (!form || typeof form.requestSubmit !== "function") return;
+    e.preventDefault();
+    var run = form.querySelector('[type="submit"]:not([formmethod])');
+    if (run && !run.disabled) form.requestSubmit(run);
   });
 
   // The test event (`[data-test-body]`): the body is checked against the

@@ -483,3 +483,56 @@ func dagText(ctx context.Context) string {
 	})
 	return string(b)
 }
+
+// drawerOf is the workflow page's drawer: its project, for the CLI line, and
+// its schedule, to choose a slot of.
+func drawerOf(p WorkflowPage) drawerText {
+	d := drawerText{}
+	if p.Sum != nil {
+		d.Project = p.Sum.Project
+		if p.Sum.Cron != "" {
+			d.Slot = &RunNow{Slug: p.Def.Slug, Cron: p.Sum.Cron, Zone: p.Sum.Timezone, Now: p.Now}
+		}
+	}
+	return d
+}
+
+// ParamGroup is the params of one group, in the drawer's order.
+type ParamGroup struct {
+	Name   string
+	Params []wf.Param
+}
+
+// paramGroups are the params by their group: the ones with none first,
+// under no heading, then each group in the order it first appears.
+func paramGroups(ps []wf.Param) []ParamGroup {
+	var out []ParamGroup
+	at := map[string]int{}
+	for _, p := range ps {
+		i, ok := at[p.Group]
+		if !ok {
+			i = len(out)
+			at[p.Group] = i
+			out = append(out, ParamGroup{Name: p.Group})
+		}
+		out[i].Params = append(out[i].Params, p)
+	}
+	slices.SortStableFunc(out, func(a, b ParamGroup) int {
+		switch {
+		case a.Name == "" && b.Name != "":
+			return -1
+		case a.Name != "" && b.Name == "":
+			return 1
+		}
+		return 0
+	})
+	return out
+}
+
+// boolValue is a boolean's value as the switch shows it.
+func boolValue(v string) string {
+	if v == "true" {
+		return "true"
+	}
+	return "false"
+}

@@ -3,12 +3,12 @@ package pages
 import (
 	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
 	"slices"
+	"time"
 
 	"github.com/AreteAcademy/brevis/internal/alerts"
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
-	"github.com/AreteAcademy/brevis/web/components"
 )
 
 // RunPage is what the run page and its live refresh are drawn from. One
@@ -68,27 +68,26 @@ func RerunParams(w wf.Workflow, used map[string]string) ([]wf.Param, []string) {
 	return params, dropped
 }
 
-// rerunNote is said wherever a rerun is offered for a run with a slot. The
-// rerun is a manual run: the auto params follow the moment it is clicked, and
-// an operator redoing "the 04:00" has to know it will not read 04:00's window.
-func rerunNote(r run.Run) string {
-	if r.LogicalDate == nil {
-		return ""
-	}
-	return "Runs now with these values. The auto params follow now, not slot " + components.UTCStamp(r.LogicalDate) + "."
-}
-
 // drawerText is what changes between the drawer's two uses: running a
 // workflow, and rerunning one of its runs.
 type drawerText struct {
-	Title, Button, Note string
-	Dropped             []string
+	// Rerun is the drawer of a run's Rerun: its words, and no slot to
+	// choose -- a rerun runs now.
+	Rerun bool
+	// NoteSlot is the slot of the run being rerun, which a rerun does not
+	// read: the auto params follow the moment it is clicked, and an operator
+	// redoing "the 04:00" has to know it will not read 04:00's window.
+	NoteSlot *time.Time
+	// Dropped are the run's params the definition no longer declares.
+	Dropped []string
+	// Project is the workflow's, for the CLI line.
+	Project string
+	// Slot is the schedule the drawer offers a slot of; nil offers none.
+	Slot *RunNow
 }
 
-var runDrawerText = drawerText{Title: "Run with parameters", Button: "Run"}
-
 func rerunDrawerText(r run.Run, dropped []string) drawerText {
-	return drawerText{Title: "Rerun with parameters", Button: "Rerun", Note: rerunNote(r), Dropped: dropped}
+	return drawerText{Rerun: true, NoteSlot: r.LogicalDate, Dropped: dropped}
 }
 
 // rerunWorkflow is the workflow as the rerun drawer draws it: the same, with
