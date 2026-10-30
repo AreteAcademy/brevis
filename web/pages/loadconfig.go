@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"context"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"slices"
 	"strconv"
 	"strings"
@@ -236,21 +238,21 @@ func (v LoadView) StepConfig() (WriterConfigView, bool) {
 
 // loadTabs are the tabs a configuration has: Summary and Destination always,
 // the others only with something in them, each with its count.
-func loadTabs(t LoadTabs) []components.Tab {
-	tabs := []components.Tab{{Key: "summary", Label: "Summary", Selected: true}}
+func loadTabs(ctx context.Context, t LoadTabs) []components.Tab {
+	tabs := []components.Tab{{Key: "summary", Label: i18n.T(ctx, "config.tab.summary"), Selected: true}}
 	if len(t.SourceHead) > 0 || t.SourceCount > 0 {
-		label := "Sources"
+		label := i18n.T(ctx, "config.tab.sources")
 		if t.SourceCount > 0 {
 			label += " " + strconv.Itoa(t.SourceCount)
 		}
 		tabs = append(tabs, components.Tab{Key: "sources", Label: label})
 	}
 	if len(t.Transform) > 0 {
-		tabs = append(tabs, components.Tab{Key: "transform", Label: "Transform " + strconv.Itoa(len(t.Transform))})
+		tabs = append(tabs, components.Tab{Key: "transform", Label: i18n.T(ctx, "config.tab.transform") + " " + strconv.Itoa(len(t.Transform))})
 	}
-	tabs = append(tabs, components.Tab{Key: "destination", Label: "Destination"})
+	tabs = append(tabs, components.Tab{Key: "destination", Label: i18n.T(ctx, "config.tab.destination")})
 	if len(t.SchemaRows) > 0 {
-		label := "Schema"
+		label := i18n.T(ctx, "config.tab.schema")
 		if len(t.Schema) > 0 {
 			label += " " + strconv.Itoa(len(t.Schema))
 		}
@@ -316,8 +318,41 @@ func schemaExtra(rows []ConfigRow) []ConfigRow {
 	return out
 }
 
-// destinationIdentity is what the destination is, at the top of its tab:
-// the kind, where it lives and the object.
-func destinationIdentity(v TargetView) []components.Def {
-	return targetProperties(v)[:3]
+// destinationIdentity is what the destination is, where and which object,
+// in the Destination tab.
+func destinationIdentity(ctx context.Context, v TargetView) []components.Def {
+	kind := v.Row.Kind
+	if v.Row.Legacy {
+		kind = i18n.T(ctx, "config.identity.legacy")
+	}
+	if kind == "" {
+		kind = "—"
+	}
+	where, what := SplitTarget(v.Row.Target)
+	if where == "" {
+		where = "—"
+	}
+	return []components.Def{
+		{Term: i18n.T(ctx, "config.identity.kind"), Value: kind, Mono: true},
+		{Term: i18n.T(ctx, "config.identity.where"), Value: where, Mono: true},
+		{Term: i18n.T(ctx, "config.identity.object"), Value: what, Mono: true},
+	}
+}
+
+// schemaRole is a column's roles in the reader's language: "partition,
+// cluster".
+func schemaRole(ctx context.Context, role string) string {
+	if role == "" {
+		return ""
+	}
+	parts := strings.Split(role, ", ")
+	for i, r := range parts {
+		switch r {
+		case "partition":
+			parts[i] = i18n.T(ctx, "config.role.partition")
+		case "cluster":
+			parts[i] = i18n.T(ctx, "config.role.cluster")
+		}
+	}
+	return strings.Join(parts, ", ")
 }

@@ -699,9 +699,9 @@ func (v StreamView) Queryable() bool {
 func (v StreamView) QueryHref() string { return "/sql?target=" + url.QueryEscape(v.Sink.URI) }
 
 // Summary is one paragraph on what the stream does, from what it declares.
-func (v StreamView) Summary() string {
+func (v StreamView) Summary(ctx context.Context) string {
 	if v.Config != nil {
-		return Summary(v.Config)
+		return Summary(ctx, v.Config)
 	}
 	return "Events posted to " + v.Path + " land in " + v.Sink.URI + ". The stream was published without its configuration, so this is all it says."
 }

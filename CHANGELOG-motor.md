@@ -47,6 +47,12 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   answers. A step writing several destinations asks which in the drawer; a
   step that writes nothing is the list with a note. The × goes back to the
   list as it was filtered.
+- **A writer's configuration speaks the reader's language**: its one-line
+  summary, the tabs, the stages, the flow, what the sources share, the
+  schema and the changes, wherever it is drawn -- a load's drawer, a
+  destination's in the Catalog, a stream's page. The settings' names and
+  values are the data's own and stay as written. (A gateway's dead letter
+  is still described in English, until the Streams screen.)
 - **The load's Preview tab is gone**, with the page: the drawer is narrow,
   and Query destination opens the workbench on the same table. A load never
   asks the warehouse anything now.

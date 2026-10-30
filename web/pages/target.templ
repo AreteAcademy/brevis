@@ -33,7 +33,7 @@ templ configurations(v TargetView) {
 				</p>
 			} else {
 				<div class="divide-y divide-line-soft rounded-card border border-line bg-surface shadow-warm-sm">
-					<p class="px-4 py-3 text-sm text-ink sm:px-6" data-summary>{ c.Config.Summary }</p>
+					<p class="px-4 py-3 text-sm text-ink sm:px-6" data-summary>{ c.Config.SummaryIn(ctx) }</p>
 					if c.Flow != nil {
 						@flowDiagram(c.Flow)
 					}
@@ -47,7 +47,7 @@ templ configurations(v TargetView) {
 					}
 					for _, s := range c.Config.Sections {
 						<div class="px-4 py-3 sm:px-6">
-							<h4 class="text-xs font-semibold text-ink">{ s.Title }</h4>
+							<h4 class="text-xs font-semibold text-ink">{ s.TitleIn(ctx) }</h4>
 							if s.Note != "" {
 								<div class="mt-1">
 									@configNote(s.Note)
@@ -105,7 +105,7 @@ templ configurations(v TargetView) {
 												for _, l := range ch.Lines {
 													<li>
 														<span class="font-mono text-muted">{ l.Path }</span>
-														<span class="ml-2 font-mono break-all text-ink">{ l.Text }</span>
+														<span class="ml-2 font-mono break-all text-ink">{ l.TextIn(ctx) }</span>
 													</li>
 												}
 											</ul>
@@ -204,7 +204,7 @@ templ flowDiagram(f *Flow) {
 				<li data-flow-node={ n.Kind } class={ "flow-step min-w-0 flex-1 rounded-card border bg-surface px-3 py-2", flowBorder(n.Kind) }>
 					<p class="flex items-center gap-1.5 text-[0.68rem] font-medium tracking-[0.08em] text-muted uppercase">
 						@components.Icon(flowIcon(n.Kind), "h-3.5 w-3.5")
-						{ n.Title }
+						{ flowTitle(ctx, n.Kind) }
 					</p>
 					<p class="mt-1 font-mono text-[0.78rem] break-all text-ink">{ n.Main }</p>
 					if n.Detail != "" {
@@ -218,7 +218,7 @@ templ flowDiagram(f *Flow) {
 				<div data-flow-node={ dl.Kind } class="flow-branch w-full min-w-0 rounded-card border border-dashed border-line px-3 py-2 min-[700px]:w-[calc((100%-1.5rem)/3)]">
 					<p class="flex items-center gap-1.5 text-[0.68rem] font-medium tracking-[0.08em] text-muted uppercase">
 						@components.Icon(flowIcon(dl.Kind), "h-3.5 w-3.5")
-						{ dl.Title }
+						{ flowTitle(ctx, dl.Kind) }
 					</p>
 					<p class="mt-1 font-mono text-[0.78rem] break-all text-ink">{ dl.Main }</p>
 					<p class="mt-0.5 text-[0.72rem] text-state-failed">{ dl.Detail }</p>

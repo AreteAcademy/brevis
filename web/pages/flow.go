@@ -1,9 +1,11 @@
 package pages
 
 import (
+	"context"
 	"strings"
 
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // Flow is how data reaches a destination, as one writer's configuration
@@ -106,7 +108,9 @@ func FlowOf(c *postgres.WriterConfig, target string) *Flow {
 
 	if text("dead_letter.type") != "" {
 		flow.DeadLetter = &FlowNode{Kind: "dead_letter", Title: "Dead letter",
-			Main: destination(text, "dead_letter", true), Detail: "refused batches"}
+			// In English until the Streams screen speaks the reader's
+			// language (screen-streams), as the dead letter's panel.
+			Main: destination(context.Background(), text, "dead_letter", true), Detail: "refused batches"}
 	}
 	return flow
 }
@@ -142,4 +146,17 @@ func flowBorder(kind string) string {
 		return "border-ink-2"
 	}
 	return "border-line"
+}
+
+// flowTitle is a node's heading, by its kind, in the reader's language.
+func flowTitle(ctx context.Context, kind string) string {
+	switch kind {
+	case "source":
+		return i18n.T(ctx, "flow.source")
+	case "buffer":
+		return i18n.T(ctx, "flow.buffer")
+	case "dead_letter":
+		return i18n.T(ctx, "flow.dead_letter")
+	}
+	return i18n.T(ctx, "flow.destination")
 }
