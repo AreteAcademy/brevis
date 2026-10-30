@@ -16,6 +16,25 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: Batch loads, one row per step, from where to where
+
+- **`/ingest/loads` is one row per step and destination**, worst first and,
+  within a status, the most recently loaded first -- the Catalog's order --
+  instead of a group per workflow. Each row: the workflow and the step with
+  its schedule in words; **where the step reads**, then the destination; its
+  status and the run that is fixing it; the last load; its rows; and its last
+  12 loads.
+- **The origin is what the step declared.** The Go SDK's sources are named by
+  kind and place: HTTP with its URL, files with their path, Postgres and
+  MySQL with `host/database`; another driver is named by its type. A step
+  that describes nothing (Python, dbt, shell) says "not declared" -- it is
+  never guessed. Read in one query of every step's current configuration
+  (`StepConfigs`), ~3 ms over 100 steps with 10 versions each.
+- **A summary** counts the destinations, the workflows and each status, and
+  leads to the Catalog; "See workflows" is in the header, and the footer says
+  that writes made outside Brevis do not show.
+- In English, Portuguese and Spanish.
+
 ### Added: the Data catalog is back
 
 - **`/data` is the catalog again** (it had answered 301 to Loads since the

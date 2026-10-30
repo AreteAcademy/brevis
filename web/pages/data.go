@@ -254,19 +254,6 @@ func SplitTarget(t string) (where, what string) {
 	return "", t
 }
 
-// kindIcon is the glyph a destination's kind is drawn with.
-func kindIcon(kind string) string {
-	switch kind {
-	case "gs", "s3":
-		return "cloud"
-	case "file":
-		return "folder"
-	case "pubsub":
-		return "plug"
-	}
-	return "database"
-}
-
 // statusOptions is the status filter: everything, what needs a person, then
 // each status present with how many stand there.
 func statusOptions(v DataView) []components.SegOption {

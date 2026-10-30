@@ -1053,11 +1053,6 @@ dialog.run-drawer:not([open]):target {
   }
 }
 
-/* A COLLAPSED GROUP keeps its header row and folds the rest. */
-tbody[data-collapsed] > tr:not(:first-child) {
-  display: none;
-}
-
 /* WHAT NEEDS A SCRIPT IS IN THE FIRST PAINT, OR NEVER (nav-latency N6).
    `js` is on <html> before anything is drawn (an inline line at the top of
    the head), so a control that only works with ui.js or sql.js -- the

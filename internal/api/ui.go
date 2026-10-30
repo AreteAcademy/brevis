@@ -113,6 +113,7 @@ type CatalogReader interface {
 	Catalog(ctx context.Context) ([]postgres.CatalogEntry, error)
 	CatalogTarget(ctx context.Context, target string) (*postgres.TargetDetail, error)
 	StreamConfigs(ctx context.Context) (map[postgres.StreamKey]*postgres.WriterConfig, error)
+	StepConfigs(ctx context.Context) (map[postgres.StepKey]*postgres.WriterConfig, error)
 }
 
 // Actions are the three effects the screen triggers. A small interface on
@@ -340,8 +341,10 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", assets.Handler()))
 }
 
-// loads is Ingest → Loads: what the workflows wrote, by workflow. The same
-// catalog read Catalog draws, regrouped; the filter is Catalog's, on this URL.
+// loads is Ingest → Batch loads (screen-loads): one row per step and
+// destination, worst first. The catalog read Catalog draws, plus every
+// step's configuration in one more query, for where each step reads; the
+// filter is Catalog's, on this URL.
 func (u *UI) loads(w http.ResponseWriter, r *http.Request) {
 	var entries []postgres.CatalogEntry
 	if u.catalog != nil {
@@ -350,6 +353,12 @@ func (u *UI) loads(w http.ResponseWriter, r *http.Request) {
 			u.failure(w, r, err)
 			return
 		}
+		configs, err := u.catalog.StepConfigs(r.Context())
+		if err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		pages.AttachStepConfigs(entries, configs)
 	}
 	f := pages.ParseDataFilter(r.URL.Query())
 	f.Path = "/ingest/loads"
@@ -861,13 +870,11 @@ func (u *UI) palette(w http.ResponseWriter, r *http.Request) {
 				items = append(items, paletteEntry("Streams", "POST "+s.Path, g.Name, s.Href(), "cloud"))
 			}
 		}
-		for _, g := range pages.LoadsOf(entries, time.Now()) {
-			for _, t := range g.Targets {
-				if t.URI == "" {
-					continue
-				}
-				items = append(items, paletteEntry("Loads", t.Step+" → "+t.URI, g.Workflow, t.Href(), "download"))
+		for _, t := range pages.LoadsOf(entries, time.Now()) {
+			if t.URI == "" {
+				continue
 			}
+			items = append(items, paletteEntry("Loads", t.Step+" → "+t.URI, t.Workflow, t.Href(), "download"))
 		}
 	}
 	if u.endpoints != nil {

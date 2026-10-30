@@ -44,7 +44,6 @@ func TestNothingScriptOnlyIsRevealedAfterThePaint(t *testing.T) {
 		ui                 *api.UI
 	}{
 		{"the ⌘K opener", "/ingest/loads", "data-palette-open", loads},
-		{"a group toggle", "/ingest/loads", "data-group-toggle", loads},
 		{"the Live switch", "/runs", `data-live-list="runs-list"`, runs},
 		{"Copy URI", "/ingest/loads/orders_sync/load", `data-copy="#destination-uri"`, load},
 		{"the stream's tab bar", "/ingest/streams/edge/v1/clicks", "data-hash-tabs-bar", stream},

@@ -1,7 +1,11 @@
 package pages
 
 import (
+	"context"
+
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // Source is where a step reads, as its configuration declares it
@@ -70,4 +74,18 @@ func AttachStepConfigs(entries []postgres.CatalogEntry, configs map[postgres.Ste
 			}
 		}
 	}
+}
+
+// originLabel is a source's kind as a row says it: the protocol, the files,
+// the database by its name, or somebody else's driver by its type.
+func originLabel(ctx context.Context, s Source) string {
+	switch s.Kind {
+	case "http":
+		return i18n.T(ctx, "loads.source.http")
+	case "file":
+		return i18n.T(ctx, "loads.source.file")
+	case "database":
+		return components.LogoTitle(ctx, s.Logo)
+	}
+	return s.Driver
 }

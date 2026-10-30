@@ -1044,18 +1044,6 @@
     });
   });
 
-  // A group that collapses (`[data-group-toggle]` in a tbody): the button,
-  // shown only where a script runs (data-js), folds the group's rows under
-  // its header. With no script every group stays open.
-  document.querySelectorAll("[data-group-toggle]").forEach(function (button) {
-    button.addEventListener("click", function () {
-      var open = button.getAttribute("aria-expanded") !== "false";
-      button.setAttribute("aria-expanded", open ? "false" : "true");
-      var group = button.closest("tbody");
-      if (group) group.toggleAttribute("data-collapsed", open);
-    });
-  });
-
   // A form that asks first (`form[data-confirm]`): the attribute is the
   // question, already in the page's language. Declined, nothing is sent.
   // Delegated, because the run's head that holds Cancel is swapped by the

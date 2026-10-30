@@ -1,7 +1,9 @@
 package pages
 
 import (
+	"context"
 	"fmt"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"net/url"
 	"sort"
 	"strings"
@@ -156,13 +158,6 @@ func StreamsOf(entries []postgres.CatalogEntry) []GatewayGroup {
 	return out
 }
 
-// LoadGroup is one workflow and what its steps land.
-type LoadGroup struct {
-	Workflow       string
-	Cron, Timezone string // empty for a workflow that only runs by hand
-	Targets        []LoadTarget
-}
-
 // LoadTarget is one step landing on one destination, judged against that
 // step's own schedule.
 type LoadTarget struct {
@@ -173,9 +168,19 @@ type LoadTarget struct {
 	LastLoaded time.Time
 	Rows       *int64
 
-	// Recent is the rows of the destination's last loads, oldest first --
-	// only when this step is its only writer: an entry's history is shared,
-	// and another step's loads in this step's sparkline would be a lie.
+	// Cron and Timezone are the step's schedule; HasSchedule is false for
+	// a workflow that only runs by hand.
+	Cron, Timezone string
+	HasSchedule    bool
+
+	// Source is where the step reads, as its configuration declares it;
+	// zero when it declared none.
+	Source Source
+
+	// Recent is the rows of the destination's last loads, oldest first, at
+	// most recentShown -- only when this step is its only writer: an entry's
+	// history is shared, and another step's loads in this step's sparkline
+	// would be a lie.
 	Recent []*int64
 
 	// Many is set when the step writes more than one destination, so its
@@ -206,10 +211,15 @@ func (t LoadTarget) Href() string {
 	return h
 }
 
-// LoadsOf regroups the catalog's step writers by the workflow that runs them,
-// each workflow's targets by step and destination. `now` judges freshness.
-func LoadsOf(entries []postgres.CatalogEntry, now time.Time) []LoadGroup {
-	groups := map[string]*LoadGroup{}
+// recentShown is how many of a destination's last loads a row draws: the
+// handoff's "last 12".
+const recentShown = 12
+
+// LoadsOf is every step landing on every destination, one row each, in the
+// Catalog's order (screen-loads T2): worst first, then the most recently
+// loaded. A gateway's stream is not a load. `now` judges freshness.
+func LoadsOf(entries []postgres.CatalogEntry, now time.Time) []LoadTarget {
+	var out []LoadTarget
 	written := map[[2]string]int{}
 	for _, e := range entries {
 		steps := 0
@@ -222,54 +232,46 @@ func LoadsOf(entries []postgres.CatalogEntry, now time.Time) []LoadGroup {
 			if w.Gateway != nil {
 				continue
 			}
-			g := groups[w.Workflow]
-			if g == nil {
-				g = &LoadGroup{Workflow: w.Workflow}
-				groups[w.Workflow] = g
-			}
-			if w.HasSchedule && g.Cron == "" {
-				g.Cron, g.Timezone = w.Cron, w.Timezone
-			}
 			t := LoadTarget{
 				Workflow: w.Workflow, Step: w.Node, Place: Place{URI: e.Target, Kind: e.Kind},
 				Legacy: e.Legacy, Status: verdictOf(e, w, now).Status,
 				LastLoaded: w.LastLoaded, Rows: w.LastRows, RunInFlight: w.RunInFlight,
+				Cron: w.Cron, Timezone: w.Timezone, HasSchedule: w.HasSchedule,
+				Source: SourceOf(w.Config),
 			}
 			if steps == 1 {
-				t.Recent = e.Recent
+				t.Recent = e.Recent[max(0, len(e.Recent)-recentShown):]
 			}
-			g.Targets = append(g.Targets, t)
+			out = append(out, t)
 			written[[2]string{w.Workflow, w.Node}]++
 		}
 	}
-
-	names := make([]string, 0, len(groups))
-	for n := range groups {
-		names = append(names, n)
+	for i := range out {
+		out[i].Many = written[[2]string{out[i].Workflow, out[i].Step}] > 1
 	}
-	sort.Strings(names)
-	out := make([]LoadGroup, 0, len(names))
-	for _, n := range names {
-		g := groups[n]
-		for i := range g.Targets {
-			g.Targets[i].Many = written[[2]string{g.Workflow, g.Targets[i].Step}] > 1
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if worstFirst[a.Status] != worstFirst[b.Status] {
+			return worstFirst[a.Status] < worstFirst[b.Status]
 		}
-		sort.SliceStable(g.Targets, func(i, j int) bool {
-			a, b := g.Targets[i], g.Targets[j]
-			if a.Step != b.Step {
-				return a.Step < b.Step
-			}
-			return a.URI < b.URI
-		})
-		out = append(out, *g)
-	}
+		if !a.LastLoaded.Equal(b.LastLoaded) {
+			return a.LastLoaded.After(b.LastLoaded)
+		}
+		if a.Workflow != b.Workflow {
+			return a.Workflow < b.Workflow
+		}
+		if a.Step != b.Step {
+			return a.Step < b.Step
+		}
+		return a.URI < b.URI
+	})
 	return out
 }
 
-// LoadsView is /ingest/loads as the template draws it: the workflows and their
-// loads under the filter, and the counts of every load whatever is shown.
+// LoadsView is /ingest/loads as the template draws it: the loads under the
+// filter, and the counts of every load whatever is shown.
 type LoadsView struct {
-	Groups []LoadGroupView
+	Rows   []LoadRow
 	Counts map[catalog.Status]int
 
 	// Total is every load and Workflows every workflow that writes one.
@@ -278,18 +280,11 @@ type LoadsView struct {
 	Kinds     []string
 	HasLegacy bool
 	Filter    DataFilter
+	Now       time.Time
 }
 
-// LoadGroupView is one workflow's group under the filter. Hidden is a group
-// the search hides every row of: drawn hidden, so deleting a letter brings it
-// back.
-type LoadGroupView struct {
-	LoadGroup
-	Rows   []LoadRow
-	Hidden bool
-}
-
-// LoadRow is one load under the filter.
+// LoadRow is one load under the filter. Hidden is a row the search hides:
+// drawn hidden, so deleting a letter brings it back.
 type LoadRow struct {
 	LoadTarget
 	Hidden bool
@@ -303,62 +298,46 @@ func (t LoadTarget) SearchText() string {
 
 // BuildLoads is every load, counted.
 func BuildLoads(entries []postgres.CatalogEntry, now time.Time) LoadsView {
-	v := LoadsView{Counts: map[catalog.Status]int{}}
-	for _, g := range LoadsOf(entries, now) {
-		gv := LoadGroupView{LoadGroup: g}
-		for _, t := range g.Targets {
-			gv.Rows = append(gv.Rows, LoadRow{LoadTarget: t})
-			v.Counts[t.Status]++
-			v.Total++
-			if t.Kind != "" && !containsString(v.Kinds, t.Kind) {
-				v.Kinds = append(v.Kinds, t.Kind)
-			}
-			v.HasLegacy = v.HasLegacy || t.Legacy
+	v := LoadsView{Counts: map[catalog.Status]int{}, Now: now}
+	workflows := map[string]bool{}
+	for _, t := range LoadsOf(entries, now) {
+		v.Rows = append(v.Rows, LoadRow{LoadTarget: t})
+		v.Counts[t.Status]++
+		v.Total++
+		workflows[t.Workflow] = true
+		if t.Kind != "" && !containsString(v.Kinds, t.Kind) {
+			v.Kinds = append(v.Kinds, t.Kind)
 		}
-		v.Groups = append(v.Groups, gv)
+		v.HasLegacy = v.HasLegacy || t.Legacy
 	}
-	v.Workflows = len(v.Groups)
+	v.Workflows = len(workflows)
 	sort.Strings(v.Kinds)
 	return v
 }
 
 // Apply narrows the loads to the filter: status, kind and legacy drop what
-// they exclude (and a group left empty); the search hides. Counts and totals
-// still describe every load.
+// they exclude; the search hides. Counts and totals still describe every
+// load.
 func (v LoadsView) Apply(f DataFilter) LoadsView {
 	v.Filter = f
-	groups := make([]LoadGroupView, 0, len(v.Groups))
-	for _, g := range v.Groups {
-		var rows []LoadRow
-		visible := 0
-		for _, r := range g.Rows {
-			if !f.keepsLoad(r.LoadTarget) {
-				continue
-			}
-			r.Hidden = f.Q != "" && !strings.Contains(r.SearchText(), strings.ToLower(f.Q))
-			if !r.Hidden {
-				visible++
-			}
-			rows = append(rows, r)
-		}
-		if len(rows) == 0 {
+	rows := make([]LoadRow, 0, len(v.Rows))
+	for _, r := range v.Rows {
+		if !f.keepsLoad(r.LoadTarget) {
 			continue
 		}
-		g.Rows, g.Hidden = rows, visible == 0
-		groups = append(groups, g)
+		r.Hidden = f.Q != "" && !strings.Contains(r.SearchText(), strings.ToLower(f.Q))
+		rows = append(rows, r)
 	}
-	v.Groups = groups
+	v.Rows = rows
 	return v
 }
 
 // Shown is how many loads are drawn visible.
 func (v LoadsView) Shown() int {
 	n := 0
-	for _, g := range v.Groups {
-		for _, r := range g.Rows {
-			if !r.Hidden {
-				n++
-			}
+	for _, r := range v.Rows {
+		if !r.Hidden {
+			n++
 		}
 	}
 	return n
@@ -393,16 +372,16 @@ func loadLegacyOptions(v LoadsView) []components.SegOption {
 	return legacyOptions(DataView{Filter: v.Filter})
 }
 
-// groupSchedule is a workflow's schedule as the group header says it: in
-// words where they are sure, the expression otherwise, "manual" with none.
-func groupSchedule(g LoadGroup) string {
-	if g.Cron == "" {
-		return "manual"
+// loadSchedule is when a step runs, as its row says it: in words where they
+// are sure, the expression otherwise, "by hand" with none.
+func loadSchedule(ctx context.Context, t LoadTarget) string {
+	if !t.HasSchedule {
+		return i18n.T(ctx, "loads.manual")
 	}
-	if words := CronText(g.Cron); words != "" {
-		return words + zoneSuffix(g.Timezone)
+	if words := CronTextIn(ctx, t.Cron); words != "" {
+		return words + zoneSuffix(t.Timezone)
 	}
-	return g.Cron
+	return t.Cron
 }
 
 func containsString(list []string, s string) bool {

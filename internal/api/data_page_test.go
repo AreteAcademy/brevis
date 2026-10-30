@@ -27,6 +27,11 @@ type catalogFake struct {
 	asked  *string
 
 	streams map[postgres.StreamKey]*postgres.WriterConfig
+	steps   map[postgres.StepKey]*postgres.WriterConfig
+}
+
+func (c catalogFake) StepConfigs(context.Context) (map[postgres.StepKey]*postgres.WriterConfig, error) {
+	return c.steps, nil
 }
 
 func (c catalogFake) StreamConfigs(context.Context) (map[postgres.StreamKey]*postgres.WriterConfig, error) {
@@ -100,7 +105,7 @@ func TestTheLoadsPageListsEveryLoadAndItsWriter(t *testing.T) {
 		"s3://demo-landing/reports/", "shell_report",
 		"bronze.payments", "legacy",
 		// What is listed, and what is not, is said under the title.
-		"Writes from outside Brevis do not appear",
+		"Writes made outside Brevis do not show here",
 	} {
 		if !strings.Contains(visible(body), want) {
 			t.Errorf("the page does not show %q", want)
@@ -165,10 +170,6 @@ func TestTheLoadsPageFiltersFromTheQueryString(t *testing.T) {
 	if !strings.Contains(body, "demo-landing") || strings.Contains(body, "landing_orders") {
 		t.Error("?kind=s3 did not narrow the table to the s3 load")
 	}
-	if !strings.Contains(body, "Showing 1 of 3 loads") {
-		t.Error("a filtered page does not say how much it shows")
-	}
-
 	_, body = get(t, ui, "/ingest/loads?status=attention")
 	if !strings.Contains(body, "Nothing matches this filter") {
 		t.Error("an empty filter result does not say so")
@@ -292,9 +293,6 @@ func TestTheLoadsAreSearchedByWhereAndByWho(t *testing.T) {
 	if rowHidden(t, body, "demo-landing") || !rowHidden(t, body, "landing_orders") || !rowHidden(t, body, "payments") {
 		t.Error("?q=REPORTS did not narrow to the load whose URI says reports")
 	}
-	if !strings.Contains(body, "Showing 1 of 3 loads") {
-		t.Error("a searched page does not say how much it shows")
-	}
 	if !strings.Contains(body, `value="REPORTS"`) {
 		t.Error("the search box does not keep what was searched")
 	}
@@ -327,9 +325,10 @@ func TestTheSearchAndTheFiltersKeepEachOther(t *testing.T) {
 // A URI IS DRAWN AS WHERE, THEN WHAT. The scheme and host are the same on
 // most rows and the eye needs the part that differs, so the prefix is dimmed
 // and the object is not -- the whole URI is still there to read and select.
+// Cut where the Catalog cuts it (screen-loads T2): at the table.
 func TestAURIIsDrawnAsWhereThenWhat(t *testing.T) {
 	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads")
-	for _, want := range []string{">postgres://brevis_it/<", ">public/landing_orders<", ">bronze.<", ">payments<"} {
+	for _, want := range []string{">postgres://brevis_it/public/<", ">landing_orders<", ">bronze.<", ">payments<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the URI is not split where it should be: no %s", want)
 		}
@@ -388,7 +387,7 @@ func rowHidden(t *testing.T, body, needle string) bool {
 func TestTheLoadsFilterWhileYouType(t *testing.T) {
 	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads")
 	for _, want := range []string{`data-filter-for="load-rows"`, `id="load-rows"`,
-		`data-filter-row`, `data-foot-total="3"`, `data-foot-noun="loads"`, "data-filter-empty"} {
+		`data-filter-row`, "data-filter-empty"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the loads list lacks %s", want)
 		}
@@ -485,19 +484,19 @@ func TestALoadKeepsItsWriterAndDestinationBeside(t *testing.T) {
 	}
 }
 
-// /ingest/loads ANSWERS, with the catalog's step writers grouped by workflow,
-// and its collapse and group filter are in ui.js.
+// /ingest/loads ANSWERS, one row per step and destination (screen-loads T2);
+// the collapse and group filter in ui.js are the Streams list's now.
 func TestTheLoadsPageAnswers(t *testing.T) {
 	code, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads?legacy=1")
 	if code != http.StatusOK {
 		t.Fatalf("/ingest/loads answered %d", code)
 	}
-	if !strings.Contains(body, `data-filter-group="payments"`) || strings.Contains(body, `data-filter-group="sdk_orders"`) {
-		t.Error("legacy-only did not narrow the groups")
+	if !strings.Contains(body, `href="/workflows/payments"`) || strings.Contains(body, `href="/workflows/sdk_orders"`) {
+		t.Error("legacy-only did not narrow the rows")
 	}
 	_, ui := browsing(t)
 	_, raw := get(t, ui, "/assets/ui.js")
-	for _, want := range []string{"data-group-toggle", "data-filter-group"} {
+	for _, want := range []string{"data-filter-group"} {
 		if !strings.Contains(strip(raw), want) {
 			t.Errorf("ui.js has no %s", want)
 		}

@@ -96,82 +96,22 @@ func TestIngestStreamsJoinEachDeadLetterToItsStream(t *testing.T) {
 	}
 }
 
-// A LOAD SITS UNDER THE WORKFLOW THAT WRITES IT, one target per step and
-// destination, judged against that step's own schedule.
-func TestIngestLoadsGroupByTheWorkflowThatWrites(t *testing.T) {
-	now := time.Now()
-	groups := LoadsOf(printFixtures(now), now)
-	var names []string
-	for _, g := range groups {
-		names = append(names, g.Workflow)
-	}
-	if strings.Join(names, " ") != "daily_sales multi vendors_bacen" {
-		t.Fatalf("groups = %v (a gateway stream became a load?)", names)
-	}
-	ds := groups[0]
-	if ds.Cron != "0 4 * * *" || len(ds.Targets) != 3 {
-		t.Fatalf("daily_sales = %+v", ds)
-	}
-	steps := map[string]LoadTarget{}
-	for _, tg := range ds.Targets {
-		steps[tg.Step] = tg
-	}
-	for _, want := range []string{"report", "load_warehouse", "load"} {
-		if _, ok := steps[want]; !ok {
-			t.Errorf("daily_sales has no %s", want)
-		}
-	}
-	// Judged against its own schedule -- on time or late depending on the
-	// hour the test runs, so only "judged" is pinned, not which verdict.
-	if r := steps["report"]; r.URI != "file:///data/reports/2026-10-15/" || r.Status == catalog.Unscheduled ||
-		r.Status == catalog.Continuous || r.Rows == nil || *r.Rows != 4 {
-		t.Errorf("report = %+v", r)
-	}
-	if v := groups[2]; !v.Targets[0].Legacy || v.Cron != "" || v.Targets[0].Status != catalog.Unscheduled {
-		t.Errorf("the legacy, manual load = %+v", v.Targets[0])
-	}
-}
-
 // A LOAD'S LINK NAMES ITS DESTINATION only when its step writes more than one.
 func TestIngestHrefs(t *testing.T) {
 	now := time.Now()
-	groups := LoadsOf(printFixtures(now), now)
-	if h := groups[0].Targets[0].Href(); !strings.HasPrefix(h, "/ingest/loads/daily_sales/") || strings.Contains(h, "?") {
+	loads := map[string]LoadTarget{}
+	for _, l := range LoadsOf(printFixtures(now), now) {
+		loads[l.Step+" "+l.URI] = l
+	}
+	if h := loads["report file:///data/reports/2026-10-15/"].Href(); h != "/ingest/loads/daily_sales/report" {
 		t.Errorf("a one-destination step's link = %q", h)
 	}
-	multi := groups[1].Targets
-	if len(multi) != 2 || !strings.Contains(multi[0].Href(), "?target=s3%3A%2F%2Flake%2Fa%2F") {
-		t.Errorf("a two-destination step's link = %q", multi[0].Href())
+	if h := loads["split s3://lake/a/"].Href(); !strings.Contains(h, "?target=s3%3A%2F%2Flake%2Fa%2F") {
+		t.Errorf("a two-destination step's link = %q", h)
 	}
 	s := StreamsOf(printFixtures(now))[0].Streams[0]
 	if s.Href() != "/ingest/streams/events_gateway/v1/clicks" {
 		t.Errorf("a stream's link = %q", s.Href())
-	}
-}
-
-// THE LOADS LIST: one group per workflow, its header saying the schedule in
-// words (or that it runs by hand) and how many destinations, and under it one
-// row per step and destination, `step → URI`, each going to its load.
-func TestTheLoadsListGroupsByWorkflow(t *testing.T) {
-	now := time.Now()
-	page := draw(t, Loads(BuildLoads(printFixtures(now), now).Apply(DataFilter{})))
-	for _, want := range []string{
-		`data-filter-group="daily_sales"`, "every day at 04:00", "3 destinations",
-		`data-filter-group="vendors_bacen"`, "manual",
-		`href="/ingest/loads/daily_sales/report"`, "report", "file:///", "data/reports/2026-10-15/",
-		"legacy", `data-filter-for="load-rows"`,
-	} {
-		if !strings.Contains(page, want) {
-			t.Errorf("the loads list has no %s", want)
-		}
-	}
-	for _, never := range []string{"events_gateway", "dead-letter", "pubsub://"} {
-		if strings.Contains(page, never) {
-			t.Errorf("a gateway stream is listed as a load: %s", never)
-		}
-	}
-	if !strings.Contains(page, "6 destinations") || !strings.Contains(page, "3 workflows") {
-		t.Error("the header does not count destinations and workflows")
 	}
 }
 
@@ -182,8 +122,8 @@ func TestTheLoadsListFilters(t *testing.T) {
 	now := time.Now()
 	v := BuildLoads(printFixtures(now), now)
 	legacy := draw(t, Loads(v.Apply(DataFilter{Legacy: true, Path: "/ingest/loads"})))
-	if strings.Contains(legacy, `data-filter-group="daily_sales"`) || !strings.Contains(legacy, `data-filter-group="vendors_bacen"`) {
-		t.Error("legacy-only did not narrow to the legacy load's workflow")
+	if strings.Contains(legacy, "daily_sales") || !strings.Contains(legacy, "vendors_bacen") {
+		t.Error("legacy-only did not narrow to the legacy load")
 	}
 	searched := v.Apply(DataFilter{Q: "warehouse", Path: "/ingest/loads"})
 	if searched.Shown() != 1 {
