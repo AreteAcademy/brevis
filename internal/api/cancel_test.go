@@ -26,7 +26,7 @@ type cancelSpy struct {
 }
 
 func (*cancelSpy) Toggle(context.Context, string, string) (bool, error) { return false, nil }
-func (*cancelSpy) Disparar(context.Context, string, time.Time, map[string]string) (uuid.UUID, error) {
+func (*cancelSpy) Disparar(context.Context, string, time.Time, map[string]string, *time.Time) (uuid.UUID, error) {
 	return uuid.Nil, nil
 }
 func (s *cancelSpy) Cancel(_ context.Context, id uuid.UUID, actor string) (postgres.CancelResult, error) {

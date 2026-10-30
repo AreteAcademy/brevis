@@ -259,6 +259,19 @@ func (r *ScheduleRepo) Active(ctx context.Context) ([]sch.Schedule, error) {
 	return out, rows.Err()
 }
 
+// Of is a workflow's schedule, active or paused; false when it has none.
+func (r *ScheduleRepo) Of(ctx context.Context, slug string) (sch.Schedule, bool, error) {
+	var s sch.Schedule
+	err := r.pool.QueryRow(ctx, `
+		SELECT workflow_slug, cron, timezone, catchup, ativo, ultimo_slot
+		FROM schedules WHERE workflow_slug = $1`, slug).
+		Scan(&s.WorkflowSlug, &s.Cron, &s.Timezone, &s.Catchup, &s.Active, &s.LastSlot)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return sch.Schedule{}, false, nil
+	}
+	return s, err == nil, err
+}
+
 // AdvanceSlot records how far the schedule has been materialized.
 //
 // The condition `ultimo_slot IS NULL OR ultimo_slot < $2` makes the operation

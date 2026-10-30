@@ -1334,8 +1334,8 @@ func (a uiActions) Toggle(ctx context.Context, slug, actor string) (bool, error)
 }
 
 func (a uiActions) Disparar(ctx context.Context, slug string, now time.Time,
-	params map[string]string) (uuid.UUID, error) {
-	return a.sched.Disparar(ctx, slug, now, params)
+	params map[string]string, slot *time.Time) (uuid.UUID, error) {
+	return a.sched.Disparar(ctx, slug, now, params, slot)
 }
 
 func (a uiActions) Cancel(ctx context.Context, id uuid.UUID, actor string) (postgres.CancelResult, error) {

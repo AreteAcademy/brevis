@@ -27,6 +27,19 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 - **A page with many workflows reads their definitions once**, in one query,
   instead of one per workflow: the Workflows list, Runs and the Overview.
 
+### Added: running a past slot
+
+- **`POST /workflows/{slug}/trigger` takes `slot`**, one past slot of the
+  schedule, in RFC 3339 or as the browser's `datetime-local` (read in the
+  schedule's timezone). The run is manual, but its logical date is the slot,
+  so its automatic params are the slot's. One failed night is redone without
+  a backfill.
+- **A slot the cron never fires is refused** with the nearest one before it, in
+  UTC and in the schedule's timezone; so is one in the future, or of a
+  workflow with no schedule. A paused schedule still takes its past slots.
+- The same slot can be run again; two clicks in one second are still one run.
+- Without `slot` the trigger is what it was. See `docs/PARAMS.md`.
+
 ## [0.40.0] — 2026-10-29
 
 ### Added: canceling a run

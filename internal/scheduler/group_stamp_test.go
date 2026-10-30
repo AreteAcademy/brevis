@@ -46,7 +46,7 @@ func TestEveryRunOfAGroupedWorkflowCarriesTheGroup(t *testing.T) {
 	if _, err := s.Backfill(ctx, "diario", inUTC("2025-12-01T00:00:00Z"), inUTC("2025-12-01T23:59:00Z"), nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Disparar(ctx, "diario", inUTC("2026-01-02T03:30:00Z"), nil); err != nil {
+	if _, err := s.Disparar(ctx, "diario", inUTC("2026-01-02T03:30:00Z"), nil, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -92,7 +92,7 @@ func TestEveryRunOfAGroupedWorkflowCarriesTheGroup(t *testing.T) {
 func TestARunWithoutAGroupStoresNull(t *testing.T) {
 	s, runs, _, pool := build(t, "0 2 * * *", false)
 	ctx := context.Background()
-	id, err := s.Disparar(ctx, "diario", inUTC("2026-01-02T03:30:00Z"), nil)
+	id, err := s.Disparar(ctx, "diario", inUTC("2026-01-02T03:30:00Z"), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

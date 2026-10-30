@@ -23,7 +23,7 @@ func (s toggleSpy) Toggle(_ context.Context, _ string, actor string) (bool, erro
 	return false, nil
 }
 
-func (toggleSpy) Disparar(context.Context, string, time.Time, map[string]string) (uuid.UUID, error) {
+func (toggleSpy) Disparar(context.Context, string, time.Time, map[string]string, *time.Time) (uuid.UUID, error) {
 	return uuid.Nil, nil
 }
 
