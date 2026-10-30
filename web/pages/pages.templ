@@ -1985,9 +1985,20 @@ templ runDrawer(w wf.Workflow, t drawerText) {
 // prefix so it does not collide with the form's own future fields. Types become
 // controls: a boolean is a select, an integer is a number, an enum is a select —
 // each refusing in the browser what the server would refuse again afterwards.
+//
+// A title is the label, with the name beside it -- the name is what the CLI and
+// the template know the param by. A warning is a hint under the field: what a
+// value other than the default costs.
 templ paramField(p wf.Param) {
 	<label class="flex flex-col gap-1">
-		<span class="font-mono text-[0.8rem] text-ink">{ p.Name }</span>
+		if p.Title != "" {
+			<span class="flex items-baseline gap-2">
+				<span class="text-[0.82rem] font-medium text-ink">{ p.Title }</span>
+				<span class="font-mono text-[0.72rem] text-faint">{ p.Name }</span>
+			</span>
+		} else {
+			<span class="font-mono text-[0.8rem] text-ink">{ p.Name }</span>
+		}
 		if p.Description != "" {
 			<span class="text-[0.72rem] text-muted">{ p.Description }</span>
 		}
@@ -2014,6 +2025,9 @@ templ paramField(p wf.Param) {
 				placeholder={ p.Pattern }
 				class="h-8 rounded-card border border-line bg-surface px-2.5 font-mono text-[0.82rem] text-ink placeholder:text-faint focus:border-accent-strong focus:outline-none"
 			/>
+		}
+		if p.Warn != "" {
+			<span data-param-warn class="text-[0.72rem] text-warn">{ p.Warn }</span>
 		}
 	</label>
 }

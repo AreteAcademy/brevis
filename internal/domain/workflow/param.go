@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // Param is a run parameter: what changes between two triggers of the SAME
@@ -41,6 +42,19 @@ type Param struct {
 	// author to WIDEN what the `string` type accepts by default — see
 	// safeCharacters.
 	Pattern string `json:"Pattern"`
+
+	// How the form presents the param, and nothing else: none of the four
+	// changes what a value may be. Title is the readable label ("Full load"),
+	// Group gathers params in the form, Warn is what choosing a value other
+	// than the default costs, and Uses is a connector's key, for its logo.
+	//
+	// omitempty, unlike the keys above: a param that uses none of them is the
+	// document it always was, and an older engine ignores the keys it does not
+	// know.
+	Title string `json:"Title,omitempty"`
+	Group string `json:"Group,omitempty"`
+	Warn  string `json:"Warn,omitempty"`
+	Uses  string `json:"Uses,omitempty"`
 }
 
 type ParamType string
@@ -117,6 +131,28 @@ var safeCharacters = regexp.MustCompile(`^[A-Za-z0-9_.:/=,+@\- ]*$`)
 
 var paramName = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 
+var connectorKey = regexp.MustCompile(`^[a-z0-9-]+$`)
+
+// validatePresentation checks the shape of what only the form reads: one line
+// each, short enough for a label, and a connector key that can name a logo.
+func (p Param) validatePresentation() error {
+	for _, f := range []struct {
+		key, value string
+		max        int
+	}{{"title", p.Title, 60}, {"group", p.Group, 60}, {"warn", p.Warn, 200}} {
+		if strings.ContainsAny(f.value, "\r\n") {
+			return fmt.Errorf("param %q: %s has to be one line", p.Name, f.key)
+		}
+		if n := utf8.RuneCountInString(f.value); n > f.max {
+			return fmt.Errorf("param %q: %s has %d characters, and the most is %d", p.Name, f.key, n, f.max)
+		}
+	}
+	if p.Uses != "" && !connectorKey.MatchString(p.Uses) {
+		return fmt.Errorf("param %q: uses %q has to be a connector's key: lowercase letters, digits and -", p.Name, p.Uses)
+	}
+	return nil
+}
+
 // Validate checks the param's declaration, not the value.
 func (p Param) Validate() error {
 	if !paramName.MatchString(p.Name) {
@@ -145,6 +181,9 @@ func (p Param) Validate() error {
 					"which is what separates the items of a list", p.Name, allowed)
 			}
 		}
+	}
+	if err := p.validatePresentation(); err != nil {
+		return err
 	}
 	if p.Pattern != "" {
 		if _, err := regexp.Compile(p.Pattern); err != nil {

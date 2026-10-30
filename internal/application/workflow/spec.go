@@ -88,6 +88,9 @@ func (r ResourceSpec) dominio() dominio.Resources {
 //	  - name: start_date
 //	    type: string
 //	    pattern: '^\d{4}-\d{2}-\d{2}$'
+//
+// `title`, `group`, `warn` and `uses` are how the form presents it, and do
+// not change what a value may be.
 type ParamSpec struct {
 	Name        string   `yaml:"name"`
 	Type        string   `yaml:"type"`
@@ -95,6 +98,10 @@ type ParamSpec struct {
 	Description string   `yaml:"description"`
 	Enum        []string `yaml:"enum"`
 	Pattern     string   `yaml:"pattern"`
+	Title       string   `yaml:"title"`
+	Group       string   `yaml:"group"`
+	Warn        string   `yaml:"warn"`
+	Uses        string   `yaml:"uses"`
 }
 
 func (p ParamSpec) dominio() dominio.Param {
@@ -109,6 +116,8 @@ func (p ParamSpec) dominio() dominio.Param {
 		Name: strings.TrimSpace(p.Name), Type: kind,
 		Default: p.Default, Description: p.Description,
 		Enum: p.Enum, Pattern: p.Pattern,
+		Title: strings.TrimSpace(p.Title), Group: strings.TrimSpace(p.Group),
+		Warn: strings.TrimSpace(p.Warn), Uses: strings.TrimSpace(p.Uses),
 	}
 }
 

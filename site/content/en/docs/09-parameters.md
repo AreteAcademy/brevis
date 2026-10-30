@@ -32,9 +32,29 @@ steps:
 | `type` | | `string`, `boolean`, `integer`, or `list|<type>` for many values |
 | `default` | | used when the trigger provides no value |
 | `pattern` | | regular expression the value must match |
+| `title` | | the label the form shows, up to 60 characters; the name otherwise |
+| `group` | | gathers parameters in the form, up to 60 characters |
+| `warn` | | what a value other than the default costs, shown under the field, up to 200 characters |
+| `uses` | | the key of the connector the parameter is about (`bigquery`, `postgres`), for its logo |
 
 A parameter **without a `default`** is required: a trigger that omits it fails
 before executing any step.
+
+`title`, `group`, `warn` and `uses` are how the form presents the parameter,
+and **none of them changes what a value may be**. Each is one line; `uses` is
+lowercase letters, digits and `-`. The publish refuses anything else, naming
+the parameter.
+
+```yaml
+params:
+  - name: load_full
+    type: boolean
+    default: "false"
+    title: Full load
+    group: Load
+    warn: reprocesses the whole table; it costs
+    uses: bigquery
+```
 
 ## A list of values
 
@@ -185,13 +205,18 @@ have read `now()`:
 |---|---|---|
 | `adjusted_at` | always | the clock this run should read: the slot when there is one, the start otherwise |
 | `date` | always | `adjusted_at` as `YYYY-MM-DD`, UTC — the partition, the folder, the `WHERE` |
-| `delay_seconds` | always | how late this attempt was against its slot; `0` on a manual run |
+| `delay_seconds` | always | how late this attempt was against its slot; `0` on a manual run with no slot |
 | `previous_error` | always | the run before this one did not succeed |
-| `scheduled_at` | scheduled | the slot the cron asked for |
+| `scheduled_at` | with a slot | the slot the cron asked for |
 | `started_at` | | when this attempt began; a retry moves it |
-| `interval_start` | scheduled | the **previous** slot |
-| `interval_end` | scheduled | this slot, **excluded** |
+| `interval_start` | with a slot | the **previous** slot |
+| `interval_end` | with a slot | this slot, **excluded** |
 | `previous_success_at` | | the slot of the last run that did succeed |
+
+A run has a slot when the schedule made it, when a backfill did, or when it
+was triggered by hand **for a past slot**: the trigger's `slot` field
+(`2026-10-27T04:00:00Z`) runs that slot again, with that slot's params. A slot
+the cron never fires is refused, saying the nearest one before it.
 
 **Every timestamp here is UTC**, written as RFC 3339 with a `Z`, and the run's
 screen shows them in UTC too — so the page and `$BREVIS_AUTO_ADJUSTED_AT` never

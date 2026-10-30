@@ -32,9 +32,29 @@ steps:
 | `type` | | `string`, `boolean`, `integer`, ou `list|<tipo>` para vários valores |
 | `default` | | usado quando o disparo não informa valor |
 | `pattern` | | expressão regular que o valor precisa casar |
+| `title` | | o rótulo que o formulário mostra, até 60 caracteres; senão, o nome |
+| `group` | | agrupa os parâmetros no formulário, até 60 caracteres |
+| `warn` | | o que custa um valor diferente do default, mostrado sob o campo, até 200 caracteres |
+| `uses` | | a chave do conector de que o parâmetro trata (`bigquery`, `postgres`), para o logo |
 
 Um parâmetro **sem `default`** é obrigatório: o disparo que não o informar
 falha antes de executar qualquer passo.
+
+`title`, `group`, `warn` e `uses` são como o formulário apresenta o parâmetro,
+e **nenhum deles muda o que um valor pode ser**. Cada um é uma linha só; `uses`
+usa letras minúsculas, dígitos e `-`. O publish recusa o que fugir disso,
+nomeando o parâmetro.
+
+```yaml
+params:
+  - name: load_full
+    type: boolean
+    default: "false"
+    title: Carga completa
+    group: Carga
+    warn: reprocessa a tabela inteira; custa caro
+    uses: bigquery
+```
 
 ## Uma lista de valores
 
@@ -185,13 +205,18 @@ Então o motor entrega um relógio no lugar. Leia `adjusted_at` onde você leria
 |---|---|---|
 | `adjusted_at` | sempre | o relógio que este run deve ler: o slot quando existe, o início caso contrário |
 | `date` | sempre | o `adjusted_at` como `YYYY-MM-DD`, em UTC — a partição, a pasta, o `WHERE` |
-| `delay_seconds` | sempre | o atraso desta tentativa em relação ao slot; `0` num run manual |
+| `delay_seconds` | sempre | o atraso desta tentativa em relação ao slot; `0` num run manual sem slot |
 | `previous_error` | sempre | o run anterior a este não teve sucesso |
-| `scheduled_at` | agendado | o slot que o cron pediu |
+| `scheduled_at` | com slot | o slot que o cron pediu |
 | `started_at` | | quando esta tentativa começou; um retry move |
-| `interval_start` | agendado | o slot **anterior** |
-| `interval_end` | agendado | este slot, **excluído** |
+| `interval_start` | com slot | o slot **anterior** |
+| `interval_end` | com slot | este slot, **excluído** |
 | `previous_success_at` | | o slot do último run que teve sucesso |
+
+Um run tem slot quando a agenda o criou, quando um backfill o criou, ou quando
+foi disparado à mão **para um slot passado**: o campo `slot` do disparo
+(`2026-10-27T04:00:00Z`) roda aquele slot de novo, com os params dele. Um slot
+que o cron nunca dispara é recusado, com o mais próximo antes dele.
 
 **Todo timestamp aqui é UTC**, escrito em RFC 3339 com `Z`, e a tela do run
 também os mostra em UTC — então a página e o `$BREVIS_AUTO_ADJUSTED_AT` nunca

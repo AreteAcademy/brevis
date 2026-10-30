@@ -58,6 +58,29 @@ curl -X POST https://brevis.example.com/workflows/daily/trigger \
 - **`delay_seconds` is the truth**: a slot from three days ago, run now, was
   three days late.
 
+## How the form presents a param
+
+Four optional keys say how the form shows a param, and **none of them changes
+what a value may be**:
+
+```yaml
+params:
+  - name: load_full
+    type: boolean
+    default: "false"
+    title: Full load                              # the label; the name otherwise
+    group: Load                                   # gathers params in the form
+    warn: reprocesses the whole table; it costs   # under the field
+    uses: bigquery                                # the connector, for its logo
+```
+
+The publish checks only their shape, naming the param: each is one line,
+`title` and `group` hold up to 60 characters and `warn` up to 200, and `uses`
+is lowercase letters, digits and `-`. An unknown `uses` is drawn as a
+monogram. They are stored with the definition only when set, so a param that
+uses none of them is the document it always was, and an older engine ignores
+them.
+
 ## Types
 
 `boolean`, `integer` and `string`. With no `type` it is `string` — the most

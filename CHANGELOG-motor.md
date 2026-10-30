@@ -40,6 +40,19 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 - The same slot can be run again; two clicks in one second are still one run.
 - Without `slot` the trigger is what it was. See `docs/PARAMS.md`.
 
+### Added: how the form presents a param
+
+- **`title`, `group`, `warn` and `uses`** on a param in the YAML: the label,
+  the group in the form, what a value other than the default costs, and the
+  connector it is about. None of them changes what a value may be.
+- **The publish checks their shape**, naming the param: one line each, 60
+  characters for `title` and `group`, 200 for `warn`, and `uses` in lowercase
+  letters, digits and `-`.
+- **The trigger form** labels a param by its `title`, with the name beside it,
+  and shows `warn` under the field.
+- Stored only when set: a workflow that uses none of them is the document it
+  was, and an older engine ignores them.
+
 ## [0.40.0] — 2026-10-29
 
 ### Added: canceling a run
