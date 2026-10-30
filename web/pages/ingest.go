@@ -268,108 +268,93 @@ func LoadsOf(entries []postgres.CatalogEntry, now time.Time) []LoadTarget {
 	return out
 }
 
-// LoadsView is /ingest/loads as the template draws it: the loads under the
-// filter, and the counts of every load whatever is shown.
+// LoadsView is /ingest/loads as the template draws it (screen-loads): the
+// loads the filter keeps, and the counts beside them.
 type LoadsView struct {
-	Rows   []LoadRow
-	Counts map[catalog.Status]int
+	Rows []LoadTarget
 
-	// Total is every load and Workflows every workflow that writes one.
+	// Summary, Total and Workflows describe every load the page holds --
+	// legacy ones only when asked for -- whatever else is filtered: the line
+	// under the title is the page's, not the filter's.
+	Summary          map[catalog.Status]int
 	Total, Workflows int
 
-	Kinds     []string
+	// counts is each band choice's count, with the origin, the search and
+	// the legacy switch as they are and the status left out, so a count
+	// cannot disagree with the list its link opens.
+	counts map[string]int
+
+	// Sources are the origins present, in sourceOrder, for the origin
+	// filter; "none" is a step that declared none.
+	Sources   []string
 	HasLegacy bool
 	Filter    DataFilter
 	Now       time.Time
 }
 
-// LoadRow is one load under the filter. Hidden is a row the search hides:
-// drawn hidden, so deleting a letter brings it back.
-type LoadRow struct {
-	LoadTarget
-	Hidden bool
-}
+// Count is how many loads a band choice would show: "" for all, "attention",
+// or a status.
+func (v LoadsView) Count(status string) int { return v.counts[status] }
 
-// SearchText is what a search looks in, lower-cased: the workflow, the step
-// and the destination. The same text on the server and in data-filter-text.
-func (t LoadTarget) SearchText() string {
-	return strings.ToLower(t.Workflow + "\n" + t.Step + "\n" + t.URI)
-}
+// loadStatuses are the band's statuses, in the Catalog's order, without the
+// gateway's: a step is never continuous, nor its destination unidentified.
+var loadStatuses = []catalog.Status{catalog.Stale, catalog.Late, catalog.OnTime, catalog.Paused, catalog.Unscheduled}
 
-// BuildLoads is every load, counted.
-func BuildLoads(entries []postgres.CatalogEntry, now time.Time) LoadsView {
-	v := LoadsView{Counts: map[catalog.Status]int{}, Now: now}
-	workflows := map[string]bool{}
-	for _, t := range LoadsOf(entries, now) {
-		v.Rows = append(v.Rows, LoadRow{LoadTarget: t})
-		v.Counts[t.Status]++
-		v.Total++
-		workflows[t.Workflow] = true
-		if t.Kind != "" && !containsString(v.Kinds, t.Kind) {
-			v.Kinds = append(v.Kinds, t.Kind)
-		}
-		v.HasLegacy = v.HasLegacy || t.Legacy
+// sourceOrder is the origin filter's order: the SDK's own kinds, somebody
+// else's driver, then none declared.
+var sourceOrder = []string{"http", "file", "database", "other", "none"}
+
+// sourceKey is a load's origin as the filter names it.
+func sourceKey(s Source) string {
+	if s.Kind == "" {
+		return "none"
 	}
-	v.Workflows = len(workflows)
-	sort.Strings(v.Kinds)
-	return v
+	return s.Kind
 }
 
-// Apply narrows the loads to the filter: status, kind and legacy drop what
-// they exclude; the search hides. Counts and totals still describe every
-// load.
-func (v LoadsView) Apply(f DataFilter) LoadsView {
-	v.Filter = f
-	rows := make([]LoadRow, 0, len(v.Rows))
-	for _, r := range v.Rows {
-		if !f.keepsLoad(r.LoadTarget) {
+// SearchText is what a search looks in, lower-cased: the workflow, the step,
+// where the step reads and the destination.
+func (t LoadTarget) SearchText() string {
+	return strings.ToLower(strings.Join([]string{t.Workflow, t.Step, t.Source.Driver, t.Source.Where, t.URI}, "\n"))
+}
+
+// BuildLoads is every load under the filter (screen-loads T3). A legacy row
+// waits until it is asked for, as in the Catalog; the search is the
+// server's, so a searched list is a link and works with no script.
+func BuildLoads(entries []postgres.CatalogEntry, f DataFilter, now time.Time) LoadsView {
+	v := LoadsView{Summary: map[catalog.Status]int{}, counts: map[string]int{}, Filter: f, Now: now}
+	workflows := map[string]bool{}
+	present := map[string]bool{}
+	q := strings.ToLower(f.Q)
+	for _, t := range LoadsOf(entries, now) {
+		v.HasLegacy = v.HasLegacy || t.Legacy
+		if t.Legacy && !f.Legacy {
 			continue
 		}
-		r.Hidden = f.Q != "" && !strings.Contains(r.SearchText(), strings.ToLower(f.Q))
-		rows = append(rows, r)
-	}
-	v.Rows = rows
-	return v
-}
+		v.Summary[t.Status]++
+		v.Total++
+		workflows[t.Workflow] = true
+		present[sourceKey(t.Source)] = true
 
-// Shown is how many loads are drawn visible.
-func (v LoadsView) Shown() int {
-	n := 0
-	for _, r := range v.Rows {
-		if !r.Hidden {
-			n++
+		if f.Source != "" && sourceKey(t.Source) != f.Source || q != "" && !strings.Contains(t.SearchText(), q) {
+			continue
+		}
+		v.counts[""]++
+		v.counts[string(t.Status)]++
+		if t.Status == catalog.Late || t.Status == catalog.Stale {
+			v.counts["attention"]++
+		}
+		if f.keepsStatus(t.Status) {
+			v.Rows = append(v.Rows, t)
 		}
 	}
-	return n
-}
-
-func (f DataFilter) keepsLoad(t LoadTarget) bool {
-	switch {
-	case f.Status == "attention" && t.Status != catalog.Late && t.Status != catalog.Stale:
-		return false
-	case f.Status != "" && f.Status != "attention" && string(t.Status) != f.Status:
-		return false
-	case f.Kind != "" && t.Kind != f.Kind:
-		return false
-	case f.Legacy && !t.Legacy:
-		return false
+	v.Workflows = len(workflows)
+	for _, s := range sourceOrder {
+		if present[s] {
+			v.Sources = append(v.Sources, s)
+		}
 	}
-	return true
-}
-
-// loadStatusOptions is the status filter over loads: everything, what needs a
-// person, then each status present with its count.
-func loadStatusOptions(v LoadsView) []components.SegOption {
-	return statusOptions(DataView{Counts: v.Counts, Filter: v.Filter})
-}
-
-// loadKindOptions and loadLegacyOptions are the kind and label filters.
-func loadKindOptions(v LoadsView) []components.SegOption {
-	return kindOptions(DataView{Kinds: v.Kinds, Filter: v.Filter})
-}
-
-func loadLegacyOptions(v LoadsView) []components.SegOption {
-	return legacyOptions(DataView{Filter: v.Filter})
+	return v
 }
 
 // loadSchedule is when a step runs, as its row says it: in words where they

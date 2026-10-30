@@ -362,7 +362,12 @@ func (u *UI) loads(w http.ResponseWriter, r *http.Request) {
 	}
 	f := pages.ParseDataFilter(r.URL.Query())
 	f.Path = "/ingest/loads"
-	u.render(w, r, pages.Loads(pages.BuildLoads(entries, time.Now()).Apply(f)))
+	v := pages.BuildLoads(entries, f, time.Now())
+	if fragment(r) == "answer" {
+		u.render(w, r, pages.LoadsList(v))
+		return
+	}
+	u.render(w, r, pages.Loads(v))
 }
 
 // streams is Ingest → Streams: every gateway stream with its sink and dead

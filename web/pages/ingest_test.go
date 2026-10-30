@@ -115,26 +115,13 @@ func TestIngestHrefs(t *testing.T) {
 	}
 }
 
-// THE FILTERS NARROW, COUNT AND STAY IN THE URL. A status or kind drops the
-// rows outside it, and a group with none left; the search hides rather than
-// drops, so deleting a letter brings a row back.
-func TestTheLoadsListFilters(t *testing.T) {
-	now := time.Now()
-	v := BuildLoads(printFixtures(now), now)
-	legacy := draw(t, Loads(v.Apply(DataFilter{Legacy: true, Path: "/ingest/loads"})))
-	if strings.Contains(legacy, "daily_sales") || !strings.Contains(legacy, "vendors_bacen") {
-		t.Error("legacy-only did not narrow to the legacy load")
-	}
-	searched := v.Apply(DataFilter{Q: "warehouse", Path: "/ingest/loads"})
-	if searched.Shown() != 1 {
-		t.Errorf("searching warehouse shows %d loads, want 1", searched.Shown())
-	}
-	page := draw(t, Loads(searched))
-	if !strings.Contains(page, `href="/ingest/loads?kind=file"`) && !strings.Contains(page, `href="/ingest/loads?kind=file&amp;q=warehouse"`) {
-		t.Error("a kind choice does not stay on /ingest/loads")
-	}
-	if got := (DataFilter{Path: "/ingest/loads"}).With("status", "late"); got != "/ingest/loads?status=late" {
+// A FILTER LINK STAYS ON ITS PAGE, its fields always in one order.
+func TestAFilterLinkStaysOnItsPage(t *testing.T) {
+	if got := (DataFilter{Path: "/ingest/loads", Q: "x"}).With("status", "late"); got != "/ingest/loads?status=late&q=x" {
 		t.Errorf("a filter link = %q", got)
+	}
+	if got := (DataFilter{Path: "/ingest/loads", Status: "late"}).With("source", "none"); got != "/ingest/loads?status=late&source=none" {
+		t.Errorf("an origin link = %q", got)
 	}
 }
 

@@ -30,8 +30,15 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   that describes nothing (Python, dbt, shell) says "not declared" -- it is
   never guessed. Read in one query of every step's current configuration
   (`StepConfigs`), ~3 ms over 100 steps with 10 versions each.
+- **The filters are the Catalog's**: the status band (All, Needs attention,
+  and each status a step can have) with its counts and rules; the origin
+  (HTTP, files, database, other, not declared, as present); Show legacy,
+  which now adds the legacy labels to the rest, as in the Catalog, instead
+  of showing them alone; and a search over the workflow, the step, the
+  origin and the destination, on the server, that answers while you type.
+  The destination's kind filter is the Catalog's alone now.
 - **A summary** counts the destinations, the workflows and each status, and
-  leads to the Catalog; "See workflows" is in the header, and the footer says
+  leads to the Catalog under the same status; "See workflows" is in the header, and the footer says
   that writes made outside Brevis do not show.
 - In English, Portuguese and Spanish.
 

@@ -89,3 +89,18 @@ func originLabel(ctx context.Context, s Source) string {
 	}
 	return s.Driver
 }
+
+// sourceChoice is an origin as the filter offers it.
+func sourceChoice(ctx context.Context, key string) string {
+	switch key {
+	case "http":
+		return i18n.T(ctx, "loads.source.http")
+	case "file":
+		return i18n.T(ctx, "loads.source.file")
+	case "database":
+		return i18n.T(ctx, "loads.source.database")
+	case "other":
+		return i18n.T(ctx, "loads.source.other")
+	}
+	return i18n.T(ctx, "loads.source.none.choice")
+}
