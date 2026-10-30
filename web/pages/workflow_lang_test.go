@@ -34,7 +34,8 @@ func TestTheWorkflowPagesHeadAndTabsHaveNoEnglishLeft(t *testing.T) {
 			Days: []postgres.Day{{Date: slot, Total: 2, Succeeded: 1, Failed: 1}}},
 		Now: now, Day: &slot,
 	}
-	text := visibleText(drawIn(t, "pt-BR", workflowMeta(p))) + " " + visibleText(drawIn(t, "pt-BR", workflowTabs(p)))
+	text := visibleText(drawIn(t, "pt-BR", workflowMeta(p))) + " " + visibleText(drawIn(t, "pt-BR", workflowTabs(p))) + " " +
+		visibleText(drawIn(t, "pt-BR", pauseAction(*p.Sum)))
 	for _, s := range workflowPageStats(i18n.WithLang(context.Background(), "pt-BR"), p) {
 		text += " " + s.Label + " " + s.Value + " " + s.Note
 	}
@@ -43,7 +44,7 @@ func TestTheWorkflowPagesHeadAndTabsHaveNoEnglishLeft(t *testing.T) {
 		"Mean duration", "In progress", "Next run", "last 30 days", "of", "days", "running", "queued", "in",
 		"Runs", "Accepted parameters", "Parameters", "State", "Trigger", "Duration", "When", "default",
 		"All runs", "Show the last runs", "Name", "Type", "Default", "What it is for", "required", "No parameters",
-		"schedule",
+		"schedule", "Pause", "Resume", "day",
 	} {
 		if at := regexp.MustCompile(`\b` + regexp.QuoteMeta(english) + `\b`).FindStringIndex(text); at != nil {
 			t.Errorf("the Portuguese page still says %q: …%s…", english, text[max(0, at[0]-60):min(len(text), at[1]+40)])

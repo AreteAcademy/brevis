@@ -283,7 +283,7 @@ func workflowPageStats(ctx context.Context, p WorkflowPage) []components.Stat {
 	clean := components.Stat{Label: i18n.T(ctx, "workflow.kpi.clean"), Dot: "bg-state-success", Value: "—", Note: last30}
 	if ran > 0 {
 		clean.Value = percent(ctx, ran-failed, ran)
-		clean.Note = i18n.T(ctx, "workflow.kpi.of_days", "n", i18n.Number(ctx, int64(ran-failed)), "total", i18n.Number(ctx, int64(ran)))
+		clean.Note = i18n.N(ctx, "workflow.kpi.of_days", ran, "n", i18n.Number(ctx, int64(ran-failed)))
 		clean.Bar = []components.BarSegment{{Share: float64(ran-failed) / float64(ran), Class: "bg-state-success"}}
 	}
 	i := p.Stats.Ind

@@ -630,9 +630,9 @@ templ pauseAction(sum postgres.WorkflowSummary) {
 	<form method="post" action={ templ.SafeURL("/workflows/" + sum.Slug + "/toggle") }>
 		<button type="submit" class={ components.ButtonClass(components.ButtonSecondary, components.SizeRegular) }>
 			if sum.Active {
-				Pause
+				{ i18n.T(ctx, "workflow.pause") }
 			} else {
-				Resume
+				{ i18n.T(ctx, "workflow.resume") }
 			}
 		</button>
 	</form>
