@@ -2,12 +2,14 @@ package api_test
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/api"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
@@ -26,7 +28,7 @@ func catalogEntries() []postgres.CatalogEntry {
 	}
 }
 
-var catalogRowRE = regexp.MustCompile(`<tr data-href="/data/target\?u=([^"]+)"`)
+var catalogRowRE = regexp.MustCompile(`<tr data-href="/data/target\?(?:[^"]*&amp;)?u=([^"&]+)"`)
 
 // catalogRows is the targets the catalog draws, in order.
 func catalogRows(body string) []string {
@@ -159,4 +161,87 @@ func TestThePaletteFindsADestination(t *testing.T) {
 		}
 	}
 	t.Error("the palette has no destination")
+}
+
+// drawerUI is the catalog with one destination's detail: the stale table,
+// its loads, and an endpoint that reads it.
+func drawerUI() *api.UI {
+	entries := catalogEntries()
+	now := time.Now()
+	detail := &postgres.TargetDetail{CatalogEntry: entries[0], Loads: []postgres.TargetLoad{
+		{RunID: "aaaaaaaa-0000-0000-0000-000000000001", Workflow: "vendors", Node: "fetch", LoadedAt: now.Add(-6 * time.Hour), Rows: i64(10)},
+		{RunID: "aaaaaaaa-0000-0000-0000-000000000002", Workflow: "vendors", Node: "fetch", LoadedAt: now.Add(-5 * time.Hour), Rows: i64(12)},
+	}}
+	reads := endpointsFake{all: []postgres.PublishedEndpoint{{API: "metrics-api", Name: "old", Path: "/v1/old",
+		Reads: []string{"bigquery://acme/bronze/old"}, PublishedAt: now}}}
+	return dataUI(catalogFake{entries: entries, detail: detail}).WithEndpoints(reads)
+}
+
+// A DESTINATION OPENS IN A DRAWER OVER THE CATALOG (screen-catalog T3), drawn
+// open by the server so the link works with no script: its status, each
+// writer and why it stands there, its last loads -- each opening its run --
+// what reads it, how it is configured, and the verbs.
+func TestADestinationOpensInADrawer(t *testing.T) {
+	code, body := get(t, drawerUI(), "/data/target?u="+url.QueryEscape("bigquery://acme/bronze/old")+"&status=attention")
+	if code != http.StatusOK {
+		t.Fatalf("the drawer answered %d", code)
+	}
+	if got := strings.Join(catalogRows(body), " "); got != "bigquery://acme/bronze/old" {
+		t.Errorf("the catalog behind the drawer lost its filter: %q", got)
+	}
+	at := strings.Index(body, `<dialog id="target"`)
+	if at < 0 {
+		t.Fatal("there is no drawer")
+	}
+	drawer := body[at : at+strings.Index(body[at:], "</dialog>")]
+	for _, want := range []string{
+		" open", "bigquery://acme/bronze/old", "stale", "the best writer",
+		"vendors · fetch", "missed its", `href="/runs/aaaaaaaa-0000-0000-0000-000000000002"`,
+		"dashed = a slot missed", "/v1/old", "Credentials never reach this page",
+		`data-copy="#target-uri"`, `href="/data?status=attention"`,
+	} {
+		if !strings.Contains(drawer, want) {
+			t.Errorf("the drawer has no %q", want)
+		}
+	}
+}
+
+// A DESTINATION NOBODY KNOWS opens the catalog saying so; a target that cannot
+// be one is refused.
+func TestAnUnknownDestinationSaysSo(t *testing.T) {
+	code, body := get(t, drawerUI(), "/data/target?u="+url.QueryEscape("postgres://nowhere/x"))
+	if code != http.StatusOK || !strings.Contains(body, "No destination postgres://nowhere/x") || strings.Contains(body, `<dialog id="target"`) {
+		t.Errorf("an unknown destination answered %d", code)
+	}
+	if code, _ := get(t, drawerUI(), "/data/target?u="+strings.Repeat("x", 5000)); code != http.StatusBadRequest {
+		t.Errorf("an oversized target answered %d", code)
+	}
+}
+
+// THE DRAWER IS ALSO A FRAGMENT, for the row that opens it with a script.
+func TestTheDrawerIsAFragment(t *testing.T) {
+	mux := http.NewServeMux()
+	drawerUI().Registrar(mux)
+	r := httptest.NewRequest(http.MethodGet, "/data/target?u="+url.QueryEscape("bigquery://acme/bronze/old"), nil)
+	r.Header.Set("X-Brevis-Fragment", "target")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, r)
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || strings.Contains(body, "<html") || !strings.HasPrefix(strings.TrimSpace(body), `<dialog id="target"`) {
+		t.Errorf("the fragment answered %d: %.120s", rec.Code, body)
+	}
+}
+
+// A ROW KEEPS THE FILTER IT WAS OPENED FROM, and a destination its manifest
+// could not name opens the stream that writes it.
+func TestACatalogRowKeepsItsFilter(t *testing.T) {
+	entries := append(catalogEntries(), postgres.CatalogEntry{Kind: "bigquery", Writers: []postgres.CatalogWriter{
+		{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/legacy", Role: "sink"}}}})
+	_, body := get(t, dataUI(catalogFake{entries: entries}), "/data?kind=bigquery")
+	if !strings.Contains(body, `data-href="/data/target?kind=bigquery&amp;u=bigquery%3A%2F%2Facme%2Fbronze%2Fold"`) {
+		t.Error("a row does not keep the filter it was opened from")
+	}
+	if !strings.Contains(body, `data-href="/ingest/streams/edge/v1/legacy"`) {
+		t.Error("an unnamed destination does not open its stream")
+	}
 }

@@ -65,7 +65,7 @@ templ Load(v LoadView) {
 									@components.Freshness(string(w.Verdict.Status))
 								</dd>
 							</dl>
-							if r := w.Reason(); r != "" {
+							if r := w.Reason(ctx); r != "" {
 								<p class="mt-2 text-[0.75rem] text-muted">{ r }</p>
 							}
 							if w.RunInFlight != nil {

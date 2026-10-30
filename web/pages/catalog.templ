@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/AreteAcademy/brevis/web/components"
 	"github.com/AreteAcademy/brevis/web/i18n"
@@ -33,10 +34,107 @@ templ Catalog(v CatalogScreen) {
 			}
 			@components.SearchInput("q", v.Filter.Q, i18n.T(ctx, "catalog.search"), "")
 		</form>
+		if v.Missing != "" {
+			<p data-missing class="mb-3 rounded-card border border-line bg-surface-2 px-3 py-2 text-[12.5px] text-muted">{ i18n.T(ctx, "catalog.missing", "target", v.Missing) }</p>
+		}
 		<div id="catalog-list">
 			@CatalogList(v)
 		</div>
+		if v.Drawer != nil {
+			@TargetDrawer(v)
+		}
 	}
+}
+
+// TargetDrawer is one destination over the catalog (screen-catalog T3): drawn
+// open by the server, so its link works with no script -- the × is a link back
+// to the list it was opened from -- and the fragment the row asks for with
+// one (X-Brevis-Fragment: target).
+//
+// What it says, in order: what the destination is and its status, which is
+// its best writer's; each writer and why it stands there; its last loads,
+// each opening its run; what reads it; how each writer is configured; that no
+// credential reaches here; and the verbs, Query and Copy.
+templ TargetDrawer(v CatalogScreen) {
+	{{ t := *v.Drawer }}
+	{{ r := t.Row }}
+	<dialog id="target" class="drawer" aria-labelledby="target-title" open data-catalog-drawer data-close={ v.CloseHref() }>
+		<header class="dialog-head">
+			<div class="flex min-w-0 items-start gap-3">
+				@components.Logo(kindLogo(r.Kind), 40)
+				<div class="min-w-0">
+					<p class="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{ i18n.T(ctx, "catalog.drawer.kicker", "kind", components.LogoTitle(ctx, kindLogo(r.Kind))) }</p>
+					<h2 id="target-title" class="font-mono text-[14px] font-semibold break-all text-ink">
+						<span id="target-uri">{ r.Target }</span>
+					</h2>
+					<p class="mt-1 flex flex-wrap items-baseline gap-x-2 text-[12px] text-muted">
+						@components.Freshness(string(r.Status))
+						<span>{ i18n.T(ctx, "catalog.drawer.best") }</span>
+					</p>
+				</div>
+			</div>
+			<a href={ templ.SafeURL(v.CloseHref()) } data-drawer-close aria-label={ i18n.T(ctx, "dialog.close") } class="flex h-8 w-8 shrink-0 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+				@components.Icon("x", "h-4 w-4")
+			</a>
+		</header>
+		<div class="dialog-body space-y-4" data-dialog-body>
+			for _, w := range r.Writers {
+				<section data-writer class="rounded-card border border-line bg-surface">
+					<div class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line-soft px-3.5 py-2.5">
+						@components.StatusMark(statusKind(string(w.Verdict.Status)))
+						if g := w.Gateway; g != nil {
+							<a href={ templ.SafeURL(Stream{Gateway: g.Name, Path: g.Stream}.Href()) } class="font-mono text-[12.5px] font-medium text-ink hover:underline">{ writerName(w.CatalogWriter) }</a>
+						} else {
+							<a href={ templ.SafeURL("/ingest/loads/" + url.PathEscape(w.Workflow) + "/" + url.PathEscape(w.Node)) } class="font-mono text-[12.5px] font-medium text-ink hover:underline">{ writerName(w.CatalogWriter) }</a>
+							if words := CronTextIn(ctx, w.Cron); words != "" {
+								<span class="text-[12px] text-muted">{ words }</span>
+							}
+						}
+						if id := w.RunInFlight; id != nil {
+							<a href={ templ.SafeURL("/runs/" + *id) } class="ml-auto rounded-card border border-line px-2 py-0.5 text-[12px] text-ink hover:bg-hover">{ i18n.T(ctx, "catalog.drawer.queued") } &rarr;</a>
+						}
+					</div>
+					if why := w.Reason(ctx); why != "" {
+						<p class="px-3.5 py-2.5 text-[12.5px] text-ink-2">{ why }</p>
+					}
+				</section>
+			}
+			<section>
+				<h3 class="mb-2 text-[12.5px] font-semibold text-ink">{ i18n.T(ctx, "catalog.drawer.loads") }</h3>
+				@components.LoadBars(t.Bars, t.Missed)
+				<p class="mt-1.5 text-[11.5px] text-faint">{ i18n.T(ctx, "catalog.drawer.legend") }</p>
+			</section>
+			if len(t.ReadBy) > 0 {
+				<section>
+					<h3 class="mb-2 text-[12.5px] font-semibold text-ink">{ i18n.T(ctx, "catalog.drawer.read_by") }</h3>
+					<ul class="space-y-1 text-[12.5px]">
+						for _, e := range t.ReadBy {
+							<li>
+								<a href={ templ.SafeURL(e.Href) } class="font-mono text-ink hover:underline">GET { e.Path }</a>
+								<span class="ml-1.5 text-muted">{ e.API } · { i18n.T(ctx, "catalog.drawer.cache") }</span>
+							</li>
+						}
+					</ul>
+				</section>
+			}
+			@configurations(t)
+			<p class="text-[11.5px] text-faint">{ i18n.T(ctx, "catalog.drawer.credentials") }</p>
+		</div>
+		<footer class="dialog-foot" data-dialog-foot>
+			if t.Tabs {
+				@components.ButtonLink(components.ButtonSecondary, components.SizeRegular, t.WorkbenchHref()) {
+					@components.Icon("terminal", "h-3.5 w-3.5")
+					{ i18n.T(ctx, "catalog.drawer.query") }
+				}
+			}
+			<span data-js>
+				@components.Button(components.ButtonPrimary, components.SizeRegular, templ.Attributes{"data-copy": "#target-uri"}) {
+					@components.Icon("copy", "h-3.5 w-3.5")
+					{ i18n.T(ctx, "catalog.drawer.copy") }
+				}
+			</span>
+		</footer>
+	</dialog>
 }
 
 // CatalogList is everything under the search box: the band, the filters and
@@ -116,9 +214,9 @@ templ CatalogList(v CatalogScreen) {
 templ catalogRow(v CatalogScreen, r DataRow) {
 	{{ where, what := splitDestination(r.Target) }}
 	{{ writer, more := writerLine(r) }}
-	<tr data-href={ targetHref(r.Target) } class="cursor-pointer align-top transition-colors hover:bg-hover">
+	<tr data-href={ v.rowHref(r) } class="cursor-pointer align-top transition-colors hover:bg-hover">
 		<td class="px-2.5 py-3 pl-4">
-			<a href={ templ.SafeURL(targetHref(r.Target)) } class="inline-flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[12.5px]">
+			<a href={ templ.SafeURL(v.rowHref(r)) } class="inline-flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[12.5px]">
 				if r.Target == "" {
 					// A gateway destination its manifest could not name is
 					// known by the stream that writes it.

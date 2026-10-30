@@ -27,6 +27,46 @@ type CatalogScreen struct {
 	// as it is; "" is all, "attention" stale and late together.
 	counts map[string]int
 	Now    time.Time
+
+	// Drawer is the destination the URL names (/data/target?u=), drawn open
+	// over the list; nil draws none. Missing is a destination it named that
+	// nobody writes.
+	Drawer  *TargetView
+	Missing string
+}
+
+// TargetHref is a destination's drawer, keeping the filter it is opened
+// from: closing it comes back to the same list.
+func (f DataFilter) TargetHref(target string) string {
+	g := f
+	g.Path = "/data/target"
+	base := g.With("", "")
+	sep := "?"
+	if strings.Contains(base, "?") {
+		sep = "&"
+	}
+	return base + sep + "u=" + url.QueryEscape(target)
+}
+
+// CloseHref is the list the drawer was opened from.
+func (v CatalogScreen) CloseHref() string {
+	f := v.Filter
+	f.Path = "/data"
+	return f.With("", "")
+}
+
+// rowHref is where a row goes: its destination's drawer, or -- for one its
+// manifest could not name, which has no URI to open -- the stream that
+// writes it.
+func (v CatalogScreen) rowHref(r DataRow) string {
+	if r.Target == "" {
+		for _, w := range r.Writers {
+			if g := w.Gateway; g != nil {
+				return Stream{Gateway: g.Name, Path: g.Stream}.Href()
+			}
+		}
+	}
+	return v.Filter.TargetHref(r.Target)
 }
 
 // Count is how many destinations a status choice would show.
@@ -138,9 +178,6 @@ func runQueued(r DataRow) bool {
 // URI ends in `*`.
 func autoTable(target string) bool { return strings.HasSuffix(target, "/*") }
 
-// targetHref is a destination's drawer on the catalog.
-func targetHref(target string) string { return "/data/target?u=" + url.QueryEscape(target) }
-
 // catalogStatuses are the band's choices after All and Needs attention, in
 // the order of their gravity.
 var catalogStatuses = []catalog.Status{
@@ -232,4 +269,12 @@ func splitDestination(t string) (where, what string) {
 	}
 	i := strings.LastIndex(t, "/")
 	return t[:i+1], t[i+1:]
+}
+
+// statusKind is a catalog status as the Status component knows it.
+func statusKind(s string) string {
+	if s == "unscheduled" {
+		return "no_schedule"
+	}
+	return s
 }

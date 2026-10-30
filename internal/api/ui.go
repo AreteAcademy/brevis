@@ -297,7 +297,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("POST /sql", u.sql)
 	// A query parameter and not a path wildcard: ServeMux cleans `//` out of a
 	// path, and would redirect /data/bigquery://… to /data/bigquery:/….
-	mux.HandleFunc("GET /data/target", u.targetMoved)
+	mux.HandleFunc("GET /data/target", u.catalogTarget)
 	mux.HandleFunc("GET /ingest/loads", u.loads)
 	mux.HandleFunc("GET /ingest/streams", u.streams)
 	mux.HandleFunc("GET /ingest/streams/{gateway}/{path...}", u.stream)
@@ -473,28 +473,6 @@ func (u *UI) dataEndpoint(w http.ResponseWriter, r *http.Request) {
 // is looked up as stored, so `u` is not shape-checked beyond this: an unknown
 // value is a 404, not a 400.
 const targetCeiling = 512
-
-// targetMoved is where a destination's page was. A destination is now the
-// stream that owns it -- its sink or its dead letter -- or the load that
-// writes it, the most recent when several steps do; with no owner, the
-// loads. Endpoints still link here (TargetHref), and follow it.
-func (u *UI) targetMoved(w http.ResponseWriter, r *http.Request) {
-	target := r.URL.Query().Get("u")
-	if len(target) > targetCeiling || strings.ContainsFunc(target, unicode.IsControl) {
-		http.Error(w, "name a destination: /data/target?u=<target>", http.StatusBadRequest)
-		return
-	}
-	to := "/ingest/loads"
-	if target != "" && u.catalog != nil {
-		entries, err := u.catalog.Catalog(r.Context())
-		if err != nil {
-			u.failure(w, r, err)
-			return
-		}
-		to = pages.OwnerOf(entries, target, time.Now())
-	}
-	http.Redirect(w, r, to, http.StatusMovedPermanently)
-}
 
 // targetTools fills in what a destination's page offers beyond its loads --
 // the endpoints that read it, and, where a SQL service answers for it, the

@@ -1,12 +1,15 @@
 package pages
 
 import (
+	"context"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // catalogNow is a fixed 11:20 UTC, and catalogFixture a destination in every
@@ -157,5 +160,54 @@ func TestAnUnnamedDestinationIsKnownByItsStream(t *testing.T) {
 	html := drawIn(t, "en", CatalogList(BuildCatalog(entries, DataFilter{Path: "/data"}, catalogNow)))
 	if !strings.Contains(html, "gateway edge · /v1/legacy") || !strings.Contains(html, `aria-label="Gateway HTTP"`) && !strings.Contains(html, "gateway") {
 		t.Errorf("the unnamed destination is not known by its stream")
+	}
+}
+
+// A WRITER'S REASON IS IN THE READER'S LANGUAGE (screen-catalog T3), for each
+// status that has one; on time and continuous need none.
+func TestAWritersReasonSpeaksEachLanguage(t *testing.T) {
+	missed := WriterView{CatalogWriter: postgres.CatalogWriter{Workflow: "vendors", Node: "fetch", HasSchedule: true, Timezone: "UTC"},
+		Verdict: catalog.Verdict{Status: catalog.Stale, Missed: clock(9, 0), Grace: 15 * time.Minute}}
+	paused := WriterView{Verdict: catalog.Verdict{Status: catalog.Paused}}
+	manual := WriterView{Verdict: catalog.Verdict{Status: catalog.Unscheduled}}
+	unreadable := WriterView{CatalogWriter: postgres.CatalogWriter{HasSchedule: true}, Verdict: catalog.Verdict{Status: catalog.Unscheduled}}
+	gateway := WriterView{CatalogWriter: postgres.CatalogWriter{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/clicks", Role: "sink", PublishedAt: clock(8, 0)}},
+		Verdict: catalog.Verdict{Status: catalog.Continuous}}
+	for lang, want := range map[string][5]string{
+		"en":    {"vendors missed its", "Its schedule is paused", "It runs by hand", "cannot be read", "Published from gateway edge"},
+		"pt-BR": {"vendors perdeu a execução", "A agenda está pausada", "Roda à mão", "não pode ser lida", "Publicado pelo gateway edge"},
+		"es":    {"vendors perdió su ejecución", "Su programación está pausada", "Se ejecuta a mano", "no se puede leer", "Publicado por el gateway edge"},
+	} {
+		ctx := i18n.WithLang(context.Background(), lang)
+		for i, w := range []WriterView{missed, paused, manual, unreadable, gateway} {
+			if got := w.Reason(ctx); !strings.Contains(got, want[i]) {
+				t.Errorf("%s: reason %d = %q, want %q in it", lang, i, got, want[i])
+			}
+		}
+		if got := (WriterView{Verdict: catalog.Verdict{Status: catalog.OnTime}}).Reason(ctx); got != "" {
+			t.Errorf("%s: on time has a reason: %q", lang, got)
+		}
+	}
+}
+
+// THE DRAWER SPEAKS THE READER'S LANGUAGE too: its frame, the writer's
+// reason, the bars' legend, the configuration's frame and the verbs.
+func TestTheCatalogDrawerHasNoEnglishLeft(t *testing.T) {
+	d := postgres.TargetDetail{CatalogEntry: catalogFixture()[2], Loads: []postgres.TargetLoad{
+		{RunID: "aaaaaaaa-0000-0000-0000-000000000001", Workflow: "vendors", Node: "fetch", LoadedAt: clock(8, 0), Rows: rows64(10)}}}
+	v := BuildCatalog(catalogFixture(), DataFilter{Path: "/data"}, catalogNow)
+	tv := BuildTarget(d, catalogNow)
+	tv.Tabs = true
+	v.Drawer = &tv
+	// BigQuery is the product's own name, and holds "Query".
+	text := strings.ReplaceAll(visibleText(drawIn(t, "pt-BR", TargetDrawer(v))), "BigQuery", "")
+	for _, english := range []string{
+		"Destination", "best writer", "Run queued", "Last loads", "each bar", "Read by",
+		"Configuration", "step", "did not describe", "Credentials", "Query", "Copy",
+		"missed its", "grace", "No load yet",
+	} {
+		if at := strings.Index(text, english); at >= 0 {
+			t.Errorf("the Portuguese drawer still says %q: …%s…", english, text[max(0, at-60):min(len(text), at+40)])
+		}
 	}
 }

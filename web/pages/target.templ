@@ -3,6 +3,7 @@ package pages
 import (
 	"fmt"
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // targetActions are the page's verbs. Copy URI is hidden until ui.js can
@@ -36,22 +37,21 @@ templ configurations(v TargetView) {
 	for _, c := range v.Configs {
 		<section class="mb-3" data-config={ c.Key() }>
 			<div class="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-				<h3 class="text-[13px] font-semibold text-ink">Configuration</h3>
+				<h3 class="text-[13px] font-semibold text-ink">{ i18n.T(ctx, "config.title") }</h3>
 				<span class="text-xs text-muted">
 					if c.Gateway != "" {
 						gateway <span class="font-medium text-ink">{ c.Gateway }</span>
 						· <span class="font-mono">{ c.Stream }</span>
-						· { c.Role } · published { c.PublishedAt.UTC().Format("Jan 2 15:04 UTC") }
+						· { c.Role } · { i18n.T(ctx, "config.published", "at", i18n.Date(ctx, c.PublishedAt.UTC(), "brief")+" UTC") }
 					} else {
-						step <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="font-medium text-ink hover:underline">{ c.Workflow }</a>
+						{ i18n.T(ctx, "config.step") } <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="font-medium text-ink hover:underline">{ c.Workflow }</a>
 						· { c.Node }
 					}
 				</span>
 			</div>
 			if !c.Described {
 				<p class="rounded-card border border-line bg-surface px-4 py-3 text-xs text-muted shadow-warm-sm sm:px-6">
-					This step did not describe itself. Only the Go SDK sends its configuration; a Python, dbt or shell step lands without one.
-					To see what it runs, open <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">the workflow's definition</a>.
+					{ i18n.T(ctx, "config.undescribed") } <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "config.definition") }</a>.
 				</p>
 			} else {
 				<div class="divide-y divide-line-soft rounded-card border border-line bg-surface shadow-warm-sm">
@@ -87,12 +87,12 @@ templ configurations(v TargetView) {
 										<div class="font-mono text-xs break-all text-muted">{ r.Label }</div>
 										<div class="text-xs">
 											if r.Value == "" {
-												<span class="text-muted">empty</span>
+												<span class="text-muted">{ i18n.T(ctx, "config.empty") }</span>
 											} else {
 												<span class="font-mono break-all text-ink">{ r.Value }</span>
 											}
 											if r.Default {
-												<span class="ml-2 rounded-card border border-line px-1 py-px text-[0.65rem] text-muted" title="Not written in the file: the value the gateway filled in">default</span>
+												<span class="ml-2 rounded-card border border-line px-1 py-px text-[0.65rem] text-muted" title={ i18n.T(ctx, "config.default.tip") }>{ i18n.T(ctx, "config.default") }</span>
 											}
 											if r.Note != "" {
 												<div class="mt-1">
@@ -107,20 +107,20 @@ templ configurations(v TargetView) {
 					}
 					if len(c.Config.Changes) > 0 {
 						<div class="px-4 py-3 sm:px-6">
-							<h4 class="text-xs font-semibold text-ink">Changes</h4>
+							<h4 class="text-xs font-semibold text-ink">{ i18n.T(ctx, "config.changes") }</h4>
 							<ol class="mt-2 space-y-2">
 								for _, ch := range c.Config.Changes {
 									<li class="text-xs" data-change>
 										<span class="tabular-nums text-muted">{ components.UTCStamp(&ch.At) }</span>
 										if ch.RunID != "" {
-											<a href={ templ.SafeURL("/runs/" + ch.RunID) } class="ml-2 font-mono text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">run { shortID(ch.RunID) }</a>
+											<a href={ templ.SafeURL("/runs/" + ch.RunID) } class="ml-2 font-mono text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "config.run", "run", shortID(ch.RunID)) }</a>
 										}
 										if ch.First && c.Gateway != "" {
-											<span class="ml-2 text-muted">First published</span>
+											<span class="ml-2 text-muted">{ i18n.T(ctx, "config.first_published") }</span>
 										} else if ch.First {
-											<span class="ml-2 text-muted">First recorded</span>
+											<span class="ml-2 text-muted">{ i18n.T(ctx, "config.first_recorded") }</span>
 										} else if len(ch.Lines) == 0 {
-											<span class="ml-2 text-muted">Earlier changes are not shown</span>
+											<span class="ml-2 text-muted">{ i18n.T(ctx, "config.earlier") }</span>
 										}
 										if len(ch.Lines) > 0 {
 											<ul class="mt-1 space-y-0.5 pl-4">
