@@ -66,6 +66,8 @@ func Decimal(ctx context.Context, f float64, places int) string {
 //	short  Oct 02 09:05   02 out 09:05    a past instant in a list (When)
 //	brief  Oct 2 09:05    2 out 09:05     a timestamp cell (ShortStamp)
 //	day    Thu, Oct 29, 2026 / qui, 29 out 2026   a calendar day
+//	month  Oct / out                                a calendar's month label
+//	weekday Mon / seg                               a calendar's row label
 func Date(ctx context.Context, t time.Time, layout string) string {
 	s := styleOf(ctx)
 	month := s.months[t.Month()-1]
@@ -80,6 +82,10 @@ func Date(ctx context.Context, t time.Time, layout string) string {
 			return month + " " + day + " " + clock
 		}
 		return day + " " + month + " " + clock
+	case "month":
+		return month
+	case "weekday":
+		return s.days[t.Weekday()]
 	case "day":
 		weekday := s.days[t.Weekday()]
 		if s.dayComma {

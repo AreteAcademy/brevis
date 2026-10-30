@@ -229,36 +229,40 @@ templ RunsChart(buckets []postgres.Bucket) {
 //
 // Server-rendered SVG like every other chart here: it needs no library, it is
 // in the HTML the first time the page arrives, and it prints. The tooltip is a
-// <title>, which the browser shows on its own -- the same one the bar chart
-// uses.
-templ Heatmap(days []postgres.Day, workflow string) {
-	{{ squares, months, w, h := Calendar(days, workflow, 364) }}
-	<div class="overflow-x-auto">
+// <title>, which the browser shows on its own. A day that ran is a link -- to
+// where the Calendar's caller said -- and the day chosen has a ring.
+templ Heatmap(v CalendarView) {
+	<div class="max-w-full overflow-x-auto">
 		<svg
-			width={ fmt.Sprint(w) }
-			height={ fmt.Sprint(h) }
-			viewBox={ fmt.Sprintf("0 0 %d %d", w, h) }
+			width={ fmt.Sprint(v.Width) }
+			height={ fmt.Sprint(v.Height) }
+			viewBox={ fmt.Sprintf("0 0 %d %d", v.Width, v.Height) }
 			role="img"
-			aria-label="Runs per day over the last year"
+			aria-label={ i18n.T(ctx, "calendar.label") }
+			data-calendar
 		>
-			for _, m := range months {
-				<text x={ fmt.Sprint(m.X) } y="9" class="fill-muted text-[9px]">{ m.Label }</text>
+			for _, m := range v.Months {
+				<text x={ fmt.Sprint(m.X) } y="10" class="fill-muted text-[10px]">{ m.Label }</text>
 			}
-			// Mon, Wed and Fri only. Seven labels beside eight-pixel squares is
-			// more text than grid.
-			for _, d := range weekdayLabels() {
-				<text x="0" y={ fmt.Sprint(d.Y) } class="fill-muted text-[9px]">{ d.Label }</text>
+			for _, d := range v.Weekdays {
+				<text x="0" y={ fmt.Sprint(d.Y) } class="fill-muted text-[10px]">{ d.Label }</text>
 			}
-			for _, sq := range squares {
+			for _, sq := range v.Squares {
 				if sq.Link != "" {
-					<a href={ templ.SafeURL(sq.Link) }>
+					<a href={ templ.SafeURL(sq.Link) } data-day={ sq.Date.Format("2006-01-02") }>
 						<rect
 							x={ fmt.Sprint(sq.X) }
 							y={ fmt.Sprint(sq.Y) }
-							width={ fmt.Sprint(cellSize) }
-							height={ fmt.Sprint(cellSize) }
+							width={ fmt.Sprint(calCell) }
+							height={ fmt.Sprint(calCell) }
 							rx="2"
 							fill={ sq.Fill }
+							fill-opacity={ squareOpacity(sq) }
+							if sq.Selected {
+								stroke="var(--color-ink)"
+								stroke-width="2"
+								data-selected
+							}
 						></rect>
 						<title>{ sq.Tooltip }</title>
 					</a>
@@ -266,11 +270,13 @@ templ Heatmap(days []postgres.Day, workflow string) {
 					<rect
 						x={ fmt.Sprint(sq.X) }
 						y={ fmt.Sprint(sq.Y) }
-						width={ fmt.Sprint(cellSize) }
-						height={ fmt.Sprint(cellSize) }
+						width={ fmt.Sprint(calCell) }
+						height={ fmt.Sprint(calCell) }
 						rx="2"
 						fill={ sq.Fill }
-						fill-opacity={ emptyOpacity(sq.Empty) }
+						fill-opacity={ squareOpacity(sq) }
+						stroke="var(--color-line)"
+						stroke-width="0.5"
 					>
 						<title>{ sq.Tooltip }</title>
 					</rect>
@@ -278,11 +284,12 @@ templ Heatmap(days []postgres.Day, workflow string) {
 			}
 		</svg>
 	</div>
-	<div class="mt-3 flex flex-wrap gap-4 text-xs text-muted">
-		@legenda("var(--color-state-success)", "all succeeded")
-		@legenda("var(--color-state-failed)", "some failed")
-		@legenda("var(--color-state-queued)", "still open")
-		@legenda("var(--color-line)", "no run")
+	<div class="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted">
+		@legenda("var(--color-state-success)", i18n.T(ctx, "calendar.ok"))
+		@legenda("var(--color-state-failed)", i18n.T(ctx, "calendar.some_failed"))
+		@legenda("var(--color-state-queued)", i18n.T(ctx, "calendar.open"))
+		@legenda("var(--color-surface-2)", i18n.T(ctx, "calendar.no_run"))
+		<span class="ml-auto">{ i18n.T(ctx, "calendar.click") }</span>
 	</div>
 }
 

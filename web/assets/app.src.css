@@ -1375,6 +1375,62 @@ dialog.modal {
   text-decoration: underline;
 }
 
+/* A paused workflow's row: its data fades, its switch does not. A rule and
+   not a class per cell, so ui.js fades a row by flipping one attribute. */
+tr[data-paused] > td[data-fade] {
+  opacity: 0.55;
+}
+
+/* The Run dialog's Now | Another slot: two radios drawn as a segment. The
+   radio stays in the page, focusable and announced; only its dot is hidden. */
+.run-when {
+  display: inline-flex;
+  height: 100%;
+  align-items: center;
+  border-radius: 2px;
+  padding: 0 0.625rem;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.run-when:has(input:checked) {
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+  font-weight: 500;
+}
+.run-when:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* The Steps card's two views (screen-workflows T8). With a script the
+   segment chooses; with none, the list shows and the graph -- which needs
+   one -- does not. */
+.js [data-steps-view][data-view="graph"] [data-view-panel="list"],
+.js [data-steps-view][data-view="list"] [data-view-panel="graph"] {
+  display: none;
+}
+.steps-view-btn {
+  display: inline-flex;
+  height: 100%;
+  align-items: center;
+  border-radius: 2px;
+  padding: 0 0.625rem;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+.steps-view-btn[aria-pressed="true"] {
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
+/* What only works with no script: the script draws its own (a boolean's
+   select, which a switch drives once there is one). */
+.js [data-no-js] {
+  display: none;
+}
+
 /* A switch: on is the ok colour, because on means "this is running". */
 .switch {
   position: relative;

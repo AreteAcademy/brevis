@@ -84,7 +84,7 @@ type screen struct {
 func screens() []screen {
 	return []screen{
 		{"overview", Overview(OverviewData{})},
-		{"workflows", Workflows(nil, nil, Filter{}, WorkflowCounts{}, nil, nil, 0, 0)},
+		{"workflows", Workflows(WorkflowsScreen{})},
 		{"runs", Runs(RunsScreen{})},
 		{"projects", Projects(nil)},
 		{"loads", Loads(LoadsView{})},

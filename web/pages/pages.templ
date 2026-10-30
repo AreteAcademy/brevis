@@ -10,7 +10,6 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/domain/diagnosis"
 	"github.com/AreteAcademy/brevis/internal/domain/run"
-	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/alerts"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/web/components"
@@ -142,14 +141,14 @@ templ pagination(p Pagination) {
 	if p.Total > 0 {
 		<div class="flex flex-wrap items-center justify-between gap-4 border-t border-line px-6 py-4 text-xs text-muted">
 			<span>
-				{ fmt.Sprintf("%d–%d of %d", p.First(), p.Last(), p.Total) }
+				{ i18n.T(ctx, "table.range", "first", i18n.Number(ctx, int64(p.First())), "last", i18n.Number(ctx, int64(p.Last())), "total", i18n.Number(ctx, int64(p.Total))) }
 			</span>
 			if p.Pages() > 1 {
 				<nav class="flex items-center gap-1">
 					if p.Page > 1 {
-						<a href={ templ.SafeURL(p.PageLink(p.Page - 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-line-strong hover:text-ink">previous</a>
+						<a href={ templ.SafeURL(p.PageLink(p.Page - 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-line-strong hover:text-ink">{ i18n.T(ctx, "table.previous") }</a>
 					} else {
-						<span class="rounded-card border border-line-soft px-3 py-1 text-line">previous</span>
+						<span class="rounded-card border border-line-soft px-3 py-1 text-line">{ i18n.T(ctx, "table.previous") }</span>
 					}
 					for _, n := range p.Window() {
 						if n == p.Page {
@@ -159,9 +158,9 @@ templ pagination(p Pagination) {
 						}
 					}
 					if p.Page < p.Pages() {
-						<a href={ templ.SafeURL(p.PageLink(p.Page + 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-line-strong hover:text-ink">next</a>
+						<a href={ templ.SafeURL(p.PageLink(p.Page + 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-line-strong hover:text-ink">{ i18n.T(ctx, "table.next") }</a>
 					} else {
-						<span class="rounded-card border border-line-soft px-3 py-1 text-line">next</span>
+						<span class="rounded-card border border-line-soft px-3 py-1 text-line">{ i18n.T(ctx, "table.next") }</span>
 					}
 				</nav>
 			}
@@ -178,9 +177,15 @@ templ pagination(p Pagination) {
 // on the other
 // lado.
 type Filter struct {
-	Search  string
-	State string // ultimo estado: failed, queued, running, success
-	Active  string // active | paused
+	Search string
+	// State is one of the segment's questions (failing, running, paused,
+	// manual), or a run state an older link carries (success, failed...),
+	// which still filters, as a chip.
+	State string
+	// Active is the schedule filter older links carry: active | paused.
+	Active string
+	// Lang is a language or tool the workflow runs, as a logo key.
+	Lang string
 
 	// Tags is a set: a workflow must carry ALL of them. One `tag=` each in the
 	// URL, in the order they were chosen.
@@ -283,6 +288,7 @@ func (f Filter) url(field, value string, resetsPage bool) string {
 	put("q", f.Search)
 	put("state", f.State)
 	put("active", f.Active)
+	put("lang", f.Lang)
 	for _, t := range f.Tags {
 		q.Add("tag", t)
 	}
@@ -370,282 +376,6 @@ func (p Pagination) Window() []int {
 		out = append(out, i)
 	}
 	return out
-}
-
-templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, logos map[string][]string, total, filtered int) {
-	@layouts.Base(layouts.Page{Title: "Workflows", Kicker: "Orchestration", Active: "workflows"}) {
-		// THE BOX ANSWERS WHILE SOMEBODY TYPES, and the server still decides:
-		// the list is paginated, so ui.js submits this form as a fetch
-		// (`data-swap-typing`) and swaps the list the handler draws alone. With
-		// no script it is the GET form it always was, and Enter submits it.
-		// The other filters go along as hidden fields: searching must not erase
-		// the state the operator had already chosen.
-		<form method="get" action="/workflows" role="search" data-swap="workflows-list" data-swap-typing class="mb-3 w-full sm:w-80">
-			for _, h := range f.hidden() {
-				<input type="hidden" name={ h[0] } value={ h[1] }/>
-			}
-			@components.SearchInput("q", f.Search, "Search workflows", "")
-		</form>
-		<div id="workflows-list">
-			@WorkflowsList(ws, tags, f, counts, recent, logos, total, filtered)
-		</div>
-	}
-}
-
-// WorkflowsList is everything under the search box: the filters, the count,
-// the table and its pages. It is the page's fragment (X-Brevis-Fragment:
-// answer), so the counts follow the search as somebody types. Logos are what
-// each workflow runs in, by slug.
-templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, logos map[string][]string, total, filtered int) {
-	<div class="mb-3 flex flex-wrap items-center gap-2">
-		// Each control scrolls on its own when the screen is narrower than its
-		// choices, rather than cutting the last one off.
-		<div class="max-w-full overflow-x-auto whitespace-nowrap">
-			@components.Segmented("State", stateOptions(f, counts))
-		</div>
-		<div class="max-w-full overflow-x-auto whitespace-nowrap">
-			@components.Segmented("Schedule", scheduleOptions(f, counts))
-		</div>
-		if len(tags) > 0 {
-			@tagPopover(tags, f)
-			for _, t := range f.Tags {
-				<a
-					href={ templ.SafeURL(f.WithTag(t)) }
-					aria-label={ "Remove the tag " + t }
-					class="inline-flex h-8 items-center gap-1.5 rounded-card border border-line-strong bg-surface-2 px-2.5 text-[0.8rem] text-ink"
-				>
-					{ t }
-					<span class="text-muted">&times;</span>
-				</a>
-			}
-		}
-		// The project chip appears only when one is selected. There is no
-		// row of every project here on purpose: a project is a namespace,
-		// not a category, and most installations have one -- a permanent
-		// chip for a filter that is almost never on is noise.
-		if f.Project != "" {
-			<span class="mx-2 h-5 w-px bg-line"></span>
-			<a
-				href={ templ.SafeURL(f.With("project", "")) }
-				class="inline-flex items-center gap-1.5 rounded-card border border-line-strong bg-surface-2 px-3 py-1 text-xs text-ink"
-			>
-				project: <span class="font-mono">{ f.Project }</span>
-				<span class="text-muted">&times;</span>
-			</a>
-		}
-	</div>
-	<p class="mb-2 text-[13px] font-semibold text-ink">
-		{ count(filtered, "workflow", "workflows") }
-		if filtered != total {
-			<span class="ml-2 text-sm text-muted">of { fmt.Sprint(total) }</span>
-			<a href="/workflows" class="ml-3 text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">clear filters</a>
-		}
-	</p>
-	if len(ws) == 0 {
-		@components.Empty("No workflow matches these filters.", "brevis publish file.yaml")
-	} else {
-		<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
-			<table class="ct w-full min-w-[56rem] text-sm">
-				<thead>
-					<tr class="border-b border-line bg-parchment-soft/60 text-left">
-						@th("", "w-16 pl-6")
-						@sortableTh("Workflow", "workflow", f, "")
-						@sortableTh("Schedule", "schedule", f, "")
-						@sortableTh("Next run", "next", f, "")
-						@sortableTh("Last run", "last", f, "")
-						@th("Tags", "")
-						@th("", "w-24 pr-6 text-right")
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-line-soft">
-					for _, w := range ws {
-						<tr class="transition-colors hover:bg-hover">
-							<td class="py-3 pl-6">
-								@interruptor(w)
-							</td>
-							<td class="py-3 pr-3">
-								<a href={ templ.SafeURL("/workflows/" + w.Slug) } class="font-medium text-ink hover:underline">
-									{ w.Slug }
-								</a>
-								if ks := logos[w.Slug]; len(ks) > 0 {
-									<span class="ml-1.5 inline-flex items-center gap-1 align-middle">
-										for _, k := range ks {
-											@components.Logo(k, 18)
-										}
-									</span>
-								}
-								<a
-									href={ templ.SafeURL("/workflows?project=" + w.Project) }
-									class="text-xs text-muted hover:text-ink hover:underline"
-								>{ w.Project }</a>
-							</td>
-							<td class="py-3 pr-3">
-								if w.Cron == "" {
-									<span class="text-xs text-muted">manual trigger only</span>
-								} else {
-									<span class="inline-flex items-center gap-1.5 font-mono text-xs text-ink">
-										<svg class="h-3.5 w-3.5 text-muted" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
-											<rect x="2" y="3" width="12" height="11" rx="2"></rect>
-											<path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke-linecap="round"></path>
-										</svg>
-										{ w.Cron }
-									</span>
-									if w.Catchup {
-										<span class="ml-2 text-[0.7rem] text-muted">catchup</span>
-									}
-									if words := CronText(w.Cron); words != "" {
-										<p data-cron-text class="mt-0.5 text-[0.7rem] text-muted">{ words }{ zoneSuffix(w.Timezone) }</p>
-									}
-								}
-							</td>
-							<td class="py-3 pr-3 text-xs tabular-nums">
-								if w.NextRun != nil {
-									<span class="text-ink">@components.ShortStamp(w.NextRun)</span>
-									<span class="ml-1.5 text-muted">{ components.When(w.NextRun) }</span>
-								} else if w.HasSchedule && !w.Active {
-									<span class="text-muted">paused</span>
-								} else {
-									<span class="text-muted">—</span>
-								}
-							</td>
-							<td class="py-3 pr-3">
-								if w.LastRunID != nil {
-									@recentRuns(recent[w.Slug])
-									<a href={ templ.SafeURL("/runs/" + *w.LastRunID) } class="mt-1 block text-[0.7rem] tabular-nums text-muted hover:underline">
-										@components.ShortStamp(w.LastRunAt) · { count(w.TotalRuns, "run", "runs") }
-									</a>
-								} else {
-									<span class="text-xs text-muted">never ran</span>
-								}
-							</td>
-							<td class="py-3 pr-3">
-								<div class="flex flex-wrap gap-1">
-									for _, t := range w.Tags {
-										@components.Tag(t, f.WithTag(t))
-									}
-								</div>
-							</td>
-							<td class="py-3 pr-6 text-right">
-								@disparar(w.Slug)
-							</td>
-						</tr>
-					}
-				</tbody>
-			</table>
-			@pagination(Pagination{
-				Page: f.Page, PerPage: f.PerPage, Total: filtered,
-				PageLink: f.WithPage,
-			})
-		</div>
-	}
-}
-
-// recentRuns is a workflow's last runs as a strip of squares, oldest to
-// newest, each a link to its run whose title says its state and time, in the
-// state's colour.
-templ recentRuns(runs []postgres.RecentRun) {
-	if len(runs) > 0 {
-		<div data-recent-runs class="flex items-center gap-0.5">
-			for _, r := range runs {
-				<a
-					href={ templ.SafeURL("/runs/" + r.ID) }
-					title={ recentTitle(r) }
-					aria-label={ recentTitle(r) }
-					class={ "h-3 w-2 rounded-[1px] transition-opacity hover:opacity-70", components.StateFill(r.Status) }
-				></a>
-			}
-		</div>
-	}
-}
-
-// tagPopover chooses the tags. It is a <details> holding a GET form -- the
-// rest of the filter as hidden fields, a box that filters the tag list, one
-// checkbox per tag, Apply -- so with no script it opens, is checked and is
-// submitted like any form. With ui.js a checked box submits at once
-// (`data-submit-on-change`), and the box filters the list as you type.
-templ tagPopover(tags []string, f Filter) {
-	<details data-popover class="relative">
-		<summary class="inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-card border border-line bg-surface px-2.5 text-[0.8rem] text-muted transition-colors duration-150 hover:text-ink [&::-webkit-details-marker]:hidden">
-			@components.Icon("tag", "h-3.5 w-3.5")
-			Tags
-			if len(f.Tags) > 0 {
-				<span class="text-[0.72rem] text-ink tabular-nums">{ fmt.Sprint(len(f.Tags)) }</span>
-			}
-		</summary>
-		<div class="absolute left-0 z-20 mt-1 w-64 rounded-card border border-line bg-surface p-2 shadow-warm-sm">
-			<form method="get" action="/workflows" data-submit-on-change>
-				for _, h := range f.tagFormHidden() {
-					<input type="hidden" name={ h[0] } value={ h[1] }/>
-				}
-				<input
-					type="search"
-					aria-label="Filter tags"
-					placeholder="Filter tags"
-					data-filter-for="workflow-tags"
-					autocomplete="off"
-					class="mb-2 h-8 w-full rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink placeholder:text-faint focus:border-accent-strong focus:outline-none"
-				/>
-				<ul id="workflow-tags" class="max-h-60 overflow-y-auto">
-					for _, t := range tags {
-						<li data-filter-row data-filter-text={ strings.ToLower(t) }>
-							<label class="flex cursor-pointer items-center gap-2 rounded-[2px] px-1.5 py-1 text-[0.82rem] text-ink hover:bg-surface-2">
-								<input type="checkbox" name="tag" value={ t } checked?={ f.HasTag(t) } class="accent-ink"/>
-								{ t }
-							</label>
-						</li>
-					}
-				</ul>
-				<p data-filter-empty hidden class="px-1.5 py-1 text-[0.8rem] text-muted">No tag matches.</p>
-				<button type="submit" class="mt-2 h-7 w-full rounded-card bg-ink text-xs font-medium text-surface">Apply</button>
-			</form>
-		</div>
-	</details>
-}
-
-// interruptor pauses and resumes the schedule. It is a form, and not a checkbox
-// with JS: with no script the page stays operable, and a POST makes it clear
-// there is an effect.
-templ interruptor(w postgres.WorkflowSummary) {
-	if w.HasSchedule {
-		<form method="post" action={ templ.SafeURL("/workflows/" + w.Slug + "/toggle") }>
-			if w.Active {
-				<button
-					type="submit"
-					title="Pause the schedule"
-					aria-label={ "Pausar " + w.Slug }
-					class="flex h-5 w-9 items-center rounded-full bg-state-success/80 px-0.5 transition-colors hover:bg-state-success"
-				>
-					<span class="ml-auto h-4 w-4 rounded-full bg-surface shadow-sm"></span>
-				</button>
-			} else {
-				<button
-					type="submit"
-					title="Resume the schedule"
-					aria-label={ "Retomar " + w.Slug }
-					class="flex h-5 w-9 items-center rounded-full bg-line px-0.5 transition-colors hover:bg-muted/40"
-				>
-					<span class="h-4 w-4 rounded-full bg-surface shadow-sm"></span>
-				</button>
-			}
-		</form>
-	} else {
-		<span class="block h-5 w-9" title="No schedule: manual trigger only"></span>
-	}
-}
-
-// disparar is the button with no parameters — used in the LIST, where there is
-// no room for a form and where the defaults are the right choice.
-templ disparar(slug string) {
-	<form method="post" action={ templ.SafeURL("/workflows/" + slug + "/trigger") } class="inline">
-		<button
-			type="submit"
-			title="Run now"
-			aria-label={ "Run " + slug }
-			class="inline-flex h-8 w-8 items-center justify-center rounded-card border border-line text-muted transition-colors hover:border-line-strong hover:bg-hover hover:text-ink"
-		>
-			<svg class="h-3.5 w-3.5" viewBox="0 0 12 12" fill="currentColor"><path d="M2.5 1.6v8.8L10 6z"></path></svg>
-		</button>
-	</form>
 }
 
 templ chip(rota, text string, active1 bool, ponto string) {
@@ -913,184 +643,6 @@ var dagAssets = layouts.Island{
 		assets.URL("vendor/xyflow.js"),
 		assets.URL("dag.js"),
 	},
-}
-
-// Workflow shows the published definition. With no run state: it is the screen
-// for "what this workflow is", and it has to serve a workflow that never ran
-// too.
-// WorkflowStats is one workflow's numbers, over workflowWindow.
-//
-// Every field degrades to its zero value on purpose: a definition has to stay
-// readable with the database in trouble, and somebody looking at a broken
-// installation is exactly who needs to read the graph.
-type WorkflowStats struct {
-	Window time.Duration
-	Ind    postgres.Indicators
-	Days   []postgres.Day
-
-	// Load is what this workflow's SDK pipelines measured, per day. Empty for a
-	// workflow whose steps are shell commands, which is why the panel checks
-	// before drawing: four empty boxes would be four questions with no answer.
-	Load []postgres.LoadDay
-}
-
-// workflowEyebrow is the line above the slug: the project, the schedule in
-// words (or the expression, when the words are not sure), and whether the
-// schedule is on. sum is nil when the summary could not be read, and the line
-// then says only what the definition does.
-// workflowMeta is the one line under the title (screen-workflow-v2 WV1):
-// whether the schedule runs, the project, the cron with its words and zone,
-// the size of the graph, the tags -- what an eyebrow above the title and a
-// line below it said between them.
-templ workflowMeta(p WorkflowPage) {
-	{{ w, sum := p.Def, p.Sum }}
-	<p data-workflow-meta class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
-		if sum != nil && sum.HasSchedule {
-			if sum.Active {
-				<span class="inline-flex items-center gap-1.5 text-state-success"><span class="h-[7px] w-[7px] rounded-full bg-state-success"></span>Active</span>
-			} else {
-				<span class="inline-flex items-center gap-1.5 text-muted"><span class="h-[7px] w-[7px] rounded-full bg-state-pending"></span>Paused</span>
-			}
-			<span class="text-faint">·</span>
-		}
-		if sum != nil && sum.Project != "" {
-			<a href={ templ.SafeURL("/workflows?project=" + sum.Project) } class="text-ink-2 hover:underline">{ sum.Project }</a>
-			<span class="text-faint">·</span>
-		}
-		if w.Schedule == "" {
-			<span>manual trigger only</span>
-		} else {
-			<span class="font-mono text-[12px] text-ink">{ w.Schedule }</span>
-			if words := CronText(w.Schedule); words != "" {
-				<span>{ words }{ zoneSuffix(scheduleZone(sum)) }</span>
-			}
-		}
-		<span class="text-faint">·</span>
-		<span>{ count(len(w.Nodes), "step", "steps") } · { count(len(w.Edges), "dependency", "dependencies") }</span>
-		for _, t := range w.Tags {
-			@components.Tag(t, "/workflows?tag="+t)
-		}
-	</p>
-}
-
-// yearOfRuns is the workflow's calendar.
-templ yearOfRuns(st WorkflowStats, slug string) {
-	@components.Panel("A year of runs", "") {
-		<div class="px-3.5 py-3">
-			<p class="mb-3 text-[12.5px] text-muted">
-				One square per day. The colour is the day&#39;s worst outcome, not how
-				much ran &mdash; the question a calendar answers is when this broke.
-			</p>
-			@components.Heatmap(st.Days, slug)
-		</div>
-	}
-}
-
-// workflowIsland is the graph's island for a workflow drawn as a graph; a
-// one-step workflow's line needs no React.
-func workflowIsland(p WorkflowPage) layouts.Island {
-	if p.Step != nil {
-		return layouts.Island{}
-	}
-	return dagAssets
-}
-
-// workflowActions are the page's verbs: Pause or Resume when there is a
-// schedule, and Run (▶ or the drawer).
-func workflowActions(p WorkflowPage) templ.Component {
-	return workflowActionsT(p)
-}
-
-templ workflowActionsT(p WorkflowPage) {
-	<div class="flex items-center gap-2">
-		if p.Sum != nil && p.Sum.HasSchedule {
-			@pauseAction(*p.Sum)
-		}
-		@runAction(p.Def)
-	</div>
-}
-
-// pauseAction pauses or resumes the schedule from the workflow's own page:
-// the toggle the list's switch posts to, as a button worded by what it will
-// do. A form, so it works with no script and is never prefetched.
-templ pauseAction(sum postgres.WorkflowSummary) {
-	<form method="post" action={ templ.SafeURL("/workflows/" + sum.Slug + "/toggle") }>
-		<button type="submit" class={ components.ButtonClass(components.ButtonSecondary, components.SizeRegular) }>
-			if sum.Active {
-				Pause
-			} else {
-				Resume
-			}
-		</button>
-	</form>
-}
-
-// about is the question mark beside the name, or nothing.
-func about(w wf.Workflow) templ.Component {
-	if w.Description == "" {
-		return nil
-	}
-	return components.AboutButton(w.Slug)
-}
-
-templ Workflow(p WorkflowPage) {
-	{{ w, latest, st, graph := p.Def, p.Latest, p.Stats, p.Graph }}
-	@layouts.Base(layouts.Page{
-		Title: w.Slug, Kicker: "Workflow", Active: "workflows", Mono: true,
-		Island: workflowIsland(p), Actions: workflowActions(p),
-		// The question mark only exists when there is something behind it: a
-		// control that opens an empty dialog is a promise the page does not
-		// keep.
-		Aside: about(w),
-	}) {
-		if w.Description != "" {
-			@components.AboutDialog(w.Slug, w.Description)
-		}
-		@workflowMeta(p)
-		if len(w.Params) > 0 {
-			@runDrawer(w, runDrawerText)
-		}
-		// The same four numbers the dashboard opens with, scoped to this
-		// workflow -- and over thirty days rather than one, because a daily job
-		// has a single run in twenty-four hours and a rate over one sample is
-		// not a rate.
-		<div class="mb-3">
-			@components.Stats(workflowPageStats(p))
-		</div>
-		// ONE STEP IS A LINE, BESIDE ITS CALENDAR (screen-workflow-v2 WV3);
-		// two or more are the graph, the calendar under it.
-		if p.Step != nil {
-			<div class="grid grid-cols-1 items-start gap-3 min-[1180px]:grid-cols-2">
-				@stepLine(*p.Step)
-				@yearOfRuns(st, w.Slug)
-			</div>
-		} else {
-			@dag("/api/workflows/"+w.Slug+"/graph", graph)
-			<div class="mt-3">
-				@yearOfRuns(st, w.Slug)
-			</div>
-		}
-		if len(st.Load) > 0 {
-			<section class="mt-3">
-				@components.Panel("What it loads", "") {
-					<div class="px-3.5 py-3">
-						<p class="mb-3 text-[12.5px] text-muted">
-							{ components.TrendWindow(st.Load) }. The calendar above answers whether
-							it ran; this answers whether it is getting worse.
-						</p>
-						@components.LoadTrend(components.Trend(st.Load), components.TrendWindow(st.Load))
-					</div>
-				}
-			</section>
-		}
-		if len(latest) > 0 {
-			<section data-workflow-runs class="mt-3">
-				@components.PanelLink("Runs", fmt.Sprint(len(latest)), "/runs?workflow="+w.Slug, "see all") {
-					@runsTableWith(latest, Pagination{}, runsOpts{Bare: true})
-				}
-			</section>
-		}
-	}
 }
 
 // RunDetail is the open run, beside the list (screen-runs). The header comes
@@ -1909,195 +1461,6 @@ func startOrCreated(r postgres.RunSummary) *time.Time {
 
 var _ = strings.TrimSpace
 
-
-// runAction is the page's verb. With parameters it is "Run…", a link to the
-// drawer: ui.js opens it as a dialog, and with no script `#run` shows the
-// form in place. With none it is the one-click ▶, since there is nothing to
-// ask.
-func runAction(w wf.Workflow) templ.Component {
-	if len(w.Params) == 0 {
-		return disparar(w.Slug)
-	}
-	return runLink()
-}
-
-templ runLink() {
-	<a href="#run" data-dialogo="run" aria-haspopup="dialog" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
-		@components.Icon("play", "h-3.5 w-3.5")
-		Run…
-	</a>
-}
-
-// runDrawer asks for a run's parameters: the fields the params declare, the
-// payload they make (filled by ui.js, so it is hidden with no script rather
-// than wrong), and Run, posting to the same trigger the ▶ does. A native
-// <dialog>: Esc closes it and the focus goes back to Run….
-templ runDrawer(w wf.Workflow, t drawerText) {
-	<dialog
-		id="run"
-		aria-labelledby="run-title"
-		class="run-drawer fixed inset-y-0 right-0 left-auto m-0 h-full max-h-none w-[min(440px,100vw)] border-l border-line bg-surface p-0 text-ink backdrop:bg-ink/40"
-	>
-		<form
-			method="post"
-			action={ templ.SafeURL("/workflows/" + w.Slug + "/trigger") }
-			data-run-form
-			class="flex h-full flex-col"
-		>
-			<div class="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
-				<div class="min-w-0">
-					<p id="run-title" class="text-[0.95rem] font-medium text-ink">{ t.Title }</p>
-					<p class="truncate font-mono text-[0.75rem] text-muted">{ w.Slug }</p>
-				</div>
-				<button type="submit" formmethod="dialog" formnovalidate aria-label="Close" class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
-					@components.Icon("x", "h-4 w-4")
-				</button>
-			</div>
-			<div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-				if t.Note != "" {
-					<p data-rerun-note class="rounded-card border border-line-soft bg-surface-2 px-3 py-2 text-[12px] text-muted">{ t.Note }</p>
-				}
-				for _, p := range w.Params {
-					@paramField(p)
-				}
-				for _, name := range t.Dropped {
-					<p class="font-mono text-[0.8rem] text-faint">{ name } <span class="font-sans text-[0.72rem]">not in the current definition, not sent</span></p>
-				}
-				<div data-run-preview hidden>
-					<p class="mb-1.5 text-[0.75rem] text-muted">Payload</p>
-					<pre class="overflow-x-auto rounded-card border border-line-soft bg-canvas px-3 py-2 font-mono text-[0.75rem] text-ink-2"><code></code></pre>
-				</div>
-			</div>
-			<div class="flex justify-end gap-2 border-t border-line px-5 py-3">
-				<button type="submit" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
-					@components.Icon("play", "h-3.5 w-3.5")
-					{ t.Button }
-				</button>
-			</div>
-		</form>
-	</dialog>
-}
-
-// paramField is one parameter's field. The drawer is the trigger WITH values
-// — the difference between running the workflow and reprocessing a window.
-//
-// The fields come from the YAML's declaration, and the `name` carries a `param.`
-// prefix so it does not collide with the form's own future fields. Types become
-// controls: a boolean is a select, an integer is a number, an enum is a select —
-// each refusing in the browser what the server would refuse again afterwards.
-//
-// A title is the label, with the name beside it -- the name is what the CLI and
-// the template know the param by. A warning is a hint under the field: what a
-// value other than the default costs.
-templ paramField(p wf.Param) {
-	<label class="flex flex-col gap-1">
-		if p.Title != "" {
-			<span class="flex items-baseline gap-2">
-				<span class="text-[0.82rem] font-medium text-ink">{ p.Title }</span>
-				<span class="font-mono text-[0.72rem] text-faint">{ p.Name }</span>
-			</span>
-		} else {
-			<span class="font-mono text-[0.8rem] text-ink">{ p.Name }</span>
-		}
-		if p.Description != "" {
-			<span class="text-[0.72rem] text-muted">{ p.Description }</span>
-		}
-		if p.Type == wf.ParamBool {
-			<select name={ "param." + p.Name } class="h-8 rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink">
-				@option("false", p.Default)
-				@option("true", p.Default)
-			</select>
-		} else if p.Type.IsList() && len(p.Enum) > 0 {
-			@listaComEnum(p)
-		} else if p.Type.IsList() {
-			@listaLivre(p)
-		} else if len(p.Enum) > 0 {
-			<select name={ "param." + p.Name } class="h-8 rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink">
-				for _, v := range p.Enum {
-					@option(v, p.Default)
-				}
-			</select>
-		} else {
-			<input
-				type={ fieldType(p) }
-				name={ "param." + p.Name }
-				value={ p.Default }
-				placeholder={ p.Pattern }
-				class="h-8 rounded-card border border-line bg-surface px-2.5 font-mono text-[0.82rem] text-ink placeholder:text-faint focus:border-accent-strong focus:outline-none"
-			/>
-		}
-		if p.Warn != "" {
-			<span data-param-warn class="text-[0.72rem] text-warn">{ p.Warn }</span>
-		}
-	</label>
-}
-
-// A list with an enum is a multi-select, and checkboxes are what a browser
-// already does well: they need no JavaScript, they are reachable by keyboard,
-// and the browser sends one value per box ticked -- which the handler joins
-// with commas, the same shape the value has everywhere else.
-//
-// The hidden empty value is what makes "none of them" different from "the
-// operator did not touch this": with every box unticked the key would otherwise
-// be absent from the form, and the resolver would fall back to the default.
-templ listaComEnum(p wf.Param) {
-	<input type="hidden" name={ "param." + p.Name } value=""/>
-	<div class="flex flex-wrap gap-x-3 gap-y-1 rounded-xl border border-line bg-parchment-soft px-3 py-2">
-		for _, v := range p.Enum {
-			<label class="flex items-center gap-1.5 text-sm text-ink">
-				if marcado(v, p.Default) {
-					<input type="checkbox" name={ "param." + p.Name } value={ v } checked class="accent-ink"/>
-				} else {
-					<input type="checkbox" name={ "param." + p.Name } value={ v } class="accent-ink"/>
-				}
-				<span class="font-mono text-xs">{ v }</span>
-			</label>
-		}
-	</div>
-}
-
-// A list with no enum is free text, and the separator is the comma the value
-// already uses. `data-lista` is the hook for the chips: with JavaScript the
-// items become removable pills, and without it this stays a text field that
-// works -- which is the rule the rest of this interface follows.
-templ listaLivre(p wf.Param) {
-	<input
-		type="text"
-		name={ "param." + p.Name }
-		value={ p.Default }
-		data-lista={ string(p.Type.ElementType()) }
-		placeholder="one, two, three"
-		class="rounded-xl border border-line bg-parchment-soft px-3 py-2 font-mono text-sm text-ink placeholder:text-muted/60"
-	/>
-}
-
-templ option(value, fallback string) {
-	if value == fallback {
-		<option value={ value } selected>{ value }</option>
-	} else {
-		<option value={ value }>{ value }</option>
-	}
-}
-
-// marcado answers whether this enum value is in the param's default, which for
-// a list is a comma-separated set rather than a single value.
-func marcado(value, deflt string) bool {
-	for _, item := range strings.Split(deflt, ",") {
-		if strings.TrimSpace(item) == value {
-			return true
-		}
-	}
-	return false
-}
-
-// fieldType picks the browser's control. `number` for an integer makes a
-// phone's keyboard open right and blocks a letter before the server has to.
-func fieldType(p wf.Param) string {
-	if p.Type == wf.ParamInteger {
-		return "number"
-	}
-	return "text"
-}
 
 // meanValue is the mean duration as a headline number. An em dash rather than
 // "0s" when nothing has finished: a zero there reads as "instant", which is the

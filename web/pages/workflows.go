@@ -2,7 +2,11 @@ package pages
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/url"
+	"slices"
+	"strings"
 	"time"
 
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
@@ -12,11 +16,11 @@ import (
 )
 
 // RecentRuns is how many of a workflow's last runs its row draws.
-const RecentRuns = 14
+const RecentRuns = 20
 
 // recentTitle is what a recent-run square says: its state and its time.
-func recentTitle(r postgres.RecentRun) string {
-	return r.Status + " · " + components.Timestamp(&r.At)
+func recentTitle(ctx context.Context, r postgres.RecentRun) string {
+	return components.StateWord(ctx, r.Status) + " · " + components.Timestamp(&r.At)
 }
 
 // zoneSuffix names a schedule's timezone after its words, when it is not
@@ -28,40 +32,93 @@ func zoneSuffix(tz string) string {
 	return " (" + tz + ")"
 }
 
-// WorkflowCounts is how many workflows each filter choice would show, with
-// the rest of the filter as it is. A choice's count ignores its own filter --
-// "Failure 1" while "Success" is chosen -- or every other choice would read 0.
+// WorkflowsScreen is everything the Workflows list draws.
+type WorkflowsScreen struct {
+	// Rows are the page's workflows, filtered and sorted.
+	Rows   []postgres.WorkflowSummary
+	Filter Filter
+	Counts WorkflowCounts
+	// Tags are every workflow's tags, for the popover; Langs what they run.
+	Tags  []string
+	Langs []LangChoice
+	// Recent are each row's last runs.
+	Recent map[string][]postgres.RecentRun
+	// RunsIn is what each row runs, every language and tool; Connects what
+	// it talks to; Steps how many steps; Failing whether its last finished
+	// run failed. By slug.
+	RunsIn   map[string][]string
+	Connects map[string][]string
+	Steps    map[string]int
+	Failing  map[string]bool
+	// Params is whether each row declares parameters, which its Run asks
+	// for in the workflow's drawer.
+	Params map[string]bool
+	// Now is the instant the page is drawn at: the Run dialogs' last slots
+	// are up to it.
+	Now time.Time
+	// Total is every workflow; Filtered those the filter keeps.
+	Total, Filtered int
+}
+
+// LangChoice is one language of the filter: a logo key, and how many
+// workflows the rest of the filter keeps that run it.
+type LangChoice struct {
+	Key   string
+	Count int
+}
+
+// WorkflowCounts is how many workflows each state would show, with the rest
+// of the filter as it is. A choice's count ignores its own filter --
+// "Failing 1" while "Paused" is chosen -- or every other choice would read 0.
 // The key "" is the choice that does not filter.
 type WorkflowCounts struct {
-	State  map[string]int
-	Active map[string]int
+	State map[string]int
 }
 
-// workflowStates are the state choices, in the order the filter shows them.
-var workflowStates = []struct{ value, label string }{
-	{"", "Any state"}, {"success", "Success"}, {"failed", "Failure"},
-	{"running", "Running"}, {"queued", "Queued"},
+// workflowStates are the questions the state segment asks, in its order.
+var workflowStates = []struct{ value, key string }{
+	{"", "workflows.state.all"},
+	{"failing", "workflows.state.failing"},
+	{"running", "workflows.state.running"},
+	{"paused", "workflows.state.paused"},
+	{"manual", "workflows.state.manual"},
 }
 
-// stateOptions is the state filter. Every choice stays, even at 0: a control
+// IsWorkflowState says whether a state is one of the segment's questions;
+// any other is a run state an older link carries.
+func IsWorkflowState(s string) bool {
+	for _, st := range workflowStates {
+		if st.value == s {
+			return true
+		}
+	}
+	return false
+}
+
+// stateOptions is the state segment. Every choice stays, even at 0: a control
 // whose choices come and go with the search moves under the pointer.
-func stateOptions(f Filter, c WorkflowCounts) []components.SegOption {
+func stateOptions(ctx context.Context, f Filter, c WorkflowCounts) []components.SegOption {
 	out := make([]components.SegOption, 0, len(workflowStates))
 	for _, s := range workflowStates {
-		out = append(out, components.SegOption{Label: s.label, Href: f.With("state", s.value),
-			Count: fmt.Sprint(c.State[s.value]), Current: f.State == s.value})
+		out = append(out, components.SegOption{Label: i18n.T(ctx, s.key), Href: f.With("state", s.value),
+			Count: i18n.Number(ctx, int64(c.State[s.value])), Current: f.State == s.value})
 	}
 	return out
 }
 
-// scheduleOptions is the active/paused filter.
-func scheduleOptions(f Filter, c WorkflowCounts) []components.SegOption {
-	out := make([]components.SegOption, 0, 3)
-	for _, s := range []struct{ value, label string }{
-		{"", "Any schedule"}, {"active", "Active"}, {"paused", "Paused"},
-	} {
-		out = append(out, components.SegOption{Label: s.label, Href: f.With("active", s.value),
-			Count: fmt.Sprint(c.Active[s.value]), Current: f.Active == s.value})
+// legacyChips are the filters an older link carries that no control offers
+// any more: a run state, and the schedule filter. Each still filters, and is
+// shown with its own ×.
+func legacyChips(ctx context.Context, f Filter) [][3]string {
+	var out [][3]string
+	if f.State != "" && !IsWorkflowState(f.State) {
+		out = append(out, [3]string{i18n.T(ctx, "workflows.chip.last_run"), components.StateWord(ctx, f.State), f.With("state", "")})
+	}
+	switch f.Active {
+	case "active":
+		out = append(out, [3]string{i18n.T(ctx, "workflows.chip.schedule"), i18n.T(ctx, "workflows.active"), f.With("active", "")})
+	case "paused":
+		out = append(out, [3]string{i18n.T(ctx, "workflows.chip.schedule"), i18n.T(ctx, "workflows.paused"), f.With("active", "")})
 	}
 	return out
 }
@@ -72,7 +129,7 @@ func scheduleOptions(f Filter, c WorkflowCounts) []components.SegOption {
 func (f Filter) hidden() [][2]string {
 	var out [][2]string
 	for _, h := range [][2]string{
-		{"state", f.State}, {"active", f.Active},
+		{"state", f.State}, {"active", f.Active}, {"lang", f.Lang},
 		{"project", f.Project}, {"sort", f.Sort},
 	} {
 		if h[1] != "" {
@@ -99,22 +156,6 @@ func (f Filter) tagFormHidden() [][2]string {
 		out = append([][2]string{{"q", f.Search}}, out...)
 	}
 	return out
-}
-
-// workflowStats are the same four numbers the dashboard opens with, scoped to
-// one workflow -- and over thirty days rather than one, because a daily job
-// has a single run in twenty-four hours and a rate over one sample is not a
-// rate.
-func workflowStats(st WorkflowStats) []components.Stat {
-	i := st.Ind
-	return []components.Stat{
-		{Label: "Success rate", Value: pct(i.Ratio(i.Succeeded)),
-			Note: fmt.Sprintf("%d of %d finished", i.Succeeded, i.Succeeded+i.Failed)},
-		{Label: "Failure rate", Value: pct(i.Ratio(i.Failed)), Note: failureNote(i.Failed)},
-		{Label: "Mean duration", Value: meanValue(i.MeanDuration),
-			Note: fmt.Sprintf("over %d days", int(st.Window.Hours()/24))},
-		{Label: "Open", Value: fmt.Sprint(i.Running + i.Pending), Note: openNote(i)},
-	}
 }
 
 // scheduleZone is the schedule's timezone, when the summary was read.
@@ -187,24 +228,19 @@ type WorkflowPage struct {
 	Step *StepLine
 	// Now is the page's clock, for "next run in 12m".
 	Now time.Time
-}
-
-// NextRunText is when a workflow runs next, as its KPI cell says it
-// (screen-workflow-v2 WV2): "in 12m" and the UTC time beside it while the
-// schedule runs; "paused" or "manual" otherwise. From the server's clock, so
-// it is as fresh as the page; nothing ticks.
-func NextRunText(sum *postgres.WorkflowSummary, now time.Time) (value, sub string) {
-	switch {
-	case sum == nil:
-		return "—", ""
-	case !sum.HasSchedule:
-		return "manual", ""
-	case !sum.Active:
-		return "paused", ""
-	case sum.NextRun == nil:
-		return "—", ""
-	}
-	return "in " + untilText(sum.NextRun.Sub(now)), sum.NextRun.UTC().Format("Jan 2 15:04") + " UTC"
+	// Langs is every language and tool the workflow runs, as logo keys.
+	Langs []string
+	// Steps are the Steps card's list, in the graph's order; Stages how many
+	// columns the graph has; GraphLogos the logos the island borrows.
+	Steps      []StepItem
+	Stages     int
+	GraphLogos []string
+	// YAML is the Definition tab: the published workflow written back as a
+	// file. Empty when it could not be written.
+	YAML string
+	// Day narrows the Runs tab to one UTC day -- a square of the calendar;
+	// nil is the last runs.
+	Day *time.Time
 }
 
 // untilText is a wait rounded to what a person plans by: minutes under an
@@ -225,8 +261,278 @@ func untilText(d time.Duration) string {
 	return fmt.Sprintf("%dd", int(d.Hours()/24))
 }
 
-// workflowPageStats are the four numbers and, fifth, when it runs next.
-func workflowPageStats(p WorkflowPage) []components.Stat {
-	value, sub := NextRunText(p.Sum, p.Now)
-	return append(workflowStats(p.Stats), components.Stat{Label: "Next run", Value: value, Note: sub})
+// nextRunText is when a schedule fires next, rounded to what a person plans
+// by -- "in 9h 28m" -- with the UTC time under it. Computed on the server;
+// nothing ticks.
+func nextRunText(ctx context.Context, next, now time.Time) (value, sub string) {
+	return i18n.T(ctx, "time.in", "span", untilText(next.Sub(now))), i18n.Date(ctx, next.UTC(), "brief") + " UTC"
+}
+
+// kpiDays is the window of the workflow page's numbers.
+const kpiDays = 30
+
+// workflowPageStats are the workflow's five numbers over thirty days
+// (screen-workflows T5): how many of the days it ran had no failure, how many
+// had one, how long a run takes, what runs now, and when it fires next. Days,
+// not runs: a */5 that failed once among 288 runs had a bad day, and a rate
+// over runs would call it 99.7%.
+func workflowPageStats(ctx context.Context, p WorkflowPage) []components.Stat {
+	ran, failed := 0, 0
+	since := p.Now.UTC().Truncate(24*time.Hour).AddDate(0, 0, -(kpiDays - 1))
+	for _, d := range p.Stats.Days {
+		if d.Date.Before(since) || d.Total == 0 {
+			continue
+		}
+		ran++
+		if d.Failed > 0 {
+			failed++
+		}
+	}
+	last30 := i18n.T(ctx, "workflow.kpi.last_days", "days", i18n.Number(ctx, kpiDays))
+	clean := components.Stat{Label: i18n.T(ctx, "workflow.kpi.clean"), Dot: "bg-state-success", Value: "—", Note: last30}
+	if ran > 0 {
+		clean.Value = percent(ctx, ran-failed, ran)
+		clean.Note = i18n.N(ctx, "workflow.kpi.of_days", ran, "n", i18n.Number(ctx, int64(ran-failed)))
+		clean.Bar = []components.BarSegment{{Share: float64(ran-failed) / float64(ran), Class: "bg-state-success"}}
+	}
+	i := p.Stats.Ind
+	open := components.Stat{Label: i18n.T(ctx, "workflow.kpi.open"), Value: i18n.Number(ctx, int64(i.Running+i.Pending)),
+		Note: i18n.T(ctx, "workflow.kpi.nothing_running")}
+	if i.Running+i.Pending > 0 {
+		open.Note = i18n.T(ctx, "workflow.kpi.open_note", "running", i18n.Number(ctx, int64(i.Running)), "queued", i18n.Number(ctx, int64(i.Pending)))
+	}
+	next := components.Stat{Label: i18n.T(ctx, "workflow.kpi.next"), Value: "—"}
+	switch sum := p.Sum; {
+	case sum == nil:
+	case !sum.HasSchedule:
+		next.Value = i18n.T(ctx, "workflows.manual_only")
+	case !sum.Active:
+		next.Value = i18n.T(ctx, "workflows.paused")
+	case sum.NextRun != nil:
+		next.Value, next.Note = nextRunText(ctx, *sum.NextRun, p.Now)
+	}
+	return []components.Stat{
+		clean,
+		{Label: i18n.T(ctx, "workflow.kpi.failed_days"), Dot: "bg-state-failed", Value: i18n.Number(ctx, int64(failed)), Note: last30},
+		{Label: i18n.T(ctx, "workflow.kpi.mean"), Value: meanValue(i.MeanDuration), Note: last30},
+		open,
+		next,
+	}
+}
+
+// triggerOf is a run's trigger as the Runs tab says it: a manual run of a
+// past slot is not a click like any other.
+func triggerOf(ctx context.Context, r postgres.RunSummary) string {
+	if r.TriggerType == "manual" && r.LogicalDate != nil {
+		return i18n.T(ctx, "workflow.runs.manual_slot")
+	}
+	return triggerWord(ctx, r.TriggerType)
+}
+
+// givenParams are the values a run was given that differ from the current
+// defaults, as key=value, sorted: what made it different. A value equal to
+// its default is not news, and one the definition no longer declares still
+// is.
+func givenParams(w wf.Workflow, given map[string]string) []string {
+	defaults := map[string]string{}
+	for _, p := range w.Params {
+		defaults[p.Name] = p.Default
+	}
+	var out []string
+	for k, v := range given {
+		if d, ok := defaults[k]; ok && d == v {
+			continue
+		}
+		out = append(out, k+"="+v)
+	}
+	slices.Sort(out)
+	return out
+}
+
+// workflowTabsCSS shows the workflow page's tabs by the hash, before the
+// first paint.
+func workflowTabsCSS() string { return hashTabsCSS("workflow-tabs", "runs", "params", "definition") }
+
+// langsShown is how many marks the language column draws; the rest are a
+// count.
+const langsShown = 4
+
+// firstLangs is the marks the language column draws.
+func firstLangs(keys []string) []string {
+	return keys[:min(len(keys), langsShown)]
+}
+
+// langText names what a workflow runs: the first two by name, and how many
+// more -- "Go + Python +2".
+func langText(ctx context.Context, keys []string) string {
+	names := make([]string, 0, 2)
+	for _, k := range keys[:min(len(keys), 2)] {
+		names = append(names, components.LogoTitle(ctx, k))
+	}
+	out := strings.Join(names, " + ")
+	if more := len(keys) - 2; more > 0 {
+		out += " +" + i18n.Number(ctx, int64(more))
+	}
+	return out
+}
+
+// inFlight is whether the workflow's last run has not finished.
+func inFlight(w postgres.WorkflowSummary) bool {
+	return w.LastStatus == "running" || w.LastStatus == "queued" || w.LastStatus == "retrying"
+}
+
+// rowHref is the workflow's page.
+func rowHref(slug string) string { return "/workflows/" + url.PathEscape(slug) }
+
+// createExample is the smallest workflow worth publishing, for the drawer.
+const createExample = `name: daily_orders
+schedule: "0 4 * * *"
+steps:
+  - id: load
+    run: python load.py
+  - id: build
+    run: dbt build --select orders+`
+
+// RunNow is what the Run dialog needs: the workflow, its schedule, and the
+// page to come back to.
+type RunNow struct {
+	Slug, Cron, Zone string
+	Back             string
+	Now              time.Time
+}
+
+// recentSlotsShown is how many past slots the Run dialog offers.
+const recentSlotsShown = 14
+
+func runNowID(slug string) string { return "run-now-" + slug }
+
+// slotLabel is a slot as the Run dialog lists it: when, in the schedule's
+// zone, and the window it processes, in UTC like every auto param.
+func slotLabel(ctx context.Context, s Slot, zone string) string {
+	at := s.At
+	if loc, err := time.LoadLocation(zone); err == nil && zone != "" {
+		at = at.In(loc)
+	}
+	return i18n.T(ctx, "workflows.slot.option",
+		"slot", i18n.Date(ctx, at, "brief"),
+		"from", i18n.Date(ctx, s.From, "brief"), "to", i18n.Date(ctx, s.At, "brief"))
+}
+
+// zoneName is a schedule's zone, UTC when it names none.
+func zoneName(zone string) string {
+	if zone == "" {
+		return "UTC"
+	}
+	return zone
+}
+
+// dayHref is a day's runs on the workflow's own page: the Runs tab, narrowed
+// to that UTC day.
+func dayHref(slug string, day time.Time) string {
+	return "/workflows/" + url.PathEscape(slug) + "?day=" + day.Format("2006-01-02") + "#runs"
+}
+
+// yearView is the workflow's calendar, its days opening on its own page.
+func yearView(ctx context.Context, p WorkflowPage) components.CalendarView {
+	return components.Calendar(ctx, p.Stats.Days, p.Now,
+		func(d time.Time) string { return dayHref(p.Def.Slug, d) }, p.Day)
+}
+
+// StepItem is one step of the Steps card's list.
+type StepItem struct {
+	ID, Command string
+	// Langs is what it runs, language first; Uses what it wrote, as logo keys;
+	// Needs the steps it depends on.
+	Langs, Uses, Needs []string
+	// LastStatus and LastMs are how it went the last time it ran; empty and
+	// 0 when it never did.
+	LastStatus string
+	LastMs     int64
+}
+
+// lastDuration is a step's last duration, or a dash.
+func lastDuration(r StepItem) string {
+	if r.LastStatus == "" {
+		return "—"
+	}
+	d := time.Duration(r.LastMs) * time.Millisecond
+	return components.Duration(&d)
+}
+
+// dagText is the words the graph's island draws, in the reader's language:
+// the island has no catalog of its own, so the page hands it these.
+func dagText(ctx context.Context) string {
+	states := map[string]string{}
+	for _, st := range []string{"pending", "queued", "running", "retrying", "success", "failed", "skipped", "canceled"} {
+		states[st] = components.StateWord(ctx, st)
+	}
+	b, _ := json.Marshal(map[string]any{
+		"states":       states,
+		"stage":        i18n.T(ctx, "graph.stage"),
+		"last":         i18n.T(ctx, "graph.last"),
+		"panel_none":   i18n.T(ctx, "graph.panel.none"),
+		"runs_in":      i18n.T(ctx, "graph.panel.runs_in"),
+		"image":        i18n.T(ctx, "graph.panel.image"),
+		"uses":         i18n.T(ctx, "graph.panel.uses"),
+		"depends":      i18n.T(ctx, "graph.panel.depends"),
+		"ready_before": i18n.N(ctx, "graph.panel.ready_before", 2, "n", "{n}"),
+		"ready_one":    i18n.N(ctx, "graph.panel.ready_before", 1, "n", "{n}"),
+		"feeds":        i18n.T(ctx, "graph.panel.feeds"),
+		"blocks":       i18n.T(ctx, "graph.panel.blocks"),
+		"none":         i18n.T(ctx, "graph.panel.nothing"),
+	})
+	return string(b)
+}
+
+// drawerOf is the workflow page's drawer: its project, for the CLI line, and
+// its schedule, to choose a slot of.
+func drawerOf(p WorkflowPage) drawerText {
+	d := drawerText{}
+	if p.Sum != nil {
+		d.Project = p.Sum.Project
+		if p.Sum.Cron != "" {
+			d.Slot = &RunNow{Slug: p.Def.Slug, Cron: p.Sum.Cron, Zone: p.Sum.Timezone, Now: p.Now}
+		}
+	}
+	return d
+}
+
+// ParamGroup is the params of one group, in the drawer's order.
+type ParamGroup struct {
+	Name   string
+	Params []wf.Param
+}
+
+// paramGroups are the params by their group: the ones with none first,
+// under no heading, then each group in the order it first appears.
+func paramGroups(ps []wf.Param) []ParamGroup {
+	var out []ParamGroup
+	at := map[string]int{}
+	for _, p := range ps {
+		i, ok := at[p.Group]
+		if !ok {
+			i = len(out)
+			at[p.Group] = i
+			out = append(out, ParamGroup{Name: p.Group})
+		}
+		out[i].Params = append(out[i].Params, p)
+	}
+	slices.SortStableFunc(out, func(a, b ParamGroup) int {
+		switch {
+		case a.Name == "" && b.Name != "":
+			return -1
+		case a.Name != "" && b.Name == "":
+			return 1
+		}
+		return 0
+	})
+	return out
+}
+
+// boolValue is a boolean's value as the switch shows it.
+func boolValue(v string) string {
+	if v == "true" {
+		return "true"
+	}
+	return "false"
 }

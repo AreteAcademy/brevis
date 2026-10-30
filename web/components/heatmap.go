@@ -1,22 +1,24 @@
 package components
 
 import (
-	"fmt"
+	"context"
 	"time"
 
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
-// The calendar's geometry: an 8px square and a 2px gap (density-base DB5), so
-// 53 weeks fit in about 550px. Drawn at its own size -- a stretched calendar
-// was 132px tall to say which days broke.
+// The calendar's geometry (screen-workflows T7): a 12px square and a 3px gap,
+// 53 weeks of them. Room on the left for the weekday labels, and on top for
+// the months.
 const (
-	cellSize = 8
-	cellGap  = 2
-	cellStep = cellSize + cellGap
-	// Room on the left for the weekday labels, and on top for the months.
-	calLeft = 26
-	calTop  = 14
+	calCell = 12
+	calGap  = 3
+	calStep = calCell + calGap
+	calLeft = 30
+	calTop  = 16
+	// calWeeks is a year and the week it ends in.
+	calWeeks = 53
 )
 
 // Square is one day of the calendar.
@@ -25,10 +27,13 @@ type Square struct {
 	Date    time.Time
 	Fill    string
 	Tooltip string
-	Link    string
+	// Link opens the day's runs; empty for a day with none.
+	Link string
 	// Empty says nothing ran. It is drawn, and drawn faintly: a missing square
 	// would make the grid ragged and a reader would count the gap as a week.
 	Empty bool
+	// Future is a day of this week still to come; Selected the day chosen.
+	Future, Selected bool
 }
 
 // Month is a label above the first column of a month.
@@ -37,130 +42,146 @@ type Month struct {
 	Label string
 }
 
-// Calendar lays a year of days out as a GitHub-style grid: one column per week,
-// Sunday at the top.
-//
-// The colour is the day's WORST OUTCOME, not its volume, and that is the whole
-// decision behind this chart. GitHub encodes how much happened, because that is
-// its question. The question here is "when did this pipeline break", and a
-// heatmap where a busy Tuesday and a broken Tuesday are both dark answers
-// neither. Volume is what the bar chart above already draws.
-func Calendar(days []postgres.Day, workflow string, span int) ([]Square, []Month, int, int) {
-	if span <= 0 {
-		span = 364 // 52 weeks, which is the canonical "a year" grid
-	}
-	byDay := make(map[string]postgres.Day, len(days))
-	for _, d := range days {
-		byDay[d.Date.Format("2006-01-02")] = d
-	}
-
-	// The grid ends TODAY and starts on the Sunday that keeps the columns
-	// whole. Starting exactly `span` days back would put the first column
-	// mid-week and every month label one square out.
-	end := time.Now().UTC().Truncate(24 * time.Hour)
-	start := end.AddDate(0, 0, -(span - 1))
-	start = start.AddDate(0, 0, -int(start.Weekday()))
-
-	var squares []Square
-	var months []Month
-	// The month names ALREADY used, and not just the previous one.
-	//
-	// Over 52 weeks the same name reaches both ends of the grid -- a span that
-	// starts in September ends in September -- and two "Sep" labels a year
-	// apart, with no year on either, is a reader guessing. The second is
-	// dropped: the last column is today, and nobody needs to be told what month
-	// today is.
-	used := map[string]bool{}
-	col := 0
-
-	for day := start; !day.After(end); day = day.AddDate(0, 0, 1) {
-		if day.Weekday() == time.Sunday {
-			col = int(day.Sub(start).Hours()/24) / 7
-			// Only when the month's first week is actually in view: a label
-			// on a column that starts mid-month would name a month whose
-			// squares are mostly in the column before it.
-			if m := day.Format("Jan"); day.Day() <= 7 && !used[m] {
-				months = append(months, Month{X: calLeft + col*cellStep, Label: m})
-				used[m] = true
-			}
-		}
-		key := day.Format("2006-01-02")
-		d, ran := byDay[key]
-
-		s := Square{
-			X:    calLeft + col*cellStep,
-			Y:    calTop + int(day.Weekday())*cellStep,
-			Date: day,
-		}
-		switch {
-		case !ran || d.Total == 0:
-			s.Empty = true
-			s.Fill = "var(--color-line)"
-			s.Tooltip = day.Format("2006-01-02") + ": no run"
-		case d.Failed > 0:
-			s.Fill = "var(--color-state-failed)"
-			s.Tooltip = fmt.Sprintf("%s: %s, %d failed",
-				key, plural(d.Total, "run", "runs"), d.Failed)
-		case d.Open > 0:
-			s.Fill = "var(--color-state-queued)"
-			s.Tooltip = fmt.Sprintf("%s: %s, %d still open",
-				key, plural(d.Total, "run", "runs"), d.Open)
-		default:
-			s.Fill = "var(--color-state-success)"
-			s.Tooltip = fmt.Sprintf("%s: %s, all succeeded", key, plural(d.Total, "run", "runs"))
-		}
-		if ran && d.Total > 0 && workflow != "" {
-			// The runs list takes `from` and `to` as RFC 3339, and `to` is
-			// EXCLUSIVE -- `criado_em < $ate`. So a day is [midnight, next
-			// midnight), which is why the second bound is tomorrow.
-			//
-			// The first version of this link invented `&day=`, which the list
-			// does not read: it would have shown every run of the workflow with
-			// the date silently dropped. A link that goes to the wrong place is
-			// worse than a square that is not clickable, because the reader
-			// believes it.
-			s.Link = fmt.Sprintf("/runs?workflow=%s&from=%s&to=%s",
-				workflow,
-				day.Format(time.RFC3339),
-				day.AddDate(0, 0, 1).Format(time.RFC3339))
-		}
-		squares = append(squares, s)
-	}
-
-	width := calLeft + (col+1)*cellStep
-	height := calTop + 7*cellStep
-	return squares, months, width, height
-}
-
-func plural(n int, one, many string) string {
-	if n == 1 {
-		return "1 " + one
-	}
-	return fmt.Sprintf("%d %s", n, many)
-}
-
 // WeekdayLabel is one of the three labels down the calendar's left edge.
 type WeekdayLabel struct {
 	Y     int
 	Label string
 }
 
-// weekdayLabels returns Mon, Wed and Fri. Seven labels beside eleven-pixel
-// squares is more text than grid.
-func weekdayLabels() []WeekdayLabel {
-	return []WeekdayLabel{
-		{Y: calTop + int(time.Monday)*cellStep + cellSize, Label: "Mon"},
-		{Y: calTop + int(time.Wednesday)*cellStep + cellSize, Label: "Wed"},
-		{Y: calTop + int(time.Friday)*cellStep + cellSize, Label: "Fri"},
+// CalendarSummary is what the calendar says before its grid: how many days
+// it ran, how many failed, how many days since the last failure -- or since
+// it began, if it never failed -- when that was, and since when it runs.
+type CalendarSummary struct {
+	RanDays, FailedDays, Streak int
+	LastFailure, Since          *time.Time
+}
+
+// CalendarView is a drawn calendar: its squares and labels, its size, and
+// its summary.
+type CalendarView struct {
+	Squares       []Square
+	Months        []Month
+	Weekdays      []WeekdayLabel
+	Width, Height int
+	Summary       CalendarSummary
+}
+
+// Calendar lays a year of days out as a grid of weeks, Monday at the top,
+// ending with the week of now: 53 columns, the days still to come in this
+// week drawn as such. link is where a day with runs goes; selected is the
+// day chosen, marked.
+//
+// The colour is the day's WORST OUTCOME, not its volume, and that is the whole
+// decision behind this chart. GitHub encodes how much happened, because that is
+// its question. The question here is "when did this pipeline break", and a
+// heatmap where a busy Tuesday and a broken Tuesday are both dark answers
+// neither.
+func Calendar(ctx context.Context, days []postgres.Day, now time.Time, link func(time.Time) string, selected *time.Time) CalendarView {
+	byDay := make(map[string]postgres.Day, len(days))
+	for _, d := range days {
+		byDay[d.Date.Format("2006-01-02")] = d
 	}
+	today := now.UTC().Truncate(24 * time.Hour)
+	// The grid's last column is this week, Monday to Sunday; its first, 52
+	// weeks before.
+	monday := today.AddDate(0, 0, -((int(today.Weekday()) + 6) % 7))
+	start := monday.AddDate(0, 0, -7*(calWeeks-1))
+	end := monday.AddDate(0, 0, 6)
+
+	var v CalendarView
+	// The month names ALREADY used: over 53 weeks a name reaches both ends of
+	// the grid, and two "Oct" labels a year apart, with no year on either, is
+	// a reader guessing. The second is dropped.
+	used := map[string]bool{}
+	for day := start; !day.After(end); day = day.AddDate(0, 0, 1) {
+		i := int(day.Sub(start).Hours() / 24)
+		col, row := i/7, i%7
+		if row == 0 {
+			// Only when the month's first week is in view: a label on a column
+			// that starts mid-month names a month mostly in the column before.
+			if m := i18n.Date(ctx, day, "month"); day.Day() <= 7 && !used[m] {
+				v.Months = append(v.Months, Month{X: calLeft + col*calStep, Label: m})
+				used[m] = true
+			}
+		}
+		key := day.Format("2006-01-02")
+		d, ran := byDay[key]
+		ran = ran && d.Total > 0
+		s := Square{
+			X: calLeft + col*calStep, Y: calTop + row*calStep, Date: day,
+			Future:   day.After(today),
+			Selected: ran && selected != nil && key == selected.Format("2006-01-02"),
+		}
+		when := i18n.Date(ctx, day, "day")
+		switch {
+		case !ran:
+			s.Empty = true
+			s.Fill = "var(--color-surface-2)"
+			s.Tooltip = when + " · " + i18n.T(ctx, "calendar.no_run")
+		case d.Failed > 0:
+			s.Fill = "var(--color-state-failed)"
+			s.Tooltip = when + " · " + i18n.N(ctx, "calendar.runs", d.Total) + " · " + i18n.N(ctx, "calendar.failed", d.Failed)
+		case d.Open > 0:
+			s.Fill = "var(--color-state-queued)"
+			s.Tooltip = when + " · " + i18n.N(ctx, "calendar.runs", d.Total) + " · " + i18n.T(ctx, "calendar.open")
+		default:
+			s.Fill = "var(--color-state-success)"
+			s.Tooltip = when + " · " + i18n.N(ctx, "calendar.runs", d.Total) + " · " + i18n.T(ctx, "calendar.ok")
+		}
+		if ran && link != nil {
+			s.Link = link(day)
+		}
+		v.Squares = append(v.Squares, s)
+	}
+	for _, w := range []time.Weekday{time.Monday, time.Wednesday, time.Friday} {
+		v.Weekdays = append(v.Weekdays, WeekdayLabel{
+			Y:     calTop + ((int(w)+6)%7)*calStep + calCell - 2,
+			Label: i18n.Date(ctx, monday.AddDate(0, 0, (int(w)+6)%7), "weekday"),
+		})
+	}
+	v.Width = calLeft + calWeeks*calStep - calGap
+	v.Height = calTop + 7*calStep - calGap
+	v.Summary = summarise(days, today)
+	return v
+}
+
+// summarise counts the days that ran and failed, and how long since the last
+// failure -- or since the first run, when there was none.
+func summarise(days []postgres.Day, today time.Time) CalendarSummary {
+	var s CalendarSummary
+	for _, d := range days {
+		if d.Total == 0 {
+			continue
+		}
+		day := d.Date.UTC().Truncate(24 * time.Hour)
+		s.RanDays++
+		if s.Since == nil || day.Before(*s.Since) {
+			s.Since = &day
+		}
+		if d.Failed > 0 {
+			s.FailedDays++
+			if s.LastFailure == nil || day.After(*s.LastFailure) {
+				s.LastFailure = &day
+			}
+		}
+	}
+	switch {
+	case s.LastFailure != nil:
+		s.Streak = int(today.Sub(*s.LastFailure).Hours() / 24)
+	case s.Since != nil:
+		s.Streak = int(today.Sub(*s.Since).Hours()/24) + 1
+	}
+	return s
 }
 
 // emptyOpacity keeps a day with no run visible as a grid square without letting
-// it read as data. Fully opaque, the line colour is close enough to a pale
-// success to be misread at a glance.
-func emptyOpacity(empty bool) string {
-	if empty {
-		return "0.55"
+// it read as data, and a day to come fainter still.
+func squareOpacity(s Square) string {
+	switch {
+	case s.Future:
+		return "0.35"
+	case s.Empty:
+		return "0.8"
 	}
 	return "1"
 }

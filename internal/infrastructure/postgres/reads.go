@@ -28,6 +28,10 @@ type RunSummary struct {
 	StartedAt    *time.Time
 	Duration     *time.Duration
 	Err          string
+
+	// Params are the values the run was given. Read only by WorkflowHistory:
+	// the lists that do not show them do not pay for them.
+	Params map[string]string
 }
 
 // WorkflowSummary joins the workflow, its schedule and the last run's state.
@@ -499,22 +503,6 @@ func (r *ReadRepo) Schedules(ctx context.Context) ([]ScheduleSummary, error) {
 	return out, rows.Err()
 }
 
-// WorkflowRuns lists the runs of a single workflow, for its own screen.
-func (r *ReadRepo) WorkflowRuns(ctx context.Context, slug string, limite int) ([]RunSummary, error) {
-	rows, err := r.pool.Query(ctx, `
-		SELECT id::text, workflow_slug, status, trigger_type, attempt,
-		       logical_date, criado_em, iniciado_em, terminado_em, erro
-		FROM runs
-		WHERE workflow_slug = $1
-		ORDER BY criado_em DESC
-		LIMIT $2`, slug, limite)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return varrerRuns(rows)
-}
-
 // RunFilter is the run screen's query. Empty fields do not filter.
 type RunFilter struct {
 	State string
@@ -691,6 +679,135 @@ func (r *ReadRepo) LoadTrend(ctx context.Context, workflow string, days int) ([]
 			return nil, err
 		}
 		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// Connects is, per workflow, the scheme of every target its runs landed since
+// `since` -- `bigquery://acme/bronze/orders` is `bigquery` -- once each, in
+// alphabetical order: what the Workflows list draws as what a workflow talks
+// to. A target with no scheme, a legacy table name, says nothing about where
+// it lives and is left out. The schemes are as written; naming their logos is
+// the screen's.
+func (r *ReadRepo) Connects(ctx context.Context, since time.Time) (map[string][]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT workflow_slug, split_part(target, '://', 1)
+		FROM landings
+		WHERE loaded_at >= $1 AND strpos(target, '://') > 1
+		ORDER BY 1, 2`, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string][]string{}
+	for rows.Next() {
+		var slug, scheme string
+		if err := rows.Scan(&slug, &scheme); err != nil {
+			return nil, err
+		}
+		out[slug] = append(out[slug], scheme)
+	}
+	return out, rows.Err()
+}
+
+// WorkflowHistory is a workflow's runs, newest first, with the values each
+// was given: the workflow page's Runs tab. With a day, only that day's -- a
+// UTC day by when the run was created, the same day the calendar counts it
+// in.
+func (r *ReadRepo) WorkflowHistory(ctx context.Context, slug string, day *time.Time, limit int) ([]RunSummary, error) {
+	var from, to *time.Time
+	if day != nil {
+		f := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC)
+		t := f.Add(24 * time.Hour)
+		from, to = &f, &t
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT id::text, workflow_slug, status, trigger_type, attempt,
+		       logical_date, criado_em, iniciado_em, terminado_em, erro, params
+		FROM runs
+		WHERE workflow_slug = $1
+		  AND ($2::timestamptz IS NULL OR criado_em >= $2)
+		  AND ($3::timestamptz IS NULL OR criado_em < $3)
+		ORDER BY criado_em DESC
+		LIMIT $4`, slug, from, to, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []RunSummary
+	for rows.Next() {
+		var r RunSummary
+		var ini, end *time.Time
+		if err := rows.Scan(&r.ID, &r.WorkflowSlug, &r.Status, &r.TriggerType, &r.Attempt,
+			&r.LogicalDate, &r.CreatedAt, &ini, &end, &r.Err, &r.Params); err != nil {
+			return nil, err
+		}
+		r.StartedAt = ini
+		if ini != nil && end != nil {
+			d := end.Sub(*ini)
+			r.Duration = &d
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// StepRun is how a step went the last time it ran.
+type StepRun struct {
+	Status     string
+	DurationMs int64
+}
+
+// LastStepRuns is, for each step of a workflow, its last attempt in the
+// newest run that ran it: a step the last run skipped keeps what it did
+// before. The workflow page's graph draws it on each card, and a mapped
+// step's instances are one row each -- the newest is the one shown.
+func (r *ReadRepo) LastStepRuns(ctx context.Context, slug string) (map[string]StepRun, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT ON (t.node_id) t.node_id, t.status,
+		       COALESCE(EXTRACT(EPOCH FROM (t.terminado_em - t.iniciado_em)) * 1000, 0)::bigint
+		FROM task_runs t JOIN runs r ON r.id = t.run_id
+		WHERE r.workflow_slug = $1
+		ORDER BY t.node_id, r.criado_em DESC, t.attempt DESC, t.iniciado_em DESC NULLS LAST`, slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string]StepRun{}
+	for rows.Next() {
+		var node string
+		var s StepRun
+		if err := rows.Scan(&node, &s.Status, &s.DurationMs); err != nil {
+			return nil, err
+		}
+		out[node] = s
+	}
+	return out, rows.Err()
+}
+
+// StepConnects is Connects by step: the scheme of every target each step of
+// a workflow landed since `since`, once each, in order.
+func (r *ReadRepo) StepConnects(ctx context.Context, slug string, since time.Time) (map[string][]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT node_id, split_part(target, '://', 1)
+		FROM landings
+		WHERE workflow_slug = $1 AND loaded_at >= $2 AND strpos(target, '://') > 1
+		ORDER BY 1, 2`, slug, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string][]string{}
+	for rows.Next() {
+		var node, scheme string
+		if err := rows.Scan(&node, &scheme); err != nil {
+			return nil, err
+		}
+		out[node] = append(out[node], scheme)
 	}
 	return out, rows.Err()
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/AreteAcademy/brevis/internal/alerts"
+	appworkflow "github.com/AreteAcademy/brevis/internal/application/workflow"
 	"github.com/AreteAcademy/brevis/internal/auth"
 	"github.com/AreteAcademy/brevis/internal/branding"
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
@@ -59,8 +60,16 @@ type Leitura interface {
 	Runs(ctx context.Context, f postgres.RunFilter) ([]postgres.RunSummary, error)
 	CountRuns(ctx context.Context, f postgres.RunFilter) (int, error)
 	CountRunsByState(ctx context.Context, f postgres.RunFilter) (map[string]int, error)
-	WorkflowRuns(ctx context.Context, slug string, limite int) ([]postgres.RunSummary, error)
+	// WorkflowHistory is a workflow's runs with their params, newest first;
+	// with a day, that UTC day's.
+	WorkflowHistory(ctx context.Context, slug string, day *time.Time, limit int) ([]postgres.RunSummary, error)
 	Workflows(ctx context.Context) ([]postgres.WorkflowSummary, error)
+	// Connects is the schemes each workflow's runs wrote since a moment.
+	Connects(ctx context.Context, since time.Time) (map[string][]string, error)
+	// LastStepRuns is how each step of a workflow went the last time it ran;
+	// StepConnects what each step wrote since a moment.
+	LastStepRuns(ctx context.Context, slug string) (map[string]postgres.StepRun, error)
+	StepConnects(ctx context.Context, slug string, since time.Time) (map[string][]string, error)
 	RecentStates(ctx context.Context, slugs []string, n int) (map[string][]postgres.RecentRun, error)
 	Schedules(ctx context.Context) ([]postgres.ScheduleSummary, error)
 	Projects(ctx context.Context) ([]postgres.ProjectSummary, error)
@@ -1158,7 +1167,8 @@ func periodLabel(de, ate *time.Time) string {
 }
 
 func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
-	all, err := u.leitura.Workflows(r.Context())
+	ctx := r.Context()
+	all, err := u.leitura.Workflows(ctx)
 	if err != nil {
 		u.failure(w, r, err)
 		return
@@ -1172,8 +1182,9 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	f := pages.Filter{
 		Search:  strings.TrimSpace(q.Get("q")),
-		State:   validState(q.Get("state")),
+		State:   validListState(q.Get("state")),
 		Active:  q.Get("active"),
+		Lang:    validLang(q.Get("lang")),
 		Tags:    tagsOf(q["tag"]),
 		Project: q.Get("project"),
 		Sort:    validOrder(q.Get("sort")),
@@ -1181,42 +1192,45 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 		Page:    page(q.Get("page")),
 		PerPage: pages.DefaultPerPage,
 	}
+	if f.Active != "active" && f.Active != "paused" {
+		f.Active = ""
+	}
 
-	filtered := filtrar(all, f)
+	facts := u.listFacts(ctx)
+	filtered := filtrar(all, f, facts)
 	sortBy(filtered, f)
-	ws, tags, counts := recortar(filtered, f), tagsDe(all), contar(all, f)
-	// The strip of last runs is read for the page's rows only, in one query.
-	slugs := make([]string, len(ws))
-	for i, wf := range ws {
+	v := pages.WorkflowsScreen{
+		Filter: f, Rows: recortar(filtered, f), Tags: tagsDe(all),
+		Counts: contar(all, f, facts), Langs: langChoices(all, f, facts),
+		Total: len(all), Filtered: len(filtered),
+	}
+	// The strip of last runs is read for the page's rows only, in one query;
+	// what each row runs comes from the definitions the filter already read.
+	slugs := make([]string, len(v.Rows))
+	for i, wf := range v.Rows {
 		slugs[i] = wf.Slug
 	}
-	recent, err := u.leitura.RecentStates(r.Context(), slugs, pages.RecentRuns)
-	if err != nil {
+	u.describeRows(ctx, &v, facts)
+	if v.Recent, err = u.leitura.RecentStates(ctx, slugs, pages.RecentRuns); err != nil {
 		u.failure(w, r, err)
 		return
 	}
-	logos := u.logosOf(r.Context(), slugs)
 	if fragment(r) == "answer" {
-		u.render(w, r, pages.WorkflowsList(ws, tags, f, counts, recent, logos, len(all), len(filtered)))
+		u.render(w, r, pages.WorkflowsList(v))
 		return
 	}
-	u.render(w, r, pages.Workflows(ws, tags, f, counts, recent, logos, len(all), len(filtered)))
+	u.render(w, r, pages.Workflows(v))
 }
 
-// contar is how many workflows each state and schedule choice would show:
-// the same filter with that one field swapped, run through filtrar, so a
-// count cannot disagree with the list its link opens.
-func contar(all []postgres.WorkflowSummary, f pages.Filter) pages.WorkflowCounts {
-	c := pages.WorkflowCounts{State: map[string]int{}, Active: map[string]int{}}
-	for _, s := range []string{"", "success", "failed", "running", "queued"} {
+// contar is how many workflows each state would show: the same filter with
+// that one field swapped, run through filtrar, so a count cannot disagree
+// with the list its link opens.
+func contar(all []postgres.WorkflowSummary, f pages.Filter, x listFacts) pages.WorkflowCounts {
+	c := pages.WorkflowCounts{State: map[string]int{}}
+	for _, s := range []string{"", "failing", "running", "paused", "manual"} {
 		g := f
 		g.State = s
-		c.State[s] = len(filtrar(all, g))
-	}
-	for _, a := range []string{"", "active", "paused"} {
-		g := f
-		g.Active = a
-		c.Active[a] = len(filtrar(all, g))
+		c.State[s] = len(filtrar(all, g, x))
 	}
 	return c
 }
@@ -1327,15 +1341,14 @@ func proximaDoWorkflow(w postgres.WorkflowSummary, now time.Time) *time.Time {
 // In memory and not in SQL because the workflow list is in the dozens, and
 // filtering by LAST state would mean repeating the query's LATERAL inside a
 // WHERE. If it ever becomes thousands, this turns into a database predicate.
-func filtrar(ws []postgres.WorkflowSummary, f pages.Filter) []postgres.WorkflowSummary {
+func filtrar(ws []postgres.WorkflowSummary, f pages.Filter, x listFacts) []postgres.WorkflowSummary {
 	search := strings.ToLower(f.Search)
 	out := make([]postgres.WorkflowSummary, 0, len(ws))
 	for _, w := range ws {
-		if search != "" && !strings.Contains(strings.ToLower(w.Slug), search) &&
-			!strings.Contains(strings.ToLower(w.Name), search) {
+		if search != "" && !strings.Contains(x.haystack(w), search) {
 			continue
 		}
-		if f.State != "" && w.LastStatus != f.State {
+		if !x.inState(w, f.State) {
 			continue
 		}
 		switch f.Active {
@@ -1355,6 +1368,9 @@ func filtrar(ws []postgres.WorkflowSummary, f pages.Filter) []postgres.WorkflowS
 			continue
 		}
 		if f.Project != "" && w.Project != f.Project {
+			continue
+		}
+		if f.Lang != "" && !contains(x.langs(w.Slug), f.Lang) {
 			continue
 		}
 		out = append(out, w)
@@ -1430,8 +1446,10 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	// A missing history does not block the screen: the definition is the main content.
-	latest, err := u.leitura.WorkflowRuns(r.Context(), slug, 10)
+	// A missing history does not block the screen: the definition is the main
+	// content. A day -- a square of the calendar -- narrows it to that day.
+	day := dayOf(r.URL.Query().Get("day"))
+	latest, err := u.leitura.WorkflowHistory(r.Context(), slug, day, 10)
 	if err != nil {
 		u.log.Warn("the workflow's history is unavailable", "workflow", slug, "error", err)
 	}
@@ -1446,7 +1464,8 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 	} else {
 		u.log.Warn("the workflow's indicators are unavailable", "workflow", slug, "error", err)
 	}
-	if days, err := u.leitura.RunsPerDay(r.Context(), slug, 364); err == nil {
+	// 53 weeks and the days of this one: the calendar's whole grid.
+	if days, err := u.leitura.RunsPerDay(r.Context(), slug, 53*7); err == nil {
 		stats.Days = days
 	} else {
 		u.log.Warn("the workflow's calendar is unavailable", "workflow", slug, "error", err)
@@ -1476,12 +1495,20 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 	if sum != nil {
 		sum.NextRun = proximaDoWorkflow(*sum, now)
 	}
-	page := pages.WorkflowPage{Def: def, Sum: sum, Latest: latest, Stats: stats, Now: now}
+	page := pages.WorkflowPage{Def: def, Sum: sum, Latest: latest, Stats: stats, Now: now,
+		Langs: runsIn(def, 0), Day: day}
+	// The Definition tab: the published workflow as a file that publishes
+	// it. Without it the tab says so; the page still opens.
+	if y, err := appworkflow.YAML(def); err == nil {
+		page.YAML = string(y)
+	} else {
+		u.log.Warn("the workflow's YAML could not be written", "workflow", slug, "error", err)
+	}
 	// A one-step workflow shows its step as a line, and has no graph to embed.
 	if oneStep(def) {
 		page.Step = stepLineOf(def, nil)
 	} else {
-		page.Graph = graphSeed(def, nil, "", "")
+		u.stepsOf(r.Context(), def, &page)
 	}
 	u.render(w, r, pages.Workflow(page))
 }
@@ -1683,6 +1710,23 @@ func (u *UI) toggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u.log.Info("schedule toggled", "workflow", slug, "active", active1)
+	ctx := i18n.WithLang(r.Context(), i18n.Negotiate(r))
+	message := i18n.T(ctx, "workflows.paused.toast", "workflow", slug)
+	if active1 {
+		message = i18n.T(ctx, "workflows.resumed.toast", "workflow", slug)
+	}
+	// The list's switch flips in place: its script asks for the outcome and
+	// the toast's words, and draws them. Anything else comes back to the page
+	// it came from, which says the same in a flash.
+	if fragment(r) == "toggle" {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(struct {
+			Active        bool
+			Message, Undo string
+		}{active1, message, i18n.T(ctx, "workflows.undo")})
+		return
+	}
+	layouts.SetFlash(w, "ok", message)
 	u.voltar(w, r)
 }
 
@@ -1747,7 +1791,7 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params := paramsFromForm(r.PostForm)
-	slot, err := u.slotFromForm(r.Context(), slug, strings.TrimSpace(r.PostForm.Get("slot")))
+	slot, err := u.slotFromForm(r.Context(), slug, slotField(r.PostForm))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -1762,26 +1806,55 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if id == uuid.Nil {
-		// The idempotency key collided: two clicks in the same second become one
-		// run. Going back to the list is the right behaviour -- there is no new
-		// run to go to.
+	back := localPath(r.PostForm.Get("back"))
+	next := "/runs/" + id.String()
+	switch {
+	case id == uuid.Nil:
+		// The idempotency key collided: two clicks in the same second become
+		// one run. Going back is the right behaviour -- there is no new run to
+		// go to.
 		u.log.Info("trigger ignored by idempotency", "workflow", slug)
-		u.voltar(w, r)
-		return
-	}
-	u.log.Info("manual run created", "workflow", slug, "run", id)
-	// A rerun from a list -- the Overview's "Needs your attention" -- goes
-	// back to it, saying the run was made and where to follow it: the list
-	// is what the reader is watching.
-	if back := localPath(r.PostForm.Get("back")); back != "" {
+		next = back
+		if next == "" {
+			next = backTo(r)
+		}
+	case back != "":
+		// A run made from a list -- the Overview's "Needs your attention", the
+		// Workflows list -- goes back to it, saying the run was made and where
+		// to follow it: the list is what the reader is watching.
+		u.log.Info("manual run created", "workflow", slug, "run", id)
 		ctx := i18n.WithLang(r.Context(), i18n.Negotiate(r))
-		layouts.SetFlashLink(w, "run", i18n.T(ctx, "overview.rerun_created", "workflow", slug),
-			i18n.T(ctx, "overview.follow"), "/runs/"+id.String())
-		http.Redirect(w, r, back, http.StatusSeeOther)
+		message, follow := i18n.T(ctx, "overview.rerun_created", "workflow", slug), i18n.T(ctx, "overview.follow")
+		if strings.HasPrefix(back, "/workflows") {
+			message, follow = i18n.T(ctx, "workflows.run_created", "workflow", slug), i18n.T(ctx, "workflows.see_logs")
+		}
+		layouts.SetFlashLink(w, "run", message, follow, next)
+		next = back
+	default:
+		u.log.Info("manual run created", "workflow", slug, "run", id)
+	}
+	// The Run dialog posts with its script, to stay open on a refusal: it is
+	// told where to go instead of being redirected there.
+	if fragment(r) == "trigger" {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(struct{ Location string }{next})
 		return
 	}
-	http.Redirect(w, r, "/runs/"+id.String(), http.StatusSeeOther)
+	http.Redirect(w, r, next, http.StatusSeeOther)
+}
+
+// slotField is the slot the form asks for: none when it says "now", the time
+// typed beside the list when it says "other", and the `slot` field otherwise
+// -- which is what a form with no `when`, or a curl, sends.
+func slotField(form url.Values) string {
+	if form.Get("when") == "now" {
+		return ""
+	}
+	slot := strings.TrimSpace(form.Get("slot"))
+	if slot == "other" {
+		return strings.TrimSpace(form.Get("slot_at"))
+	}
+	return slot
 }
 
 // slotFromForm reads the `slot` field: an RFC3339 instant, which says its own
@@ -1836,6 +1909,12 @@ func localPath(p string) string {
 // navigation as a GET, which is what prevents the "resend form?" prompt on
 // reload.
 func (u *UI) voltar(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, backTo(r), http.StatusSeeOther)
+}
+
+// backTo is the page the request came from, on this site, or the Workflows
+// list.
+func backTo(r *http.Request) string {
 	target := r.Referer()
 	// It only accepts a destination on this site: an external Referer would turn
 	// the redirect into an open-redirect vector.
@@ -1846,7 +1925,7 @@ func (u *UI) voltar(w http.ResponseWriter, r *http.Request) {
 			target = "/workflows"
 		}
 	}
-	http.Redirect(w, r, target, http.StatusSeeOther)
+	return target
 }
 
 // parseMesmoHost accepts the Referer only when it points at this same host.

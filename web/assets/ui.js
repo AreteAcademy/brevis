@@ -35,7 +35,7 @@
       if (d && typeof d.showModal === "function") {
         // A link opener (`href="#run"`) is the no-script path; with the
         // script the dialog opens and the URL keeps no hash.
-        if (trigger.tagName === "A") e.preventDefault();
+        if (trigger.tagName === "A" || trigger.type === "submit") e.preventDefault();
         if (!d.open) {
           opener.set(d, trigger);
           d.showModal();
@@ -149,6 +149,16 @@
   }
   openFromHash();
   window.addEventListener("hashchange", openFromHash);
+
+  // --- The calendar starts at this week ------------------------------------
+  //
+  // A year of squares is wider than a phone. Where it scrolls, it opens at
+  // its end -- this week -- rather than at a year ago: the recent days are
+  // the ones a reader came for.
+  document.querySelectorAll("svg[data-calendar]").forEach(function (svg) {
+    var box = svg.parentElement;
+    if (box && box.scrollWidth > box.clientWidth) box.scrollLeft = box.scrollWidth;
+  });
 
   // --- The charts' tooltip --------------------------------------------------
   //
@@ -998,6 +1008,100 @@
       });
   });
 
+  // ------------------------------------------------------------------
+  // A schedule's switch, flipped in place
+  //
+  // The Workflows list's switch is a form that posts the toggle. With the
+  // script it posts in place: the server answers whether the schedule is on
+  // and the toast's words, in the reader's language; the switch and the row
+  // follow, and the toast's Undo posts the same form again. Any failure falls
+  // back to the plain post, which comes back with a flash.
+  // ------------------------------------------------------------------
+
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form || typeof form.matches !== "function" || !form.matches("form[data-toggle]")) return;
+    if (!window.fetch) return;
+    e.preventDefault();
+    var button = form.querySelector('[role="switch"]');
+    if (button) button.disabled = true;
+    fetch(form.getAttribute("action"), { method: "POST", headers: { "X-Brevis-Fragment": "toggle" } })
+      .then(function (r) {
+        if (!r.ok) throw new Error("toggle refused");
+        return r.json();
+      })
+      .then(function (got) {
+        if (button) button.setAttribute("aria-checked", got.Active ? "true" : "false");
+        var row = form.closest("tr");
+        if (row) row.toggleAttribute("data-paused", !got.Active);
+        window.Brevis.toast(got.Message, {
+          action: got.Undo,
+          onAction: function () { form.requestSubmit(); },
+        });
+      })
+      .catch(function () { form.submit(); })
+      .then(function () { if (button) button.disabled = false; });
+  });
+
+  // ------------------------------------------------------------------
+  // The Run dialog
+  //
+  // Now, or another slot: the slot list shows only when asked for, and the
+  // time of one's own only when "another" is chosen. The dialog posts with
+  // the script so that a refused slot -- off the cron, in the future -- is
+  // said inside it and it stays open; a run made is where the server says to
+  // go, with the toast waiting there. A failed fetch posts the plain form.
+  // ------------------------------------------------------------------
+
+  document.addEventListener("change", function (e) {
+    var el = e.target;
+    if (!el || typeof el.closest !== "function") return;
+    var form = el.closest("form[data-run-now]");
+    if (!form) return;
+    var pick = form.querySelector("[data-slot-pick]");
+    var other = form.querySelector("[data-slot-other]");
+    if (el.name === "when" && pick) pick.hidden = el.value !== "slot";
+    if (other) {
+      var wantsOther = !pick.hidden && form.querySelector('select[name="slot"]').value === "other";
+      other.hidden = !wantsOther;
+      other.required = wantsOther;
+    }
+  });
+
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form || typeof form.matches !== "function" || !form.matches("form[data-run-now]")) return;
+    // The drawer's close is a submit too (method=dialog): it closes, and
+    // posts nothing.
+    if (e.submitter && e.submitter.getAttribute("formmethod") === "dialog") return;
+    if (!window.fetch || !window.FormData) return;
+    e.preventDefault();
+    var error = form.querySelector("[data-run-error]");
+    var button = form.querySelector('[type="submit"]:not([formmethod])');
+    if (button) button.disabled = true;
+    fetch(form.getAttribute("action"), {
+      method: "POST",
+      headers: { "X-Brevis-Fragment": "trigger" },
+      body: new URLSearchParams(new FormData(form)),
+    })
+      .then(function (r) {
+        if (r.ok) {
+          return r.json().then(function (got) { window.location.assign(got.Location); });
+        }
+        if (r.status >= 400 && r.status < 500) {
+          return r.text().then(function (text) {
+            if (error) {
+              error.textContent = text.trim();
+              error.hidden = false;
+            }
+          });
+        }
+        throw new Error("trigger failed");
+      })
+      .catch(function () { form.submit(); })
+      .then(function () { if (button) button.disabled = false; });
+  });
+
   // A form whose checkboxes are its submit (`form[data-submit-on-change]`):
   // checking one navigates at once, as its Apply button would. Only a box --
   // a text field changes on blur, and leaving one is not a choice.
@@ -1008,29 +1112,189 @@
     if (form && typeof form.requestSubmit === "function") form.requestSubmit();
   });
 
-  // The Run… drawer's payload (`form[data-run-form]`): the params as the
-  // trigger will read them -- each `param.` field, a list's values joined with
-  // commas and blanks dropped, as paramsFromForm does on the server. Hidden in
-  // the markup, so with no script there is no preview rather than a stale one.
-  function runPreview(form) {
-    var box = form.querySelector("[data-run-preview]");
-    if (!box || !window.FormData) return;
-    var params = {};
-    var data = new FormData(form);
-    data.forEach(function (_, name) {
-      if (name.indexOf("param.") !== 0 || params.hasOwnProperty(name.slice(6))) return;
-      params[name.slice(6)] = data.getAll(name).map(function (v) { return String(v).trim(); })
-        .filter(function (v) { return v !== ""; }).join(",");
+  // ------------------------------------------------------------------
+  // The Run… drawer (`form[data-run-form]`, screen-workflows T9)
+  //
+  // Every control posts with no script. This adds what a script can, from
+  // what the server wrote on each field (`[data-param]`): its type, its enum,
+  // its pattern and its default. Each value is checked by the server's own
+  // rules -- an integer, true or false, one of the enum, the pattern, or only
+  // the safe characters when there is none -- and checked again by the
+  // server; what differs from the default is marked, and its warning shown;
+  // the footer counts both, and Run waits while a value is invalid. The
+  // payload is the params as the trigger will read them -- a list joined
+  // with commas, blanks dropped, as paramsFromForm does -- with the slot when
+  // one is chosen, and the same by the CLI. Restore defaults puts every
+  // control back; ⌘↵ runs.
+  // ------------------------------------------------------------------
+
+  var SAFE = /^[A-Za-z0-9_.:\/=,+@\- ]*$/;
+
+  function joined(values) {
+    return values.map(function (v) { return String(v).trim(); }).filter(function (v) { return v !== ""; }).join(",");
+  }
+  function fieldValue(form, field) {
+    return joined(new FormData(form).getAll(field.getAttribute("data-field")));
+  }
+  function checkValue(form, field, value) {
+    var type = field.getAttribute("data-type") || "string";
+    var list = type.indexOf("list|") === 0;
+    var elem = list ? type.slice(5) : type;
+    var allowed = (field.getAttribute("data-enum") || "").split(",").filter(Boolean);
+    var pattern = field.getAttribute("data-pattern");
+    if (value === "") return field.getAttribute("data-default") === "" && !list ? form.dataset.msgRequired : "";
+    var items = list ? value.split(",") : [value];
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (elem === "integer" && !/^-?\d+$/.test(item)) return form.dataset.msgInteger;
+      if (elem === "boolean" && item !== "true" && item !== "false") return form.dataset.msgBoolean;
+      if (allowed.length && allowed.indexOf(item) < 0) return form.dataset.msgEnum;
+      if (pattern) {
+        try { if (!new RegExp(pattern).test(item)) return form.dataset.msgPattern; } catch (e) { /* the server says */ }
+      } else if (elem === "string" && !SAFE.test(item)) {
+        return form.dataset.msgChars;
+      }
+    }
+    return "";
+  }
+  // chosenSlot is the slot the drawer asks for, or "".
+  function chosenSlot(form) {
+    var when = form.querySelector('input[name="when"]:checked');
+    if (!when || when.value !== "slot") return "";
+    var slot = form.querySelector('select[name="slot"]');
+    if (!slot) return "";
+    if (slot.value !== "other") return slot.value;
+    var at = form.querySelector('input[name="slot_at"]');
+    return at ? at.value : "";
+  }
+  function quote(v) { return /^[A-Za-z0-9_.:\/=,+@-]+$/.test(v) ? v : "'" + v.replace(/'/g, "'\\''") + "'"; }
+  function say(form, key, n) {
+    var text = form.dataset[n === 1 ? key + "One" : key] || "";
+    return text.replace("{n}", n);
+  }
+
+  function runState(form) {
+    var changed = 0, invalid = 0, params = {}, given = [];
+    form.querySelectorAll("[data-param]").forEach(function (field) {
+      var name = field.getAttribute("data-param");
+      var value = fieldValue(form, field);
+      var isChanged = value !== joined((field.getAttribute("data-default") || "").split(","));
+      var problem = checkValue(form, field, value);
+      params[name] = value;
+      if (isChanged) {
+        changed++;
+        given.push([name, value]);
+      }
+      if (problem) invalid++;
+      var mark = field.querySelector("[data-param-changed]");
+      if (mark) mark.hidden = !isChanged;
+      var warn = field.querySelector("[data-param-warn]");
+      if (warn) warn.hidden = !isChanged;
+      var error = field.querySelector("[data-param-error]");
+      if (error) {
+        error.textContent = problem || "";
+        error.hidden = !problem;
+      }
     });
-    box.querySelector("code").textContent = JSON.stringify({ params: params }, null, 2);
+
+    var status = form.querySelector("[data-run-status]");
+    if (status) {
+      status.textContent = invalid ? say(form, "sayInvalid", invalid)
+        : changed ? "● " + say(form, "sayChanged", changed) : form.dataset.sayDefaults || "";
+      status.classList.toggle("text-state-failed", invalid > 0);
+      status.classList.toggle("text-warn", !invalid && changed > 0);
+    }
+    var run = form.querySelector('[type="submit"]:not([formmethod])');
+    if (run) run.disabled = invalid > 0;
+
+    var box = form.querySelector("[data-run-preview]");
+    if (!box) return;
+    var slot = chosenSlot(form);
+    var payload = { params: params };
+    if (slot) payload.slot = slot;
+    box.querySelector("code").textContent = JSON.stringify(payload, null, 2);
+    var cli = box.querySelector("[data-run-cli]");
+    if (cli) {
+      var slug = form.dataset.slug, project = form.dataset.project;
+      if (slot) {
+        // The CLI has no slot: the trigger takes it, as a curl.
+        cli.textContent = ["curl -X POST " + location.origin + "/workflows/" + slug + "/trigger", "-d slot=" + quote(slot)]
+          .concat(given.map(function (g) { return "-d " + quote("param." + g[0] + "=" + g[1]); })).join(" \\\n  ");
+      } else {
+        cli.textContent = ["brevis run " + slug].concat(project ? ["--project " + quote(project)] : [])
+          .concat(given.map(function (g) { return "--param " + quote(g[0] + "=" + g[1]); })).join(" ");
+      }
+    }
     box.hidden = false;
   }
-  document.querySelectorAll("form[data-run-form]").forEach(runPreview);
+
+  // A boolean's switch drives its select, which is what posts.
+  function syncSwitches(form) {
+    form.querySelectorAll("[data-bool-for]").forEach(function (sw) {
+      var select = form.querySelector('select[name="' + sw.getAttribute("data-bool-for") + '"]');
+      if (!select) return;
+      sw.setAttribute("aria-checked", select.value === "true" ? "true" : "false");
+      var shown = sw.parentElement.querySelector("[data-bool-value]");
+      if (shown) shown.textContent = select.value;
+    });
+  }
+
+  document.querySelectorAll("form[data-run-form]").forEach(function (form) {
+    syncSwitches(form);
+    runState(form);
+  });
   ["input", "change"].forEach(function (type) {
     document.addEventListener(type, function (e) {
       var form = e.target && typeof e.target.closest === "function" ? e.target.closest("form[data-run-form]") : null;
-      if (form) runPreview(form);
+      if (form) runState(form);
     });
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!e.target || typeof e.target.closest !== "function") return;
+    var form = e.target.closest("form[data-run-form]");
+    if (!form) return;
+    var sw = e.target.closest("[data-bool-for]");
+    if (sw) {
+      var select = form.querySelector('select[name="' + sw.getAttribute("data-bool-for") + '"]');
+      if (select) {
+        select.value = select.value === "true" ? "false" : "true";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        syncSwitches(form);
+      }
+      return;
+    }
+    var step = e.target.closest("[data-step]");
+    if (step) {
+      var input = step.parentElement.querySelector('input[type="number"]');
+      if (input) {
+        input.value = (parseInt(input.value, 10) || 0) + parseInt(step.getAttribute("data-step"), 10);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      return;
+    }
+    if (e.target.closest("[data-run-reset]")) {
+      form.querySelectorAll("[data-param]").forEach(function (field) {
+        var name = field.getAttribute("data-field"), dflt = field.getAttribute("data-default") || "";
+        var items = dflt.split(",").map(function (v) { return v.trim(); });
+        field.querySelectorAll('[name="' + name + '"]').forEach(function (el) {
+          if (el.type === "checkbox") el.checked = items.indexOf(el.value) >= 0;
+          else if (el.type !== "hidden") el.value = dflt;
+          if (el.hasAttribute("data-lista")) el.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+      });
+      syncSwitches(form);
+      runState(form);
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
+    var form = e.target && typeof e.target.closest === "function" ? e.target.closest("form[data-run-form]") : null;
+    if (!form || typeof form.requestSubmit !== "function") return;
+    e.preventDefault();
+    var run = form.querySelector('[type="submit"]:not([formmethod])');
+    if (run && !run.disabled) form.requestSubmit(run);
   });
 
   // The test event (`[data-test-body]`): the body is checked against the
@@ -1581,6 +1845,41 @@
       document.body.appendChild(script);
     })(0);
   }
+
+  // ------------------------------------------------------------------
+  // A workflow's steps: graph or list (screen-workflows T8)
+  //
+  // The segment chooses the view, by an attribute the CSS reads; the graph is
+  // mounted when it is shown, since React Flow measures its box. A row of the
+  // list chooses its step in the graph: the graph is shown and told, and a
+  // graph not yet mounted reads the choice when it is.
+  // ------------------------------------------------------------------
+
+  function showSteps(card, view) {
+    card.setAttribute("data-view", view);
+    card.querySelectorAll("[data-view-set]").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-view-set") === view ? "true" : "false");
+    });
+    if (view === "graph") mountGraph();
+  }
+
+  document.addEventListener("click", function (e) {
+    if (!e.target || typeof e.target.closest !== "function") return;
+    var set = e.target.closest("[data-steps-view] [data-view-set]");
+    if (set) {
+      showSteps(set.closest("[data-steps-view]"), set.getAttribute("data-view-set"));
+      return;
+    }
+    var row = e.target.closest("[data-steps-view] [data-select-step]");
+    if (!row) return;
+    var card = row.closest("[data-steps-view]");
+    var id = row.getAttribute("data-select-step");
+    var dag = card.querySelector("#dag");
+    if (dag) dag.dataset.select = id;
+    showSteps(card, "graph");
+    document.dispatchEvent(new CustomEvent("brevis:select-step", { detail: id }));
+    card.scrollIntoView({ block: "nearest" });
+  });
 
   var runPane = document.getElementById("run-pane");
   var runColumn = document.querySelector("[data-runs-list]");

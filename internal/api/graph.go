@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -142,13 +144,120 @@ func nodeHeight(data map[string]any, stages int) int {
 // workflowGraph draws the PUBLISHED definition, with no execution state. It is
 // the "what this workflow looks like" screen, which has to work for a workflow
 // that never ran.
+//
+// What it does carry is each step's history in a line: how it went the last
+// time it ran, and what it wrote (screen-workflows T8). Neither is run state:
+// the cards still draw no run, and the step panel and the cards say "last".
 func (u *UI) workflowGraph(w http.ResponseWriter, r *http.Request) {
 	def, err := u.defs.Definition(r.Context(), r.PathValue("slug"))
 	if err != nil {
 		http.Error(w, "workflow not found", http.StatusNotFound)
 		return
 	}
-	u.respondGraph(w, def, nil, "", "")
+	resp, err := u.workflowGraphOf(r.Context(), def)
+	if err != nil {
+		http.Error(w, "invalid graph: "+err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		u.log.Error("serializing the graph", "slug", def.Slug, "error", err)
+	}
+}
+
+// workflowGraphOf is a published workflow's graph with each step's last run
+// and what it wrote: what /api/workflows/{slug}/graph answers and what the
+// workflow's page embeds. A step that never ran carries neither, so its
+// payload is what it was before this; a read that fails leaves the graph as
+// the definition alone.
+func (u *UI) workflowGraphOf(ctx context.Context, def wf.Workflow) (graphResponse, error) {
+	resp, err := buildGraph(def, nil, "", "")
+	if err != nil || u.leitura == nil {
+		return resp, err
+	}
+	last, err := u.leitura.LastStepRuns(ctx, def.Slug)
+	if err != nil {
+		u.log.Warn("the steps' last runs are unavailable", "workflow", def.Slug, "error", err)
+	}
+	wrote, err := u.leitura.StepConnects(ctx, def.Slug, time.Now().Add(-connectsWindow))
+	if err != nil {
+		u.log.Warn("what the steps wrote is unavailable", "workflow", def.Slug, "error", err)
+	}
+	for _, n := range resp.Nodes {
+		if l, ok := last[n.ID]; ok {
+			n.Data["last_status"] = l.Status
+			n.Data["last_duration_ms"] = l.DurationMs
+		}
+		var keys []string
+		for _, scheme := range wrote[n.ID] {
+			if k := connectorKey(scheme); !slices.Contains(keys, k) {
+				keys = append(keys, k)
+			}
+		}
+		if len(keys) > 0 {
+			n.Data["connects"] = keys
+		}
+	}
+	return resp, nil
+}
+
+// stepsOf fills the workflow page's Steps card from one graph: the seed the
+// island draws, the list the server draws -- a row per step, in the graph's
+// order, with what it runs, what it wrote, what it needs and how long it last
+// took -- the logos the island borrows, and how many stages (columns) there
+// are. An invalid graph leaves the seed empty, and the island says why.
+func (u *UI) stepsOf(ctx context.Context, def wf.Workflow, page *pages.WorkflowPage) {
+	resp, err := u.workflowGraphOf(ctx, def)
+	if err != nil {
+		return
+	}
+	if b, err := json.Marshal(resp); err == nil {
+		page.Graph = string(b)
+	}
+	needs := map[string][]string{}
+	for _, e := range def.Edges {
+		needs[e.To] = append(needs[e.To], e.From)
+	}
+	var steps []flowNode
+	columns := map[int]bool{}
+	for _, n := range resp.Nodes {
+		if n.ParentID != "" || n.Type == "grupo" {
+			continue
+		}
+		steps = append(steps, n)
+		columns[n.Position.X] = true
+	}
+	sort.SliceStable(steps, func(i, j int) bool {
+		if steps[i].Position.X != steps[j].Position.X {
+			return steps[i].Position.X < steps[j].Position.X
+		}
+		return steps[i].Position.Y < steps[j].Position.Y
+	})
+	page.Stages = len(columns)
+	var logos []string
+	addLogo := func(k string) {
+		if k != "" && !slices.Contains(logos, k) {
+			logos = append(logos, k)
+		}
+	}
+	for _, n := range steps {
+		row := pages.StepItem{ID: n.ID, Needs: needs[n.ID]}
+		row.Command, _ = n.Data["acao"].(string)
+		if rt, _ := n.Data["runtime"].(string); rt != "" {
+			row.Langs = append(row.Langs, rt)
+		}
+		if tools, _ := n.Data["tools"].([]string); len(tools) > 0 {
+			row.Langs = append(row.Langs, tools...)
+		}
+		row.Uses, _ = n.Data["connects"].([]string)
+		row.LastStatus, _ = n.Data["last_status"].(string)
+		row.LastMs, _ = n.Data["last_duration_ms"].(int64)
+		for _, k := range append(append([]string{}, row.Langs...), row.Uses...) {
+			addLogo(k)
+		}
+		page.Steps = append(page.Steps, row)
+	}
+	page.GraphLogos = logos
 }
 
 // runGraph draws the SNAPSHOT stored on the Run, not the current definition:

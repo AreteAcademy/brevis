@@ -130,6 +130,12 @@ func lookLogo(key string) logo {
 
 // logoTitle is a mark's name for a screen reader. A brand is its own name
 // in every language; the two monograms that are words are translated.
+// LogoTitle is the name a key's logo is read by, in the request's language:
+// what a filter writes beside the mark.
+func LogoTitle(ctx context.Context, key string) string {
+	return logoTitle(ctx, key, lookLogo(key))
+}
+
 func logoTitle(ctx context.Context, key string, l logo) string {
 	switch key {
 	case "file", "gateway":

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AreteAcademy/brevis/internal/api"
 	"github.com/AreteAcademy/brevis/internal/branding"
@@ -25,11 +26,45 @@ type readsFake struct {
 	// strip is one query per page, not one per row.
 	recent      map[string][]postgres.RecentRun
 	recentCalls *int
+	// recentN is how many runs the strip asked for.
+	recentN *int
+
+	// connects answers Connects: the schemes each workflow wrote.
+	connects map[string][]string
+	// lastRuns and stepConnects answer the workflow graph's per-step reads.
+	lastRuns     map[string]postgres.StepRun
+	stepConnects map[string][]string
 }
 
-func (f readsFake) RecentStates(_ context.Context, slugs []string, _ int) (map[string][]postgres.RecentRun, error) {
+func (f readsFake) LastStepRuns(context.Context, string) (map[string]postgres.StepRun, error) {
+	return f.lastRuns, nil
+}
+
+func (f readsFake) StepConnects(context.Context, string, time.Time) (map[string][]string, error) {
+	return f.stepConnects, nil
+}
+
+// Schedules are the workflows' own, for the trigger's timezone.
+func (f readsFake) Schedules(context.Context) ([]postgres.ScheduleSummary, error) {
+	var out []postgres.ScheduleSummary
+	for _, w := range f.workflows {
+		if w.Cron != "" {
+			out = append(out, postgres.ScheduleSummary{WorkflowSlug: w.Slug, Cron: w.Cron, Timezone: w.Timezone, Active: w.Active})
+		}
+	}
+	return out, nil
+}
+
+func (f readsFake) Connects(context.Context, time.Time) (map[string][]string, error) {
+	return f.connects, nil
+}
+
+func (f readsFake) RecentStates(_ context.Context, slugs []string, n int) (map[string][]postgres.RecentRun, error) {
 	if f.recentCalls != nil {
 		*f.recentCalls++
+	}
+	if f.recentN != nil {
+		*f.recentN = n
 	}
 	out := map[string][]postgres.RecentRun{}
 	for _, s := range slugs {

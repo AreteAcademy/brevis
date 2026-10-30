@@ -16,6 +16,88 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: a workflow's page, its head, numbers and tabs
+
+- **The line under the name** says whether the schedule is on, the project,
+  when it runs in words and cron, how many steps and dependencies, the
+  languages and tools it runs, and its tags.
+- **Five numbers over 30 days**: the days it ran without a failure (a share
+  of the days, not of the runs -- a */5 that failed once had a bad day), the
+  days with one, the mean duration, what is in progress, and the next run.
+- **Tabs**: Runs -- the last 10, or one day's with `?day=` -- with each run's
+  trigger (a manual run of a past slot says so), slot, the parameters it was
+  given that differ from the defaults, duration and when; and Accepted
+  parameters, with each one's type, default, title, description, group and
+  connector; and Definition, the published workflow written back as YAML,
+  with Copy. It is not the author's file -- comments and the order of the
+  keys are gone -- but publishing it publishes the same workflow, which a
+  round trip over every example holds.
+- **Steps, as a graph or a list.** The graph labels its columns as stages
+  ("01 · Stage 1"); each card has its language's logo, how the step last
+  went and how long it took, and its image. Choosing a step keeps its path
+  and fades the rest (Esc, the background or the same step lets go), and the
+  step panel under the graph says what it runs in, what it uses, what it
+  depends on -- every step up the flow -- what it feeds, and what its failure
+  would block; a step it names is a button. The zoom goes from 0.4 to 1.6.
+  The list is the server's: each step with what it runs and uses, what it
+  depends on, its command and its last duration, a row choosing it in the
+  graph. A run's graph gains the stage labels and the focus and keeps its
+  inspector. `/api/workflows/{slug}/graph` carries each step's
+  `last_status`, `last_duration_ms` and `connects`.
+- **Run with parameters** is a 560px drawer: the slot (now or one of the
+  schedule's past slots), the parameters by `group`, each with its own
+  control -- a switch for a boolean, − and + for an integer, the pattern
+  shown under its field, a select for an enum, boxes or chips for a list --
+  its name, `uses`, default, `title` and description. Each value is checked
+  in the browser by the server's own rules and again by the server; what
+  changed is marked and its `warn` shown; the footer counts what changed and
+  what is invalid, and Run waits while a value is. The payload and the same
+  by the CLI (a curl when there is a slot) follow every change; Restore
+  defaults puts every control back; ⌘↵ runs. A refused value stays in the
+  drawer. Every control posts with no script. A run's Rerun is the same
+  drawer, pre-filled, with no slot.
+- **A year of runs** is 53 weeks, Monday to Sunday, in 12px squares, this
+  week's days to come drawn faint, each day's tooltip saying how many ran and
+  how it went. Above it, what the year was: the days with runs, with a
+  failure, how many in a row without one, the last failure (with a link to
+  it) and since when it runs. A day that ran opens its runs in the Runs tab of
+  the same page, marked in the grid; where the grid scrolls, it opens at this
+  week. A one-step workflow's calendar is under its step, at its own width.
+- In English, Portuguese and Spanish.
+
+### Changed: the Workflows list
+
+- **The state is one question at a time**: All, Failing (the last finished
+  run failed, as the sidebar's badge counts), Running (running, queued or
+  retrying), Paused and Manual only, each with how many it shows. An older
+  link's `state=success` or `active=paused` still filters, shown as a chip
+  with its ×.
+- **A language filter**: the languages and tools the workflows run, each with
+  its logo and count.
+- **The search reads what the steps run** and the tags, not only the name:
+  "dbt" finds the workflows that run it.
+- **Each row says what the workflow is made of**: what it runs (up to four
+  logos, "Go + Python +2"), what it connects to (the schemes it wrote in the
+  last 90 days, what its parameters' `uses` and its `on_landed` name, never
+  a language again), when it runs in words and cron, its next run or
+  "running now", its last 20 runs, and "failing" or "running" by its name.
+- The whole row opens the workflow; a paused row fades but its switch does
+  not. Narrower screens drop Connects and Tags, then the last runs.
+- An empty list says what to do, with a link that clears every filter.
+- **Pausing flips in place**, with a toast that says what it means ("does
+  not fire until it is resumed") and an Undo. With no script the page comes
+  back saying the same.
+- **Run asks when.** A workflow with no parameters opens "Run it now": now,
+  or another slot -- the schedule's last 14, each with the window it
+  processes, or a date and time of one's own, read in the schedule's zone. A
+  refused slot is said in the dialog, which stays open; a run made comes back
+  to the list with "Run of X created · See logs". A workflow with parameters
+  goes to its drawer. With no script, ▶ still runs it at once.
+- **How to create** and **Publish workflow** open a drawer: a workflow is born
+  in the repository and published by the CLI, with the file, `brevis
+  validate` and `brevis publish` to copy.
+- In English, Portuguese and Spanish, the pagination included.
+
 ### Added: what each workflow runs in
 
 - **The graph says each step's image**: `image` on every node of

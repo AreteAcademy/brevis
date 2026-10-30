@@ -70,30 +70,6 @@ func TestTheWorkflowsListIsAFragmentForTheSearchBox(t *testing.T) {
 	}
 }
 
-// STATE AND ACTIVE ARE SEGMENTED, EACH CHOICE WITH ITS COUNT: how many rows it
-// would show with the rest of the filter as it is. The count ignores its own
-// filter -- "Failure 1" while "Success" is chosen -- or every other choice
-// would read 0.
-func TestTheWorkflowsFiltersCountWhatEachChoiceWouldShow(t *testing.T) {
-	_, body := get(t, workflowsUI(), "/workflows?q=daily&state=success")
-	for _, want := range []string{`aria-label="State"`, `aria-label="Schedule"`} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the filters have no %s", want)
-		}
-	}
-	for _, s := range []struct{ label, count string }{
-		{"Any state", "2"}, {"Success", "1"}, {"Failure", "1"},
-		{"Any schedule", "1"}, {"Active", "1"}, {"Paused", "0"},
-	} {
-		if !segment(s.label, s.count).MatchString(body) {
-			t.Errorf("the filters do not say %s %s", s.label, s.count)
-		}
-	}
-	if !strings.Contains(body, `href="/workflows?q=daily&amp;state=failed"`) {
-		t.Error("a state choice drops the search")
-	}
-}
-
 // segment is a Segmented choice's label and count, as the markup prints them.
 func segment(label, count string) *regexp.Regexp {
 	return regexp.MustCompile(`>\s*` + regexp.QuoteMeta(label) + `\s*<span[^>]*>` + count + `</span>`)
