@@ -1683,6 +1683,41 @@
     })(0);
   }
 
+  // ------------------------------------------------------------------
+  // A workflow's steps: graph or list (screen-workflows T8)
+  //
+  // The segment chooses the view, by an attribute the CSS reads; the graph is
+  // mounted when it is shown, since React Flow measures its box. A row of the
+  // list chooses its step in the graph: the graph is shown and told, and a
+  // graph not yet mounted reads the choice when it is.
+  // ------------------------------------------------------------------
+
+  function showSteps(card, view) {
+    card.setAttribute("data-view", view);
+    card.querySelectorAll("[data-view-set]").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-view-set") === view ? "true" : "false");
+    });
+    if (view === "graph") mountGraph();
+  }
+
+  document.addEventListener("click", function (e) {
+    if (!e.target || typeof e.target.closest !== "function") return;
+    var set = e.target.closest("[data-steps-view] [data-view-set]");
+    if (set) {
+      showSteps(set.closest("[data-steps-view]"), set.getAttribute("data-view-set"));
+      return;
+    }
+    var row = e.target.closest("[data-steps-view] [data-select-step]");
+    if (!row) return;
+    var card = row.closest("[data-steps-view]");
+    var id = row.getAttribute("data-select-step");
+    var dag = card.querySelector("#dag");
+    if (dag) dag.dataset.select = id;
+    showSteps(card, "graph");
+    document.dispatchEvent(new CustomEvent("brevis:select-step", { detail: id }));
+    card.scrollIntoView({ block: "nearest" });
+  });
+
   var runPane = document.getElementById("run-pane");
   var runColumn = document.querySelector("[data-runs-list]");
 

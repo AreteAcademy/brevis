@@ -699,7 +699,7 @@ templ Workflow(p WorkflowPage) {
 				@yearOfRuns(p)
 			</div>
 		} else {
-			@dag("/api/workflows/"+w.Slug+"/graph", graph)
+			@stepsCard(p, graph)
 			<div class="mt-3">
 				@yearOfRuns(p)
 			</div>
@@ -845,6 +845,93 @@ templ workflowTabs(p WorkflowPage) {
 		</section>
 		@definitionTab(p)
 	</div>
+}
+
+// stepsCard is the workflow's steps (screen-workflows T8): the graph, or the
+// list, by the segment in its heading. The graph's island gets the page's
+// words and the logos it draws; under it, the step panel the island fills
+// when a step is chosen. With no script the list is what shows -- the graph
+// needs one -- and the segment is not drawn.
+templ stepsCard(p WorkflowPage, graph string) {
+	<section data-steps-view data-view="graph" class="rounded-card border border-line bg-surface shadow-warm-sm">
+		<header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft px-4 py-2.5">
+			<h2 class="text-[13px] font-semibold text-ink">
+				{ i18n.T(ctx, "graph.title") }
+				<span class="ml-1 font-normal text-faint tabular-nums">{ i18n.N(ctx, "workflows.steps", len(p.Steps)) } · { i18n.N(ctx, "graph.stages", p.Stages) }</span>
+			</h2>
+			<p class="text-[12.5px] text-muted max-[860px]:hidden">{ i18n.T(ctx, "graph.hint") }</p>
+			<div data-js role="group" aria-label={ i18n.T(ctx, "graph.view") } class="ml-auto inline-flex h-8 items-center gap-0.5 rounded-card border border-line bg-surface p-0.5">
+				<button type="button" data-view-set="graph" aria-pressed="true" class="steps-view-btn">{ i18n.T(ctx, "graph.view.graph") }</button>
+				<button type="button" data-view-set="list" aria-pressed="false" class="steps-view-btn">{ i18n.T(ctx, "graph.view.list") }</button>
+			</div>
+		</header>
+		<div data-view-panel="graph" data-js>
+			@templ.Raw(`<script type="application/json" data-dag-text>` + dagText(ctx) + `</script>`)
+			<div data-dag-logos hidden>
+				for _, k := range p.GraphLogos {
+					<span data-logo-key={ k } data-logo-name={ components.LogoTitle(ctx, k) }>
+						@components.Logo(k, 18)
+					</span>
+				}
+			</div>
+			<div class="p-3">
+				@dag("/api/workflows/"+p.Def.Slug+"/graph", graph)
+			</div>
+			<div data-step-panel class="border-t border-line-soft px-4 py-3 text-[12.5px] text-muted">
+				{ i18n.T(ctx, "graph.panel.none") }
+			</div>
+		</div>
+		<div data-view-panel="list" class="overflow-x-auto">
+			<table class="ct w-full text-sm">
+				<thead>
+					<tr class="border-b border-line bg-parchment-soft/60 text-left">
+						@th("#", "w-10 pl-4")
+						@th(i18n.T(ctx, "graph.list.step"), "")
+						@th(i18n.T(ctx, "workflows.col.lang"), "")
+						@th(i18n.T(ctx, "graph.list.uses"), "")
+						@th(i18n.T(ctx, "graph.list.needs"), "")
+						@th(i18n.T(ctx, "graph.list.command"), "")
+						@th(i18n.T(ctx, "graph.list.last"), "pr-4 text-right")
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-line-soft">
+					for i, r := range p.Steps {
+						<tr data-select-step={ r.ID } class="cursor-pointer align-top transition-colors hover:bg-hover">
+							<td class="px-2.5 py-2.5 pl-4 text-xs tabular-nums text-faint">{ fmt.Sprintf("%02d", i+1) }</td>
+							<td class="px-2.5 py-2.5 font-mono text-[12.5px] text-ink">{ r.ID }</td>
+							<td class="px-2.5 py-2.5">
+								<span class="inline-flex items-center gap-1.5 text-xs text-ink-2">
+									for _, k := range r.Langs {
+										@components.Logo(k, 18)
+									}
+									if len(r.Langs) > 0 {
+										{ components.LogoTitle(ctx, r.Langs[0]) }
+									}
+								</span>
+							</td>
+							<td class="px-2.5 py-2.5">
+								<span class="inline-flex items-center gap-1">
+									for _, k := range r.Uses {
+										@components.Logo(k, 18)
+									}
+								</span>
+							</td>
+							<td class="px-2.5 py-2.5 font-mono text-xs text-muted">
+								for j, n := range r.Needs {
+									if j > 0 {
+										{ ", " }
+									}
+									<span>{ n }</span>
+								}
+							</td>
+							<td class="max-w-[22rem] truncate px-2.5 py-2.5 font-mono text-xs text-muted" title={ r.Command }>{ r.Command }</td>
+							<td class="px-2.5 py-2.5 pr-4 text-right text-xs tabular-nums text-muted">{ lastDuration(r) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</section>
 }
 
 // definitionTab is the workflow as a file: the published definition written

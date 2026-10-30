@@ -366,3 +366,48 @@ func TestTheCalendarOpensADayOnThePage(t *testing.T) {
 		}
 	}
 }
+
+// THE STEPS ARE A CARD WITH TWO VIEWS (screen-workflows T8): the graph, whose
+// island gets the page's words and the logos it draws from the server, and
+// a list the server draws -- one row per step with what it runs, what it
+// writes, what it needs, its command and how long it last took, each row a
+// way to select the step in the graph. Under the graph, the step panel's
+// place, saying nothing is selected.
+func TestTheStepsAreAGraphAndAList(t *testing.T) {
+	reads := workflowReads{
+		readsFake: readsFake{
+			workflows:    []postgres.WorkflowSummary{{Slug: "daily_sales", Project: "analytics"}},
+			lastRuns:     map[string]postgres.StepRun{"build": {Status: "success", DurationMs: 90000}},
+			stepConnects: map[string][]string{"build": {"bigquery"}},
+		},
+	}
+	def := wf.Workflow{Slug: "daily_sales", Kind: wf.KindDAG,
+		Nodes: []wf.Node{{ID: "fetch", Run: "python fetch.py"}, {ID: "build", Run: "dbt build"}},
+		Edges: []wf.Edge{{From: "fetch", To: "build"}}}
+	ui := api.NewUI(reads, defsFake{w: def}, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+	_, body := get(t, ui, "/workflows/daily_sales")
+
+	at := strings.Index(body, "<section data-steps-view")
+	if at < 0 {
+		t.Fatal("the steps are not a card")
+	}
+	card := body[at : at+strings.Index(body[at:], "</section>")]
+	for _, want := range []string{
+		`data-view="graph"`, `data-view-set="graph"`, `data-view-set="list"`, ">2 steps", "2 stages",
+		`<script type="application/json" data-dag-text>`, `"stage":"Stage"`,
+		`data-dag-logos`, `data-logo-key="python"`, `data-logo-key="bigquery"`, `data-logo-name="Google BigQuery"`,
+		"data-step-panel", "No step selected",
+		`data-view-panel="list"`, `data-select-step="build"`,
+	} {
+		if !strings.Contains(card, want) {
+			t.Errorf("the steps card has no %s", want)
+		}
+	}
+	row := card[strings.Index(card, `data-select-step="build"`):]
+	row = row[:strings.Index(row, "</tr>")]
+	for _, want := range []string{"build", "dbt build", ">fetch<", `aria-label="Google BigQuery"`, "1m 30s"} {
+		if !strings.Contains(row, want) {
+			t.Errorf("build's row has no %s:\n%s", want, row)
+		}
+	}
+}

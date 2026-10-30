@@ -1403,6 +1403,28 @@ tr[data-paused] > td[data-fade] {
   outline-offset: 1px;
 }
 
+/* The Steps card's two views (screen-workflows T8). With a script the
+   segment chooses; with none, the list shows and the graph -- which needs
+   one -- does not. */
+.js [data-steps-view][data-view="graph"] [data-view-panel="list"],
+.js [data-steps-view][data-view="list"] [data-view-panel="graph"] {
+  display: none;
+}
+.steps-view-btn {
+  display: inline-flex;
+  height: 100%;
+  align-items: center;
+  border-radius: 2px;
+  padding: 0 0.625rem;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+.steps-view-btn[aria-pressed="true"] {
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
 /* A switch: on is the ok colour, because on means "this is running". */
 .switch {
   position: relative;

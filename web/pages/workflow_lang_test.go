@@ -24,8 +24,10 @@ func TestTheWorkflowPagesHeadAndTabsHaveNoEnglishLeft(t *testing.T) {
 			Nodes:  []wf.Node{{ID: "a", Run: "python a.py"}, {ID: "b", Run: "dbt build"}},
 			Edges:  []wf.Edge{{From: "a", To: "b"}},
 			Params: []wf.Param{{Name: "full", Type: wf.ParamBool, Default: "false", Title: "Carga completa", Group: "Carga"}, {Name: "since", Type: wf.ParamString}}},
-		Sum:   &postgres.WorkflowSummary{Slug: "daily", Project: "zarv", Cron: "0 9 * * *", HasSchedule: true, Active: true, NextRun: &next},
-		Langs: []string{"python", "dbt"},
+		Sum:    &postgres.WorkflowSummary{Slug: "daily", Project: "zarv", Cron: "0 9 * * *", HasSchedule: true, Active: true, NextRun: &next},
+		Langs:  []string{"python", "dbt"},
+		Steps:  []StepItem{{ID: "a", Command: "python a.py", Langs: []string{"python"}}, {ID: "b", Command: "dbt build", Needs: []string{"a"}, LastStatus: "success", LastMs: 1200}},
+		Stages: 2,
 		Latest: []postgres.RunSummary{
 			{ID: "1", Status: "success", TriggerType: "schedule", LogicalDate: &slot, CreatedAt: slot, Duration: &d},
 			{ID: "2", Status: "failed", TriggerType: "manual", LogicalDate: &slot, CreatedAt: slot, Params: map[string]string{"full": "true"}},
@@ -35,7 +37,8 @@ func TestTheWorkflowPagesHeadAndTabsHaveNoEnglishLeft(t *testing.T) {
 		Now: now, Day: &slot,
 	}
 	text := visibleText(drawIn(t, "pt-BR", workflowMeta(p))) + " " + visibleText(drawIn(t, "pt-BR", workflowTabs(p))) + " " +
-		visibleText(drawIn(t, "pt-BR", pauseAction(*p.Sum))) + " " + visibleText(drawIn(t, "pt-BR", yearOfRuns(p)))
+		visibleText(drawIn(t, "pt-BR", pauseAction(*p.Sum))) + " " + visibleText(drawIn(t, "pt-BR", yearOfRuns(p))) + " " +
+		visibleText(drawIn(t, "pt-BR", stepsCard(p, "")))
 	for _, s := range workflowPageStats(i18n.WithLang(context.Background(), "pt-BR"), p) {
 		text += " " + s.Label + " " + s.Value + " " + s.Note
 	}
@@ -44,7 +47,7 @@ func TestTheWorkflowPagesHeadAndTabsHaveNoEnglishLeft(t *testing.T) {
 		"Mean duration", "In progress", "Next run", "last 30 days", "of", "days", "running", "queued", "in",
 		"Runs", "Accepted parameters", "Parameters", "State", "Trigger", "Duration", "When", "default",
 		"All runs", "Show the last runs", "Name", "Type", "Default", "What it is for", "required", "No parameters",
-		"schedule", "Pause", "Resume", "day", "Definition", "published workflow", "could not be written", "A year of runs", "One square", "days with runs", "with a failure", "in a row", "last failure", "see", "running since", "all succeeded", "some failed", "still open", "did not run", "Click a day", "Mon", "Wed", "Fri",
+		"schedule", "Pause", "Resume", "day", "Definition", "published workflow", "could not be written", "A year of runs", "One square", "days with runs", "with a failure", "in a row", "last failure", "see", "running since", "all succeeded", "some failed", "still open", "did not run", "Click a day", "Mon", "Wed", "Fri", "Steps", "stages", "Graph", "List", "No step selected", "Step", "Uses", "Depends on", "Command", "Last duration",
 	} {
 		if at := regexp.MustCompile(`\b` + regexp.QuoteMeta(english) + `\b`).FindStringIndex(text); at != nil {
 			t.Errorf("the Portuguese page still says %q: …%s…", english, text[max(0, at[0]-60):min(len(text), at[1]+40)])

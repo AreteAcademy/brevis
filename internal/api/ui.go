@@ -1508,7 +1508,7 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 	if oneStep(def) {
 		page.Step = stepLineOf(def, nil)
 	} else {
-		page.Graph = u.workflowSeed(r.Context(), def)
+		u.stepsOf(r.Context(), def, &page)
 	}
 	u.render(w, r, pages.Workflow(page))
 }

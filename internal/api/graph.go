@@ -201,17 +201,63 @@ func (u *UI) workflowGraphOf(ctx context.Context, def wf.Workflow) (graphRespons
 	return resp, nil
 }
 
-// workflowSeed is workflowGraphOf for the page to embed, or "" to fetch.
-func (u *UI) workflowSeed(ctx context.Context, def wf.Workflow) string {
+// stepsOf fills the workflow page's Steps card from one graph: the seed the
+// island draws, the list the server draws -- a row per step, in the graph's
+// order, with what it runs, what it wrote, what it needs and how long it last
+// took -- the logos the island borrows, and how many stages (columns) there
+// are. An invalid graph leaves the seed empty, and the island says why.
+func (u *UI) stepsOf(ctx context.Context, def wf.Workflow, page *pages.WorkflowPage) {
 	resp, err := u.workflowGraphOf(ctx, def)
 	if err != nil {
-		return ""
+		return
 	}
-	b, err := json.Marshal(resp)
-	if err != nil {
-		return ""
+	if b, err := json.Marshal(resp); err == nil {
+		page.Graph = string(b)
 	}
-	return string(b)
+	needs := map[string][]string{}
+	for _, e := range def.Edges {
+		needs[e.To] = append(needs[e.To], e.From)
+	}
+	var steps []flowNode
+	columns := map[int]bool{}
+	for _, n := range resp.Nodes {
+		if n.ParentID != "" || n.Type == "grupo" {
+			continue
+		}
+		steps = append(steps, n)
+		columns[n.Position.X] = true
+	}
+	sort.SliceStable(steps, func(i, j int) bool {
+		if steps[i].Position.X != steps[j].Position.X {
+			return steps[i].Position.X < steps[j].Position.X
+		}
+		return steps[i].Position.Y < steps[j].Position.Y
+	})
+	page.Stages = len(columns)
+	var logos []string
+	addLogo := func(k string) {
+		if k != "" && !slices.Contains(logos, k) {
+			logos = append(logos, k)
+		}
+	}
+	for _, n := range steps {
+		row := pages.StepItem{ID: n.ID, Needs: needs[n.ID]}
+		row.Command, _ = n.Data["acao"].(string)
+		if rt, _ := n.Data["runtime"].(string); rt != "" {
+			row.Langs = append(row.Langs, rt)
+		}
+		if tools, _ := n.Data["tools"].([]string); len(tools) > 0 {
+			row.Langs = append(row.Langs, tools...)
+		}
+		row.Uses, _ = n.Data["connects"].([]string)
+		row.LastStatus, _ = n.Data["last_status"].(string)
+		row.LastMs, _ = n.Data["last_duration_ms"].(int64)
+		for _, k := range append(append([]string{}, row.Langs...), row.Uses...) {
+			addLogo(k)
+		}
+		page.Steps = append(page.Steps, row)
+	}
+	page.GraphLogos = logos
 }
 
 // runGraph draws the SNAPSHOT stored on the Run, not the current definition:

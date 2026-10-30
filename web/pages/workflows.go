@@ -2,6 +2,7 @@ package pages
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"slices"
@@ -229,6 +230,11 @@ type WorkflowPage struct {
 	Now time.Time
 	// Langs is every language and tool the workflow runs, as logo keys.
 	Langs []string
+	// Steps are the Steps card's list, in the graph's order; Stages how many
+	// columns the graph has; GraphLogos the logos the island borrows.
+	Steps      []StepItem
+	Stages     int
+	GraphLogos []string
 	// YAML is the Definition tab: the published workflow written back as a
 	// file. Empty when it could not be written.
 	YAML string
@@ -430,4 +436,50 @@ func dayHref(slug string, day time.Time) string {
 func yearView(ctx context.Context, p WorkflowPage) components.CalendarView {
 	return components.Calendar(ctx, p.Stats.Days, p.Now,
 		func(d time.Time) string { return dayHref(p.Def.Slug, d) }, p.Day)
+}
+
+// StepItem is one step of the Steps card's list.
+type StepItem struct {
+	ID, Command string
+	// Langs is what it runs, language first; Uses what it wrote, as logo keys;
+	// Needs the steps it depends on.
+	Langs, Uses, Needs []string
+	// LastStatus and LastMs are how it went the last time it ran; empty and
+	// 0 when it never did.
+	LastStatus string
+	LastMs     int64
+}
+
+// lastDuration is a step's last duration, or a dash.
+func lastDuration(r StepItem) string {
+	if r.LastStatus == "" {
+		return "—"
+	}
+	d := time.Duration(r.LastMs) * time.Millisecond
+	return components.Duration(&d)
+}
+
+// dagText is the words the graph's island draws, in the reader's language:
+// the island has no catalog of its own, so the page hands it these.
+func dagText(ctx context.Context) string {
+	states := map[string]string{}
+	for _, st := range []string{"pending", "queued", "running", "retrying", "success", "failed", "skipped", "canceled"} {
+		states[st] = components.StateWord(ctx, st)
+	}
+	b, _ := json.Marshal(map[string]any{
+		"states":       states,
+		"stage":        i18n.T(ctx, "graph.stage"),
+		"last":         i18n.T(ctx, "graph.last"),
+		"panel_none":   i18n.T(ctx, "graph.panel.none"),
+		"runs_in":      i18n.T(ctx, "graph.panel.runs_in"),
+		"image":        i18n.T(ctx, "graph.panel.image"),
+		"uses":         i18n.T(ctx, "graph.panel.uses"),
+		"depends":      i18n.T(ctx, "graph.panel.depends"),
+		"ready_before": i18n.N(ctx, "graph.panel.ready_before", 2, "n", "{n}"),
+		"ready_one":    i18n.N(ctx, "graph.panel.ready_before", 1, "n", "{n}"),
+		"feeds":        i18n.T(ctx, "graph.panel.feeds"),
+		"blocks":       i18n.T(ctx, "graph.panel.blocks"),
+		"none":         i18n.T(ctx, "graph.panel.nothing"),
+	})
+	return string(b)
 }

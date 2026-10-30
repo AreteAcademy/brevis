@@ -106,7 +106,36 @@
     terraform: "Terraform",
   };
 
-  function labelOf(id) { return LANG_LABEL[id] || id; }
+  function labelOf(id) { return LOGO_NAME[id] || LANG_LABEL[id] || id; }
+
+  // THE PAGE'S WORDS AND LOGOS (screen-workflows T8). The island has no
+  // catalog: a page that wants it in the reader's language hands it its words
+  // in <script data-dag-text>, and the logos it may draw -- the registry's own
+  // SVG, from the server -- in [data-dag-logos]. A page that hands neither
+  // gets the English and the chips it always had.
+  var TEXT = (function () {
+    var el = document.querySelector("script[data-dag-text]");
+    if (!el) return {};
+    try { return JSON.parse(el.textContent) || {}; } catch (e) { return {}; }
+  })();
+  function tx(key, fallback) { return TEXT[key] || fallback; }
+  function stateWord(status, fallback) { return (TEXT.states && TEXT.states[status]) || fallback; }
+  var LOGO_HTML = {}, LOGO_NAME = {};
+  document.querySelectorAll("[data-dag-logos] [data-logo-key]").forEach(function (el) {
+    LOGO_HTML[el.getAttribute("data-logo-key")] = el.innerHTML;
+    LOGO_NAME[el.getAttribute("data-logo-key")] = el.getAttribute("data-logo-name");
+  });
+  // logo draws a registry mark the page handed over, or nothing.
+  function logo(key) {
+    if (!key || !LOGO_HTML[key]) return null;
+    return h("span", {
+      key: "logo-" + key,
+      style: { display: "inline-flex", flexShrink: 0 },
+      dangerouslySetInnerHTML: { __html: LOGO_HTML[key] },
+    });
+  }
+  // stepLang is the mark a step is drawn with: its language, or its tool.
+  function stepLang(d) { return d.runtime || (d.tools && d.tools[0]) || ""; }
 
   // chip draws one runtime or tool.
   //
@@ -180,7 +209,19 @@
     for (var i = 0; i < tools.length; i++) {
       out.push(chip(tools[i], { strong: false, inferred: inferred, title: labelOf(tools[i]) + " — " + why }));
     }
-    return h("div", { style: { marginTop: 7, display: "flex", gap: 5, flexWrap: "wrap" } }, out);
+    // The image, its tag only (D9), on the row's right. Only where the row
+    // already is: the server measures a card by its rows, and an image alone
+    // must not grow one.
+    if (d.image) {
+      out.push(h("span", {
+        key: "image", title: d.image,
+        style: {
+          marginLeft: "auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          color: MUTED, fontSize: 10, fontFamily: "ui-monospace, SFMono-Regular, monospace", alignSelf: "center",
+        },
+      }, d.image));
+    }
+    return h("div", { style: { marginTop: 7, display: "flex", gap: 5, flexWrap: "nowrap", alignItems: "center" } }, out);
   }
 
   // summarise condenses a stage's numbers to fit on one line. The whole detail
@@ -210,7 +251,12 @@
   // incident is the state, the duration and whether there was a retry.
   function BrevisNode(props) {
     var d = props.data;
-    var c = colour(d.status);
+    // A workflow's graph draws no run: its cards are pending, and say how
+    // each step went the last time it ran instead (screen-workflows T8).
+    var last = d.status === "pending" && d.last_status;
+    var c = colour(last ? d.last_status : d.status);
+    var word = last ? stateWord(d.last_status, c.label) : stateWord(d.status, c.label);
+    var took = last ? d.last_duration_ms : d.duracao_ms;
     return h(
       "div",
       {
@@ -246,6 +292,7 @@
             width: 8, height: 8, borderRadius: 9999, background: c.ring, flexShrink: 0,
           },
         }),
+        logo(stepLang(d)),
         // The step's name, and it TRUNCATES.
         //
         // `minWidth: 0` is the part that is easy to leave out and the only part
@@ -337,8 +384,8 @@
       h(
         "div",
         { style: { marginTop: 7, display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: c.ring } },
-        h("span", null, c.label),
-        d.duracao_ms ? h("span", { style: { color: MUTED } }, formatDuration(d.duracao_ms)) : null,
+        h("span", { title: last ? tx("last", "last run") : undefined }, word),
+        took ? h("span", { style: { color: MUTED } }, formatDuration(took)) : null,
         d.tentativa ? h("span", { style: { color: "#a35f28" } }, "retry " + d.tentativa) : null,
         // The SDK badge, on THIS row rather than beside the name.
         //
@@ -558,6 +605,39 @@ var NODE_W = 230;
 // ninety pixels in the corner and a shorter canvas crowds them; the ceiling is
 // so a graph with forty parallel branches does not push the rest of the page
 // off the screen.
+// The columns are the stages: "01 · Stage 1" over each, from where the
+// server put the steps (screen-workflows T8). They are NODES -- not an overlay
+// -- so that fitting the view and sizing the canvas count them: an overlay
+// above the first card was cut off by the fit.
+function stageNodes(nodes) {
+  var columns = {}, top = Infinity;
+  nodes.forEach(function (n) {
+    if (n.parentId || n.type === "grupo" || n.type === "stage") return;
+    columns[n.position.x] = true;
+    top = Math.min(top, n.position.y);
+  });
+  var xs = Object.keys(columns).map(Number).sort(function (a, b) { return a - b; });
+  if (xs.length < 2) return [];
+  return xs.map(function (x, i) {
+    var nn = String(i + 1);
+    return {
+      id: "stage-" + x, type: "stage", position: { x: x, y: top - 30 },
+      selectable: false, draggable: false, connectable: false, focusable: false,
+      style: { width: NODE_W, height: 18 },
+      data: { label: (nn.length < 2 ? "0" + nn : nn) + " · " + tx("stage", "Stage") + " " + nn },
+    };
+  });
+}
+
+function StageLabel(props) {
+  return h("div", {
+    style: {
+      fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: MUTED,
+      whiteSpace: "nowrap", pointerEvents: "none",
+    },
+  }, props.data.label);
+}
+
 function sizeCanvas(nodes) {
   var host = document.getElementById("dag");
   if (!host || !host.clientWidth || !nodes.length) return;
@@ -589,7 +669,7 @@ function sizeCanvas(nodes) {
     Math.max(200, Math.min(660, Math.round((gh * zoom) / (1 - 2 * FIT_PAD)))) + "px";
 }
 
-var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
+var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode, stage: StageLabel };
 
   // contextRows renders what a step published, keys sorted so two visits to the
   // same run read the same way.
@@ -794,6 +874,91 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
     );
   }
 
+  // The graph's ties, from its edges: what each step needs and feeds, and
+  // everything up or down the flow from it.
+  function ties(edges) {
+    var up = {}, down = {};
+    edges.forEach(function (e) {
+      (up[e.target] = up[e.target] || []).push(e.source);
+      (down[e.source] = down[e.source] || []).push(e.target);
+    });
+    function walk(id, next) {
+      var seen = {}, stack = (next[id] || []).slice();
+      while (stack.length) {
+        var n = stack.pop();
+        if (seen[n]) continue;
+        seen[n] = true;
+        (next[n] || []).forEach(function (m) { stack.push(m); });
+      }
+      return Object.keys(seen);
+    }
+    return {
+      needs: function (id) { return up[id] || []; },
+      feeds: function (id) { return down[id] || []; },
+      above: function (id) { return walk(id, up); },
+      below: function (id) { return walk(id, down); },
+    };
+  }
+
+  // StepPanel is the chosen step, under the graph, in three columns
+  // (screen-workflows T8): what it is and runs in; what it waits for; what it
+  // feeds, and what its failure would stop. A step it names is a button that
+  // chooses that step.
+  function StepPanel(props) {
+    var n = props.node;
+    if (!n) return h("p", { style: { margin: 0 } }, tx("panel_none", "No step selected. Click a step in the graph or in the list."));
+    var d = n.data, t = props.ties;
+    var head = { fontSize: 11, fontWeight: 600, color: INK, marginBottom: 6 };
+    var mono = { fontFamily: "ui-monospace, SFMono-Regular, monospace", fontSize: 11.5, color: INK, wordBreak: "break-all" };
+    function stepButtons(ids) {
+      if (!ids.length) return h("span", { style: { color: MUTED } }, tx("none", "nothing"));
+      return ids.map(function (id) {
+        return h("button", {
+          key: id, type: "button", onClick: function () { props.choose(id); },
+          style: Object.assign({}, mono, {
+            marginRight: 6, marginBottom: 4, padding: "1px 7px", borderRadius: 3,
+            border: "1px solid " + LINE, background: "transparent", cursor: "pointer",
+          }),
+        }, id);
+      });
+    }
+    var lang = stepLang(d);
+    var col = { minWidth: 0, display: "flex", flexDirection: "column", gap: 6 };
+    return h(
+      "div",
+      { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 18, color: MUTED, fontSize: 12.5 } },
+      h("div", { style: col },
+        h("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+          logo(lang),
+          h("span", { style: Object.assign({}, mono, { fontWeight: 600, fontSize: 13 }) }, n.id),
+          d.last_duration_ms ? h("span", { title: tx("last", "last run") }, formatDuration(d.last_duration_ms)) : null),
+        d.acao ? h("div", { style: mono }, d.acao) : null,
+        lang || d.image
+          ? h("div", null,
+              lang ? [tx("runs_in", "Runs in") + " ", h("strong", { key: "l", style: { color: INK, fontWeight: 600 } }, labelOf(lang))] : null,
+              d.image ? [(lang ? " · " : "") + tx("image", "image") + " ", h("code", { key: "i", style: mono }, d.image)] : null)
+          : null,
+        d.connects && d.connects.length
+          ? h("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" } },
+              tx("uses", "Uses"),
+              d.connects.map(function (k) {
+                return h("span", { key: k, style: { display: "inline-flex", alignItems: "center", gap: 4, color: INK, fontWeight: 600 } }, logo(k), labelOf(k));
+              }))
+          : null),
+      h("div", { style: col },
+        h("div", { style: head }, tx("depends", "Depends on") + " · " + t.needs(n.id).length),
+        h("div", null, stepButtons(t.needs(n.id))),
+        h("div", null, (t.above(n.id).length === 1
+          ? tx("ready_one", "Must be ready before: {n} step up the flow")
+          : tx("ready_before", "Must be ready before: {n} steps up the flow")).replace("{n}", t.above(n.id).length))),
+      h("div", { style: col },
+        h("div", { style: head }, tx("feeds", "Feeds") + " · " + t.feeds(n.id).length),
+        h("div", null, stepButtons(t.feeds(n.id))),
+        h("div", null, tx("blocks", "If it fails, it blocks") + ": ",
+          t.below(n.id).length ? h("span", { style: mono }, t.below(n.id).join(", ")) : tx("none", "nothing")))
+    );
+  }
+
   function Graph(props) {
     // THE SEED IS THE FIRST DRAWING (nav-latency NL5): the page embeds the
     // graph this used to fetch after the load, so the canvas is never drawn
@@ -803,8 +968,21 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
       ? { nodes: seed.nodes || [], edges: seed.edges || [], loading: false, erro: "" }
       : { nodes: [], edges: [], loading: true, erro: "" });
     var payload = graphState[0], setPayload = graphState[1];
-    var selState = React.useState(null);
+    var selState = React.useState(props.initial || null);
     var selected = selState[0], setSelected = selState[1];
+
+    // Esc lets go of the chosen step; so does choosing it again or the
+    // background. A step chosen elsewhere -- the list -- arrives as an event.
+    React.useEffect(function () {
+      function onKey(e) { if (e.key === "Escape") setSelected(null); }
+      function onChoose(e) { setSelected(e.detail || null); }
+      document.addEventListener("keydown", onKey);
+      document.addEventListener("brevis:select-step", onChoose);
+      return function () {
+        document.removeEventListener("keydown", onKey);
+        document.removeEventListener("brevis:select-step", onChoose);
+      };
+    }, []);
 
     React.useEffect(function () {
       var alive = true;
@@ -828,7 +1006,7 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
             //
             // Here there is no timing question at all. The element is already
             // in the document, server-rendered, and its width is known.
-            sizeCanvas(g.nodes || []);
+            sizeCanvas((g.nodes || []).concat(stageNodes(g.nodes || [])));
             setPayload({ nodes: g.nodes || [], edges: g.edges || [], loading: false, erro: "" });
             // Live updates by polling, not by WebSocket: the data changes in
             // seconds, not in milliseconds, and a repeated GET needs neither a
@@ -953,6 +1131,26 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
       }));
     });
 
+    // THE FOCUS (screen-workflows T8): a chosen step, everything it waits for
+    // and everything it feeds stay; the rest steps back -- the cards to 35%,
+    // the edges off the path to 25%. A phase follows its step.
+    var t = ties(payload.edges);
+    var focusID = currentNode ? (currentNode.parentId || currentNode.id) : null;
+    var inPath = null;
+    if (focusID) {
+      inPath = {};
+      inPath[focusID] = true;
+      t.above(focusID).concat(t.below(focusID)).forEach(function (id) { inPath[id] = true; });
+      nodes = nodes.map(function (n) {
+        var id = n.parentId || n.id;
+        if (n.type === "grupo" || n.type === "stage" || inPath[id]) return n;
+        return Object.assign({}, n, { style: Object.assign({}, n.style, { opacity: 0.35 }) });
+      });
+    }
+
+    // The stages' labels, as nodes of their own: so the fit counts them.
+    nodes = nodes.concat(stageNodes(payload.nodes));
+
     // The CANVAS is sized to the drawing, not the other way round.
     //
     // A fixed height gets it wrong in both directions, and this graph got it
@@ -1011,11 +1209,17 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
               if (source === e.source && target === e.target) return e;
               return Object.assign({}, e, { source: source, target: target });
             })
-            .filter(function (e) { return e.source !== e.target; }),
+            .filter(function (e) { return e.source !== e.target; })
+            .map(function (e) {
+              if (!inPath || (inPath[e.source] && inPath[e.target])) return e;
+              return Object.assign({}, e, { style: Object.assign({ stroke: EDGE, strokeWidth: 1.4 }, e.style, { opacity: 0.25 }) });
+            }),
           nodeTypes: NODE_TYPES,
           fitView: true,
           fitViewOptions: { padding: FIT_PAD, maxZoom: MAX_ZOOM },
-          minZoom: 0.2,
+          // Zoom from a whole big graph to a card read up close.
+          minZoom: 0.4,
+          maxZoom: 1.6,
           proOptions: { hideAttribution: false },
           defaultEdgeOptions: {
             style: { stroke: EDGE, strokeWidth: 1.4 },
@@ -1033,17 +1237,27 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
           nodesDraggable: false,
           nodesConnectable: false,
           edgesFocusable: false,
-          onNodeClick: function (_, n) { setSelected(n.id); },
+          onNodeClick: function (_, n) { setSelected(function (s) { return s === n.id ? null : n.id; }); },
           onPaneClick: function () { setSelected(null); },
         },
         h(RF.Background, { color: themeVar("--color-state-pending", "#c9bfae"), gap: 22, size: 1.4 }),
         h(RF.Controls, { showInteractive: false })
       ),
-      h(Inspector, {
-        no: currentNode,
-        stages: payload.nodes.filter(function (n) { return n.parentId === selected; }),
-        close: function () { setSelected(null); },
-      })
+      // A page with a place for the step panel gets it there, under the
+      // graph; the Runs screen keeps its inspector over the canvas.
+      props.panel
+        ? ReactDOM.createPortal(h(StepPanel, {
+            node: currentNode && currentNode.parentId
+              ? payload.nodes.filter(function (n) { return n.id === currentNode.parentId; })[0]
+              : currentNode,
+            ties: t,
+            choose: function (id) { setSelected(id); },
+          }), props.panel)
+        : h(Inspector, {
+            no: currentNode,
+            stages: payload.nodes.filter(function (n) { return n.parentId === selected; }),
+            close: function () { setSelected(null); },
+          })
     );
   }
 
@@ -1057,9 +1271,12 @@ var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
     if (carrier) {
       try { seed = JSON.parse(carrier.textContent); } catch (e) { seed = null; }
     }
-    if (seed) sizeCanvas(seed.nodes || []);
+    if (seed) sizeCanvas((seed.nodes || []).concat(stageNodes(seed.nodes || [])));
+    var card = root.closest("[data-steps-view]");
+    var panel = card ? card.querySelector("[data-step-panel]") : null;
+    if (panel) panel.textContent = "";
     root._dag = ReactDOM.createRoot(root);
-    root._dag.render(h(Graph, { src: root.dataset.src, seed: seed }));
+    root._dag.render(h(Graph, { src: root.dataset.src, seed: seed, panel: panel, initial: root.dataset.select || null }));
   }
 
   // unmount takes down the graph inside a region about to be replaced. It is

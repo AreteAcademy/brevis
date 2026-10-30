@@ -32,6 +32,18 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   with Copy. It is not the author's file -- comments and the order of the
   keys are gone -- but publishing it publishes the same workflow, which a
   round trip over every example holds.
+- **Steps, as a graph or a list.** The graph labels its columns as stages
+  ("01 · Stage 1"); each card has its language's logo, how the step last
+  went and how long it took, and its image. Choosing a step keeps its path
+  and fades the rest (Esc, the background or the same step lets go), and the
+  step panel under the graph says what it runs in, what it uses, what it
+  depends on -- every step up the flow -- what it feeds, and what its failure
+  would block; a step it names is a button. The zoom goes from 0.4 to 1.6.
+  The list is the server's: each step with what it runs and uses, what it
+  depends on, its command and its last duration, a row choosing it in the
+  graph. A run's graph gains the stage labels and the focus and keeps its
+  inspector. `/api/workflows/{slug}/graph` carries each step's
+  `last_status`, `last_duration_ms` and `connects`.
 - **A year of runs** is 53 weeks, Monday to Sunday, in 12px squares, this
   week's days to come drawn faint, each day's tooltip saying how many ran and
   how it went. Above it, what the year was: the days with runs, with a
