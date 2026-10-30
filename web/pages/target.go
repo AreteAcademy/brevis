@@ -1,7 +1,9 @@
 package pages
 
 import (
+	"context"
 	"fmt"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"net/url"
 	"slices"
 	"strconv"
@@ -253,13 +255,13 @@ func BuildTarget(d postgres.TargetDetail, now time.Time) TargetView {
 }
 
 // Reason is one sentence on why a writer stands where it does, in its own
-// schedule's timezone.
-func (w WriterView) Reason() string {
+// schedule's timezone and the reader's language.
+func (w WriterView) Reason(ctx context.Context) string {
 	if g := w.Gateway; g != nil {
-		why := fmt.Sprintf("Published from gateway %s, stream %s (%s), on %s. It writes as events arrive; its traffic is on the gateway's /metrics.",
-			g.Name, g.Stream, g.Role, g.PublishedAt.UTC().Format("Jan 2 15:04 UTC"))
+		why := i18n.T(ctx, "catalog.why.gateway", "gateway", g.Name, "stream", g.Stream, "role", g.Role,
+			"at", i18n.Date(ctx, g.PublishedAt.UTC(), "brief")+" UTC")
 		if g.Note != "" {
-			why += " Unnamed: " + g.Note + "."
+			why += " " + i18n.T(ctx, "catalog.why.unnamed", "note", g.Note)
 		}
 		return why
 	}
@@ -267,19 +269,20 @@ func (w WriterView) Reason() string {
 	if err != nil || w.Timezone == "" {
 		loc = time.UTC
 	}
-	stamp := func(t time.Time) string { return t.In(loc).Format("Jan 2 15:04 MST") }
+	stamp := func(t time.Time) string { return i18n.Date(ctx, t.In(loc), "brief") + " " + t.In(loc).Format("MST") }
 
 	switch w.Verdict.Status {
 	case catalog.Late, catalog.Stale:
-		return fmt.Sprintf("%s missed its %s run. It was expected by %s: %s of grace, from how late it usually lands, never under 10 min.",
-			w.Workflow, stamp(w.Verdict.Missed), stamp(w.Verdict.Missed.Add(w.Verdict.Grace)), w.Verdict.Grace)
+		grace := w.Verdict.Grace
+		return i18n.T(ctx, "catalog.why.missed", "workflow", w.Workflow, "slot", stamp(w.Verdict.Missed),
+			"by", stamp(w.Verdict.Missed.Add(grace)), "grace", components.Duration(&grace))
 	case catalog.Paused:
-		return "Its schedule is paused, so it is never late."
+		return i18n.T(ctx, "catalog.why.paused")
 	case catalog.Unscheduled:
 		if w.HasSchedule {
-			return "Its schedule cannot be read, so there is nothing to be late against."
+			return i18n.T(ctx, "catalog.why.unreadable")
 		}
-		return "It runs by hand, so there is nothing to be late against."
+		return i18n.T(ctx, "catalog.why.manual")
 	}
 	return ""
 }

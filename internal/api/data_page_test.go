@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -123,16 +122,14 @@ func TestTheLoadsPageSaysHowALoadAppears(t *testing.T) {
 	}
 }
 
-// INGEST IS IN THE NAVIGATION, Streams and Loads, and Catalog is not.
+// INGEST IS IN THE NAVIGATION, Streams and Loads. (The Catalog, which IN6
+// had taken out, is back under Data: TestTheCatalogIsInTheMenu.)
 func TestIngestIsInTheNavigation(t *testing.T) {
 	_, body := get(t, dataUI(catalogFake{}), "/ingest/loads")
 	for _, want := range []string{`href="/ingest/streams"`, `href="/ingest/loads"`, `aria-label="Ingest"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the navigation has no %s", want)
 		}
-	}
-	if strings.Contains(body, `href="/data"`) {
-		t.Error("the navigation still links Catalog's /data")
 	}
 }
 
@@ -226,47 +223,6 @@ func TestALoadPageShowsItsWriterAndLoads(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page does not show %q", want)
 		}
-	}
-}
-
-// CATALOG'S OLD URLS LAND WHERE THEIR DESTINATION LIVES NOW: a sink or a dead
-// letter on its stream, a load's target on the load (the most recent writer
-// when several), anything else on the loads list. Permanent, so bookmarks and
-// links move once. What could never be a target is still refused.
-func TestCatalogsURLsRedirectToTheirOwner(t *testing.T) {
-	now := time.Now()
-	entries := append(gatewayCatalog(),
-		postgres.CatalogEntry{Target: "file:///var/dead-letter/clicks/", Kind: "file",
-			Writers: []postgres.CatalogWriter{{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/clicks", Role: "dead_letter"}}}},
-		postgres.CatalogEntry{Target: "s3://lake/shared/", Kind: "s3", Writers: []postgres.CatalogWriter{
-			{Workflow: "old", Node: "dump", LastLoaded: now.Add(-48 * time.Hour)},
-			{Workflow: "fresh", Node: "load", LastLoaded: now.Add(-time.Hour)},
-		}},
-		postgres.CatalogEntry{Target: "postgres://db/public/x", Kind: "postgres",
-			Writers: []postgres.CatalogWriter{{Workflow: "sync", Node: "load", LastLoaded: now}}},
-	)
-	mux := http.NewServeMux()
-	dataUI(catalogFake{entries: entries}).Registrar(mux)
-	for _, c := range []struct{ path, to string }{
-		{"/data", "/ingest/loads"},
-		{"/data?status=late", "/ingest/loads"},
-		{"/data/target?u=" + url.QueryEscape("pubsub://brevis-local/clicks"), "/ingest/streams/edge/v1/clicks"},
-		{"/data/target?u=" + url.QueryEscape("file:///var/dead-letter/clicks/"), "/ingest/streams/edge/v1/clicks"},
-		{"/data/target?u=" + url.QueryEscape("postgres://db/public/x"), "/ingest/loads/sync/load"},
-		{"/data/target?u=" + url.QueryEscape("s3://lake/shared/"), "/ingest/loads/fresh/load"},
-		{"/data/target?u=" + url.QueryEscape("postgres://nowhere/public/x"), "/ingest/loads"},
-		{"/data/target", "/ingest/loads"},
-	} {
-		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, c.path, nil))
-		if rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != c.to {
-			t.Errorf("%s → %d %q, want 301 %q", c.path, rec.Code, rec.Header().Get("Location"), c.to)
-		}
-	}
-	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/data/target?u="+url.QueryEscape(strings.Repeat("x", 513)), nil))
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("an oversized target: %d, want 400", rec.Code)
 	}
 }
 
@@ -587,28 +543,6 @@ func TestTheStreamPageAnswers(t *testing.T) {
 	for _, want := range []string{"[data-hash-tabs]", "hashchange", "[data-tab-panel]", "[data-test-body]"} {
 		if !strings.Contains(strip(js), want) {
 			t.Errorf("ui.js has no %s", want)
-		}
-	}
-}
-
-// "CATALOG" IS GONE FROM THE CONSOLE. Catalog became Streams and Loads (IN6);
-// a word left in a menu, a breadcrumb, a title or the palette is a section
-// that no longer exists, named to somebody looking for it.
-func TestNoScreenSaysCatalog(t *testing.T) {
-	entries := append(demoCatalog(), gatewayCatalog()...)
-	ui := dataUI(catalogFake{entries: entries, detail: &postgres.TargetDetail{CatalogEntry: entries[0]}}).WithEndpoints(published())
-	for _, path := range []string{
-		"/ingest/loads", "/ingest/streams", "/ingest/streams/edge/v1/clicks",
-		"/ingest/loads/sdk_orders/load", "/data/endpoints", "/api/palette",
-	} {
-		code, body := get(t, ui, path)
-		if code != http.StatusOK {
-			t.Errorf("%s answered %d", path, code)
-			continue
-		}
-		if strings.Contains(strings.ToLower(body), "catalog") {
-			at := strings.Index(strings.ToLower(body), "catalog")
-			t.Errorf("%s says catalog: …%s…", path, body[max(0, at-60):min(len(body), at+40)])
 		}
 	}
 }

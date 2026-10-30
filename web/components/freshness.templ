@@ -29,3 +29,9 @@ func FreshnessLabel(s string) string {
 	return "no schedule"
 }
 
+
+// FreshnessMark is a status's mark alone, for a place that says the word
+// beside it -- a filter's choice.
+templ FreshnessMark(status string) {
+	@StatusMark(freshnessKind(status))
+}

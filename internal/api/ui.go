@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -142,7 +143,13 @@ type UI struct {
 	// the pages off.
 	endpoints EndpointsReader
 	failing   FailingReader
-	events    EventsReader
+
+	// attention is the Catalog badge's count, kept for attentionTTL: the
+	// catalog is read whole to count it, and every page draws the badge.
+	attentionMu sync.Mutex
+	attentionAt time.Time
+	attentionN  int
+	events      EventsReader
 
 	// calls runs an endpoint for Try it; callsProtected says the console
 	// asks for a login. Both, or no Try it.
@@ -282,7 +289,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /runs", u.runs)
 	mux.HandleFunc("GET /workflows", u.workflows)
 	mux.HandleFunc("GET /projects", u.projetos)
-	mux.HandleFunc("GET /data", u.dataMoved)
+	mux.HandleFunc("GET /data", u.catalogPage)
 	// THE WORKBENCH, and both verbs on one path: a GET draws the box and a
 	// POST runs what is in it. The statement travels in the BODY, which is
 	// why there is no second route carrying it.
@@ -290,7 +297,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("POST /sql", u.sql)
 	// A query parameter and not a path wildcard: ServeMux cleans `//` out of a
 	// path, and would redirect /data/bigquery://… to /data/bigquery:/….
-	mux.HandleFunc("GET /data/target", u.targetMoved)
+	mux.HandleFunc("GET /data/target", u.catalogTarget)
 	mux.HandleFunc("GET /ingest/loads", u.loads)
 	mux.HandleFunc("GET /ingest/streams", u.streams)
 	mux.HandleFunc("GET /ingest/streams/{gateway}/{path...}", u.stream)
@@ -466,35 +473,6 @@ func (u *UI) dataEndpoint(w http.ResponseWriter, r *http.Request) {
 // is looked up as stored, so `u` is not shape-checked beyond this: an unknown
 // value is a 404, not a 400.
 const targetCeiling = 512
-
-// dataMoved is where Catalog was: its loads are /ingest/loads now. The
-// query string is dropped -- its filters were the list's, and a stream is
-// not on that list.
-func (u *UI) dataMoved(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/ingest/loads", http.StatusMovedPermanently)
-}
-
-// targetMoved is where a destination's page was. A destination is now the
-// stream that owns it -- its sink or its dead letter -- or the load that
-// writes it, the most recent when several steps do; with no owner, the
-// loads. Endpoints still link here (TargetHref), and follow it.
-func (u *UI) targetMoved(w http.ResponseWriter, r *http.Request) {
-	target := r.URL.Query().Get("u")
-	if len(target) > targetCeiling || strings.ContainsFunc(target, unicode.IsControl) {
-		http.Error(w, "name a destination: /data/target?u=<target>", http.StatusBadRequest)
-		return
-	}
-	to := "/ingest/loads"
-	if target != "" && u.catalog != nil {
-		entries, err := u.catalog.Catalog(r.Context())
-		if err != nil {
-			u.failure(w, r, err)
-			return
-		}
-		to = pages.OwnerOf(entries, target, time.Now())
-	}
-	http.Redirect(w, r, to, http.StatusMovedPermanently)
-}
 
 // targetTools fills in what a destination's page offers beyond its loads --
 // the endpoints that read it, and, where a SQL service answers for it, the
@@ -874,6 +852,10 @@ func (u *UI) palette(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// A stream by what it is, POST <path>; a load by step → where.
+		// A destination by what it is, the writer as the hint.
+		for _, row := range pages.BuildCatalog(entries, pages.DataFilter{}, time.Now()).Rows {
+			items = append(items, paletteEntry("Catalog", row.Target, pages.WriterLine(row), pages.TargetHref(row.Target), "database"))
+		}
 		for _, g := range pages.StreamsOf(entries) {
 			for _, s := range g.Streams {
 				items = append(items, paletteEntry("Streams", "POST "+s.Path, g.Name, s.Href(), "cloud"))
@@ -1958,6 +1940,7 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	ctx = layouts.WithRequestURI(ctx, r.URL.RequestURI())
 	ctx = layouts.TakeFlash(ctx, w, r)
 	ctx = u.withFailing(ctx, r)
+	ctx = u.withAttention(ctx, r)
 	if err := c.Render(ctx, w); err != nil {
 		u.log.Error("rendering the page", "path", r.URL.Path, "error", err)
 	}

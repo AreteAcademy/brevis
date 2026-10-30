@@ -700,32 +700,6 @@ func streamFlow(s Stream) *Flow {
 	return f
 }
 
-// OwnerOf is where a destination lives now that Catalog is gone: the stream
-// whose sink or dead letter it is, else the load that writes it -- the most
-// recent, when several steps do -- else the loads list.
-func OwnerOf(entries []postgres.CatalogEntry, target string, now time.Time) string {
-	for _, g := range StreamsOf(entries) {
-		for _, s := range g.Streams {
-			if s.Sink.URI == target || (s.DeadLetter != nil && s.DeadLetter.URI == target) {
-				return s.Href()
-			}
-		}
-	}
-	var best *LoadTarget
-	for _, g := range LoadsOf(entries, now) {
-		for i := range g.Targets {
-			t := &g.Targets[i]
-			if t.URI == target && (best == nil || t.LastLoaded.After(best.LastLoaded)) {
-				best = t
-			}
-		}
-	}
-	if best != nil {
-		return best.Href()
-	}
-	return "/ingest/loads"
-}
-
 // StreamView is one stream's page.
 type StreamView struct {
 	Stream

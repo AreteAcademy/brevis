@@ -16,6 +16,39 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Added: the Data catalog is back
+
+- **`/data` is the catalog again** (it had answered 301 to Loads since the
+  ingest screens replaced it): every destination Brevis wrote, who writes it,
+  and whether it is arriving at the pace of its writer's own schedule, worst
+  first and, within a status, the most recently loaded first.
+- **A status band** filters by its links, each choice with its count and its
+  rule as the tooltip: All, Needs attention (stale and late together), and
+  each status. A kind filter with logos, Show legacy (a legacy row waits until
+  it is asked for), and a search over the table, the dataset, the workflow
+  and the gateway's path that answers while you type.
+- **Each row**: where it lives, faint, and the table; its status, and "a run is
+  queued"; who writes it; the last load; its rows; its last loads. The whole
+  row opens the destination, keeping the filter; a destination its manifest
+  could not name opens the stream that writes it.
+- **A destination opens in a drawer over the catalog**, at
+  `/data/target?u=<target>` (which redirected to Loads until now): its status,
+  the best writer's; each writer, a link to its load or stream, and why it
+  stands where it does; its last loads, each bar opening its run; the
+  endpoints that read it; how each writer is configured; Query and Copy
+  destination. The × goes back to the list as it was filtered. A destination
+  nobody writes is the catalog with a note saying so.
+- **A row opens the drawer in place**, the address following: the list stays
+  as it was, Esc, the × and the backdrop close it, Back and Forward close and
+  open it, and a sent link arrives with it open. With no script the row is a
+  link to the same address.
+- The reason a writer is late, the load bars and the configuration's frame
+  are in the reader's language on the load page too.
+- **In the menu** first of Data, with `g d`, and a badge of the destinations
+  that need attention when there are any (counted every 30 seconds at most).
+  The palette finds a destination by its URI, its writer as the hint.
+- In English, Portuguese and Spanish.
+
 ### Changed: a workflow's page, its head, numbers and tabs
 
 - **The line under the name** says whether the schedule is on, the project,

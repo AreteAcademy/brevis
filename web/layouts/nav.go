@@ -53,7 +53,10 @@ type group struct {
 // PROJECTS IS NOT HERE. It is the scope a reader works in, drawn as a
 // switcher above the sections; the page it opens is still /projects.
 func groups(ctx context.Context) []group {
-	data := []section{place(ctx, "/data/endpoints", "endpoints", "plug", "")}
+	data := []section{
+		place(ctx, "/data", "catalog", "database", "d"),
+		place(ctx, "/data/endpoints", "endpoints", "plug", ""),
+	}
 	if HasSQL(ctx) {
 		data = append(data, place(ctx, "/sql", "sql", "terminal", "s"))
 	}

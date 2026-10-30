@@ -1,0 +1,308 @@
+package pages
+
+import (
+	"fmt"
+	"net/url"
+
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
+	"github.com/AreteAcademy/brevis/web/layouts"
+)
+
+// Catalog is /data (screen-catalog): every destination the ecosystem wrote,
+// who writes it, and whether it is arriving at the pace of its writer's own
+// schedule. Worst first.
+templ Catalog(v CatalogScreen) {
+	// The crumb is the section's name: "Data / Catalog", not the title again.
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "catalog.title"), Crumb: i18n.T(ctx, "nav.catalog"), Active: "catalog"}) {
+		<p class="-mt-2 max-w-3xl text-[13.5px] text-muted">
+			// One line: a break between two pieces is a space.
+			{ i18n.T(ctx, "catalog.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "catalog.lead.strong") }</strong>{ i18n.T(ctx, "catalog.lead.after") }
+		</p>
+		<p class="mt-2 mb-4 max-w-3xl text-[12px] text-faint">{ i18n.T(ctx, "catalog.honest") }</p>
+		// THE BOX ANSWERS WHILE SOMEBODY TYPES (the Workflows list's form):
+		// ui.js submits it as a fetch and swaps the list under it.
+		<form method="get" action="/data" role="search" data-swap="catalog-list" data-swap-typing class="mb-3 w-full sm:w-96">
+			if v.Filter.Status != "" {
+				<input type="hidden" name="status" value={ v.Filter.Status }/>
+			}
+			if v.Filter.Kind != "" {
+				<input type="hidden" name="kind" value={ v.Filter.Kind }/>
+			}
+			if v.Filter.Legacy {
+				<input type="hidden" name="legacy" value="1"/>
+			}
+			@components.SearchInput("q", v.Filter.Q, i18n.T(ctx, "catalog.search"), "")
+		</form>
+		if v.Missing != "" {
+			<p data-missing class="mb-3 rounded-card border border-line bg-surface-2 px-3 py-2 text-[12.5px] text-muted">{ i18n.T(ctx, "catalog.missing", "target", v.Missing) }</p>
+		}
+		<div id="catalog-list">
+			@CatalogList(v)
+		</div>
+		if v.Drawer != nil {
+			@TargetDrawer(v)
+		}
+	}
+}
+
+// TargetDrawer is one destination over the catalog (screen-catalog T3): drawn
+// open by the server, so its link works with no script -- the × is a link back
+// to the list it was opened from -- and the fragment the row asks for with
+// one (X-Brevis-Fragment: target).
+//
+// What it says, in order: what the destination is and its status, which is
+// its best writer's; each writer and why it stands there; its last loads,
+// each opening its run; what reads it; how each writer is configured; that no
+// credential reaches here; and the verbs, Query and Copy.
+templ TargetDrawer(v CatalogScreen) {
+	{{ t := *v.Drawer }}
+	{{ r := t.Row }}
+	<dialog id="target" class="drawer" aria-labelledby="target-title" open data-catalog-drawer data-close={ v.CloseHref() }>
+		<header class="dialog-head">
+			<div class="flex min-w-0 items-start gap-3">
+				@components.Logo(kindLogo(r.Kind), 40)
+				<div class="min-w-0">
+					<p class="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{ i18n.T(ctx, "catalog.drawer.kicker", "kind", components.LogoTitle(ctx, kindLogo(r.Kind))) }</p>
+					<h2 id="target-title" class="font-mono text-[14px] font-semibold break-all text-ink">
+						<span id="target-uri">{ r.Target }</span>
+					</h2>
+					<p class="mt-1 flex flex-wrap items-baseline gap-x-2 text-[12px] text-muted">
+						@components.Freshness(string(r.Status))
+						<span>{ i18n.T(ctx, "catalog.drawer.best") }</span>
+					</p>
+				</div>
+			</div>
+			<a href={ templ.SafeURL(v.CloseHref()) } data-target-close aria-label={ i18n.T(ctx, "dialog.close") } class="flex h-8 w-8 shrink-0 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+				@components.Icon("x", "h-4 w-4")
+			</a>
+		</header>
+		<div class="dialog-body space-y-4" data-dialog-body>
+			for _, w := range r.Writers {
+				<section data-writer class="rounded-card border border-line bg-surface">
+					<div class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line-soft px-3.5 py-2.5">
+						@components.StatusMark(statusKind(string(w.Verdict.Status)))
+						if g := w.Gateway; g != nil {
+							<a href={ templ.SafeURL(Stream{Gateway: g.Name, Path: g.Stream}.Href()) } class="font-mono text-[12.5px] font-medium text-ink hover:underline">{ writerName(w.CatalogWriter) }</a>
+						} else {
+							<a href={ templ.SafeURL("/ingest/loads/" + url.PathEscape(w.Workflow) + "/" + url.PathEscape(w.Node)) } class="font-mono text-[12.5px] font-medium text-ink hover:underline">{ writerName(w.CatalogWriter) }</a>
+							if words := CronTextIn(ctx, w.Cron); words != "" {
+								<span class="text-[12px] text-muted">{ words }</span>
+							}
+						}
+						if id := w.RunInFlight; id != nil {
+							<a href={ templ.SafeURL("/runs/" + *id) } class="ml-auto rounded-card border border-line px-2 py-0.5 text-[12px] text-ink hover:bg-hover">{ i18n.T(ctx, "catalog.drawer.queued") } &rarr;</a>
+						}
+					</div>
+					if why := w.Reason(ctx); why != "" {
+						<p class="px-3.5 py-2.5 text-[12.5px] text-ink-2">{ why }</p>
+					}
+				</section>
+			}
+			<section>
+				<h3 class="mb-2 text-[12.5px] font-semibold text-ink">{ i18n.T(ctx, "catalog.drawer.loads") }</h3>
+				@components.LoadBars(t.Bars, t.Missed)
+				<p class="mt-1.5 text-[11.5px] text-faint">{ i18n.T(ctx, "catalog.drawer.legend") }</p>
+			</section>
+			if len(t.ReadBy) > 0 {
+				<section>
+					<h3 class="mb-2 text-[12.5px] font-semibold text-ink">{ i18n.T(ctx, "catalog.drawer.read_by") }</h3>
+					<ul class="space-y-1 text-[12.5px]">
+						for _, e := range t.ReadBy {
+							<li>
+								<a href={ templ.SafeURL(e.Href) } class="font-mono text-ink hover:underline">GET { e.Path }</a>
+								<span class="ml-1.5 text-muted">{ e.API } · { i18n.T(ctx, "catalog.drawer.cache") }</span>
+							</li>
+						}
+					</ul>
+				</section>
+			}
+			@configurations(t)
+			<p class="text-[11.5px] text-faint">{ i18n.T(ctx, "catalog.drawer.credentials") }</p>
+		</div>
+		<footer class="dialog-foot" data-dialog-foot>
+			if t.Tabs {
+				@components.ButtonLink(components.ButtonSecondary, components.SizeRegular, t.WorkbenchHref()) {
+					@components.Icon("terminal", "h-3.5 w-3.5")
+					{ i18n.T(ctx, "catalog.drawer.query") }
+				}
+			}
+			<span data-js>
+				@components.Button(components.ButtonPrimary, components.SizeRegular, templ.Attributes{"data-copy": "#target-uri"}) {
+					@components.Icon("copy", "h-3.5 w-3.5")
+					{ i18n.T(ctx, "catalog.drawer.copy") }
+				}
+			</span>
+		</footer>
+	</dialog>
+}
+
+// CatalogList is everything under the search box: the band, the filters and
+// the table. It is the page's fragment (X-Brevis-Fragment: answer).
+templ CatalogList(v CatalogScreen) {
+	{{ f := v.Filter }}
+	<nav data-status-band aria-label={ i18n.T(ctx, "catalog.band") } class="mb-3 flex flex-wrap gap-2">
+		@bandChoice(f.With("status", ""), f.Status == "", "", i18n.T(ctx, "catalog.status.all"), v.Count(""), "")
+		@bandChoice(f.With("status", "attention"), f.Status == "attention", "stale", i18n.T(ctx, "catalog.status.attention"), v.Count("attention"), statusTip(ctx, "attention"))
+		for _, st := range catalogStatuses {
+			@bandChoice(f.With("status", string(st)), f.Status == string(st), string(st), components.StateWord(ctx, freshnessWord(string(st))), v.Count(string(st)), statusTip(ctx, string(st)))
+		}
+	</nav>
+	<div class="mb-3 flex flex-wrap items-center gap-3">
+		if len(v.Kinds) > 1 {
+			<div role="group" aria-label={ i18n.T(ctx, "catalog.kind") } class="inline-flex h-8 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-card border border-line bg-surface p-0.5">
+				@langOption(f.With("kind", ""), f.Kind == "") {
+					{ i18n.T(ctx, "catalog.kind.all") }
+				}
+				for _, k := range v.Kinds {
+					@langOption(f.With("kind", k), f.Kind == k) {
+						@components.Logo(kindLogo(k), 18)
+						{ components.LogoTitle(ctx, kindLogo(k)) }
+					}
+				}
+			</div>
+		}
+		if v.HasLegacy {
+			<a
+				href={ templ.SafeURL(f.With("legacy", legacyFlip(f.Legacy))) }
+				role="switch"
+				aria-checked={ boolText(f.Legacy) }
+				class="inline-flex items-center gap-2 text-[12.5px] text-ink-2"
+			>
+				<span class="switch" aria-checked={ boolText(f.Legacy) }><span class="switch-knob" aria-hidden="true"></span></span>
+				{ i18n.T(ctx, "catalog.legacy") }
+			</a>
+		}
+	</div>
+	if len(v.Rows) == 0 {
+		<div class="rounded-card border border-dashed border-line px-6 py-12 text-center">
+			if f.Active() {
+				<p class="text-sm text-muted">{ i18n.T(ctx, "catalog.empty.filtered") }</p>
+				<a href="/data" class="mt-2 inline-block text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.clear") }</a>
+			} else {
+				<p class="text-sm text-muted">{ i18n.T(ctx, "catalog.empty") }</p>
+			}
+		</div>
+	} else {
+		<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
+			<table class="ct w-full text-sm">
+				<thead>
+					<tr class="border-b border-line bg-parchment-soft/60 text-left">
+						@th(i18n.T(ctx, "catalog.col.target"), "pl-4")
+						@th(i18n.T(ctx, "catalog.col.status"), "")
+						@th(i18n.T(ctx, "catalog.col.writer"), "max-[860px]:hidden")
+						@th(i18n.T(ctx, "catalog.col.last"), "max-[640px]:hidden")
+						@th(i18n.T(ctx, "catalog.col.rows"), "text-right max-[1100px]:hidden")
+						@th(i18n.T(ctx, "catalog.col.recent"), "max-[1100px]:hidden")
+						@th("", "w-8 pr-4")
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-line-soft">
+					for _, r := range v.Rows {
+						@catalogRow(v, r)
+					}
+				</tbody>
+			</table>
+			<p class="border-t border-line-soft px-4 py-2.5 text-[12px] text-faint">{ i18n.T(ctx, "catalog.order") }</p>
+		</div>
+	}
+}
+
+// catalogRow is one destination. The whole row opens it (`data-href`,
+// ui.js); the target stays a real link, for the keyboard and a page with no
+// script.
+templ catalogRow(v CatalogScreen, r DataRow) {
+	{{ where, what := splitDestination(r.Target) }}
+	{{ writer, more := writerLine(r) }}
+	<tr data-href={ v.rowHref(r) } class="cursor-pointer align-top transition-colors hover:bg-hover">
+		<td class="px-2.5 py-3 pl-4">
+			<a href={ templ.SafeURL(v.rowHref(r)) } class="inline-flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[12.5px]">
+				if r.Target == "" {
+					// A gateway destination its manifest could not name is
+					// known by the stream that writes it.
+					@components.Logo("gateway", 18)
+					<span class="text-ink-2">{ WriterLine(r) }</span>
+				} else {
+					@components.Logo(kindLogo(r.Kind), 18)
+					<span class="text-faint">{ where }</span><span class="font-medium text-ink">{ what }</span>
+				}
+			</a>
+			if r.Legacy {
+				<span class="ml-1.5 rounded border border-line px-1.5 font-mono text-[10.5px] text-muted">{ i18n.T(ctx, "catalog.chip.legacy") }</span>
+			}
+			if autoTable(r.Target) {
+				<span class="ml-1.5 rounded border border-line px-1.5 font-mono text-[10.5px] text-muted">auto_table</span>
+			}
+		</td>
+		<td class="px-2.5 py-3">
+			@components.Freshness(string(r.Status))
+			if runQueued(r) {
+				<p class="mt-0.5 text-[11.5px] text-muted">{ i18n.T(ctx, "catalog.queued") }</p>
+			}
+		</td>
+		<td class="px-2.5 py-3 font-mono text-[12px] text-ink-2 max-[860px]:hidden">
+			{ writer }
+			if more > 0 {
+				<span class="ml-1 font-sans text-faint">+{ fmt.Sprint(more) }</span>
+			}
+		</td>
+		<td class="px-2.5 py-3 text-xs whitespace-nowrap text-muted max-[640px]:hidden">
+			if r.LastWhen != nil {
+				{ i18n.Since(ctx, v.Now, *r.LastWhen) }
+			} else {
+				—
+			}
+		</td>
+		<td class="px-2.5 py-3 text-right text-xs tabular-nums text-ink-2 max-[1100px]:hidden">
+			if r.LastRows != nil {
+				{ i18n.Number(ctx, *r.LastRows) }
+			} else {
+				<span title={ i18n.T(ctx, "catalog.no_rows") } class="text-faint">—</span>
+			}
+		</td>
+		<td class="px-2.5 py-3 max-[1100px]:hidden">
+			@recentCounts(r.Recent)
+		</td>
+		<td class="px-2.5 py-3 pr-4 text-right text-faint">
+			@components.Icon("chevron-right", "h-4 w-4")
+		</td>
+	</tr>
+}
+
+// recentCounts is a destination's last loads as small bars, tallest the
+// largest; a load that did not say its rows is an outline.
+templ recentCounts(counts []*int64) {
+	if len(counts) > 0 {
+		{{ peak := peakOf(counts) }}
+		<span data-recent class="inline-flex h-5 items-end gap-px" aria-hidden="true">
+			for _, c := range counts {
+				if c == nil {
+					<span class="h-full w-1 rounded-[1px] border border-line-strong"></span>
+				} else {
+					<span class="w-1 rounded-[1px] bg-bar" style={ fmt.Sprintf("height:%d%%", barHeight(*c, peak)) }></span>
+				}
+			}
+		</span>
+	}
+}
+
+// bandChoice is one choice of the status band: its shape, its word, its
+// count, and its rule as the tooltip.
+templ bandChoice(href string, current bool, status, label string, count int, tip string) {
+	<a
+		href={ templ.SafeURL(href) }
+		title={ tip }
+		data-count={ fmt.Sprint(count) }
+		if current {
+			aria-current="true"
+		}
+		class={ "inline-flex h-8 items-center gap-2 rounded-full border px-3 text-[12.5px] transition-colors",
+			templ.KV("border-ink text-ink", current), templ.KV("border-line text-ink-2 hover:border-line-strong", !current) }
+	>
+		if status != "" {
+			@components.FreshnessMark(status)
+		}
+		<span>{ label }</span>
+		<span class="font-semibold tabular-nums text-ink">{ fmt.Sprint(count) }</span>
+	</a>
+}
