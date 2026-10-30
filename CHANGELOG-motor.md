@@ -16,6 +16,21 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: a workflow's page, its head, numbers and tabs
+
+- **The line under the name** says whether the schedule is on, the project,
+  when it runs in words and cron, how many steps and dependencies, the
+  languages and tools it runs, and its tags.
+- **Five numbers over 30 days**: the days it ran without a failure (a share
+  of the days, not of the runs -- a */5 that failed once had a bad day), the
+  days with one, the mean duration, what is in progress, and the next run.
+- **Tabs**: Runs -- the last 10, or one day's with `?day=` -- with each run's
+  trigger (a manual run of a past slot says so), slot, the parameters it was
+  given that differ from the defaults, duration and when; and Accepted
+  parameters, with each one's type, default, title, description, group and
+  connector.
+- In English, Portuguese and Spanish.
+
 ### Changed: the Workflows list
 
 - **The state is one question at a time**: All, Failing (the last finished

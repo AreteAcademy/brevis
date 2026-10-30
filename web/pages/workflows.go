@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -156,22 +157,6 @@ func (f Filter) tagFormHidden() [][2]string {
 	return out
 }
 
-// workflowStats are the same four numbers the dashboard opens with, scoped to
-// one workflow -- and over thirty days rather than one, because a daily job
-// has a single run in twenty-four hours and a rate over one sample is not a
-// rate.
-func workflowStats(st WorkflowStats) []components.Stat {
-	i := st.Ind
-	return []components.Stat{
-		{Label: "Success rate", Value: pct(i.Ratio(i.Succeeded)),
-			Note: fmt.Sprintf("%d of %d finished", i.Succeeded, i.Succeeded+i.Failed)},
-		{Label: "Failure rate", Value: pct(i.Ratio(i.Failed)), Note: failureNote(i.Failed)},
-		{Label: "Mean duration", Value: meanValue(i.MeanDuration),
-			Note: fmt.Sprintf("over %d days", int(st.Window.Hours()/24))},
-		{Label: "Open", Value: fmt.Sprint(i.Running + i.Pending), Note: openNote(i)},
-	}
-}
-
 // scheduleZone is the schedule's timezone, when the summary was read.
 func scheduleZone(sum *postgres.WorkflowSummary) string {
 	if sum == nil {
@@ -242,24 +227,11 @@ type WorkflowPage struct {
 	Step *StepLine
 	// Now is the page's clock, for "next run in 12m".
 	Now time.Time
-}
-
-// NextRunText is when a workflow runs next, as its KPI cell says it
-// (screen-workflow-v2 WV2): "in 12m" and the UTC time beside it while the
-// schedule runs; "paused" or "manual" otherwise. From the server's clock, so
-// it is as fresh as the page; nothing ticks.
-func NextRunText(sum *postgres.WorkflowSummary, now time.Time) (value, sub string) {
-	switch {
-	case sum == nil:
-		return "—", ""
-	case !sum.HasSchedule:
-		return "manual", ""
-	case !sum.Active:
-		return "paused", ""
-	case sum.NextRun == nil:
-		return "—", ""
-	}
-	return "in " + untilText(sum.NextRun.Sub(now)), sum.NextRun.UTC().Format("Jan 2 15:04") + " UTC"
+	// Langs is every language and tool the workflow runs, as logo keys.
+	Langs []string
+	// Day narrows the Runs tab to one UTC day -- a square of the calendar;
+	// nil is the last runs.
+	Day *time.Time
 }
 
 // untilText is a wait rounded to what a person plans by: minutes under an
@@ -280,11 +252,97 @@ func untilText(d time.Duration) string {
 	return fmt.Sprintf("%dd", int(d.Hours()/24))
 }
 
-// workflowPageStats are the four numbers and, fifth, when it runs next.
-func workflowPageStats(p WorkflowPage) []components.Stat {
-	value, sub := NextRunText(p.Sum, p.Now)
-	return append(workflowStats(p.Stats), components.Stat{Label: "Next run", Value: value, Note: sub})
+// nextRunText is when a schedule fires next, rounded to what a person plans
+// by -- "in 9h 28m" -- with the UTC time under it. Computed on the server;
+// nothing ticks.
+func nextRunText(ctx context.Context, next, now time.Time) (value, sub string) {
+	return i18n.T(ctx, "time.in", "span", untilText(next.Sub(now))), i18n.Date(ctx, next.UTC(), "brief") + " UTC"
 }
+
+// kpiDays is the window of the workflow page's numbers.
+const kpiDays = 30
+
+// workflowPageStats are the workflow's five numbers over thirty days
+// (screen-workflows T5): how many of the days it ran had no failure, how many
+// had one, how long a run takes, what runs now, and when it fires next. Days,
+// not runs: a */5 that failed once among 288 runs had a bad day, and a rate
+// over runs would call it 99.7%.
+func workflowPageStats(ctx context.Context, p WorkflowPage) []components.Stat {
+	ran, failed := 0, 0
+	since := p.Now.UTC().Truncate(24*time.Hour).AddDate(0, 0, -(kpiDays - 1))
+	for _, d := range p.Stats.Days {
+		if d.Date.Before(since) || d.Total == 0 {
+			continue
+		}
+		ran++
+		if d.Failed > 0 {
+			failed++
+		}
+	}
+	last30 := i18n.T(ctx, "workflow.kpi.last_days", "days", i18n.Number(ctx, kpiDays))
+	clean := components.Stat{Label: i18n.T(ctx, "workflow.kpi.clean"), Dot: "bg-state-success", Value: "—", Note: last30}
+	if ran > 0 {
+		clean.Value = percent(ctx, ran-failed, ran)
+		clean.Note = i18n.T(ctx, "workflow.kpi.of_days", "n", i18n.Number(ctx, int64(ran-failed)), "total", i18n.Number(ctx, int64(ran)))
+		clean.Bar = []components.BarSegment{{Share: float64(ran-failed) / float64(ran), Class: "bg-state-success"}}
+	}
+	i := p.Stats.Ind
+	open := components.Stat{Label: i18n.T(ctx, "workflow.kpi.open"), Value: i18n.Number(ctx, int64(i.Running+i.Pending)),
+		Note: i18n.T(ctx, "workflow.kpi.nothing_running")}
+	if i.Running+i.Pending > 0 {
+		open.Note = i18n.T(ctx, "workflow.kpi.open_note", "running", i18n.Number(ctx, int64(i.Running)), "queued", i18n.Number(ctx, int64(i.Pending)))
+	}
+	next := components.Stat{Label: i18n.T(ctx, "workflow.kpi.next"), Value: "—"}
+	switch sum := p.Sum; {
+	case sum == nil:
+	case !sum.HasSchedule:
+		next.Value = i18n.T(ctx, "workflows.manual_only")
+	case !sum.Active:
+		next.Value = i18n.T(ctx, "workflows.paused")
+	case sum.NextRun != nil:
+		next.Value, next.Note = nextRunText(ctx, *sum.NextRun, p.Now)
+	}
+	return []components.Stat{
+		clean,
+		{Label: i18n.T(ctx, "workflow.kpi.failed_days"), Dot: "bg-state-failed", Value: i18n.Number(ctx, int64(failed)), Note: last30},
+		{Label: i18n.T(ctx, "workflow.kpi.mean"), Value: meanValue(i.MeanDuration), Note: last30},
+		open,
+		next,
+	}
+}
+
+// triggerOf is a run's trigger as the Runs tab says it: a manual run of a
+// past slot is not a click like any other.
+func triggerOf(ctx context.Context, r postgres.RunSummary) string {
+	if r.TriggerType == "manual" && r.LogicalDate != nil {
+		return i18n.T(ctx, "workflow.runs.manual_slot")
+	}
+	return triggerWord(ctx, r.TriggerType)
+}
+
+// givenParams are the values a run was given that differ from the current
+// defaults, as key=value, sorted: what made it different. A value equal to
+// its default is not news, and one the definition no longer declares still
+// is.
+func givenParams(w wf.Workflow, given map[string]string) []string {
+	defaults := map[string]string{}
+	for _, p := range w.Params {
+		defaults[p.Name] = p.Default
+	}
+	var out []string
+	for k, v := range given {
+		if d, ok := defaults[k]; ok && d == v {
+			continue
+		}
+		out = append(out, k+"="+v)
+	}
+	slices.Sort(out)
+	return out
+}
+
+// workflowTabsCSS shows the workflow page's tabs by the hash, before the
+// first paint.
+func workflowTabsCSS() string { return hashTabsCSS("workflow-tabs", "runs", "params") }
 
 // langsShown is how many marks the language column draws; the rest are a
 // count.

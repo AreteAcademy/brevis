@@ -28,6 +28,10 @@ type RunSummary struct {
 	StartedAt    *time.Time
 	Duration     *time.Duration
 	Err          string
+
+	// Params are the values the run was given. Read only by WorkflowHistory:
+	// the lists that do not show them do not pay for them.
+	Params map[string]string
 }
 
 // WorkflowSummary joins the workflow, its schedule and the last run's state.
@@ -499,22 +503,6 @@ func (r *ReadRepo) Schedules(ctx context.Context) ([]ScheduleSummary, error) {
 	return out, rows.Err()
 }
 
-// WorkflowRuns lists the runs of a single workflow, for its own screen.
-func (r *ReadRepo) WorkflowRuns(ctx context.Context, slug string, limite int) ([]RunSummary, error) {
-	rows, err := r.pool.Query(ctx, `
-		SELECT id::text, workflow_slug, status, trigger_type, attempt,
-		       logical_date, criado_em, iniciado_em, terminado_em, erro
-		FROM runs
-		WHERE workflow_slug = $1
-		ORDER BY criado_em DESC
-		LIMIT $2`, slug, limite)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return varrerRuns(rows)
-}
-
 // RunFilter is the run screen's query. Empty fields do not filter.
 type RunFilter struct {
 	State string
@@ -719,6 +707,49 @@ func (r *ReadRepo) Connects(ctx context.Context, since time.Time) (map[string][]
 			return nil, err
 		}
 		out[slug] = append(out[slug], scheme)
+	}
+	return out, rows.Err()
+}
+
+// WorkflowHistory is a workflow's runs, newest first, with the values each
+// was given: the workflow page's Runs tab. With a day, only that day's -- a
+// UTC day by when the run was created, the same day the calendar counts it
+// in.
+func (r *ReadRepo) WorkflowHistory(ctx context.Context, slug string, day *time.Time, limit int) ([]RunSummary, error) {
+	var from, to *time.Time
+	if day != nil {
+		f := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC)
+		t := f.Add(24 * time.Hour)
+		from, to = &f, &t
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT id::text, workflow_slug, status, trigger_type, attempt,
+		       logical_date, criado_em, iniciado_em, terminado_em, erro, params
+		FROM runs
+		WHERE workflow_slug = $1
+		  AND ($2::timestamptz IS NULL OR criado_em >= $2)
+		  AND ($3::timestamptz IS NULL OR criado_em < $3)
+		ORDER BY criado_em DESC
+		LIMIT $4`, slug, from, to, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []RunSummary
+	for rows.Next() {
+		var r RunSummary
+		var ini, end *time.Time
+		if err := rows.Scan(&r.ID, &r.WorkflowSlug, &r.Status, &r.TriggerType, &r.Attempt,
+			&r.LogicalDate, &r.CreatedAt, &ini, &end, &r.Err, &r.Params); err != nil {
+			return nil, err
+		}
+		r.StartedAt = ini
+		if ini != nil && end != nil {
+			d := end.Sub(*ini)
+			r.Duration = &d
+		}
+		out = append(out, r)
 	}
 	return out, rows.Err()
 }

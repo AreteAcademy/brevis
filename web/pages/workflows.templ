@@ -551,28 +551,37 @@ templ workflowMeta(p WorkflowPage) {
 	<p data-workflow-meta class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
 		if sum != nil && sum.HasSchedule {
 			if sum.Active {
-				<span class="inline-flex items-center gap-1.5 text-state-success"><span class="h-[7px] w-[7px] rounded-full bg-state-success"></span>Active</span>
+				<span class="inline-flex items-center gap-1.5 text-state-success"><span class="h-[7px] w-[7px] rounded-full bg-state-success"></span>{ i18n.T(ctx, "workflow.active") }</span>
 			} else {
-				<span class="inline-flex items-center gap-1.5 text-muted"><span class="h-[7px] w-[7px] rounded-full bg-state-pending"></span>Paused</span>
+				<span class="inline-flex items-center gap-1.5 text-muted"><span class="h-[7px] w-[7px] rounded-full bg-state-pending"></span>{ i18n.T(ctx, "workflow.paused") }</span>
 			}
 			<span class="text-faint">·</span>
 		}
 		if sum != nil && sum.Project != "" {
-			<a href={ templ.SafeURL("/workflows?project=" + sum.Project) } class="text-ink-2 hover:underline">{ sum.Project }</a>
+			<span>{ i18n.T(ctx, "workflows.chip.project") } <a href={ templ.SafeURL("/workflows?project=" + url.QueryEscape(sum.Project)) } class="font-mono text-ink-2 hover:underline">{ sum.Project }</a></span>
 			<span class="text-faint">·</span>
 		}
 		if w.Schedule == "" {
-			<span>manual trigger only</span>
+			<span>{ i18n.T(ctx, "workflows.manual_only") }</span>
 		} else {
-			<span class="font-mono text-[12px] text-ink">{ w.Schedule }</span>
-			if words := CronText(w.Schedule); words != "" {
-				<span>{ words }{ zoneSuffix(scheduleZone(sum)) }</span>
+			if words := CronTextIn(ctx, w.Schedule); words != "" {
+				<span class="text-ink">{ words }{ zoneSuffix(scheduleZone(sum)) }</span>
 			}
+			<span class="font-mono text-[12px] text-faint">{ w.Schedule }</span>
 		}
 		<span class="text-faint">·</span>
-		<span>{ count(len(w.Nodes), "step", "steps") } · { count(len(w.Edges), "dependency", "dependencies") }</span>
+		<span>{ i18n.N(ctx, "workflows.steps", len(w.Nodes)) } · { i18n.N(ctx, "workflow.dependencies", len(w.Edges)) }</span>
+		if len(p.Langs) > 0 {
+			<span class="text-faint">·</span>
+			for _, k := range p.Langs {
+				<span class="inline-flex items-center gap-1 text-ink-2">
+					@components.Logo(k, 18)
+					{ components.LogoTitle(ctx, k) }
+				</span>
+			}
+		}
 		for _, t := range w.Tags {
-			@components.Tag(t, "/workflows?tag="+t)
+			@components.Tag(t, "/workflows?tag="+url.QueryEscape(t))
 		}
 	</p>
 }
@@ -638,7 +647,7 @@ func about(w wf.Workflow) templ.Component {
 }
 
 templ Workflow(p WorkflowPage) {
-	{{ w, latest, st, graph := p.Def, p.Latest, p.Stats, p.Graph }}
+	{{ w, st, graph := p.Def, p.Stats, p.Graph }}
 	@layouts.Base(layouts.Page{
 		Title: w.Slug, Kicker: "Workflow", Active: "workflows", Mono: true,
 		Island: workflowIsland(p), Actions: workflowActions(p),
@@ -658,12 +667,11 @@ templ Workflow(p WorkflowPage) {
 		} else {
 			@runNow(RunNow{Slug: w.Slug, Now: p.Now})
 		}
-		// The same four numbers the dashboard opens with, scoped to this
-		// workflow -- and over thirty days rather than one, because a daily job
-		// has a single run in twenty-four hours and a rate over one sample is
-		// not a rate.
+		// Five numbers over thirty days rather than one: a daily job has a
+		// single run in twenty-four hours, and a rate over one sample is not a
+		// rate.
 		<div class="mb-3">
-			@components.Stats(workflowPageStats(p))
+			@components.Stats(workflowPageStats(ctx, p))
 		</div>
 		// ONE STEP IS A LINE, BESIDE ITS CALENDAR (screen-workflow-v2 WV3);
 		// two or more are the graph, the calendar under it.
@@ -678,27 +686,145 @@ templ Workflow(p WorkflowPage) {
 				@yearOfRuns(st, w.Slug)
 			</div>
 		}
+		@workflowTabs(p)
 		if len(st.Load) > 0 {
 			<section class="mt-3">
-				@components.Panel("What it loads", "") {
+				@components.Panel(i18n.T(ctx, "workflow.load.title"), "") {
 					<div class="px-3.5 py-3">
 						<p class="mb-3 text-[12.5px] text-muted">
-							{ components.TrendWindow(st.Load) }. The calendar above answers whether
-							it ran; this answers whether it is getting worse.
+							{ components.TrendWindow(st.Load) }. { i18n.T(ctx, "workflow.load.lead") }
 						</p>
 						@components.LoadTrend(components.Trend(st.Load), components.TrendWindow(st.Load))
 					</div>
 				}
 			</section>
 		}
-		if len(latest) > 0 {
-			<section data-workflow-runs class="mt-3">
-				@components.PanelLink("Runs", fmt.Sprint(len(latest)), "/runs?workflow="+w.Slug, "see all") {
-					@runsTableWith(latest, Pagination{}, runsOpts{Bare: true})
-				}
-			</section>
-		}
 	}
+}
+
+// workflowTabs are the page's tabs (screen-workflows T5): its runs -- the
+// last ten, or a day's -- and the parameters it accepts. Shown by the hash,
+// and stacked with their headings where no script runs.
+templ workflowTabs(p WorkflowPage) {
+	{{ w := p.Def }}
+	@templ.Raw("<style>" + workflowTabsCSS() + "</style>")
+	<div id="workflow-tabs" data-hash-tabs class="mt-3">
+		<div data-hash-tabs-bar data-js class="mb-3">
+			@components.Tabs(i18n.T(ctx, "workflow.tabs"), []components.Tab{
+				{Key: "runs", Label: i18n.T(ctx, "workflow.tab.runs"), Count: fmt.Sprint(len(p.Latest)), Selected: true},
+				{Key: "params", Label: i18n.T(ctx, "workflow.tab.params"), Count: fmt.Sprint(len(w.Params))},
+			})
+		</div>
+		<section id="runs" data-tab-panel="runs" data-workflow-runs class="rounded-card border border-line bg-surface shadow-warm-sm">
+			<h2 data-panel-heading class="px-4 pt-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "workflow.tab.runs") }</h2>
+			<div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-[12.5px] text-muted">
+				if p.Day != nil {
+					<span data-day-filter class="inline-flex items-center gap-1.5 rounded-card border border-line-strong bg-surface-2 px-2.5 py-0.5 text-ink">
+						{ i18n.Date(ctx, *p.Day, "day") }
+						<a href={ templ.SafeURL("/workflows/" + url.PathEscape(w.Slug) + "#runs") } aria-label={ i18n.T(ctx, "workflow.runs.clear_day") } class="text-muted hover:text-ink">&times;</a>
+					</span>
+				} else {
+					<span>{ i18n.T(ctx, "workflow.runs.lead") }</span>
+				}
+				<a href={ templ.SafeURL("/runs?workflow=" + url.QueryEscape(w.Slug)) } class="text-ink hover:underline">{ i18n.T(ctx, "workflow.runs.all") } &rarr;</a>
+			</div>
+			if len(p.Latest) == 0 {
+				<p class="border-t border-line-soft px-4 py-6 text-center text-[12.5px] text-muted">{ i18n.T(ctx, "workflow.runs.none") }</p>
+			} else {
+				<div class="overflow-x-auto border-t border-line-soft">
+					<table class="ct w-full text-sm">
+						<thead>
+							<tr class="border-b border-line bg-parchment-soft/60 text-left">
+								@th(i18n.T(ctx, "runs.col.state"), "pl-4")
+								@th(i18n.T(ctx, "runs.col.trigger"), "")
+								@th(i18n.T(ctx, "runs.col.slot"), "")
+								@th(i18n.T(ctx, "workflow.runs.params"), "")
+								@th(i18n.T(ctx, "runs.col.duration"), "")
+								@th(i18n.T(ctx, "workflow.runs.when"), "pr-4 text-right")
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-line-soft">
+							for _, r := range p.Latest {
+								<tr class="transition-colors hover:bg-hover">
+									<td class="px-2.5 py-2.5 pl-4">
+										<a href={ templ.SafeURL("/runs/" + r.ID) } class="hover:underline">
+											@components.State(r.Status)
+										</a>
+									</td>
+									<td class="px-2.5 py-2.5 text-xs text-muted">{ triggerOf(ctx, r) }</td>
+									<td class="px-2.5 py-2.5 font-mono text-xs tabular-nums text-ink-2">@components.ShortStamp(r.LogicalDate)</td>
+									<td class="px-2.5 py-2.5 font-mono text-xs text-ink-2">
+										if given := givenParams(w, r.Params); len(given) > 0 {
+											{ strings.Join(given, " ") }
+										} else {
+											<span class="font-sans text-muted">{ i18n.T(ctx, "workflow.runs.default") }</span>
+										}
+									</td>
+									<td class="px-2.5 py-2.5 text-xs tabular-nums text-muted">{ components.Duration(r.Duration) }</td>
+									<td class="px-2.5 py-2.5 pr-4 text-right text-xs text-muted">{ i18n.Since(ctx, p.Now, r.CreatedAt) }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			}
+		</section>
+		<section id="params" data-tab-panel="params" class="rounded-card border border-line bg-surface shadow-warm-sm">
+			<h2 data-panel-heading class="px-4 pt-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "workflow.tab.params") }</h2>
+			if len(w.Params) == 0 {
+				<p class="px-4 py-6 text-center text-[12.5px] text-muted">
+					{ i18n.T(ctx, "workflow.params.none") } <code class="font-mono text-ink-2">$BREVIS_AUTO_*</code>.
+				</p>
+			} else {
+				<div class="overflow-x-auto">
+					<table class="ct w-full text-sm">
+						<thead>
+							<tr class="border-b border-line bg-parchment-soft/60 text-left">
+								@th(i18n.T(ctx, "workflow.params.name"), "pl-4")
+								@th(i18n.T(ctx, "workflow.params.type"), "")
+								@th(i18n.T(ctx, "workflow.params.default"), "")
+								@th(i18n.T(ctx, "workflow.params.what"), "pr-4")
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-line-soft">
+							for _, prm := range w.Params {
+								<tr>
+									<td class="px-2.5 py-2.5 pl-4 align-top">
+										<span class="inline-flex items-center gap-1.5 font-mono text-[12.5px] text-ink">
+											{ prm.Name }
+											if prm.Uses != "" {
+												@components.Logo(prm.Uses, 18)
+											}
+										</span>
+										if prm.Group != "" {
+											<p class="mt-0.5 text-[11.5px] text-faint">{ prm.Group }</p>
+										}
+									</td>
+									<td class="px-2.5 py-2.5 align-top font-mono text-xs text-muted">{ string(prm.Type) }</td>
+									<td class="px-2.5 py-2.5 align-top font-mono text-xs text-ink-2">
+										if prm.Default != "" {
+											{ prm.Default }
+										} else {
+											<span class="font-sans text-muted">{ i18n.T(ctx, "workflow.params.required") }</span>
+										}
+									</td>
+									<td class="px-2.5 py-2.5 pr-4 align-top text-[12.5px] text-ink-2">
+										if prm.Title != "" {
+											<strong class="font-medium text-ink">{ prm.Title }.</strong>
+										}
+										{ prm.Description }
+										if prm.Warn != "" {
+											<p class="mt-0.5 text-[11.5px] text-warn">{ prm.Warn }</p>
+										}
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			}
+		</section>
+	</div>
 }
 
 // runAction is the page's verb. With parameters it is "Run…", a link to the

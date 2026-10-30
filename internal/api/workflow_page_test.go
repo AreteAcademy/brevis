@@ -19,16 +19,22 @@ type workflowReads struct {
 	readsFake
 	ind  postgres.Indicators
 	runs []postgres.RunSummary
+	days []postgres.Day
+	// day is the day the history was asked for, when one was.
+	day **time.Time
 }
 
-func (f workflowReads) WorkflowRuns(context.Context, string, int) ([]postgres.RunSummary, error) {
+func (f workflowReads) WorkflowHistory(_ context.Context, _ string, day *time.Time, _ int) ([]postgres.RunSummary, error) {
+	if f.day != nil {
+		*f.day = day
+	}
 	return f.runs, nil
 }
 func (f workflowReads) IndicatorsFor(context.Context, time.Duration, string) (postgres.Indicators, error) {
 	return f.ind, nil
 }
 func (f workflowReads) RunsPerDay(context.Context, string, int) ([]postgres.Day, error) {
-	return nil, nil
+	return f.days, nil
 }
 func (f workflowReads) LoadTrend(context.Context, string, int) ([]postgres.LoadDay, error) {
 	return nil, nil
@@ -50,7 +56,7 @@ func TestAWorkflowPageNamesItsProjectScheduleAndState(t *testing.T) {
 	ui := workflowPageUI(
 		postgres.WorkflowSummary{Slug: "daily_sales", Project: "analytics", Cron: "0 4 * * *", HasSchedule: true, Active: false},
 		wf.Workflow{Slug: "daily_sales", Schedule: "0 4 * * *", Tags: []string{"sales"},
-			Nodes: []wf.Node{{ID: "a", Run: "echo a"}, {ID: "b", Run: "echo b"}}, Edges: []wf.Edge{{From: "a", To: "b"}}},
+			Nodes: []wf.Node{{ID: "a", Run: "python a.py"}, {ID: "b", Run: "dbt build"}}, Edges: []wf.Edge{{From: "a", To: "b"}}},
 	)
 	_, body := get(t, ui, "/workflows/daily_sales")
 	if strings.Contains(body, "data-eyebrow") {
@@ -61,7 +67,8 @@ func TestAWorkflowPageNamesItsProjectScheduleAndState(t *testing.T) {
 		t.Fatal("the page has no meta line")
 	}
 	meta := body[at : at+strings.Index(body[at:], "</p>")]
-	for _, want := range []string{"Paused", "analytics", "0 4 * * *", "every day at 04:00", "2 steps", "1 dependency", "sales"} {
+	for _, want := range []string{"Paused", "analytics", "0 4 * * *", "every day at 04:00", "2 steps", "1 dependency", "sales",
+		`aria-label="Python"`, ">Python<", `aria-label="dbt"`} {
 		if !strings.Contains(meta, want) {
 			t.Errorf("the meta line does not say %q", want)
 		}
@@ -96,13 +103,23 @@ func TestAScheduleIsPausedFromItsPage(t *testing.T) {
 	}
 }
 
-// THE STATS STRIP CARRIES THE SAME FOUR NUMBERS THE CARDS DID: success and
-// failure over what finished, the mean duration, and what is open.
-func TestAWorkflowPageStatsAreTheSameFourNumbers(t *testing.T) {
-	ui := workflowPageUI(
-		postgres.WorkflowSummary{Slug: "daily_sales", Project: "analytics"},
-		wf.Workflow{Slug: "daily_sales"},
-	)
+// FIVE NUMBERS, OVER THIRTY DAYS (screen-workflows T5): how many of the days
+// it ran had no failure, how many had one, how long a run takes, what runs
+// now, and when it fires next. Days, not runs: a */5 that failed once in a
+// day of 288 runs had a bad day, and a rate over runs would call it 99.7%.
+func TestAWorkflowPageHasFiveNumbers(t *testing.T) {
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	reads := workflowReads{
+		readsFake: readsFake{workflows: []postgres.WorkflowSummary{{Slug: "daily_sales", Project: "analytics"}}},
+		ind:       postgres.Indicators{Succeeded: 9, Failed: 1, Running: 1, Pending: 2, MeanDuration: 90 * time.Second},
+		days: []postgres.Day{
+			{Date: today.AddDate(0, 0, -40), Total: 1, Failed: 1}, // older than the window
+			{Date: today.AddDate(0, 0, -3), Total: 4, Succeeded: 4},
+			{Date: today.AddDate(0, 0, -2), Total: 4, Succeeded: 3, Failed: 1},
+			{Date: today.AddDate(0, 0, -1), Total: 4, Succeeded: 4},
+		},
+	}
+	ui := api.NewUI(reads, defsFake{w: wf.Workflow{Slug: "daily_sales"}}, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
 	_, body := get(t, ui, "/workflows/daily_sales")
 	at := strings.Index(body, "<dl")
 	if at < 0 {
@@ -110,10 +127,11 @@ func TestAWorkflowPageStatsAreTheSameFourNumbers(t *testing.T) {
 	}
 	stats := body[at : at+strings.Index(body[at:], "</dl>")]
 	for _, want := range []string{
-		"Success rate", "90.0%", "9 of 10 finished",
-		"Failure rate", "10.0%", "1 run failed",
+		"Days without failure", "66.7%", "2 of 3 days",
+		"Days with failure", ">1<", "last 30 days",
 		"Mean duration", "1m 30s",
-		"Open", ">3<", "1 running, 2 queued",
+		"In progress", ">3<", "1 running, 2 queued",
+		"Next run", "manual only",
 	} {
 		if !strings.Contains(stats, want) {
 			t.Errorf("the Stats strip does not say %q", want)
@@ -206,39 +224,92 @@ func TestAOneStepWorkflowShowsItsStep(t *testing.T) {
 	}
 }
 
-// THE WORKFLOW'S RUNS DO NOT NAME THE WORKFLOW (screen-workflow-v2 WV4): a
-// panel with its count and "see all", one row per run with its state (the
-// link to the run), trigger, slot, duration and when -- and no Workflow
-// column repeating the page's own name. /runs keeps it.
-func TestAWorkflowsRunsDropTheWorkflowColumn(t *testing.T) {
+// THE RUNS TAB IS THE LAST TEN, OR A DAY'S (screen-workflows T5): state,
+// trigger -- a manual run of a past slot says so -- slot, the parameters it
+// was given that differ from the defaults, duration and when. No Workflow
+// column repeating the page's own name; /runs keeps it.
+func TestAWorkflowsRunsTabSaysWhatEachRunWasGiven(t *testing.T) {
 	created := time.Now().Add(-time.Hour)
+	slot := time.Date(2026, 10, 26, 9, 0, 0, 0, time.UTC)
 	d := 90 * time.Second
+	var asked *time.Time
 	reads := workflowReads{
 		readsFake: readsFake{workflows: []postgres.WorkflowSummary{{Slug: "daily_sales", Project: "analytics", Cron: "0 4 * * *", HasSchedule: true, Active: true}}},
-		runs: []postgres.RunSummary{{ID: "8d36ef6e-0000-0000-0000-000000000001", WorkflowSlug: "daily_sales", Status: "success",
-			TriggerType: "schedule", CreatedAt: created, Duration: &d}},
+		runs: []postgres.RunSummary{
+			{ID: "8d36ef6e-0000-0000-0000-000000000001", WorkflowSlug: "daily_sales", Status: "success",
+				TriggerType: "schedule", CreatedAt: created, Duration: &d, Params: map[string]string{"full": "false"}},
+			{ID: "8d36ef6e-0000-0000-0000-000000000002", WorkflowSlug: "daily_sales", Status: "failed",
+				TriggerType: "manual", LogicalDate: &slot, CreatedAt: created, Params: map[string]string{"full": "true", "region": "br"}},
+		},
+		day: &asked,
 	}
-	ui := api.NewUI(reads, defsFake{w: wf.Workflow{Slug: "daily_sales", Schedule: "0 4 * * *"}}, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+	def := wf.Workflow{Slug: "daily_sales", Schedule: "0 4 * * *", Params: []wf.Param{
+		{Name: "full", Type: wf.ParamBool, Default: "false"}, {Name: "region", Type: wf.ParamString, Default: "br"},
+	}}
+	ui := api.NewUI(reads, defsFake{w: def}, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
 	_, body := get(t, ui, "/workflows/daily_sales")
 
-	at := strings.Index(body, "data-workflow-runs")
+	at := strings.Index(body, `<section id="runs"`)
 	if at < 0 {
-		t.Fatal("the runs are not a panel")
+		t.Fatal("there is no Runs tab")
 	}
-	runs := body[at:]
+	runs := body[at : at+strings.Index(body[at:], "</section>")]
 	if strings.Contains(runs[:strings.Index(runs, "</thead>")], ">Workflow<") {
 		t.Error("the workflow's own runs still name the workflow")
 	}
-	for _, want := range []string{`href="/runs/8d36ef6e-0000-0000-0000-000000000001"`, "schedule", "1m 30s", `href="/runs?workflow=daily_sales"`, ">Runs<"} {
+	for _, want := range []string{
+		`href="/runs/8d36ef6e-0000-0000-0000-000000000001"`, "schedule", "1m 30s", ">default<",
+		"manual · slot", "full=true", `href="/runs?workflow=daily_sales"`,
+	} {
 		if !strings.Contains(runs, want) {
-			t.Errorf("the runs panel lost %s", want)
+			t.Errorf("the Runs tab lost %s", want)
 		}
+	}
+	if strings.Contains(runs, "region=br") {
+		t.Error("a value equal to its default is listed as given")
+	}
+	if asked != nil {
+		t.Errorf("the page asked for a day with none chosen: %v", asked)
+	}
+
+	_, body = get(t, ui, "/workflows/daily_sales?day=2026-10-26")
+	if asked == nil || asked.Format("2006-01-02") != "2026-10-26" {
+		t.Fatalf("the day asked = %v", asked)
+	}
+	if !strings.Contains(body, "data-day-filter") || !strings.Contains(body, `href="/workflows/daily_sales#runs"`) {
+		t.Error("a day's runs do not say the day, with a way out")
 	}
 
 	// NOTHING THE PAGE SHOWED IS LOST: the meta, the actions, the numbers.
-	for _, want := range []string{"analytics", "every day at 04:00", "Active", "Pause", "Success rate", "Failure rate", "Mean duration", "Open", "Next run", "A year of runs"} {
+	for _, want := range []string{"analytics", "every day at 04:00", "Active", "Pause", "Days without failure", "Next run", "A year of runs"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the workflow page lost %q", want)
 		}
+	}
+}
+
+// THE PARAMETERS TAB IS WHAT THE WORKFLOW ACCEPTS: name, type, default and
+// what it is for -- its title, then its description -- with its group and the
+// connector it bills. A workflow with none says what every step still gets.
+func TestAWorkflowsParametersTabIsWhatItAccepts(t *testing.T) {
+	def := wf.Workflow{Slug: "daily_sales", Params: []wf.Param{
+		{Name: "max_queries", Type: wf.ParamInteger, Default: "300", Title: "Queries", Description: "How many queries it may run.", Group: "Cost", Uses: "bigquery"},
+	}}
+	_, body := get(t, workflowPageUI(postgres.WorkflowSummary{Slug: "daily_sales"}, def), "/workflows/daily_sales")
+	at := strings.Index(body, `<section id="params"`)
+	if at < 0 {
+		t.Fatal("there is no Parameters tab")
+	}
+	tab := body[at : at+strings.Index(body[at:], "</section>")]
+	for _, want := range []string{"max_queries", "integer", "300", "Queries", "How many queries it may run.", "Cost", `aria-label="Google BigQuery"`} {
+		if !strings.Contains(tab, want) {
+			t.Errorf("the Parameters tab has no %s", want)
+		}
+	}
+
+	_, body = get(t, workflowPageUI(postgres.WorkflowSummary{Slug: "plain"}, wf.Workflow{Slug: "plain"}), "/workflows/plain")
+	at = strings.Index(body, `<section id="params"`)
+	if at < 0 || !strings.Contains(body[at:], "$BREVIS_AUTO_*") {
+		t.Error("a workflow with no parameters does not say what every step still gets")
 	}
 }

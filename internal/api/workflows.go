@@ -133,6 +133,15 @@ func validListState(s string) string {
 
 var logoKey = regexp.MustCompile(`^[a-z0-9-]{1,40}$`)
 
+// dayOf is a `day=` parameter as a UTC day, or nil when it is not one.
+func dayOf(s string) *time.Time {
+	d, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return nil
+	}
+	return &d
+}
+
 // validLang is a logo key, or nothing.
 func validLang(s string) string {
 	if logoKey.MatchString(s) {

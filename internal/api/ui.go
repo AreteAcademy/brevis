@@ -59,7 +59,9 @@ type Leitura interface {
 	Runs(ctx context.Context, f postgres.RunFilter) ([]postgres.RunSummary, error)
 	CountRuns(ctx context.Context, f postgres.RunFilter) (int, error)
 	CountRunsByState(ctx context.Context, f postgres.RunFilter) (map[string]int, error)
-	WorkflowRuns(ctx context.Context, slug string, limite int) ([]postgres.RunSummary, error)
+	// WorkflowHistory is a workflow's runs with their params, newest first;
+	// with a day, that UTC day's.
+	WorkflowHistory(ctx context.Context, slug string, day *time.Time, limit int) ([]postgres.RunSummary, error)
 	Workflows(ctx context.Context) ([]postgres.WorkflowSummary, error)
 	// Connects is the schemes each workflow's runs wrote since a moment.
 	Connects(ctx context.Context, since time.Time) (map[string][]string, error)
@@ -1439,8 +1441,10 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	// A missing history does not block the screen: the definition is the main content.
-	latest, err := u.leitura.WorkflowRuns(r.Context(), slug, 10)
+	// A missing history does not block the screen: the definition is the main
+	// content. A day -- a square of the calendar -- narrows it to that day.
+	day := dayOf(r.URL.Query().Get("day"))
+	latest, err := u.leitura.WorkflowHistory(r.Context(), slug, day, 10)
 	if err != nil {
 		u.log.Warn("the workflow's history is unavailable", "workflow", slug, "error", err)
 	}
@@ -1485,7 +1489,8 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 	if sum != nil {
 		sum.NextRun = proximaDoWorkflow(*sum, now)
 	}
-	page := pages.WorkflowPage{Def: def, Sum: sum, Latest: latest, Stats: stats, Now: now}
+	page := pages.WorkflowPage{Def: def, Sum: sum, Latest: latest, Stats: stats, Now: now,
+		Langs: runsIn(def, 0), Day: day}
 	// A one-step workflow shows its step as a line, and has no graph to embed.
 	if oneStep(def) {
 		page.Step = stepLineOf(def, nil)
