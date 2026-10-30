@@ -1,6 +1,7 @@
 package diagnosis
 
 import (
+	"math"
 	"runtime"
 	"strings"
 	"testing"
@@ -149,21 +150,29 @@ func TestTheExcerptIsUpToFiveLinesBeforeTheCause(t *testing.T) {
 // A 10 MB LOG IS READ FROM THE END, and nothing of it is copied: the cause
 // sits near the end, and a screen should not pay for the whole log to show
 // one line.
+//
+// TotalAlloc counts the whole process, so what the runtime allocates while
+// Why runs is counted too: on CI that once came to 75 KB in a run that copied
+// nothing. Why is called once before measuring, and the least of a few
+// measurements is the one judged -- a copy of the log would be in every one.
 func TestALargeLogIsNotCopied(t *testing.T) {
 	log := strings.Repeat("fetched a page of rows from the upstream api\n", 10<<20/45) + "Error: boom\n"
 	steps := []StepAttempt{failed("load", 0, log)}
 
-	var before, after runtime.MemStats
-	runtime.GC()
-	runtime.ReadMemStats(&before)
-	got := Why(steps, "")
-	runtime.ReadMemStats(&after)
-
-	if got == nil || got.Line != "Error: boom" {
+	if got := Why(steps, ""); got == nil || got.Line != "Error: boom" {
 		t.Fatalf("Why = %+v", got)
 	}
-	if n := after.TotalAlloc - before.TotalAlloc; n > 64<<10 {
-		t.Errorf("Why allocated %d bytes for a %d-byte log; want it read in place", n, len(log))
+	least := uint64(math.MaxUint64)
+	for range 5 {
+		var before, after runtime.MemStats
+		runtime.GC()
+		runtime.ReadMemStats(&before)
+		Why(steps, "")
+		runtime.ReadMemStats(&after)
+		least = min(least, after.TotalAlloc-before.TotalAlloc)
+	}
+	if least > 64<<10 {
+		t.Errorf("Why allocated %d bytes for a %d-byte log; want it read in place", least, len(log))
 	}
 }
 
