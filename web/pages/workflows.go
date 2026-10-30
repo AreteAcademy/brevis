@@ -310,3 +310,12 @@ func inFlight(w postgres.WorkflowSummary) bool {
 
 // rowHref is the workflow's page.
 func rowHref(slug string) string { return "/workflows/" + url.PathEscape(slug) }
+
+// createExample is the smallest workflow worth publishing, for the drawer.
+const createExample = `name: daily_orders
+schedule: "0 4 * * *"
+steps:
+  - id: load
+    run: python load.py
+  - id: build
+    run: dbt build --select orders+`

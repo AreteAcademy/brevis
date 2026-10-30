@@ -8,6 +8,7 @@ import (
 
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/internal/branding"
 	"github.com/AreteAcademy/brevis/web/components"
 	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/AreteAcademy/brevis/web/layouts"
@@ -18,7 +19,8 @@ import (
 // ---------------------------------------------------------------------------
 
 templ Workflows(v WorkflowsScreen) {
-	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "nav.workflows"), Active: "workflows"}) {
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "nav.workflows"), Active: "workflows", Actions: workflowsActions()}) {
+		@howToCreate()
 		<p class="-mt-2 mb-4 max-w-3xl text-[13.5px] text-muted">
 			{ i18n.T(ctx, "workflows.lead.before") }
 			<strong class="font-medium text-ink">{ i18n.T(ctx, "workflows.lead.strong") }</strong>
@@ -39,6 +41,49 @@ templ Workflows(v WorkflowsScreen) {
 		</form>
 		<div id="workflows-list">
 			@WorkflowsList(v)
+		</div>
+	}
+}
+
+// workflowsActions are the list's two verbs. Both open the same drawer: a
+// workflow is born in the repository and published by the CLI, and the
+// console has no form to create one. With no script they are links to the
+// documentation that says the same.
+func workflowsActions() templ.Component { return workflowsActionsT() }
+
+templ workflowsActionsT() {
+	<div class="flex items-center gap-2">
+		<a href={ templ.SafeURL(branding.DocsURL + "workflows/") } data-dialogo="how-to-create" class={ components.ButtonClass(components.ButtonSecondary, components.SizeRegular) }>
+			@components.Icon("book-open", "h-3.5 w-3.5")
+			{ i18n.T(ctx, "workflows.create.how") }
+		</a>
+		<a href={ templ.SafeURL(branding.DocsURL + "workflows/") } data-dialogo="how-to-create" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
+			@components.Icon("plus", "h-3.5 w-3.5")
+			{ i18n.T(ctx, "workflows.create.publish") }
+		</a>
+	</div>
+}
+
+// howToCreate is the drawer both actions open: the file, the two commands,
+// and where to read more.
+templ howToCreate() {
+	@components.Drawer("how-to-create", i18n.T(ctx, "workflows.create.title"), nil) {
+		<div data-dialog-body class="space-y-4 px-5 py-4 text-[13px] text-ink-2">
+			<p>{ i18n.T(ctx, "workflows.create.lead") }</p>
+			<div>
+				<p class="mb-1.5 font-medium text-ink">1. { i18n.T(ctx, "workflows.create.file") }</p>
+				@components.CodeBlock("how-to-create-yaml", createExample, nil)
+			</div>
+			<div>
+				<p class="mb-1.5 font-medium text-ink">2. { i18n.T(ctx, "workflows.create.validate") }</p>
+				@components.CodeBlock("how-to-create-validate", "brevis validate workflows/", nil)
+			</div>
+			<div>
+				<p class="mb-1.5 font-medium text-ink">3. { i18n.T(ctx, "workflows.create.publish_step") }</p>
+				@components.CodeBlock("how-to-create-publish", "brevis publish --project <project> workflows/", nil)
+				<p class="mt-1.5 text-xs text-muted">{ i18n.T(ctx, "workflows.create.publish_note") }</p>
+			</div>
+			<a href={ templ.SafeURL(branding.DocsURL + "workflows/") } class="inline-block text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.create.docs") }</a>
 		</div>
 	}
 }
@@ -158,12 +203,11 @@ templ WorkflowsList(v WorkflowsScreen) {
 // data fades; its switch, which is how it comes back, does not.
 templ workflowRow(v WorkflowsScreen, w postgres.WorkflowSummary) {
 	{{ paused := w.HasSchedule && !w.Active }}
-	{{ fade := templ.KV("opacity-[.55]", paused) }}
 	<tr data-href={ rowHref(w.Slug) } data-paused?={ paused } class="cursor-pointer align-top transition-colors hover:bg-hover">
 		<td class="py-3 pl-5 max-[520px]:hidden">
 			@interruptor(w)
 		</td>
-		<td class={ "py-3 pr-3", fade }>
+		<td class="py-3 pr-3" data-fade>
 			<div class="flex flex-wrap items-center gap-1.5">
 				<a href={ templ.SafeURL(rowHref(w.Slug)) } class="font-mono text-[13px] font-medium text-ink hover:underline">{ w.Slug }</a>
 				if v.Failing[w.Slug] {
@@ -179,7 +223,7 @@ templ workflowRow(v WorkflowsScreen, w postgres.WorkflowSummary) {
 				}
 			</p>
 		</td>
-		<td data-col-lang class={ "py-3 pr-3 max-[520px]:hidden", fade }>
+		<td data-col-lang class="py-3 pr-3 max-[520px]:hidden" data-fade>
 			if ks := v.RunsIn[w.Slug]; len(ks) > 0 {
 				<div class="flex items-center gap-2">
 					<span class="inline-flex items-center gap-1">
@@ -193,14 +237,14 @@ templ workflowRow(v WorkflowsScreen, w postgres.WorkflowSummary) {
 				<span class="text-muted">—</span>
 			}
 		</td>
-		<td data-col-connects class={ "py-3 pr-3 max-[1100px]:hidden", fade }>
+		<td data-col-connects class="py-3 pr-3 max-[1100px]:hidden" data-fade>
 			<span class="inline-flex flex-wrap items-center gap-1">
 				for _, k := range v.Connects[w.Slug] {
 					@components.Logo(k, 18)
 				}
 			</span>
 		</td>
-		<td data-col-schedule class={ "py-3 pr-3", fade }>
+		<td data-col-schedule class="py-3 pr-3" data-fade>
 			if w.Cron == "" {
 				<span class="text-xs text-muted">{ i18n.T(ctx, "workflows.manual_only") }</span>
 			} else {
@@ -223,7 +267,7 @@ templ workflowRow(v WorkflowsScreen, w postgres.WorkflowSummary) {
 				</p>
 			}
 		</td>
-		<td data-col-next class={ "py-3 pr-3 text-xs tabular-nums max-[520px]:hidden", fade }>
+		<td data-col-next class="py-3 pr-3 text-xs tabular-nums max-[520px]:hidden" data-fade>
 			if inFlight(w) {
 				<span class="text-state-running">{ i18n.T(ctx, "workflows.in_flight") }</span>
 			} else if w.NextRun != nil && !paused {
@@ -232,7 +276,7 @@ templ workflowRow(v WorkflowsScreen, w postgres.WorkflowSummary) {
 				<span class="text-muted">—</span>
 			}
 		</td>
-		<td class={ "py-3 pr-3 max-[860px]:hidden", fade }>
+		<td class="py-3 pr-3 max-[860px]:hidden" data-fade>
 			if w.LastRunID != nil {
 				@recentRuns(v.Recent[w.Slug])
 				<a href={ templ.SafeURL("/runs?workflow=" + url.QueryEscape(w.Slug)) } class="mt-1 block text-[0.7rem] tabular-nums text-muted hover:underline">
@@ -242,7 +286,7 @@ templ workflowRow(v WorkflowsScreen, w postgres.WorkflowSummary) {
 				<span class="text-xs text-muted">{ i18n.T(ctx, "workflows.never_ran") }</span>
 			}
 		</td>
-		<td class={ "py-3 pr-3 max-[1100px]:hidden", fade }>
+		<td class="py-3 pr-3 max-[1100px]:hidden" data-fade>
 			<div class="flex flex-wrap gap-1">
 				for _, t := range w.Tags {
 					@components.Tag(t, v.Filter.WithTag(t))
@@ -350,34 +394,38 @@ templ tagPopover(tags []string, f Filter) {
 	</details>
 }
 
-// interruptor pauses and resumes the schedule. It is a form, and not a checkbox
-// with JS: with no script the page stays operable, and a POST makes it clear
-// there is an effect.
+// interruptor pauses and resumes the schedule. It is a form, and not a
+// checkbox with JS: with no script the page stays operable, and a POST makes
+// it clear there is an effect. With ui.js it posts in place
+// (`form[data-toggle]`): the switch flips, the row fades, and the toast can
+// undo it.
 templ interruptor(w postgres.WorkflowSummary) {
 	if w.HasSchedule {
-		<form method="post" action={ templ.SafeURL("/workflows/" + w.Slug + "/toggle") }>
+		<form method="post" action={ templ.SafeURL("/workflows/" + w.Slug + "/toggle") } data-toggle>
 			if w.Active {
 				<button
 					type="submit"
+					role="switch"
+					aria-checked="true"
 					title={ i18n.T(ctx, "workflows.pause.tip") }
 					aria-label={ i18n.T(ctx, "workflows.pause", "workflow", w.Slug) }
-					class="flex h-5 w-9 items-center rounded-full bg-state-success/80 px-0.5 transition-colors hover:bg-state-success"
-				>
-					<span class="ml-auto h-4 w-4 rounded-full bg-surface shadow-sm"></span>
-				</button>
+					class="switch"
+					data-manual
+				><span class="switch-knob" aria-hidden="true"></span></button>
 			} else {
 				<button
 					type="submit"
+					role="switch"
+					aria-checked="false"
 					title={ i18n.T(ctx, "workflows.resume.tip") }
 					aria-label={ i18n.T(ctx, "workflows.resume", "workflow", w.Slug) }
-					class="flex h-5 w-9 items-center rounded-full bg-line px-0.5 transition-colors hover:bg-muted/40"
-				>
-					<span class="h-4 w-4 rounded-full bg-surface shadow-sm"></span>
-				</button>
+					class="switch"
+					data-manual
+				><span class="switch-knob" aria-hidden="true"></span></button>
 			}
 		</form>
 	} else {
-		<span class="block h-5 w-9 text-center text-faint" title={ i18n.T(ctx, "workflows.no_schedule.tip") }>—</span>
+		<span class="block w-[30px] text-center text-faint" title={ i18n.T(ctx, "workflows.no_schedule.tip") }>—</span>
 	}
 }
 

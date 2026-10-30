@@ -1692,6 +1692,23 @@ func (u *UI) toggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u.log.Info("schedule toggled", "workflow", slug, "active", active1)
+	ctx := i18n.WithLang(r.Context(), i18n.Negotiate(r))
+	message := i18n.T(ctx, "workflows.paused.toast", "workflow", slug)
+	if active1 {
+		message = i18n.T(ctx, "workflows.resumed.toast", "workflow", slug)
+	}
+	// The list's switch flips in place: its script asks for the outcome and
+	// the toast's words, and draws them. Anything else comes back to the page
+	// it came from, which says the same in a flash.
+	if fragment(r) == "toggle" {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(struct {
+			Active        bool
+			Message, Undo string
+		}{active1, message, i18n.T(ctx, "workflows.undo")})
+		return
+	}
+	layouts.SetFlash(w, "ok", message)
 	u.voltar(w, r)
 }
 

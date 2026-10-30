@@ -35,6 +35,12 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 - The whole row opens the workflow; a paused row fades but its switch does
   not. Narrower screens drop Connects and Tags, then the last runs.
 - An empty list says what to do, with a link that clears every filter.
+- **Pausing flips in place**, with a toast that says what it means ("does
+  not fire until it is resumed") and an Undo. With no script the page comes
+  back saying the same.
+- **How to create** and **Publish workflow** open a drawer: a workflow is born
+  in the repository and published by the CLI, with the file, `brevis
+  validate` and `brevis publish` to copy.
 - In English, Portuguese and Spanish, the pagination included.
 
 ### Added: what each workflow runs in

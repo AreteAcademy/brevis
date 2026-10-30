@@ -998,6 +998,41 @@
       });
   });
 
+  // ------------------------------------------------------------------
+  // A schedule's switch, flipped in place
+  //
+  // The Workflows list's switch is a form that posts the toggle. With the
+  // script it posts in place: the server answers whether the schedule is on
+  // and the toast's words, in the reader's language; the switch and the row
+  // follow, and the toast's Undo posts the same form again. Any failure falls
+  // back to the plain post, which comes back with a flash.
+  // ------------------------------------------------------------------
+
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form || typeof form.matches !== "function" || !form.matches("form[data-toggle]")) return;
+    if (!window.fetch) return;
+    e.preventDefault();
+    var button = form.querySelector('[role="switch"]');
+    if (button) button.disabled = true;
+    fetch(form.getAttribute("action"), { method: "POST", headers: { "X-Brevis-Fragment": "toggle" } })
+      .then(function (r) {
+        if (!r.ok) throw new Error("toggle refused");
+        return r.json();
+      })
+      .then(function (got) {
+        if (button) button.setAttribute("aria-checked", got.Active ? "true" : "false");
+        var row = form.closest("tr");
+        if (row) row.toggleAttribute("data-paused", !got.Active);
+        window.Brevis.toast(got.Message, {
+          action: got.Undo,
+          onAction: function () { form.requestSubmit(); },
+        });
+      })
+      .catch(function () { form.submit(); })
+      .then(function () { if (button) button.disabled = false; });
+  });
+
   // A form whose checkboxes are its submit (`form[data-submit-on-change]`):
   // checking one navigates at once, as its Apply button would. Only a box --
   // a text field changes on blur, and leaving one is not a choice.

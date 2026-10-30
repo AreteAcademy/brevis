@@ -36,14 +36,16 @@ func TestTheWorkflowsListHasNoEnglishLeft(t *testing.T) {
 		Failing:  map[string]bool{"resting": true},
 		Total:    9, Filtered: 3,
 	}
-	text := visibleText(drawIn(t, "pt-BR", Workflows(v))) + " " +
+	// Code -- the drawer's YAML and commands -- is the engine's, not prose.
+	code := regexp.MustCompile(`(?s)<pre\b.*?</pre>`)
+	text := visibleText(code.ReplaceAllString(drawIn(t, "pt-BR", Workflows(v)), "")) + " " +
 		visibleText(drawIn(t, "pt-BR", WorkflowsList(WorkflowsScreen{Total: 1, Filter: Filter{Page: 1, PerPage: 25}})))
 	for _, english := range []string{
 		"A workflow is", "Search", "State", "All", "Failing", "Running", "Paused", "Manual only",
 		"last run", "schedule", "project", "Remove", "Filter tags", "Apply", "Language",
 		"with", "success", "clear filters", "Next run", "Last runs", "manual only", "paused",
 		"never ran", "runs", "Pause", "Resume", "Run", "previous", "next", "No workflow",
-		"Active", "Connects", "When it runs", "Next", "Last", "failing", "running", "steps", "step", "was",
+		"Active", "Connects", "When it runs", "How to create", "Publish workflow", "Write the file", "Undo", "Next", "Last", "failing", "running", "steps", "step", "was",
 	} {
 		if at := regexp.MustCompile(`\b` + regexp.QuoteMeta(english) + `\b`).FindStringIndex(text); at != nil {
 			t.Errorf("the Portuguese list still says %q: …%s…", english, text[max(0, at[0]-60):min(len(text), at[1]+40)])

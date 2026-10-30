@@ -13,6 +13,7 @@ package components
 // Only the glyphs a screen draws. A set of fifteen hundred where twenty-seven
 // are used is fifteen hundred nobody reviewed.
 var glyphs = map[string]string{
+	"book-open":      `<path d="M12 7v14"/> <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>`,
 	"check":          `<path d="M20 6 9 17l-5-5"/>`,
 	"chevron-down":   `<path d="m6 9 6 6 6-6"/>`,
 	"chevron-right":  `<path d="m9 18 6-6-6-6"/>`,
@@ -34,6 +35,7 @@ var glyphs = map[string]string{
 	"moon":           `<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>`,
 	"panel-left":     `<rect width="18" height="18" x="3" y="3" rx="2"/> <path d="M9 3v18"/>`,
 	"play":           `<polygon points="6 3 20 12 6 21 6 3"/>`,
+	"plus":           `<path d="M5 12h14"/> <path d="M12 5v14"/>`,
 	"plug":           `<path d="M12 22v-5"/> <path d="M9 8V2"/> <path d="M15 8V2"/> <path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>`,
 	"refresh-cw":     `<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/> <path d="M21 3v5h-5"/> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/> <path d="M8 16H3v5"/>`,
 	"rows-3":         `<rect width="18" height="18" x="3" y="3" rx="2"/> <path d="M21 9H3"/> <path d="M21 15H3"/>`,
