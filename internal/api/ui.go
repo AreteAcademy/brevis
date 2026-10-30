@@ -282,7 +282,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /runs", u.runs)
 	mux.HandleFunc("GET /workflows", u.workflows)
 	mux.HandleFunc("GET /projects", u.projetos)
-	mux.HandleFunc("GET /data", u.dataMoved)
+	mux.HandleFunc("GET /data", u.catalogPage)
 	// THE WORKBENCH, and both verbs on one path: a GET draws the box and a
 	// POST runs what is in it. The statement travels in the BODY, which is
 	// why there is no second route carrying it.
@@ -466,13 +466,6 @@ func (u *UI) dataEndpoint(w http.ResponseWriter, r *http.Request) {
 // is looked up as stored, so `u` is not shape-checked beyond this: an unknown
 // value is a 404, not a 400.
 const targetCeiling = 512
-
-// dataMoved is where Catalog was: its loads are /ingest/loads now. The
-// query string is dropped -- its filters were the list's, and a stream is
-// not on that list.
-func (u *UI) dataMoved(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/ingest/loads", http.StatusMovedPermanently)
-}
 
 // targetMoved is where a destination's page was. A destination is now the
 // stream that owns it -- its sink or its dead letter -- or the load that

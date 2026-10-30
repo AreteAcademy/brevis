@@ -16,6 +16,22 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Added: the Data catalog is back
+
+- **`/data` is the catalog again** (it had answered 301 to Loads since the
+  ingest screens replaced it): every destination Brevis wrote, who writes it,
+  and whether it is arriving at the pace of its writer's own schedule, worst
+  first and, within a status, the most recently loaded first.
+- **A status band** filters by its links, each choice with its count and its
+  rule as the tooltip: All, Needs attention (stale and late together), and
+  each status. A kind filter with logos, Show legacy (a legacy row waits until
+  it is asked for), and a search over the table, the dataset, the workflow
+  and the gateway's path that answers while you type.
+- **Each row**: where it lives, faint, and the table; its status, and "a run is
+  queued"; who writes it; the last load; its rows; its last loads. The whole
+  row opens the destination.
+- In English, Portuguese and Spanish.
+
 ### Changed: a workflow's page, its head, numbers and tabs
 
 - **The line under the name** says whether the schedule is on, the project,

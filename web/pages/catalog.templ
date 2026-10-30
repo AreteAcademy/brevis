@@ -1,0 +1,202 @@
+package pages
+
+import (
+	"fmt"
+
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
+	"github.com/AreteAcademy/brevis/web/layouts"
+)
+
+// Catalog is /data (screen-catalog): every destination the ecosystem wrote,
+// who writes it, and whether it is arriving at the pace of its writer's own
+// schedule. Worst first.
+templ Catalog(v CatalogScreen) {
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "catalog.title"), Active: "catalog"}) {
+		<p class="-mt-2 max-w-3xl text-[13.5px] text-muted">
+			// One line: a break between two pieces is a space.
+			{ i18n.T(ctx, "catalog.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "catalog.lead.strong") }</strong>{ i18n.T(ctx, "catalog.lead.after") }
+		</p>
+		<p class="mt-2 mb-4 max-w-3xl text-[12px] text-faint">{ i18n.T(ctx, "catalog.honest") }</p>
+		// THE BOX ANSWERS WHILE SOMEBODY TYPES (the Workflows list's form):
+		// ui.js submits it as a fetch and swaps the list under it.
+		<form method="get" action="/data" role="search" data-swap="catalog-list" data-swap-typing class="mb-3 w-full sm:w-96">
+			if v.Filter.Status != "" {
+				<input type="hidden" name="status" value={ v.Filter.Status }/>
+			}
+			if v.Filter.Kind != "" {
+				<input type="hidden" name="kind" value={ v.Filter.Kind }/>
+			}
+			if v.Filter.Legacy {
+				<input type="hidden" name="legacy" value="1"/>
+			}
+			@components.SearchInput("q", v.Filter.Q, i18n.T(ctx, "catalog.search"), "")
+		</form>
+		<div id="catalog-list">
+			@CatalogList(v)
+		</div>
+	}
+}
+
+// CatalogList is everything under the search box: the band, the filters and
+// the table. It is the page's fragment (X-Brevis-Fragment: answer).
+templ CatalogList(v CatalogScreen) {
+	{{ f := v.Filter }}
+	<nav data-status-band aria-label={ i18n.T(ctx, "catalog.band") } class="mb-3 flex flex-wrap gap-2">
+		@bandChoice(f.With("status", ""), f.Status == "", "", i18n.T(ctx, "catalog.status.all"), v.Count(""), "")
+		@bandChoice(f.With("status", "attention"), f.Status == "attention", "stale", i18n.T(ctx, "catalog.status.attention"), v.Count("attention"), statusTip(ctx, "attention"))
+		for _, st := range catalogStatuses {
+			@bandChoice(f.With("status", string(st)), f.Status == string(st), string(st), components.StateWord(ctx, freshnessWord(string(st))), v.Count(string(st)), statusTip(ctx, string(st)))
+		}
+	</nav>
+	<div class="mb-3 flex flex-wrap items-center gap-3">
+		if len(v.Kinds) > 1 {
+			<div role="group" aria-label={ i18n.T(ctx, "catalog.kind") } class="inline-flex h-8 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-card border border-line bg-surface p-0.5">
+				@langOption(f.With("kind", ""), f.Kind == "") {
+					{ i18n.T(ctx, "catalog.kind.all") }
+				}
+				for _, k := range v.Kinds {
+					@langOption(f.With("kind", k), f.Kind == k) {
+						@components.Logo(kindLogo(k), 18)
+						{ components.LogoTitle(ctx, kindLogo(k)) }
+					}
+				}
+			</div>
+		}
+		if v.HasLegacy {
+			<a
+				href={ templ.SafeURL(f.With("legacy", legacyFlip(f.Legacy))) }
+				role="switch"
+				aria-checked={ boolText(f.Legacy) }
+				class="inline-flex items-center gap-2 text-[12.5px] text-ink-2"
+			>
+				<span class="switch" aria-checked={ boolText(f.Legacy) }><span class="switch-knob" aria-hidden="true"></span></span>
+				{ i18n.T(ctx, "catalog.legacy") }
+			</a>
+		}
+	</div>
+	if len(v.Rows) == 0 {
+		<div class="rounded-card border border-dashed border-line px-6 py-12 text-center">
+			if f.Active() {
+				<p class="text-sm text-muted">{ i18n.T(ctx, "catalog.empty.filtered") }</p>
+				<a href="/data" class="mt-2 inline-block text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.clear") }</a>
+			} else {
+				<p class="text-sm text-muted">{ i18n.T(ctx, "catalog.empty") }</p>
+			}
+		</div>
+	} else {
+		<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
+			<table class="ct w-full text-sm">
+				<thead>
+					<tr class="border-b border-line bg-parchment-soft/60 text-left">
+						@th(i18n.T(ctx, "catalog.col.target"), "pl-4")
+						@th(i18n.T(ctx, "catalog.col.status"), "")
+						@th(i18n.T(ctx, "catalog.col.writer"), "max-[860px]:hidden")
+						@th(i18n.T(ctx, "catalog.col.last"), "max-[640px]:hidden")
+						@th(i18n.T(ctx, "catalog.col.rows"), "text-right max-[1100px]:hidden")
+						@th(i18n.T(ctx, "catalog.col.recent"), "max-[1100px]:hidden")
+						@th("", "w-8 pr-4")
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-line-soft">
+					for _, r := range v.Rows {
+						@catalogRow(v, r)
+					}
+				</tbody>
+			</table>
+			<p class="border-t border-line-soft px-4 py-2.5 text-[12px] text-faint">{ i18n.T(ctx, "catalog.order") }</p>
+		</div>
+	}
+}
+
+// catalogRow is one destination. The whole row opens it (`data-href`,
+// ui.js); the target stays a real link, for the keyboard and a page with no
+// script.
+templ catalogRow(v CatalogScreen, r DataRow) {
+	{{ where, what := splitDestination(r.Target) }}
+	{{ writer, more := writerLine(r) }}
+	<tr data-href={ targetHref(r.Target) } class="cursor-pointer align-top transition-colors hover:bg-hover">
+		<td class="px-2.5 py-3 pl-4">
+			<a href={ templ.SafeURL(targetHref(r.Target)) } class="inline-flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[12.5px]">
+				@components.Logo(kindLogo(r.Kind), 18)
+				<span class="text-faint">{ where }</span><span class="font-medium text-ink">{ what }</span>
+			</a>
+			if r.Legacy {
+				<span class="ml-1.5 rounded border border-line px-1.5 font-mono text-[10.5px] text-muted">{ i18n.T(ctx, "catalog.chip.legacy") }</span>
+			}
+			if autoTable(r.Target) {
+				<span class="ml-1.5 rounded border border-line px-1.5 font-mono text-[10.5px] text-muted">auto_table</span>
+			}
+		</td>
+		<td class="px-2.5 py-3">
+			@components.Freshness(string(r.Status))
+			if runQueued(r) {
+				<p class="mt-0.5 text-[11.5px] text-muted">{ i18n.T(ctx, "catalog.queued") }</p>
+			}
+		</td>
+		<td class="px-2.5 py-3 font-mono text-[12px] text-ink-2 max-[860px]:hidden">
+			{ writer }
+			if more > 0 {
+				<span class="ml-1 font-sans text-faint">+{ fmt.Sprint(more) }</span>
+			}
+		</td>
+		<td class="px-2.5 py-3 text-xs whitespace-nowrap text-muted max-[640px]:hidden">
+			if r.LastWhen != nil {
+				{ i18n.Since(ctx, v.Now, *r.LastWhen) }
+			} else {
+				—
+			}
+		</td>
+		<td class="px-2.5 py-3 text-right text-xs tabular-nums text-ink-2 max-[1100px]:hidden">
+			if r.LastRows != nil {
+				{ i18n.Number(ctx, *r.LastRows) }
+			} else {
+				<span title={ i18n.T(ctx, "catalog.no_rows") } class="text-faint">—</span>
+			}
+		</td>
+		<td class="px-2.5 py-3 max-[1100px]:hidden">
+			@recentCounts(r.Recent)
+		</td>
+		<td class="px-2.5 py-3 pr-4 text-right text-faint">
+			@components.Icon("chevron-right", "h-4 w-4")
+		</td>
+	</tr>
+}
+
+// recentCounts is a destination's last loads as small bars, tallest the
+// largest; a load that did not say its rows is an outline.
+templ recentCounts(counts []*int64) {
+	if len(counts) > 0 {
+		{{ peak := peakOf(counts) }}
+		<span data-recent class="inline-flex h-5 items-end gap-px" aria-hidden="true">
+			for _, c := range counts {
+				if c == nil {
+					<span class="h-full w-1 rounded-[1px] border border-line-strong"></span>
+				} else {
+					<span class="w-1 rounded-[1px] bg-bar" style={ fmt.Sprintf("height:%d%%", barHeight(*c, peak)) }></span>
+				}
+			}
+		</span>
+	}
+}
+
+// bandChoice is one choice of the status band: its shape, its word, its
+// count, and its rule as the tooltip.
+templ bandChoice(href string, current bool, status, label string, count int, tip string) {
+	<a
+		href={ templ.SafeURL(href) }
+		title={ tip }
+		data-count={ fmt.Sprint(count) }
+		if current {
+			aria-current="true"
+		}
+		class={ "inline-flex h-8 items-center gap-2 rounded-full border px-3 text-[12.5px] transition-colors",
+			templ.KV("border-ink text-ink", current), templ.KV("border-line text-ink-2 hover:border-line-strong", !current) }
+	>
+		if status != "" {
+			@components.FreshnessMark(status)
+		}
+		<span>{ label }</span>
+		<span class="font-semibold tabular-nums text-ink">{ fmt.Sprint(count) }</span>
+	</a>
+}

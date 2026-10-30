@@ -248,8 +248,6 @@ func TestCatalogsURLsRedirectToTheirOwner(t *testing.T) {
 	mux := http.NewServeMux()
 	dataUI(catalogFake{entries: entries}).Registrar(mux)
 	for _, c := range []struct{ path, to string }{
-		{"/data", "/ingest/loads"},
-		{"/data?status=late", "/ingest/loads"},
 		{"/data/target?u=" + url.QueryEscape("pubsub://brevis-local/clicks"), "/ingest/streams/edge/v1/clicks"},
 		{"/data/target?u=" + url.QueryEscape("file:///var/dead-letter/clicks/"), "/ingest/streams/edge/v1/clicks"},
 		{"/data/target?u=" + url.QueryEscape("postgres://db/public/x"), "/ingest/loads/sync/load"},
