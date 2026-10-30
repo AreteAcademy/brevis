@@ -148,3 +148,14 @@ func TestTheCatalogHasNoEnglishLeft(t *testing.T) {
 		}
 	}
 }
+
+// A DESTINATION ITS MANIFEST COULD NOT NAME is known by the stream that
+// writes it, not drawn as an empty row.
+func TestAnUnnamedDestinationIsKnownByItsStream(t *testing.T) {
+	entries := []postgres.CatalogEntry{{Kind: "bigquery", Writers: []postgres.CatalogWriter{
+		{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/legacy", Role: "sink"}}}}}
+	html := drawIn(t, "en", CatalogList(BuildCatalog(entries, DataFilter{Path: "/data"}, catalogNow)))
+	if !strings.Contains(html, "gateway edge · /v1/legacy") || !strings.Contains(html, `aria-label="Gateway HTTP"`) && !strings.Contains(html, "gateway") {
+		t.Errorf("the unnamed destination is not known by its stream")
+	}
+}

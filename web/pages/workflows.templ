@@ -340,11 +340,11 @@ templ langFilter(langs []LangChoice, f Filter) {
 
 templ langOption(href string, current bool) {
 	if current {
-		<a href={ templ.SafeURL(href) } aria-current="true" class="inline-flex h-full items-center gap-1.5 rounded-[2px] bg-surface-2 px-2.5 text-[0.8rem] font-medium text-ink">
+		<a href={ templ.SafeURL(href) } aria-current="true" class="inline-flex h-full shrink-0 items-center gap-1.5 rounded-[2px] bg-surface-2 px-2.5 text-[0.8rem] font-medium whitespace-nowrap text-ink">
 			{ children... }
 		</a>
 	} else {
-		<a href={ templ.SafeURL(href) } class="inline-flex h-full items-center gap-1.5 rounded-[2px] px-2.5 text-[0.8rem] text-muted transition-colors hover:text-ink">
+		<a href={ templ.SafeURL(href) } class="inline-flex h-full shrink-0 items-center gap-1.5 rounded-[2px] px-2.5 text-[0.8rem] whitespace-nowrap text-muted transition-colors hover:text-ink">
 			{ children... }
 		</a>
 	}

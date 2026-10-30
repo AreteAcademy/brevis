@@ -12,7 +12,8 @@ import (
 // who writes it, and whether it is arriving at the pace of its writer's own
 // schedule. Worst first.
 templ Catalog(v CatalogScreen) {
-	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "catalog.title"), Active: "catalog"}) {
+	// The crumb is the section's name: "Data / Catalog", not the title again.
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "catalog.title"), Crumb: i18n.T(ctx, "nav.catalog"), Active: "catalog"}) {
 		<p class="-mt-2 max-w-3xl text-[13.5px] text-muted">
 			// One line: a break between two pieces is a space.
 			{ i18n.T(ctx, "catalog.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "catalog.lead.strong") }</strong>{ i18n.T(ctx, "catalog.lead.after") }
@@ -118,8 +119,15 @@ templ catalogRow(v CatalogScreen, r DataRow) {
 	<tr data-href={ targetHref(r.Target) } class="cursor-pointer align-top transition-colors hover:bg-hover">
 		<td class="px-2.5 py-3 pl-4">
 			<a href={ templ.SafeURL(targetHref(r.Target)) } class="inline-flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[12.5px]">
-				@components.Logo(kindLogo(r.Kind), 18)
-				<span class="text-faint">{ where }</span><span class="font-medium text-ink">{ what }</span>
+				if r.Target == "" {
+					// A gateway destination its manifest could not name is
+					// known by the stream that writes it.
+					@components.Logo("gateway", 18)
+					<span class="text-ink-2">{ WriterLine(r) }</span>
+				} else {
+					@components.Logo(kindLogo(r.Kind), 18)
+					<span class="text-faint">{ where }</span><span class="font-medium text-ink">{ what }</span>
+				}
 			</a>
 			if r.Legacy {
 				<span class="ml-1.5 rounded border border-line px-1.5 font-mono text-[10.5px] text-muted">{ i18n.T(ctx, "catalog.chip.legacy") }</span>
