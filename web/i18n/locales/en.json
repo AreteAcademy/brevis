@@ -233,6 +233,8 @@
   "loads.drawer.recent.last": "the last {n} loads",
   "loads.drawer.recent.run": "Run",
   "loads.drawer.rows": {"one": "{count} row", "other": "{count} rows"},
+  "loads.drawer.run": "Run now",
+  "loads.drawer.run.params": "Run now…",
   "loads.drawer.step": "Step",
   "loads.drawer.to": "Writes to",
   "loads.drawer.when": "When it runs",

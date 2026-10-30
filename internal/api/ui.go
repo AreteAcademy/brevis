@@ -575,6 +575,20 @@ func (u *UI) loadDetail(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		load.Source = pages.SourceOf(configs[postgres.StepKey{Workflow: workflow, Node: step, Target: target}])
+
+		// RUN NOW, AS THE WORKFLOWS LIST DOES IT: at once with no
+		// parameters, and to the Run drawer to ask them otherwise. Nothing
+		// to press where there is no scheduler to ask, or no definition to
+		// say which.
+		if u.actions != nil && u.defs != nil {
+			if def, err := u.defs.Definition(r.Context(), workflow); err == nil {
+				load.Run = "now"
+				if len(def.Params) > 0 {
+					load.Run = "params"
+				}
+			}
+		}
+		load.Back = r.URL.RequestURI()
 	}
 	if len(uris) > 1 {
 		for _, uri := range uris {
@@ -1824,7 +1838,8 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		u.log.Info("manual run created", "workflow", slug, "run", id)
 		ctx := i18n.WithLang(r.Context(), i18n.Negotiate(r))
 		message, follow := i18n.T(ctx, "overview.rerun_created", "workflow", slug), i18n.T(ctx, "overview.follow")
-		if strings.HasPrefix(back, "/workflows") {
+		// A run from a workflow or a load is a new one, not a rerun.
+		if strings.HasPrefix(back, "/workflows") || strings.HasPrefix(back, "/ingest/loads") {
 			message, follow = i18n.T(ctx, "workflows.run_created", "workflow", slug), i18n.T(ctx, "workflows.see_logs")
 		}
 		layouts.SetFlashLink(w, "run", message, follow, next)

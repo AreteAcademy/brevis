@@ -43,8 +43,10 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   destination in the Catalog; when it runs and its last load, with the rows
   it read; its last loads as bars, each opening its run, with how to read a
   sudden drop; its configuration, its recent loads and what reads its
-  destination; See workflow, and Query destination where a SQL service
-  answers. A step writing several destinations asks which in the drawer; a
+  destination; See workflow, Query destination where a SQL service
+  answers, and **Run now**: a workflow with no parameters runs at once and
+  comes back to the same drawer with the run's link -- "Run of … created",
+  not "Rerun" -- and one with parameters opens its Run drawer. A step writing several destinations asks which in the drawer; a
   step that writes nothing is the list with a note. The × goes back to the
   list as it was filtered.
 - **A writer's configuration speaks the reader's language**: its one-line

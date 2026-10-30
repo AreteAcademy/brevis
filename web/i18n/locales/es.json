@@ -234,6 +234,8 @@
   "loads.drawer.recent.last": "las últimas {n} cargas",
   "loads.drawer.recent.run": "Ejecución",
   "loads.drawer.rows": {"one": "{count} fila", "other": "{count} filas"},
+  "loads.drawer.run": "Ejecutar ahora",
+  "loads.drawer.run.params": "Ejecutar ahora…",
   "loads.drawer.step": "Paso",
   "loads.drawer.to": "Escribe en",
   "loads.drawer.when": "Cuándo se ejecuta",

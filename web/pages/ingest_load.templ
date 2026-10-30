@@ -67,6 +67,25 @@ templ LoadDrawer(v LoadsView) {
 			@components.ButtonLink(components.ButtonSecondary, components.SizeRegular, "/workflows/"+l.Workflow) {
 				{ i18n.T(ctx, "loads.drawer.workflow") }
 			}
+			switch l.Run {
+				case "now":
+					// The trigger's form: with no script it posts and comes
+					// back here with a flash; ui.js posts it (data-run-now)
+					// so a refusal is said beside the button.
+					<form method="post" action={ templ.SafeURL("/workflows/" + l.Workflow + "/trigger") } data-run-now class="flex items-center gap-2">
+						<input type="hidden" name="back" value={ l.Back }/>
+						<p data-run-error hidden class="text-[12px] text-state-failed"></p>
+						@components.Button(components.ButtonPrimary, components.SizeRegular, templ.Attributes{"type": "submit"}) {
+							@components.Icon("play", "h-3.5 w-3.5")
+							{ i18n.T(ctx, "loads.drawer.run") }
+						}
+					</form>
+				case "params":
+					@components.ButtonLink(components.ButtonPrimary, components.SizeRegular, "/workflows/"+l.Workflow+"#run") {
+						@components.Icon("play", "h-3.5 w-3.5")
+						{ i18n.T(ctx, "loads.drawer.run.params") }
+					}
+			}
 		</footer>
 	</dialog>
 }

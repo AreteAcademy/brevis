@@ -420,6 +420,13 @@ type LoadView struct {
 	// Choices are the destinations a step writing several writes, the open
 	// one marked; with none open (no ?target=) the drawer asks which.
 	Choices []LoadChoice
+
+	// Run is what Run now does (screen-loads T6): "now" runs a workflow with
+	// no parameters at once, "params" opens its Run drawer to ask them, and
+	// "" offers nothing -- a console with no scheduler, or a workflow it
+	// cannot read. Back is the drawer's own address, which the run comes
+	// back to.
+	Run, Back string
 }
 
 // Choosing is a drawer that asks which destination, having none open.
