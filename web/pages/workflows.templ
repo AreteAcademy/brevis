@@ -22,10 +22,9 @@ templ Workflows(v WorkflowsScreen) {
 	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "nav.workflows"), Active: "workflows", Actions: workflowsActions()}) {
 		@howToCreate()
 		<p class="-mt-2 mb-4 max-w-3xl text-[13.5px] text-muted">
-			{ i18n.T(ctx, "workflows.lead.before") }
-			<strong class="font-medium text-ink">{ i18n.T(ctx, "workflows.lead.strong") }</strong>
-			{ i18n.T(ctx, "workflows.lead.after") }
-			<a href="/runs" class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.lead.run") }</a>.
+			// One line: a line break between two pieces is a space, and the
+			// sentence's colon would stand apart from its words.
+			{ i18n.T(ctx, "workflows.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "workflows.lead.strong") }</strong>{ i18n.T(ctx, "workflows.lead.after") } <a href="/runs" class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.lead.run") }</a>.
 		</p>
 		// THE BOX ANSWERS WHILE SOMEBODY TYPES, and the server still decides:
 		// the list is paginated, so ui.js submits this form as a fetch
@@ -172,12 +171,12 @@ templ WorkflowsList(v WorkflowsScreen) {
 			<table class="ct w-full text-sm min-[860px]:min-w-[60rem]">
 				<thead>
 					<tr class="border-b border-line bg-parchment-soft/60 text-left">
-						@th(i18n.T(ctx, "workflows.col.active"), "w-16 pl-5 max-[520px]:hidden")
-						@sortableTh(i18n.T(ctx, "workflows.col.workflow"), "workflow", f, "")
-						@th(i18n.T(ctx, "workflows.col.lang"), "max-[520px]:hidden")
+						@th(i18n.T(ctx, "workflows.col.active"), "w-16 pl-5 max-[640px]:hidden")
+						@sortableTh(i18n.T(ctx, "workflows.col.workflow"), "workflow", f, "max-[640px]:pl-4")
+						@th(i18n.T(ctx, "workflows.col.lang"), "max-[640px]:hidden")
 						@th(i18n.T(ctx, "workflows.col.connects"), "max-[1100px]:hidden")
 						@sortableTh(i18n.T(ctx, "workflows.col.schedule"), "schedule", f, "")
-						@sortableTh(i18n.T(ctx, "workflows.col.next"), "next", f, "max-[520px]:hidden")
+						@sortableTh(i18n.T(ctx, "workflows.col.next"), "next", f, "max-[640px]:hidden")
 						@sortableTh(i18n.T(ctx, "workflows.col.last"), "last", f, "max-[860px]:hidden")
 						@th(i18n.T(ctx, "workflows.col.tags"), "max-[1100px]:hidden")
 						@th("", "w-24 pr-5 text-right")
@@ -211,10 +210,10 @@ templ WorkflowsList(v WorkflowsScreen) {
 templ workflowRow(v WorkflowsScreen, w postgres.WorkflowSummary) {
 	{{ paused := w.HasSchedule && !w.Active }}
 	<tr data-href={ rowHref(w.Slug) } data-paused?={ paused } class="cursor-pointer align-top transition-colors hover:bg-hover">
-		<td class="py-3 pl-5 max-[520px]:hidden">
+		<td class="py-3 pl-5 max-[640px]:hidden">
 			@interruptor(w)
 		</td>
-		<td class="py-3 pr-3" data-fade>
+		<td class="py-3 pr-3 max-[640px]:pl-4" data-fade>
 			<div class="flex flex-wrap items-center gap-1.5">
 				<a href={ templ.SafeURL(rowHref(w.Slug)) } class="font-mono text-[13px] font-medium text-ink hover:underline">{ w.Slug }</a>
 				if v.Failing[w.Slug] {
@@ -230,7 +229,7 @@ templ workflowRow(v WorkflowsScreen, w postgres.WorkflowSummary) {
 				}
 			</p>
 		</td>
-		<td data-col-lang class="py-3 pr-3 max-[520px]:hidden" data-fade>
+		<td data-col-lang class="py-3 pr-3 max-[640px]:hidden" data-fade>
 			if ks := v.RunsIn[w.Slug]; len(ks) > 0 {
 				<div class="flex items-center gap-2">
 					<span class="inline-flex items-center gap-1">
@@ -274,7 +273,7 @@ templ workflowRow(v WorkflowsScreen, w postgres.WorkflowSummary) {
 				</p>
 			}
 		</td>
-		<td data-col-next class="py-3 pr-3 text-xs tabular-nums max-[520px]:hidden" data-fade>
+		<td data-col-next class="py-3 pr-3 text-xs tabular-nums max-[640px]:hidden" data-fade>
 			if inFlight(w) {
 				<span class="text-state-running">{ i18n.T(ctx, "workflows.in_flight") }</span>
 			} else if w.NextRun != nil && !paused {
