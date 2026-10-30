@@ -35,20 +35,20 @@ func (f *sqlFake) start(t *testing.T) *httptest.Server {
 // page posts nothing now, and `runSQL` in sql_test.go submits the workbench's
 // own. Dead test code is still code, and the linter is what noticed.
 
-// THE TAB, AND ONLY WHERE THERE IS A SERVICE TO ASK. One tab now: a preview
-// belongs to a destination and a query belongs to the workbench, which the
-// strip links to instead of pretending to hold.
-func TestThePreviewTabIsThereWhenAServiceIsAndNotWhenItIsNot(t *testing.T) {
+// THE WORKBENCH, AND ONLY WHERE THERE IS A SERVICE TO ASK. A load's drawer
+// links to it carrying the destination (screen-loads T4: the preview tab is
+// gone, and a query belongs to the workbench).
+func TestTheWorkbenchLinkIsThereWhenAServiceIsAndNotWhenItIsNot(t *testing.T) {
 	svc := (&sqlFake{body: `{}`}).start(t)
 	with := render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/ingest/loads/bronze/load")
-	for _, want := range []string{"tab=preview", "/sql?target="} {
+	for _, want := range []string{"/sql?target="} {
 		if !strings.Contains(with, want) {
 			t.Errorf("a console with a service offers no %q", want)
 		}
 	}
 
 	without := render(t, withPreview(t, nil), "/ingest/loads/bronze/load")
-	for _, gone := range []string{"tab=preview", "/sql?target="} {
+	for _, gone := range []string{"/sql?target="} {
 		if strings.Contains(without, gone) {
 			t.Errorf("a console with no service still offers %q", gone)
 		}
@@ -75,7 +75,7 @@ func TestAnUnprotectedConsoleOffersNoTabs(t *testing.T) {
 	open := openConsole(t, sqlserve.New(svc.URL, ""))
 
 	body := render(t, open, "/ingest/loads/bronze/load")
-	for _, gone := range []string{"tab=preview", "/sql?target="} {
+	for _, gone := range []string{"/sql?target="} {
 		if strings.Contains(body, gone) {
 			t.Errorf("a console with no login offers %q", gone)
 		}
@@ -89,7 +89,7 @@ func TestAnUnprotectedConsoleOffersNoTabs(t *testing.T) {
 	}
 }
 
-// THE PANEL IS INSIDE THE PAGE, not under it.
+// THE LINK IS INSIDE THE PAGE, not under it.
 //
 // `@panels(v)` sat AFTER the layout's closing brace, so templ emitted it
 // outside `<main>` entirely: past the sidebar, past the user menu, at full
@@ -109,7 +109,7 @@ func TestTheTabsRenderInsideThePageLayout(t *testing.T) {
 	if closing < 0 {
 		t.Fatal("the layout no longer closes with </main>; this test needs a new anchor")
 	}
-	for _, want := range []string{"tab=preview", "/sql?target="} {
+	for _, want := range []string{"/sql?target="} {
 		at := strings.Index(body, want)
 		if at < 0 {
 			t.Errorf("%q is not on the page at all", want)

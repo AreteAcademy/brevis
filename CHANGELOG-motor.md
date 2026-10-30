@@ -37,6 +37,19 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   of showing them alone; and a search over the workflow, the step, the
   origin and the destination, on the server, that answers while you type.
   The destination's kind filter is the Catalog's alone now.
+- **A load opens in a drawer over the list**, at the address its page had
+  (`/ingest/loads/{workflow}/{step}`), so links keep working: how it stands
+  and why; where it reads and writes, with Copy and the way to the
+  destination in the Catalog; when it runs and its last load, with the rows
+  it read; its last loads as bars, each opening its run, with how to read a
+  sudden drop; its configuration, its recent loads and what reads its
+  destination; See workflow, and Query destination where a SQL service
+  answers. A step writing several destinations asks which in the drawer; a
+  step that writes nothing is the list with a note. The × goes back to the
+  list as it was filtered.
+- **The load's Preview tab is gone**, with the page: the drawer is narrow,
+  and Query destination opens the workbench on the same table. A load never
+  asks the warehouse anything now.
 - **A summary** counts the destinations, the workflows and each status, and
   leads to the Catalog under the same status; "See workflows" is in the header, and the footer says
   that writes made outside Brevis do not show.

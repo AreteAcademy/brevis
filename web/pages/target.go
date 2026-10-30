@@ -12,7 +12,6 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
-	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 	"github.com/AreteAcademy/brevis/web/components"
 )
 
@@ -36,42 +35,14 @@ type TargetView struct {
 	// writer that described itself.
 	Configs []WriterConfigView
 
-	// Preview is the first rows of the destination, when a SQL service
-	// answered. Nil when there is none to ask, or when asking failed.
-	Preview *sqlserve.Result
-
-	// Tabs says there is a SQL service to ask at all. Without one there are
-	// no tabs: a tab that always answers "not configured" is a question
-	// nobody can act on.
+	// Tabs says there is a SQL service to ask about this destination at
+	// all, for the link to the workbench. Without one there is no link: one
+	// that always answers "not configured" is a question nobody can act on.
 	Tabs bool
 
 	// ReadBy are the published endpoints whose SQL reads this target: its
 	// consumers, beside its writers.
 	ReadBy []EndpointRef
-
-	// Tab is which one is open: "", "preview" or "query". A query parameter,
-	// so the link is shareable the way /data's filters already are.
-	Tab string
-
-	// Self is the page's own link, which the tabs extend: a load's page is
-	// this view under its own URL. "" links the tab relative to the page.
-	Self string
-
-	// PreviewErr is why there are no rows, in words somebody can act on.
-	//
-	// A STRING AND NOT AN error, because this is a view: whatever decides
-	// which of a service's words may be repeated has already decided, and a
-	// template is the wrong place to be making that judgement again.
-	PreviewErr string
-}
-
-// HasPreview says whether there is anything to draw in the Preview panel.
-//
-// A REASON COUNTS. A destination the service refuses -- not a table, no
-// connection for it -- still gets the panel, with the sentence where the grid
-// would be; the alternative is a tab that opens onto nothing.
-func (v TargetView) HasPreview() bool {
-	return v.Preview != nil || v.PreviewErr != ""
 }
 
 // NoConnectionFor is the sentence a destination gets when nothing is
@@ -100,21 +71,6 @@ func (v TargetView) WorkbenchHref() string {
 	return "/sql?target=" + url.QueryEscape(v.Row.Target)
 }
 
-// TabHref is the link to one tab, which is also the link somebody pastes
-// into a message. The statement is NEVER in it: a query in a URL is a query
-// in a proxy log, in a browser's history and in a Referer header, and a WHERE
-// clause carries customer data. That is why the Query box is a POST.
-func (v TargetView) TabHref(tab string) string {
-	if v.Self != "" {
-		sep := "?"
-		if strings.Contains(v.Self, "?") {
-			sep = "&"
-		}
-		return v.Self + sep + "tab=" + tab
-	}
-	return "?tab=" + tab
-}
-
 // bytesText is a byte count somebody can judge at a glance.
 //
 // A SECOND COPY OF `serve`'s, and deliberately: the engine does not import
@@ -133,26 +89,6 @@ func bytesText(n int64) string {
 		return fmt.Sprintf("%.1f kB", float64(n)/(1<<10))
 	}
 	return fmt.Sprintf("%d B", n)
-}
-
-// PreviewNote is the line under the grid.
-//
-// IT SAYS WHEN IT CUT. The service goes to the trouble of asking for one row
-// more than it shows so it can know; a page that dropped the fact would make
-// that pointless, and somebody would read a MAX off the grid and be wrong.
-func (v TargetView) PreviewNote() string {
-	if v.Preview == nil {
-		return ""
-	}
-	n := len(v.Preview.Rows)
-	rows := "rows"
-	if n == 1 {
-		rows = "row"
-	}
-	if v.Preview.Truncated {
-		return fmt.Sprintf("first %d %s — there are more", n, rows)
-	}
-	return fmt.Sprintf("%d %s", n, rows)
 }
 
 // Cell is one value, as a grid shows it.
@@ -317,66 +253,4 @@ func targetProperties(v TargetView) []components.Def {
 		{Term: "Last loaded", Value: components.UTCStamp(v.Row.LastWhen), Mono: true},
 		{Term: "Rows, last load", Value: rowsText(v.Row.LastRows), Mono: true},
 	}
-}
-
-// MetadataColumns are the columns the SDK writes on its own, the
-// sdk/internal/core names (TestTheMetadataColumnsAreTheSDKs). A load's
-// preview puts them last, under "metadata": they are on every row and say
-// nothing about the data.
-var MetadataColumns = []string{"ingestion_id", "ingestion_loaded_at"}
-
-// NullColumns marks the columns that are NULL in every row of a preview
-// (screen-load-v2 LV4). With no rows, none is: an empty preview proves
-// nothing about a column. An empty string is a value, not a NULL.
-func NullColumns(res *sqlserve.Result) []bool {
-	out := make([]bool, len(res.Columns))
-	if len(res.Rows) == 0 {
-		return out
-	}
-	for c := range out {
-		out[c] = true
-		for _, row := range res.Rows {
-			if c < len(row) && row[c] != nil {
-				out[c] = false
-				break
-			}
-		}
-	}
-	return out
-}
-
-// previewOrder is the load preview's column order: the data's own columns as
-// they came, then the SDK's metadata. meta is how many are metadata.
-func previewOrder(res *sqlserve.Result) (order []int, meta int) {
-	var tail []int
-	for i, c := range res.Columns {
-		if slices.Contains(MetadataColumns, c) {
-			tail = append(tail, i)
-		} else {
-			order = append(order, i)
-		}
-	}
-	return append(order, tail...), len(tail)
-}
-
-// hiddenNote says which columns the switch hides: "2 columns hidden: a, b".
-func hiddenNote(res *sqlserve.Result, nulls []bool) string {
-	var names []string
-	for i, null := range nulls {
-		if null {
-			names = append(names, res.Columns[i])
-		}
-	}
-	if len(names) == 0 {
-		return ""
-	}
-	return fmt.Sprintf("%s hidden: %s", plural(len(names), "column"), strings.Join(names, ", "))
-}
-
-// cellAt is a row's cell, nil (NULL) when the row is short.
-func cellAt(row []any, i int) any {
-	if i < len(row) {
-		return row[i]
-	}
-	return nil
 }

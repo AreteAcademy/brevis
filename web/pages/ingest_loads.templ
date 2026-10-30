@@ -31,9 +31,15 @@ templ Loads(v LoadsView) {
 				@components.SearchInput("q", v.Filter.Q, i18n.T(ctx, "loads.search"), "")
 			</form>
 		}
+		if v.Missing != "" {
+			<p data-missing class="mb-3 rounded-card border border-line bg-surface-2 px-3 py-2 text-[12.5px] text-muted">{ i18n.T(ctx, "loads.missing", "step", v.Missing) }</p>
+		}
 		<div id="loads-list">
 			@LoadsList(v)
 		</div>
+		if v.Drawer != nil {
+			@LoadDrawer(v)
+		}
 	}
 }
 
@@ -162,13 +168,13 @@ templ sourceMark(src string) {
 // row opens the load; the workflow's name is its own link.
 templ loadRow(v LoadsView, r LoadTarget) {
 	<tr
-		data-href={ r.Href() }
+		data-href={ v.rowHref(r) }
 		class="cursor-pointer align-top transition-colors hover:bg-hover"
 	>
 		<td class="px-2.5 py-3 pl-4">
 			<a href={ templ.SafeURL("/workflows/" + r.Workflow) } class="font-mono text-[13px] font-medium text-ink hover:underline">{ r.Workflow }</a>
 			<p class="mt-0.5 text-[12px] text-muted">
-				<a href={ templ.SafeURL(r.Href()) } class="font-mono text-ink-2 hover:underline">{ r.Step }</a>
+				<a href={ templ.SafeURL(v.rowHref(r)) } class="font-mono text-ink-2 hover:underline">{ r.Step }</a>
 				<span class="text-faint">·</span>
 				{ loadSchedule(ctx, r) }
 			</p>

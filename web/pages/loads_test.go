@@ -99,7 +99,7 @@ func TestALoadRowSaysWhoFromWhereAndToWhere(t *testing.T) {
 		"not declared", "Only the Go SDK describes", // an undeclared one, and why
 		">bigquery://acme/bronze/<", ">fresh<", // the destination, where then what
 		"stale", "late", "on time",
-		`data-href="/ingest/loads/orders/load"`, `href="/workflows/orders"`,
+		`data-href="/ingest/loads/orders/load?legacy=1"`, `href="/workflows/orders"`,
 		"<svg", // the last loads
 	} {
 		if !strings.Contains(page, want) {
@@ -110,7 +110,7 @@ func TestALoadRowSaysWhoFromWhereAndToWhere(t *testing.T) {
 		t.Error("a gateway's stream is listed as a load")
 	}
 	// The legacy label has no scheme: no kind is made up for it.
-	legacy := page[strings.Index(page, `data-href="/ingest/loads/payments/load"`):]
+	legacy := page[strings.Index(page, `data-href="/ingest/loads/payments/load?legacy=1"`):]
 	legacy = legacy[:strings.Index(legacy, "</tr>")]
 	if strings.Contains(legacy, "Local files") || !strings.Contains(legacy, "legacy") {
 		t.Errorf("the legacy row names a kind it has not: %s", legacy)
@@ -158,5 +158,34 @@ func TestTheLoadsHaveNoEnglishLeft(t *testing.T) {
 		if at := strings.Index(text, english); at >= 0 {
 			t.Errorf("the Portuguese loads still say %q: …%s…", english, text[max(0, at-60):min(len(text), at+40)])
 		}
+	}
+}
+
+// THE LOAD'S DRAWER SPEAKS THE READER'S LANGUAGE (screen-loads T4): its head,
+// the reason, the key-values, the bars, the recent loads and the verbs. The
+// configuration's frame is T5's, with the text BuildConfig writes.
+func TestTheLoadDrawerHasNoEnglishLeft(t *testing.T) {
+	d := postgres.TargetDetail{CatalogEntry: catalogFixture()[2], Loads: []postgres.TargetLoad{
+		{RunID: "aaaaaaaa-0000-0000-0000-000000000001", Workflow: "vendors", Node: "fetch", LoadedAt: clock(8, 0), Rows: rows64(10)}}}
+	l := BuildLoad(d, "vendors", "fetch", catalogNow)
+	l.Tabs = true
+	l.Read = rows64(12)
+	l.Source = Source{Kind: "http", Driver: "from.HTTP", Logo: "http", Where: "https://api.acme.io"}
+	v := BuildLoads(loadsFixture(), DataFilter{Path: "/ingest/loads"}, catalogNow)
+	v.Drawer = &l
+	text := visibleText(drawIn(t, "pt-BR", LoadDrawer(v)))
+	for _, english := range []string{
+		"Batch load", "Extracts from", "Writes to", "open in the catalog", "Step", "When it runs",
+		"Last load", "rows", "read", "Rows per load", "each bar", "A sudden drop", "Recent loads",
+		"Loaded", "See workflow", "Query destination", "missed its", "grace", "Copy",
+	} {
+		if at := strings.Index(text, english); at >= 0 {
+			t.Errorf("the Portuguese drawer still says %q: …%s…", english, text[max(0, at-60):min(len(text), at+40)])
+		}
+	}
+	choosing := drawIn(t, "pt-BR", LoadDrawer(LoadsView{Filter: DataFilter{Path: "/ingest/loads"}, Drawer: &LoadView{Workflow: "multi", Step: "split",
+		Choices: []LoadChoice{{URI: "s3://a/", Href: "/x"}, {URI: "s3://b/", Href: "/y"}}}}))
+	if !strings.Contains(choosing, "Este passo grava 2 destinos") {
+		t.Error("the drawer that asks which does not ask in Portuguese")
 	}
 }

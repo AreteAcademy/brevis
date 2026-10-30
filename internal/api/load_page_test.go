@@ -3,6 +3,8 @@ package api_test
 import (
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -37,46 +39,90 @@ func loadCatalog() catalogFake {
 	}
 }
 
-// A LOAD'S PAGE IS ONE STEP ON ONE DESTINATION: its header says what and who,
-// the bars and the table are THIS step's loads -- each bar opening its run --
-// and another workflow writing the same file stays off it.
+// drawerOf is the load's drawer out of a page: from its <dialog> to its end.
+func drawerOf(t *testing.T, body string) string {
+	t.Helper()
+	at := strings.Index(body, `<dialog id="load"`)
+	if at < 0 {
+		t.Fatalf("there is no load drawer:\n%.400s", body)
+	}
+	return body[at : at+strings.Index(body[at:], "</dialog>")]
+}
+
+// A LOAD IS ONE STEP ON ONE DESTINATION, IN A DRAWER OVER THE LIST
+// (screen-loads T4), at the address its page had: the list behind it, drawn
+// open by the server; its head says what and who, the bars and the table are
+// THIS step's loads -- each opening its run -- and another workflow writing
+// the same file stays off it.
 func TestALoadPageIsOneStepOnOneDestination(t *testing.T) {
 	code, body := get(t, dataUI(loadCatalog()), "/ingest/loads/daily_sales/report")
 	if code != http.StatusOK {
-		t.Fatalf("the load page answered %d", code)
+		t.Fatalf("the load answered %d", code)
 	}
+	if !strings.Contains(body, `id="loads-list"`) {
+		t.Error("the list is not behind the drawer")
+	}
+	drawer := drawerOf(t, body)
 	for _, want := range []string{
-		"file:///data/reports/", "SDK load", "daily_sales", "report", "every day at 04:00",
+		" open", "Batch load · daily_sales", ">report<", "every day at 04:00", "file:///data/reports/",
 		`href="/runs/8d36ef6e-0000-0000-0000-000000000001"`, `href="/runs/6420b0fd-0000-0000-0000-000000000002"`,
-		"Rows per load", "Recent loads", ">149<",
+		"Rows per load", "Recent loads", ">149<", "A sudden drop usually means",
+		`href="/workflows/daily_sales"`, `href="/ingest/loads"`,
 	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the load page has no %s", want)
+		if !strings.Contains(drawer, want) {
+			t.Errorf("the load's drawer has no %s", want)
 		}
 	}
-	if strings.Contains(body, "77777777") || strings.Contains(body, "backfill") {
-		t.Error("another workflow's loads on the same destination leaked onto this step's page")
+	if strings.Contains(drawer, "77777777") || strings.Contains(drawer, "backfill") {
+		t.Error("another workflow's loads on the same destination leaked into this step's drawer")
 	}
-	if !strings.Contains(body, "Only the Go SDK sends its configuration") || !strings.Contains(body, `href="/workflows/daily_sales"`) {
-		t.Error("a step that did not describe itself does not say so, with the workflow linked")
+	if !strings.Contains(drawer, "Only the Go SDK sends its configuration") {
+		t.Error("a step that did not describe itself does not say so")
 	}
 }
 
-// A STEP THAT WRITES SEVERAL DESTINATIONS ASKS WHICH, and ?target= opens one.
-// A step that writes nothing is not found.
+// THE DRAWER IS A FRAGMENT TOO: asked for alone (X-Brevis-Fragment: load), it
+// is the <dialog> with nothing around it, for the row's script (T7).
+func TestTheLoadDrawerIsAFragment(t *testing.T) {
+	mux := http.NewServeMux()
+	dataUI(loadCatalog()).Registrar(mux)
+	r := httptest.NewRequest(http.MethodGet, "/ingest/loads/daily_sales/report?status=late", nil)
+	r.Header.Set("X-Brevis-Fragment", "load")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, r)
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.HasPrefix(strings.TrimSpace(body), `<dialog id="load"`) {
+		t.Fatalf("the fragment answered %d: %.200s", rec.Code, body)
+	}
+	// Closing goes back to the list as it was filtered.
+	if !strings.Contains(body, `href="/ingest/loads?status=late" data-target-close`) {
+		t.Error("the × does not keep the list's filter")
+	}
+}
+
+// A STEP THAT WRITES SEVERAL DESTINATIONS ASKS WHICH, in its drawer, and
+// ?target= opens one with the others a click away. A step that writes
+// nothing, or a destination it does not write, is the list with a note.
 func TestALoadPageForAStepWithSeveralDestinations(t *testing.T) {
-	ui := dataUI(loadCatalog())
+	cat := loadCatalog()
+	cat.detail = &postgres.TargetDetail{CatalogEntry: cat.entries[2]} // s3://lake/b/
+	ui := dataUI(cat)
 	_, body := get(t, ui, "/ingest/loads/multi/split")
-	for _, want := range []string{`href="/ingest/loads/multi/split?target=s3%3A%2F%2Flake%2Fa%2F"`, `?target=s3%3A%2F%2Flake%2Fb%2F"`} {
-		if !strings.Contains(body, want) {
+	drawer := drawerOf(t, body)
+	for _, want := range []string{`href="/ingest/loads/multi/split?target=s3%3A%2F%2Flake%2Fa%2F"`, `?target=s3%3A%2F%2Flake%2Fb%2F"`, "writes 2 destinations"} {
+		if !strings.Contains(drawer, want) {
 			t.Errorf("the chooser has no %s", want)
 		}
 	}
-	if code, _ := get(t, ui, "/ingest/loads/nobody/nothing"); code != http.StatusNotFound {
-		t.Errorf("a step that writes nothing answered %d", code)
+	_, body = get(t, ui, "/ingest/loads/multi/split?target="+url.QueryEscape("s3://lake/b/"))
+	if d := drawerOf(t, body); !strings.Contains(d, `aria-current="true"`) || !strings.Contains(d, "?target=s3%3A%2F%2Flake%2Fa%2F") {
+		t.Error("an open destination does not keep the others a click away")
 	}
-	if code, _ := get(t, ui, "/ingest/loads/multi/split?target=s3://elsewhere/"); code != http.StatusNotFound {
-		t.Errorf("a target the step does not write answered %d", code)
+	for _, path := range []string{"/ingest/loads/nobody/nothing", "/ingest/loads/multi/split?target=s3://elsewhere/"} {
+		code, body := get(t, ui, path)
+		if code != http.StatusOK || !strings.Contains(body, "writes no destination Brevis knows") || strings.Contains(body, `<dialog id="load"`) {
+			t.Errorf("%s answered %d without the note, or with a drawer", path, code)
+		}
 	}
 }
 
@@ -97,20 +143,14 @@ func TestALoadSaysHowManyRowsItRead(t *testing.T) {
 	_, body := get(t, ui, "/ingest/loads/daily_sales/report")
 
 	text := strings.Join(strings.Fields(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(body, " ")), " ")
-	if !strings.Contains(text, "0 of 370 read") {
-		t.Error("the rows KPI does not say what was read")
+	if !strings.Contains(text, "0 rows of 370 read") {
+		t.Error("the last load does not say what was read")
 	}
 	if !strings.Contains(body, "text-state-failed") {
 		t.Error("0 written of 370 read is not in the failed tone")
 	}
-	if strings.Contains(body, ">Rows per load</h2>") {
-		t.Error("the bars still have a panel of their own")
-	}
-	if !strings.Contains(body, "each bar opens the run that wrote it") {
+	if !strings.Contains(body, "each bar opens its run") {
 		t.Error("the bars lost their legend")
-	}
-	if strings.Contains(body, "uppercase") && strings.Contains(body, "SDK load ·") && strings.Index(body, "SDK load") < strings.Index(body, "<h1") {
-		t.Error("the kind is still an eyebrow above the title")
 	}
 
 	mapped := execs
@@ -162,7 +202,8 @@ func TestALoadsConfigurationIsInTabs(t *testing.T) {
 	}
 }
 
-// NOTHING THE LOAD PAGE SHOWED IS LOST (screen-load-v2 LV5): every value of
+// NOTHING THE LOAD PAGE SHOWED IS LOST (screen-load-v2 LV5), now in its
+// drawer (screen-loads T4): every value of
 // the spec's list is still on it after the regrouping -- each load's when,
 // rows, bytes and run; the bars and their legend; who writes it, on what
 // schedule, how it stands; what it is and where. The loads now sit beside
@@ -173,7 +214,7 @@ func TestNothingTheLoadPageShowedIsLost(t *testing.T) {
 	text := strings.Join(strings.Fields(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(body, " ")), " ")
 	for _, want := range []string{
 		"8d36ef6e", "6420b0fd", "149", // runs, and the one load with bytes
-		"each bar opens the run that wrote it",                     // the bars' legend
+		"each bar opens its run",                                   // the bars' legend
 		"daily_sales", "report", "every day at 04:00", "0 4 * * *", // writer and schedule
 		"file:///data/reports/", "file", // what and where
 	} {
@@ -181,14 +222,8 @@ func TestNothingTheLoadPageShowedIsLost(t *testing.T) {
 			t.Errorf("the load page lost %q", want)
 		}
 	}
-	side := body[strings.Index(body, "data-side"):]
-	if !strings.Contains(side, ">Recent loads<") {
-		t.Error("the recent loads are not beside the page")
-	}
-	if strings.Contains(side, ">Destination</h2>") {
-		t.Error("the side still has a Destination panel")
-	}
-	if !strings.Contains(side, `class="ct `) {
-		t.Error("the recent loads are not a compact table")
+	drawer := drawerOf(t, body)
+	if !strings.Contains(drawer, ">Recent loads<") || !strings.Contains(drawer, `class="ct `) {
+		t.Error("the recent loads are not in the drawer, as a compact table")
 	}
 }

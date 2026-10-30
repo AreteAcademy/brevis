@@ -36,7 +36,7 @@ func TestABucketOrATopicGetsNoTabs(t *testing.T) {
 			ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, target, "file")
 
 			body := render(t, ui, "/ingest/loads/bronze/load")
-			for _, gone := range []string{"tab=preview", "/sql?target="} {
+			for _, gone := range []string{"/sql?target="} {
 				if strings.Contains(body, gone) {
 					t.Errorf("a destination that is not a relation offers %q", gone)
 				}
@@ -60,59 +60,9 @@ func TestARelationWithNoReaderKeepsItsTabs(t *testing.T) {
 	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, "mysql://app/orders", "mysql")
 
 	body := render(t, ui, "/ingest/loads/bronze/load")
-	for _, want := range []string{"tab=preview", "/sql?target="} {
+	for _, want := range []string{"/sql?target="} {
 		if !strings.Contains(body, want) {
 			t.Errorf("a relation lost its %q", want)
 		}
-	}
-}
-
-// NO CONNECTION: SAY WHICH ONE IS MISSING.
-//
-// `serve` answers "no connection is declared for that destination" and
-// deliberately names nothing -- its refusals never echo their input. The
-// CONSOLE can: it holds the target, it is already drawing it at the top of
-// the page, and a reader needs the database to go and declare it.
-func TestANoConnectionRefusalNamesTheDatabase(t *testing.T) {
-	f := &sqlFake{status: http.StatusBadRequest,
-		body: `{"error":"no connection is declared for that destination","code":"no-connection"}`}
-	svc := f.start(t)
-	target := "postgres://brevis_it/public/orders"
-	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, target, "postgres")
-
-	body := render(t, ui, "/ingest/loads/bronze/load?tab=preview")
-	for _, want := range []string{"brevis_it", "brevis.yaml"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the page never says %q, so nobody knows what to declare", want)
-		}
-	}
-	// AND THE PAGE SURVIVES IT. A missing declaration is a configuration
-	// gap, not an error page.
-	if !strings.Contains(body, "Written by") {
-		t.Error("the page lost the rest of itself")
-	}
-}
-
-// `serve` UNREACHABLE: A REASON WHERE THE GRID WOULD BE, and never the
-// address. An internal host is not a reader's business and a screenshot
-// travels.
-func TestServeUnreachableDrawsAReasonAndNoAddress(t *testing.T) {
-	// A server that is closed before the request: the client gets a
-	// transport error, which is the shape of a service that is not there.
-	dead := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-	addr := dead.URL
-	dead.Close()
-
-	ui := consoleOf(t, sqlserve.New(addr, ""), signedIn, probeTarget, "bigquery")
-	body := render(t, ui, "/ingest/loads/bronze/load?tab=preview")
-
-	if !strings.Contains(body, "could not be reached") {
-		t.Error("the page does not say the service is unreachable")
-	}
-	if strings.Contains(body, strings.TrimPrefix(addr, "http://")) {
-		t.Error("the page carries the service's address")
-	}
-	if !strings.Contains(body, "Written by") {
-		t.Error("the page lost the rest of itself")
 	}
 }

@@ -88,7 +88,7 @@ func screens() []screen {
 		{"runs", Runs(RunsScreen{})},
 		{"projects", Projects(nil)},
 		{"loads", Loads(LoadsView{})},
-		{"load", Load(LoadView{})},
+		{"load", Loads(LoadsView{Drawer: &LoadView{Workflow: "w", Step: "s"}})},
 		{"streams", Streams(StreamsView{})},
 		{"stream", StreamPage(StreamView{})},
 		{"sql", SQL(SQLView{Targets: []string{"postgres://warehouse/db"}})},

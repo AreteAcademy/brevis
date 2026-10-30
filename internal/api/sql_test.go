@@ -131,23 +131,17 @@ func TestWithoutAServiceTheWorkbenchIsNotOffered(t *testing.T) {
 	}
 }
 
-// THE DESTINATION PAGE SHEDS THE QUERY TAB, which is the separation the
-// workbench exists for.
-//
-// Preview STAYS, because it belongs to a destination: it is "show me this
-// table", asked about the thing already on the screen. A query is not about
-// one table -- it joins, it groups, it reaches across -- and a tab that
-// pretends otherwise is what made both screens worse.
-func TestADestinationPreviewsButDoesNotQuery(t *testing.T) {
+// A DESTINATION DOES NOT QUERY IN PLACE: a query is not about one table --
+// it joins, it groups, it reaches across -- and a tab that pretends
+// otherwise is what made both screens worse. Its preview went too
+// (screen-loads T4): the drawer is narrow, and the workbench is a click away.
+func TestADestinationDoesNotQueryInPlace(t *testing.T) {
 	svc := (&sqlFake{body: `{"columns":["k"],"rows":[["1"]]}`}).start(t)
 	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery")
 
 	body := render(t, ui, "/ingest/loads/bronze/load")
-	if !strings.Contains(body, "tab=preview") {
-		t.Error("the destination lost its Preview")
-	}
-	if strings.Contains(body, "tab=query") {
-		t.Error("the destination still offers a Query tab")
+	if strings.Contains(body, "tab=query") || strings.Contains(body, "tab=preview") {
+		t.Error("the destination still offers a tab of its own")
 	}
 }
 

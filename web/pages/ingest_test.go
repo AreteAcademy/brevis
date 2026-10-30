@@ -125,18 +125,6 @@ func TestAFilterLinkStaysOnItsPage(t *testing.T) {
 	}
 }
 
-// THE PREVIEW TAB STAYS ON THE LOAD'S OWN URL, with or without ?target=.
-func TestALoadsTabsStayOnItsPage(t *testing.T) {
-	v := TargetView{Self: "/ingest/loads/daily_sales/report"}
-	if got := v.TabHref("preview"); got != "/ingest/loads/daily_sales/report?tab=preview" {
-		t.Errorf("tab link = %q", got)
-	}
-	v.Self += "?target=s3%3A%2F%2Flake%2Fa%2F"
-	if got := v.TabHref("preview"); !strings.HasSuffix(got, "&tab=preview") {
-		t.Errorf("tab link with a target = %q", got)
-	}
-}
-
 // THE STREAMS LIST: one section per gateway, one card per stream -- its path,
 // format, hook and a compact flow with the dead letter hanging off the
 // destination -- and no dead letter as a card of its own. Traffic is named

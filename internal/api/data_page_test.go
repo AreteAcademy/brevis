@@ -191,11 +191,14 @@ func TestTheLoadsPageFiltersFromTheQueryString(t *testing.T) {
 	}
 }
 
-// loadRows is where each row of the loads list goes, in order.
+// loadRows is which load each row of the list opens, in order.
 func loadRows(body string) []string {
 	var out []string
 	for _, m := range regexp.MustCompile(`<tr data-href="([^"]+)"`).FindAllStringSubmatch(body, -1) {
-		out = append(out, html.UnescapeString(m[1]))
+		// The path alone: a row's address carries the list's filter, for its
+		// drawer to close back to.
+		path, _, _ := strings.Cut(html.UnescapeString(m[1]), "?")
+		out = append(out, path)
 	}
 	return out
 }
@@ -389,45 +392,38 @@ func TestTheLoadsSearchAnswersWhileYouType(t *testing.T) {
 	}
 }
 
-// A LOAD IS TITLED BY ITS URI, IN THE MACHINE'S FACE: the URI is what
-// somebody came to read and what they will paste. UNDER it, one meta line:
-// how it stands and what kind of thing it is (screen-load-v2 LV2 moved it
-// from an eyebrow above the title, folding in the "written by" line).
-func TestALoadIsTitledByItsURI(t *testing.T) {
+// A LOAD'S DRAWER SAYS WHAT AND WHERE (screen-loads T4): how it stands, the
+// destination's kind and its URI in the machine's face -- what somebody came
+// to read and will paste, with Copy beside it -- who writes it and when, its
+// bars and its recent loads.
+func TestALoadsDrawerSaysWhatAndWhere(t *testing.T) {
 	d := lateDetail()
 	_, body := get(t, loadUI(d, nil), "/ingest/loads/orders_sync/load")
-
-	h1 := body[strings.Index(body, "<h1"):]
-	h1 = h1[:strings.Index(h1, "</h1>")]
-	if !strings.Contains(h1, d.Target) || !strings.Contains(h1, "font-mono") {
-		t.Errorf("the title is not the URI in mono: %s", h1)
-	}
-	if !strings.Contains(h1, `id="destination-uri"`) {
-		t.Error("the title has no id for Copy URI to read")
-	}
-	meta := body[strings.Index(body, "data-load-meta"):]
-	meta = meta[:strings.Index(meta, "</p>")]
+	drawer := drawerOf(t, body)
 	// LATE OR STALE, BY THE CLOCK. The fixture loaded 90 minutes ago on an
 	// hourly schedule, so which one it is depends on the minute the test
 	// runs -- pinning one made this test fail at the top of some hours.
-	if !strings.Contains(meta, "late") && !strings.Contains(meta, "stale") {
-		t.Errorf("the meta line does not say how the load stands: %s", meta)
+	if !strings.Contains(drawer, "late") && !strings.Contains(drawer, "stale") {
+		t.Error("the drawer does not say how the load stands")
 	}
-	if !strings.Contains(meta, "postgres") {
-		t.Errorf("the meta line does not say what it is: %s", meta)
+	for _, want := range []string{`<span id="load-uri">` + d.Target + "</span>", `data-copy="#load-uri"`, "PostgreSQL",
+		"orders_sync", "0 * * * *", "Rows per load", ">Recent loads<"} {
+		if !strings.Contains(drawer, want) {
+			t.Errorf("the drawer does not carry %s", want)
+		}
 	}
 }
 
-// THE PAGE'S VERBS ARE IN ITS HEADER: copy the URI, and -- only where there
-// is a SQL service to ask -- open it in the workbench. A button that leads to
-// "not configured" is a question nobody can act on.
-func TestALoadsVerbsAreInItsHeader(t *testing.T) {
+// THE DRAWER'S VERBS: see the workflow, and -- only where there is a SQL
+// service to ask -- query the destination in the workbench. A button that
+// leads to "not configured" is a question nobody can act on.
+func TestALoadsVerbsAreInItsDrawer(t *testing.T) {
 	d := lateDetail()
 	_, body := get(t, loadUI(d, nil), "/ingest/loads/orders_sync/load")
-	header := body[strings.Index(body, "data-page-header"):]
-	header = header[:strings.Index(header, "</header>")]
-	if !strings.Contains(header, `data-copy="#destination-uri"`) {
-		t.Error("the header offers no Copy URI")
+	foot := drawerOf(t, body)
+	foot = foot[strings.Index(foot, "data-dialog-foot"):]
+	if !strings.Contains(foot, `href="/workflows/orders_sync"`) {
+		t.Error("the drawer offers no way to its workflow")
 	}
 	if strings.Contains(body, "/sql?target=") {
 		t.Error("a console with no SQL service offers to query in SQL")
@@ -435,35 +431,9 @@ func TestALoadsVerbsAreInItsHeader(t *testing.T) {
 
 	svc := (&sqlFake{body: `{"columns":["k"],"rows":[["1"]]}`}).start(t)
 	body = render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/ingest/loads/bronze/load")
-	header = body[strings.Index(body, "data-page-header"):]
-	header = header[:strings.Index(header, "</header>")]
-	if !strings.Contains(header, "/sql?target=") {
-		t.Error("Query in SQL is not one of the header's verbs")
-	}
-}
-
-// THE CONFIGURATION IS THE PAGE; ITS LOADS AND WHO WRITES IT SIT BESIDE IT
-// (screen-load-v2 LV5 moved the loads to the side and the side's
-// Destination panel to the head, the strip and the Destination tab). The
-// side column is after the main one in the document, so a narrow screen
-// stacks it below rather than above what somebody came for.
-func TestALoadKeepsItsWriterAndDestinationBeside(t *testing.T) {
-	d := lateDetail()
-	_, body := get(t, loadUI(d, nil), "/ingest/loads/orders_sync/load")
-	side := strings.Index(body, "data-side")
-	if side < 0 {
-		t.Fatal("the page has no side column")
-	}
-	if strip := strings.Index(body, "Rows per load"); strip < 0 || strip > side {
-		t.Error("the bars are not in the strip above the columns")
-	}
-	for _, want := range []string{">Recent loads<", ">Written by<", "orders_sync", "0 * * * *"} {
-		if i := strings.Index(body[side:], want); i < 0 {
-			t.Errorf("the side column does not carry %s", want)
-		}
-	}
-	if !strings.Contains(body[:side], "postgres") {
-		t.Error("what the destination is left the page")
+	foot = drawerOf(t, body)
+	if !strings.Contains(foot[strings.Index(foot, "data-dialog-foot"):], "/sql?target=") {
+		t.Error("Query destination is not one of the drawer's verbs")
 	}
 }
 

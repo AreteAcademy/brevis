@@ -4,7 +4,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -17,37 +16,11 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 )
 
-// THE WHOLE PATH, from a URL to a grid: the handler reads `?tab=preview`,
-// asks the service, and the page draws what came back.
-func TestTheTabDrawsWhatTheServiceAnswered(t *testing.T) {
-	var gotTarget string
-	svc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b := make([]byte, r.ContentLength)
-		_, _ = r.Body.Read(b)
-		gotTarget = string(b)
-		_, _ = w.Write([]byte(`{"columns":["k","n"],"rows":[["1",null]],"truncated":true,"limit":20}`))
-	}))
-	defer svc.Close()
-
-	body := render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/ingest/loads/bronze/load?tab=preview")
-
-	if !strings.Contains(gotTarget, probeTarget) {
-		t.Errorf("the service was asked for %q", gotTarget)
-	}
-	for _, want := range []string{"Preview", ">k<", ">n<", "there are more"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the page does not show %q", want)
-		}
-	}
-	// NULL IS DRAWN AS NOTHING-WAS-RECORDED and not as an empty cell.
-	if !strings.Contains(body, "—") {
-		t.Error("a NULL was drawn as an empty cell")
-	}
-}
-
-// WITHOUT `?tab=preview` NOTHING IS ASKED. A preview costs a warehouse query,
-// and one per page view is a bill for rows nobody looked at.
-func TestTheServiceIsNotAskedUnlessTheTabIsOpen(t *testing.T) {
+// A LOAD NEVER ASKS THE WAREHOUSE. Its page had a Preview tab, asked only
+// when opened; its drawer has none (screen-loads T4) -- "Query destination"
+// opens the workbench instead -- so a typed `?tab=preview` asks nothing
+// either. A query costs money, and none should hang off a page view.
+func TestALoadNeverAsksTheWarehouse(t *testing.T) {
 	asked := false
 	svc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		asked = true
@@ -55,57 +28,11 @@ func TestTheServiceIsNotAskedUnlessTheTabIsOpen(t *testing.T) {
 	}))
 	defer svc.Close()
 
-	body := render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/ingest/loads/bronze/load")
+	ui := withPreview(t, sqlserve.New(svc.URL, ""))
+	render(t, ui, "/ingest/loads/bronze/load")
+	render(t, ui, "/ingest/loads/bronze/load?tab=preview")
 	if asked {
-		t.Error("it queried a warehouse for a page nobody asked a preview of")
-	}
-	// THE STRIP IS THERE AND NOTHING IS OPEN. The word "Preview" is on the
-	// page now because the tab is a LINK -- V1 had no strip at all and this
-	// line used to stand in for "the panel did not draw". `aria-current` is
-	// what actually says which one is open, so it is what is asserted.
-	//
-	// COUNTED AND NOT LOOKED FOR, since the top bar marks the open SECTION
-	// the same way: one is the nav saying Data, and a second would be a tab.
-	if n := strings.Count(body, `aria-current="page"`); n != 1 {
-		t.Errorf("%d things claim to be open; only the Data section should", n)
-	}
-}
-
-// A SERVICE THAT REFUSES STILL RENDERS A PAGE. The reason goes where the grid
-// would be; the destination's loads, bars and writers are all still there.
-func TestARefusalRendersTheRestOfThePage(t *testing.T) {
-	svc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"error":"this target cannot be previewed: only BigQuery destinations can be read today"}`))
-	}))
-	defer svc.Close()
-
-	body := render(t, withPreview(t, sqlserve.New(svc.URL, "")), "/ingest/loads/bronze/load?tab=preview")
-	if !strings.Contains(body, "only BigQuery destinations") {
-		t.Error("the reason is not on the page")
-	}
-	if !strings.Contains(body, "Loads") && !strings.Contains(body, "load") {
-		t.Error("the rest of the destination page went missing with the preview")
-	}
-}
-
-// AND AN UNREACHABLE ONE DOES TOO -- with a sentence, never a stack trace.
-func TestAnUnreachableServiceStillRendersThePage(t *testing.T) {
-	body := render(t, withPreview(t, sqlserve.New("http://127.0.0.1:1", "")),
-		"/ingest/loads/bronze/load?tab=preview")
-	if !strings.Contains(body, "could not be reached") {
-		t.Error("the page does not say the service is unreachable")
-	}
-	if strings.Contains(body, "127.0.0.1:1") {
-		t.Error("the address reached the page")
-	}
-}
-
-// NO SERVICE, NO TAB, and the page is exactly what it was before any of this.
-func TestWithNoServiceThePageIsUnchanged(t *testing.T) {
-	body := render(t, withPreview(t, nil), "/ingest/loads/bronze/load?tab=preview")
-	if strings.Contains(body, "Preview") {
-		t.Error("a console with no SQL service offered a preview")
+		t.Error("it queried a warehouse for a load's drawer")
 	}
 }
 

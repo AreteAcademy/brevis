@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // loadConfiguration is a step's configuration on its load's page, in tabs
@@ -62,7 +63,7 @@ func loadConfiguration(v LoadView) templ.Component {
 					var templ_7745c5c3_Var3 string
 					templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(c.Key())
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 19, Col: 28}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 20, Col: 28}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 					if templ_7745c5c3_Err != nil {
@@ -75,7 +76,7 @@ func loadConfiguration(v LoadView) templ.Component {
 					var templ_7745c5c3_Var4 templ.SafeURL
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/workflows/" + c.Workflow))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 21, Col: 82}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 22, Col: 82}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -121,7 +122,7 @@ func loadConfiguration(v LoadView) templ.Component {
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(c.Key())
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 29, Col: 62}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 30, Col: 62}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 					if templ_7745c5c3_Err != nil {
@@ -142,7 +143,7 @@ func loadConfiguration(v LoadView) templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(c.Config.Summary)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 35, Col: 83}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 36, Col: 83}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -192,7 +193,7 @@ func loadConfiguration(v LoadView) templ.Component {
 						var templ_7745c5c3_Var8 string
 						templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(s.Title)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 49, Col: 78}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 50, Col: 78}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 						if templ_7745c5c3_Err != nil {
@@ -232,7 +233,7 @@ func loadConfiguration(v LoadView) templ.Component {
 							var templ_7745c5c3_Var9 string
 							templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(t.SourceCount))
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 60, Col: 81}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 61, Col: 81}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 							if templ_7745c5c3_Err != nil {
@@ -256,7 +257,7 @@ func loadConfiguration(v LoadView) templ.Component {
 								var templ_7745c5c3_Var10 string
 								templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue("sources.*." + r.Label)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 65, Col: 50}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 66, Col: 50}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 								if templ_7745c5c3_Err != nil {
@@ -269,7 +270,7 @@ func loadConfiguration(v LoadView) templ.Component {
 								var templ_7745c5c3_Var11 string
 								templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(r.Note)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 65, Col: 67}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 66, Col: 67}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 								if templ_7745c5c3_Err != nil {
@@ -282,7 +283,7 @@ func loadConfiguration(v LoadView) templ.Component {
 								var templ_7745c5c3_Var12 string
 								templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(r.Label)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 66, Col: 45}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 67, Col: 45}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 								if templ_7745c5c3_Err != nil {
@@ -295,7 +296,7 @@ func loadConfiguration(v LoadView) templ.Component {
 								var templ_7745c5c3_Var13 string
 								templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(r.Value)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 66, Col: 64}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 67, Col: 64}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 								if templ_7745c5c3_Err != nil {
@@ -347,7 +348,7 @@ func loadConfiguration(v LoadView) templ.Component {
 									var templ_7745c5c3_Var14 string
 									templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(s.Index))
 									if templ_7745c5c3_Err != nil {
-										return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 87, Col: 93}
+										return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 88, Col: 93}
 									}
 									_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 									if templ_7745c5c3_Err != nil {
@@ -371,7 +372,7 @@ func loadConfiguration(v LoadView) templ.Component {
 											var templ_7745c5c3_Var15 string
 											templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(cell.Path)
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 92, Col: 41}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 93, Col: 41}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 											if templ_7745c5c3_Err != nil {
@@ -384,7 +385,7 @@ func loadConfiguration(v LoadView) templ.Component {
 											var templ_7745c5c3_Var16 string
 											templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(cellTitle(*cell))
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 92, Col: 68}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 93, Col: 68}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 											if templ_7745c5c3_Err != nil {
@@ -397,7 +398,7 @@ func loadConfiguration(v LoadView) templ.Component {
 											var templ_7745c5c3_Var17 string
 											templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(cell.Value)
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 93, Col: 29}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 94, Col: 29}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 											if templ_7745c5c3_Err != nil {
@@ -448,7 +449,7 @@ func loadConfiguration(v LoadView) templ.Component {
 							var templ_7745c5c3_Var18 string
 							templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(op.Index)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 115, Col: 81}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 116, Col: 81}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 							if templ_7745c5c3_Err != nil {
@@ -466,7 +467,7 @@ func loadConfiguration(v LoadView) templ.Component {
 								var templ_7745c5c3_Var19 string
 								templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(r.Path)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 118, Col: 35}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 119, Col: 35}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 								if templ_7745c5c3_Err != nil {
@@ -479,7 +480,7 @@ func loadConfiguration(v LoadView) templ.Component {
 								var templ_7745c5c3_Var20 string
 								templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(strings.TrimPrefix(r.Label, op.Index+"."))
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 119, Col: 103}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 120, Col: 103}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 								if templ_7745c5c3_Err != nil {
@@ -497,7 +498,7 @@ func loadConfiguration(v LoadView) templ.Component {
 									var templ_7745c5c3_Var21 string
 									templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(strings.Join(r.List, " · "))
 									if templ_7745c5c3_Err != nil {
-										return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 121, Col: 89}
+										return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 122, Col: 89}
 									}
 									_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 									if templ_7745c5c3_Err != nil {
@@ -515,7 +516,7 @@ func loadConfiguration(v LoadView) templ.Component {
 									var templ_7745c5c3_Var22 string
 									templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(r.Value)
 									if templ_7745c5c3_Err != nil {
-										return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 123, Col: 68}
+										return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 124, Col: 68}
 									}
 									_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 									if templ_7745c5c3_Err != nil {
@@ -601,7 +602,7 @@ func loadConfiguration(v LoadView) templ.Component {
 								var templ_7745c5c3_Var23 string
 								templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(col.Name)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 159, Col: 66}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 160, Col: 66}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 								if templ_7745c5c3_Err != nil {
@@ -614,7 +615,7 @@ func loadConfiguration(v LoadView) templ.Component {
 								var templ_7745c5c3_Var24 string
 								templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(col.Type)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 160, Col: 73}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 161, Col: 73}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 								if templ_7745c5c3_Err != nil {
@@ -627,7 +628,7 @@ func loadConfiguration(v LoadView) templ.Component {
 								var templ_7745c5c3_Var25 string
 								templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(col.Role)
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 161, Col: 58}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 162, Col: 58}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 								if templ_7745c5c3_Err != nil {
@@ -698,7 +699,7 @@ func stageRow(t LoadTabs) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(rowValue(t.SourceHead, "driver"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 182, Col: 123}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 183, Col: 123}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
@@ -716,7 +717,7 @@ func stageRow(t LoadTabs) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(t.SourceCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 185, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 186, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -734,7 +735,7 @@ func stageRow(t LoadTabs) templ.Component {
 				var templ_7745c5c3_Var29 string
 				templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(w)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 187, Col: 12}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 188, Col: 12}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 				if templ_7745c5c3_Err != nil {
@@ -758,7 +759,7 @@ func stageRow(t LoadTabs) templ.Component {
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(plural(len(t.Transform), "stage"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 195, Col: 127}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 196, Col: 127}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
@@ -771,7 +772,7 @@ func stageRow(t LoadTabs) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.ResolveAttributeValue(transformNames(t))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 196, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 197, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
 		if templ_7745c5c3_Err != nil {
@@ -790,7 +791,7 @@ func stageRow(t LoadTabs) templ.Component {
 			var templ_7745c5c3_Var32 string
 			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(transformNames(t))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 200, Col: 24}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 201, Col: 24}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 			if templ_7745c5c3_Err != nil {
@@ -804,7 +805,7 @@ func stageRow(t LoadTabs) templ.Component {
 		var templ_7745c5c3_Var33 string
 		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(rowValue(t.Destination, "driver"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 205, Col: 124}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 206, Col: 124}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
@@ -822,7 +823,7 @@ func stageRow(t LoadTabs) templ.Component {
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(d)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 208, Col: 14}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 209, Col: 14}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 			if templ_7745c5c3_Err != nil {
@@ -879,7 +880,7 @@ func cfgRows(rows []ConfigRow) templ.Component {
 					var templ_7745c5c3_Var36 string
 					templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(b.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 225, Col: 60}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 226, Col: 60}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 					if templ_7745c5c3_Err != nil {
@@ -905,7 +906,7 @@ func cfgRows(rows []ConfigRow) templ.Component {
 				var templ_7745c5c3_Var37 string
 				templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue(r.Path)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 229, Col: 90}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 230, Col: 90}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37)
 				if templ_7745c5c3_Err != nil {
@@ -918,7 +919,7 @@ func cfgRows(rows []ConfigRow) templ.Component {
 				var templ_7745c5c3_Var38 string
 				templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.ResolveAttributeValue(boolText(r.Default))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 229, Col: 129}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 230, Col: 129}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var38)
 				if templ_7745c5c3_Err != nil {
@@ -931,7 +932,7 @@ func cfgRows(rows []ConfigRow) templ.Component {
 				var templ_7745c5c3_Var39 string
 				templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(r.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 230, Col: 70}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 231, Col: 70}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 				if templ_7745c5c3_Err != nil {
@@ -954,7 +955,7 @@ func cfgRows(rows []ConfigRow) templ.Component {
 					var templ_7745c5c3_Var40 string
 					templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(r.Value)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 235, Col: 59}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 236, Col: 59}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 					if templ_7745c5c3_Err != nil {
@@ -1059,7 +1060,7 @@ func loadChanges(v LoadView) templ.Component {
 						var templ_7745c5c3_Var43 templ.SafeURL
 						templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/runs/" + ch.RunID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 263, Col: 51}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 264, Col: 51}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 						if templ_7745c5c3_Err != nil {
@@ -1072,7 +1073,7 @@ func loadChanges(v LoadView) templ.Component {
 						var templ_7745c5c3_Var44 string
 						templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(shortID(ch.RunID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 263, Col: 178}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 264, Col: 178}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 						if templ_7745c5c3_Err != nil {
@@ -1107,7 +1108,7 @@ func loadChanges(v LoadView) templ.Component {
 							var templ_7745c5c3_Var45 string
 							templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(l.Path)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 274, Col: 53}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 275, Col: 53}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 							if templ_7745c5c3_Err != nil {
@@ -1120,7 +1121,7 @@ func loadChanges(v LoadView) templ.Component {
 							var templ_7745c5c3_Var46 string
 							templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(l.Text)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 275, Col: 66}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 276, Col: 66}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 							if templ_7745c5c3_Err != nil {
@@ -1156,12 +1157,10 @@ func loadChanges(v LoadView) templ.Component {
 	})
 }
 
-// loadPreview is the destination's first rows on a load's page: still on
-// demand (the Preview link), and once loaded without the columns that hold
-// nothing -- marked by the server, hidden by a switch only a script can
-// work, so with no script every column shows -- and with the SDK's own
-// columns last, under "metadata".
-func loadPreview(v LoadView) templ.Component {
+// loadRecent is the step's recent loads in its drawer (screen-load-v2 LV5,
+// screen-loads T4): when, rows, bytes and the run, each a 34px row. No step
+// column -- it is always this drawer's step, already in the head.
+func loadRecent(v LoadView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1182,247 +1181,7 @@ func loadPreview(v LoadView) templ.Component {
 			templ_7745c5c3_Var47 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		if v.Tabs {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "<section><nav class=\"mb-3 flex items-center gap-1 border-b border-line-soft text-sm\" aria-label=\"Destination tools\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = tab(v.TargetView, "preview", "Preview").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, "</nav>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if v.Tab == "preview" && v.HasPreview() {
-				if v.PreviewErr != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "<p class=\"rounded-card border border-line-soft px-4 py-3 text-sm text-muted\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var48 string
-					templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(v.PreviewErr)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 300, Col: 96}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "</p>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				} else if v.Preview != nil {
-					nulls := NullColumns(v.Preview)
-					order, meta := previewOrder(v.Preview)
-					note := hiddenNote(v.Preview, nulls)
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "<div data-preview data-hide-null>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					if note != "" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, "<div data-js class=\"mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted\"><button type=\"button\" role=\"switch\" aria-checked=\"true\" data-null-toggle class=\"inline-flex items-center gap-2 text-ink\"><span aria-hidden=\"true\" class=\"relative inline-block h-[14px] w-[24px] rounded-full bg-line-strong transition-colors [[aria-checked=true]>&]:bg-state-success\"><span class=\"absolute top-[2px] left-[2px] h-[10px] w-[10px] rounded-full bg-surface transition-transform [[aria-checked=true]>span>&]:translate-x-[10px]\"></span></span> Hide null-only columns</button> <span data-null-note>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var49 string
-						templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(note)
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 314, Col: 35}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "</span></div>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 123, "<div class=\"overflow-x-auto rounded-card border border-line-soft\"><table class=\"ct w-full text-sm\"><thead class=\"border-b border-line-soft text-left text-xs text-muted\"><tr>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					for j, i := range order {
-						if nulls[i] {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "<th data-null-col class=\"px-3 py-2 align-bottom font-medium whitespace-nowrap\">")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							templ_7745c5c3_Err = previewHead(v.Preview.Columns[i], j >= len(order)-meta).Render(ctx, templ_7745c5c3_Buffer)
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 125, "</th>")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-						} else {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 126, "<th class=\"px-3 py-2 align-bottom font-medium whitespace-nowrap\">")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							templ_7745c5c3_Err = previewHead(v.Preview.Columns[i], j >= len(order)-meta).Render(ctx, templ_7745c5c3_Buffer)
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "</th>")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "</tr></thead> <tbody class=\"divide-y divide-line-soft\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					for _, row := range v.Preview.Rows {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, "<tr>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						for _, i := range order {
-							if nulls[i] {
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "<td data-null-col class=\"px-3 py-2 text-xs whitespace-nowrap\">")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								var templ_7745c5c3_Var50 string
-								templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(Cell(cellAt(row, i)))
-								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 339, Col: 97}
-								}
-								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "</td>")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-							} else {
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, "<td class=\"px-3 py-2 text-xs whitespace-nowrap\">")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								var templ_7745c5c3_Var51 string
-								templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(Cell(cellAt(row, i)))
-								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 341, Col: 83}
-								}
-								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "</td>")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-							}
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "</tr>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 135, "</tbody></table></div><p class=\"mt-2 text-xs text-muted\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var52 string
-					templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(v.PreviewNote())
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 349, Col: 58}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 136, "</p></div>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, "</section>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		return nil
-	})
-}
-
-// previewHead is a column's name, captioned "metadata" when it is one of
-// the SDK's own -- a caption in the header and not a group row above, so a
-// column the switch hides cannot leave a group's span wrong.
-func previewHead(name string, metadata bool) templ.Component {
-	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
-			return templ_7745c5c3_CtxErr
-		}
-		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-		if !templ_7745c5c3_IsBuffer {
-			defer func() {
-				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err == nil {
-					templ_7745c5c3_Err = templ_7745c5c3_BufErr
-				}
-			}()
-		}
-		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var53 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var53 == nil {
-			templ_7745c5c3_Var53 = templ.NopComponent
-		}
-		ctx = templ.ClearChildren(ctx)
-		if metadata {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, "<span class=\"block text-[10.5px] font-normal text-faint\">metadata</span> ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		var templ_7745c5c3_Var54 string
-		templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(name)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 364, Col: 7}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		return nil
-	})
-}
-
-// loadRecent is the step's recent loads beside its page (screen-load-v2 LV5):
-// when, rows, bytes and the run, each a 34px row. No step column -- it is
-// always this page's step, already in the head.
-func loadRecent(v LoadView) templ.Component {
-	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
-			return templ_7745c5c3_CtxErr
-		}
-		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-		if !templ_7745c5c3_IsBuffer {
-			defer func() {
-				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err == nil {
-					templ_7745c5c3_Err = templ_7745c5c3_BufErr
-				}
-			}()
-		}
-		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var55 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var55 == nil {
-			templ_7745c5c3_Var55 = templ.NopComponent
-		}
-		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Var56 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var48 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -1434,32 +1193,32 @@ func loadRecent(v LoadView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 139, "<div class=\"max-h-[28rem] overflow-auto\"><table class=\"ct w-full text-[12.5px]\"><thead class=\"sticky top-0 bg-surface\"><tr class=\"text-left\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 116, "<div class=\"max-h-[28rem] overflow-auto\"><table class=\"ct w-full text-[12.5px]\"><thead class=\"sticky top-0 bg-surface\"><tr class=\"text-left\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = th("Loaded", "pl-3.5").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = th(i18n.T(ctx, "loads.drawer.recent.at"), "pl-3.5").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = th("Rows", "text-right").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = th(i18n.T(ctx, "loads.col.rows"), "text-right").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = th("Bytes", "text-right").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = th(i18n.T(ctx, "loads.drawer.recent.bytes"), "text-right").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = th("Run", "pr-3.5").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = th(i18n.T(ctx, "loads.drawer.recent.run"), "pr-3.5").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 140, "</tr></thead> <tbody class=\"divide-y divide-line-soft\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 117, "</tr></thead> <tbody class=\"divide-y divide-line-soft\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, l := range v.Loads {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 141, "<tr><td class=\"px-2.5 pl-3.5 font-mono text-[12px] whitespace-nowrap text-muted tabular-nums\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "<tr><td class=\"px-2.5 pl-3.5 font-mono text-[12px] whitespace-nowrap text-muted tabular-nums\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1467,70 +1226,70 @@ func loadRecent(v LoadView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 142, "</td><td class=\"px-2.5 text-right tabular-nums\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 119, "</td><td class=\"px-2.5 text-right tabular-nums\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var57 string
-				templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(rowsText(l.Rows))
+				var templ_7745c5c3_Var49 string
+				templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(rowsText(l.Rows))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 388, Col: 68}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 309, Col: 68}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 143, "</td><td class=\"px-2.5 text-right tabular-nums\">")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var58 string
-				templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(rowsText(l.Bytes))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 389, Col: 69}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 120, "</td><td class=\"px-2.5 text-right tabular-nums\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 144, "</td><td class=\"px-2.5 pr-3.5\"><a href=\"")
+				var templ_7745c5c3_Var50 string
+				templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(rowsText(l.Bytes))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 310, Col: 69}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var59 templ.SafeURL
-				templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/runs/" + l.RunID))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 391, Col: 51}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var59))
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, "</td><td class=\"px-2.5 pr-3.5\"><a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 145, "\" class=\"font-mono text-[12px] text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink\">")
+				var templ_7745c5c3_Var51 templ.SafeURL
+				templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/runs/" + l.RunID))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 312, Col: 51}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var60 string
-				templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(shortID(l.RunID))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 391, Col: 184}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var60))
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "\" class=\"font-mono text-[12px] text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 146, "</a></td></tr>")
+				var templ_7745c5c3_Var52 string
+				templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(shortID(l.RunID))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/load_config.templ`, Line: 312, Col: 184}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 123, "</a></td></tr>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 147, "</tbody></table></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 124, "</tbody></table></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = components.Panel("Recent loads", loadsCount(len(v.Loads))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var56), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = components.Panel(i18n.T(ctx, "loads.drawer.recent"), loadsCount(ctx, len(v.Loads))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var48), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

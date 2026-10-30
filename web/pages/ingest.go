@@ -290,7 +290,32 @@ type LoadsView struct {
 	HasLegacy bool
 	Filter    DataFilter
 	Now       time.Time
+
+	// Drawer is the load the URL names (/ingest/loads/{workflow}/{step}),
+	// drawn open over the list (screen-loads T4); nil draws none. Missing is
+	// a step it named that writes no destination Brevis knows.
+	Drawer  *LoadView
+	Missing string
 }
+
+// CloseHref is the list the drawer was opened from, as it was filtered.
+func (v LoadsView) CloseHref() string { return v.Filter.With("", "") }
+
+// keepFilter is a load's address with the list's filter after it, so that
+// closing its drawer comes back to the same list.
+func (v LoadsView) keepFilter(href string) string {
+	_, query, ok := strings.Cut(v.CloseHref(), "?")
+	if !ok {
+		return href
+	}
+	if strings.Contains(href, "?") {
+		return href + "&" + query
+	}
+	return href + "?" + query
+}
+
+// rowHref is where a row goes: its load's drawer, keeping the filter.
+func (v LoadsView) rowHref(t LoadTarget) string { return v.keepFilter(t.Href()) }
 
 // Count is how many loads a band choice would show: "" for all, "attention",
 // or a status.
@@ -378,8 +403,9 @@ func containsString(list []string, s string) bool {
 	return false
 }
 
-// LoadView is one load's page: the destination's view (TargetView) narrowed
-// to the one step, plus who that step is.
+// LoadView is one load's drawer (screen-loads T4): the destination's view
+// (TargetView) narrowed to the one step, plus who that step is and where it
+// reads.
 type LoadView struct {
 	TargetView
 	Workflow, Step string
@@ -387,7 +413,17 @@ type LoadView struct {
 	// Read is how many rows the newest load's step read (RowsRead), nil
 	// when its run's stages do not say.
 	Read *int64
+
+	// Source is where the step reads, as it declared.
+	Source Source
+
+	// Choices are the destinations a step writing several writes, the open
+	// one marked; with none open (no ?target=) the drawer asks which.
+	Choices []LoadChoice
 }
+
+// Choosing is a drawer that asks which destination, having none open.
+func (v LoadView) Choosing() bool { return v.Row.Target == "" && len(v.Choices) > 0 }
 
 // BuildLoad narrows a destination to the loads and the writer of one step:
 // another workflow writing the same destination is a different load, and
@@ -420,64 +456,14 @@ func (v LoadView) Writer() *WriterView {
 	return &v.Row.Writers[0]
 }
 
-// loadStats are the four numbers at the top of a load's page. "Recent loads"
-// and not "recorded": the page reads the last loadsShown, and above that a
-// count would be a floor presented as a total.
-func loadStats(v LoadView) []components.Stat {
-	bytes := "—"
-	if len(v.Loads) > 0 && v.Loads[0].Bytes != nil {
-		bytes = bytesText(*v.Loads[0].Bytes)
-	}
-	var recent components.Stat
-	rows := components.Stat{Label: "Rows, last load", Value: rowsText(v.Row.LastRows)}
-	if v.Read != nil {
-		rows.Note = "of " + rowsText(v.Read) + " read"
-		// Nothing written out of something read is the load that needs a
-		// look: a merge that found every row already there, or a filter
-		// that kept none.
-		if v.Row.LastRows != nil && *v.Row.LastRows == 0 && *v.Read > 0 {
-			rows.Tone = "text-state-failed"
-		}
-	}
-	recent.Label = "Rows per load"
-	recent.Value = ""
-	recent.Note = ""
-	recent.Sub = loadsCount(len(v.Loads))
-	recent.Body = components.LoadBarsSized(v.Bars, v.Missed, "h-[26px]")
-	recent.Title = barsLegend(v.Missed)
-	return []components.Stat{
-		{Label: "Last load", Value: components.When(v.Row.LastWhen), Note: components.UTCStamp(v.Row.LastWhen)},
-		rows,
-		{Label: "Bytes, last load", Value: bytes},
-		recent,
-	}
-}
-
 // loadsShown is how many loads the destination read returns (its LIMIT).
 const loadsShown = 30
 
-// writerSchedule is a step writer's schedule as a sentence.
-func writerSchedule(w *WriterView) string {
-	if w == nil || !w.HasSchedule {
-		return "runs by hand"
-	}
-	if words := CronText(w.Cron); words != "" {
-		return words + zoneSuffix(w.Timezone)
-	}
-	return w.Cron + " " + w.Timezone
-}
-
-// LoadChoice is one destination a step writes, on the page that asks which.
+// LoadChoice is one destination a step writes, in the drawer that asks
+// which; Current is the one open.
 type LoadChoice struct {
 	URI, Href string
-}
-
-// loadKind is the destination's kind as the eyebrow says it.
-func loadKind(v LoadView) string {
-	if v.Row.Kind == "" {
-		return "label"
-	}
-	return v.Row.Kind
+	Current   bool
 }
 
 // AttachStreamConfigs gives each gateway writer its stream's configuration,
@@ -926,22 +912,25 @@ func wholeNumber(v any) (int64, bool) {
 
 // loadsCount says how many loads the bars draw, and that it is the last
 // loadsShown when the read was cut there: a count at the LIMIT is a floor.
-func loadsCount(n int) string {
+func loadsCount(ctx context.Context, n int) string {
 	if n >= loadsShown {
-		return fmt.Sprintf("the last %d loads", loadsShown)
+		return i18n.T(ctx, "loads.drawer.recent.last", "n", fmt.Sprint(loadsShown))
 	}
-	if n == 1 {
-		return "1 load"
-	}
-	return fmt.Sprintf("%d loads", n)
+	return i18n.N(ctx, "loads.drawer.recent.count", n)
 }
 
-// barsLegend is how to read the bars, in the cell's title now that they sit
-// in the strip.
-func barsLegend(missed int) string {
-	s := "Oldest on the left; each bar opens the run that wrote it. A hollow bar is a load that did not say how many rows it wrote, and a red one wrote none."
-	if missed > 0 {
-		s += " Dashed bars are scheduled loads that did not arrive."
+// loadWhen is when a step runs, in words where they are sure and the
+// expression otherwise; the drawer writes the expression beside it anyway.
+func loadWhen(ctx context.Context, w *WriterView) string {
+	if words := CronTextIn(ctx, w.Cron); words != "" {
+		return words + zoneSuffix(w.Timezone)
 	}
-	return s
+	return w.Cron
+}
+
+// ReadNothing is a last load that wrote nothing out of something read: a
+// merge that found every row already there, or a filter that kept none --
+// the load that needs a look.
+func (v LoadView) ReadNothing() bool {
+	return v.Row.LastRows != nil && *v.Row.LastRows == 0 && v.Read != nil && *v.Read > 0
 }
