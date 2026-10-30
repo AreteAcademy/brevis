@@ -73,7 +73,7 @@ templ TargetDrawer(v CatalogScreen) {
 					</p>
 				</div>
 			</div>
-			<a href={ templ.SafeURL(v.CloseHref()) } data-drawer-close aria-label={ i18n.T(ctx, "dialog.close") } class="flex h-8 w-8 shrink-0 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+			<a href={ templ.SafeURL(v.CloseHref()) } data-target-close aria-label={ i18n.T(ctx, "dialog.close") } class="flex h-8 w-8 shrink-0 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
 				@components.Icon("x", "h-4 w-4")
 			</a>
 		</header>

@@ -795,6 +795,7 @@
 
   document.addEventListener("click", function (e) {
     if (!e.target || typeof e.target.closest !== "function") return;
+    if (e.defaultPrevented) return;
     var row = e.target.closest("tr[data-href]");
     if (!row || e.target.closest("a, button, input, label")) return;
     if (window.getSelection && String(window.getSelection()).length > 0) return;
@@ -805,6 +806,117 @@
       window.location.assign(href);
     }
   });
+
+  // ------------------------------------------------------------------
+  // The Catalog's drawer (screen-catalog T4)
+  //
+  // The server draws /data/target?u= with the drawer open, which is all a
+  // page with no script gets: the row is a link to it, and its × a link back
+  // to the list. Here a row fetches the drawer alone (X-Brevis-Fragment:
+  // target) and opens it over the list without leaving it, the address
+  // following (pushState), so Back and Forward open and close it and a
+  // reload or a sent link shows the same. A drawer the page came with is
+  // re-opened modal, which `open` in the markup is not.
+  //
+  // Closing -- the ×, Esc, the backdrop -- goes back to the list as it was
+  // filtered: a step back when this page opened it, else the list's address
+  // in place of the drawer's. Any doubt navigates, as the link would.
+  // ------------------------------------------------------------------
+
+  var catalogList = document.getElementById("catalog-list");
+
+  function drawerHref(path) {
+    return path === "/data/target";
+  }
+
+  function watchDrawer(d) {
+    d.addEventListener("close", function () {
+      var back = d.getAttribute("data-close") || "/data";
+      d.remove();
+      // Closed by Back or by the next drawer: the address is already right.
+      if (d._quiet) return;
+      if (history.state && history.state.catalogDrawer) history.back();
+      else history.replaceState(null, "", back);
+    });
+  }
+
+  function quietClose(d) {
+    d._quiet = true;
+    if (d.open) d.close();
+    else d.remove();
+  }
+
+  // Taking `open` off is not closing it: no close event, which would take
+  // the drawer away.
+  function showDrawer(d) {
+    d.removeAttribute("open");
+    d.showModal();
+  }
+
+  function openTarget(href, push) {
+    fetch(href, { headers: { "X-Brevis-Fragment": "target" } })
+      .then(function (r) {
+        if (r.redirected || !r.ok) throw new Error("not a fragment");
+        return r.text();
+      })
+      .then(function (html) {
+        var old = document.getElementById("target");
+        if (old) quietClose(old);
+        catalogList.insertAdjacentHTML("afterend", html);
+        var d = document.getElementById("target");
+        if (push) history.pushState({ catalogDrawer: true }, "", href);
+        watchDrawer(d);
+        showDrawer(d);
+      })
+      .catch(function () {
+        window.location.assign(href);
+      });
+  }
+
+  if (catalogList && window.fetch && window.history && history.pushState) {
+    var arrived = document.getElementById("target");
+    if (arrived && arrived.hasAttribute("data-catalog-drawer")) {
+      watchDrawer(arrived);
+      showDrawer(arrived);
+    }
+
+    // Before the row's own handler, which would navigate.
+    document.addEventListener(
+      "click",
+      function (e) {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (!e.target || typeof e.target.closest !== "function") return;
+        var close = e.target.closest("[data-target-close]");
+        if (close) {
+          var d = close.closest("dialog");
+          if (d && d.open) {
+            e.preventDefault();
+            d.close();
+          }
+          return;
+        }
+        var row = e.target.closest("#catalog-list tr[data-href]");
+        if (!row) return;
+        var a = e.target.closest("a, button, input, label");
+        if (a && !(a.tagName === "A" && row.contains(a) && a.getAttribute("href") === row.getAttribute("data-href"))) return;
+        if (window.getSelection && String(window.getSelection()).length > 0) return;
+        var href = row.getAttribute("data-href");
+        if (!drawerHref(new URL(href, window.location.href).pathname)) return;
+        e.preventDefault();
+        openTarget(href, true);
+      },
+      true
+    );
+
+    window.addEventListener("popstate", function () {
+      var d = document.getElementById("target");
+      if (drawerHref(window.location.pathname)) {
+        openTarget(window.location.href, false);
+      } else if (d) {
+        quietClose(d);
+      }
+    });
+  }
 
   // ------------------------------------------------------------------
   // A list that filters while somebody types

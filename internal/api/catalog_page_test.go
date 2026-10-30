@@ -198,7 +198,7 @@ func TestADestinationOpensInADrawer(t *testing.T) {
 		" open", "bigquery://acme/bronze/old", "stale", "the best writer",
 		"vendors · fetch", "missed its", `href="/runs/aaaaaaaa-0000-0000-0000-000000000002"`,
 		"dashed = a slot missed", "/v1/old", "Credentials never reach this page",
-		`data-copy="#target-uri"`, `href="/data?status=attention"`,
+		`data-copy="#target-uri"`, `href="/data?status=attention" data-target-close`,
 	} {
 		if !strings.Contains(drawer, want) {
 			t.Errorf("the drawer has no %q", want)

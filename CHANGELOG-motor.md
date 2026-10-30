@@ -38,6 +38,10 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   endpoints that read it; how each writer is configured; Query and Copy
   destination. The × goes back to the list as it was filtered. A destination
   nobody writes is the catalog with a note saying so.
+- **A row opens the drawer in place**, the address following: the list stays
+  as it was, Esc, the × and the backdrop close it, Back and Forward close and
+  open it, and a sent link arrives with it open. With no script the row is a
+  link to the same address.
 - The reason a writer is late, the load bars and the configuration's frame
   are in the reader's language on the load page too.
 - **In the menu** first of Data, with `g d`, and a badge of the destinations
