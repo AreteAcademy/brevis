@@ -44,7 +44,7 @@ func TestTheWorkflowPagesHeadAndTabsHaveNoEnglishLeft(t *testing.T) {
 		"Mean duration", "In progress", "Next run", "last 30 days", "of", "days", "running", "queued", "in",
 		"Runs", "Accepted parameters", "Parameters", "State", "Trigger", "Duration", "When", "default",
 		"All runs", "Show the last runs", "Name", "Type", "Default", "What it is for", "required", "No parameters",
-		"schedule", "Pause", "Resume", "day",
+		"schedule", "Pause", "Resume", "day", "Definition", "published workflow", "could not be written",
 	} {
 		if at := regexp.MustCompile(`\b` + regexp.QuoteMeta(english) + `\b`).FindStringIndex(text); at != nil {
 			t.Errorf("the Portuguese page still says %q: …%s…", english, text[max(0, at[0]-60):min(len(text), at[1]+40)])

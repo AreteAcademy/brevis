@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/AreteAcademy/brevis/internal/alerts"
+	appworkflow "github.com/AreteAcademy/brevis/internal/application/workflow"
 	"github.com/AreteAcademy/brevis/internal/auth"
 	"github.com/AreteAcademy/brevis/internal/branding"
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
@@ -1491,6 +1492,13 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 	}
 	page := pages.WorkflowPage{Def: def, Sum: sum, Latest: latest, Stats: stats, Now: now,
 		Langs: runsIn(def, 0), Day: day}
+	// The Definition tab: the published workflow as a file that publishes
+	// it. Without it the tab says so; the page still opens.
+	if y, err := appworkflow.YAML(def); err == nil {
+		page.YAML = string(y)
+	} else {
+		u.log.Warn("the workflow's YAML could not be written", "workflow", slug, "error", err)
+	}
 	// A one-step workflow shows its step as a line, and has no graph to embed.
 	if oneStep(def) {
 		page.Step = stepLineOf(def, nil)

@@ -28,7 +28,10 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   trigger (a manual run of a past slot says so), slot, the parameters it was
   given that differ from the defaults, duration and when; and Accepted
   parameters, with each one's type, default, title, description, group and
-  connector.
+  connector; and Definition, the published workflow written back as YAML,
+  with Copy. It is not the author's file -- comments and the order of the
+  keys are gone -- but publishing it publishes the same workflow, which a
+  round trip over every example holds.
 - In English, Portuguese and Spanish.
 
 ### Changed: the Workflows list

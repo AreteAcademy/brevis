@@ -18,27 +18,31 @@ import (
 )
 
 // Spec mirrors the YAML, and nothing more. Loose fields here, invariants in the domain.
+//
+// Every key is `omitempty`: reading ignores it, and writing a Spec back
+// (SpecOf, for the console's Definition tab) leaves out what was not said,
+// as a file somebody wrote would.
 type Spec struct {
-	Name        string       `yaml:"name"`
-	Description string       `yaml:"description"`
-	Schedule    string       `yaml:"schedule"`
-	Type        string       `yaml:"type"`
-	Tags        []string     `yaml:"tags"`
-	Image       string       `yaml:"image"`
-	Resources   ResourceSpec `yaml:"resources"`
-	Params      []ParamSpec  `yaml:"params"`
+	Name        string       `yaml:"name,omitempty"`
+	Description string       `yaml:"description,omitempty"`
+	Schedule    string       `yaml:"schedule,omitempty"`
+	Type        string       `yaml:"type,omitempty"`
+	Tags        []string     `yaml:"tags,omitempty"`
+	Image       string       `yaml:"image,omitempty"`
+	Resources   ResourceSpec `yaml:"resources,omitempty"`
+	Params      []ParamSpec  `yaml:"params,omitempty"`
 
 	// Env and Secrets apply to every step; a step overrides them name by name.
-	Env     map[string]string `yaml:"env"`
-	Secrets map[string]string `yaml:"secrets"`
+	Env     map[string]string `yaml:"env,omitempty"`
+	Secrets map[string]string `yaml:"secrets,omitempty"`
 	// Concurrency is Kestra's `concurrency.limit`, under the name most
 	// orchestrators use. See ConcurrencySpec for the two shapes.
-	Concurrency ConcurrencySpec `yaml:"concurrency"`
+	Concurrency ConcurrencySpec `yaml:"concurrency,omitempty"`
 
 	// Trigger is why this runs other than the clock. See TriggerSpec.
-	Trigger TriggerSpec `yaml:"trigger"`
+	Trigger TriggerSpec `yaml:"trigger,omitempty"`
 
-	Steps []StepSpec `yaml:"steps"`
+	Steps []StepSpec `yaml:"steps,omitempty"`
 }
 
 // TriggerSpec is `trigger:` in the YAML.
@@ -53,8 +57,8 @@ type Spec struct {
 // a window read as five nanoseconds collapses nothing and looks exactly like
 // the feature not working. TestADebounceNeedsItsUnit pins it.
 type TriggerSpec struct {
-	OnLanded []string      `yaml:"on_landed"`
-	Debounce time.Duration `yaml:"debounce"`
+	OnLanded []string      `yaml:"on_landed,omitempty"`
+	Debounce time.Duration `yaml:"debounce,omitempty"`
 }
 
 // ResourceSpec is the CPU and memory request in Kubernetes' format.
@@ -64,12 +68,12 @@ type TriggerSpec struct {
 // blows the limit dies with OOMKilled, one that merely exceeds the request keeps
 // running.
 type ResourceSpec struct {
-	CPU    string `yaml:"cpu"`
-	Memory string `yaml:"memory"`
+	CPU    string `yaml:"cpu,omitempty"`
+	Memory string `yaml:"memory,omitempty"`
 	Limits struct {
-		CPU    string `yaml:"cpu"`
-		Memory string `yaml:"memory"`
-	} `yaml:"limits"`
+		CPU    string `yaml:"cpu,omitempty"`
+		Memory string `yaml:"memory,omitempty"`
+	} `yaml:"limits,omitempty"`
 }
 
 func (r ResourceSpec) dominio() dominio.Resources {
@@ -92,16 +96,16 @@ func (r ResourceSpec) dominio() dominio.Resources {
 // `title`, `group`, `warn` and `uses` are how the form presents it, and do
 // not change what a value may be.
 type ParamSpec struct {
-	Name        string   `yaml:"name"`
-	Type        string   `yaml:"type"`
-	Default     string   `yaml:"default"`
-	Description string   `yaml:"description"`
-	Enum        []string `yaml:"enum"`
-	Pattern     string   `yaml:"pattern"`
-	Title       string   `yaml:"title"`
-	Group       string   `yaml:"group"`
-	Warn        string   `yaml:"warn"`
-	Uses        string   `yaml:"uses"`
+	Name        string   `yaml:"name,omitempty"`
+	Type        string   `yaml:"type,omitempty"`
+	Default     string   `yaml:"default,omitempty"`
+	Description string   `yaml:"description,omitempty"`
+	Enum        []string `yaml:"enum,omitempty"`
+	Pattern     string   `yaml:"pattern,omitempty"`
+	Title       string   `yaml:"title,omitempty"`
+	Group       string   `yaml:"group,omitempty"`
+	Warn        string   `yaml:"warn,omitempty"`
+	Uses        string   `yaml:"uses,omitempty"`
 }
 
 func (p ParamSpec) dominio() dominio.Param {
@@ -123,22 +127,22 @@ func (p ParamSpec) dominio() dominio.Param {
 
 // StepSpec is a step as written in the file.
 type StepSpec struct {
-	ID        string         `yaml:"id"`
-	Run       string         `yaml:"run"`
-	Action    string         `yaml:"action"`
-	With      map[string]any `yaml:"with"`
-	DependsOn []Dependency   `yaml:"depends_on"`
+	ID        string         `yaml:"id,omitempty"`
+	Run       string         `yaml:"run,omitempty"`
+	Action    string         `yaml:"action,omitempty"`
+	With      map[string]any `yaml:"with,omitempty"`
+	DependsOn []Dependency   `yaml:"depends_on,omitempty"`
 
 	// Image e Resources sobrescrevem os do workflow. Ausentes = herda.
-	Image     string       `yaml:"image"`
-	Host      string       `yaml:"host"`
-	Resources ResourceSpec `yaml:"resources"`
+	Image     string       `yaml:"image,omitempty"`
+	Host      string       `yaml:"host,omitempty"`
+	Resources ResourceSpec `yaml:"resources,omitempty"`
 
 	// Env are variables with a literal value in the file.
 	//
 	//	env:
 	//	  BREVIS_LOG_LEVEL: info
-	Env map[string]string `yaml:"env"`
+	Env map[string]string `yaml:"env,omitempty"`
 
 	// PersistContext lists the keys this step may read and write through
 	// sdk/persist. Declaring it is what makes the engine point the step at the
@@ -149,14 +153,14 @@ type StepSpec struct {
 	// good name for `station_codes` would overwrite each other and both keep
 	// running. Naming them is also what lets the reader of the file see that
 	// this step depends on whatever wrote them.
-	PersistContext []string `yaml:"persist_context"`
+	PersistContext []string `yaml:"persist_context,omitempty"`
 
 	// Secrets are variables whose value is NOT in the file: the key is the
 	// variable's name, the value is where to find it.
 	//
 	//	secrets:
 	//	  GABRIEL_SESSION_COOKIE: gabriel-session/cookie
-	Secrets map[string]string `yaml:"secrets"`
+	Secrets map[string]string `yaml:"secrets,omitempty"`
 
 	// Runtime and Tools say what this step runs in, when the engine cannot
 	// work it out from `run:` and `image:`.
@@ -172,38 +176,38 @@ type StepSpec struct {
 	// An id outside the vocabulary is refused at publish, naming what is
 	// valid. The alternative is a chip that renders blank on a screen three
 	// days later, with nothing to trace it to.
-	Runtime string   `yaml:"runtime"`
-	Tools   []string `yaml:"tools"`
+	Runtime string   `yaml:"runtime,omitempty"`
+	Tools   []string `yaml:"tools,omitempty"`
 
 	// Shell: a pointer, to tell "did not declare" from "declared false". Without
 	// the pointer, every step without the key would become `shell: false` and
 	// images that do have a shell -- most of them -- would start receiving an
 	// argv, breaking any command with a pipe or a variable.
-	Shell *bool `yaml:"shell"`
+	Shell *bool `yaml:"shell,omitempty"`
 
 	// When is the trigger rule. Empty is `all_success`, which is what every
 	// workflow written before this existed means.
-	When string `yaml:"when"`
+	When string `yaml:"when,omitempty"`
 
 	// Marker is a step that does nothing and exists to be a point in the
 	// graph -- a `start`, an `end`, a join. See dominio.Node.Marker.
-	Marker bool `yaml:"marker"`
+	Marker bool `yaml:"marker,omitempty"`
 
 	// UnlessEmpty names a context key that decides whether this step runs.
 	// A key, not an expression. See dominio.Node.UnlessEmpty.
-	UnlessEmpty string `yaml:"unless_empty"`
+	UnlessEmpty string `yaml:"unless_empty,omitempty"`
 
 	// ForEach names a context key holding a list. The step runs once per
 	// element. See dominio.Node.ForEach.
-	ForEach string `yaml:"for_each"`
+	ForEach string `yaml:"for_each,omitempty"`
 
 	// Group draws this step inside a named box on the graph. Visual only.
 	// See dominio.Node.Group.
-	Group string `yaml:"group"`
+	Group string `yaml:"group,omitempty"`
 
 	// Uses names another workflow whose steps take this one's place, expanded
 	// at publish. See dominio.Node.Uses.
-	Uses string `yaml:"uses"`
+	Uses string `yaml:"uses,omitempty"`
 
 	// OnError announces this step's failures.
 	//
@@ -214,7 +218,7 @@ type StepSpec struct {
 	// A pointer for the same reason Shell is: absent has to be different from
 	// declared-and-empty, and a zero OnError would look like a step asking to
 	// be announced to nowhere.
-	OnError *OnErrorSpec `yaml:"on_error"`
+	OnError *OnErrorSpec `yaml:"on_error,omitempty"`
 }
 
 // ConcurrencySpec is `concurrency:`, in either shape:
@@ -228,8 +232,8 @@ type StepSpec struct {
 // names a group: every workflow that names it counts against one limit, which
 // is how a daily and a */15 that build the same models stop overlapping (#32).
 type ConcurrencySpec struct {
-	Limit int    `yaml:"limit"`
-	Group string `yaml:"group"`
+	Limit int    `yaml:"limit,omitempty"`
+	Group string `yaml:"group,omitempty"`
 }
 
 // UnmarshalYAML accepts a scalar or a mapping, and refuses a key it does not
@@ -287,8 +291,8 @@ func hasKey(m *yaml.Node, key string) bool {
 // two arrows leaving the same step with no labels is a diagram that requires
 // opening the source to read.
 type Dependency struct {
-	Step  string `yaml:"step"`
-	Label string `yaml:"label"`
+	Step  string `yaml:"step,omitempty"`
+	Label string `yaml:"label,omitempty"`
 }
 
 // UnmarshalYAML accepts a scalar or a mapping.
@@ -319,8 +323,8 @@ func (d *Dependency) UnmarshalYAML(value *yaml.Node) error {
 // destination is a credential; the installation owns it. This says WHETHER and
 // HOW.
 type OnErrorSpec struct {
-	Type string `yaml:"type"`
-	When string `yaml:"when"`
+	Type string `yaml:"type,omitempty"`
+	When string `yaml:"when,omitempty"`
 }
 
 func (o *OnErrorSpec) dominio() *dominio.OnError {

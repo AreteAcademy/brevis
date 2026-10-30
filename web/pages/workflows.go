@@ -229,6 +229,9 @@ type WorkflowPage struct {
 	Now time.Time
 	// Langs is every language and tool the workflow runs, as logo keys.
 	Langs []string
+	// YAML is the Definition tab: the published workflow written back as a
+	// file. Empty when it could not be written.
+	YAML string
 	// Day narrows the Runs tab to one UTC day -- a square of the calendar;
 	// nil is the last runs.
 	Day *time.Time
@@ -342,7 +345,7 @@ func givenParams(w wf.Workflow, given map[string]string) []string {
 
 // workflowTabsCSS shows the workflow page's tabs by the hash, before the
 // first paint.
-func workflowTabsCSS() string { return hashTabsCSS("workflow-tabs", "runs", "params") }
+func workflowTabsCSS() string { return hashTabsCSS("workflow-tabs", "runs", "params", "definition") }
 
 // langsShown is how many marks the language column draws; the rest are a
 // count.

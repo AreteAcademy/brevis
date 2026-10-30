@@ -313,3 +313,21 @@ func TestAWorkflowsParametersTabIsWhatItAccepts(t *testing.T) {
 		t.Error("a workflow with no parameters does not say what every step still gets")
 	}
 }
+
+// THE DEFINITION TAB IS THE WORKFLOW AS A FILE THAT PUBLISHES IT, with Copy,
+// and says it is not the file the author wrote.
+func TestAWorkflowsDefinitionTabIsItsYAML(t *testing.T) {
+	def := wf.Workflow{Slug: "daily_sales", Name: "daily_sales", Kind: wf.KindDAG, Schedule: "0 4 * * *",
+		Nodes: []wf.Node{{ID: "load", Run: "python load.py"}}}
+	_, body := get(t, workflowPageUI(postgres.WorkflowSummary{Slug: "daily_sales"}, def), "/workflows/daily_sales")
+	at := strings.Index(body, `<section id="definition"`)
+	if at < 0 {
+		t.Fatal("there is no Definition tab")
+	}
+	tab := body[at : at+strings.Index(body[at:], "</section>")]
+	for _, want := range []string{"name: daily_sales", "schedule: 0 4 * * *", "run: python load.py", `data-copy="#workflow-yaml"`, "not the file"} {
+		if !strings.Contains(tab, want) {
+			t.Errorf("the Definition tab has no %q", want)
+		}
+	}
+}

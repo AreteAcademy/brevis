@@ -713,6 +713,7 @@ templ workflowTabs(p WorkflowPage) {
 			@components.Tabs(i18n.T(ctx, "workflow.tabs"), []components.Tab{
 				{Key: "runs", Label: i18n.T(ctx, "workflow.tab.runs"), Count: fmt.Sprint(len(p.Latest)), Selected: true},
 				{Key: "params", Label: i18n.T(ctx, "workflow.tab.params"), Count: fmt.Sprint(len(w.Params))},
+				{Key: "definition", Label: i18n.T(ctx, "workflow.tab.definition")},
 			})
 		</div>
 		<section id="runs" data-tab-panel="runs" data-workflow-runs class="rounded-card border border-line bg-surface shadow-warm-sm">
@@ -824,7 +825,27 @@ templ workflowTabs(p WorkflowPage) {
 				</div>
 			}
 		</section>
+		@definitionTab(p)
 	</div>
+}
+
+// definitionTab is the workflow as a file: the published definition written
+// back as YAML, to read and to copy. It says it is not the author's file --
+// the engine keeps the workflow, not the file, so the comments and the
+// order of the keys are gone -- and that publishing it publishes the same
+// workflow.
+templ definitionTab(p WorkflowPage) {
+	<section id="definition" data-tab-panel="definition" class="rounded-card border border-line bg-surface shadow-warm-sm">
+		<h2 data-panel-heading class="px-4 pt-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "workflow.tab.definition") }</h2>
+		<p class="px-4 py-2.5 text-[12.5px] text-muted">{ i18n.T(ctx, "workflow.definition.note") }</p>
+		<div class="px-4 pb-4">
+			if p.YAML != "" {
+				@components.CodeBlock("workflow-yaml", p.YAML, nil)
+			} else {
+				<p class="text-[12.5px] text-muted">{ i18n.T(ctx, "workflow.definition.none") }</p>
+			}
+		</div>
+	</section>
 }
 
 // runAction is the page's verb. With parameters it is "Run…", a link to the
