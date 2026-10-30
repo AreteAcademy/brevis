@@ -1381,6 +1381,28 @@ tr[data-paused] > td[data-fade] {
   opacity: 0.55;
 }
 
+/* The Run dialog's Now | Another slot: two radios drawn as a segment. The
+   radio stays in the page, focusable and announced; only its dot is hidden. */
+.run-when {
+  display: inline-flex;
+  height: 100%;
+  align-items: center;
+  border-radius: 2px;
+  padding: 0 0.625rem;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.run-when:has(input:checked) {
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+  font-weight: 500;
+}
+.run-when:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
 /* A switch: on is the ok colour, because on means "this is running". */
 .switch {
   position: relative;

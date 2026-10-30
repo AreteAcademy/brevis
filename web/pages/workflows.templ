@@ -189,6 +189,13 @@ templ WorkflowsList(v WorkflowsScreen) {
 					}
 				</tbody>
 			</table>
+			// The Run dialogs live outside the table: a click inside one must
+			// not reach the row's own click, which opens the workflow.
+			for _, w := range v.Rows {
+				if !v.Params[w.Slug] {
+					@runNow(RunNow{Slug: w.Slug, Cron: w.Cron, Zone: w.Timezone, Back: f.WithPage(f.Page), Now: v.Now})
+				}
+			}
 			@pagination(Pagination{
 				Page: f.Page, PerPage: f.PerPage, Total: v.Filtered,
 				PageLink: f.WithPage,
@@ -294,7 +301,19 @@ templ workflowRow(v WorkflowsScreen, w postgres.WorkflowSummary) {
 			</div>
 		</td>
 		<td class="py-3 pr-5 text-right">
-			@disparar(w.Slug)
+			if v.Params[w.Slug] {
+				// Parameters are asked for in the workflow's own drawer.
+				<a
+					href={ templ.SafeURL(rowHref(w.Slug) + "#run") }
+					title={ i18n.T(ctx, "workflows.run.tip") }
+					aria-label={ i18n.T(ctx, "workflows.run", "workflow", w.Slug) }
+					class="inline-flex h-8 w-8 items-center justify-center rounded-card border border-line text-muted transition-colors hover:border-line-strong hover:bg-hover hover:text-ink"
+				>
+					@playGlyph()
+				</a>
+			} else {
+				@disparar(w.Slug, runNowID(w.Slug))
+			}
 		</td>
 	</tr>
 }
@@ -429,19 +448,76 @@ templ interruptor(w postgres.WorkflowSummary) {
 	}
 }
 
-// disparar is the button with no parameters — used in the LIST, where there is
-// no room for a form and where the defaults are the right choice.
-templ disparar(slug string) {
+// disparar is the ▶ of a workflow with no parameters: a form that posts the
+// trigger, which is all it is with no script. With ui.js the button opens the
+// Run dialog instead (`data-dialogo`), which asks when.
+templ disparar(slug, dialog string) {
 	<form method="post" action={ templ.SafeURL("/workflows/" + slug + "/trigger") } class="inline">
 		<button
 			type="submit"
+			data-dialogo={ dialog }
+			aria-haspopup="dialog"
 			title={ i18n.T(ctx, "workflows.run.tip") }
 			aria-label={ i18n.T(ctx, "workflows.run", "workflow", slug) }
 			class="inline-flex h-8 w-8 items-center justify-center rounded-card border border-line text-muted transition-colors hover:border-line-strong hover:bg-hover hover:text-ink"
 		>
-			<svg class="h-3.5 w-3.5" viewBox="0 0 12 12" fill="currentColor"><path d="M2.5 1.6v8.8L10 6z"></path></svg>
+			@playGlyph()
 		</button>
 	</form>
+}
+
+templ playGlyph() {
+	<svg class="h-3.5 w-3.5" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M2.5 1.6v8.8L10 6z"></path></svg>
+}
+
+// runNow is the Run dialog: now, or one of the schedule's past slots -- the
+// last fourteen, each with the window it processes, or a time of one's own.
+// It posts the same trigger, with its script, so a refused slot is said here
+// and the dialog stays open. A workflow with no schedule has no slot to
+// offer, and the dialog only confirms.
+templ runNow(r RunNow) {
+	{{ slots := RecentSlots(r.Cron, r.Zone, r.Now, recentSlotsShown) }}
+	@components.Modal(runNowID(r.Slug), i18n.T(ctx, "workflows.run_now.title", "workflow", r.Slug), nil) {
+		<form method="post" action={ templ.SafeURL("/workflows/" + r.Slug + "/trigger") } data-run-now data-dialog-body class="space-y-3 px-5 py-4 text-[13px]">
+			if r.Back != "" {
+				<input type="hidden" name="back" value={ r.Back }/>
+			}
+			if len(slots) > 0 {
+				<fieldset class="space-y-2">
+					<legend class="mb-1.5 font-medium text-ink">{ i18n.T(ctx, "workflows.run_now.slot") }</legend>
+					<div class="inline-flex h-8 items-center gap-0.5 rounded-card border border-line bg-surface p-0.5">
+						<label class="run-when">
+							<input type="radio" name="when" value="now" checked class="sr-only"/>
+							{ i18n.T(ctx, "workflows.run_now.now") }
+						</label>
+						<label class="run-when">
+							<input type="radio" name="when" value="slot" class="sr-only"/>
+							{ i18n.T(ctx, "workflows.run_now.other") }
+						</label>
+					</div>
+					<div data-slot-pick hidden class="space-y-2">
+						<select name="slot" aria-label={ i18n.T(ctx, "workflows.run_now.slot") } class="h-8 w-full rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink">
+							for _, sl := range slots {
+								<option value={ sl.At.Format(time.RFC3339) }>{ slotLabel(ctx, sl, r.Zone) }</option>
+							}
+							<option value="other">{ i18n.T(ctx, "workflows.run_now.another") }</option>
+						</select>
+						<input type="datetime-local" name="slot_at" step="60" data-slot-other hidden aria-label={ i18n.T(ctx, "workflows.run_now.another") } class="h-8 w-full rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink"/>
+						<p class="text-xs text-muted">{ i18n.T(ctx, "workflows.run_now.zone", "zone", zoneName(r.Zone)) }</p>
+					</div>
+				</fieldset>
+			} else {
+				<p class="text-muted">{ i18n.T(ctx, "workflows.run_now.manual") }</p>
+			}
+			<p data-run-error role="alert" hidden class="rounded-card border border-state-failed/40 bg-state-failed/10 px-3 py-2 text-[12.5px] text-state-failed"></p>
+			<div class="flex justify-end pt-1">
+				<button type="submit" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
+					@components.Icon("play", "h-3.5 w-3.5")
+					{ i18n.T(ctx, "workflows.run_now.run") }
+				</button>
+			</div>
+		</form>
+	}
 }
 
 // Workflow shows the published definition. With no run state: it is the screen
@@ -578,6 +654,10 @@ templ Workflow(p WorkflowPage) {
 		@workflowMeta(p)
 		if len(w.Params) > 0 {
 			@runDrawer(w, runDrawerText)
+		} else if p.Sum != nil {
+			@runNow(RunNow{Slug: w.Slug, Cron: p.Sum.Cron, Zone: p.Sum.Timezone, Now: p.Now})
+		} else {
+			@runNow(RunNow{Slug: w.Slug, Now: p.Now})
 		}
 		// The same four numbers the dashboard opens with, scoped to this
 		// workflow -- and over thirty days rather than one, because a daily job
@@ -628,9 +708,20 @@ templ Workflow(p WorkflowPage) {
 // ask.
 func runAction(w wf.Workflow) templ.Component {
 	if len(w.Params) == 0 {
-		return disparar(w.Slug)
+		return runNowLink(w.Slug)
 	}
 	return runLink()
+}
+
+// runNowLink is the page's Run… for a workflow with no parameters: the
+// trigger's form, and with ui.js the Run dialog.
+templ runNowLink(slug string) {
+	<form method="post" action={ templ.SafeURL("/workflows/" + slug + "/trigger") }>
+		<button type="submit" data-dialogo={ runNowID(slug) } aria-haspopup="dialog" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
+			@components.Icon("play", "h-3.5 w-3.5")
+			{ i18n.T(ctx, "workflows.run_now.open") }
+		</button>
+	</form>
 }
 
 templ runLink() {

@@ -35,7 +35,7 @@
       if (d && typeof d.showModal === "function") {
         // A link opener (`href="#run"`) is the no-script path; with the
         // script the dialog opens and the URL keeps no hash.
-        if (trigger.tagName === "A") e.preventDefault();
+        if (trigger.tagName === "A" || trigger.type === "submit") e.preventDefault();
         if (!d.open) {
           opener.set(d, trigger);
           d.showModal();
@@ -1028,6 +1028,62 @@
           action: got.Undo,
           onAction: function () { form.requestSubmit(); },
         });
+      })
+      .catch(function () { form.submit(); })
+      .then(function () { if (button) button.disabled = false; });
+  });
+
+  // ------------------------------------------------------------------
+  // The Run dialog
+  //
+  // Now, or another slot: the slot list shows only when asked for, and the
+  // time of one's own only when "another" is chosen. The dialog posts with
+  // the script so that a refused slot -- off the cron, in the future -- is
+  // said inside it and it stays open; a run made is where the server says to
+  // go, with the toast waiting there. A failed fetch posts the plain form.
+  // ------------------------------------------------------------------
+
+  document.addEventListener("change", function (e) {
+    var el = e.target;
+    if (!el || typeof el.closest !== "function") return;
+    var form = el.closest("form[data-run-now]");
+    if (!form) return;
+    var pick = form.querySelector("[data-slot-pick]");
+    var other = form.querySelector("[data-slot-other]");
+    if (el.name === "when" && pick) pick.hidden = el.value !== "slot";
+    if (other) {
+      var wantsOther = !pick.hidden && form.querySelector('select[name="slot"]').value === "other";
+      other.hidden = !wantsOther;
+      other.required = wantsOther;
+    }
+  });
+
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form || typeof form.matches !== "function" || !form.matches("form[data-run-now]")) return;
+    if (!window.fetch || !window.FormData) return;
+    e.preventDefault();
+    var error = form.querySelector("[data-run-error]");
+    var button = form.querySelector('[type="submit"]');
+    if (button) button.disabled = true;
+    fetch(form.getAttribute("action"), {
+      method: "POST",
+      headers: { "X-Brevis-Fragment": "trigger" },
+      body: new URLSearchParams(new FormData(form)),
+    })
+      .then(function (r) {
+        if (r.ok) {
+          return r.json().then(function (got) { window.location.assign(got.Location); });
+        }
+        if (r.status >= 400 && r.status < 500) {
+          return r.text().then(function (text) {
+            if (error) {
+              error.textContent = text.trim();
+              error.hidden = false;
+            }
+          });
+        }
+        throw new Error("trigger failed");
       })
       .catch(function () { form.submit(); })
       .then(function () { if (button) button.disabled = false; });

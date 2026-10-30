@@ -170,8 +170,11 @@ func TestAWorkflowWithParametersRunsFromADrawer(t *testing.T) {
 
 	plain := workflowPageUI(postgres.WorkflowSummary{Slug: "daily"}, wf.Workflow{Slug: "daily"})
 	_, body = get(t, plain, "/workflows/daily")
-	if strings.Contains(body, `<dialog id="run"`) || !strings.Contains(body, `aria-label="Run daily"`) {
-		t.Error("a workflow with no parameters lost its one-click run")
+	// No parameters: Run… posts the trigger with no script, and with one opens
+	// the dialog that asks when.
+	if strings.Contains(body, `<dialog id="run"`) || !strings.Contains(body, `action="/workflows/daily/trigger"`) ||
+		!strings.Contains(body, `data-dialogo="run-now-daily"`) || !strings.Contains(body, `<dialog id="run-now-daily"`) {
+		t.Error("a workflow with no parameters does not run from its Run dialog")
 	}
 }
 

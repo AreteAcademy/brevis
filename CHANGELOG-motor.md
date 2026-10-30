@@ -38,6 +38,12 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 - **Pausing flips in place**, with a toast that says what it means ("does
   not fire until it is resumed") and an Undo. With no script the page comes
   back saying the same.
+- **Run asks when.** A workflow with no parameters opens "Run it now": now,
+  or another slot -- the schedule's last 14, each with the window it
+  processes, or a date and time of one's own, read in the schedule's zone. A
+  refused slot is said in the dialog, which stays open; a run made comes back
+  to the list with "Run of X created · See logs". A workflow with parameters
+  goes to its drawer. With no script, ▶ still runs it at once.
 - **How to create** and **Publish workflow** open a drawer: a workflow is born
   in the repository and published by the CLI, with the file, `brevis
   validate` and `brevis publish` to copy.

@@ -33,6 +33,17 @@ type readsFake struct {
 	connects map[string][]string
 }
 
+// Schedules are the workflows' own, for the trigger's timezone.
+func (f readsFake) Schedules(context.Context) ([]postgres.ScheduleSummary, error) {
+	var out []postgres.ScheduleSummary
+	for _, w := range f.workflows {
+		if w.Cron != "" {
+			out = append(out, postgres.ScheduleSummary{WorkflowSlug: w.Slug, Cron: w.Cron, Timezone: w.Timezone, Active: w.Active})
+		}
+	}
+	return out, nil
+}
+
 func (f readsFake) Connects(context.Context, time.Time) (map[string][]string, error) {
 	return f.connects, nil
 }

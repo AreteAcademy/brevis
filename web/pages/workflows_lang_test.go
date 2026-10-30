@@ -45,7 +45,7 @@ func TestTheWorkflowsListHasNoEnglishLeft(t *testing.T) {
 		"last run", "schedule", "project", "Remove", "Filter tags", "Apply", "Language",
 		"with", "success", "clear filters", "Next run", "Last runs", "manual only", "paused",
 		"never ran", "runs", "Pause", "Resume", "Run", "previous", "next", "No workflow",
-		"Active", "Connects", "When it runs", "How to create", "Publish workflow", "Write the file", "Undo", "Next", "Last", "failing", "running", "steps", "step", "was",
+		"Active", "Connects", "When it runs", "How to create", "Publish workflow", "Write the file", "Undo", "Now", "Another slot", "Another date", "processes", "schedule's zone", "Next", "Last", "failing", "running", "steps", "step", "was",
 	} {
 		if at := regexp.MustCompile(`\b` + regexp.QuoteMeta(english) + `\b`).FindStringIndex(text); at != nil {
 			t.Errorf("the Portuguese list still says %q: …%s…", english, text[max(0, at[0]-60):min(len(text), at[1]+40)])

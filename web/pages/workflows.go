@@ -48,6 +48,12 @@ type WorkflowsScreen struct {
 	Connects map[string][]string
 	Steps    map[string]int
 	Failing  map[string]bool
+	// Params is whether each row declares parameters, which its Run asks
+	// for in the workflow's drawer.
+	Params map[string]bool
+	// Now is the instant the page is drawn at: the Run dialogs' last slots
+	// are up to it.
+	Now time.Time
 	// Total is every workflow; Filtered those the filter keeps.
 	Total, Filtered int
 }
@@ -319,3 +325,36 @@ steps:
     run: python load.py
   - id: build
     run: dbt build --select orders+`
+
+// RunNow is what the Run dialog needs: the workflow, its schedule, and the
+// page to come back to.
+type RunNow struct {
+	Slug, Cron, Zone string
+	Back             string
+	Now              time.Time
+}
+
+// recentSlotsShown is how many past slots the Run dialog offers.
+const recentSlotsShown = 14
+
+func runNowID(slug string) string { return "run-now-" + slug }
+
+// slotLabel is a slot as the Run dialog lists it: when, in the schedule's
+// zone, and the window it processes, in UTC like every auto param.
+func slotLabel(ctx context.Context, s Slot, zone string) string {
+	at := s.At
+	if loc, err := time.LoadLocation(zone); err == nil && zone != "" {
+		at = at.In(loc)
+	}
+	return i18n.T(ctx, "workflows.slot.option",
+		"slot", i18n.Date(ctx, at, "brief"),
+		"from", i18n.Date(ctx, s.From, "brief"), "to", i18n.Date(ctx, s.At, "brief"))
+}
+
+// zoneName is a schedule's zone, UTC when it names none.
+func zoneName(zone string) string {
+	if zone == "" {
+		return "UTC"
+	}
+	return zone
+}

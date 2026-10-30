@@ -1773,7 +1773,7 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params := paramsFromForm(r.PostForm)
-	slot, err := u.slotFromForm(r.Context(), slug, strings.TrimSpace(r.PostForm.Get("slot")))
+	slot, err := u.slotFromForm(r.Context(), slug, slotField(r.PostForm))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -1788,26 +1788,55 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if id == uuid.Nil {
-		// The idempotency key collided: two clicks in the same second become one
-		// run. Going back to the list is the right behaviour -- there is no new
-		// run to go to.
+	back := localPath(r.PostForm.Get("back"))
+	next := "/runs/" + id.String()
+	switch {
+	case id == uuid.Nil:
+		// The idempotency key collided: two clicks in the same second become
+		// one run. Going back is the right behaviour -- there is no new run to
+		// go to.
 		u.log.Info("trigger ignored by idempotency", "workflow", slug)
-		u.voltar(w, r)
-		return
-	}
-	u.log.Info("manual run created", "workflow", slug, "run", id)
-	// A rerun from a list -- the Overview's "Needs your attention" -- goes
-	// back to it, saying the run was made and where to follow it: the list
-	// is what the reader is watching.
-	if back := localPath(r.PostForm.Get("back")); back != "" {
+		next = back
+		if next == "" {
+			next = backTo(r)
+		}
+	case back != "":
+		// A run made from a list -- the Overview's "Needs your attention", the
+		// Workflows list -- goes back to it, saying the run was made and where
+		// to follow it: the list is what the reader is watching.
+		u.log.Info("manual run created", "workflow", slug, "run", id)
 		ctx := i18n.WithLang(r.Context(), i18n.Negotiate(r))
-		layouts.SetFlashLink(w, "run", i18n.T(ctx, "overview.rerun_created", "workflow", slug),
-			i18n.T(ctx, "overview.follow"), "/runs/"+id.String())
-		http.Redirect(w, r, back, http.StatusSeeOther)
+		message, follow := i18n.T(ctx, "overview.rerun_created", "workflow", slug), i18n.T(ctx, "overview.follow")
+		if strings.HasPrefix(back, "/workflows") {
+			message, follow = i18n.T(ctx, "workflows.run_created", "workflow", slug), i18n.T(ctx, "workflows.see_logs")
+		}
+		layouts.SetFlashLink(w, "run", message, follow, next)
+		next = back
+	default:
+		u.log.Info("manual run created", "workflow", slug, "run", id)
+	}
+	// The Run dialog posts with its script, to stay open on a refusal: it is
+	// told where to go instead of being redirected there.
+	if fragment(r) == "trigger" {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(struct{ Location string }{next})
 		return
 	}
-	http.Redirect(w, r, "/runs/"+id.String(), http.StatusSeeOther)
+	http.Redirect(w, r, next, http.StatusSeeOther)
+}
+
+// slotField is the slot the form asks for: none when it says "now", the time
+// typed beside the list when it says "other", and the `slot` field otherwise
+// -- which is what a form with no `when`, or a curl, sends.
+func slotField(form url.Values) string {
+	if form.Get("when") == "now" {
+		return ""
+	}
+	slot := strings.TrimSpace(form.Get("slot"))
+	if slot == "other" {
+		return strings.TrimSpace(form.Get("slot_at"))
+	}
+	return slot
 }
 
 // slotFromForm reads the `slot` field: an RFC3339 instant, which says its own
@@ -1862,6 +1891,12 @@ func localPath(p string) string {
 // navigation as a GET, which is what prevents the "resend form?" prompt on
 // reload.
 func (u *UI) voltar(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, backTo(r), http.StatusSeeOther)
+}
+
+// backTo is the page the request came from, on this site, or the Workflows
+// list.
+func backTo(r *http.Request) string {
 	target := r.Referer()
 	// It only accepts a destination on this site: an external Referer would turn
 	// the redirect into an open-redirect vector.
@@ -1872,7 +1907,7 @@ func (u *UI) voltar(w http.ResponseWriter, r *http.Request) {
 			target = "/workflows"
 		}
 	}
-	http.Redirect(w, r, target, http.StatusSeeOther)
+	return target
 }
 
 // parseMesmoHost accepts the Referer only when it points at this same host.

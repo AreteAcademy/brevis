@@ -152,7 +152,8 @@ func (u *UI) describeRows(ctx context.Context, v *pages.WorkflowsScreen, x listF
 	if err != nil {
 		u.log.Error("reading what the workflows wrote", "error", err)
 	}
-	v.RunsIn, v.Connects, v.Steps, v.Failing = map[string][]string{}, map[string][]string{}, map[string]int{}, map[string]bool{}
+	v.RunsIn, v.Connects, v.Steps = map[string][]string{}, map[string][]string{}, map[string]int{}
+	v.Failing, v.Params, v.Now = map[string]bool{}, map[string]bool{}, time.Now()
 	for _, w := range v.Rows {
 		v.Failing[w.Slug] = x.inState(w, "failing")
 		def, ok := x.defs[w.Slug]
@@ -161,6 +162,7 @@ func (u *UI) describeRows(ctx context.Context, v *pages.WorkflowsScreen, x listF
 		}
 		v.RunsIn[w.Slug] = runsIn(def, 0)
 		v.Steps[w.Slug] = len(def.Nodes)
+		v.Params[w.Slug] = len(def.Params) > 0
 		v.Connects[w.Slug] = talksTo(def, wrote[w.Slug], v.RunsIn[w.Slug])
 	}
 }
