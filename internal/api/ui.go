@@ -61,6 +61,8 @@ type Leitura interface {
 	CountRunsByState(ctx context.Context, f postgres.RunFilter) (map[string]int, error)
 	WorkflowRuns(ctx context.Context, slug string, limite int) ([]postgres.RunSummary, error)
 	Workflows(ctx context.Context) ([]postgres.WorkflowSummary, error)
+	// Connects is the schemes each workflow's runs wrote since a moment.
+	Connects(ctx context.Context, since time.Time) (map[string][]string, error)
 	RecentStates(ctx context.Context, slugs []string, n int) (map[string][]postgres.RecentRun, error)
 	Schedules(ctx context.Context) ([]postgres.ScheduleSummary, error)
 	Projects(ctx context.Context) ([]postgres.ProjectSummary, error)
@@ -1196,15 +1198,12 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 		Total: len(all), Filtered: len(filtered),
 	}
 	// The strip of last runs is read for the page's rows only, in one query;
-	// the logos come from the definitions the filter already read.
+	// what each row runs comes from the definitions the filter already read.
 	slugs := make([]string, len(v.Rows))
-	v.Logos = map[string][]string{}
 	for i, wf := range v.Rows {
 		slugs[i] = wf.Slug
-		if def, ok := facts.defs[wf.Slug]; ok {
-			v.Logos[wf.Slug] = workflowLogos(def)
-		}
 	}
+	u.describeRows(ctx, &v, facts)
 	if v.Recent, err = u.leitura.RecentStates(ctx, slugs, pages.RecentRuns); err != nil {
 		u.failure(w, r, err)
 		return

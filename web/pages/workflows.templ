@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -115,93 +116,31 @@ templ WorkflowsList(v WorkflowsScreen) {
 		}
 	</p>
 	if len(v.Rows) == 0 {
-		@components.Empty(i18n.T(ctx, "workflows.empty"), "brevis publish file.yaml")
+		<div class="rounded-card border border-dashed border-line px-6 py-12 text-center">
+			<p class="text-sm text-muted">{ i18n.T(ctx, "workflows.empty") }</p>
+			<a href="/workflows" class="mt-2 inline-block text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.clear") }</a>
+		</div>
 	} else {
 		<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
-			<table class="ct w-full min-w-[56rem] text-sm">
+			// Narrower, the columns that answer "what is it made of" go first,
+			// then the history: what stays is its name, when it runs and Run.
+			<table class="ct w-full text-sm min-[860px]:min-w-[60rem]">
 				<thead>
 					<tr class="border-b border-line bg-parchment-soft/60 text-left">
-						@th("", "w-16 pl-6")
+						@th(i18n.T(ctx, "workflows.col.active"), "w-16 pl-5 max-[520px]:hidden")
 						@sortableTh(i18n.T(ctx, "workflows.col.workflow"), "workflow", f, "")
+						@th(i18n.T(ctx, "workflows.col.lang"), "max-[520px]:hidden")
+						@th(i18n.T(ctx, "workflows.col.connects"), "max-[1100px]:hidden")
 						@sortableTh(i18n.T(ctx, "workflows.col.schedule"), "schedule", f, "")
-						@sortableTh(i18n.T(ctx, "workflows.col.next"), "next", f, "")
-						@sortableTh(i18n.T(ctx, "workflows.col.last"), "last", f, "")
-						@th(i18n.T(ctx, "workflows.col.tags"), "")
-						@th("", "w-24 pr-6 text-right")
+						@sortableTh(i18n.T(ctx, "workflows.col.next"), "next", f, "max-[520px]:hidden")
+						@sortableTh(i18n.T(ctx, "workflows.col.last"), "last", f, "max-[860px]:hidden")
+						@th(i18n.T(ctx, "workflows.col.tags"), "max-[1100px]:hidden")
+						@th("", "w-24 pr-5 text-right")
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-line-soft">
 					for _, w := range v.Rows {
-						<tr class="transition-colors hover:bg-hover">
-							<td class="py-3 pl-6">
-								@interruptor(w)
-							</td>
-							<td class="py-3 pr-3">
-								<a href={ templ.SafeURL("/workflows/" + w.Slug) } class="font-medium text-ink hover:underline">
-									{ w.Slug }
-								</a>
-								if ks := v.Logos[w.Slug]; len(ks) > 0 {
-									<span class="ml-1.5 inline-flex items-center gap-1 align-middle">
-										for _, k := range ks {
-											@components.Logo(k, 18)
-										}
-									</span>
-								}
-								<a
-									href={ templ.SafeURL("/workflows?project=" + w.Project) }
-									class="text-xs text-muted hover:text-ink hover:underline"
-								>{ w.Project }</a>
-							</td>
-							<td class="py-3 pr-3">
-								if w.Cron == "" {
-									<span class="text-xs text-muted">{ i18n.T(ctx, "workflows.manual_only") }</span>
-								} else {
-									<span class="inline-flex items-center gap-1.5 font-mono text-xs text-ink">
-										<svg class="h-3.5 w-3.5 text-muted" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
-											<rect x="2" y="3" width="12" height="11" rx="2"></rect>
-											<path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke-linecap="round"></path>
-										</svg>
-										{ w.Cron }
-									</span>
-									if w.Catchup {
-										<span class="ml-2 text-[0.7rem] text-muted">catchup</span>
-									}
-									if words := CronTextIn(ctx, w.Cron); words != "" {
-										<p data-cron-text class="mt-0.5 text-[0.7rem] text-muted">{ words }{ zoneSuffix(w.Timezone) }</p>
-									}
-								}
-							</td>
-							<td class="py-3 pr-3 text-xs tabular-nums">
-								if w.NextRun != nil {
-									<span class="text-ink">@components.ShortStamp(w.NextRun)</span>
-									<span class="ml-1.5 text-muted">{ i18n.Since(ctx, time.Now(), *w.NextRun) }</span>
-								} else if w.HasSchedule && !w.Active {
-									<span class="text-muted">{ i18n.T(ctx, "workflows.paused") }</span>
-								} else {
-									<span class="text-muted">—</span>
-								}
-							</td>
-							<td class="py-3 pr-3">
-								if w.LastRunID != nil {
-									@recentRuns(v.Recent[w.Slug])
-									<a href={ templ.SafeURL("/runs/" + *w.LastRunID) } class="mt-1 block text-[0.7rem] tabular-nums text-muted hover:underline">
-										@components.ShortStamp(w.LastRunAt) · { i18n.N(ctx, "workflows.runs", w.TotalRuns) }
-									</a>
-								} else {
-									<span class="text-xs text-muted">{ i18n.T(ctx, "workflows.never_ran") }</span>
-								}
-							</td>
-							<td class="py-3 pr-3">
-								<div class="flex flex-wrap gap-1">
-									for _, t := range w.Tags {
-										@components.Tag(t, f.WithTag(t))
-									}
-								</div>
-							</td>
-							<td class="py-3 pr-6 text-right">
-								@disparar(w.Slug)
-							</td>
-						</tr>
+						@workflowRow(v, w)
 					}
 				</tbody>
 			</table>
@@ -211,6 +150,109 @@ templ WorkflowsList(v WorkflowsScreen) {
 			})
 		</div>
 	}
+}
+
+// workflowRow is one workflow. The whole row opens it (`data-href`, ui.js);
+// the name stays a real link, for the keyboard and a page with no script,
+// and the switch, the tags and Run are controls of their own. A paused row's
+// data fades; its switch, which is how it comes back, does not.
+templ workflowRow(v WorkflowsScreen, w postgres.WorkflowSummary) {
+	{{ paused := w.HasSchedule && !w.Active }}
+	{{ fade := templ.KV("opacity-[.55]", paused) }}
+	<tr data-href={ rowHref(w.Slug) } data-paused?={ paused } class="cursor-pointer align-top transition-colors hover:bg-hover">
+		<td class="py-3 pl-5 max-[520px]:hidden">
+			@interruptor(w)
+		</td>
+		<td class={ "py-3 pr-3", fade }>
+			<div class="flex flex-wrap items-center gap-1.5">
+				<a href={ templ.SafeURL(rowHref(w.Slug)) } class="font-mono text-[13px] font-medium text-ink hover:underline">{ w.Slug }</a>
+				if v.Failing[w.Slug] {
+					<span data-pill-failing class="rounded-full bg-state-failed/15 px-2 py-px text-[0.7rem] text-state-failed">{ i18n.T(ctx, "workflows.pill.failing") }</span>
+				} else if inFlight(w) {
+					<span data-pill-running class="rounded-full bg-state-running/15 px-2 py-px text-[0.7rem] text-state-running">{ i18n.T(ctx, "workflows.pill.running") }</span>
+				}
+			</div>
+			<p class="mt-0.5 text-xs text-muted">
+				<a href={ templ.SafeURL("/workflows?project=" + url.QueryEscape(w.Project)) } class="hover:text-ink hover:underline">{ w.Project }</a>
+				if n, ok := v.Steps[w.Slug]; ok {
+					· { i18n.N(ctx, "workflows.steps", n) }
+				}
+			</p>
+		</td>
+		<td data-col-lang class={ "py-3 pr-3 max-[520px]:hidden", fade }>
+			if ks := v.RunsIn[w.Slug]; len(ks) > 0 {
+				<div class="flex items-center gap-2">
+					<span class="inline-flex items-center gap-1">
+						for _, k := range firstLangs(ks) {
+							@components.Logo(k, 18)
+						}
+					</span>
+					<span class="whitespace-nowrap text-xs text-ink-2">{ langText(ctx, ks) }</span>
+				</div>
+			} else {
+				<span class="text-muted">—</span>
+			}
+		</td>
+		<td data-col-connects class={ "py-3 pr-3 max-[1100px]:hidden", fade }>
+			<span class="inline-flex flex-wrap items-center gap-1">
+				for _, k := range v.Connects[w.Slug] {
+					@components.Logo(k, 18)
+				}
+			</span>
+		</td>
+		<td data-col-schedule class={ "py-3 pr-3", fade }>
+			if w.Cron == "" {
+				<span class="text-xs text-muted">{ i18n.T(ctx, "workflows.manual_only") }</span>
+			} else {
+				{{ words := CronTextIn(ctx, w.Cron) }}
+				if paused {
+					<p class="text-xs text-muted">
+						{ i18n.T(ctx, "workflows.paused") }
+						if words != "" {
+							· { i18n.T(ctx, "workflows.was", "schedule", words) }
+						}
+					</p>
+				} else if words != "" {
+					<p data-cron-text class="text-xs text-ink">{ words }{ zoneSuffix(w.Timezone) }</p>
+				}
+				<p class="mt-0.5 font-mono text-[0.7rem] text-faint">
+					{ w.Cron }
+					if w.Catchup {
+						<span class="ml-1.5 font-sans">catchup</span>
+					}
+				</p>
+			}
+		</td>
+		<td data-col-next class={ "py-3 pr-3 text-xs tabular-nums max-[520px]:hidden", fade }>
+			if inFlight(w) {
+				<span class="text-state-running">{ i18n.T(ctx, "workflows.in_flight") }</span>
+			} else if w.NextRun != nil && !paused {
+				<span class="text-ink" title={ components.UTCStamp(w.NextRun) }>{ i18n.Since(ctx, time.Now(), *w.NextRun) }</span>
+			} else {
+				<span class="text-muted">—</span>
+			}
+		</td>
+		<td class={ "py-3 pr-3 max-[860px]:hidden", fade }>
+			if w.LastRunID != nil {
+				@recentRuns(v.Recent[w.Slug])
+				<a href={ templ.SafeURL("/runs?workflow=" + url.QueryEscape(w.Slug)) } class="mt-1 block text-[0.7rem] tabular-nums text-muted hover:underline">
+					{ i18n.N(ctx, "workflows.runs", w.TotalRuns) }
+				</a>
+			} else {
+				<span class="text-xs text-muted">{ i18n.T(ctx, "workflows.never_ran") }</span>
+			}
+		</td>
+		<td class={ "py-3 pr-3 max-[1100px]:hidden", fade }>
+			<div class="flex flex-wrap gap-1">
+				for _, t := range w.Tags {
+					@components.Tag(t, v.Filter.WithTag(t))
+				}
+			</div>
+		</td>
+		<td class="py-3 pr-5 text-right">
+			@disparar(w.Slug)
+		</td>
+	</tr>
 }
 
 // langFilter is the languages the workflows run, each with its logo and how

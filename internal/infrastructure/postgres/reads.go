@@ -694,3 +694,31 @@ func (r *ReadRepo) LoadTrend(ctx context.Context, workflow string, days int) ([]
 	}
 	return out, rows.Err()
 }
+
+// Connects is, per workflow, the scheme of every target its runs landed since
+// `since` -- `bigquery://acme/bronze/orders` is `bigquery` -- once each, in
+// alphabetical order: what the Workflows list draws as what a workflow talks
+// to. A target with no scheme, a legacy table name, says nothing about where
+// it lives and is left out. The schemes are as written; naming their logos is
+// the screen's.
+func (r *ReadRepo) Connects(ctx context.Context, since time.Time) (map[string][]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT workflow_slug, split_part(target, '://', 1)
+		FROM landings
+		WHERE loaded_at >= $1 AND strpos(target, '://') > 1
+		ORDER BY 1, 2`, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string][]string{}
+	for rows.Next() {
+		var slug, scheme string
+		if err := rows.Scan(&slug, &scheme); err != nil {
+			return nil, err
+		}
+		out[slug] = append(out[slug], scheme)
+	}
+	return out, rows.Err()
+}

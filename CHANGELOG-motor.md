@@ -27,6 +27,14 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   its logo and count.
 - **The search reads what the steps run** and the tags, not only the name:
   "dbt" finds the workflows that run it.
+- **Each row says what the workflow is made of**: what it runs (up to four
+  logos, "Go + Python +2"), what it connects to (the schemes it wrote in the
+  last 90 days, what its parameters' `uses` and its `on_landed` name, never
+  a language again), when it runs in words and cron, its next run or
+  "running now", its last 20 runs, and "failing" or "running" by its name.
+- The whole row opens the workflow; a paused row fades but its switch does
+  not. Narrower screens drop Connects and Tags, then the last runs.
+- An empty list says what to do, with a link that clears every filter.
 - In English, Portuguese and Spanish, the pagination included.
 
 ### Added: what each workflow runs in

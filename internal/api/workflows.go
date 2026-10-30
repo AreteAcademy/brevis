@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
@@ -138,4 +139,68 @@ func validLang(s string) string {
 		return s
 	}
 	return ""
+}
+
+// connectsWindow is how far back what a workflow wrote counts as what it
+// talks to: a destination it stopped writing to three months ago is history.
+const connectsWindow = 90 * 24 * time.Hour
+
+// describeRows fills what each row of the page says beyond its summary: what
+// it runs, what it talks to, how many steps, whether it is failing.
+func (u *UI) describeRows(ctx context.Context, v *pages.WorkflowsScreen, x listFacts) {
+	wrote, err := u.leitura.Connects(ctx, time.Now().Add(-connectsWindow))
+	if err != nil {
+		u.log.Error("reading what the workflows wrote", "error", err)
+	}
+	v.RunsIn, v.Connects, v.Steps, v.Failing = map[string][]string{}, map[string][]string{}, map[string]int{}, map[string]bool{}
+	for _, w := range v.Rows {
+		v.Failing[w.Slug] = x.inState(w, "failing")
+		def, ok := x.defs[w.Slug]
+		if !ok {
+			continue
+		}
+		v.RunsIn[w.Slug] = runsIn(def, 0)
+		v.Steps[w.Slug] = len(def.Nodes)
+		v.Connects[w.Slug] = talksTo(def, wrote[w.Slug], v.RunsIn[w.Slug])
+	}
+}
+
+// talksTo is what a workflow talks to, as logo keys: the schemes it wrote,
+// then what its parameters say they bill and what lands to start it -- once
+// each, and never a language or tool it runs, which its own column says.
+func talksTo(def wf.Workflow, wrote, runs []string) []string {
+	var out []string
+	add := func(k string) {
+		k = connectorKey(k)
+		if k != "" && !slices.Contains(out, k) && !slices.Contains(runs, k) {
+			out = append(out, k)
+		}
+	}
+	for _, s := range wrote {
+		add(s)
+	}
+	for _, p := range def.Params {
+		add(p.Uses)
+	}
+	for _, t := range def.Trigger.OnLanded {
+		if scheme, _, ok := strings.Cut(t, "://"); ok {
+			add(scheme)
+		}
+	}
+	return out
+}
+
+// schemeKeys are the URL schemes whose logo has another name.
+var schemeKeys = map[string]string{
+	"gs": "gcs", "pg": "postgres", "postgresql": "postgres", "s3a": "s3", "s3n": "s3",
+	"https": "http", "bq": "bigquery",
+}
+
+// connectorKey is the logo key of a scheme or a declared `uses`.
+func connectorKey(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if k, ok := schemeKeys[s]; ok {
+		return k
+	}
+	return s
 }

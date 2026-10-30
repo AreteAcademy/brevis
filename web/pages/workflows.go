@@ -3,6 +3,8 @@ package pages
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
@@ -12,7 +14,7 @@ import (
 )
 
 // RecentRuns is how many of a workflow's last runs its row draws.
-const RecentRuns = 14
+const RecentRuns = 20
 
 // recentTitle is what a recent-run square says: its state and its time.
 func recentTitle(ctx context.Context, r postgres.RecentRun) string {
@@ -37,9 +39,15 @@ type WorkflowsScreen struct {
 	// Tags are every workflow's tags, for the popover; Langs what they run.
 	Tags  []string
 	Langs []LangChoice
-	// Recent are each row's last runs; Logos what each row runs in.
+	// Recent are each row's last runs.
 	Recent map[string][]postgres.RecentRun
-	Logos  map[string][]string
+	// RunsIn is what each row runs, every language and tool; Connects what
+	// it talks to; Steps how many steps; Failing whether its last finished
+	// run failed. By slug.
+	RunsIn   map[string][]string
+	Connects map[string][]string
+	Steps    map[string]int
+	Failing  map[string]bool
 	// Total is every workflow; Filtered those the filter keeps.
 	Total, Filtered int
 }
@@ -271,3 +279,34 @@ func workflowPageStats(p WorkflowPage) []components.Stat {
 	value, sub := NextRunText(p.Sum, p.Now)
 	return append(workflowStats(p.Stats), components.Stat{Label: "Next run", Value: value, Note: sub})
 }
+
+// langsShown is how many marks the language column draws; the rest are a
+// count.
+const langsShown = 4
+
+// firstLangs is the marks the language column draws.
+func firstLangs(keys []string) []string {
+	return keys[:min(len(keys), langsShown)]
+}
+
+// langText names what a workflow runs: the first two by name, and how many
+// more -- "Go + Python +2".
+func langText(ctx context.Context, keys []string) string {
+	names := make([]string, 0, 2)
+	for _, k := range keys[:min(len(keys), 2)] {
+		names = append(names, components.LogoTitle(ctx, k))
+	}
+	out := strings.Join(names, " + ")
+	if more := len(keys) - 2; more > 0 {
+		out += " +" + i18n.Number(ctx, int64(more))
+	}
+	return out
+}
+
+// inFlight is whether the workflow's last run has not finished.
+func inFlight(w postgres.WorkflowSummary) bool {
+	return w.LastStatus == "running" || w.LastStatus == "queued" || w.LastStatus == "retrying"
+}
+
+// rowHref is the workflow's page.
+func rowHref(slug string) string { return "/workflows/" + url.PathEscape(slug) }
