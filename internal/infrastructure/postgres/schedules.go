@@ -115,6 +115,32 @@ func (r *WorkflowRepo) Definition(ctx context.Context, slug string) (wf.Workflow
 	return w, json.Unmarshal(bruto, &w)
 }
 
+// Definitions is every published workflow's current definition, by slug, in
+// one query: what a page that shows many workflows reads instead of one
+// Definition per row.
+func (r *WorkflowRepo) Definitions(ctx context.Context) (map[string]wf.Workflow, error) {
+	rows, err := r.pool.Query(ctx, `SELECT slug, definicao FROM workflows`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string]wf.Workflow{}
+	for rows.Next() {
+		var slug string
+		var bruto []byte
+		if err := rows.Scan(&slug, &bruto); err != nil {
+			return nil, err
+		}
+		var w wf.Workflow
+		if err := json.Unmarshal(bruto, &w); err != nil {
+			return nil, fmt.Errorf("workflow %q: %w", slug, err)
+		}
+		out[slug] = w
+	}
+	return out, rows.Err()
+}
+
 // PublishedGroupMembers returns the published workflows in a concurrency group
 // that a publish of `publishing` into `projeto` leaves in place: their slug,
 // group and limit, and nothing else.
@@ -231,6 +257,19 @@ func (r *ScheduleRepo) Active(ctx context.Context) ([]sch.Schedule, error) {
 		out = append(out, s)
 	}
 	return out, rows.Err()
+}
+
+// Of is a workflow's schedule, active or paused; false when it has none.
+func (r *ScheduleRepo) Of(ctx context.Context, slug string) (sch.Schedule, bool, error) {
+	var s sch.Schedule
+	err := r.pool.QueryRow(ctx, `
+		SELECT workflow_slug, cron, timezone, catchup, ativo, ultimo_slot
+		FROM schedules WHERE workflow_slug = $1`, slug).
+		Scan(&s.WorkflowSlug, &s.Cron, &s.Timezone, &s.Catchup, &s.Active, &s.LastSlot)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return sch.Schedule{}, false, nil
+	}
+	return s, err == nil, err
 }
 
 // AdvanceSlot records how far the schedule has been materialized.

@@ -372,7 +372,7 @@ func (p Pagination) Window() []int {
 	return out
 }
 
-templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, total, filtered int) {
+templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, logos map[string][]string, total, filtered int) {
 	@layouts.Base(layouts.Page{Title: "Workflows", Kicker: "Orchestration", Active: "workflows"}) {
 		// THE BOX ANSWERS WHILE SOMEBODY TYPES, and the server still decides:
 		// the list is paginated, so ui.js submits this form as a fetch
@@ -387,15 +387,16 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts W
 			@components.SearchInput("q", f.Search, "Search workflows", "")
 		</form>
 		<div id="workflows-list">
-			@WorkflowsList(ws, tags, f, counts, recent, total, filtered)
+			@WorkflowsList(ws, tags, f, counts, recent, logos, total, filtered)
 		</div>
 	}
 }
 
 // WorkflowsList is everything under the search box: the filters, the count,
 // the table and its pages. It is the page's fragment (X-Brevis-Fragment:
-// answer), so the counts follow the search as somebody types.
-templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, total, filtered int) {
+// answer), so the counts follow the search as somebody types. Logos are what
+// each workflow runs in, by slug.
+templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, logos map[string][]string, total, filtered int) {
 	<div class="mb-3 flex flex-wrap items-center gap-2">
 		// Each control scrolls on its own when the screen is narrower than its
 		// choices, rather than cutting the last one off.
@@ -466,6 +467,13 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 								<a href={ templ.SafeURL("/workflows/" + w.Slug) } class="font-medium text-ink hover:underline">
 									{ w.Slug }
 								</a>
+								if ks := logos[w.Slug]; len(ks) > 0 {
+									<span class="ml-1.5 inline-flex items-center gap-1 align-middle">
+										for _, k := range ks {
+											@components.Logo(k, 18)
+										}
+									</span>
+								}
 								<a
 									href={ templ.SafeURL("/workflows?project=" + w.Project) }
 									class="text-xs text-muted hover:text-ink hover:underline"
@@ -1977,9 +1985,20 @@ templ runDrawer(w wf.Workflow, t drawerText) {
 // prefix so it does not collide with the form's own future fields. Types become
 // controls: a boolean is a select, an integer is a number, an enum is a select —
 // each refusing in the browser what the server would refuse again afterwards.
+//
+// A title is the label, with the name beside it -- the name is what the CLI and
+// the template know the param by. A warning is a hint under the field: what a
+// value other than the default costs.
 templ paramField(p wf.Param) {
 	<label class="flex flex-col gap-1">
-		<span class="font-mono text-[0.8rem] text-ink">{ p.Name }</span>
+		if p.Title != "" {
+			<span class="flex items-baseline gap-2">
+				<span class="text-[0.82rem] font-medium text-ink">{ p.Title }</span>
+				<span class="font-mono text-[0.72rem] text-faint">{ p.Name }</span>
+			</span>
+		} else {
+			<span class="font-mono text-[0.8rem] text-ink">{ p.Name }</span>
+		}
 		if p.Description != "" {
 			<span class="text-[0.72rem] text-muted">{ p.Description }</span>
 		}
@@ -2006,6 +2025,9 @@ templ paramField(p wf.Param) {
 				placeholder={ p.Pattern }
 				class="h-8 rounded-card border border-line bg-surface px-2.5 font-mono text-[0.82rem] text-ink placeholder:text-faint focus:border-accent-strong focus:outline-none"
 			/>
+		}
+		if p.Warn != "" {
+			<span data-param-warn class="text-[0.72rem] text-warn">{ p.Warn }</span>
 		}
 	</label>
 }

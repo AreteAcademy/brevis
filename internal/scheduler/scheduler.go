@@ -238,8 +238,13 @@ func (s *Scheduler) createAndEnqueue(ctx context.Context, slug string, def []byt
 // screen. A manual run has no `logical_date` -- it belongs to no slot (§12) --
 // and the idempotency key uses the SECOND of the click, which makes two clicks
 // in a row a single run rather than two.
+//
+// With a slot, the click runs that past slot of the schedule: still manual,
+// but with the slot as its logical date, so its automatic params are the
+// slot's. The key carries the slot AND the second of the click: the same slot
+// can be run again, and two clicks in one second are still one run.
 func (s *Scheduler) Disparar(ctx context.Context, slug string, now time.Time,
-	params map[string]string) (uuid.UUID, error) {
+	params map[string]string, slot *time.Time) (uuid.UUID, error) {
 	def, err := s.workflows.Definition(ctx, slug)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("workflow %q: %w", slug, err)
@@ -257,12 +262,24 @@ func (s *Scheduler) Disparar(ctx context.Context, slug string, now time.Time,
 		return uuid.Nil, err
 	}
 
-	key := fmt.Sprintf("%s:%s:%s", slug, sch.TriggerManual, now.UTC().Truncate(time.Second).Format(time.RFC3339))
+	second := now.UTC().Truncate(time.Second).Format(time.RFC3339)
+	key := fmt.Sprintf("%s:%s:%s", slug, sch.TriggerManual, second)
+	var logical *time.Time
+	if slot != nil {
+		if err := s.checkSlot(ctx, slug, *slot, now); err != nil {
+			return uuid.Nil, err
+		}
+		utc := slot.UTC()
+		logical = &utc
+		key = fmt.Sprintf("%s:%s:%s:%s", slug, sch.TriggerManual, utc.Format(time.RFC3339), second)
+	}
+
 	r, err := s.runs.Create(ctx, dom.Run{
 		WorkflowSlug:   slug,
 		IdempotencyKey: key,
 		Definition:     bruto,
 		TriggerType:    string(sch.TriggerManual),
+		LogicalDate:    logical,
 		Params:         values,
 		MaxActive:      def.MaxActive,
 		// The manual run joins the group like any other. #32 WAS a manual run:
@@ -279,6 +296,57 @@ func (s *Scheduler) Disparar(ctx context.Context, slug string, now time.Time,
 		return uuid.Nil, err
 	}
 	return r.ID, s.queue.Enqueue(ctx, r.ID, 10, time.Time{})
+}
+
+// checkSlot is whether `slot` is a past slot of the workflow's schedule,
+// active or paused. A slot the cron never fires is refused with the nearest
+// one before it, in UTC and in the schedule's zone: a time typed in the wrong
+// zone is hours off, and the right one is what the operator needs to see.
+func (s *Scheduler) checkSlot(ctx context.Context, slug string, slot, now time.Time) error {
+	a, ok, err := s.schedules.Of(ctx, slug)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("workflow %q has no schedule: a slot is one of its schedule's runs", slug)
+	}
+	cronSched, loc, err := a.Parse()
+	if err != nil {
+		return err
+	}
+	if slot.After(now) {
+		return fmt.Errorf("slot %s is in the future", slot.UTC().Format(slotLayout+" UTC"))
+	}
+	if cronSched.Next(slot.In(loc).Add(-time.Second)).Equal(slot) {
+		return nil
+	}
+	msg := fmt.Sprintf("%s is not a slot of %q", slot.UTC().Format(slotLayout+" UTC"), a.Cron)
+	if prev, found := slotBefore(cronSched, loc, slot); found {
+		msg += "; the nearest before it is " + prev.UTC().Format(slotLayout+" UTC")
+		if loc != time.UTC {
+			msg += " (" + prev.In(loc).Format(slotLayout) + " " + loc.String() + ")"
+		}
+	}
+	return errors.New(msg)
+}
+
+const slotLayout = "2006-01-02 15:04"
+
+// slotBefore is the cron's last fire before `t`. A cron only says what comes
+// next, so it walks forward from a window behind `t`, widening the window
+// until a fire falls in it: an hourly finds one in the first, a yearly in the
+// last.
+func slotBefore(c interface{ Next(time.Time) time.Time }, loc *time.Location, t time.Time) (time.Time, bool) {
+	for _, back := range []time.Duration{time.Hour, 25 * time.Hour, 32 * 24 * time.Hour, 367 * 24 * time.Hour, 5 * 367 * 24 * time.Hour} {
+		var last time.Time
+		for f := c.Next(t.Add(-back).In(loc)); !f.IsZero() && f.Before(t); f = c.Next(f) {
+			last = f
+		}
+		if !last.IsZero() {
+			return last, true
+		}
+	}
+	return time.Time{}, false
 }
 
 // Backfill materialises the slots of a past interval.

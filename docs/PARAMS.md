@@ -33,6 +33,54 @@ The values used are written to the `runs.params` column. "What parameters did
 this run with?" is the first question of any backfill investigation, and the
 answer must not depend on a log.
 
+## Running a past slot
+
+The trigger takes an optional `slot`: one past slot of the workflow's schedule,
+run again by hand. The run is still manual, with a manual run's priority, but
+its logical date is the slot, so its automatic params are the slot's:
+`scheduled_at`, `adjusted_at`, `date` and the interval are what that night's
+run had. It is how one failed night is redone without a backfill.
+
+```sh
+curl -X POST https://brevis.example.com/workflows/daily/trigger \
+  -d slot=2026-10-27T04:00:00Z -d param.load_full=true
+```
+
+- **Two formats.** RFC 3339, with its own offset, or the browser's
+  `datetime-local` (`2026-10-27T04:00`), which carries none and is read in
+  the schedule's timezone.
+- **It has to be a slot.** A time the cron never fires is refused, saying the
+  nearest slot before it, in UTC and in the schedule's timezone. So is a slot
+  in the future, and a slot of a workflow with no schedule. A paused schedule
+  still has its past slots.
+- **The same slot can be run again.** Two clicks in the same second are still
+  one run.
+- **`delay_seconds` is the truth**: a slot from three days ago, run now, was
+  three days late.
+
+## How the form presents a param
+
+Four optional keys say how the form shows a param, and **none of them changes
+what a value may be**:
+
+```yaml
+params:
+  - name: load_full
+    type: boolean
+    default: "false"
+    title: Full load                              # the label; the name otherwise
+    group: Load                                   # gathers params in the form
+    warn: reprocesses the whole table; it costs   # under the field
+    uses: bigquery                                # the connector, for its logo
+```
+
+The publish checks only their shape, naming the param: each is one line,
+`title` and `group` hold up to 60 characters and `warn` up to 200, and `uses`
+is lowercase letters, digits and `-`. An unknown `uses` is drawn as a
+monogram. They are stored with the definition only when set, so a param that
+uses none of them is the document it always was, and an older engine ignores
+them.
+
 ## Types
 
 `boolean`, `integer` and `string`. With no `type` it is `string` — the most

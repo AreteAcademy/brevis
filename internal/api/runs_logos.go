@@ -35,43 +35,66 @@ func workflowLogos(def wf.Workflow) []string {
 	return keys
 }
 
-// runsLogos reads each workflow on the page once. From the CURRENT
-// definition, not the run's: a workflow that changed what it runs in shows
-// the new mark on its old runs, which is the price of not storing it per run.
-// A workflow that is gone, or fails to read, has no marks -- not a page error.
-func (u *UI) runsLogos(ctx context.Context, runs []postgres.RunSummary) map[string][]string {
-	if u.defs == nil {
+// logosOf is what each of these workflows runs in, by slug. From the CURRENT
+// definition, not the run's: a workflow that changed what it runs in shows the
+// new mark on its old runs, which is the price of not storing it per run.
+//
+// One workflow reads its definition alone; more read every definition in one
+// query, rather than one per workflow on the page. A workflow that is gone, or
+// fails to read, has no marks -- not a page error.
+func (u *UI) logosOf(ctx context.Context, slugs []string) map[string][]string {
+	if u.defs == nil || len(slugs) == 0 {
 		return nil
 	}
 	out := map[string][]string{}
-	for _, r := range runs {
-		if _, done := out[r.WorkflowSlug]; done {
-			continue
+	if len(slugs) == 1 {
+		if def, err := u.defs.Definition(ctx, slugs[0]); err == nil {
+			out[slugs[0]] = workflowLogos(def)
 		}
-		out[r.WorkflowSlug] = nil
-		if def, err := u.defs.Definition(ctx, r.WorkflowSlug); err == nil {
-			out[r.WorkflowSlug] = workflowLogos(def)
+		return out
+	}
+	defs, err := u.defs.Definitions(ctx)
+	if err != nil {
+		u.log.Error("reading the definitions for the logos", "error", err)
+		return out
+	}
+	for _, slug := range slugs {
+		if def, ok := defs[slug]; ok {
+			out[slug] = workflowLogos(def)
 		}
 	}
 	return out
 }
 
-// withLogos gives each next trigger what its workflow runs in, reading each
-// workflow once.
-func (u *UI) withLogos(ctx context.Context, next []pages.NextRun) []pages.NextRun {
-	if u.defs == nil {
-		return next
-	}
-	seen := map[string][]string{}
-	for i, n := range next {
-		logos, done := seen[n.Workflow]
-		if !done {
-			if def, err := u.defs.Definition(ctx, n.Workflow); err == nil {
-				logos = workflowLogos(def)
-			}
-			seen[n.Workflow] = logos
+// distinct is each slug once, in the order first seen.
+func distinct(slugs []string) []string {
+	var out []string
+	for _, s := range slugs {
+		if !slices.Contains(out, s) {
+			out = append(out, s)
 		}
-		next[i].Logos = logos
+	}
+	return out
+}
+
+// runsLogos is what the workflow of each run on the page runs in.
+func (u *UI) runsLogos(ctx context.Context, runs []postgres.RunSummary) map[string][]string {
+	slugs := make([]string, len(runs))
+	for i, r := range runs {
+		slugs[i] = r.WorkflowSlug
+	}
+	return u.logosOf(ctx, distinct(slugs))
+}
+
+// withLogos gives each next trigger what its workflow runs in.
+func (u *UI) withLogos(ctx context.Context, next []pages.NextRun) []pages.NextRun {
+	slugs := make([]string, len(next))
+	for i, n := range next {
+		slugs[i] = n.Workflow
+	}
+	logos := u.logosOf(ctx, distinct(slugs))
+	for i, n := range next {
+		next[i].Logos = logos[n.Workflow]
 	}
 	return next
 }

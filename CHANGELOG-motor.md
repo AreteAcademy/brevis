@@ -14,6 +14,45 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [Unreleased]
+
+### Added: what each workflow runs in
+
+- **The graph says each step's image**: `image` on every node of
+  `/api/workflows/{slug}/graph` and `/api/runs/{id}/graph`, the step's own or
+  the workflow's. A step with no image carries no key, so its payload is the
+  same as before.
+- **The Workflows list shows what each workflow runs in**, the same logos as
+  the Runs column: the tool first, then the language, two at most.
+- **A page with many workflows reads their definitions once**, in one query,
+  instead of one per workflow: the Workflows list, Runs and the Overview.
+
+### Added: running a past slot
+
+- **`POST /workflows/{slug}/trigger` takes `slot`**, one past slot of the
+  schedule, in RFC 3339 or as the browser's `datetime-local` (read in the
+  schedule's timezone). The run is manual, but its logical date is the slot,
+  so its automatic params are the slot's. One failed night is redone without
+  a backfill.
+- **A slot the cron never fires is refused** with the nearest one before it, in
+  UTC and in the schedule's timezone; so is one in the future, or of a
+  workflow with no schedule. A paused schedule still takes its past slots.
+- The same slot can be run again; two clicks in one second are still one run.
+- Without `slot` the trigger is what it was. See `docs/PARAMS.md`.
+
+### Added: how the form presents a param
+
+- **`title`, `group`, `warn` and `uses`** on a param in the YAML: the label,
+  the group in the form, what a value other than the default costs, and the
+  connector it is about. None of them changes what a value may be.
+- **The publish checks their shape**, naming the param: one line each, 60
+  characters for `title` and `group`, 200 for `warn`, and `uses` in lowercase
+  letters, digits and `-`.
+- **The trigger form** labels a param by its `title`, with the name beside it,
+  and shows `warn` under the field.
+- Stored only when set: a workflow that uses none of them is the document it
+  was, and an older engine ignores them.
+
 ## [0.40.0] — 2026-10-29
 
 ### Added: canceling a run

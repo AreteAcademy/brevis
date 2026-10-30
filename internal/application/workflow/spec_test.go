@@ -229,3 +229,31 @@ func TestNoDescriptionIsEmptyAndNotAPlaceholder(t *testing.T) {
 		t.Errorf("Description = %q on a workflow that declares none", w.Description)
 	}
 }
+
+// THE FOUR PRESENTATION KEYS ARE READ FROM THE FILE, and are fields of a param
+// -- not a stray key the publish warns was ignored.
+func TestParseReadsTheParamsPresentationKeys(t *testing.T) {
+	y := []byte(`params:
+  - name: load_full
+    type: boolean
+    default: "false"
+    title: Full load
+    group: Load
+    warn: reprocesses everything; it costs
+    uses: bigquery
+steps:
+  - id: a
+    run: echo
+`)
+	w, err := Parse("x.yaml", y)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := w.Params[0]
+	if p.Title != "Full load" || p.Group != "Load" || p.Warn != "reprocesses everything; it costs" || p.Uses != "bigquery" {
+		t.Errorf("param = %+v", p)
+	}
+	if got := UnknownFields("x.yaml", y); len(got) != 0 {
+		t.Errorf("the keys were warned about: %v", got)
+	}
+}

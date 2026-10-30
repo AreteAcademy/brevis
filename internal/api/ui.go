@@ -71,6 +71,9 @@ type Leitura interface {
 // because it returns the domain, not a screen projection.
 type Definitions interface {
 	Definition(ctx context.Context, slug string) (wf.Workflow, error)
+	// Definitions is every published definition by slug, in one read: what
+	// a page with many workflows uses for their logos.
+	Definitions(ctx context.Context) (map[string]wf.Workflow, error)
 }
 
 // RunsChart reads a Run and the state of its steps.
@@ -108,7 +111,9 @@ type CatalogReader interface {
 type Actions interface {
 	// Toggle pauses or resumes; actor is who pressed it, for the events feed.
 	Toggle(ctx context.Context, slug, actor string) (bool, error)
-	Disparar(ctx context.Context, slug string, now time.Time, params map[string]string) (uuid.UUID, error)
+	// Disparar runs a workflow now; with a slot, that past slot of its
+	// schedule.
+	Disparar(ctx context.Context, slug string, now time.Time, params map[string]string, slot *time.Time) (uuid.UUID, error)
 	// Cancel stops a run, or asks the dispatcher holding it to; actor is who
 	// pressed it.
 	Cancel(ctx context.Context, id uuid.UUID, actor string) (postgres.CancelResult, error)
@@ -1190,11 +1195,12 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 		u.failure(w, r, err)
 		return
 	}
+	logos := u.logosOf(r.Context(), slugs)
 	if fragment(r) == "answer" {
-		u.render(w, r, pages.WorkflowsList(ws, tags, f, counts, recent, len(all), len(filtered)))
+		u.render(w, r, pages.WorkflowsList(ws, tags, f, counts, recent, logos, len(all), len(filtered)))
 		return
 	}
-	u.render(w, r, pages.Workflows(ws, tags, f, counts, recent, len(all), len(filtered)))
+	u.render(w, r, pages.Workflows(ws, tags, f, counts, recent, logos, len(all), len(filtered)))
 }
 
 // contar is how many workflows each state and schedule choice would show:
@@ -1741,8 +1747,13 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params := paramsFromForm(r.PostForm)
+	slot, err := u.slotFromForm(r.Context(), slug, strings.TrimSpace(r.PostForm.Get("slot")))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-	id, err := u.actions.Disparar(r.Context(), slug, time.Now(), params)
+	id, err := u.actions.Disparar(r.Context(), slug, time.Now(), params, slot)
 	if err != nil {
 		// An invalid param is an INPUT error, not the server's: a 500 here would
 		// send the operator looking for a defect in the platform rather than in
@@ -1771,6 +1782,39 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/runs/"+id.String(), http.StatusSeeOther)
+}
+
+// slotFromForm reads the `slot` field: an RFC3339 instant, which says its own
+// offset, or the browser's datetime-local, which says none and is read in the
+// schedule's zone -- the zone its cron is written in. Empty is no slot.
+// Whether it is a slot of the schedule is the scheduler's to say.
+func (u *UI) slotFromForm(ctx context.Context, slug, v string) (*time.Time, error) {
+	if v == "" {
+		return nil, nil
+	}
+	if t, err := time.Parse(time.RFC3339, v); err == nil {
+		return &t, nil
+	}
+	loc := time.UTC
+	if u.leitura != nil {
+		schedules, err := u.leitura.Schedules(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, a := range schedules {
+			if a.WorkflowSlug == slug && a.Timezone != "" {
+				if l, err := time.LoadLocation(a.Timezone); err == nil {
+					loc = l
+				}
+			}
+		}
+	}
+	for _, layout := range []string{"2006-01-02T15:04", "2006-01-02T15:04:05"} {
+		if t, err := time.ParseInLocation(layout, v, loc); err == nil {
+			return &t, nil
+		}
+	}
+	return nil, fmt.Errorf("slot %q is not a time: use 2026-10-27T04:00:00Z, or 2026-10-27T04:00 in the schedule's zone", v)
 }
 
 // localPath is p when it is a path on this site, "" otherwise. A redirect

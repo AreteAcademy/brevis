@@ -46,6 +46,10 @@ type defsFake struct {
 
 func (d defsFake) Definition(context.Context, string) (wf.Workflow, error) { return d.w, d.err }
 
+func (d defsFake) Definitions(context.Context) (map[string]wf.Workflow, error) {
+	return map[string]wf.Workflow{d.w.Slug: d.w}, d.err
+}
+
 type execsFake struct {
 	run     dom.Run
 	states  map[string]postgres.NodeState
@@ -492,6 +496,44 @@ func TestTheNodeCarriesWhatItRunsIn(t *testing.T) {
 		if _, present := byID["opaque"][key]; present {
 			t.Errorf("an unreadable step carries %q: %v", key, byID["opaque"][key])
 		}
+	}
+}
+
+// THE NODE SAYS WHAT IMAGE IT RUNS IN, its own or the workflow's, and a step
+// with no image carries no key: its payload is what it was before this field.
+func TestTheNodeCarriesItsImage(t *testing.T) {
+	def := wf.Workflow{
+		Slug: "images", Kind: wf.KindDAG, Image: "python:3.12",
+		Nodes: []wf.Node{
+			{ID: "inherits", Run: "python fetch.py"},
+			{ID: "own", Run: "dbt build", Image: "ghcr.io/acme/dbt:1.8"},
+		},
+	}
+	bare := wf.Workflow{Slug: "bare", Kind: wf.KindDAG,
+		Nodes: []wf.Node{{ID: "plain", Run: "/opt/brevis/bin/fetch-weather"}}}
+
+	// The run's graph is drawn from the run's own copy of the definition.
+	id := uuid.New()
+	snapshot, _ := json.Marshal(def)
+	for _, path := range []string{"/api/workflows/images/graph", "/api/runs/" + id.String() + "/graph"} {
+		ui := newUI(defsFake{w: def}, execsFake{run: dom.Run{ID: id, WorkflowSlug: "images", Definition: snapshot}})
+		_, g := request(t, ui, path)
+		byID := map[string]map[string]any{}
+		for _, n := range g.Nodes {
+			byID[n.ID] = n.Data
+		}
+		if got := byID["inherits"]["image"]; got != "python:3.12" {
+			t.Errorf("%s: inherits image = %v, want the workflow's", path, got)
+		}
+		if got := byID["own"]["image"]; got != "ghcr.io/acme/dbt:1.8" {
+			t.Errorf("%s: own image = %v, want the step's", path, got)
+		}
+	}
+
+	ui := newUI(defsFake{w: bare}, execsFake{})
+	_, g := request(t, ui, "/api/workflows/bare/graph")
+	if _, present := g.Nodes[0].Data["image"]; present {
+		t.Errorf("a step with no image carries one: %v", g.Nodes[0].Data["image"])
 	}
 }
 
