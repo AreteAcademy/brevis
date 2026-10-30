@@ -66,6 +66,10 @@ type Leitura interface {
 	Workflows(ctx context.Context) ([]postgres.WorkflowSummary, error)
 	// Connects is the schemes each workflow's runs wrote since a moment.
 	Connects(ctx context.Context, since time.Time) (map[string][]string, error)
+	// LastStepRuns is how each step of a workflow went the last time it ran;
+	// StepConnects what each step wrote since a moment.
+	LastStepRuns(ctx context.Context, slug string) (map[string]postgres.StepRun, error)
+	StepConnects(ctx context.Context, slug string, since time.Time) (map[string][]string, error)
 	RecentStates(ctx context.Context, slugs []string, n int) (map[string][]postgres.RecentRun, error)
 	Schedules(ctx context.Context) ([]postgres.ScheduleSummary, error)
 	Projects(ctx context.Context) ([]postgres.ProjectSummary, error)
@@ -1504,7 +1508,7 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 	if oneStep(def) {
 		page.Step = stepLineOf(def, nil)
 	} else {
-		page.Graph = graphSeed(def, nil, "", "")
+		page.Graph = u.workflowSeed(r.Context(), def)
 	}
 	u.render(w, r, pages.Workflow(page))
 }

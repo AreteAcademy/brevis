@@ -753,3 +753,61 @@ func (r *ReadRepo) WorkflowHistory(ctx context.Context, slug string, day *time.T
 	}
 	return out, rows.Err()
 }
+
+// StepRun is how a step went the last time it ran.
+type StepRun struct {
+	Status     string
+	DurationMs int64
+}
+
+// LastStepRuns is, for each step of a workflow, its last attempt in the
+// newest run that ran it: a step the last run skipped keeps what it did
+// before. The workflow page's graph draws it on each card, and a mapped
+// step's instances are one row each -- the newest is the one shown.
+func (r *ReadRepo) LastStepRuns(ctx context.Context, slug string) (map[string]StepRun, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT ON (t.node_id) t.node_id, t.status,
+		       COALESCE(EXTRACT(EPOCH FROM (t.terminado_em - t.iniciado_em)) * 1000, 0)::bigint
+		FROM task_runs t JOIN runs r ON r.id = t.run_id
+		WHERE r.workflow_slug = $1
+		ORDER BY t.node_id, r.criado_em DESC, t.attempt DESC, t.iniciado_em DESC NULLS LAST`, slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string]StepRun{}
+	for rows.Next() {
+		var node string
+		var s StepRun
+		if err := rows.Scan(&node, &s.Status, &s.DurationMs); err != nil {
+			return nil, err
+		}
+		out[node] = s
+	}
+	return out, rows.Err()
+}
+
+// StepConnects is Connects by step: the scheme of every target each step of
+// a workflow landed since `since`, once each, in order.
+func (r *ReadRepo) StepConnects(ctx context.Context, slug string, since time.Time) (map[string][]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT node_id, split_part(target, '://', 1)
+		FROM landings
+		WHERE workflow_slug = $1 AND loaded_at >= $2 AND strpos(target, '://') > 1
+		ORDER BY 1, 2`, slug, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string][]string{}
+	for rows.Next() {
+		var node, scheme string
+		if err := rows.Scan(&node, &scheme); err != nil {
+			return nil, err
+		}
+		out[node] = append(out[node], scheme)
+	}
+	return out, rows.Err()
+}

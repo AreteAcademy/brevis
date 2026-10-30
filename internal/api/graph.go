@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -142,13 +144,74 @@ func nodeHeight(data map[string]any, stages int) int {
 // workflowGraph draws the PUBLISHED definition, with no execution state. It is
 // the "what this workflow looks like" screen, which has to work for a workflow
 // that never ran.
+//
+// What it does carry is each step's history in a line: how it went the last
+// time it ran, and what it wrote (screen-workflows T8). Neither is run state:
+// the cards still draw no run, and the step panel and the cards say "last".
 func (u *UI) workflowGraph(w http.ResponseWriter, r *http.Request) {
 	def, err := u.defs.Definition(r.Context(), r.PathValue("slug"))
 	if err != nil {
 		http.Error(w, "workflow not found", http.StatusNotFound)
 		return
 	}
-	u.respondGraph(w, def, nil, "", "")
+	resp, err := u.workflowGraphOf(r.Context(), def)
+	if err != nil {
+		http.Error(w, "invalid graph: "+err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		u.log.Error("serializing the graph", "slug", def.Slug, "error", err)
+	}
+}
+
+// workflowGraphOf is a published workflow's graph with each step's last run
+// and what it wrote: what /api/workflows/{slug}/graph answers and what the
+// workflow's page embeds. A step that never ran carries neither, so its
+// payload is what it was before this; a read that fails leaves the graph as
+// the definition alone.
+func (u *UI) workflowGraphOf(ctx context.Context, def wf.Workflow) (graphResponse, error) {
+	resp, err := buildGraph(def, nil, "", "")
+	if err != nil || u.leitura == nil {
+		return resp, err
+	}
+	last, err := u.leitura.LastStepRuns(ctx, def.Slug)
+	if err != nil {
+		u.log.Warn("the steps' last runs are unavailable", "workflow", def.Slug, "error", err)
+	}
+	wrote, err := u.leitura.StepConnects(ctx, def.Slug, time.Now().Add(-connectsWindow))
+	if err != nil {
+		u.log.Warn("what the steps wrote is unavailable", "workflow", def.Slug, "error", err)
+	}
+	for _, n := range resp.Nodes {
+		if l, ok := last[n.ID]; ok {
+			n.Data["last_status"] = l.Status
+			n.Data["last_duration_ms"] = l.DurationMs
+		}
+		var keys []string
+		for _, scheme := range wrote[n.ID] {
+			if k := connectorKey(scheme); !slices.Contains(keys, k) {
+				keys = append(keys, k)
+			}
+		}
+		if len(keys) > 0 {
+			n.Data["connects"] = keys
+		}
+	}
+	return resp, nil
+}
+
+// workflowSeed is workflowGraphOf for the page to embed, or "" to fetch.
+func (u *UI) workflowSeed(ctx context.Context, def wf.Workflow) string {
+	resp, err := u.workflowGraphOf(ctx, def)
+	if err != nil {
+		return ""
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 // runGraph draws the SNAPSHOT stored on the Run, not the current definition:

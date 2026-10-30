@@ -31,6 +31,17 @@ type readsFake struct {
 
 	// connects answers Connects: the schemes each workflow wrote.
 	connects map[string][]string
+	// lastRuns and stepConnects answer the workflow graph's per-step reads.
+	lastRuns     map[string]postgres.StepRun
+	stepConnects map[string][]string
+}
+
+func (f readsFake) LastStepRuns(context.Context, string) (map[string]postgres.StepRun, error) {
+	return f.lastRuns, nil
+}
+
+func (f readsFake) StepConnects(context.Context, string, time.Time) (map[string][]string, error) {
+	return f.stepConnects, nil
 }
 
 // Schedules are the workflows' own, for the trigger's timezone.

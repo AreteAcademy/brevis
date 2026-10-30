@@ -1076,3 +1076,43 @@ func TestEveryPhaseFitsInsideItsCard(t *testing.T) {
 		t.Fatalf("%d phases were drawn, wanted 4", seen)
 	}
 }
+
+// THE WORKFLOW'S GRAPH SAYS HOW EACH STEP LAST WENT, AND WHAT IT WROTE
+// (screen-workflows T8): its last state and duration, and the connectors it
+// landed in, under their logos' keys. A step that never ran carries none of
+// it -- its payload is what it was -- and a run's graph, which has its own
+// states, carries none either.
+func TestTheWorkflowGraphSaysHowEachStepLastWent(t *testing.T) {
+	reads := readsFake{
+		lastRuns:     map[string]postgres.StepRun{"a": {Status: "failed", DurationMs: 1200}},
+		stepConnects: map[string][]string{"a": {"gs", "bigquery"}},
+	}
+	id := uuid.New()
+	snapshot, _ := json.Marshal(diamond())
+	ui := api.NewUI(reads, defsFake{w: diamond()}, execsFake{run: dom.Run{ID: id, WorkflowSlug: "diamond", Definition: snapshot}},
+		nil, nil, nil, branding.Default(), slog.New(slog.DiscardHandler))
+
+	_, g := request(t, ui, "/api/workflows/diamond/graph")
+	byID := map[string]map[string]any{}
+	for _, n := range g.Nodes {
+		byID[n.ID] = n.Data
+	}
+	if byID["a"]["last_status"] != "failed" || byID["a"]["last_duration_ms"] != float64(1200) {
+		t.Errorf("a = %v, want how it last went", byID["a"])
+	}
+	if c, _ := byID["a"]["connects"].([]any); len(c) != 2 || c[0] != "gcs" || c[1] != "bigquery" {
+		t.Errorf("a connects to %v, want gcs and bigquery", byID["a"]["connects"])
+	}
+	for _, key := range []string{"last_status", "last_duration_ms", "connects"} {
+		if _, present := byID["b"][key]; present {
+			t.Errorf("a step that never ran carries %s", key)
+		}
+	}
+
+	_, run := request(t, ui, "/api/runs/"+id.String()+"/graph")
+	for _, n := range run.Nodes {
+		if _, present := n.Data["last_status"]; present {
+			t.Errorf("a run's graph carries the workflow's last state on %s", n.ID)
+		}
+	}
+}
