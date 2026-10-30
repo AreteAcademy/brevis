@@ -289,6 +289,11 @@ func buildGraph(def wf.Workflow, states map[string]postgres.NodeState, runID, st
 				data["instancias"] = st.Instances
 				data["instancias_ok"] = st.Done
 			}
+			// The image the step runs in, its own or the workflow's. Omitted
+			// when there is none, like the chips below.
+			if img := def.ImageFor(no); img != "" {
+				data["image"] = img
+			}
 			// What the step runs in. Computed HERE, on the definition already
 			// loaded, and not stored in a column: the inference rules will be
 			// wrong at first, and a stored value freezes a wrong guess into

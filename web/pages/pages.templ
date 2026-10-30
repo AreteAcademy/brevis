@@ -372,7 +372,7 @@ func (p Pagination) Window() []int {
 	return out
 }
 
-templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, total, filtered int) {
+templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, logos map[string][]string, total, filtered int) {
 	@layouts.Base(layouts.Page{Title: "Workflows", Kicker: "Orchestration", Active: "workflows"}) {
 		// THE BOX ANSWERS WHILE SOMEBODY TYPES, and the server still decides:
 		// the list is paginated, so ui.js submits this form as a fetch
@@ -387,15 +387,16 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts W
 			@components.SearchInput("q", f.Search, "Search workflows", "")
 		</form>
 		<div id="workflows-list">
-			@WorkflowsList(ws, tags, f, counts, recent, total, filtered)
+			@WorkflowsList(ws, tags, f, counts, recent, logos, total, filtered)
 		</div>
 	}
 }
 
 // WorkflowsList is everything under the search box: the filters, the count,
 // the table and its pages. It is the page's fragment (X-Brevis-Fragment:
-// answer), so the counts follow the search as somebody types.
-templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, total, filtered int) {
+// answer), so the counts follow the search as somebody types. Logos are what
+// each workflow runs in, by slug.
+templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, logos map[string][]string, total, filtered int) {
 	<div class="mb-3 flex flex-wrap items-center gap-2">
 		// Each control scrolls on its own when the screen is narrower than its
 		// choices, rather than cutting the last one off.
@@ -466,6 +467,13 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 								<a href={ templ.SafeURL("/workflows/" + w.Slug) } class="font-medium text-ink hover:underline">
 									{ w.Slug }
 								</a>
+								if ks := logos[w.Slug]; len(ks) > 0 {
+									<span class="ml-1.5 inline-flex items-center gap-1 align-middle">
+										for _, k := range ks {
+											@components.Logo(k, 18)
+										}
+									</span>
+								}
 								<a
 									href={ templ.SafeURL("/workflows?project=" + w.Project) }
 									class="text-xs text-muted hover:text-ink hover:underline"

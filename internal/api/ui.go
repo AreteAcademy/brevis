@@ -71,6 +71,9 @@ type Leitura interface {
 // because it returns the domain, not a screen projection.
 type Definitions interface {
 	Definition(ctx context.Context, slug string) (wf.Workflow, error)
+	// Definitions is every published definition by slug, in one read: what
+	// a page with many workflows uses for their logos.
+	Definitions(ctx context.Context) (map[string]wf.Workflow, error)
 }
 
 // RunsChart reads a Run and the state of its steps.
@@ -1190,11 +1193,12 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 		u.failure(w, r, err)
 		return
 	}
+	logos := u.logosOf(r.Context(), slugs)
 	if fragment(r) == "answer" {
-		u.render(w, r, pages.WorkflowsList(ws, tags, f, counts, recent, len(all), len(filtered)))
+		u.render(w, r, pages.WorkflowsList(ws, tags, f, counts, recent, logos, len(all), len(filtered)))
 		return
 	}
-	u.render(w, r, pages.Workflows(ws, tags, f, counts, recent, len(all), len(filtered)))
+	u.render(w, r, pages.Workflows(ws, tags, f, counts, recent, logos, len(all), len(filtered)))
 }
 
 // contar is how many workflows each state and schedule choice would show:

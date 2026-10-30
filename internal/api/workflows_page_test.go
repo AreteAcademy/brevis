@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/api"
 	"github.com/AreteAcademy/brevis/internal/branding"
+	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
@@ -188,4 +190,72 @@ func TestEachRowDrawsItsLastRunsFromOneQuery(t *testing.T) {
 	if strings.Count(body, `data-cron-text`) != 1 {
 		t.Error("a schedule the translator refuses got words anyway")
 	}
+}
+
+// mapDefs is a published catalog that counts how it is read: one definition at
+// a time, or all of them at once.
+type mapDefs struct {
+	defs       map[string]wf.Workflow
+	one, every *int
+}
+
+func (d mapDefs) Definition(_ context.Context, slug string) (wf.Workflow, error) {
+	*d.one++
+	return d.defs[slug], nil
+}
+
+func (d mapDefs) Definitions(context.Context) (map[string]wf.Workflow, error) {
+	*d.every++
+	return d.defs, nil
+}
+
+// A ROW SAYS WHAT ITS WORKFLOW RUNS IN, and the page reads the definitions
+// once: a page of twenty workflows is one query, not twenty.
+func TestAWorkflowsRowCarriesItsLogos(t *testing.T) {
+	one, every := 0, 0
+	defs := mapDefs{one: &one, every: &every, defs: map[string]wf.Workflow{
+		"daily_sales":   {Slug: "daily_sales", Nodes: []wf.Node{{ID: "build", Run: "dbt build"}}},
+		"hourly_clicks": {Slug: "hourly_clicks", Nodes: []wf.Node{{ID: "fetch", Run: "python fetch.py"}}},
+	}}
+	reads := readsFake{workflows: []postgres.WorkflowSummary{
+		{Slug: "daily_sales", Name: "daily_sales", Project: "analytics"},
+		{Slug: "hourly_clicks", Name: "hourly_clicks", Project: "analytics"},
+		{Slug: "backfill", Name: "backfill", Project: "analytics"},
+	}}
+	ui := api.NewUI(reads, defs, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+
+	for _, body := range []string{getBody(t, ui, "/workflows"), answerBody(t, ui, "/workflows")} {
+		row := func(slug string) string {
+			at := strings.Index(body, `href="/workflows/`+slug+`"`)
+			if at < 0 {
+				t.Fatalf("no row for %s", slug)
+			}
+			rest := body[at:]
+			return rest[:strings.Index(rest, "</tr>")]
+		}
+		if !strings.Contains(row("daily_sales"), `aria-label="dbt"`) {
+			t.Error("daily_sales has no dbt logo")
+		}
+		if !strings.Contains(row("hourly_clicks"), `aria-label="Python"`) {
+			t.Error("hourly_clicks has no Python logo")
+		}
+		if strings.Contains(row("backfill"), `class="cg`) {
+			t.Error("a workflow with no definition has a logo")
+		}
+	}
+	if every != 2 || one != 0 {
+		t.Errorf("two pages read the definitions %d times at once and %d one by one, want 2 and 0", every, one)
+	}
+}
+
+func getBody(t *testing.T, ui *api.UI, path string) string {
+	t.Helper()
+	_, body := get(t, ui, path)
+	return body
+}
+
+func answerBody(t *testing.T, ui *api.UI, path string) string {
+	t.Helper()
+	_, body := answerGet(t, ui, path)
+	return body
 }

@@ -14,6 +14,19 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [Unreleased]
+
+### Added: what each workflow runs in
+
+- **The graph says each step's image**: `image` on every node of
+  `/api/workflows/{slug}/graph` and `/api/runs/{id}/graph`, the step's own or
+  the workflow's. A step with no image carries no key, so its payload is the
+  same as before.
+- **The Workflows list shows what each workflow runs in**, the same logos as
+  the Runs column: the tool first, then the language, two at most.
+- **A page with many workflows reads their definitions once**, in one query,
+  instead of one per workflow: the Workflows list, Runs and the Overview.
+
 ## [0.40.0] — 2026-10-29
 
 ### Added: canceling a run

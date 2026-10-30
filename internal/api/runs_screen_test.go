@@ -283,6 +283,11 @@ func (d countingDefs) Definition(context.Context, string) (wf.Workflow, error) {
 	return d.w, nil
 }
 
+func (d countingDefs) Definitions(context.Context) (map[string]wf.Workflow, error) {
+	*d.calls++
+	return map[string]wf.Workflow{d.w.Slug: d.w}, nil
+}
+
 func detailGet(t *testing.T, ui *api.UI, path string) (int, string) {
 	t.Helper()
 	mux := http.NewServeMux()
