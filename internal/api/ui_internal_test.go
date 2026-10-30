@@ -68,7 +68,7 @@ func TestFiltrar(t *testing.T) {
 	}
 	for _, c := range casos {
 		t.Run(c.name, func(t *testing.T) {
-			equal(t, slugs(filtrar(list(), c.f)), c.expected)
+			equal(t, slugs(filtrar(list(), c.f, listFacts{})), c.expected)
 		})
 	}
 }
@@ -80,7 +80,7 @@ func TestTheTagsDoNotShrinkWithTheFilter(t *testing.T) {
 	all := list()
 	equal(t, tagsDe(all), []string{"acme", "id", "platform", "vendors"})
 
-	so := filtrar(all, pages.Filter{Tags: []string{"vendors"}})
+	so := filtrar(all, pages.Filter{Tags: []string{"vendors"}}, listFacts{})
 	if len(so) != 1 {
 		t.Fatalf("expected 1 filtered row, got %d", len(so))
 	}

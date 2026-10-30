@@ -141,14 +141,14 @@ templ pagination(p Pagination) {
 	if p.Total > 0 {
 		<div class="flex flex-wrap items-center justify-between gap-4 border-t border-line px-6 py-4 text-xs text-muted">
 			<span>
-				{ fmt.Sprintf("%d–%d of %d", p.First(), p.Last(), p.Total) }
+				{ i18n.T(ctx, "table.range", "first", i18n.Number(ctx, int64(p.First())), "last", i18n.Number(ctx, int64(p.Last())), "total", i18n.Number(ctx, int64(p.Total))) }
 			</span>
 			if p.Pages() > 1 {
 				<nav class="flex items-center gap-1">
 					if p.Page > 1 {
-						<a href={ templ.SafeURL(p.PageLink(p.Page - 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-line-strong hover:text-ink">previous</a>
+						<a href={ templ.SafeURL(p.PageLink(p.Page - 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-line-strong hover:text-ink">{ i18n.T(ctx, "table.previous") }</a>
 					} else {
-						<span class="rounded-card border border-line-soft px-3 py-1 text-line">previous</span>
+						<span class="rounded-card border border-line-soft px-3 py-1 text-line">{ i18n.T(ctx, "table.previous") }</span>
 					}
 					for _, n := range p.Window() {
 						if n == p.Page {
@@ -158,9 +158,9 @@ templ pagination(p Pagination) {
 						}
 					}
 					if p.Page < p.Pages() {
-						<a href={ templ.SafeURL(p.PageLink(p.Page + 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-line-strong hover:text-ink">next</a>
+						<a href={ templ.SafeURL(p.PageLink(p.Page + 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-line-strong hover:text-ink">{ i18n.T(ctx, "table.next") }</a>
 					} else {
-						<span class="rounded-card border border-line-soft px-3 py-1 text-line">next</span>
+						<span class="rounded-card border border-line-soft px-3 py-1 text-line">{ i18n.T(ctx, "table.next") }</span>
 					}
 				</nav>
 			}
@@ -177,9 +177,15 @@ templ pagination(p Pagination) {
 // on the other
 // lado.
 type Filter struct {
-	Search  string
-	State string // ultimo estado: failed, queued, running, success
-	Active  string // active | paused
+	Search string
+	// State is one of the segment's questions (failing, running, paused,
+	// manual), or a run state an older link carries (success, failed...),
+	// which still filters, as a chip.
+	State string
+	// Active is the schedule filter older links carry: active | paused.
+	Active string
+	// Lang is a language or tool the workflow runs, as a logo key.
+	Lang string
 
 	// Tags is a set: a workflow must carry ALL of them. One `tag=` each in the
 	// URL, in the order they were chosen.
@@ -282,6 +288,7 @@ func (f Filter) url(field, value string, resetsPage bool) string {
 	put("q", f.Search)
 	put("state", f.State)
 	put("active", f.Active)
+	put("lang", f.Lang)
 	for _, t := range f.Tags {
 		q.Add("tag", t)
 	}

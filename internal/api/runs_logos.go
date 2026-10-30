@@ -18,10 +18,14 @@ const logosShown = 2
 // before its language -- `dbt build` is a dbt workflow before it is a Python
 // one -- in the order of the steps, two at most. Inferred on read, like the
 // graph's chips, so fixing a rule fixes every run's item.
-func workflowLogos(def wf.Workflow) []string {
+func workflowLogos(def wf.Workflow) []string { return runsIn(def, logosShown) }
+
+// runsIn is every language and tool a workflow runs, in that order, at most
+// max of them; 0 is all of them.
+func runsIn(def wf.Workflow, max int) []string {
 	var keys []string
 	add := func(k string) {
-		if k != "" && len(keys) < logosShown && !slices.Contains(keys, k) {
+		if k != "" && (max == 0 || len(keys) < max) && !slices.Contains(keys, k) {
 			keys = append(keys, k)
 		}
 	}

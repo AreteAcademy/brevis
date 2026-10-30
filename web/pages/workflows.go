@@ -15,8 +15,8 @@ import (
 const RecentRuns = 14
 
 // recentTitle is what a recent-run square says: its state and its time.
-func recentTitle(r postgres.RecentRun) string {
-	return r.Status + " · " + components.Timestamp(&r.At)
+func recentTitle(ctx context.Context, r postgres.RecentRun) string {
+	return components.StateWord(ctx, r.Status) + " · " + components.Timestamp(&r.At)
 }
 
 // zoneSuffix names a schedule's timezone after its words, when it is not
@@ -28,40 +28,81 @@ func zoneSuffix(tz string) string {
 	return " (" + tz + ")"
 }
 
-// WorkflowCounts is how many workflows each filter choice would show, with
-// the rest of the filter as it is. A choice's count ignores its own filter --
-// "Failure 1" while "Success" is chosen -- or every other choice would read 0.
+// WorkflowsScreen is everything the Workflows list draws.
+type WorkflowsScreen struct {
+	// Rows are the page's workflows, filtered and sorted.
+	Rows   []postgres.WorkflowSummary
+	Filter Filter
+	Counts WorkflowCounts
+	// Tags are every workflow's tags, for the popover; Langs what they run.
+	Tags  []string
+	Langs []LangChoice
+	// Recent are each row's last runs; Logos what each row runs in.
+	Recent map[string][]postgres.RecentRun
+	Logos  map[string][]string
+	// Total is every workflow; Filtered those the filter keeps.
+	Total, Filtered int
+}
+
+// LangChoice is one language of the filter: a logo key, and how many
+// workflows the rest of the filter keeps that run it.
+type LangChoice struct {
+	Key   string
+	Count int
+}
+
+// WorkflowCounts is how many workflows each state would show, with the rest
+// of the filter as it is. A choice's count ignores its own filter --
+// "Failing 1" while "Paused" is chosen -- or every other choice would read 0.
 // The key "" is the choice that does not filter.
 type WorkflowCounts struct {
-	State  map[string]int
-	Active map[string]int
+	State map[string]int
 }
 
-// workflowStates are the state choices, in the order the filter shows them.
-var workflowStates = []struct{ value, label string }{
-	{"", "Any state"}, {"success", "Success"}, {"failed", "Failure"},
-	{"running", "Running"}, {"queued", "Queued"},
+// workflowStates are the questions the state segment asks, in its order.
+var workflowStates = []struct{ value, key string }{
+	{"", "workflows.state.all"},
+	{"failing", "workflows.state.failing"},
+	{"running", "workflows.state.running"},
+	{"paused", "workflows.state.paused"},
+	{"manual", "workflows.state.manual"},
 }
 
-// stateOptions is the state filter. Every choice stays, even at 0: a control
+// IsWorkflowState says whether a state is one of the segment's questions;
+// any other is a run state an older link carries.
+func IsWorkflowState(s string) bool {
+	for _, st := range workflowStates {
+		if st.value == s {
+			return true
+		}
+	}
+	return false
+}
+
+// stateOptions is the state segment. Every choice stays, even at 0: a control
 // whose choices come and go with the search moves under the pointer.
-func stateOptions(f Filter, c WorkflowCounts) []components.SegOption {
+func stateOptions(ctx context.Context, f Filter, c WorkflowCounts) []components.SegOption {
 	out := make([]components.SegOption, 0, len(workflowStates))
 	for _, s := range workflowStates {
-		out = append(out, components.SegOption{Label: s.label, Href: f.With("state", s.value),
-			Count: fmt.Sprint(c.State[s.value]), Current: f.State == s.value})
+		out = append(out, components.SegOption{Label: i18n.T(ctx, s.key), Href: f.With("state", s.value),
+			Count: i18n.Number(ctx, int64(c.State[s.value])), Current: f.State == s.value})
 	}
 	return out
 }
 
-// scheduleOptions is the active/paused filter.
-func scheduleOptions(f Filter, c WorkflowCounts) []components.SegOption {
-	out := make([]components.SegOption, 0, 3)
-	for _, s := range []struct{ value, label string }{
-		{"", "Any schedule"}, {"active", "Active"}, {"paused", "Paused"},
-	} {
-		out = append(out, components.SegOption{Label: s.label, Href: f.With("active", s.value),
-			Count: fmt.Sprint(c.Active[s.value]), Current: f.Active == s.value})
+// legacyChips are the filters an older link carries that no control offers
+// any more: a run state, and the schedule filter. Each still filters, and is
+// shown with its own ×.
+func legacyChips(ctx context.Context, f Filter) [][3]string {
+	var out [][3]string
+	if f.State != "" && !IsWorkflowState(f.State) {
+		out = append(out, [3]string{i18n.T(ctx, "workflows.chip.last_run"), components.StateWord(ctx, f.State), f.With("state", "")})
+	}
+	switch f.Active {
+	case "active":
+		out = append(out, [3]string{i18n.T(ctx, "workflows.chip.schedule"), i18n.T(ctx, "workflows.active"), f.With("active", "")})
+	case "paused":
+		out = append(out, [3]string{i18n.T(ctx, "workflows.chip.schedule"), i18n.T(ctx, "workflows.paused"), f.With("active", "")})
 	}
 	return out
 }
@@ -72,7 +113,7 @@ func scheduleOptions(f Filter, c WorkflowCounts) []components.SegOption {
 func (f Filter) hidden() [][2]string {
 	var out [][2]string
 	for _, h := range [][2]string{
-		{"state", f.State}, {"active", f.Active},
+		{"state", f.State}, {"active", f.Active}, {"lang", f.Lang},
 		{"project", f.Project}, {"sort", f.Sort},
 	} {
 		if h[1] != "" {

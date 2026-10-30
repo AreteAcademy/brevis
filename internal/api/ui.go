@@ -1158,7 +1158,8 @@ func periodLabel(de, ate *time.Time) string {
 }
 
 func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
-	all, err := u.leitura.Workflows(r.Context())
+	ctx := r.Context()
+	all, err := u.leitura.Workflows(ctx)
 	if err != nil {
 		u.failure(w, r, err)
 		return
@@ -1172,8 +1173,9 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	f := pages.Filter{
 		Search:  strings.TrimSpace(q.Get("q")),
-		State:   validState(q.Get("state")),
+		State:   validListState(q.Get("state")),
 		Active:  q.Get("active"),
+		Lang:    validLang(q.Get("lang")),
 		Tags:    tagsOf(q["tag"]),
 		Project: q.Get("project"),
 		Sort:    validOrder(q.Get("sort")),
@@ -1181,42 +1183,48 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 		Page:    page(q.Get("page")),
 		PerPage: pages.DefaultPerPage,
 	}
-
-	filtered := filtrar(all, f)
-	sortBy(filtered, f)
-	ws, tags, counts := recortar(filtered, f), tagsDe(all), contar(all, f)
-	// The strip of last runs is read for the page's rows only, in one query.
-	slugs := make([]string, len(ws))
-	for i, wf := range ws {
-		slugs[i] = wf.Slug
+	if f.Active != "active" && f.Active != "paused" {
+		f.Active = ""
 	}
-	recent, err := u.leitura.RecentStates(r.Context(), slugs, pages.RecentRuns)
-	if err != nil {
+
+	facts := u.listFacts(ctx)
+	filtered := filtrar(all, f, facts)
+	sortBy(filtered, f)
+	v := pages.WorkflowsScreen{
+		Filter: f, Rows: recortar(filtered, f), Tags: tagsDe(all),
+		Counts: contar(all, f, facts), Langs: langChoices(all, f, facts),
+		Total: len(all), Filtered: len(filtered),
+	}
+	// The strip of last runs is read for the page's rows only, in one query;
+	// the logos come from the definitions the filter already read.
+	slugs := make([]string, len(v.Rows))
+	v.Logos = map[string][]string{}
+	for i, wf := range v.Rows {
+		slugs[i] = wf.Slug
+		if def, ok := facts.defs[wf.Slug]; ok {
+			v.Logos[wf.Slug] = workflowLogos(def)
+		}
+	}
+	if v.Recent, err = u.leitura.RecentStates(ctx, slugs, pages.RecentRuns); err != nil {
 		u.failure(w, r, err)
 		return
 	}
-	logos := u.logosOf(r.Context(), slugs)
 	if fragment(r) == "answer" {
-		u.render(w, r, pages.WorkflowsList(ws, tags, f, counts, recent, logos, len(all), len(filtered)))
+		u.render(w, r, pages.WorkflowsList(v))
 		return
 	}
-	u.render(w, r, pages.Workflows(ws, tags, f, counts, recent, logos, len(all), len(filtered)))
+	u.render(w, r, pages.Workflows(v))
 }
 
-// contar is how many workflows each state and schedule choice would show:
-// the same filter with that one field swapped, run through filtrar, so a
-// count cannot disagree with the list its link opens.
-func contar(all []postgres.WorkflowSummary, f pages.Filter) pages.WorkflowCounts {
-	c := pages.WorkflowCounts{State: map[string]int{}, Active: map[string]int{}}
-	for _, s := range []string{"", "success", "failed", "running", "queued"} {
+// contar is how many workflows each state would show: the same filter with
+// that one field swapped, run through filtrar, so a count cannot disagree
+// with the list its link opens.
+func contar(all []postgres.WorkflowSummary, f pages.Filter, x listFacts) pages.WorkflowCounts {
+	c := pages.WorkflowCounts{State: map[string]int{}}
+	for _, s := range []string{"", "failing", "running", "paused", "manual"} {
 		g := f
 		g.State = s
-		c.State[s] = len(filtrar(all, g))
-	}
-	for _, a := range []string{"", "active", "paused"} {
-		g := f
-		g.Active = a
-		c.Active[a] = len(filtrar(all, g))
+		c.State[s] = len(filtrar(all, g, x))
 	}
 	return c
 }
@@ -1327,15 +1335,14 @@ func proximaDoWorkflow(w postgres.WorkflowSummary, now time.Time) *time.Time {
 // In memory and not in SQL because the workflow list is in the dozens, and
 // filtering by LAST state would mean repeating the query's LATERAL inside a
 // WHERE. If it ever becomes thousands, this turns into a database predicate.
-func filtrar(ws []postgres.WorkflowSummary, f pages.Filter) []postgres.WorkflowSummary {
+func filtrar(ws []postgres.WorkflowSummary, f pages.Filter, x listFacts) []postgres.WorkflowSummary {
 	search := strings.ToLower(f.Search)
 	out := make([]postgres.WorkflowSummary, 0, len(ws))
 	for _, w := range ws {
-		if search != "" && !strings.Contains(strings.ToLower(w.Slug), search) &&
-			!strings.Contains(strings.ToLower(w.Name), search) {
+		if search != "" && !strings.Contains(x.haystack(w), search) {
 			continue
 		}
-		if f.State != "" && w.LastStatus != f.State {
+		if !x.inState(w, f.State) {
 			continue
 		}
 		switch f.Active {
@@ -1355,6 +1362,9 @@ func filtrar(ws []postgres.WorkflowSummary, f pages.Filter) []postgres.WorkflowS
 			continue
 		}
 		if f.Project != "" && w.Project != f.Project {
+			continue
+		}
+		if f.Lang != "" && !contains(x.langs(w.Slug), f.Lang) {
 			continue
 		}
 		out = append(out, w)

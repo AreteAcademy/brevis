@@ -16,6 +16,19 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: the Workflows list
+
+- **The state is one question at a time**: All, Failing (the last finished
+  run failed, as the sidebar's badge counts), Running (running, queued or
+  retrying), Paused and Manual only, each with how many it shows. An older
+  link's `state=success` or `active=paused` still filters, shown as a chip
+  with its ×.
+- **A language filter**: the languages and tools the workflows run, each with
+  its logo and count.
+- **The search reads what the steps run** and the tags, not only the name:
+  "dbt" finds the workflows that run it.
+- In English, Portuguese and Spanish, the pagination included.
+
 ### Added: what each workflow runs in
 
 - **The graph says each step's image**: `image` on every node of

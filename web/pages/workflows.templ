@@ -8,6 +8,7 @@ import (
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/AreteAcademy/brevis/web/layouts"
 )
 
@@ -15,46 +16,77 @@ import (
 // Workflows: the list, the workflow and its run drawer
 // ---------------------------------------------------------------------------
 
-templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, logos map[string][]string, total, filtered int) {
-	@layouts.Base(layouts.Page{Title: "Workflows", Kicker: "Orchestration", Active: "workflows"}) {
+templ Workflows(v WorkflowsScreen) {
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "nav.workflows"), Active: "workflows"}) {
+		<p class="-mt-2 mb-4 max-w-3xl text-[13.5px] text-muted">
+			{ i18n.T(ctx, "workflows.lead.before") }
+			<strong class="font-medium text-ink">{ i18n.T(ctx, "workflows.lead.strong") }</strong>
+			{ i18n.T(ctx, "workflows.lead.after") }
+			<a href="/runs" class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.lead.run") }</a>.
+		</p>
 		// THE BOX ANSWERS WHILE SOMEBODY TYPES, and the server still decides:
 		// the list is paginated, so ui.js submits this form as a fetch
 		// (`data-swap-typing`) and swaps the list the handler draws alone. With
 		// no script it is the GET form it always was, and Enter submits it.
 		// The other filters go along as hidden fields: searching must not erase
 		// the state the operator had already chosen.
-		<form method="get" action="/workflows" role="search" data-swap="workflows-list" data-swap-typing class="mb-3 w-full sm:w-80">
-			for _, h := range f.hidden() {
+		<form method="get" action="/workflows" role="search" data-swap="workflows-list" data-swap-typing class="mb-3 w-full sm:w-96">
+			for _, h := range v.Filter.hidden() {
 				<input type="hidden" name={ h[0] } value={ h[1] }/>
 			}
-			@components.SearchInput("q", f.Search, "Search workflows", "")
+			@components.SearchInput("q", v.Filter.Search, i18n.T(ctx, "workflows.search"), "")
 		</form>
 		<div id="workflows-list">
-			@WorkflowsList(ws, tags, f, counts, recent, logos, total, filtered)
+			@WorkflowsList(v)
 		</div>
 	}
 }
 
 // WorkflowsList is everything under the search box: the filters, the count,
 // the table and its pages. It is the page's fragment (X-Brevis-Fragment:
-// answer), so the counts follow the search as somebody types. Logos are what
-// each workflow runs in, by slug.
-templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, counts WorkflowCounts, recent map[string][]postgres.RecentRun, logos map[string][]string, total, filtered int) {
-	<div class="mb-3 flex flex-wrap items-center gap-2">
+// answer), so the counts follow the search as somebody types.
+templ WorkflowsList(v WorkflowsScreen) {
+	{{ f := v.Filter }}
+	<div class="mb-2 flex flex-wrap items-center gap-2">
 		// Each control scrolls on its own when the screen is narrower than its
 		// choices, rather than cutting the last one off.
 		<div class="max-w-full overflow-x-auto whitespace-nowrap">
-			@components.Segmented("State", stateOptions(f, counts))
+			@components.Segmented(i18n.T(ctx, "workflows.filter.state"), stateOptions(ctx, f, v.Counts))
 		</div>
-		<div class="max-w-full overflow-x-auto whitespace-nowrap">
-			@components.Segmented("Schedule", scheduleOptions(f, counts))
-		</div>
-		if len(tags) > 0 {
-			@tagPopover(tags, f)
+		for _, c := range legacyChips(ctx, f) {
+			<a
+				href={ templ.SafeURL(c[2]) }
+				aria-label={ i18n.T(ctx, "workflows.chip.remove") }
+				class="inline-flex h-8 items-center gap-1.5 rounded-card border border-line-strong bg-surface-2 px-2.5 text-[0.8rem] text-ink"
+			>
+				<span class="text-muted">{ c[0] }:</span>
+				<span>{ c[1] }</span>
+				<span class="text-muted">&times;</span>
+			</a>
+		}
+		// The project chip appears only when one is selected. There is no
+		// row of every project here on purpose: a project is a namespace,
+		// not a category, and most installations have one -- a permanent
+		// chip for a filter that is almost never on is noise.
+		if f.Project != "" {
+			<a
+				href={ templ.SafeURL(f.With("project", "")) }
+				aria-label={ i18n.T(ctx, "workflows.chip.remove") }
+				class="inline-flex h-8 items-center gap-1.5 rounded-card border border-line-strong bg-surface-2 px-2.5 text-[0.8rem] text-ink"
+			>
+				<span class="text-muted">{ i18n.T(ctx, "workflows.chip.project") }:</span>
+				<span class="font-mono">{ f.Project }</span>
+				<span class="text-muted">&times;</span>
+			</a>
+		}
+	</div>
+	<div class="mb-3 flex flex-wrap items-center gap-2">
+		if len(v.Tags) > 0 {
+			@tagPopover(v.Tags, f)
 			for _, t := range f.Tags {
 				<a
 					href={ templ.SafeURL(f.WithTag(t)) }
-					aria-label={ "Remove the tag " + t }
+					aria-label={ i18n.T(ctx, "workflows.tags.remove", "tag", t) }
 					class="inline-flex h-8 items-center gap-1.5 rounded-card border border-line-strong bg-surface-2 px-2.5 text-[0.8rem] text-ink"
 				>
 					{ t }
@@ -62,46 +94,44 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 				</a>
 			}
 		}
-		// The project chip appears only when one is selected. There is no
-		// row of every project here on purpose: a project is a namespace,
-		// not a category, and most installations have one -- a permanent
-		// chip for a filter that is almost never on is noise.
-		if f.Project != "" {
-			<span class="mx-2 h-5 w-px bg-line"></span>
-			<a
-				href={ templ.SafeURL(f.With("project", "")) }
-				class="inline-flex items-center gap-1.5 rounded-card border border-line-strong bg-surface-2 px-3 py-1 text-xs text-ink"
-			>
-				project: <span class="font-mono">{ f.Project }</span>
-				<span class="text-muted">&times;</span>
-			</a>
+		if len(v.Langs) > 0 {
+			@langFilter(v.Langs, f)
 		}
 	</div>
-	<p class="mb-2 text-[13px] font-semibold text-ink">
-		{ count(filtered, "workflow", "workflows") }
-		if filtered != total {
-			<span class="ml-2 text-sm text-muted">of { fmt.Sprint(total) }</span>
-			<a href="/workflows" class="ml-3 text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">clear filters</a>
+	<p class="mb-2 text-[13px] text-muted">
+		<span class="font-semibold text-ink tabular-nums">{ i18n.Number(ctx, int64(v.Filtered)) }</span>
+		{ i18n.N(ctx, "workflows.count", v.Total) }
+		if f.Search != "" {
+			{ i18n.T(ctx, "workflows.count.search", "q", f.Search) }
+		}
+		for _, t := range f.Tags {
+			· { i18n.T(ctx, "workflows.count.tag", "tag", t) }
+		}
+		if f.Lang != "" {
+			· { components.LogoTitle(ctx, f.Lang) }
+		}
+		if v.Filtered != v.Total {
+			<a href="/workflows" class="ml-3 text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.clear") }</a>
 		}
 	</p>
-	if len(ws) == 0 {
-		@components.Empty("No workflow matches these filters.", "brevis publish file.yaml")
+	if len(v.Rows) == 0 {
+		@components.Empty(i18n.T(ctx, "workflows.empty"), "brevis publish file.yaml")
 	} else {
 		<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
 			<table class="ct w-full min-w-[56rem] text-sm">
 				<thead>
 					<tr class="border-b border-line bg-parchment-soft/60 text-left">
 						@th("", "w-16 pl-6")
-						@sortableTh("Workflow", "workflow", f, "")
-						@sortableTh("Schedule", "schedule", f, "")
-						@sortableTh("Next run", "next", f, "")
-						@sortableTh("Last run", "last", f, "")
-						@th("Tags", "")
+						@sortableTh(i18n.T(ctx, "workflows.col.workflow"), "workflow", f, "")
+						@sortableTh(i18n.T(ctx, "workflows.col.schedule"), "schedule", f, "")
+						@sortableTh(i18n.T(ctx, "workflows.col.next"), "next", f, "")
+						@sortableTh(i18n.T(ctx, "workflows.col.last"), "last", f, "")
+						@th(i18n.T(ctx, "workflows.col.tags"), "")
 						@th("", "w-24 pr-6 text-right")
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-line-soft">
-					for _, w := range ws {
+					for _, w := range v.Rows {
 						<tr class="transition-colors hover:bg-hover">
 							<td class="py-3 pl-6">
 								@interruptor(w)
@@ -110,7 +140,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 								<a href={ templ.SafeURL("/workflows/" + w.Slug) } class="font-medium text-ink hover:underline">
 									{ w.Slug }
 								</a>
-								if ks := logos[w.Slug]; len(ks) > 0 {
+								if ks := v.Logos[w.Slug]; len(ks) > 0 {
 									<span class="ml-1.5 inline-flex items-center gap-1 align-middle">
 										for _, k := range ks {
 											@components.Logo(k, 18)
@@ -124,7 +154,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 							</td>
 							<td class="py-3 pr-3">
 								if w.Cron == "" {
-									<span class="text-xs text-muted">manual trigger only</span>
+									<span class="text-xs text-muted">{ i18n.T(ctx, "workflows.manual_only") }</span>
 								} else {
 									<span class="inline-flex items-center gap-1.5 font-mono text-xs text-ink">
 										<svg class="h-3.5 w-3.5 text-muted" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
@@ -136,7 +166,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 									if w.Catchup {
 										<span class="ml-2 text-[0.7rem] text-muted">catchup</span>
 									}
-									if words := CronText(w.Cron); words != "" {
+									if words := CronTextIn(ctx, w.Cron); words != "" {
 										<p data-cron-text class="mt-0.5 text-[0.7rem] text-muted">{ words }{ zoneSuffix(w.Timezone) }</p>
 									}
 								}
@@ -144,21 +174,21 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 							<td class="py-3 pr-3 text-xs tabular-nums">
 								if w.NextRun != nil {
 									<span class="text-ink">@components.ShortStamp(w.NextRun)</span>
-									<span class="ml-1.5 text-muted">{ components.When(w.NextRun) }</span>
+									<span class="ml-1.5 text-muted">{ i18n.Since(ctx, time.Now(), *w.NextRun) }</span>
 								} else if w.HasSchedule && !w.Active {
-									<span class="text-muted">paused</span>
+									<span class="text-muted">{ i18n.T(ctx, "workflows.paused") }</span>
 								} else {
 									<span class="text-muted">—</span>
 								}
 							</td>
 							<td class="py-3 pr-3">
 								if w.LastRunID != nil {
-									@recentRuns(recent[w.Slug])
+									@recentRuns(v.Recent[w.Slug])
 									<a href={ templ.SafeURL("/runs/" + *w.LastRunID) } class="mt-1 block text-[0.7rem] tabular-nums text-muted hover:underline">
-										@components.ShortStamp(w.LastRunAt) · { count(w.TotalRuns, "run", "runs") }
+										@components.ShortStamp(w.LastRunAt) · { i18n.N(ctx, "workflows.runs", w.TotalRuns) }
 									</a>
 								} else {
-									<span class="text-xs text-muted">never ran</span>
+									<span class="text-xs text-muted">{ i18n.T(ctx, "workflows.never_ran") }</span>
 								}
 							</td>
 							<td class="py-3 pr-3">
@@ -176,10 +206,43 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 				</tbody>
 			</table>
 			@pagination(Pagination{
-				Page: f.Page, PerPage: f.PerPage, Total: filtered,
+				Page: f.Page, PerPage: f.PerPage, Total: v.Filtered,
 				PageLink: f.WithPage,
 			})
 		</div>
+	}
+}
+
+// langFilter is the languages the workflows run, each with its logo and how
+// many the rest of the filter keeps. Links, like every other filter, so it
+// works with no script and the URL can be pasted.
+templ langFilter(langs []LangChoice, f Filter) {
+	<div data-lang-filter role="group" aria-label={ i18n.T(ctx, "workflows.filter.lang") } class="flex max-w-full items-center gap-1.5 overflow-x-auto whitespace-nowrap">
+		<span class="text-[0.75rem] text-faint">{ i18n.T(ctx, "workflows.filter.lang") }</span>
+		<div class="inline-flex h-8 shrink-0 items-center gap-0.5 rounded-card border border-line bg-surface p-0.5">
+			@langOption(f.With("lang", ""), f.Lang == "") {
+				{ i18n.T(ctx, "workflows.lang.all") }
+			}
+			for _, l := range langs {
+				@langOption(f.With("lang", l.Key), f.Lang == l.Key) {
+					@components.Logo(l.Key, 18)
+					{ components.LogoTitle(ctx, l.Key) }
+					<span class="text-[0.72rem] text-muted tabular-nums">{ i18n.Number(ctx, int64(l.Count)) }</span>
+				}
+			}
+		</div>
+	</div>
+}
+
+templ langOption(href string, current bool) {
+	if current {
+		<a href={ templ.SafeURL(href) } aria-current="true" class="inline-flex h-full items-center gap-1.5 rounded-[2px] bg-surface-2 px-2.5 text-[0.8rem] font-medium text-ink">
+			{ children... }
+		</a>
+	} else {
+		<a href={ templ.SafeURL(href) } class="inline-flex h-full items-center gap-1.5 rounded-[2px] px-2.5 text-[0.8rem] text-muted transition-colors hover:text-ink">
+			{ children... }
+		</a>
 	}
 }
 
@@ -192,8 +255,8 @@ templ recentRuns(runs []postgres.RecentRun) {
 			for _, r := range runs {
 				<a
 					href={ templ.SafeURL("/runs/" + r.ID) }
-					title={ recentTitle(r) }
-					aria-label={ recentTitle(r) }
+					title={ recentTitle(ctx, r) }
+					aria-label={ recentTitle(ctx, r) }
 					class={ "h-3 w-2 rounded-[1px] transition-opacity hover:opacity-70", components.StateFill(r.Status) }
 				></a>
 			}
@@ -210,7 +273,7 @@ templ tagPopover(tags []string, f Filter) {
 	<details data-popover class="relative">
 		<summary class="inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-card border border-line bg-surface px-2.5 text-[0.8rem] text-muted transition-colors duration-150 hover:text-ink [&::-webkit-details-marker]:hidden">
 			@components.Icon("tag", "h-3.5 w-3.5")
-			Tags
+			{ i18n.T(ctx, "workflows.col.tags") }
 			if len(f.Tags) > 0 {
 				<span class="text-[0.72rem] text-ink tabular-nums">{ fmt.Sprint(len(f.Tags)) }</span>
 			}
@@ -222,8 +285,8 @@ templ tagPopover(tags []string, f Filter) {
 				}
 				<input
 					type="search"
-					aria-label="Filter tags"
-					placeholder="Filter tags"
+					aria-label={ i18n.T(ctx, "workflows.tags.filter") }
+					placeholder={ i18n.T(ctx, "workflows.tags.filter") }
 					data-filter-for="workflow-tags"
 					autocomplete="off"
 					class="mb-2 h-8 w-full rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink placeholder:text-faint focus:border-accent-strong focus:outline-none"
@@ -238,8 +301,8 @@ templ tagPopover(tags []string, f Filter) {
 						</li>
 					}
 				</ul>
-				<p data-filter-empty hidden class="px-1.5 py-1 text-[0.8rem] text-muted">No tag matches.</p>
-				<button type="submit" class="mt-2 h-7 w-full rounded-card bg-ink text-xs font-medium text-surface">Apply</button>
+				<p data-filter-empty hidden class="px-1.5 py-1 text-[0.8rem] text-muted">{ i18n.T(ctx, "workflows.tags.none") }</p>
+				<button type="submit" class="mt-2 h-7 w-full rounded-card bg-ink text-xs font-medium text-surface">{ i18n.T(ctx, "workflows.tags.apply") }</button>
 			</form>
 		</div>
 	</details>
@@ -254,8 +317,8 @@ templ interruptor(w postgres.WorkflowSummary) {
 			if w.Active {
 				<button
 					type="submit"
-					title="Pause the schedule"
-					aria-label={ "Pausar " + w.Slug }
+					title={ i18n.T(ctx, "workflows.pause.tip") }
+					aria-label={ i18n.T(ctx, "workflows.pause", "workflow", w.Slug) }
 					class="flex h-5 w-9 items-center rounded-full bg-state-success/80 px-0.5 transition-colors hover:bg-state-success"
 				>
 					<span class="ml-auto h-4 w-4 rounded-full bg-surface shadow-sm"></span>
@@ -263,8 +326,8 @@ templ interruptor(w postgres.WorkflowSummary) {
 			} else {
 				<button
 					type="submit"
-					title="Resume the schedule"
-					aria-label={ "Retomar " + w.Slug }
+					title={ i18n.T(ctx, "workflows.resume.tip") }
+					aria-label={ i18n.T(ctx, "workflows.resume", "workflow", w.Slug) }
 					class="flex h-5 w-9 items-center rounded-full bg-line px-0.5 transition-colors hover:bg-muted/40"
 				>
 					<span class="h-4 w-4 rounded-full bg-surface shadow-sm"></span>
@@ -272,7 +335,7 @@ templ interruptor(w postgres.WorkflowSummary) {
 			}
 		</form>
 	} else {
-		<span class="block h-5 w-9" title="No schedule: manual trigger only"></span>
+		<span class="block h-5 w-9 text-center text-faint" title={ i18n.T(ctx, "workflows.no_schedule.tip") }>—</span>
 	}
 }
 
@@ -282,8 +345,8 @@ templ disparar(slug string) {
 	<form method="post" action={ templ.SafeURL("/workflows/" + slug + "/trigger") } class="inline">
 		<button
 			type="submit"
-			title="Run now"
-			aria-label={ "Run " + slug }
+			title={ i18n.T(ctx, "workflows.run.tip") }
+			aria-label={ i18n.T(ctx, "workflows.run", "workflow", slug) }
 			class="inline-flex h-8 w-8 items-center justify-center rounded-card border border-line text-muted transition-colors hover:border-line-strong hover:bg-hover hover:text-ink"
 		>
 			<svg class="h-3.5 w-3.5" viewBox="0 0 12 12" fill="currentColor"><path d="M2.5 1.6v8.8L10 6z"></path></svg>
