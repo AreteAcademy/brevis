@@ -116,3 +116,47 @@ func TestTheCatalogAnswersTheSearch(t *testing.T) {
 		t.Error("an empty search does not say how to get out of it")
 	}
 }
+
+// THE CATALOG IS IN THE MENU (screen-catalog T2), first of Data, with its
+// letter -- g d -- and, when some destination needs a person, how many.
+func TestTheCatalogIsInTheMenu(t *testing.T) {
+	ui := dataUI(catalogFake{entries: catalogEntries()})
+	nav := sections(render(t, ui, "/ingest/loads"))
+	at := strings.Index(nav, `href="/data"`)
+	if at < 0 {
+		t.Fatal("the menu has no Catalog")
+	}
+	if ep := strings.Index(nav, `href="/data/endpoints"`); ep < at {
+		t.Error("Catalog is not first of Data")
+	}
+	link := nav[at : at+strings.Index(nav[at:], "</a>")]
+	for _, want := range []string{`data-go-key="d"`, ">Catalog<", "1 destination needs attention", ">1<"} {
+		if !strings.Contains(link, want) {
+			t.Errorf("the Catalog link has no %s:\n%s", want, link)
+		}
+	}
+	if page := sections(render(t, ui, "/data")); !strings.Contains(page[strings.Index(page, `href="/data"`):], `aria-current="page"`) {
+		t.Error("the catalog's own page does not mark it open")
+	}
+
+	fine := []postgres.CatalogEntry{catalogEntries()[1]}
+	nav = sections(render(t, dataUI(catalogFake{entries: fine}), "/ingest/loads"))
+	at = strings.Index(nav, `href="/data"`)
+	if strings.Contains(nav[at:at+strings.Index(nav[at:], "</a>")], "needs attention") {
+		t.Error("a catalog with nothing to look at has a badge")
+	}
+}
+
+// THE PALETTE FINDS A DESTINATION, with who writes it, and opens it.
+func TestThePaletteFindsADestination(t *testing.T) {
+	_, _, items := palette(t, dataUI(catalogFake{entries: catalogEntries()}))
+	for _, it := range items {
+		if it.Group == "Catalog" && it.Label == "bigquery://acme/bronze/old" {
+			if it.Hint != "vendors · fetch" || it.Href != "/data/target?u=bigquery%3A%2F%2Facme%2Fbronze%2Fold" || it.GroupLabel != "Catalog" {
+				t.Errorf("the destination's entry = %+v", it)
+			}
+			return
+		}
+	}
+	t.Error("the palette has no destination")
+}

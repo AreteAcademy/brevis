@@ -30,6 +30,9 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 - **Each row**: where it lives, faint, and the table; its status, and "a run is
   queued"; who writes it; the last load; its rows; its last loads. The whole
   row opens the destination.
+- **In the menu** first of Data, with `g d`, and a badge of the destinations
+  that need attention when there are any (counted every 30 seconds at most).
+  The palette finds a destination by its URI, its writer as the hint.
 - In English, Portuguese and Spanish.
 
 ### Changed: a workflow's page, its head, numbers and tabs

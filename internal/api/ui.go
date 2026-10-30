@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -142,7 +143,13 @@ type UI struct {
 	// the pages off.
 	endpoints EndpointsReader
 	failing   FailingReader
-	events    EventsReader
+
+	// attention is the Catalog badge's count, kept for attentionTTL: the
+	// catalog is read whole to count it, and every page draws the badge.
+	attentionMu sync.Mutex
+	attentionAt time.Time
+	attentionN  int
+	events      EventsReader
 
 	// calls runs an endpoint for Try it; callsProtected says the console
 	// asks for a login. Both, or no Try it.
@@ -867,6 +874,10 @@ func (u *UI) palette(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// A stream by what it is, POST <path>; a load by step → where.
+		// A destination by what it is, the writer as the hint.
+		for _, row := range pages.BuildCatalog(entries, pages.DataFilter{}, time.Now()).Rows {
+			items = append(items, paletteEntry("Catalog", row.Target, pages.WriterLine(row), pages.TargetHref(row.Target), "database"))
+		}
 		for _, g := range pages.StreamsOf(entries) {
 			for _, s := range g.Streams {
 				items = append(items, paletteEntry("Streams", "POST "+s.Path, g.Name, s.Href(), "cloud"))
@@ -1951,6 +1962,7 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	ctx = layouts.WithRequestURI(ctx, r.URL.RequestURI())
 	ctx = layouts.TakeFlash(ctx, w, r)
 	ctx = u.withFailing(ctx, r)
+	ctx = u.withAttention(ctx, r)
 	if err := c.Render(ctx, w); err != nil {
 		u.log.Error("rendering the page", "path", r.URL.Path, "error", err)
 	}

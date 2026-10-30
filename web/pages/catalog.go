@@ -98,6 +98,13 @@ func destinationText(r DataRow) string {
 	return strings.ToLower(strings.Join(parts, "\n"))
 }
 
+// WriterLine is who writes a destination, the first writer alone: the
+// palette's hint.
+func WriterLine(r DataRow) string {
+	w, _ := writerLine(r)
+	return w
+}
+
 // writerLine is who writes a destination, as a row says it: the first
 // writer, and how many more there are.
 func writerLine(r DataRow) (string, int) {

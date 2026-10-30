@@ -1,8 +1,11 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"time"
+
+	"github.com/AreteAcademy/brevis/web/layouts"
 
 	"github.com/AreteAcademy/brevis/web/pages"
 )
@@ -28,4 +31,31 @@ func (u *UI) catalogPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u.render(w, r, pages.Catalog(v))
+}
+
+// attentionTTL is how long the Catalog badge's count is kept: long enough
+// that a page does not read the whole catalog each time, short enough that
+// a destination that went stale shows within a minute.
+const attentionTTL = 30 * time.Second
+
+// withAttention counts the destinations that need a person, for the
+// Catalog section's badge. A number for decoration cannot take a page down:
+// when it cannot be read, the error is logged and the page is drawn without
+// it.
+func (u *UI) withAttention(ctx context.Context, r *http.Request) context.Context {
+	if u.catalog == nil {
+		return ctx
+	}
+	u.attentionMu.Lock()
+	defer u.attentionMu.Unlock()
+	if time.Since(u.attentionAt) > attentionTTL {
+		entries, err := u.catalog.Catalog(ctx)
+		if err != nil {
+			u.log.Error("counting the destinations that need attention", "path", r.URL.Path, "error", err)
+			return ctx
+		}
+		u.attentionN = pages.BuildCatalog(entries, pages.DataFilter{}, time.Now()).Count("attention")
+		u.attentionAt = time.Now()
+	}
+	return layouts.WithAttention(ctx, u.attentionN)
 }

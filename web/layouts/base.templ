@@ -491,6 +491,12 @@ templ sectionBadge(s section) {
 			@components.NavBadge("fail", i18n.Number(ctx, int64(n)))
 		</span>
 	}
+	if n := attention(ctx); s.Key == "catalog" && n > 0 {
+		<span class="sr-only">{ i18n.N(ctx, "nav.catalog.attention", n) }</span>
+		<span aria-hidden="true" class="ml-auto inline-flex">
+			@components.NavBadge("fail", i18n.Number(ctx, int64(n)))
+		</span>
+	}
 }
 
 templ navLink(s section, active string) {

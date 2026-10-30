@@ -26,6 +26,19 @@ func HasSQL(ctx context.Context) bool {
 	return on
 }
 
+type attentionKey struct{}
+
+// WithAttention carries how many destinations need a person now -- stale or
+// late -- for the Catalog section's badge. Absent is none.
+func WithAttention(ctx context.Context, n int) context.Context {
+	return context.WithValue(ctx, attentionKey{}, n)
+}
+
+func attention(ctx context.Context) int {
+	n, _ := ctx.Value(attentionKey{}).(int)
+	return n
+}
+
 type failingKey struct{}
 
 // WithFailing carries how many workflows are failing now, for the Runs

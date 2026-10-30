@@ -123,16 +123,14 @@ func TestTheLoadsPageSaysHowALoadAppears(t *testing.T) {
 	}
 }
 
-// INGEST IS IN THE NAVIGATION, Streams and Loads, and Catalog is not.
+// INGEST IS IN THE NAVIGATION, Streams and Loads. (The Catalog, which IN6
+// had taken out, is back under Data: TestTheCatalogIsInTheMenu.)
 func TestIngestIsInTheNavigation(t *testing.T) {
 	_, body := get(t, dataUI(catalogFake{}), "/ingest/loads")
 	for _, want := range []string{`href="/ingest/streams"`, `href="/ingest/loads"`, `aria-label="Ingest"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the navigation has no %s", want)
 		}
-	}
-	if strings.Contains(body, `href="/data"`) {
-		t.Error("the navigation still links Catalog's /data")
 	}
 }
 
@@ -585,28 +583,6 @@ func TestTheStreamPageAnswers(t *testing.T) {
 	for _, want := range []string{"[data-hash-tabs]", "hashchange", "[data-tab-panel]", "[data-test-body]"} {
 		if !strings.Contains(strip(js), want) {
 			t.Errorf("ui.js has no %s", want)
-		}
-	}
-}
-
-// "CATALOG" IS GONE FROM THE CONSOLE. Catalog became Streams and Loads (IN6);
-// a word left in a menu, a breadcrumb, a title or the palette is a section
-// that no longer exists, named to somebody looking for it.
-func TestNoScreenSaysCatalog(t *testing.T) {
-	entries := append(demoCatalog(), gatewayCatalog()...)
-	ui := dataUI(catalogFake{entries: entries, detail: &postgres.TargetDetail{CatalogEntry: entries[0]}}).WithEndpoints(published())
-	for _, path := range []string{
-		"/ingest/loads", "/ingest/streams", "/ingest/streams/edge/v1/clicks",
-		"/ingest/loads/sdk_orders/load", "/data/endpoints", "/api/palette",
-	} {
-		code, body := get(t, ui, path)
-		if code != http.StatusOK {
-			t.Errorf("%s answered %d", path, code)
-			continue
-		}
-		if strings.Contains(strings.ToLower(body), "catalog") {
-			at := strings.Index(strings.ToLower(body), "catalog")
-			t.Errorf("%s says catalog: …%s…", path, body[max(0, at-60):min(len(body), at+40)])
 		}
 	}
 }
