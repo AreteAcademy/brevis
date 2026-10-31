@@ -440,8 +440,9 @@ func TestALoadsVerbsAreInItsDrawer(t *testing.T) {
 	}
 }
 
-// /ingest/loads ANSWERS, one row per step and destination (screen-loads T2);
-// the collapse and group filter in ui.js are the Streams list's now.
+// /ingest/loads ANSWERS, one row per step and destination (screen-loads T2).
+// The group filter ui.js had went with the Streams list's cards
+// (screen-streams T2): no list groups its rows any more.
 func TestTheLoadsPageAnswers(t *testing.T) {
 	code, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/ingest/loads?legacy=1")
 	if code != http.StatusOK {
@@ -449,13 +450,6 @@ func TestTheLoadsPageAnswers(t *testing.T) {
 	}
 	if !strings.Contains(body, `href="/workflows/payments"`) || !strings.Contains(body, `href="/workflows/sdk_orders"`) {
 		t.Error("Show legacy did not add the legacy row to the rest")
-	}
-	_, ui := browsing(t)
-	_, raw := get(t, ui, "/assets/ui.js")
-	for _, want := range []string{"data-filter-group"} {
-		if !strings.Contains(strip(raw), want) {
-			t.Errorf("ui.js has no %s", want)
-		}
 	}
 }
 
@@ -500,5 +494,24 @@ func TestTheStreamPageAnswers(t *testing.T) {
 		if !strings.Contains(strip(js), want) {
 			t.Errorf("ui.js has no %s", want)
 		}
+	}
+}
+
+// THE STREAMS' SEARCH ANSWERS WHILE SOMEBODY TYPES (screen-streams T2): the
+// box swaps the list, and the same URL asked for its answer alone draws the
+// filter and the rows with no layout; a kind narrows to its streams.
+func TestTheStreamsSearchAnswersWhileYouType(t *testing.T) {
+	ui := dataUI(catalogFake{entries: gatewayCatalog()})
+	_, body := get(t, ui, "/ingest/streams")
+	if !strings.Contains(body, `data-swap="streams-list"`) || !strings.Contains(body, `id="streams-list"`) {
+		t.Error("the search box does not swap the list")
+	}
+	code, part := fragmentGet(t, ui, "/ingest/streams?q=clicks")
+	if code != http.StatusOK || strings.Contains(part, "<html") || strings.Count(part, `<tr data-href="/ingest/streams/`) != 1 {
+		t.Fatalf("the answer is not the list alone (%d): %.300s", code, part)
+	}
+	_, part = fragmentGet(t, ui, "/ingest/streams?q=nothing-is-called-this")
+	if !strings.Contains(part, "Nothing matches this filter") {
+		t.Error("a search that finds nothing does not say so")
 	}
 }

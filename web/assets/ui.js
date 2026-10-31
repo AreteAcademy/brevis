@@ -987,11 +987,6 @@
         var noun = foot.getAttribute("data-foot-noun") || "";
         foot.textContent = shown === total ? total + " " + noun : "Showing " + shown + " of " + total + " " + noun;
       }
-      // A group (a workflow's tbody) with every row hidden hides its header
-      // too, the way the server draws it.
-      rows.querySelectorAll("[data-filter-group]").forEach(function (group) {
-        group.hidden = !group.querySelector("[data-filter-row]:not([hidden])");
-      });
       var empty = scope.querySelector("[data-filter-empty]");
       if (empty) empty.hidden = shown > 0;
 

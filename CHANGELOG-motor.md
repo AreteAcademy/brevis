@@ -27,6 +27,13 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   URI on hover. The whole row opens the stream.
 - **A summary** counts the streams, the gateways and the dead letters, and a
   footer says how a stream works, in three steps.
+- **Filters**: the destination's kind, only the ones present, with logos;
+  and a search over the path, the gateway, the destination and the dead
+  letter, on the server, that answers while you type. There is no "with a
+  dead letter" filter: the gateway refuses a stream without one.
+- **New stream** says how a stream is made rather than asking for one: the
+  shape of a stream in `gateway.yaml` and the two commands that publish it,
+  to copy. `#novo` opens it with no script.
 - Only what was published: the console records no traffic, so there is no
   "live" or "last batch" -- the gateway's `/metrics` has them.
 - In English, Portuguese and Spanish.

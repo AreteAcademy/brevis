@@ -969,3 +969,33 @@ func howText(ctx context.Context, step string) string {
 	}
 	return i18n.T(ctx, "streams.how.write.text")
 }
+
+// newStreamYAML and newStreamCommands are New stream's example: a stream as
+// the gateway's file declares one, and how it reaches the console. Every
+// stream has a dead letter -- the gateway refuses one without -- so the
+// example has one too.
+const newStreamYAML = `streams:
+  #: What this stream is for, shown under its path.
+  - name: orders
+    path: /v1/orders
+    format: json
+    identity:
+      provider: acme
+      entity: order
+      source_key: order_id
+      record_ts: created_at
+    buffer:
+      flush:
+        every: 1m
+        records: 2000
+    sink:
+      type: bigquery
+      project: acme-prod
+      dataset: bronze
+      table: orders
+    dead_letter:
+      type: files
+      path: gs://acme-dead-letter/orders/`
+
+const newStreamCommands = `gateway describe -out gateway.json gateway.yaml
+brevis gateway publish gateway.json`

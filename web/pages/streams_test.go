@@ -2,6 +2,7 @@ package pages
 
 import (
 	"context"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -114,6 +115,7 @@ func TestTheStreamsHaveNoEnglishLeft(t *testing.T) {
 		"Real time", "Streams write", "continuously", "with a dead letter",
 		"Origin", "destination", "Batch", "Status", "continuous", "second",
 		"How it works", "POST to the gateway", "Batched", "Written", "No stream yet", "Nothing matches",
+		"Any destination", "Search", "New stream", "Declared in", "Then publish", "The console",
 	} {
 		if at := strings.Index(text, english); at >= 0 {
 			t.Errorf("the Portuguese streams still say %q: …%s…", english, text[max(0, at-60):min(len(text), at+40)])
@@ -136,5 +138,55 @@ func TestAnUnnamedDeadLetterIsShownAsDeclared(t *testing.T) {
 	}
 	if strings.Contains(page, "not named by the manifest") {
 		t.Error("a dead letter whose path is declared is called unnamed")
+	}
+}
+
+// THE FILTERS (screen-streams T2): the destination's kind, only the ones
+// present, with their logos, and a search over the path, the gateway, the
+// destination and the dead letter, on the server.
+func TestTheStreamsFilter(t *testing.T) {
+	entries := printFixtures(time.Now())
+	for query, want := range map[string]string{
+		"kind=postgres":      "events_gateway/v1/orders",
+		"kind=pubsub":        "events_gateway/v1/clicks",
+		"q=ZARV":             "zarv_ingestion_dev/v1/ingestion",
+		"q=dead-letter/orde": "events_gateway/v1/orders",
+		"q=brevis-local":     "events_gateway/v1/clicks",
+		"kind=bogus":         "events_gateway/v1/clicks events_gateway/v1/orders zarv_ingestion_dev/v1/ingestion",
+	} {
+		q, _ := url.ParseQuery(query)
+		if got := streamKeys(BuildStreams(entries, ParseStreamFilter(q))); got != want {
+			t.Errorf("%s draws %q, want %q", query, got, want)
+		}
+	}
+	page := drawIn(t, "en", Streams(BuildStreams(entries, StreamFilter{Kind: "pubsub"})))
+	for _, want := range []string{
+		`aria-label="Destination"`, `href="/ingest/streams?kind=bigquery"`, `href="/ingest/streams?kind=postgres"`,
+		`href="/ingest/streams"`, `aria-current="true"`, `aria-label="Google BigQuery"`,
+		`data-swap="streams-list"`, `name="kind" value="pubsub"`,
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the filters have no %s", want)
+		}
+	}
+	if strings.Contains(page, "kind=file") {
+		t.Error("a dead letter's kind is offered as a destination")
+	}
+}
+
+// NEW STREAM SAYS HOW, IT DOES NOT ASK: a stream is declared in the gateway's
+// file and published, so the drawer shows the shape and the commands, and
+// #novo opens it with no script.
+func TestNewStreamSaysHowToDeclareOne(t *testing.T) {
+	page := drawIn(t, "en", Streams(streamsFixture()))
+	for _, want := range []string{`href="#novo"`, `data-dialogo="novo"`, `<dialog id="novo"`, "gateway.yaml",
+		"gateway describe -out gateway.json gateway.yaml", "brevis gateway publish gateway.json", "dead_letter:", `data-copy="#novo-yaml"`} {
+		if !strings.Contains(page, want) {
+			t.Errorf("New stream has no %s", want)
+		}
+	}
+	at := strings.Index(page, `<dialog id="novo"`)
+	if strings.Contains(page[at:at+strings.Index(page[at:], "</dialog>")], "<form method=\"post\"") {
+		t.Error("New stream posts something")
 	}
 }

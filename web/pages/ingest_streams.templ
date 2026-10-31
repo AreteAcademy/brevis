@@ -11,7 +11,7 @@ import (
 // destination they land on, how they are batched, and the dead letter its
 // refusals go to, inside its stream and never a row of its own.
 templ Streams(v StreamsView) {
-	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "streams.title"), Crumb: i18n.T(ctx, "nav.streams"), Active: "streams"}) {
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "streams.title"), Crumb: i18n.T(ctx, "nav.streams"), Active: "streams", Actions: newStreamButton()}) {
 		<p class="-mt-2 mb-3 max-w-3xl text-[13.5px] text-muted">
 			{ i18n.T(ctx, "streams.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "streams.lead.strong") }</strong>{ i18n.T(ctx, "streams.lead.after") }
 		</p>
@@ -27,15 +27,93 @@ templ Streams(v StreamsView) {
 				}
 			</div>
 		}
+		if v.Total > 0 {
+			// THE BOX ANSWERS WHILE SOMEBODY TYPES, as the Catalog's and the
+			// loads': ui.js submits it as a fetch and swaps the list.
+			<form method="get" action="/ingest/streams" role="search" data-swap="streams-list" data-swap-typing class="mb-3 w-full sm:w-96">
+				if v.Filter.Kind != "" {
+					<input type="hidden" name="kind" value={ v.Filter.Kind }/>
+				}
+				@components.SearchInput("q", v.Filter.Q, i18n.T(ctx, "streams.search"), "")
+			</form>
+		}
 		<div id="streams-list">
 			@StreamsList(v)
 		</div>
 		@howItWorks()
+		@newStreamDrawer()
 	}
 }
 
-// StreamsList is the table and its empty states: the part a filter redraws.
+// newStreamButton is the header's verb. A link to #novo, so with no script
+// the drawer is drawn in place (`:target`); ui.js opens it modal.
+templ newStreamButton() {
+	<a href="#novo" data-dialogo="novo" aria-haspopup="dialog" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
+		@components.Icon("plus", "h-3.5 w-3.5")
+		{ i18n.T(ctx, "streams.new") }
+	</a>
+}
+
+// newStreamDrawer says how a stream is made; it does not make one. A stream
+// is declared in the gateway's file and published, so a form here would be a
+// second source of truth the gateway never reads.
+templ newStreamDrawer() {
+	<dialog
+		id="novo"
+		aria-labelledby="novo-title"
+		class="run-drawer fixed inset-y-0 right-0 left-auto m-0 h-full max-h-none w-[min(560px,100vw)] border-l border-line bg-surface p-0 text-ink backdrop:bg-ink/40"
+	>
+		<div class="flex h-full flex-col">
+			<div class="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+				<div class="min-w-0">
+					<p id="novo-title" class="text-[15px] font-semibold text-ink">{ i18n.T(ctx, "streams.new") }</p>
+					<p class="mt-1 text-[12.5px] text-muted">{ i18n.T(ctx, "streams.new.lead") }</p>
+				</div>
+				<form method="dialog">
+					<button type="submit" aria-label={ i18n.T(ctx, "dialog.close") } class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+						@components.Icon("x", "h-4 w-4")
+					</button>
+				</form>
+			</div>
+			<div class="flex-1 space-y-4 overflow-y-auto px-5 py-4 text-[12.5px]">
+				@copyBlock(i18n.T(ctx, "streams.new.declare"), "novo-yaml", newStreamYAML)
+				@copyBlock(i18n.T(ctx, "streams.new.publish"), "novo-publish", newStreamCommands)
+				<p class="text-muted">{ i18n.T(ctx, "streams.new.note") }</p>
+			</div>
+		</div>
+	</dialog>
+}
+
+// copyBlock is a titled block of text to copy: a file, a command.
+templ copyBlock(title, id, text string) {
+	<div>
+		<div class="mb-1.5 flex items-center justify-between">
+			<span class="text-muted">{ title }</span>
+			<span data-js>
+				@components.IconButton(i18n.T(ctx, "loads.drawer.copy"), "copy", templ.Attributes{"data-copy": "#" + id})
+			</span>
+		</div>
+		<pre class="overflow-x-auto rounded-card border border-line-soft bg-canvas px-3 py-2 font-mono text-[12px] text-ink-2"><code id={ id }>{ text }</code></pre>
+	</div>
+}
+
+// StreamsList is the destination filter, the table and its empty states: the
+// part the search redraws, so the filter's links keep what was typed.
 templ StreamsList(v StreamsView) {
+	{{ f := v.Filter }}
+	if len(v.Kinds) > 1 {
+		<div role="group" aria-label={ i18n.T(ctx, "streams.kind") } class="mb-3 inline-flex h-8 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-card border border-line bg-surface p-0.5">
+			@langOption(f.With("kind", ""), f.Kind == "") {
+				{ i18n.T(ctx, "streams.kind.all") }
+			}
+			for _, k := range v.Kinds {
+				@langOption(f.With("kind", k), f.Kind == k) {
+					@components.Logo(kindLogo(k), 18)
+					{ components.LogoTitle(ctx, kindLogo(k)) }
+				}
+			}
+		</div>
+	}
 	if len(v.Rows) == 0 {
 		<div class="rounded-card border border-dashed border-line px-6 py-12 text-center">
 			if v.Total > 0 {
