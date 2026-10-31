@@ -22,9 +22,29 @@ type Flow struct {
 }
 
 // FlowNode is one step of a Flow. Kind is "source", "buffer", "destination"
-// or "dead_letter"; Main is what it is, Detail how.
+// or "dead_letter"; Main is what it is, Detail how. Where either is words
+// rather than the data's own -- the buffer's triggers, the dead letter --
+// mainIn and detailIn write them in the reader's language when the page is
+// drawn (screen-streams T3), since the flow is built before.
 type FlowNode struct {
-	Kind, Title, Main, Detail string
+	Kind, Main, Detail string
+	mainIn, detailIn   func(context.Context) string
+}
+
+// MainIn is what the step is, in the reader's language.
+func (n FlowNode) MainIn(ctx context.Context) string {
+	if n.mainIn != nil {
+		return n.mainIn(ctx)
+	}
+	return n.Main
+}
+
+// DetailIn is how the step does it, in the reader's language.
+func (n FlowNode) DetailIn(ctx context.Context) string {
+	if n.detailIn != nil {
+		return n.detailIn(ctx)
+	}
+	return n.Detail
 }
 
 // FlowOf reads a writer's configuration into a Flow, or nil when it has none
@@ -53,9 +73,9 @@ func FlowOf(c *postgres.WriterConfig, target string) *Flow {
 
 	if driver := text("source.driver"); driver != "" {
 		return &Flow{Nodes: []FlowNode{
-			{Kind: "source", Title: "Source", Main: driver,
+			{Kind: "source", Main: driver,
 				Detail: joinWords(" ", text("source.method"), text("source.url"))},
-			{Kind: "destination", Title: "Destination", Main: target,
+			{Kind: "destination", Main: target,
 				Detail: joinWords(" · ", text("target.driver"), text("target.dedup"))},
 		}}
 	}
@@ -65,7 +85,7 @@ func FlowOf(c *postgres.WriterConfig, target string) *Flow {
 		return nil
 	}
 	flow := &Flow{}
-	source := FlowNode{Kind: "source", Title: "Source", Detail: text("format")}
+	source := FlowNode{Kind: "source", Detail: text("format")}
 	switch {
 	case text("path") != "":
 		source.Main = "POST " + text("path")
@@ -76,41 +96,60 @@ func FlowOf(c *postgres.WriterConfig, target string) *Flow {
 	}
 	flow.Nodes = append(flow.Nodes, source)
 
-	// THE BUFFER, when its flush is configured: each trigger in the order the
-	// file declares it, "every 2m or 2000 events". A switch (`claim`) is not
-	// a trigger and says nothing here.
-	var triggers []string
+	// THE BUFFER, when its flush is configured: "every 2 minutes or 2,000
+	// events", then any other trigger as the file names it. A switch
+	// (`claim`) is not a trigger and says nothing here.
+	// The ceilings a batch never passes -- its age and its size -- are said
+	// as one "at most 6 minutes / 8MiB"; a trigger with no words here stays as
+	// the file names it.
+	every, records := text("buffer.flush.every"), text("buffer.flush.records")
+	maxAge, maxSize := text("buffer.flush.max_age"), text("buffer.flush.size")
+	var others []string
 	for _, path := range order {
 		key, ok := strings.CutPrefix(path, "buffer.flush.")
-		if !ok {
+		if !ok || key == "every" || key == "records" || key == "max_age" || key == "size" {
 			continue
 		}
 		if _, isBool := f[path].(bool); isBool {
 			continue
 		}
-		if key == "every" {
-			triggers = append(triggers, "every "+text(path))
-		} else {
-			triggers = append(triggers, text(path)+" "+key)
-		}
+		others = append(others, key+" "+text(path))
 	}
-	if len(triggers) > 0 {
-		flow.Nodes = append(flow.Nodes, FlowNode{Kind: "buffer", Title: "Buffer",
-			Main: joinWords(" ", text("buffer.type")), Detail: strings.Join(triggers, " or ")})
+	if every != "" || records != "" || maxAge != "" || maxSize != "" || len(others) > 0 {
+		flow.Nodes = append(flow.Nodes, FlowNode{Kind: "buffer", Main: joinWords(" ", text("buffer.type")),
+			detailIn: func(ctx context.Context) string {
+				var b string
+				switch {
+				case every != "" && records != "":
+					b = i18n.T(ctx, "flow.buffer.both", "every", durationWords(ctx, every), "records", events(ctx, records))
+				case every != "":
+					b = i18n.T(ctx, "flow.buffer.every", "every", durationWords(ctx, every))
+				case records != "":
+					b = i18n.T(ctx, "flow.buffer.records", "records", events(ctx, records))
+				}
+				ceiling := ""
+				if maxAge != "" || maxSize != "" {
+					age := ""
+					if maxAge != "" {
+						age = durationWords(ctx, maxAge)
+					}
+					ceiling = i18n.T(ctx, "flow.buffer.max", "what", joinWords(" / ", age, maxSize))
+				}
+				return joinWords(" · ", append([]string{b, ceiling}, others...)...)
+			}})
 	}
 
 	write := text("sink.write")
 	if sink == "auto_table" {
 		write = text("sink.into.write")
 	}
-	flow.Nodes = append(flow.Nodes, FlowNode{Kind: "destination", Title: "Destination", Main: target,
+	flow.Nodes = append(flow.Nodes, FlowNode{Kind: "destination", Main: target,
 		Detail: joinWords(" · ", sink, write)})
 
 	if text("dead_letter.type") != "" {
-		flow.DeadLetter = &FlowNode{Kind: "dead_letter", Title: "Dead letter",
-			// In English until the Streams screen speaks the reader's
-			// language (screen-streams), as the dead letter's panel.
-			Main: destination(context.Background(), text, "dead_letter", true), Detail: "refused batches"}
+		flow.DeadLetter = &FlowNode{Kind: "dead_letter", Main: text("dead_letter.path"),
+			mainIn:   func(ctx context.Context) string { return destination(ctx, text, "dead_letter", true) },
+			detailIn: func(ctx context.Context) string { return i18n.T(ctx, "flow.refused") }}
 	}
 	return flow
 }

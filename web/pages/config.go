@@ -48,8 +48,9 @@ func (v ConfigView) SummaryIn(ctx context.Context) string {
 // run where the destination's credentials are. The console reads nothing of
 // the dead letter itself and calls nothing: it only knows what was published.
 type DeadLetterView struct {
-	// Where is the dead letter in the summary's words: "files at gs://…".
-	Where string
+	// where is the dead letter in the summary's words, "files at gs://…", in
+	// the reader's language when the page is drawn (WhereIn).
+	where func(context.Context) string
 	// Stream is the stream's NAME, which --stream takes; the page's own key
 	// is the stream's path.
 	Stream string
@@ -74,6 +75,9 @@ func (d DeadLetterView) Commands() string {
 }
 
 // deadLetterOf builds the panel from the published fields, or nil.
+// WhereIn is where the dead letter is, in the reader's language.
+func (d DeadLetterView) WhereIn(ctx context.Context) string { return d.where(ctx) }
+
 func deadLetterOf(c *postgres.WriterConfig) *DeadLetterView {
 	f := map[string]any{}
 	for _, fl := range c.Fields {
@@ -94,9 +98,7 @@ func deadLetterOf(c *postgres.WriterConfig) *DeadLetterView {
 		write = text("sink.into.write")
 	}
 	return &DeadLetterView{
-		// In English until the Streams screen speaks the reader's language
-		// (screen-streams): the panel is built before the page is drawn.
-		Where:    destination(context.Background(), text, "dead_letter", true),
+		where:    func(ctx context.Context) string { return destination(ctx, text, "dead_letter", true) },
 		Stream:   text("name"),
 		Readable: kind == "files",
 		Write:    write,

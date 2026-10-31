@@ -634,24 +634,34 @@ func (s Stream) Note() string {
 
 // streamFlow is the stream drawn as its compact flow: the configuration's,
 // when it described itself (#108), else where events are posted and where
-// they land. Either way the dead letter is the one the catalog knows, hanging
-// off the destination.
+// they land. Either way the dead letter is the one the stream shows,
+// hanging off the destination.
 func streamFlow(s Stream) *Flow {
 	f := FlowOf(s.Config, s.Sink.URI)
 	if f == nil {
 		f = &Flow{Nodes: []FlowNode{
-			{Kind: "source", Title: "Source", Main: "POST " + s.Path},
-			{Kind: "destination", Title: "Destination", Main: s.Sink.Label(), Detail: joinWords(" · ", s.Sink.Kind, s.Sink.Note)},
+			{Kind: "source", Main: "POST " + s.Path},
+			{Kind: "destination", Main: s.Sink.URI, Detail: joinWords(" · ", s.Sink.Kind, s.Sink.Note),
+				mainIn: func(ctx context.Context) string { return placeName(ctx, s.Sink) }},
 		}}
 	}
-	if s.DeadLetter != nil {
-		detail := "refused batches"
-		if s.DeadLetter.Note != "" {
-			detail += " · " + s.DeadLetter.Note
-		}
-		f.DeadLetter = &FlowNode{Kind: "dead_letter", Title: "Dead letter", Main: s.DeadLetter.Label(), Detail: detail}
+	if dl := s.DeadLetterShown(); dl != nil {
+		place := *dl
+		f.DeadLetter = &FlowNode{Kind: "dead_letter", Main: place.URI,
+			mainIn: func(ctx context.Context) string { return placeName(ctx, place) },
+			detailIn: func(ctx context.Context) string {
+				return joinWords(" · ", i18n.T(ctx, "flow.refused"), place.Note)
+			}}
 	}
 	return f
+}
+
+// placeName is a destination's URI, or that its manifest could not name it.
+func placeName(ctx context.Context, p Place) string {
+	if p.URI == "" {
+		return i18n.T(ctx, "streams.unidentified")
+	}
+	return p.URI
 }
 
 // StreamView is one stream's page.
@@ -666,6 +676,10 @@ type StreamView struct {
 	// SQL says a SQL service answers for the sink, so "Query destination"
 	// leads somewhere.
 	SQL bool
+
+	// ReadBy are the published endpoints that read the sink: where the data
+	// goes next, as far as Brevis knows (screen-streams T3).
+	ReadBy []EndpointRef
 }
 
 // BuildStream lays out a stream's page. detail is its sink's, which carries
@@ -748,33 +762,42 @@ func (v StreamView) DeclaredGroups() []DeclaredGroup {
 	}
 }
 
-// Properties are the Overview's side list.
-func (v StreamView) Properties() []components.Def {
-	or := func(s string) string {
-		if s == "" {
-			return "—"
+// Lede is the page's one sentence under its name: what comes in, where it
+// goes, and that refusals are kept -- three pieces, so it does not repeat the
+// overview's sentence.
+func (v StreamView) Lede(ctx context.Context) string {
+	dest := components.LogoTitle(ctx, kindLogo(v.Sink.Kind))
+	if v.Sink.Kind == "" {
+		dest = i18n.T(ctx, "streams.page.dest_unknown")
+	}
+	lede := i18n.T(ctx, "streams.page.lede", "dest", dest)
+	if f := v.Field("format"); f != "" {
+		lede = i18n.T(ctx, "streams.page.lede.format", "format", f, "dest", dest)
+	}
+	if v.DeadLetter != nil {
+		lede += " " + i18n.T(ctx, "streams.page.lede.dead_letter")
+	}
+	return lede
+}
+
+// Tables are the sink's tables for an auto_table, by the prefixes it
+// accepts ("agents_*"); nil for a sink that writes one place.
+func (v StreamView) Tables() []string {
+	if v.Field("sink.type") != "auto_table" || v.Config == nil {
+		return nil
+	}
+	for _, f := range v.Config.Fields {
+		if f.Path == "sink.naming.allow" {
+			if list, ok := f.Value.([]any); ok {
+				out := make([]string, len(list))
+				for i, p := range list {
+					out[i] = valueText(p) + "*"
+				}
+				return out
+			}
 		}
-		return s
 	}
-	merge := "—"
-	if m := v.Merge(); m != nil {
-		merge = "no"
-		if *m {
-			merge = "yes"
-		}
-	}
-	published := "—"
-	if !v.PublishedAt.IsZero() {
-		published = components.UTCStamp(&v.PublishedAt)
-	}
-	return []components.Def{
-		{Term: "Gateway", Value: v.Gateway, Mono: true},
-		{Term: "Stream", Value: or(v.Field("name")), Mono: true},
-		{Term: "Destination", Value: v.Sink.URI, Mono: true},
-		{Term: "Write", Value: or(v.Mode()), Mono: true},
-		{Term: "Merge", Value: merge, Mono: true},
-		{Term: "Published", Value: published, Mono: true},
-	}
+	return nil
 }
 
 // DeadLetterPanel is the commands and the resend note, when the stream's

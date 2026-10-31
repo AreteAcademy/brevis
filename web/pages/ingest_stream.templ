@@ -1,7 +1,10 @@
 package pages
 
 import (
+	"strings"
+
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/AreteAcademy/brevis/web/layouts"
 )
 
@@ -11,49 +14,35 @@ import (
 // each an anchor.
 templ StreamPage(v StreamView) {
 	@layouts.Base(layouts.Page{
-		Title: "POST " + v.Path, Active: "streams", Mono: true,
+		Title: "POST " + v.Path, Crumb: "POST " + v.Path, Active: "streams", Mono: true,
 		Eyebrow: streamEyebrow(v), Actions: streamActions(v),
 	}) {
-		<p class="mb-3 -mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8rem] text-muted">
-			if f := v.Field("format"); f != "" {
-				<span class="font-mono text-ink-2">{ f }</span>
-			}
-			if h := v.Field("hook"); h != "" {
-				<span>hook <span class="font-mono text-ink-2">{ h }</span></span>
-			}
-			<span>lands in <span class="text-ink-2">{ v.Sink.Kind }</span></span>
-			if !v.PublishedAt.IsZero() {
-				<span>published { components.UTCStamp(&v.PublishedAt) }</span>
-			}
-		</p>
+		<p class="-mt-1 mb-4 max-w-3xl text-[13.5px] text-muted">{ v.Lede(ctx) }</p>
+		@streamStrip(v)
 		@testEventDrawer(v)
 		@templ.Raw("<style>" + hashTabsCSS("stream-tabs", "overview", "config", "deadletter") + "</style>")
 		<div id="stream-tabs" data-hash-tabs>
 			<div data-hash-tabs-bar data-js class="mb-3">
-				@components.Tabs("Stream", []components.Tab{
-					{Key: "overview", Label: "Overview", Selected: true},
-					{Key: "config", Label: "Configuration"},
-					{Key: "deadletter", Label: "Dead letter"},
+				@components.Tabs(i18n.T(ctx, "streams.page.tabs"), []components.Tab{
+					{Key: "overview", Label: i18n.T(ctx, "streams.tab.overview"), Selected: true},
+					{Key: "config", Label: i18n.T(ctx, "streams.tab.config")},
+					{Key: "deadletter", Label: i18n.T(ctx, "streams.tab.dead_letter")},
 				})
 			</div>
 			<section id="overview" data-tab-panel="overview" class="mb-3">
-				<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">Overview</h2>
-				<div class="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
-					<div class="flex min-w-0 flex-col gap-4">
-						<div class="overflow-hidden rounded-card border border-line bg-surface">
-							@flowDiagram(streamFlow(v.Stream))
+				<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "streams.tab.overview") }</h2>
+				<div class="overflow-hidden rounded-card border border-line bg-surface">
+					@flowDiagram(streamFlow(v.Stream))
+				</div>
+				<div class="mt-3 grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
+					@components.Panel(i18n.T(ctx, "streams.page.sentence"), "") {
+						<div class="px-4 py-3">
+							<p class="text-[13.5px] text-ink" data-summary>{ v.Summary(ctx) }</p>
+							<p class="mt-3 border-t border-line-soft pt-3 text-[12px] text-muted">{ i18n.T(ctx, "streams.page.metrics") }</p>
 						</div>
-						<div class="rounded-card border border-line bg-surface px-4 py-3">
-							<p class="text-sm text-ink" data-summary>{ v.Summary(ctx) }</p>
-							<p class="mt-3 border-t border-line-soft pt-3 text-[0.75rem] text-muted">
-								The stream's volume and latency are on the gateway's /metrics. Brevis does not record a stream's loads one by one.
-							</p>
-						</div>
-					</div>
-					@components.Panel("Properties", "") {
-						<div class="p-4">
-							@components.DefinitionList(v.Properties())
-						</div>
+					}
+					@components.Panel(i18n.T(ctx, "streams.page.next"), "") {
+						@streamNext(v)
 					}
 				</div>
 			</section>
@@ -118,24 +107,98 @@ templ StreamPage(v StreamView) {
 
 // streamEyebrow is what the page is, above the path.
 templ streamEyebrow(v StreamView) {
-	@components.Freshness("continuous")
-	<span class="text-[0.7rem] font-medium tracking-[0.08em] text-muted uppercase">gateway stream</span>
+	<span class="text-[0.7rem] font-medium tracking-[0.08em] text-muted uppercase">{ i18n.T(ctx, "streams.page.kicker") }</span>
 	<span class="font-mono text-[0.75rem] text-ink-2">{ v.Gateway }</span>
 }
 
-// streamActions are the page's verbs: a test event to copy, and a query of
-// the sink where SQL can read it and a SQL service answers for it.
+// streamActions are the page's verbs: a query of the sink where SQL can read
+// it and a SQL service answers for it, and the test event, which is the
+// page's own.
 templ streamActions(v StreamView) {
-	<a href="#test-event" data-dialogo="test-event" aria-haspopup="dialog" class={ components.ButtonClass(components.ButtonSecondary, components.SizeRegular) }>
-		@components.Icon("terminal", "h-3.5 w-3.5")
-		Send test event
-	</a>
 	if v.SQL && v.Queryable() {
-		@components.ButtonLink(components.ButtonPrimary, components.SizeRegular, v.QueryHref()) {
+		@components.ButtonLink(components.ButtonSecondary, components.SizeRegular, v.QueryHref()) {
 			@components.Icon("terminal", "h-3.5 w-3.5")
-			Query destination
+			{ i18n.T(ctx, "loads.drawer.query") }
 		}
 	}
+	<a href="#test-event" data-dialogo="test-event" aria-haspopup="dialog" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
+		@components.Icon("send", "h-3.5 w-3.5")
+		{ i18n.T(ctx, "streams.page.test") }
+	</a>
+}
+
+// streamStrip is the stream in one line: continuous, from the gateway to the
+// destination, its format and when it was published.
+templ streamStrip(v StreamView) {
+	<div data-stream-strip class="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card border border-line bg-surface px-4 py-3 text-[12.5px] text-muted">
+		@components.Freshness("continuous")
+		<span>{ i18n.T(ctx, "streams.page.from") }</span>
+		<span class="inline-flex items-center gap-1.5 rounded-card border border-line px-2 py-0.5 text-ink-2">
+			@components.Logo("gateway", 16)
+			{ i18n.T(ctx, "streams.gateway") }
+			<span class="font-mono text-ink">{ v.Gateway }</span>
+		</span>
+		<span>{ i18n.T(ctx, "streams.page.to") }</span>
+		<span class="inline-flex min-w-0 items-center gap-1.5 rounded-card border border-line px-2 py-0.5 text-ink-2">
+			if v.Sink.Kind != "" {
+				@components.Logo(kindLogo(v.Sink.Kind), 16)
+				{ components.LogoTitle(ctx, kindLogo(v.Sink.Kind)) }
+			}
+			<span class="truncate font-mono text-ink" title={ v.Sink.URI }>{ placeName(ctx, v.Sink) }</span>
+		</span>
+		if f := v.Field("format"); f != "" {
+			<span>{ i18n.T(ctx, "streams.page.format", "format", f) }</span>
+		}
+		if !v.PublishedAt.IsZero() {
+			<span>{ i18n.T(ctx, "streams.page.published", "at", i18n.Date(ctx, v.PublishedAt.UTC(), "brief")+" UTC") }</span>
+		}
+	</div>
+}
+
+// streamNext is where the data goes after the stream, as far as Brevis
+// knows: the destination -- its tables, for an auto_table -- in the catalog,
+// then the endpoints that read it. Workflows that read it are not known and
+// are not drawn.
+templ streamNext(v StreamView) {
+	<ol class="space-y-2 px-4 py-3 text-[12.5px]">
+		<li>
+			<span class="inline-flex items-center gap-1.5 rounded-card border border-line px-2 py-0.5 font-mono text-ink">
+				<span class="font-sans text-[10.5px] tracking-[0.08em] text-muted uppercase">stream</span>
+				{ v.Path }
+			</span>
+		</li>
+		<li class="pl-2 text-muted">&darr; { i18n.T(ctx, "streams.page.writes") }</li>
+		<li>
+			<span class="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-card border border-line px-2 py-0.5 font-mono text-ink">
+				if v.Sink.Kind != "" {
+					@components.Logo(kindLogo(v.Sink.Kind), 14)
+				}
+				if tables := v.Tables(); len(tables) > 0 {
+					{ strings.Join(tables, " · ") }
+				} else {
+					<span class="break-all">{ placeName(ctx, v.Sink) }</span>
+				}
+			</span>
+			if v.Sink.URI != "" {
+				<a href={ templ.SafeURL(TargetHref(v.Sink.URI)) } class="mt-1 block text-[12px] text-ink-2 hover:text-ink hover:underline">{ i18n.T(ctx, "loads.drawer.catalog") } &rarr;</a>
+			}
+		</li>
+		<li class="pl-2 text-muted">&darr; { i18n.T(ctx, "streams.page.read_by") }</li>
+		<li>
+			if len(v.ReadBy) == 0 {
+				<span class="text-faint">{ i18n.T(ctx, "streams.page.read_by.none") }</span>
+			} else {
+				<ul class="space-y-1">
+					for _, e := range v.ReadBy {
+						<li>
+							<a href={ templ.SafeURL(e.Href) } class="font-mono text-ink hover:underline">GET { e.Path }</a>
+							<span class="ml-1.5 text-muted">{ e.API }</span>
+						</li>
+					}
+				</ul>
+			}
+		</li>
+	</ol>
 }
 
 // testEventDrawer is an example event in the stream's format and the curl that

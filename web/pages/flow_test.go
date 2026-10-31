@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"context"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"strings"
 	"testing"
 	"time"
@@ -29,6 +31,8 @@ func TestAGatewayStreamFlowsFromItsPathToItsDestination(t *testing.T) {
 		{Path: "path", Value: "/v1/orders"},
 		{Path: "format", Value: "json"},
 		{Path: "buffer.flush.every", Value: "2m"},
+		{Path: "buffer.flush.max_age", Value: "6m"},
+		{Path: "buffer.flush.size", Value: "8MiB"},
 		{Path: "sink.type", Value: "bigquery"},
 		{Path: "sink.write", Value: "append"},
 		{Path: "dead_letter.type", Value: "files"},
@@ -41,13 +45,20 @@ func TestAGatewayStreamFlowsFromItsPathToItsDestination(t *testing.T) {
 	if got := kinds(f); got != "source buffer destination +dead_letter" {
 		t.Fatalf("the flow is %q", got)
 	}
+	// The words are the reader's, made when the page is drawn
+	// (screen-streams T3).
+	en, pt := context.Background(), i18n.WithLang(context.Background(), "pt-BR")
 	for _, want := range []struct{ node, text string }{
-		{f.Nodes[0].Main, "POST /v1/orders"},
-		{f.Nodes[0].Detail, "json"},
-		{f.Nodes[1].Detail, "every 2m"},
-		{f.Nodes[2].Main, "bigquery://acme/landing/orders"},
-		{f.Nodes[2].Detail, "append"},
-		{f.DeadLetter.Main, "./dead-letter/orders/"},
+		{f.Nodes[0].MainIn(en), "POST /v1/orders"},
+		{f.Nodes[0].DetailIn(en), "json"},
+		{f.Nodes[1].DetailIn(en), "every 2 minutes"},
+		{f.Nodes[1].DetailIn(pt), "a cada 2 minutos"},
+		{f.Nodes[1].DetailIn(pt), "máx. 6 minutos / 8MiB"},
+		{f.Nodes[2].MainIn(en), "bigquery://acme/landing/orders"},
+		{f.Nodes[2].DetailIn(en), "append"},
+		{f.DeadLetter.MainIn(en), "./dead-letter/orders/"},
+		{f.DeadLetter.MainIn(pt), "arquivos em ./dead-letter/orders/"},
+		{f.DeadLetter.DetailIn(pt), "lotes recusados"},
 	} {
 		if !strings.Contains(want.node, want.text) {
 			t.Errorf("%q does not say %q", want.node, want.text)
@@ -139,7 +150,7 @@ func TestADestinationPageDrawsEachDescribedWritersFlow(t *testing.T) {
 		}
 		last = at + i
 	}
-	for _, want := range []string{"POST /v1/orders", "every 2m", "refused batches"} {
+	for _, want := range []string{"POST /v1/orders", "every 2 minutes", "refused batches"} {
 		if !strings.Contains(page[at:], want) {
 			t.Errorf("the flow does not say %q", want)
 		}

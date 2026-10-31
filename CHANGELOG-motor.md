@@ -31,6 +31,17 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   and a search over the path, the gateway, the destination and the dead
   letter, on the server, that answers while you type. There is no "with a
   dead letter" filter: the gateway refuses a stream without one.
+- **A stream's page** opens with what it is: the gateway above `POST` and
+  the path, one sentence of what it takes, where it writes and that refusals
+  are kept, and a strip from the gateway to the destination with the format
+  and when it was published. Send test event is its verb, beside Query
+  destination where SQL reads the sink. The overview's flow is numbered
+  (1 · Source, 2 · Buffer, 3 · Destination), a batch travels its edges --
+  still with reduced motion -- and what the destination refuses hangs off
+  it; then the stream in one sentence, and where it goes next: the
+  destination, in the Catalog, and the endpoints that read it. The flow's
+  words and the dead letter's are now the reader's, on every screen that
+  draws them.
 - **New stream** says how a stream is made rather than asking for one: the
   shape of a stream in `gateway.yaml` and the two commands that publish it,
   to copy. `#novo` opens it with no script.
@@ -75,8 +86,7 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   summary, the tabs, the stages, the flow, what the sources share, the
   schema and the changes, wherever it is drawn -- a load's drawer, a
   destination's in the Catalog, a stream's page. The settings' names and
-  values are the data's own and stay as written. (A gateway's dead letter
-  is still described in English, until the Streams screen.)
+  values are the data's own and stay as written.
 - **A row opens its load's drawer in place**, as the Catalog's do: the
   address follows, Esc, the × and the backdrop close it back to the list as
   it was filtered, Back and Forward close and open it, and a destination

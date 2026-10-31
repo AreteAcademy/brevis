@@ -429,6 +429,14 @@ func (u *UI) stream(w http.ResponseWriter, r *http.Request) {
 	}
 	v := pages.BuildStream(*s, detail)
 	v.SQL = s.Sink.URI != "" && u.dataTools(s.Sink.URI)
+	if u.endpoints != nil && s.Sink.URI != "" {
+		readers, err := u.endpoints.Reading(r.Context(), s.Sink.URI)
+		if err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		v.ReadBy = pages.ReadersOf(readers)
+	}
 	u.render(w, r, pages.StreamPage(v))
 }
 

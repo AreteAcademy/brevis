@@ -295,11 +295,16 @@ func visible(body string) string {
 	return html.UnescapeString(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(body, ""))
 }
 
+// A STREAM'S PAGE NAMES THE GATEWAY THAT PUBLISHED IT, and says where its
+// data goes next as far as Brevis knows: the endpoints that read its sink
+// (screen-streams T3).
 func TestAStreamPageNamesTheGatewayThatPublishedIt(t *testing.T) {
 	e := gatewayCatalog()[0]
-	_, body := get(t, dataUI(catalogFake{entries: gatewayCatalog(), detail: &postgres.TargetDetail{CatalogEntry: e}}),
+	reads := endpointsFake{all: []postgres.PublishedEndpoint{{API: "metrics-api", Name: "clicks", Path: "/v1/clicks/daily",
+		Reads: []string{e.Target}, PublishedAt: time.Now()}}}
+	_, body := get(t, dataUI(catalogFake{entries: gatewayCatalog(), detail: &postgres.TargetDetail{CatalogEntry: e}}).WithEndpoints(reads),
 		"/ingest/streams/edge/v1/clicks")
-	for _, want := range []string{"gateway stream", "edge", "/metrics", "published"} {
+	for _, want := range []string{"Stream · gateway", "edge", "/metrics", "published", "Where it goes next", "GET /v1/clicks/daily", "metrics-api"} {
 		if !strings.Contains(visible(body), want) {
 			t.Errorf("the stream page does not say %q", want)
 		}

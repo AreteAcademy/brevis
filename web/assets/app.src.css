@@ -1005,6 +1005,59 @@ li.CodeMirror-hint-active {
     height: 1px;
   }
 }
+/* A BATCH ON ITS WAY: a dot travelling the edge before a step, down where
+   the steps stack and across from 700px, so the diagram reads as data
+   moving. Still with reduced motion -- the dot sits on the edge. */
+.flow-packet {
+  position: absolute;
+  z-index: 1;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--color-state-success);
+  left: calc(50% - 2px);
+  top: -0.75rem;
+  animation: flow-down 1.6s linear infinite;
+}
+@keyframes flow-down {
+  from {
+    transform: translateY(-2px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(0.75rem);
+    opacity: 0;
+  }
+}
+@media (min-width: 700px) {
+  .flow-packet {
+    left: -0.75rem;
+    top: calc(50% - 2px);
+    animation-name: flow-across;
+  }
+  @keyframes flow-across {
+    from {
+      transform: translateX(-2px);
+      opacity: 0;
+    }
+    30% {
+      opacity: 1;
+    }
+    to {
+      transform: translateX(0.75rem);
+      opacity: 0;
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-packet {
+    animation: none;
+    transform: translateX(0.3rem);
+  }
+}
 /* The dead letter hangs off the destination by a dashed line, in the
    colour of what travels down it: refused batches. */
 .flow-branch {

@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"fmt"
+
 	"github.com/AreteAcademy/brevis/web/components"
 	"github.com/AreteAcademy/brevis/web/i18n"
 )
@@ -168,7 +170,7 @@ templ deadLetterPanel(dl *DeadLetterView) {
 	<div class="px-4 py-3 sm:px-6" data-deadletter>
 		<h4 class="text-xs font-semibold text-ink">Dead letter</h4>
 		<p class="mt-1 text-xs text-muted">
-			Batches the destination refuses go to { dl.Where }.
+			Batches the destination refuses go to { dl.WhereIn(ctx) }.
 		</p>
 		if dl.Readable {
 			<p class="mt-2 text-xs text-muted">
@@ -200,28 +202,33 @@ templ deadLetterPanel(dl *DeadLetterView) {
 templ flowDiagram(f *Flow) {
 	<div data-flow class="flow-ground px-4 py-4 sm:px-6">
 		<ol class="flex flex-col gap-3 min-[700px]:flex-row min-[700px]:items-stretch">
-			for _, n := range f.Nodes {
+			for i, n := range f.Nodes {
 				<li data-flow-node={ n.Kind } class={ "flow-step min-w-0 flex-1 rounded-card border bg-surface px-3 py-2", flowBorder(n.Kind) }>
+					if i > 0 {
+						// A batch on its way along the edge before this step;
+						// still with reduced motion (app.src.css).
+						<span data-flow-packet class="flow-packet" aria-hidden="true"></span>
+					}
 					<p class="flex items-center gap-1.5 text-[0.68rem] font-medium tracking-[0.08em] text-muted uppercase">
 						@components.Icon(flowIcon(n.Kind), "h-3.5 w-3.5")
-						{ flowTitle(ctx, n.Kind) }
+						{ fmt.Sprint(i+1) } · { flowTitle(ctx, n.Kind) }
 					</p>
-					<p class="mt-1 font-mono text-[0.78rem] break-all text-ink">{ n.Main }</p>
-					if n.Detail != "" {
-						<p class="mt-0.5 text-[0.72rem] text-muted">{ n.Detail }</p>
+					<p class="mt-1 font-mono text-[0.78rem] break-all text-ink">{ n.MainIn(ctx) }</p>
+					if d := n.DetailIn(ctx); d != "" {
+						<p class="mt-0.5 text-[0.72rem] text-muted">{ d }</p>
 					}
 				</li>
 			}
 		</ol>
 		if dl := f.DeadLetter; dl != nil {
 			<div class="mt-3 flex min-[700px]:justify-end">
-				<div data-flow-node={ dl.Kind } class="flow-branch w-full min-w-0 rounded-card border border-dashed border-line px-3 py-2 min-[700px]:w-[calc((100%-1.5rem)/3)]">
-					<p class="flex items-center gap-1.5 text-[0.68rem] font-medium tracking-[0.08em] text-muted uppercase">
-						@components.Icon(flowIcon(dl.Kind), "h-3.5 w-3.5")
+				<div data-flow-node={ dl.Kind } class="flow-branch w-full min-w-0 rounded-card border border-dashed border-state-failed/60 px-3 py-2 min-[700px]:w-[calc((100%-1.5rem)/3)]">
+					<p class="flex items-center gap-1.5 text-[0.68rem] font-medium tracking-[0.08em] text-state-failed uppercase">
+						@components.Icon("triangle-alert", "h-3.5 w-3.5")
 						{ flowTitle(ctx, dl.Kind) }
 					</p>
-					<p class="mt-1 font-mono text-[0.78rem] break-all text-ink">{ dl.Main }</p>
-					<p class="mt-0.5 text-[0.72rem] text-state-failed">{ dl.Detail }</p>
+					<p class="mt-1 font-mono text-[0.78rem] break-all text-ink">{ dl.MainIn(ctx) }</p>
+					<p class="mt-0.5 text-[0.72rem] text-state-failed">{ dl.DetailIn(ctx) }</p>
 				</div>
 			</div>
 		}
