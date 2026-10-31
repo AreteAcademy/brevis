@@ -829,6 +829,15 @@ func (v StreamView) TestBody() string {
 	if k := v.Field("identity.source_key"); k != "" {
 		event = `{"event": "test", "` + k + `": "test"}`
 	}
+	// An auto_table event names its table, with a prefix the stream accepts.
+	if v.TestTable() != "" {
+		name := "test"
+		if allow := v.TestAllow(); allow != "" {
+			first, _, _ := strings.Cut(allow, ",")
+			name = first + name
+		}
+		event = strings.TrimSuffix(event, "}") + `, "` + v.TestTable() + `": "` + name + `"}`
+	}
 	switch v.TestFormat() {
 	case "array":
 		return "[" + event + "]"
@@ -837,6 +846,36 @@ func (v StreamView) TestBody() string {
 	}
 	return event
 }
+
+// TestTable is the field an event names its table in, for an auto_table
+// stream -- always `table_name`, the gateway's fixed envelope -- and "" for
+// one that writes one place.
+func (v StreamView) TestTable() string {
+	if v.Field("sink.type") == "auto_table" {
+		return "table_name"
+	}
+	return ""
+}
+
+// TestAllow is the prefixes an auto_table accepts, comma separated; "" is
+// any name its pattern accepts.
+func (v StreamView) TestAllow() string {
+	if v.Config == nil {
+		return ""
+	}
+	for _, f := range v.Config.Fields {
+		if f.Path == "sink.naming.allow" {
+			return strings.ReplaceAll(valueText(f.Value), ", ", ",")
+		}
+	}
+	return ""
+}
+
+// TestDataset is where an auto_table's tables are; TestLands is where a
+// stream that writes one place writes.
+func (v StreamView) TestDataset() string { return v.Field("sink.into.dataset") }
+
+func (v StreamView) TestLands() string { return v.Sink.URI }
 
 // TestCurlHead is the curl that sends a body to this stream, up to the body:
 // $GATEWAY and $GATEWAY_TOKEN stand where the console does not know the

@@ -55,31 +55,33 @@ templ StreamPage(v StreamView) {
 				}
 			</section>
 			<section id="deadletter" data-tab-panel="deadletter" class="mb-3">
-				<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">Dead letter</h2>
-				if v.DeadLetter == nil {
-					<p class="rounded-card border border-line bg-surface px-4 py-3 text-sm text-muted">This stream declares no dead letter.</p>
+				<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "streams.tab.dead_letter") }</h2>
+				if dl := v.DeadLetterShown(); dl == nil {
+					<p class="rounded-card border border-line bg-surface px-4 py-3 text-sm text-muted">{ i18n.T(ctx, "deadletter.none") }</p>
 				} else {
 					<div class="flex flex-col gap-4">
-						@components.Panel("Where refused batches go", v.DeadLetter.Kind) {
+						@components.Panel(i18n.T(ctx, "deadletter.where"), dl.Kind) {
 							<div class="flex items-start gap-3 px-4 py-3">
-								<pre id="dead-letter-uri" class="min-w-0 flex-1 overflow-x-auto font-mono text-[0.8rem] break-all whitespace-pre-wrap text-ink">{ v.DeadLetter.URI }</pre>
+								<pre id="dead-letter-uri" class="min-w-0 flex-1 overflow-x-auto font-mono text-[0.8rem] break-all whitespace-pre-wrap text-ink">{ placeName(ctx, *dl) }</pre>
 								<span data-js>
-									@components.IconButton("Copy the path", "copy", templ.Attributes{"data-copy": "#dead-letter-uri"})
+									@components.IconButton(i18n.T(ctx, "loads.drawer.copy"), "copy", templ.Attributes{"data-copy": "#dead-letter-uri"})
 								</span>
 							</div>
+							if dl.Note != "" {
+								<p class="px-4 pb-3 text-[12px] text-muted">{ dl.Note }</p>
+							}
 							<p class="border-t border-line-soft px-4 py-3 text-[0.75rem] text-muted">
-								How many records it buried is the gateway's <code class="font-mono text-ink-2">{ v.BuriedMetric() }</code>, on its /metrics.
+								{ i18n.T(ctx, "deadletter.metric") } <code class="font-mono text-ink-2">{ v.BuriedMetric() }</code>
 							</p>
 						}
-						if dl := v.DeadLetterPanel(); dl != nil {
+						if p := v.DeadLetterPanel(); p != nil {
 							<div class="rounded-card border border-line bg-surface">
-								@deadLetterPanel(dl)
+								@deadLetterPanel(p)
 							</div>
 						} else {
-							<p class="rounded-card border border-line bg-surface px-4 py-3 text-xs text-muted">
-								The commands to list and resend its batches need the stream's configuration, which this publish did not carry.
-							</p>
+							<p class="rounded-card border border-line bg-surface px-4 py-3 text-xs text-muted">{ i18n.T(ctx, "deadletter.no_config") }</p>
 						}
+						<p class="text-[12px] text-faint">{ i18n.T(ctx, "deadletter.count_later") }</p>
 					</div>
 				}
 			</section>
@@ -195,41 +197,59 @@ templ testEventDrawer(v StreamView) {
 		class="run-drawer fixed inset-y-0 right-0 left-auto m-0 h-full max-h-none w-[min(520px,100vw)] border-l border-line bg-surface p-0 text-ink backdrop:bg-ink/40"
 	>
 		<div class="flex h-full flex-col">
-			<div class="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
+			<div class="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
 				<div class="min-w-0">
-					<p id="test-event-title" class="text-[0.95rem] font-medium text-ink">Send a test event</p>
-					<p class="truncate font-mono text-[0.75rem] text-muted">POST { v.Path } · { v.TestFormat() }</p>
+					<p class="truncate font-mono text-[11px] tracking-[0.08em] text-muted uppercase">POST { v.Path } · { v.TestFormat() }</p>
+					<p id="test-event-title" class="text-[15px] font-semibold text-ink">{ i18n.T(ctx, "testevent.title") }</p>
+					<p class="mt-1 text-[12.5px] text-muted">{ i18n.T(ctx, "testevent.lead") }</p>
 				</div>
 				<form method="dialog">
-					<button type="submit" aria-label="Close" class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+					<button type="submit" aria-label={ i18n.T(ctx, "dialog.close") } class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
 						@components.Icon("x", "h-4 w-4")
 					</button>
 				</form>
 			</div>
 			<div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
 				<label class="flex flex-col gap-1.5">
-					<span class="text-[0.78rem] text-muted">Body</span>
+					<span class="text-[12.5px] font-medium text-ink">{ i18n.T(ctx, "testevent.body") }</span>
+					// The rules the browser checks the body by are the
+					// server's, written here, so the two cannot disagree; and
+					// so are the words it says them in.
 					<textarea
 						data-test-body
 						data-test-format={ v.TestFormat() }
+						if v.TestTable() != "" {
+							data-test-table={ v.TestTable() }
+							data-test-allow={ v.TestAllow() }
+							data-test-dataset={ v.TestDataset() }
+						} else {
+							data-test-lands={ v.TestLands() }
+						}
+						data-msg-invalid={ i18n.T(ctx, "testevent.invalid") }
+						data-msg-array={ i18n.T(ctx, "testevent.array") }
+						data-msg-items={ i18n.T(ctx, "testevent.items") }
+						data-msg-line={ i18n.T(ctx, "testevent.line") }
+						data-msg-object={ i18n.T(ctx, "testevent.object") }
+						data-msg-no-table={ i18n.T(ctx, "testevent.no_table", "field", v.TestTable()) }
+						data-msg-refused={ i18n.T(ctx, "testevent.refused") }
+						data-msg-lands={ i18n.T(ctx, "testevent.lands") }
+						data-msg-valid={ i18n.T(ctx, "testevent.valid") }
 						rows="8"
 						spellcheck="false"
 						class="w-full rounded-card border border-line bg-canvas px-3 py-2 font-mono text-[0.78rem] text-ink focus:border-accent-strong focus:outline-none"
 					>{ v.TestBody() }</textarea>
 				</label>
-				<p data-test-status class="text-[0.75rem] text-muted" aria-live="polite"></p>
+				<p data-test-status class="text-[12px] text-muted" aria-live="polite"></p>
 				<div>
 					<div class="mb-1.5 flex items-center justify-between">
-						<span class="text-[0.78rem] text-muted">Send it with</span>
+						<span class="text-[12.5px] text-muted">{ i18n.T(ctx, "testevent.send_with") }</span>
 						<span data-js>
-							@components.IconButton("Copy the curl", "copy", templ.Attributes{"data-copy": "#test-event-curl"})
+							@components.IconButton(i18n.T(ctx, "testevent.copy"), "copy", templ.Attributes{"data-copy": "#test-event-curl"})
 						</span>
 					</div>
 					<pre class="overflow-x-auto rounded-card border border-line-soft bg-canvas px-3 py-2 font-mono text-[0.72rem] text-ink-2"><code id="test-event-curl" data-test-curl data-test-curl-head={ v.TestCurlHead() }>{ v.TestCurl() }</code></pre>
 				</div>
-				<p class="text-[0.75rem] text-muted">
-					The console sends nothing. Set <code class="font-mono">$GATEWAY</code> to where the gateway listens and, when its <code class="font-mono">listen.auth</code> is bearer, <code class="font-mono">$GATEWAY_TOKEN</code> to its token, then run it. The event lands in <span class="font-mono">{ v.Sink.URI }</span> like any other.
-				</p>
+				<p class="text-[12px] text-muted">{ i18n.T(ctx, "testevent.note", "sink", placeName(ctx, v.Sink)) }</p>
 			</div>
 		</div>
 	</dialog>

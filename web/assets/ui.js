@@ -1416,37 +1416,76 @@
 
   // The test event (`[data-test-body]`): the body is checked against the
   // stream's format as it is edited -- one object for json, a list of them
-  // for array, one object per line for ndjson -- and the curl under it is
-  // rebuilt from its head and the body. Nothing is sent from here.
+  // for array, one object per line for ndjson -- and, for an auto_table, the
+  // table each event names against the prefixes the stream accepts; then it
+  // says where the event would land. The rules and the words are the
+  // server's, written on the box (data-test-*, data-msg-*), so the browser
+  // and the gateway cannot disagree. The curl under it is rebuilt from its
+  // head and the body. Nothing is sent from here.
   function testEvent(box) {
     var drawer = box.closest("dialog") || document;
     var status = drawer.querySelector("[data-test-status]");
     var curl = drawer.querySelector("[data-test-curl]");
     var body = box.value.replace(/\s+$/, "");
-    var problem = "";
+    var say = function (name, vars) {
+      var text = box.getAttribute("data-msg-" + name) || "";
+      for (var k in vars || {}) text = text.split("{" + k + "}").join(vars[k]);
+      return text;
+    };
     var isObject = function (v) { return v !== null && typeof v === "object" && !Array.isArray(v); };
+    var problem = "";
+    var warning = "";
+    var events = [];
     try {
       switch (box.getAttribute("data-test-format")) {
         case "array":
           var list = JSON.parse(body);
-          if (!Array.isArray(list)) problem = "an array stream takes a JSON list of events";
-          else if (!list.every(isObject)) problem = "every item of the list has to be an object";
+          if (!Array.isArray(list)) problem = say("array");
+          else if (!list.every(isObject)) problem = say("items");
+          else events = list;
           break;
         case "ndjson":
           body.split("\n").forEach(function (line, i) {
             if (problem || line.trim() === "") return;
             try {
-              if (!isObject(JSON.parse(line))) problem = "line " + (i + 1) + " is not an object";
-            } catch (e) { problem = "line " + (i + 1) + ": " + e.message; }
+              var one = JSON.parse(line);
+              if (!isObject(one)) problem = say("line", { n: i + 1, e: say("object") });
+              else events.push(one);
+            } catch (e) { problem = say("line", { n: i + 1, e: e.message }); }
           });
           break;
         default:
-          if (!isObject(JSON.parse(body))) problem = "a json stream takes one object per request";
+          var event = JSON.parse(body);
+          if (!isObject(event)) problem = say("object");
+          else events = [event];
       }
-    } catch (e) { problem = e.message; }
+    } catch (e) { problem = say("invalid", { e: e.message }); }
+
+    var lands = [];
+    var table = box.getAttribute("data-test-table");
+    if (!problem && table) {
+      var allow = (box.getAttribute("data-test-allow") || "").split(",").filter(Boolean);
+      var dataset = box.getAttribute("data-test-dataset") || "";
+      events.forEach(function (ev) {
+        if (problem || warning) return;
+        var name = ev[table];
+        if (typeof name !== "string" || name === "") {
+          problem = say("no-table");
+        } else if (allow.length && !allow.some(function (p) { return name.indexOf(p) === 0; })) {
+          warning = say("refused", { name: name, allow: allow.join(", ") });
+        } else {
+          var to = dataset ? dataset + "." + name : name;
+          if (lands.indexOf(to) < 0) lands.push(to);
+        }
+      });
+    } else if (!problem) {
+      lands.push(box.getAttribute("data-test-lands") || "");
+    }
+
     if (status) {
-      status.textContent = problem ? "Not valid: " + problem : "Valid " + box.getAttribute("data-test-format") + ".";
-      status.className = "text-[0.75rem] " + (problem ? "text-state-failed" : "text-state-success");
+      var format = box.getAttribute("data-test-format");
+      status.textContent = problem || warning || (say("valid", { format: format }) + " " + say("lands", { to: lands.join(", ") }));
+      status.className = "text-[12px] " + (problem ? "text-state-failed" : warning ? "text-state-queued" : "text-state-success");
     }
     if (curl) curl.textContent = curl.getAttribute("data-test-curl-head") + "\n" + body + "\nEOF";
   }

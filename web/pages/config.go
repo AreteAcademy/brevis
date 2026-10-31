@@ -74,10 +74,10 @@ func (d DeadLetterView) Commands() string {
 		"gateway deadletter resend <gateway.yaml> <batch> --dry-run"
 }
 
-// deadLetterOf builds the panel from the published fields, or nil.
 // WhereIn is where the dead letter is, in the reader's language.
 func (d DeadLetterView) WhereIn(ctx context.Context) string { return d.where(ctx) }
 
+// deadLetterOf builds the panel from the published fields, or nil.
 func deadLetterOf(c *postgres.WriterConfig) *DeadLetterView {
 	f := map[string]any{}
 	for _, fl := range c.Fields {

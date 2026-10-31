@@ -51,6 +51,16 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   written back from what was published, notes as comments, to copy -- not
   the gateway's own file, and it says so. The history of publishes is one
   line under them. With no script both are drawn, one under the other.
+- **The Dead letter tab and Send test event, in the reader's language.**
+  The tab says where refused batches go -- as the stream declares it when
+  the catalog cannot name it -- the metric that counts them, and the
+  commands that list and resend them, and that the count and the batches
+  come when the gateway publishes them. The test event still sends nothing
+  (the curl does), and now says where an event would land: for an
+  auto_table, the table its `table_name` names in its dataset, or that a
+  name with no accepted prefix would go to the dead letter, or that the
+  field is missing. The rules and the words are the server's, written on
+  the drawer, so the browser and the gateway agree.
 - **New stream** says how a stream is made rather than asking for one: the
   shape of a stream in `gateway.yaml` and the two commands that publish it,
   to copy. `#novo` opens it with no script.
