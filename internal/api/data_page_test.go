@@ -268,19 +268,22 @@ func gatewayCatalog() []postgres.CatalogEntry {
 }
 
 // A GATEWAY'S DESTINATIONS ARE ITS STREAMS', and one its manifest could not
-// name is said to be so, with why -- inside its stream, not as a row.
+// name is said to be so, with why on hover -- inside its stream, not as a
+// row (screen-streams T1: one row per stream).
 func TestTheStreamsPageShowsGatewayDestinations(t *testing.T) {
 	_, body := get(t, dataUI(catalogFake{entries: gatewayCatalog()}), "/ingest/streams")
 	for _, want := range []string{
-		"pubsub://brevis-local/clicks", "continuous", "edge", "/v1/clicks",
-		"unidentified", "relative to the gateway", "/metrics",
+		"pubsub://brevis-local/clicks", "continuous", "edge", "/v1/clicks", "not named by the manifest",
 	} {
 		if !strings.Contains(visible(body), want) {
 			t.Errorf("the page does not show %q", want)
 		}
 	}
-	if strings.Count(body, "data-stream-card") != 1 {
-		t.Error("the unnamed dead letter became a stream of its own")
+	if !strings.Contains(body, "relative to the gateway") {
+		t.Error("an unnamed dead letter does not say why")
+	}
+	if n := strings.Count(body, `<tr data-href="/ingest/streams/`); n != 1 {
+		t.Errorf("%d rows, want 1: the unnamed dead letter became a stream of its own", n)
 	}
 }
 
@@ -463,14 +466,15 @@ func TestTheStreamsPageAnswers(t *testing.T) {
 		{Target: "pubsub://local/clicks", Kind: "pubsub", Writers: []postgres.CatalogWriter{{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/clicks", Role: "sink"}}}},
 		{Target: "file:///dl/clicks/", Kind: "file", Writers: []postgres.CatalogWriter{{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/clicks", Role: "dead_letter"}}}},
 	}
-	cfg := &postgres.WriterConfig{Fields: []catalog.ManifestField{{Path: "format", Value: "ndjson"}, {Path: "sink.type", Value: "pubsub"}}}
+	cfg := &postgres.WriterConfig{Fields: []catalog.ManifestField{{Path: "format", Value: "ndjson"}, {Path: "sink.type", Value: "pubsub"},
+		{Path: "buffer.flush.every", Value: "1m"}}}
 	ui := dataUI(catalogFake{entries: entries, streams: map[postgres.StreamKey]*postgres.WriterConfig{{Gateway: "edge", Path: "/v1/clicks"}: cfg}})
 	code, body := get(t, ui, "/ingest/streams")
 	if code != http.StatusOK {
 		t.Fatalf("/ingest/streams answered %d", code)
 	}
-	if strings.Count(body, "data-stream-card") != 1 || !strings.Contains(body, "ndjson") {
-		t.Error("the stream is not drawn once, with its configuration")
+	if strings.Count(body, `<tr data-href="/ingest/streams/`) != 1 || !strings.Contains(body, "1 minute") {
+		t.Error("the stream is not drawn once, with its configuration's batch")
 	}
 }
 

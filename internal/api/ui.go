@@ -388,7 +388,12 @@ func (u *UI) streams(w http.ResponseWriter, r *http.Request) {
 		}
 		pages.AttachStreamConfigs(entries, configs)
 	}
-	u.render(w, r, pages.Streams(pages.BuildStreams(entries).Apply(pages.ParseStreamFilter(r.URL.Query()))))
+	v := pages.BuildStreams(entries, pages.ParseStreamFilter(r.URL.Query()))
+	if fragment(r) == "answer" {
+		u.render(w, r, pages.StreamsList(v))
+		return
+	}
+	u.render(w, r, pages.Streams(v))
 }
 
 // stream is one gateway stream's page: /ingest/streams/<gateway>/<path>, the

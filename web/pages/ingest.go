@@ -6,6 +6,7 @@ import (
 	"github.com/AreteAcademy/brevis/web/i18n"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -527,27 +528,14 @@ func (f StreamFilter) With(field, value string) string {
 	return "/ingest/streams?" + strings.Join(parts, "&")
 }
 
-// StreamsView is /ingest/streams as drawn: the gateways and their streams
-// under the filter, and the counts of every stream whatever is shown.
+// StreamsView is /ingest/streams as drawn (screen-streams): the streams the
+// filter keeps, one row each, and the counts of every stream whatever is
+// shown.
 type StreamsView struct {
-	Groups                          []StreamGroupView
+	Rows                            []Stream
 	Total, Gateways, WithDeadLetter int
 	Kinds                           []string
 	Filter                          StreamFilter
-}
-
-// StreamGroupView is one gateway under the filter; Count is all its streams.
-type StreamGroupView struct {
-	Name   string
-	Cards  []StreamCard
-	Count  int
-	Hidden bool
-}
-
-// StreamCard is one stream under the filter.
-type StreamCard struct {
-	Stream
-	Hidden bool
 }
 
 // SearchText is what a search looks in, lower-cased: the gateway, the path,
@@ -563,13 +551,15 @@ func (s Stream) SearchText() string {
 // Key is the stream's identity as one string, for the page's markup.
 func (s Stream) Key() string { return s.Gateway + " " + s.Path }
 
-// BuildStreams is every stream, counted.
-func BuildStreams(entries []postgres.CatalogEntry) StreamsView {
-	v := StreamsView{}
+// BuildStreams is every stream under the filter, by gateway and path: the
+// kind and the search drop what they exclude, on the server, so a filtered
+// list is a link. The counts are every stream's.
+func BuildStreams(entries []postgres.CatalogEntry, f StreamFilter) StreamsView {
+	v := StreamsView{Filter: f}
+	q := strings.ToLower(f.Q)
 	for _, g := range StreamsOf(entries) {
-		gv := StreamGroupView{Name: g.Name, Count: len(g.Streams)}
+		v.Gateways++
 		for _, s := range g.Streams {
-			gv.Cards = append(gv.Cards, StreamCard{Stream: s})
 			v.Total++
 			if s.DeadLetter != nil {
 				v.WithDeadLetter++
@@ -577,62 +567,69 @@ func BuildStreams(entries []postgres.CatalogEntry) StreamsView {
 			if s.Sink.Kind != "" && !containsString(v.Kinds, s.Sink.Kind) {
 				v.Kinds = append(v.Kinds, s.Sink.Kind)
 			}
+			if f.Kind != "" && s.Sink.Kind != f.Kind || q != "" && !strings.Contains(s.SearchText(), q) {
+				continue
+			}
+			v.Rows = append(v.Rows, s)
 		}
-		v.Groups = append(v.Groups, gv)
 	}
-	v.Gateways = len(v.Groups)
 	sort.Strings(v.Kinds)
 	return v
 }
 
-// Apply narrows the streams to the filter: the kind drops, the search hides.
-func (v StreamsView) Apply(f StreamFilter) StreamsView {
-	v.Filter = f
-	groups := make([]StreamGroupView, 0, len(v.Groups))
-	for _, g := range v.Groups {
-		var cards []StreamCard
-		visible := 0
-		for _, c := range g.Cards {
-			if f.Kind != "" && c.Sink.Kind != f.Kind {
-				continue
-			}
-			c.Hidden = f.Q != "" && !strings.Contains(c.SearchText(), strings.ToLower(f.Q))
-			if !c.Hidden {
-				visible++
-			}
-			cards = append(cards, c)
-		}
-		if len(cards) == 0 {
-			continue
-		}
-		g.Cards, g.Hidden = cards, visible == 0
-		groups = append(groups, g)
+// BatchIn is how a stream batches, as a row says it: "2 minutes or 2,000",
+// "30 seconds", "up to 500"; "" with no buffer declared.
+func (s Stream) BatchIn(ctx context.Context) string {
+	every, records := s.Field("buffer.flush.every"), s.Field("buffer.flush.records")
+	count := ""
+	if n, err := strconv.ParseInt(records, 10, 64); err == nil {
+		count = i18n.Number(ctx, n)
 	}
-	v.Groups = groups
-	return v
+	switch {
+	case every != "" && count != "":
+		return i18n.T(ctx, "streams.batch.both", "every", durationWords(ctx, every), "records", count)
+	case every != "":
+		return durationWords(ctx, every)
+	case count != "":
+		return i18n.T(ctx, "streams.batch.records", "records", count)
+	}
+	return ""
 }
 
-// Shown is how many streams are drawn visible.
-func (v StreamsView) Shown() int {
-	n := 0
-	for _, g := range v.Groups {
-		for _, c := range g.Cards {
-			if !c.Hidden {
-				n++
-			}
+// DeadLetterShown is the dead letter as a row draws it: the catalog's, or --
+// for one whose manifest could not name it, a path relative to the gateway's
+// working directory -- what the stream declares, its kind and its path, the
+// reason it has no URI kept as its note.
+func (s Stream) DeadLetterShown() *Place {
+	if s.DeadLetter == nil {
+		return nil
+	}
+	p := *s.DeadLetter
+	if p.URI == "" {
+		p.URI = s.Field("dead_letter.path")
+		if p.Kind == "" {
+			p.Kind = sinkKind(s.Field("dead_letter.type"))
 		}
 	}
-	return n
+	return &p
 }
 
-// streamKindOptions is the destination-kind filter.
-func streamKindOptions(v StreamsView) []components.SegOption {
-	f := v.Filter
-	out := []components.SegOption{{Label: "Any destination", Href: f.With("kind", ""), Current: f.Kind == ""}}
-	for _, k := range v.Kinds {
-		out = append(out, components.SegOption{Label: k, Href: f.With("kind", k), Current: f.Kind == k})
+// sinkKind is a gateway sink's type as a destination's kind: `files` is the
+// `file` scheme.
+func sinkKind(t string) string {
+	if t == "files" {
+		return "file"
 	}
-	return out
+	return t
+}
+
+// Note is the first line of the comment on the stream in the gateway's file
+// (the one above `- name:`): what it is for, in its owner's words.
+func (s Stream) Note() string {
+	if s.Config == nil {
+		return ""
+	}
+	return NoteHead(s.Config.Notes[""])
 }
 
 // streamFlow is the stream drawn as its compact flow: the configuration's,
@@ -940,4 +937,35 @@ func loadWhen(ctx context.Context, w *WriterView) string {
 // the load that needs a look.
 func (v LoadView) ReadNothing() bool {
 	return v.Row.LastRows != nil && *v.Row.LastRows == 0 && v.Read != nil && *v.Read > 0
+}
+
+// howStep, howTitle and howText are the "how it works" footer's words.
+func howStep(ctx context.Context, i int) string {
+	switch i {
+	case 0:
+		return i18n.T(ctx, "streams.how.1")
+	case 1:
+		return i18n.T(ctx, "streams.how.2")
+	}
+	return i18n.T(ctx, "streams.how.3")
+}
+
+func howTitle(ctx context.Context, step string) string {
+	switch step {
+	case "post":
+		return i18n.T(ctx, "streams.how.post")
+	case "batch":
+		return i18n.T(ctx, "streams.how.batch")
+	}
+	return i18n.T(ctx, "streams.how.write")
+}
+
+func howText(ctx context.Context, step string) string {
+	switch step {
+	case "post":
+		return i18n.T(ctx, "streams.how.post.text")
+	case "batch":
+		return i18n.T(ctx, "streams.how.batch.text")
+	}
+	return i18n.T(ctx, "streams.how.write.text")
 }

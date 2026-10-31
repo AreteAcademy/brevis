@@ -16,6 +16,21 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: Real time, one row per stream
+
+- **`/ingest/streams` is one row per stream**, by gateway and path, instead
+  of a card per stream grouped by gateway. Each row: `POST` and the path,
+  with the first line of the stream's note (its `#:` comment) under it; the
+  gateway, then the destination with its logo and where; the batch in words
+  ("2 minutes or 2,000"); continuous; and the dead letter -- for one whose
+  path is relative to the gateway, the path it declares, with why it has no
+  URI on hover. The whole row opens the stream.
+- **A summary** counts the streams, the gateways and the dead letters, and a
+  footer says how a stream works, in three steps.
+- Only what was published: the console records no traffic, so there is no
+  "live" or "last batch" -- the gateway's `/metrics` has them.
+- In English, Portuguese and Spanish.
+
 ### Changed: Batch loads, one row per step, from where to where
 
 - **`/ingest/loads` is one row per step and destination**, worst first and,

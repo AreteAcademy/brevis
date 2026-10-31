@@ -139,14 +139,6 @@ func writerOf(w postgres.CatalogWriter) catalog.Writer {
 	return out
 }
 
-// plural writes "1 destination" and "3 destinations".
-func plural(n int, word string) string {
-	if n == 1 {
-		return "1 " + word
-	}
-	return fmt.Sprintf("%d %ss", n, word)
-}
-
 // DataFilter narrows /data. It lives in the query string so a filtered page is
 // a link somebody can send.
 type DataFilter struct {
