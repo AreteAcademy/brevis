@@ -6,6 +6,7 @@ import (
 	"github.com/AreteAcademy/brevis/web/i18n"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -527,27 +528,14 @@ func (f StreamFilter) With(field, value string) string {
 	return "/ingest/streams?" + strings.Join(parts, "&")
 }
 
-// StreamsView is /ingest/streams as drawn: the gateways and their streams
-// under the filter, and the counts of every stream whatever is shown.
+// StreamsView is /ingest/streams as drawn (screen-streams): the streams the
+// filter keeps, one row each, and the counts of every stream whatever is
+// shown.
 type StreamsView struct {
-	Groups                          []StreamGroupView
+	Rows                            []Stream
 	Total, Gateways, WithDeadLetter int
 	Kinds                           []string
 	Filter                          StreamFilter
-}
-
-// StreamGroupView is one gateway under the filter; Count is all its streams.
-type StreamGroupView struct {
-	Name   string
-	Cards  []StreamCard
-	Count  int
-	Hidden bool
-}
-
-// StreamCard is one stream under the filter.
-type StreamCard struct {
-	Stream
-	Hidden bool
 }
 
 // SearchText is what a search looks in, lower-cased: the gateway, the path,
@@ -563,13 +551,15 @@ func (s Stream) SearchText() string {
 // Key is the stream's identity as one string, for the page's markup.
 func (s Stream) Key() string { return s.Gateway + " " + s.Path }
 
-// BuildStreams is every stream, counted.
-func BuildStreams(entries []postgres.CatalogEntry) StreamsView {
-	v := StreamsView{}
+// BuildStreams is every stream under the filter, by gateway and path: the
+// kind and the search drop what they exclude, on the server, so a filtered
+// list is a link. The counts are every stream's.
+func BuildStreams(entries []postgres.CatalogEntry, f StreamFilter) StreamsView {
+	v := StreamsView{Filter: f}
+	q := strings.ToLower(f.Q)
 	for _, g := range StreamsOf(entries) {
-		gv := StreamGroupView{Name: g.Name, Count: len(g.Streams)}
+		v.Gateways++
 		for _, s := range g.Streams {
-			gv.Cards = append(gv.Cards, StreamCard{Stream: s})
 			v.Total++
 			if s.DeadLetter != nil {
 				v.WithDeadLetter++
@@ -577,84 +567,101 @@ func BuildStreams(entries []postgres.CatalogEntry) StreamsView {
 			if s.Sink.Kind != "" && !containsString(v.Kinds, s.Sink.Kind) {
 				v.Kinds = append(v.Kinds, s.Sink.Kind)
 			}
+			if f.Kind != "" && s.Sink.Kind != f.Kind || q != "" && !strings.Contains(s.SearchText(), q) {
+				continue
+			}
+			v.Rows = append(v.Rows, s)
 		}
-		v.Groups = append(v.Groups, gv)
 	}
-	v.Gateways = len(v.Groups)
 	sort.Strings(v.Kinds)
 	return v
 }
 
-// Apply narrows the streams to the filter: the kind drops, the search hides.
-func (v StreamsView) Apply(f StreamFilter) StreamsView {
-	v.Filter = f
-	groups := make([]StreamGroupView, 0, len(v.Groups))
-	for _, g := range v.Groups {
-		var cards []StreamCard
-		visible := 0
-		for _, c := range g.Cards {
-			if f.Kind != "" && c.Sink.Kind != f.Kind {
-				continue
-			}
-			c.Hidden = f.Q != "" && !strings.Contains(c.SearchText(), strings.ToLower(f.Q))
-			if !c.Hidden {
-				visible++
-			}
-			cards = append(cards, c)
-		}
-		if len(cards) == 0 {
-			continue
-		}
-		g.Cards, g.Hidden = cards, visible == 0
-		groups = append(groups, g)
+// BatchIn is how a stream batches, as a row says it: "2 minutes or 2,000",
+// "30 seconds", "up to 500"; "" with no buffer declared.
+func (s Stream) BatchIn(ctx context.Context) string {
+	every, records := s.Field("buffer.flush.every"), s.Field("buffer.flush.records")
+	count := ""
+	if n, err := strconv.ParseInt(records, 10, 64); err == nil {
+		count = i18n.Number(ctx, n)
 	}
-	v.Groups = groups
-	return v
+	switch {
+	case every != "" && count != "":
+		return i18n.T(ctx, "streams.batch.both", "every", durationWords(ctx, every), "records", count)
+	case every != "":
+		return durationWords(ctx, every)
+	case count != "":
+		return i18n.T(ctx, "streams.batch.records", "records", count)
+	}
+	return ""
 }
 
-// Shown is how many streams are drawn visible.
-func (v StreamsView) Shown() int {
-	n := 0
-	for _, g := range v.Groups {
-		for _, c := range g.Cards {
-			if !c.Hidden {
-				n++
-			}
+// DeadLetterShown is the dead letter as a row draws it: the catalog's, or --
+// for one whose manifest could not name it, a path relative to the gateway's
+// working directory -- what the stream declares, its kind and its path, the
+// reason it has no URI kept as its note.
+func (s Stream) DeadLetterShown() *Place {
+	if s.DeadLetter == nil {
+		return nil
+	}
+	p := *s.DeadLetter
+	if p.URI == "" {
+		p.URI = s.Field("dead_letter.path")
+		if p.Kind == "" {
+			p.Kind = sinkKind(s.Field("dead_letter.type"))
 		}
 	}
-	return n
+	return &p
 }
 
-// streamKindOptions is the destination-kind filter.
-func streamKindOptions(v StreamsView) []components.SegOption {
-	f := v.Filter
-	out := []components.SegOption{{Label: "Any destination", Href: f.With("kind", ""), Current: f.Kind == ""}}
-	for _, k := range v.Kinds {
-		out = append(out, components.SegOption{Label: k, Href: f.With("kind", k), Current: f.Kind == k})
+// sinkKind is a gateway sink's type as a destination's kind: `files` is the
+// `file` scheme.
+func sinkKind(t string) string {
+	if t == "files" {
+		return "file"
 	}
-	return out
+	return t
+}
+
+// Note is the first line of the comment on the stream in the gateway's file
+// (the one above `- name:`): what it is for, in its owner's words.
+func (s Stream) Note() string {
+	if s.Config == nil {
+		return ""
+	}
+	return NoteHead(s.Config.Notes[""])
 }
 
 // streamFlow is the stream drawn as its compact flow: the configuration's,
 // when it described itself (#108), else where events are posted and where
-// they land. Either way the dead letter is the one the catalog knows, hanging
-// off the destination.
+// they land. Either way the dead letter is the one the stream shows,
+// hanging off the destination.
 func streamFlow(s Stream) *Flow {
 	f := FlowOf(s.Config, s.Sink.URI)
 	if f == nil {
 		f = &Flow{Nodes: []FlowNode{
-			{Kind: "source", Title: "Source", Main: "POST " + s.Path},
-			{Kind: "destination", Title: "Destination", Main: s.Sink.Label(), Detail: joinWords(" · ", s.Sink.Kind, s.Sink.Note)},
+			{Kind: "source", Main: "POST " + s.Path},
+			{Kind: "destination", Main: s.Sink.URI, Detail: joinWords(" · ", s.Sink.Kind, s.Sink.Note),
+				mainIn: func(ctx context.Context) string { return placeName(ctx, s.Sink) }},
 		}}
 	}
-	if s.DeadLetter != nil {
-		detail := "refused batches"
-		if s.DeadLetter.Note != "" {
-			detail += " · " + s.DeadLetter.Note
-		}
-		f.DeadLetter = &FlowNode{Kind: "dead_letter", Title: "Dead letter", Main: s.DeadLetter.Label(), Detail: detail}
+	if dl := s.DeadLetterShown(); dl != nil {
+		place := *dl
+		f.DeadLetter = &FlowNode{Kind: "dead_letter", Main: place.URI,
+			mainIn: func(ctx context.Context) string { return placeName(ctx, place) },
+			detailIn: func(ctx context.Context) string {
+				return joinWords(" · ", i18n.T(ctx, "flow.refused"), place.Note)
+			}}
 	}
 	return f
+}
+
+// placeName is a destination's URI, or that its manifest could not name it.
+func placeName(ctx context.Context, p Place) string {
+	if p.URI == "" {
+		return i18n.T(ctx, "streams.unidentified")
+	}
+	return p.URI
 }
 
 // StreamView is one stream's page.
@@ -669,6 +676,10 @@ type StreamView struct {
 	// SQL says a SQL service answers for the sink, so "Query destination"
 	// leads somewhere.
 	SQL bool
+
+	// ReadBy are the published endpoints that read the sink: where the data
+	// goes next, as far as Brevis knows (screen-streams T3).
+	ReadBy []EndpointRef
 }
 
 // BuildStream lays out a stream's page. detail is its sink's, which carries
@@ -710,74 +721,61 @@ func (v StreamView) Summary(ctx context.Context) string {
 	if v.Config != nil {
 		return Summary(ctx, v.Config)
 	}
-	return "Events posted to " + v.Path + " land in " + v.Sink.URI + ". The stream was published without its configuration, so this is all it says."
+	return i18n.T(ctx, "streams.page.summary.v1", "path", v.Path, "sink", placeName(ctx, v.Sink))
 }
 
-// Declared is one setting in the Configuration tab: what it is and its
-// value, "" when the stream does not declare it (drawn "—").
-type Declared struct {
-	Key, Label, Value string
-}
-
-// DeclaredGroup is one block of the Configuration tab.
-type DeclaredGroup struct {
-	Title string
-	Rows  []Declared
-}
-
-// DeclaredGroups is everything a stream may declare, in one place, each
-// setting it does not declare left empty rather than guessed.
-func (v StreamView) DeclaredGroups() []DeclaredGroup {
-	f := func(key, label string) Declared { return Declared{Key: key, Label: label, Value: v.Field(key)} }
-	merge := Declared{Key: "merge", Label: "merge"}
-	if m := v.Merge(); m != nil {
-		merge.Value = "no"
-		if *m {
-			merge.Value = "yes"
-		}
+// changeSaid is one publish in the history line: the first, or what it
+// changed.
+func changeSaid(ctx context.Context, ch ConfigChange) string {
+	switch {
+	case ch.First:
+		return i18n.T(ctx, "streamcfg.history.first")
+	case len(ch.Lines) == 0:
+		return i18n.T(ctx, "config.earlier")
 	}
-	dl := Declared{Key: "dead_letter", Label: "where"}
+	paths := make([]string, len(ch.Lines))
+	for i, l := range ch.Lines {
+		paths[i] = l.Path
+	}
+	return i18n.T(ctx, "streamcfg.history.changed", "paths", strings.Join(paths, ", "))
+}
+
+// Lede is the page's one sentence under its name: what comes in, where it
+// goes, and that refusals are kept -- three pieces, so it does not repeat the
+// overview's sentence.
+func (v StreamView) Lede(ctx context.Context) string {
+	dest := components.LogoTitle(ctx, kindLogo(v.Sink.Kind))
+	if v.Sink.Kind == "" {
+		dest = i18n.T(ctx, "streams.page.dest_unknown")
+	}
+	lede := i18n.T(ctx, "streams.page.lede", "dest", dest)
+	if f := v.Field("format"); f != "" {
+		lede = i18n.T(ctx, "streams.page.lede.format", "format", f, "dest", dest)
+	}
 	if v.DeadLetter != nil {
-		dl.Value = v.DeadLetter.URI
+		lede += " " + i18n.T(ctx, "streams.page.lede.dead_letter")
 	}
-	return []DeclaredGroup{
-		{"Stream", []Declared{f("name", "name"), {Key: "path", Label: "path", Value: v.Path}, f("format", "format"), f("hook", "hook")}},
-		{"Buffer", []Declared{f("buffer.flush.every", "flush every"), f("buffer.flush.records", "flush at records"), f("buffer.durability", "durability")}},
-		{"Destination", []Declared{{Key: "sink", Label: "where", Value: v.Sink.URI}, f("sink.type", "type"),
-			{Key: "mode", Label: "write", Value: v.Mode()}, merge}},
-		{"Identity", []Declared{f("identity.provider", "provider"), f("identity.entity", "entity"),
-			f("identity.source_key", "source key"), f("identity.record_ts", "record time")}},
-		{"Dead letter", []Declared{dl, f("dead_letter.type", "type")}},
-	}
+	return lede
 }
 
-// Properties are the Overview's side list.
-func (v StreamView) Properties() []components.Def {
-	or := func(s string) string {
-		if s == "" {
-			return "—"
+// Tables are the sink's tables for an auto_table, by the prefixes it
+// accepts ("agents_*"); nil for a sink that writes one place.
+func (v StreamView) Tables() []string {
+	if v.Field("sink.type") != "auto_table" || v.Config == nil {
+		return nil
+	}
+	for _, f := range v.Config.Fields {
+		if f.Path == "sink.naming.allow" {
+			if list, ok := f.Value.([]any); ok {
+				out := make([]string, len(list))
+				for i, p := range list {
+					out[i] = valueText(p) + "*"
+				}
+				return out
+			}
 		}
-		return s
 	}
-	merge := "—"
-	if m := v.Merge(); m != nil {
-		merge = "no"
-		if *m {
-			merge = "yes"
-		}
-	}
-	published := "—"
-	if !v.PublishedAt.IsZero() {
-		published = components.UTCStamp(&v.PublishedAt)
-	}
-	return []components.Def{
-		{Term: "Gateway", Value: v.Gateway, Mono: true},
-		{Term: "Stream", Value: or(v.Field("name")), Mono: true},
-		{Term: "Destination", Value: v.Sink.URI, Mono: true},
-		{Term: "Write", Value: or(v.Mode()), Mono: true},
-		{Term: "Merge", Value: merge, Mono: true},
-		{Term: "Published", Value: published, Mono: true},
-	}
+	return nil
 }
 
 // DeadLetterPanel is the commands and the resend note, when the stream's
@@ -831,6 +829,15 @@ func (v StreamView) TestBody() string {
 	if k := v.Field("identity.source_key"); k != "" {
 		event = `{"event": "test", "` + k + `": "test"}`
 	}
+	// An auto_table event names its table, with a prefix the stream accepts.
+	if v.TestTable() != "" {
+		name := "test"
+		if allow := v.TestAllow(); allow != "" {
+			first, _, _ := strings.Cut(allow, ",")
+			name = first + name
+		}
+		event = strings.TrimSuffix(event, "}") + `, "` + v.TestTable() + `": "` + name + `"}`
+	}
 	switch v.TestFormat() {
 	case "array":
 		return "[" + event + "]"
@@ -839,6 +846,36 @@ func (v StreamView) TestBody() string {
 	}
 	return event
 }
+
+// TestTable is the field an event names its table in, for an auto_table
+// stream -- always `table_name`, the gateway's fixed envelope -- and "" for
+// one that writes one place.
+func (v StreamView) TestTable() string {
+	if v.Field("sink.type") == "auto_table" {
+		return "table_name"
+	}
+	return ""
+}
+
+// TestAllow is the prefixes an auto_table accepts, comma separated; "" is
+// any name its pattern accepts.
+func (v StreamView) TestAllow() string {
+	if v.Config == nil {
+		return ""
+	}
+	for _, f := range v.Config.Fields {
+		if f.Path == "sink.naming.allow" {
+			return strings.ReplaceAll(valueText(f.Value), ", ", ",")
+		}
+	}
+	return ""
+}
+
+// TestDataset is where an auto_table's tables are; TestLands is where a
+// stream that writes one place writes.
+func (v StreamView) TestDataset() string { return v.Field("sink.into.dataset") }
+
+func (v StreamView) TestLands() string { return v.Sink.URI }
 
 // TestCurlHead is the curl that sends a body to this stream, up to the body:
 // $GATEWAY and $GATEWAY_TOKEN stand where the console does not know the
@@ -941,3 +978,64 @@ func loadWhen(ctx context.Context, w *WriterView) string {
 func (v LoadView) ReadNothing() bool {
 	return v.Row.LastRows != nil && *v.Row.LastRows == 0 && v.Read != nil && *v.Read > 0
 }
+
+// howStep, howTitle and howText are the "how it works" footer's words.
+func howStep(ctx context.Context, i int) string {
+	switch i {
+	case 0:
+		return i18n.T(ctx, "streams.how.1")
+	case 1:
+		return i18n.T(ctx, "streams.how.2")
+	}
+	return i18n.T(ctx, "streams.how.3")
+}
+
+func howTitle(ctx context.Context, step string) string {
+	switch step {
+	case "post":
+		return i18n.T(ctx, "streams.how.post")
+	case "batch":
+		return i18n.T(ctx, "streams.how.batch")
+	}
+	return i18n.T(ctx, "streams.how.write")
+}
+
+func howText(ctx context.Context, step string) string {
+	switch step {
+	case "post":
+		return i18n.T(ctx, "streams.how.post.text")
+	case "batch":
+		return i18n.T(ctx, "streams.how.batch.text")
+	}
+	return i18n.T(ctx, "streams.how.write.text")
+}
+
+// newStreamYAML and newStreamCommands are New stream's example: a stream as
+// the gateway's file declares one, and how it reaches the console. Every
+// stream has a dead letter -- the gateway refuses one without -- so the
+// example has one too.
+const newStreamYAML = `streams:
+  #: What this stream is for, shown under its path.
+  - name: orders
+    path: /v1/orders
+    format: json
+    identity:
+      provider: acme
+      entity: order
+      source_key: order_id
+      record_ts: created_at
+    buffer:
+      flush:
+        every: 1m
+        records: 2000
+    sink:
+      type: bigquery
+      project: acme-prod
+      dataset: bronze
+      table: orders
+    dead_letter:
+      type: files
+      path: gs://acme-dead-letter/orders/`
+
+const newStreamCommands = `gateway describe -out gateway.json gateway.yaml
+brevis gateway publish gateway.json`

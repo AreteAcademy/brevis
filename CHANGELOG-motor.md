@@ -16,6 +16,58 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: Real time, one row per stream
+
+- **`/ingest/streams` is one row per stream**, by gateway and path, instead
+  of a card per stream grouped by gateway. Each row: `POST` and the path,
+  with the first line of the stream's note (its `#:` comment) under it; the
+  gateway, then the destination with its logo and where; the batch in words
+  ("2 minutes or 2,000"); continuous; and the dead letter -- for one whose
+  path is relative to the gateway, the path it declares, with why it has no
+  URI on hover. The whole row opens the stream.
+- **A summary** counts the streams, the gateways and the dead letters, and a
+  footer says how a stream works, in three steps.
+- **Filters**: the destination's kind, only the ones present, with logos;
+  and a search over the path, the gateway, the destination and the dead
+  letter, on the server, that answers while you type. There is no "with a
+  dead letter" filter: the gateway refuses a stream without one.
+- **A stream's page** opens with what it is: the gateway above `POST` and
+  the path, one sentence of what it takes, where it writes and that refusals
+  are kept, and a strip from the gateway to the destination with the format
+  and when it was published. Send test event is its verb, beside Query
+  destination where SQL reads the sink. The overview's flow is numbered
+  (1 · Source, 2 · Buffer, 3 · Destination), a batch travels its edges --
+  still with reduced motion -- and what the destination refuses hangs off
+  it; then the stream in one sentence, and where it goes next: the
+  destination, in the Catalog, and the endpoints that read it. The flow's
+  words and the dead letter's are now the reader's, on every screen that
+  draws them.
+- **A stream's configuration, Explained or as YAML.** Explained lays the
+  settings out in cards -- what comes in, when it is written, where, retries,
+  the event's identity, what happens to refusals -- each with a label in the
+  reader's language over its YAML key, its value, "default" when the
+  gateway filled it in, and the file's note; a setting the console has no
+  words for is under Others by its key, never dropped. YAML is the stream
+  written back from what was published, notes as comments, to copy -- not
+  the gateway's own file, and it says so. The history of publishes is one
+  line under them. With no script both are drawn, one under the other.
+- **The Dead letter tab and Send test event, in the reader's language.**
+  The tab says where refused batches go -- as the stream declares it when
+  the catalog cannot name it -- the metric that counts them, and the
+  commands that list and resend them, and that the count and the batches
+  come when the gateway publishes them. The test event still sends nothing
+  (the curl does), and now says where an event would land: for an
+  auto_table, the table its `table_name` names in its dataset, or that a
+  name with no accepted prefix would go to the dead letter, or that the
+  field is missing. The rules and the words are the server's, written on
+  the drawer, so the browser and the gateway agree.
+- **New stream** says how a stream is made rather than asking for one: the
+  shape of a stream in `gateway.yaml` and the two commands that publish it,
+  to copy. `#novo` opens it with no script.
+- Only what was published: the console records no traffic, so there is no
+  "live" or "last batch" -- the gateway's `/metrics` has them.
+- In English, Portuguese and Spanish.
+
 ### Changed: Batch loads, one row per step, from where to where
 
 - **`/ingest/loads` is one row per step and destination**, worst first and,
@@ -53,8 +105,7 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   summary, the tabs, the stages, the flow, what the sources share, the
   schema and the changes, wherever it is drawn -- a load's drawer, a
   destination's in the Catalog, a stream's page. The settings' names and
-  values are the data's own and stay as written. (A gateway's dead letter
-  is still described in English, until the Streams screen.)
+  values are the data's own and stay as written.
 - **A row opens its load's drawer in place**, as the Catalog's do: the
   address follows, Esc, the × and the backdrop close it back to the list as
   it was filtered, Back and Forward close and open it, and a destination

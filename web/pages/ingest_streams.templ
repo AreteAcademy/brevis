@@ -1,114 +1,239 @@
 package pages
 
 import (
-	"fmt"
-
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/AreteAcademy/brevis/web/layouts"
 )
 
-// Streams is what comes in through the gateways: each stream where events are
-// posted, the one destination they land on, and the dead letter its refusals
-// go to -- the dead letter inside its stream, never an item of its own.
+// Streams is Ingest → Real time (screen-streams): what comes in through the
+// gateways, one row per stream -- where events are posted, the one
+// destination they land on, how they are batched, and the dead letter its
+// refusals go to, inside its stream and never a row of its own.
 templ Streams(v StreamsView) {
-	@layouts.Base(layouts.Page{Title: "Streams", Active: "streams"}) {
-		<p class="mb-3 max-w-3xl text-sm text-ink-2">
-			Continuous ingest through the gateways. Each stream takes events over HTTP, batches them and writes one destination; what the destination refuses goes to the stream's own dead letter.
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "streams.title"), Crumb: i18n.T(ctx, "nav.streams"), Active: "streams", Actions: newStreamButton()}) {
+		<p class="-mt-2 mb-3 max-w-3xl text-[13.5px] text-muted">
+			{ i18n.T(ctx, "streams.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "streams.lead.strong") }</strong>{ i18n.T(ctx, "streams.lead.after") }
 		</p>
-		if v.Total == 0 {
-			@components.Empty("No stream yet.", "A stream appears when a gateway is published: brevis gateway publish gateway.yaml")
-		} else {
-			<div class="mb-3 flex flex-wrap items-center gap-2 text-sm">
-				<span class="font-medium text-ink tabular-nums">{ plural(v.Total, "stream") }</span>
-				<span class="text-muted">in</span>
-				<span class="mr-1 font-medium text-ink tabular-nums">{ plural(v.Gateways, "gateway") }</span>
-				@components.Freshness("continuous")
+		if v.Total > 0 {
+			<div data-streams-summary class="mb-4 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-[13px] text-muted">
+				<span>{ i18n.N(ctx, "streams.summary.streams", v.Total) }</span>
+				<span>{ i18n.N(ctx, "streams.summary.gateways", v.Gateways) }</span>
+				<span class="inline-flex items-baseline gap-1.5">
+					@components.Freshness("continuous")
+				</span>
 				if v.WithDeadLetter > 0 {
-					<span class="text-[0.78rem] text-muted tabular-nums">{ fmt.Sprint(v.WithDeadLetter) } with a dead letter</span>
+					<span>{ i18n.N(ctx, "streams.summary.dead_letter", v.WithDeadLetter) }</span>
 				}
-			</div>
-			<div data-filter-keep class="mb-4 flex flex-wrap items-center gap-2">
-				<form method="get" action="/ingest/streams" role="search" class="w-full sm:w-80">
-					if v.Filter.Kind != "" {
-						<input type="hidden" name="kind" value={ v.Filter.Kind }/>
-					}
-					@components.SearchInput("q", v.Filter.Q, "Search paths, destinations or dead letters", "stream-cards")
-				</form>
-				if len(v.Kinds) > 1 {
-					<div class="max-w-full overflow-x-auto whitespace-nowrap">
-						@components.Segmented("Destination", streamKindOptions(v))
-					</div>
-				}
-			</div>
-			<div data-filter-scope>
-				<div data-filter-empty class="rounded-card border border-line bg-surface px-6 py-10 text-center text-sm text-muted" hidden?={ v.Shown() > 0 }>
-					Nothing matches this filter.
-					<a href="/ingest/streams" class="ml-1 text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">Show every stream</a>
-				</div>
-				<div id="stream-cards" class="flex flex-col gap-8">
-					for _, g := range v.Groups {
-						@streamGroup(g)
-					}
-				</div>
 			</div>
 		}
+		if v.Total > 0 {
+			// THE BOX ANSWERS WHILE SOMEBODY TYPES, as the Catalog's and the
+			// loads': ui.js submits it as a fetch and swaps the list.
+			<form method="get" action="/ingest/streams" role="search" data-swap="streams-list" data-swap-typing class="mb-3 w-full sm:w-96">
+				if v.Filter.Kind != "" {
+					<input type="hidden" name="kind" value={ v.Filter.Kind }/>
+				}
+				@components.SearchInput("q", v.Filter.Q, i18n.T(ctx, "streams.search"), "")
+			</form>
+		}
+		<div id="streams-list">
+			@StreamsList(v)
+		</div>
+		@howItWorks()
+		@newStreamDrawer()
 	}
 }
 
-// streamGroup is one gateway: its name, how many streams, and where its
-// traffic is -- the gateway's own /metrics, named and not linked, since the
-// console does not know the gateway's address.
-templ streamGroup(g StreamGroupView) {
-	<section data-filter-group={ g.Name } hidden?={ g.Hidden }>
-		<header class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-			<span class="flex h-7 w-7 items-center justify-center rounded-card border border-line-soft text-muted">
-				@components.Icon("plug", "h-3.5 w-3.5")
-			</span>
-			<h2 class="font-mono text-[0.9rem] font-medium text-ink">{ g.Name }</h2>
-			@components.Tag("gateway", "")
-			<span class="text-[0.75rem] text-muted">{ plural(g.Count, "stream") }</span>
-			<span class="ml-auto text-[0.72rem] text-muted">
-				traffic: <code class="font-mono text-ink-2">brevis_gateway_*</code> on the gateway's /metrics
-			</span>
-		</header>
-		<div class="flex flex-col gap-3">
-			for _, c := range g.Cards {
-				@streamCard(c)
-			}
-		</div>
-	</section>
+// newStreamButton is the header's verb. A link to #novo, so with no script
+// the drawer is drawn in place (`:target`); ui.js opens it modal.
+templ newStreamButton() {
+	<a href="#novo" data-dialogo="novo" aria-haspopup="dialog" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
+		@components.Icon("plus", "h-3.5 w-3.5")
+		{ i18n.T(ctx, "streams.new") }
+	</a>
 }
 
-// streamCard is one stream: what it is, then its compact flow.
-templ streamCard(c StreamCard) {
-	<article
-		data-stream-card={ c.Key() }
-		data-filter-row
-		data-filter-text={ c.SearchText() }
-		hidden?={ c.Hidden }
-		class="overflow-hidden rounded-card border border-line bg-surface"
+// newStreamDrawer says how a stream is made; it does not make one. A stream
+// is declared in the gateway's file and published, so a form here would be a
+// second source of truth the gateway never reads.
+templ newStreamDrawer() {
+	<dialog
+		id="novo"
+		aria-labelledby="novo-title"
+		class="run-drawer fixed inset-y-0 right-0 left-auto m-0 h-full max-h-none w-[min(560px,100vw)] border-l border-line bg-surface p-0 text-ink backdrop:bg-ink/40"
 	>
-		<header class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 border-b border-line-soft px-4 py-3">
-			@components.Freshness("continuous")
-			<a href={ templ.SafeURL(c.Href()) } class="font-mono text-[0.85rem] hover:underline">
-				<span class="text-state-success">POST</span>
-				<span class="text-ink">{ c.Path }</span>
-			</a>
-			if f := c.Field("format"); f != "" {
-				@components.Tag(f, "")
-			}
-			if h := c.Field("hook"); h != "" {
-				<span class="rounded-card border border-line px-1.5 py-px font-mono text-[0.7rem] text-muted">hook { h }</span>
-			}
-			<span class="ml-auto flex items-center gap-3">
-				if !c.PublishedAt.IsZero() {
-					<span class="text-[0.72rem] text-muted">published { components.UTCStamp(&c.PublishedAt) }</span>
-				}
-				@components.ButtonLink(components.ButtonSecondary, components.SizeSmall, c.Href()+"#config") {
-					Configuration
-				}
+		<div class="flex h-full flex-col">
+			<div class="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+				<div class="min-w-0">
+					<p id="novo-title" class="text-[15px] font-semibold text-ink">{ i18n.T(ctx, "streams.new") }</p>
+					<p class="mt-1 text-[12.5px] text-muted">{ i18n.T(ctx, "streams.new.lead") }</p>
+				</div>
+				<form method="dialog">
+					<button type="submit" aria-label={ i18n.T(ctx, "dialog.close") } class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+						@components.Icon("x", "h-4 w-4")
+					</button>
+				</form>
+			</div>
+			<div class="flex-1 space-y-4 overflow-y-auto px-5 py-4 text-[12.5px]">
+				@copyBlock(i18n.T(ctx, "streams.new.declare"), "novo-yaml", newStreamYAML)
+				@copyBlock(i18n.T(ctx, "streams.new.publish"), "novo-publish", newStreamCommands)
+				<p class="text-muted">{ i18n.T(ctx, "streams.new.note") }</p>
+			</div>
+		</div>
+	</dialog>
+}
+
+// copyBlock is a titled block of text to copy: a file, a command.
+templ copyBlock(title, id, text string) {
+	<div>
+		<div class="mb-1.5 flex items-center justify-between">
+			<span class="text-muted">{ title }</span>
+			<span data-js>
+				@components.IconButton(i18n.T(ctx, "loads.drawer.copy"), "copy", templ.Attributes{"data-copy": "#" + id})
 			</span>
-		</header>
-		@flowDiagram(streamFlow(c.Stream))
-	</article>
+		</div>
+		<pre class="overflow-x-auto rounded-card border border-line-soft bg-canvas px-3 py-2 font-mono text-[12px] text-ink-2"><code id={ id }>{ text }</code></pre>
+	</div>
+}
+
+// StreamsList is the destination filter, the table and its empty states: the
+// part the search redraws, so the filter's links keep what was typed.
+templ StreamsList(v StreamsView) {
+	{{ f := v.Filter }}
+	if len(v.Kinds) > 1 {
+		<div role="group" aria-label={ i18n.T(ctx, "streams.kind") } class="mb-3 inline-flex h-8 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-card border border-line bg-surface p-0.5">
+			@langOption(f.With("kind", ""), f.Kind == "") {
+				{ i18n.T(ctx, "streams.kind.all") }
+			}
+			for _, k := range v.Kinds {
+				@langOption(f.With("kind", k), f.Kind == k) {
+					@components.Logo(kindLogo(k), 18)
+					{ components.LogoTitle(ctx, kindLogo(k)) }
+				}
+			}
+		</div>
+	}
+	if len(v.Rows) == 0 {
+		<div class="rounded-card border border-dashed border-line px-6 py-12 text-center">
+			if v.Total > 0 {
+				<p class="text-sm text-muted">{ i18n.T(ctx, "streams.empty.filtered") }</p>
+				<a href="/ingest/streams" class="mt-2 inline-block text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.clear") }</a>
+			} else {
+				<p class="text-sm text-muted">{ i18n.T(ctx, "streams.empty") }</p>
+				<p class="mt-1 font-mono text-xs text-faint">brevis gateway publish gateway.yaml</p>
+			}
+		</div>
+	} else {
+		<div class="overflow-hidden rounded-card border border-line bg-surface">
+			<div class="overflow-x-auto">
+				<table id="stream-rows" class="ct w-full text-[13px]">
+					<thead>
+						<tr class="border-b border-line text-left text-[11.5px] font-medium text-muted">
+							<th class="px-2.5 py-2 pl-4 font-medium">{ i18n.T(ctx, "streams.col.stream") }</th>
+							<th class="px-2.5 py-2 font-medium max-[960px]:hidden">{ i18n.T(ctx, "streams.col.flow") }</th>
+							<th class="px-2.5 py-2 font-medium max-[1180px]:hidden">{ i18n.T(ctx, "streams.col.batch") }</th>
+							<th class="px-2.5 py-2 font-medium">{ i18n.T(ctx, "streams.col.status") }</th>
+							<th class="px-2.5 py-2 font-medium max-[1280px]:hidden">{ i18n.T(ctx, "streams.col.dead_letter") }</th>
+							<th class="w-8 px-2.5 py-2 pr-4"></th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-line-soft">
+						for _, s := range v.Rows {
+							@streamRow(s)
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	}
+}
+
+// streamRow is one stream: where events are posted, from the gateway to the
+// destination, how they are batched, and where refusals go. Narrower, the
+// columns go in the order a reader needs them least -- the dead letter, the
+// batch, then the flow -- and the path and the status stay. The whole row
+// opens the stream; its path is a real link for the keyboard and no script.
+templ streamRow(s Stream) {
+	<tr data-href={ s.Href() } class="cursor-pointer align-top transition-colors hover:bg-hover">
+		<td class="px-2.5 py-3 pl-4">
+			<a href={ templ.SafeURL(s.Href()) } class="inline-flex items-center gap-2 font-mono text-[13px]">
+				@components.MethodPill("POST")
+				<span class="font-medium text-ink">{ s.Path }</span>
+			</a>
+			if n := s.Note(); n != "" {
+				<p class="mt-1 max-w-[16rem] truncate text-[12px] text-muted" title={ n }>{ n }</p>
+			}
+		</td>
+		<td class="px-2.5 py-3 max-[960px]:hidden">
+			<div class="flex items-start gap-3">
+				<div class="min-w-0">
+					<span class="flex items-center gap-1.5 text-[12px] text-ink-2">
+						@components.Logo("gateway", 16)
+						{ i18n.T(ctx, "streams.gateway") }
+					</span>
+					<p class="mt-0.5 font-mono text-[12px] text-ink">{ s.Gateway }</p>
+				</div>
+				<span class="mt-2 text-faint" aria-hidden="true">&rarr;</span>
+				@streamPlace(s.Sink)
+			</div>
+		</td>
+		<td class="px-2.5 py-3 text-[12.5px] text-ink-2 max-[1180px]:hidden">
+			if b := s.BatchIn(ctx); b != "" {
+				{ b }
+			} else {
+				<span class="text-faint">—</span>
+			}
+		</td>
+		<td class="px-2.5 py-3">
+			@components.Freshness("continuous")
+		</td>
+		<td class="px-2.5 py-3 max-[1280px]:hidden">
+			if dl := s.DeadLetterShown(); dl != nil {
+				// Narrower than the destination: it is the column a reader
+				// looks at last.
+				<div class="[&>div]:max-w-[12rem]">
+					@streamPlace(*dl)
+				</div>
+			} else {
+				<span class="text-faint">—</span>
+			}
+		</td>
+		<td class="px-2.5 py-3 pr-4 text-right text-faint">
+			@components.Icon("chevron-right", "h-4 w-4")
+		</td>
+	</tr>
+}
+
+// streamPlace is a destination as a chip: the logo and its kind, and under it
+// where -- the path giving way to an ellipsis, never the object.
+templ streamPlace(p Place) {
+	<div class="min-w-0 max-w-[14rem]">
+		if p.Kind != "" {
+			<span class="flex items-center gap-1.5 text-[12px] text-ink-2">
+				@components.Logo(kindLogo(p.Kind), 16)
+				{ components.LogoTitle(ctx, kindLogo(p.Kind)) }
+			</span>
+		}
+		if p.URI == "" {
+			<p class="mt-0.5 text-[12px] text-faint" title={ p.Note }>{ i18n.T(ctx, "streams.unidentified") }</p>
+		} else {
+			{{ where, what := splitDestination(p.URI) }}
+			<p class="mt-0.5 flex min-w-0 font-mono text-[12px]" title={ joinWords(" — ", p.URI, p.Note) }><span class="truncate text-faint">{ where }</span><span class="shrink-0 text-ink">{ what }</span></p>
+		}
+	</div>
+}
+
+// howItWorks is the footer: a stream in three steps, for somebody who has
+// not set one up.
+templ howItWorks() {
+	<ol data-how-it-works class="mt-4 grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface min-[860px]:grid-cols-3">
+		for i, step := range []string{"post", "batch", "write"} {
+			<li class="border-line-soft px-4 py-3.5 not-first:border-t min-[860px]:not-first:border-t-0 min-[860px]:not-first:border-l">
+				<p class="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{ howStep(ctx, i) }</p>
+				<p class="mt-1 text-[13px] font-semibold text-ink">{ howTitle(ctx, step) }</p>
+				<p class="mt-1 text-[12.5px] text-muted">{ howText(ctx, step) }</p>
+			</li>
+		}
+	</ol>
 }
