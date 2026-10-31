@@ -449,3 +449,41 @@ func TestTheDestinationPageCarriesAStepsConfigurationAndItsRuns(t *testing.T) {
 		t.Fatalf("oldest = %+v, want the first run", c.History[1])
 	}
 }
+
+// EVERY STEP'S CURRENT CONFIGURATION IN ONE QUERY (screen-loads T1), for the
+// loads list's origin column: the newest of each step on each destination, a
+// step writing two destinations once per destination, and nothing for a step
+// that never described itself.
+func TestStepConfigsAreEachStepsLatestConfiguration(t *testing.T) {
+	pool := catalogDB(t)
+	ctx := context.Background()
+	const orders, invoices = "bigquery://acme/silver/orders", "bigquery://acme/silver/invoices"
+	at := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
+
+	landWith(t, pool, "orders_sync", orders, at, sdkConfig("none"))
+	landWith(t, pool, "orders_sync", orders, at.Add(time.Hour), sdkConfig("merge"))
+	landWith(t, pool, "orders_sync", invoices, at, sdkConfig("none"))
+	landWith(t, pool, "billing", invoices, at, sdkConfig("append"))
+	landWith(t, pool, "python_job", orders, at, nil)
+
+	got, err := postgres.NewReadRepo(pool).StepConfigs(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("configs = %+v, want three steps × destinations", got)
+	}
+	for key, dedup := range map[postgres.StepKey]string{
+		{Workflow: "orders_sync", Node: "load", Target: orders}:   "merge",
+		{Workflow: "orders_sync", Node: "load", Target: invoices}: "none",
+		{Workflow: "billing", Node: "load", Target: invoices}:     "append",
+	} {
+		c := got[key]
+		if c == nil || c.Fields[1].Value != dedup {
+			t.Errorf("%+v = %+v, want dedup %s", key, c, dedup)
+		}
+	}
+	if c := got[postgres.StepKey{Workflow: "python_job", Node: "load", Target: orders}]; c != nil {
+		t.Errorf("a step that never described itself has a configuration: %+v", c)
+	}
+}

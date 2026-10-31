@@ -4,174 +4,242 @@ import (
 	"fmt"
 
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/AreteAcademy/brevis/web/layouts"
 )
 
-// Loads is what the workflows wrote: every SDK step that lands data, grouped
-// by the workflow that runs it, each judged against its own schedule.
+// Loads is Ingest → Batch loads (screen-loads): every step that lands data,
+// one row per step and destination, worst first -- who writes, from where,
+// to where, and whether it arrives at the pace of its own schedule.
 templ Loads(v LoadsView) {
-	@layouts.Base(layouts.Page{Title: "Loads", Active: "loads"}) {
-		<p class="mb-3 max-w-3xl text-sm text-ink-2">
-			What the workflows wrote. Every SDK step that lands data, or prints a
-			<code class="font-mono text-xs">landed</code> line, appears here under the workflow that runs it. Writes from outside Brevis do not appear.
-		</p>
-		if v.Total == 0 {
-			@components.Empty("No load yet.",
-				"One appears after an SDK pipeline's first load, or a step that prints a landed line. See docs/LANDINGS.md.")
-		} else {
-			<div class="mb-3 flex flex-wrap items-center gap-2 text-sm">
-				<span class="font-medium text-ink tabular-nums">{ plural(v.Total, "destination") }</span>
-				<span class="text-muted">written by</span>
-				<span class="mr-1 font-medium text-ink tabular-nums">{ plural(v.Workflows, "workflow") }</span>
-				for _, s := range statusOrder {
-					if v.Counts[s] > 0 {
-						<span class="inline-flex items-center gap-1.5">
-							<span class="text-ink-2 tabular-nums">{ fmt.Sprint(v.Counts[s]) }</span>
-							@components.Freshness(string(s))
-						</span>
-					}
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "loads.title"), Crumb: i18n.T(ctx, "nav.loads"), Active: "loads", Actions: loadsActions()}) {
+		@LoadsHead(v)
+		if v.Total > 0 || v.HasLegacy {
+			// THE BOX ANSWERS WHILE SOMEBODY TYPES, as the Catalog's: ui.js
+			// submits it as a fetch (X-Brevis-Fragment: answer) and swaps the
+			// list under it; with no script it is a plain GET.
+			<form method="get" action="/ingest/loads" role="search" data-swap="loads-list" data-swap-typing class="mb-3 w-full sm:w-96">
+				if v.Filter.Status != "" {
+					<input type="hidden" name="status" value={ v.Filter.Status }/>
 				}
-			</div>
-			@loadsFilters(v)
-			<div data-filter-scope class="overflow-hidden rounded-card border border-line bg-surface">
-				<div data-filter-empty class="px-6 py-10 text-center text-sm text-muted" hidden?={ v.Shown() > 0 }>
-					Nothing matches this filter.
-					<a href="/ingest/loads" class="ml-1 text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">Show every load</a>
-				</div>
-				if len(v.Groups) > 0 {
-					<div class="overflow-x-auto">
-						<table id="load-rows" class="ct w-full min-w-[48rem] text-[0.82rem]">
-							<thead>
-								<tr class="border-b border-line bg-canvas-subtle text-left">
-									@th("Step → destination", "pl-4")
-									@th("Status", "")
-									@th("Last load", "")
-									@th("Rows", "text-right")
-									@th("Last loads", "pr-4")
-								</tr>
-							</thead>
-							for _, g := range v.Groups {
-								@loadGroup(g)
-							}
-						</table>
-					</div>
+				if v.Filter.Source != "" {
+					<input type="hidden" name="source" value={ v.Filter.Source }/>
 				}
-				@components.TableFoot(v.Shown(), v.Total, "loads")
-			</div>
+				if v.Filter.Legacy {
+					<input type="hidden" name="legacy" value="1"/>
+				}
+				@components.SearchInput("q", v.Filter.Q, i18n.T(ctx, "loads.search"), "")
+			</form>
+		}
+		if v.Missing != "" {
+			<p data-missing class="mb-3 rounded-card border border-line bg-surface-2 px-3 py-2 text-[12.5px] text-muted">{ i18n.T(ctx, "loads.missing", "step", v.Missing) }</p>
+		}
+		<div id="loads-list" data-drawer-list data-drawer-fragment="load" data-drawer-path="/ingest/loads/">
+			@LoadsList(v)
+		</div>
+		if v.Drawer != nil {
+			@LoadDrawer(v)
 		}
 	}
 }
 
-// loadsFilters is the bar above the table, Catalog's filters on this page's
-// URL: a search over workflow, step and destination, then status, kind and
-// label.
-templ loadsFilters(v LoadsView) {
+// loadsActions is the header's one way out: the workflows that run these
+// steps.
+templ loadsActions() {
+	@components.ButtonLink(components.ButtonSecondary, components.SizeRegular, "/workflows") {
+		@components.Icon("workflow", "h-3.5 w-3.5")
+		{ i18n.T(ctx, "loads.workflows") }
+	}
+}
+
+// LoadsHead is the lead and the summary: how many destinations and
+// workflows, each status present, and the way to the same data by
+// destination.
+templ LoadsHead(v LoadsView) {
+	<p class="-mt-2 mb-3 max-w-3xl text-[13.5px] text-muted">
+		{ i18n.T(ctx, "loads.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "loads.lead.strong") }</strong> { i18n.T(ctx, "loads.lead.after") }
+	</p>
+	if v.Total > 0 {
+		<div data-loads-summary class="mb-4 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-[13px]">
+			<span class="text-muted">{ i18n.N(ctx, "loads.summary.destinations", v.Total) }</span>
+			<span class="text-muted">{ i18n.N(ctx, "loads.summary.workflows", v.Workflows) }</span>
+			for _, s := range loadStatuses {
+				if v.Summary[s] > 0 {
+					<span class="inline-flex items-baseline gap-1.5">
+						<span class="font-medium text-ink tabular-nums">{ fmt.Sprint(v.Summary[s]) }</span>
+						@components.Freshness(string(s))
+					</span>
+				}
+			}
+			// The same question by destination, under the same status.
+			<a href={ templ.SafeURL(DataFilter{Path: "/data", Status: v.Filter.Status}.With("", "")) } class="text-ink-2 hover:text-ink hover:underline">{ i18n.T(ctx, "loads.catalog") } &rarr;</a>
+		</div>
+	}
+}
+
+// LoadsList is the table, its empty states and the honest footer: the part
+// a filter redraws.
+templ LoadsList(v LoadsView) {
 	{{ f := v.Filter }}
-	<div data-filter-keep class="mb-3 flex flex-wrap items-center gap-2">
-		<form method="get" action="/ingest/loads" role="search" class="w-full sm:w-80">
-			if f.Status != "" {
-				<input type="hidden" name="status" value={ f.Status }/>
+	if v.Total > 0 || v.HasLegacy {
+		<nav data-status-band aria-label={ i18n.T(ctx, "catalog.band") } class="mb-3 flex flex-wrap gap-2">
+			@bandChoice(f.With("status", ""), f.Status == "", "", i18n.T(ctx, "catalog.status.all"), v.Count(""), "")
+			@bandChoice(f.With("status", "attention"), f.Status == "attention", "stale", i18n.T(ctx, "catalog.status.attention"), v.Count("attention"), statusTip(ctx, "attention"))
+			for _, st := range loadStatuses {
+				@bandChoice(f.With("status", string(st)), f.Status == string(st), string(st), components.StateWord(ctx, freshnessWord(string(st))), v.Count(string(st)), statusTip(ctx, string(st)))
 			}
-			if f.Kind != "" {
-				<input type="hidden" name="kind" value={ f.Kind }/>
-			}
-			if f.Legacy {
-				<input type="hidden" name="legacy" value="1"/>
-			}
-			@components.SearchInput("q", f.Q, "Search workflows, steps or destinations", "load-rows")
-		</form>
-		<div class="flex flex-wrap items-center gap-2">
-			<div class="max-w-full overflow-x-auto whitespace-nowrap">
-				@components.Segmented("Status", loadStatusOptions(v))
-			</div>
-			if len(v.Kinds) > 1 {
-				<div class="max-w-full overflow-x-auto whitespace-nowrap">
-					@components.Segmented("Kind", loadKindOptions(v))
+		</nav>
+		<div class="mb-3 flex flex-wrap items-center gap-3">
+			if len(v.Sources) > 1 {
+				<div role="group" aria-label={ i18n.T(ctx, "loads.source") } class="inline-flex h-8 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-card border border-line bg-surface p-0.5">
+					@langOption(f.With("source", ""), f.Source == "") {
+						{ i18n.T(ctx, "loads.source.all") }
+					}
+					for _, src := range v.Sources {
+						@langOption(f.With("source", src), f.Source == src) {
+							@sourceMark(src)
+							{ sourceChoice(ctx, src) }
+						}
+					}
 				</div>
 			}
 			if v.HasLegacy {
-				@components.Segmented("Label", loadLegacyOptions(v))
+				<a
+					href={ templ.SafeURL(f.With("legacy", legacyFlip(f.Legacy))) }
+					role="switch"
+					aria-checked={ boolText(f.Legacy) }
+					class="inline-flex items-center gap-2 text-[12.5px] text-ink-2"
+				>
+					<span class="switch" aria-checked={ boolText(f.Legacy) }><span class="switch-knob" aria-hidden="true"></span></span>
+					{ i18n.T(ctx, "catalog.legacy") }
+				</a>
 			}
 		</div>
-	</div>
+	}
+	if len(v.Rows) == 0 {
+		<div class="rounded-card border border-dashed border-line px-6 py-12 text-center">
+			if f.Active() && (v.Total > 0 || v.HasLegacy) {
+				<p class="text-sm text-muted">{ i18n.T(ctx, "loads.empty.filtered") }</p>
+				<a href="/ingest/loads" class="mt-2 inline-block text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.clear") }</a>
+			} else {
+				<p class="text-sm text-muted">{ i18n.T(ctx, "loads.empty") }</p>
+				<p class="mt-1 text-xs text-faint">{ i18n.T(ctx, "loads.empty.how") }</p>
+			}
+		</div>
+	} else {
+		<div class="overflow-hidden rounded-card border border-line bg-surface">
+			<div class="overflow-x-auto">
+				<table id="load-rows" class="ct w-full text-[13px]">
+					<thead>
+						<tr class="border-b border-line text-left text-[11.5px] font-medium text-muted">
+							<th class="px-2.5 py-2 pl-4 font-medium">{ i18n.T(ctx, "loads.col.who") }</th>
+							<th class="px-2.5 py-2 font-medium max-[860px]:hidden">{ i18n.T(ctx, "loads.col.flow") }</th>
+							<th class="px-2.5 py-2 font-medium">{ i18n.T(ctx, "loads.col.status") }</th>
+							<th class="px-2.5 py-2 font-medium max-[640px]:hidden">{ i18n.T(ctx, "loads.col.last") }</th>
+							<th class="px-2.5 py-2 text-right font-medium max-[1100px]:hidden">{ i18n.T(ctx, "loads.col.rows") }</th>
+							<th class="px-2.5 py-2 pr-4 font-medium max-[1100px]:hidden">{ i18n.T(ctx, "loads.col.recent") }</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-line-soft">
+						for _, r := range v.Rows {
+							@loadRow(v, r)
+						}
+					</tbody>
+				</table>
+			</div>
+			<p class="border-t border-line-soft px-4 py-2.5 text-[12px] text-faint">{ i18n.T(ctx, "loads.honest") }</p>
+		</div>
+	}
 }
 
-// loadGroup is one workflow: a header row -- its name, its schedule, how many
-// destinations, and a collapse button ui.js drives (with no script every group
-// stays open) -- then its loads.
-templ loadGroup(g LoadGroupView) {
-	<tbody data-filter-group={ g.Workflow } hidden?={ g.Hidden } class="border-b border-line-soft last:border-b-0">
-		<tr class="bg-canvas-subtle/60">
-			<td colspan="5" class="px-3 py-2 pl-4">
-				<div class="flex items-center gap-2">
-					<button
-						type="button"
-						data-group-toggle
-						aria-expanded="true"
-						aria-label={ "Collapse " + g.Workflow }
-						data-js
-						class="flex h-6 w-6 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[expanded=false]:-rotate-90"
-					>
-						@components.Icon("chevron-down", "h-3.5 w-3.5")
-					</button>
-					@components.Icon("workflow", "h-3.5 w-3.5 text-muted")
-					<a href={ templ.SafeURL("/workflows/" + g.Workflow) } class="font-mono text-[0.8rem] font-medium text-ink hover:underline">{ g.Workflow }</a>
-					<span class="text-[0.75rem] text-muted">{ groupSchedule(g.LoadGroup) }</span>
-					<span class="ml-auto text-[0.72rem] text-faint tabular-nums">{ plural(len(g.Targets), "destination") }</span>
-				</div>
-			</td>
-		</tr>
-		for _, r := range g.Rows {
-			@loadRow(r)
-		}
-	</tbody>
+// sourceMark is an origin's mark in the filter: the protocol's and the
+// files' logos, a database's glyph, nothing for the rest.
+templ sourceMark(src string) {
+	switch src {
+		case "http", "file":
+			@components.Logo(src, 18)
+		case "database":
+			@components.Icon("database", "h-3.5 w-3.5 text-muted")
+	}
 }
 
-// loadRow is one step landing on one destination: `step → URI`, the scheme
-// and host faint and the object in full. The whole row goes to the load.
-templ loadRow(r LoadRow) {
+// loadRow is one step landing on one destination: who (the workflow, the
+// step and when it runs), from where to where, and how it goes. The whole
+// row opens the load; the workflow's name is its own link.
+templ loadRow(v LoadsView, r LoadTarget) {
 	<tr
-		data-filter-row
-		data-filter-text={ r.SearchText() }
-		hidden?={ r.Hidden }
-		data-href={ r.Href() }
-		class="cursor-pointer align-top transition-colors hover:bg-surface-2"
+		data-href={ v.rowHref(r) }
+		class="cursor-pointer align-top transition-colors hover:bg-hover"
 	>
-		<td class="min-w-[20rem] px-3 py-2.5 pl-10">
-			<div class="flex items-start gap-2.5">
-				<span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-card border border-line-soft text-muted">
-					@components.Icon(kindIcon(r.Kind), "h-3.5 w-3.5")
-				</span>
-				<div class="min-w-0">
-					{{ where, what := SplitTarget(r.URI) }}
-					<a href={ templ.SafeURL(r.Href()) } class="font-mono text-[0.78rem] break-all hover:underline">
-						<span class="text-ink">{ r.Step }</span>
-						<span class="text-faint">→</span>
-						<span class="text-faint">{ where }</span><span class="text-ink">{ what }</span>
-					</a>
-					<span class="mt-0.5 flex items-center gap-1.5 text-[0.72rem] text-muted">
+		<td class="px-2.5 py-3 pl-4">
+			<a href={ templ.SafeURL("/workflows/" + r.Workflow) } class="font-mono text-[13px] font-medium text-ink hover:underline">{ r.Workflow }</a>
+			<p class="mt-0.5 text-[12px] text-muted">
+				<a href={ templ.SafeURL(v.rowHref(r)) } class="font-mono text-ink-2 hover:underline">{ r.Step }</a>
+				<span class="text-faint">·</span>
+				{ loadSchedule(ctx, r) }
+			</p>
+		</td>
+		<td class="px-2.5 py-3 max-[860px]:hidden">
+			<div class="flex items-start gap-3">
+				@loadSource(r.Source)
+				<span class="mt-2 text-faint" aria-hidden="true">&rarr;</span>
+				{{ where, what := splitDestination(r.URI) }}
+				<div class="min-w-0 max-w-[16rem]">
+					<span class="flex items-center gap-1.5 text-[12px] text-ink-2">
+						// A legacy label has no scheme, so no kind to name.
+						if r.Kind != "" {
+							@components.Logo(kindLogo(r.Kind), 16)
+							{ components.LogoTitle(ctx, kindLogo(r.Kind)) }
+						}
 						if r.Legacy {
-							<span title="A label recovered from before steps named their target; it is never turned into one.">
-								@components.Tag("legacy", "")
-							</span>
-							label
-						} else {
-							{ r.Kind }
+							<span class="rounded border border-line px-1.5 font-mono text-[10.5px] text-muted">{ i18n.T(ctx, "catalog.chip.legacy") }</span>
 						}
 					</span>
+					// Where it lives gives way, never the table: a long project
+					// or bucket is cut with an ellipsis, and the whole URI is
+					// the tooltip.
+					<p class="mt-0.5 flex min-w-0 font-mono text-[12px]" title={ r.URI }><span class="truncate text-faint">{ where }</span><span class="shrink-0 text-ink">{ what }</span></p>
 				</div>
 			</div>
 		</td>
-		<td class="px-3 py-2.5">
+		<td class="px-2.5 py-3">
 			@components.Freshness(string(r.Status))
 			if run := r.Fixing(); run != nil {
-				<a href={ templ.SafeURL("/runs/" + *run) } class="mt-1 block text-[0.72rem] text-state-running hover:underline">run in progress</a>
+				<a href={ templ.SafeURL("/runs/" + *run) } class="mt-0.5 block text-[11.5px] text-state-running hover:underline">{ i18n.T(ctx, "loads.fixing") }</a>
 			}
 		</td>
-		<td class="px-3 py-2.5 text-[0.78rem] whitespace-nowrap text-muted">{ components.When(&r.LastLoaded) }</td>
-		<td class="px-3 py-2.5 text-right text-[0.78rem] text-ink tabular-nums">{ rowsText(r.Rows) }</td>
-		<td class="px-3 py-2.5 pr-4">
+		<td class="px-2.5 py-3 text-xs whitespace-nowrap text-muted max-[640px]:hidden" title={ components.Timestamp(&r.LastLoaded) }>
+			{ i18n.Since(ctx, v.Now, r.LastLoaded) }
+		</td>
+		<td class="px-2.5 py-3 text-right text-xs tabular-nums text-ink-2 max-[1100px]:hidden">
+			if r.Rows != nil {
+				{ i18n.Number(ctx, *r.Rows) }
+			} else {
+				<span title={ i18n.T(ctx, "catalog.no_rows") } class="text-faint">—</span>
+			}
+		</td>
+		<td class="px-2.5 py-3 pr-4 max-[1100px]:hidden">
 			@components.Spark(r.Recent)
 		</td>
 	</tr>
+}
+
+// loadSource is where a step reads, as it declared: the logo and its kind,
+// and under them the place. One that declared none says so, and why.
+templ loadSource(s Source) {
+	<div class="min-w-0 max-w-[12rem]">
+		if s.Kind == "" {
+			<span class="text-[12px] text-faint" title={ i18n.T(ctx, "loads.source.none.tip") }>{ i18n.T(ctx, "loads.source.none") }</span>
+		} else {
+			<span class="flex items-center gap-1.5 text-[12px] text-ink-2">
+				if s.Logo != "" {
+					@components.Logo(s.Logo, 16)
+				}
+				{ originLabel(ctx, s) }
+			</span>
+			if s.Where != "" {
+				<p class="mt-0.5 truncate font-mono text-[12px] text-ink" title={ s.Where }>{ s.Where }</p>
+			}
+		}
+	</div>
 }

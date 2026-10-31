@@ -1,98 +1,189 @@
 package pages
 
 import (
+	"fmt"
+
 	"github.com/AreteAcademy/brevis/web/components"
-	"github.com/AreteAcademy/brevis/web/layouts"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
-// Load is one step landing on one destination: what it wrote, load by load,
-// each opening its run; how it is configured; and, where a SQL service
-// answers, the destination's first rows.
-templ Load(v LoadView) {
-	@layouts.Base(layouts.Page{
-		Title: v.Row.Target, Active: "loads", Mono: true, TitleID: "destination-uri",
-		Actions: targetActions(v.TargetView),
-	}) {
-		// ONE META LINE UNDER THE TITLE (screen-load-v2 LV2): how it stands,
-		// what it is, who writes it and when -- the eyebrow above the URI and
-		// the "written by" line below it, as one.
-		<p data-load-meta class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
-			@components.Freshness(string(v.Row.Status))
-			<span class="text-faint">·</span>
-			<span>SDK load · { loadKind(v) }</span>
-			if v.Row.Legacy {
-				@components.Tag("legacy label", "")
-			}
-			<span class="text-faint">·</span>
-			<span>written by</span>
-			<a href={ templ.SafeURL("/workflows/" + v.Workflow) } class="font-mono text-ink hover:underline">{ v.Workflow }</a>
-			<span class="text-faint">›</span>
-			<span class="font-mono text-ink">{ v.Step }</span>
-			<span class="text-faint">·</span>
-			<span>{ writerSchedule(v.Writer()) }</span>
-		</p>
-		<div class="mb-3">
-			@components.Stats(loadStats(v))
-		</div>
-		<div class="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]">
-			<div class="flex min-w-0 flex-col gap-3">
-				@loadConfiguration(v)
-				@loadPreview(v)
-			</div>
-			<div data-side class="flex min-w-0 flex-col gap-3">
-				@loadRecent(v)
-				if w := v.Writer(); w != nil {
-					@components.Panel("Written by", "") {
-						<div class="px-4 py-3">
-							<p class="font-mono text-[0.8rem]">
-								<a href={ templ.SafeURL("/workflows/" + v.Workflow) } class="text-ink hover:underline">{ v.Workflow }</a>
-								<span class="text-faint">›</span>
-								<span class="text-ink">{ v.Step }</span>
-							</p>
-							<dl class="mt-2 grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[0.78rem]">
-								<dt class="text-muted">Schedule</dt>
-								<dd class="text-ink">
-									if w.HasSchedule {
-										<span class="font-mono">{ w.Cron }</span> <span class="text-muted">{ w.Timezone }</span>
-									} else {
-										by hand
-									}
-								</dd>
-								<dt class="text-muted">Last load</dt>
-								<dd class="text-ink">{ components.When(&w.LastLoaded) }</dd>
-								<dt class="text-muted">Status</dt>
-								<dd>
-									@components.Freshness(string(w.Verdict.Status))
-								</dd>
-							</dl>
-							if r := w.Reason(ctx); r != "" {
-								<p class="mt-2 text-[0.75rem] text-muted">{ r }</p>
-							}
-							if w.RunInFlight != nil {
-								<a href={ templ.SafeURL("/runs/" + *w.RunInFlight) } class="mt-1 inline-block text-[0.75rem] text-state-running hover:underline">run in progress</a>
-							}
-						</div>
-					}
+// LoadDrawer is one step landing on one destination, over the loads list
+// (screen-loads T4): drawn open by the server, so its link works with no
+// script -- the × is a link back to the list as it was filtered -- and the
+// fragment the row asks for with one (X-Brevis-Fragment: load).
+//
+// What it says, in order: who and how it stands; why, when there is a
+// reason; where it reads and writes, when it runs and its last load; its
+// loads as bars, each opening its run; how it is configured; its recent
+// loads; what reads its destination; and the verbs.
+templ LoadDrawer(v LoadsView) {
+	{{ l := *v.Drawer }}
+	<dialog id="load" class="drawer" aria-labelledby="load-title" open data-url-drawer data-close={ v.CloseHref() }>
+		<header class="dialog-head">
+			<div class="min-w-0">
+				<p class="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{ i18n.T(ctx, "loads.drawer.kicker", "workflow", l.Workflow) }</p>
+				<h2 id="load-title" class="font-mono text-[15px] font-semibold break-all text-ink">{ l.Step }</h2>
+				if !l.Choosing() {
+					<p class="mt-1">
+						@components.Freshness(string(l.Row.Status))
+					</p>
 				}
-				@readBy(v.ReadBy)
-				@loadChanges(v)
 			</div>
+			<a href={ templ.SafeURL(v.CloseHref()) } data-target-close aria-label={ i18n.T(ctx, "dialog.close") } class="flex h-8 w-8 shrink-0 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+				@components.Icon("x", "h-4 w-4")
+			</a>
+		</header>
+		<div class="dialog-body space-y-4" data-dialog-body>
+			if len(l.Choices) > 0 {
+				<section data-load-choices>
+					<p class="mb-2 text-[12.5px] text-muted">{ i18n.N(ctx, "loads.drawer.choices", len(l.Choices)) }</p>
+					<ul class="space-y-1">
+						for _, c := range l.Choices {
+							<li>
+								<a
+									href={ templ.SafeURL(v.keepFilter(c.Href)) }
+									data-drawer-swap
+									if c.Current {
+										aria-current="true"
+									}
+									class={ "block rounded-card border px-3 py-2 font-mono text-[12px] break-all transition-colors",
+										templ.KV("border-ink text-ink", c.Current), templ.KV("border-line text-ink-2 hover:border-line-strong", !c.Current) }
+								>{ c.URI }</a>
+							</li>
+						}
+					</ul>
+				</section>
+			}
+			if !l.Choosing() {
+				@loadDrawerBody(v, l)
+			}
 		</div>
-	}
+		<footer class="dialog-foot" data-dialog-foot>
+			if !l.Choosing() && l.Tabs {
+				@components.ButtonLink(components.ButtonSecondary, components.SizeRegular, l.WorkbenchHref()) {
+					@components.Icon("terminal", "h-3.5 w-3.5")
+					{ i18n.T(ctx, "loads.drawer.query") }
+				}
+			}
+			@components.ButtonLink(components.ButtonSecondary, components.SizeRegular, "/workflows/"+l.Workflow) {
+				{ i18n.T(ctx, "loads.drawer.workflow") }
+			}
+			switch l.Run {
+				case "now":
+					// The trigger's form: with no script it posts and comes
+					// back here with a flash; ui.js posts it (data-run-now)
+					// so a refusal is said beside the button.
+					<form method="post" action={ templ.SafeURL("/workflows/" + l.Workflow + "/trigger") } data-run-now class="flex items-center gap-2">
+						<input type="hidden" name="back" value={ l.Back }/>
+						<p data-run-error hidden class="text-[12px] text-state-failed"></p>
+						@components.Button(components.ButtonPrimary, components.SizeRegular, templ.Attributes{"type": "submit"}) {
+							@components.Icon("play", "h-3.5 w-3.5")
+							{ i18n.T(ctx, "loads.drawer.run") }
+						}
+					</form>
+				case "params":
+					@components.ButtonLink(components.ButtonPrimary, components.SizeRegular, "/workflows/"+l.Workflow+"#run") {
+						@components.Icon("play", "h-3.5 w-3.5")
+						{ i18n.T(ctx, "loads.drawer.run.params") }
+					}
+			}
+		</footer>
+	</dialog>
 }
 
-// LoadChooser asks which destination a step that writes several is about.
-templ LoadChooser(workflow, step string, choices []LoadChoice) {
-	@layouts.Base(layouts.Page{Title: step, Active: "loads", Mono: true}) {
-		<p class="mb-4 text-sm text-muted">
-			<span class="font-mono text-ink">{ workflow } › { step }</span> writes more than one destination. Which one?
-		</p>
-		<ul class="divide-y divide-line-soft overflow-hidden rounded-card border border-line bg-surface">
-			for _, c := range choices {
-				<li>
-					<a href={ templ.SafeURL(c.Href) } class="block px-4 py-3 font-mono text-[0.8rem] break-all text-ink hover:bg-surface-2">{ c.URI }</a>
-				</li>
+// loadDrawerBody is the open load: everything but the head and the verbs.
+templ loadDrawerBody(v LoadsView, l LoadView) {
+	if w := l.Writer(); w != nil {
+		if why := w.Reason(ctx); why != "" {
+			<p data-load-reason class="rounded-card border border-line bg-surface-2 px-3 py-2 text-[12.5px] text-ink-2">{ why }</p>
+		}
+	}
+	<dl class="grid grid-cols-[8rem_minmax(0,1fr)] gap-x-4 gap-y-3 rounded-card border border-line bg-surface px-4 py-3.5 text-[12.5px]">
+		<dt class="text-muted">{ i18n.T(ctx, "loads.drawer.from") }</dt>
+		<dd class="min-w-0">
+			if l.Source.Kind == "" {
+				<span class="text-faint" title={ i18n.T(ctx, "loads.source.none.tip") }>{ i18n.T(ctx, "loads.source.none") }</span>
+			} else {
+				<span class="flex items-center gap-1.5 text-ink-2">
+					if l.Source.Logo != "" {
+						@components.Logo(l.Source.Logo, 16)
+					}
+					{ originLabel(ctx, l.Source) }
+				</span>
+				if l.Source.Where != "" {
+					<p class="mt-0.5 font-mono text-[12px] break-all text-ink">{ l.Source.Where }</p>
+				}
 			}
-		</ul>
+		</dd>
+		<dt class="text-muted">{ i18n.T(ctx, "loads.drawer.to") }</dt>
+		<dd class="min-w-0">
+			if l.Row.Kind != "" {
+				<span class="flex items-center gap-1.5 text-ink-2">
+					@components.Logo(kindLogo(l.Row.Kind), 16)
+					{ components.LogoTitle(ctx, kindLogo(l.Row.Kind)) }
+				</span>
+			}
+			<p class="mt-0.5 flex items-start gap-1.5 font-mono text-[12px] break-all text-ink">
+				<span id="load-uri">{ l.Row.Target }</span>
+				<span data-js class="shrink-0">
+					<button type="button" data-copy="#load-uri" aria-label={ i18n.T(ctx, "loads.drawer.copy") } title={ i18n.T(ctx, "loads.drawer.copy") } class="text-muted hover:text-ink">
+						@components.Icon("copy", "h-3.5 w-3.5")
+					</button>
+				</span>
+			</p>
+			if l.Row.Target != "" && !l.Row.Legacy {
+				<a href={ templ.SafeURL(TargetHref(l.Row.Target)) } class="mt-1 inline-block text-[12px] text-ink-2 hover:text-ink hover:underline">{ i18n.T(ctx, "loads.drawer.catalog") } &rarr;</a>
+			}
+		</dd>
+		<dt class="text-muted">{ i18n.T(ctx, "loads.drawer.step") }</dt>
+		<dd class="font-mono text-ink">{ l.Step }</dd>
+		<dt class="text-muted">{ i18n.T(ctx, "loads.drawer.when") }</dt>
+		<dd class="text-ink">
+			if w := l.Writer(); w != nil && w.HasSchedule {
+				{ loadWhen(ctx, w) }
+				<span class="ml-1 font-mono text-[11.5px] text-muted">{ w.Cron } { w.Timezone }</span>
+			} else {
+				{ i18n.T(ctx, "loads.manual") }
+			}
+		</dd>
+		<dt class="text-muted">{ i18n.T(ctx, "loads.drawer.last") }</dt>
+		<dd class="text-ink">
+			if l.Row.LastWhen != nil {
+				{ i18n.Since(ctx, v.Now, *l.Row.LastWhen) }
+			} else {
+				—
+			}
+			if l.Row.LastRows != nil {
+				<span class={ "ml-1", templ.KV("text-state-failed", l.ReadNothing()) }>· { i18n.N(ctx, "loads.drawer.rows", int(*l.Row.LastRows)) }</span>
+			}
+			if l.Read != nil {
+				<span class="ml-1 text-muted">{ i18n.T(ctx, "loads.drawer.read", "n", i18n.Number(ctx, *l.Read)) }</span>
+			}
+		</dd>
+	</dl>
+	if w := l.Writer(); w != nil && w.RunInFlight != nil {
+		<a href={ templ.SafeURL("/runs/" + *w.RunInFlight) } class="inline-block text-[12px] text-state-running hover:underline">{ i18n.T(ctx, "loads.fixing") } &rarr;</a>
+	}
+	<section>
+		<h3 class="mb-2 text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{ i18n.T(ctx, "loads.drawer.bars", "n", fmt.Sprint(len(l.Bars))) }</h3>
+		@components.LoadBars(l.Bars, l.Missed)
+		<p class="mt-1.5 text-[11.5px] text-faint">{ i18n.T(ctx, "catalog.drawer.legend") }</p>
+		<p class="mt-1 text-[12px] text-muted">{ i18n.T(ctx, "loads.drawer.drop") }</p>
+	</section>
+	@loadConfiguration(l)
+	@loadChanges(l)
+	@loadRecent(l)
+	if len(l.ReadBy) > 0 {
+		<section>
+			<h3 class="mb-2 text-[12.5px] font-semibold text-ink">{ i18n.T(ctx, "catalog.drawer.read_by") }</h3>
+			<ul class="space-y-1 text-[12.5px]">
+				for _, e := range l.ReadBy {
+					<li>
+						<a href={ templ.SafeURL(e.Href) } class="font-mono text-ink hover:underline">GET { e.Path }</a>
+						<span class="ml-1.5 text-muted">{ e.API }</span>
+					</li>
+				}
+			</ul>
+		</section>
 	}
 }

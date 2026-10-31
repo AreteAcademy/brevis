@@ -1053,11 +1053,6 @@ dialog.run-drawer:not([open]):target {
   }
 }
 
-/* A COLLAPSED GROUP keeps its header row and folds the rest. */
-tbody[data-collapsed] > tr:not(:first-child) {
-  display: none;
-}
-
 /* WHAT NEEDS A SCRIPT IS IN THE FIRST PAINT, OR NEVER (nav-latency N6).
    `js` is on <html> before anything is drawn (an inline line at the top of
    the head), so a control that only works with ui.js or sql.js -- the
@@ -1287,7 +1282,14 @@ dialog.drawer::backdrop,
 dialog.modal::backdrop {
   background: rgb(0 0 0 / 0.5);
 }
+/* FIXED, MODAL OR NOT. A drawer the server draws open (the Catalog's and a
+   load's, for a link with no script) is a non-modal <dialog>, which the
+   browser places in the flow -- under the list it is meant to cover. A
+   modal one is in the top layer either way. */
 dialog.drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 40;
   margin: 0 0 0 auto;
   width: min(560px, 100vw);
   max-width: 100vw;

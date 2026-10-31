@@ -113,6 +113,7 @@ type CatalogReader interface {
 	Catalog(ctx context.Context) ([]postgres.CatalogEntry, error)
 	CatalogTarget(ctx context.Context, target string) (*postgres.TargetDetail, error)
 	StreamConfigs(ctx context.Context) (map[postgres.StreamKey]*postgres.WriterConfig, error)
+	StepConfigs(ctx context.Context) (map[postgres.StepKey]*postgres.WriterConfig, error)
 }
 
 // Actions are the three effects the screen triggers. A small interface on
@@ -340,8 +341,10 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", assets.Handler()))
 }
 
-// loads is Ingest → Loads: what the workflows wrote, by workflow. The same
-// catalog read Catalog draws, regrouped; the filter is Catalog's, on this URL.
+// loads is Ingest → Batch loads (screen-loads): one row per step and
+// destination, worst first. The catalog read Catalog draws, plus every
+// step's configuration in one more query, for where each step reads; the
+// filter is Catalog's, on this URL.
 func (u *UI) loads(w http.ResponseWriter, r *http.Request) {
 	var entries []postgres.CatalogEntry
 	if u.catalog != nil {
@@ -350,10 +353,21 @@ func (u *UI) loads(w http.ResponseWriter, r *http.Request) {
 			u.failure(w, r, err)
 			return
 		}
+		configs, err := u.catalog.StepConfigs(r.Context())
+		if err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		pages.AttachStepConfigs(entries, configs)
 	}
 	f := pages.ParseDataFilter(r.URL.Query())
 	f.Path = "/ingest/loads"
-	u.render(w, r, pages.Loads(pages.BuildLoads(entries, time.Now()).Apply(f)))
+	v := pages.BuildLoads(entries, f, time.Now())
+	if fragment(r) == "answer" {
+		u.render(w, r, pages.LoadsList(v))
+		return
+	}
+	u.render(w, r, pages.Loads(v))
 }
 
 // streams is Ingest → Streams: every gateway stream with its sink and dead
@@ -474,9 +488,9 @@ func (u *UI) dataEndpoint(w http.ResponseWriter, r *http.Request) {
 // value is a 404, not a 400.
 const targetCeiling = 512
 
-// targetTools fills in what a destination's page offers beyond its loads --
-// the endpoints that read it, and, where a SQL service answers for it, the
-// Preview tab -- for the destination page and a load's page alike.
+// targetTools fills in what a destination offers beyond its loads -- the
+// endpoints that read it, and whether a SQL service answers for it, for the
+// link to the workbench -- for the catalog's drawer and a load's alike.
 func (u *UI) targetTools(r *http.Request, v *pages.TargetView, target string) error {
 	if u.endpoints != nil {
 		readers, err := u.endpoints.Reading(r.Context(), target)
@@ -486,39 +500,19 @@ func (u *UI) targetTools(r *http.Request, v *pages.TargetView, target string) er
 		v.ReadBy = pages.ReadersOf(readers)
 	}
 
-	// NO SERVICE, NO TABS. A tab that always answers "not configured" is a
-	// question nobody can act on.
+	// NO SERVICE, NO QUERY. A link to a workbench that always answers "not
+	// configured" is a question nobody can act on.
 	v.Tabs = u.dataTools(target)
-	if v.Tabs {
-		v.Tab = r.URL.Query().Get("tab")
-	}
 
-	// ONE TAB NOW. The destination previews; the workbench queries. See
-	// TargetView.WorkbenchHref for why that is not a second tab.
-	//
-	// ASKED ONLY WHEN ASKED FOR. A preview costs a warehouse query, and
-	// drawing one on every visit to a destination page would mean a query per
-	// page view, charged to somebody, for rows nobody looked at. `?tab=preview`
-	// is a link, which also makes it shareable the way /data's filters are.
-	if v.Tab == "preview" {
-		res, err := u.preview.Preview(r.Context(), target, previewRows)
-		switch {
-		case errors.Is(err, sqlserve.ErrNoConnection):
-			v.PreviewErr = pages.NoConnectionFor(target)
-		case err != nil:
-			// The client already decided which of the service's words may be
-			// repeated; this is a view and does not decide it again.
-			v.PreviewErr = err.Error()
-		default:
-			v.Preview = &res
-		}
-	}
 	return nil
 }
 
-// loadDetail is one step landing on one destination. A step that writes
-// several asks which (?target=); one that writes nothing, or a target it does
-// not write, is not found.
+// loadDetail is one step landing on one destination (screen-loads T4): the
+// loads list with its drawer drawn open, at the address its page had, so a
+// link works with no script; the row's script asks for the drawer alone
+// (X-Brevis-Fragment: load). A step that writes several asks which in the
+// drawer (?target=); one that writes nothing, or a destination it does not
+// write, is the list with a note.
 func (u *UI) loadDetail(w http.ResponseWriter, r *http.Request) {
 	workflow, step := r.PathValue("workflow"), r.PathValue("step")
 	if u.catalog == nil {
@@ -530,6 +524,16 @@ func (u *UI) loadDetail(w http.ResponseWriter, r *http.Request) {
 		u.failure(w, r, err)
 		return
 	}
+	configs, err := u.catalog.StepConfigs(r.Context())
+	if err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	pages.AttachStepConfigs(entries, configs)
+	f := pages.ParseDataFilter(r.URL.Query())
+	f.Path = "/ingest/loads"
+	v := pages.BuildLoads(entries, f, time.Now())
+
 	var uris []string
 	for _, e := range entries {
 		for _, wr := range e.Writers {
@@ -538,47 +542,66 @@ func (u *UI) loadDetail(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if len(uris) == 0 {
-		http.NotFound(w, r)
-		return
-	}
-	self := "/ingest/loads/" + url.PathEscape(workflow) + "/" + url.PathEscape(step)
 	target := r.URL.Query().Get("target")
-	switch {
-	case target == "" && len(uris) == 1:
+	if target == "" && len(uris) == 1 {
 		target = uris[0]
-	case target == "":
-		choices := make([]pages.LoadChoice, 0, len(uris))
-		for _, uri := range uris {
-			choices = append(choices, pages.LoadChoice{URI: uri, Href: self + "?target=" + url.QueryEscape(uri)})
-		}
-		u.render(w, r, pages.LoadChooser(workflow, step, choices))
-		return
-	case !slices.Contains(uris, target):
-		http.NotFound(w, r)
-		return
 	}
-	if len(uris) > 1 {
-		self += "?target=" + url.QueryEscape(target)
+	if len(uris) == 0 || target != "" && !slices.Contains(uris, target) {
+		if fragment(r) == "load" {
+			http.NotFound(w, r)
+			return
+		}
+		v.Missing = workflow + " · " + step
+		u.render(w, r, pages.Loads(v))
+		return
 	}
 
-	d, err := u.catalog.CatalogTarget(r.Context(), target)
-	if err != nil {
-		u.failure(w, r, err)
+	self := "/ingest/loads/" + url.PathEscape(workflow) + "/" + url.PathEscape(step)
+	load := &pages.LoadView{Workflow: workflow, Step: step}
+	if target != "" {
+		d, err := u.catalog.CatalogTarget(r.Context(), target)
+		if err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		if d == nil {
+			http.NotFound(w, r)
+			return
+		}
+		*load = pages.BuildLoad(*d, workflow, step, time.Now())
+		load.Read = u.rowsRead(r.Context(), *load, step)
+		if err := u.targetTools(r, &load.TargetView, target); err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		load.Source = pages.SourceOf(configs[postgres.StepKey{Workflow: workflow, Node: step, Target: target}])
+
+		// RUN NOW, AS THE WORKFLOWS LIST DOES IT: at once with no
+		// parameters, and to the Run drawer to ask them otherwise. Nothing
+		// to press where there is no scheduler to ask, or no definition to
+		// say which.
+		if u.actions != nil && u.defs != nil {
+			if def, err := u.defs.Definition(r.Context(), workflow); err == nil {
+				load.Run = "now"
+				if len(def.Params) > 0 {
+					load.Run = "params"
+				}
+			}
+		}
+		load.Back = r.URL.RequestURI()
+	}
+	if len(uris) > 1 {
+		for _, uri := range uris {
+			load.Choices = append(load.Choices, pages.LoadChoice{URI: uri,
+				Href: self + "?target=" + url.QueryEscape(uri), Current: uri == target})
+		}
+	}
+	v.Drawer = load
+	if fragment(r) == "load" {
+		u.render(w, r, pages.LoadDrawer(v))
 		return
 	}
-	if d == nil {
-		http.NotFound(w, r)
-		return
-	}
-	v := pages.BuildLoad(*d, workflow, step, time.Now())
-	v.Self = self
-	v.Read = u.rowsRead(r.Context(), v, step)
-	if err := u.targetTools(r, &v.TargetView, target); err != nil {
-		u.failure(w, r, err)
-		return
-	}
-	u.render(w, r, pages.Load(v))
+	u.render(w, r, pages.Loads(v))
 }
 
 // rowsRead asks the newest load's run what its step read (screen-load-v2
@@ -606,13 +629,6 @@ func (u *UI) rowsRead(ctx context.Context, v pages.LoadView, step string) *int64
 	}
 	return pages.RowsRead(states[step].Stages)
 }
-
-// previewRows is how many a destination page draws.
-//
-// The SERVICE has the ceiling and this cannot raise it; this is a request for
-// fewer, and the number is here because it is a question about a SCREEN --
-// twenty rows is what somebody glances at to see the shape of a table.
-const previewRows = 20
 
 // queryRows is how many a query draws, and statementCeiling how long a
 // statement may be.
@@ -861,13 +877,11 @@ func (u *UI) palette(w http.ResponseWriter, r *http.Request) {
 				items = append(items, paletteEntry("Streams", "POST "+s.Path, g.Name, s.Href(), "cloud"))
 			}
 		}
-		for _, g := range pages.LoadsOf(entries, time.Now()) {
-			for _, t := range g.Targets {
-				if t.URI == "" {
-					continue
-				}
-				items = append(items, paletteEntry("Loads", t.Step+" → "+t.URI, g.Workflow, t.Href(), "download"))
+		for _, t := range pages.LoadsOf(entries, time.Now()) {
+			if t.URI == "" {
+				continue
 			}
+			items = append(items, paletteEntry("Loads", t.Step+" → "+t.URI, t.Workflow, t.Href(), "download"))
 		}
 	}
 	if u.endpoints != nil {
@@ -1824,7 +1838,8 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		u.log.Info("manual run created", "workflow", slug, "run", id)
 		ctx := i18n.WithLang(r.Context(), i18n.Negotiate(r))
 		message, follow := i18n.T(ctx, "overview.rerun_created", "workflow", slug), i18n.T(ctx, "overview.follow")
-		if strings.HasPrefix(back, "/workflows") {
+		// A run from a workflow or a load is a new one, not a rerun.
+		if strings.HasPrefix(back, "/workflows") || strings.HasPrefix(back, "/ingest/loads") {
 			message, follow = i18n.T(ctx, "workflows.run_created", "workflow", slug), i18n.T(ctx, "workflows.see_logs")
 		}
 		layouts.SetFlashLink(w, "run", message, follow, next)

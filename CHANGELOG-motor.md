@@ -16,6 +16,58 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: Batch loads, one row per step, from where to where
+
+- **`/ingest/loads` is one row per step and destination**, worst first and,
+  within a status, the most recently loaded first -- the Catalog's order --
+  instead of a group per workflow. Each row: the workflow and the step with
+  its schedule in words; **where the step reads**, then the destination; its
+  status and the run that is fixing it; the last load; its rows; and its last
+  12 loads.
+- **The origin is what the step declared.** The Go SDK's sources are named by
+  kind and place: HTTP with its URL, files with their path, Postgres and
+  MySQL with `host/database`; another driver is named by its type. A step
+  that describes nothing (Python, dbt, shell) says "not declared" -- it is
+  never guessed. Read in one query of every step's current configuration
+  (`StepConfigs`), ~3 ms over 100 steps with 10 versions each.
+- **The filters are the Catalog's**: the status band (All, Needs attention,
+  and each status a step can have) with its counts and rules; the origin
+  (HTTP, files, database, other, not declared, as present); Show legacy,
+  which now adds the legacy labels to the rest, as in the Catalog, instead
+  of showing them alone; and a search over the workflow, the step, the
+  origin and the destination, on the server, that answers while you type.
+  The destination's kind filter is the Catalog's alone now.
+- **A load opens in a drawer over the list**, at the address its page had
+  (`/ingest/loads/{workflow}/{step}`), so links keep working: how it stands
+  and why; where it reads and writes, with Copy and the way to the
+  destination in the Catalog; when it runs and its last load, with the rows
+  it read; its last loads as bars, each opening its run, with how to read a
+  sudden drop; its configuration, its recent loads and what reads its
+  destination; See workflow, Query destination where a SQL service
+  answers, and **Run now**: a workflow with no parameters runs at once and
+  comes back to the same drawer with the run's link -- "Run of … created",
+  not "Rerun" -- and one with parameters opens its Run drawer. A step writing several destinations asks which in the drawer; a
+  step that writes nothing is the list with a note. The × goes back to the
+  list as it was filtered.
+- **A writer's configuration speaks the reader's language**: its one-line
+  summary, the tabs, the stages, the flow, what the sources share, the
+  schema and the changes, wherever it is drawn -- a load's drawer, a
+  destination's in the Catalog, a stream's page. The settings' names and
+  values are the data's own and stay as written. (A gateway's dead letter
+  is still described in English, until the Streams screen.)
+- **A row opens its load's drawer in place**, as the Catalog's do: the
+  address follows, Esc, the × and the backdrop close it back to the list as
+  it was filtered, Back and Forward close and open it, and a destination
+  choice swaps it without a new step in the history. One script serves both
+  screens: a list names its drawer (`data-drawer-list`).
+- **The load's Preview tab is gone**, with the page: the drawer is narrow,
+  and Query destination opens the workbench on the same table. A load never
+  asks the warehouse anything now.
+- **A summary** counts the destinations, the workflows and each status, and
+  leads to the Catalog under the same status; "See workflows" is in the header, and the footer says
+  that writes made outside Brevis do not show.
+- In English, Portuguese and Spanish.
+
 ### Added: the Data catalog is back
 
 - **`/data` is the catalog again** (it had answered 301 to Loads since the

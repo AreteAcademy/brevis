@@ -44,9 +44,8 @@ func TestNothingScriptOnlyIsRevealedAfterThePaint(t *testing.T) {
 		ui                 *api.UI
 	}{
 		{"the ⌘K opener", "/ingest/loads", "data-palette-open", loads},
-		{"a group toggle", "/ingest/loads", "data-group-toggle", loads},
 		{"the Live switch", "/runs", `data-live-list="runs-list"`, runs},
-		{"Copy URI", "/ingest/loads/orders_sync/load", `data-copy="#destination-uri"`, load},
+		{"Copy destination", "/ingest/loads/orders_sync/load", `data-copy="#load-uri"`, load},
 		{"the stream's tab bar", "/ingest/streams/edge/v1/clicks", "data-hash-tabs-bar", stream},
 		{"the workbench's tabs", "/sql", "data-tabs", sql},
 		{"the recent rail", "/sql", `id="recent"`, sql},
@@ -132,7 +131,7 @@ func TestThePageTitleIsCompact(t *testing.T) {
 	if !strings.Contains(h1, "text-[20px]") || !strings.Contains(h1, "font-semibold") {
 		t.Errorf("the title is not 20px/600: %s", h1)
 	}
-	_, mono := get(t, loadUI(lateDetail(), nil), "/ingest/loads/orders_sync/load")
+	_, mono := get(t, dataUI(catalogFake{entries: gatewayCatalog()}), "/ingest/streams/edge/v1/clicks")
 	h1 = mono[strings.Index(mono, "<h1"):]
 	h1 = h1[:strings.Index(h1, ">")]
 	if !strings.Contains(h1, "text-[18px]") || !strings.Contains(h1, "font-mono") {

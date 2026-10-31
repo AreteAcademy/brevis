@@ -2,9 +2,11 @@ package pages
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // loadConfiguration is a step's configuration on its load's page, in tabs
@@ -15,24 +17,23 @@ import (
 templ loadConfiguration(v LoadView) {
 	if c, ok := v.StepConfig(); ok {
 		if !c.Described {
-			@components.Panel("Configuration", "") {
+			@components.Panel(i18n.T(ctx, "config.title"), "") {
 				<p data-config={ c.Key() } class="px-3.5 py-3 text-[12.5px] text-muted">
-					This step did not describe itself. Only the Go SDK sends its configuration; a Python, dbt or shell step lands without one.
-					To see what it runs, open <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">the workflow's definition</a>.
+					{ i18n.T(ctx, "config.undescribed") } <a href={ templ.SafeURL("/workflows/" + c.Workflow) } class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "config.definition") }</a>.
 				</p>
 			}
 		} else {
 			{{ t := LoadConfigTabs(c.Config) }}
-			{{ tabs := loadTabs(t) }}
+			{{ tabs := loadTabs(ctx, t) }}
 			@templ.Raw("<style>" + hashTabsCSS("load-config", tabKeys(tabs)...) + "</style>")
-			@components.Panel("Configuration", "") {
+			@components.Panel(i18n.T(ctx, "config.title"), "") {
 				<div id="load-config" data-hash-tabs data-config={ c.Key() }>
 					<div data-hash-tabs-bar data-js class="px-2 pt-1">
-						@components.Tabs("Configuration", tabs)
+						@components.Tabs(i18n.T(ctx, "config.title"), tabs)
 					</div>
 					<section id="summary" data-tab-panel="summary">
-						<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">Summary</h3>
-						<p class="px-3.5 py-3 text-[12.5px] text-ink" data-summary>{ c.Config.Summary }</p>
+						<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">{ i18n.T(ctx, "config.tab.summary") }</h3>
+						<p class="px-3.5 py-3 text-[12.5px] text-ink" data-summary>{ c.Config.SummaryIn(ctx) }</p>
 						@stageRow(t)
 						if c.Flow != nil {
 							<div class="border-t border-line-soft">
@@ -46,26 +47,26 @@ templ loadConfiguration(v LoadView) {
 						}
 						for _, s := range t.Other {
 							<div class="border-t border-line-soft">
-								<h4 class="px-3.5 pt-2.5 text-[12px] font-semibold text-ink">{ s.Title }</h4>
+								<h4 class="px-3.5 pt-2.5 text-[12px] font-semibold text-ink">{ s.TitleIn(ctx) }</h4>
 								@cfgRows(s.Rows)
 							</div>
 						}
 					</section>
 					if hasTab(tabs, "sources") {
 						<section id="sources" data-tab-panel="sources">
-							<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">Sources</h3>
+							<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">{ i18n.T(ctx, "config.tab.sources") }</h3>
 							@cfgRows(t.SourceHead)
 							if t.SourceCount > 0 {
 								<div data-common class="flex flex-wrap items-center gap-1.5 border-t border-line-soft px-3.5 py-2.5 text-[12px]">
-									<span class="font-medium text-ink">Common to { fmt.Sprint(t.SourceCount) }:</span>
+									<span class="font-medium text-ink">{ i18n.T(ctx, "config.common", "n", fmt.Sprint(t.SourceCount)) }</span>
 									if len(t.Common) == 0 {
-										<span class="text-faint">nothing, every setting differs somewhere</span>
+										<span class="text-faint">{ i18n.T(ctx, "config.common.none") }</span>
 									}
 									for _, r := range t.Common {
 										<span data-path={ "sources.*." + r.Label } title={ r.Note } class="rounded-[4px] border border-line-strong px-1.5 font-mono text-[11.5px] text-ink-2">
 											<span class="text-faint">{ r.Label }</span> { r.Value }
 											if r.Default {
-												<span class="text-faint">(default)</span>
+												<span class="text-faint">({ i18n.T(ctx, "config.default") })</span>
 											}
 										</span>
 									}
@@ -92,7 +93,7 @@ templ loadConfiguration(v LoadView) {
 																<td data-path={ cell.Path } title={ cellTitle(*cell) } class="max-w-[28rem] truncate px-3 font-mono text-[12px] text-ink">
 																	{ cell.Value }
 																	if cell.Default {
-																		<span class="text-faint">(default)</span>
+																		<span class="text-faint">({ i18n.T(ctx, "config.default") })</span>
 																	}
 																</td>
 															}
@@ -108,7 +109,7 @@ templ loadConfiguration(v LoadView) {
 					}
 					if hasTab(tabs, "transform") {
 						<section id="transform" data-tab-panel="transform">
-							<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">Transform</h3>
+							<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">{ i18n.T(ctx, "config.tab.transform") }</h3>
 							<ol class="divide-y divide-line-soft">
 								for _, op := range t.Transform {
 									<li class="flex gap-3 px-3.5 py-2 text-[12.5px]">
@@ -134,23 +135,23 @@ templ loadConfiguration(v LoadView) {
 						</section>
 					}
 					<section id="destination" data-tab-panel="destination">
-						<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">Destination</h3>
+						<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">{ i18n.T(ctx, "config.tab.destination") }</h3>
 						<div class="px-3.5 py-3">
-							@components.DefinitionList(destinationIdentity(v.TargetView))
+							@components.DefinitionList(destinationIdentity(ctx, v.TargetView))
 						</div>
 						@cfgRows(t.Destination)
 					</section>
 					if hasTab(tabs, "schema") {
 						<section id="schema" data-tab-panel="schema">
-							<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">Schema</h3>
+							<h3 data-panel-heading class="px-3.5 pt-3 text-[12.5px] font-semibold text-ink">{ i18n.T(ctx, "config.tab.schema") }</h3>
 							if len(t.Schema) > 0 {
 								<div class="overflow-x-auto">
 									<table class="ct w-full text-[12.5px]">
 										<thead>
 											<tr class="text-left">
-												@th("Column", "pl-3.5")
-												@th("Type", "")
-												@th("Role", "pr-3.5")
+												@th(i18n.T(ctx, "config.schema.column"), "pl-3.5")
+												@th(i18n.T(ctx, "config.schema.type"), "")
+												@th(i18n.T(ctx, "config.schema.role"), "pr-3.5")
 											</tr>
 										</thead>
 										<tbody class="divide-y divide-line-soft">
@@ -158,7 +159,7 @@ templ loadConfiguration(v LoadView) {
 												<tr>
 													<td class="px-3 pl-3.5 font-mono text-ink">{ col.Name }</td>
 													<td class="px-3 font-mono text-[12px] text-muted">{ col.Type }</td>
-													<td class="px-3 pr-3.5 text-muted">{ col.Role }</td>
+													<td class="px-3 pr-3.5 text-muted">{ schemaRole(ctx, col.Role) }</td>
 												</tr>
 											}
 										</tbody>
@@ -179,35 +180,35 @@ templ loadConfiguration(v LoadView) {
 templ stageRow(t LoadTabs) {
 	<ol data-stage-row class="grid grid-cols-1 gap-px border-t border-line-soft bg-line-soft min-[760px]:grid-cols-3">
 		<li class="min-w-0 bg-surface px-3.5 py-2 text-[12px]">
-			<p class="font-medium text-ink">source <span class="font-mono font-normal text-muted">{ rowValue(t.SourceHead, "driver") }</span></p>
+			<p class="font-medium text-ink">{ i18n.T(ctx, "config.stage.source") } <span class="font-mono font-normal text-muted">{ rowValue(t.SourceHead, "driver") }</span></p>
 			<p class="mt-0.5 text-muted">
 				if t.SourceCount > 0 {
-					<b class="font-mono font-medium text-ink-2">{ fmt.Sprint(t.SourceCount) }</b> sources
-					if w := rowValue(t.SourceHead, "workers"); w != "" {
-						· { w } workers
+					{ i18n.N(ctx, "config.stage.sources", t.SourceCount) }
+					if w, err := strconv.Atoi(rowValue(t.SourceHead, "workers")); err == nil {
+						· { i18n.N(ctx, "config.stage.workers", w) }
 					}
 				} else {
-					one source
+					{ i18n.T(ctx, "config.stage.one_source") }
 				}
 			</p>
 		</li>
 		<li class="min-w-0 bg-surface px-3.5 py-2 text-[12px]">
-			<p class="font-medium text-ink">transform <span class="font-mono font-normal text-muted">{ plural(len(t.Transform), "stage") }</span></p>
+			<p class="font-medium text-ink">{ i18n.T(ctx, "config.stage.transform") } <span class="font-mono font-normal text-muted">{ i18n.N(ctx, "config.stage.stages", len(t.Transform)) }</span></p>
 			<p title={ transformNames(t) } class="mt-0.5 truncate text-muted">
 				if len(t.Transform) == 0 {
-					rows pass as read
+					{ i18n.T(ctx, "config.stage.as_read") }
 				} else {
 					{ transformNames(t) }
 				}
 			</p>
 		</li>
 		<li class="min-w-0 bg-surface px-3.5 py-2 text-[12px]">
-			<p class="font-medium text-ink">target <span class="font-mono font-normal text-muted">{ rowValue(t.Destination, "driver") }</span></p>
+			<p class="font-medium text-ink">{ i18n.T(ctx, "config.stage.target") } <span class="font-mono font-normal text-muted">{ rowValue(t.Destination, "driver") }</span></p>
 			<p class="mt-0.5 text-muted">
 				if d := rowValue(t.Destination, "dedup"); d != "" {
 					dedup { d }
 				} else {
-					appends
+					{ i18n.T(ctx, "config.stage.appends") }
 				}
 			</p>
 		</li>
@@ -230,12 +231,12 @@ templ cfgRows(rows []ConfigRow) {
 					<div class="font-mono text-[12px] break-all text-muted">{ r.Label }</div>
 					<div class="text-[12px]">
 						if r.Value == "" {
-							<span class="text-muted">empty</span>
+							<span class="text-muted">{ i18n.T(ctx, "config.empty") }</span>
 						} else {
 							<span class="font-mono break-all text-ink">{ r.Value }</span>
 						}
 						if r.Default {
-							<span class="ml-2 rounded-card border border-line px-1 py-px text-[0.65rem] text-muted" title="Not written in the file: the value the gateway filled in">default</span>
+							<span class="ml-2 rounded-card border border-line px-1 py-px text-[0.65rem] text-muted" title={ i18n.T(ctx, "config.default.tip") }>{ i18n.T(ctx, "config.default") }</span>
 						}
 						if r.Note != "" {
 							<div class="mt-1">
@@ -252,7 +253,7 @@ templ cfgRows(rows []ConfigRow) {
 // loadChanges is the configuration's history, beside the page.
 templ loadChanges(v LoadView) {
 	if c, ok := v.StepConfig(); ok && c.Described && len(c.Config.Changes) > 0 {
-		@components.Panel("Configuration changes", fmt.Sprint(len(c.Config.Changes))) {
+		@components.Panel(i18n.T(ctx, "config.changes.title"), fmt.Sprint(len(c.Config.Changes))) {
 			<ol class="divide-y divide-line-soft">
 				for _, ch := range c.Config.Changes {
 					<li class="px-3.5 py-2 text-[12px]" data-change>
@@ -263,16 +264,16 @@ templ loadChanges(v LoadView) {
 							<a href={ templ.SafeURL("/runs/" + ch.RunID) } class="ml-2 font-mono text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ shortID(ch.RunID) }</a>
 						}
 						if ch.First {
-							<span class="ml-2 text-muted">First recorded</span>
+							<span class="ml-2 text-muted">{ i18n.T(ctx, "config.first_recorded") }</span>
 						} else if len(ch.Lines) == 0 {
-							<span class="ml-2 text-muted">Earlier changes are not shown</span>
+							<span class="ml-2 text-muted">{ i18n.T(ctx, "config.earlier") }</span>
 						}
 						if len(ch.Lines) > 0 {
 							<ul class="mt-1 space-y-0.5">
 								for _, l := range ch.Lines {
 									<li>
 										<span class="font-mono text-muted">{ l.Path }</span>
-										<span class="ml-2 font-mono break-all text-ink">{ l.Text }</span>
+										<span class="ml-2 font-mono break-all text-ink">{ l.TextIn(ctx) }</span>
 									</li>
 								}
 							</ul>
@@ -284,99 +285,19 @@ templ loadChanges(v LoadView) {
 	}
 }
 
-// loadPreview is the destination's first rows on a load's page: still on
-// demand (the Preview link), and once loaded without the columns that hold
-// nothing -- marked by the server, hidden by a switch only a script can
-// work, so with no script every column shows -- and with the SDK's own
-// columns last, under "metadata".
-templ loadPreview(v LoadView) {
-	if v.Tabs {
-		<section>
-			<nav class="mb-3 flex items-center gap-1 border-b border-line-soft text-sm" aria-label="Destination tools">
-				@tab(v.TargetView, "preview", "Preview")
-			</nav>
-			if v.Tab == "preview" && v.HasPreview() {
-				if v.PreviewErr != "" {
-					<p class="rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.PreviewErr }</p>
-				} else if v.Preview != nil {
-					{{ nulls := NullColumns(v.Preview) }}
-					{{ order, meta := previewOrder(v.Preview) }}
-					{{ note := hiddenNote(v.Preview, nulls) }}
-					<div data-preview data-hide-null>
-						if note != "" {
-							<div data-js class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
-								<button type="button" role="switch" aria-checked="true" data-null-toggle class="inline-flex items-center gap-2 text-ink">
-									<span aria-hidden="true" class="relative inline-block h-[14px] w-[24px] rounded-full bg-line-strong transition-colors [[aria-checked=true]>&]:bg-state-success">
-										<span class="absolute top-[2px] left-[2px] h-[10px] w-[10px] rounded-full bg-surface transition-transform [[aria-checked=true]>span>&]:translate-x-[10px]"></span>
-									</span>
-									Hide null-only columns
-								</button>
-								<span data-null-note>{ note }</span>
-							</div>
-						}
-						<div class="overflow-x-auto rounded-card border border-line-soft">
-							<table class="ct w-full text-sm">
-								<thead class="border-b border-line-soft text-left text-xs text-muted">
-									<tr>
-										for j, i := range order {
-											if nulls[i] {
-												<th data-null-col class="px-3 py-2 align-bottom font-medium whitespace-nowrap">
-													@previewHead(v.Preview.Columns[i], j >= len(order)-meta)
-												</th>
-											} else {
-												<th class="px-3 py-2 align-bottom font-medium whitespace-nowrap">
-													@previewHead(v.Preview.Columns[i], j >= len(order)-meta)
-												</th>
-											}
-										}
-									</tr>
-								</thead>
-								<tbody class="divide-y divide-line-soft">
-									for _, row := range v.Preview.Rows {
-										<tr>
-											for _, i := range order {
-												if nulls[i] {
-													<td data-null-col class="px-3 py-2 text-xs whitespace-nowrap">{ Cell(cellAt(row, i)) }</td>
-												} else {
-													<td class="px-3 py-2 text-xs whitespace-nowrap">{ Cell(cellAt(row, i)) }</td>
-												}
-											}
-										</tr>
-									}
-								</tbody>
-							</table>
-						</div>
-						<p class="mt-2 text-xs text-muted">{ v.PreviewNote() }</p>
-					</div>
-				}
-			}
-		</section>
-	}
-}
-
-// previewHead is a column's name, captioned "metadata" when it is one of
-// the SDK's own -- a caption in the header and not a group row above, so a
-// column the switch hides cannot leave a group's span wrong.
-templ previewHead(name string, metadata bool) {
-	if metadata {
-		<span class="block text-[10.5px] font-normal text-faint">metadata</span>
-	}
-	{ name }
-}
-
-// loadRecent is the step's recent loads beside its page (screen-load-v2 LV5):
-// when, rows, bytes and the run, each a 34px row. No step column -- it is
-// always this page's step, already in the head.
+// loadRecent is the step's recent loads in its drawer (screen-load-v2 LV5,
+// screen-loads T4): when, rows, bytes and the run, each a 34px row. No step
+// column -- it is always this drawer's step, already in the head.
 templ loadRecent(v LoadView) {
-	@components.Panel("Recent loads", loadsCount(len(v.Loads))) {
+	@components.Panel(i18n.T(ctx, "loads.drawer.recent"), loadsCount(ctx, len(v.Loads))) {
 		<div class="max-h-[28rem] overflow-auto">
 			<table class="ct w-full text-[12.5px]">
 				<thead class="sticky top-0 bg-surface">
 					<tr class="text-left">
-						@th("Loaded", "pl-3.5")
-						@th("Rows", "text-right")
-						@th("Bytes", "text-right")
-						@th("Run", "pr-3.5")
+						@th(i18n.T(ctx, "loads.drawer.recent.at"), "pl-3.5")
+						@th(i18n.T(ctx, "loads.col.rows"), "text-right")
+						@th(i18n.T(ctx, "loads.drawer.recent.bytes"), "text-right")
+						@th(i18n.T(ctx, "loads.drawer.recent.run"), "pr-3.5")
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-line-soft">

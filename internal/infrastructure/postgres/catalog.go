@@ -456,6 +456,43 @@ func (r *ReadRepo) StreamConfigs(ctx context.Context) (map[StreamKey]*WriterConf
 	return out, rows.Err()
 }
 
+// StepKey names one step writing one destination: a step that writes two
+// has a configuration for each.
+type StepKey struct{ Workflow, Node, Target string }
+
+// StepConfigs is every step's current configuration on each destination it
+// writes, in one query, for the loads list's origin column (screen-loads) --
+// the catalog read leaves them out, and one CatalogTarget per row would be a
+// query per load. The newest line of step_config_history is the current one,
+// as on the destination's page; no history here. A step that never described
+// itself is absent.
+func (r *ReadRepo) StepConfigs(ctx context.Context) (map[StepKey]*WriterConfig, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT ON (h.workflow_slug, h.node_id, h.target)
+		       h.workflow_slug, h.node_id, h.target, h.config_hash, c.body
+		FROM step_config_history h
+		JOIN writer_configs c ON c.hash = h.config_hash
+		ORDER BY h.workflow_slug, h.node_id, h.target, h.first_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[StepKey]*WriterConfig{}
+	for rows.Next() {
+		var k StepKey
+		var c WriterConfig
+		var body []byte
+		if err := rows.Scan(&k.Workflow, &k.Node, &k.Target, &c.Hash, &body); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(body, &c.Fields); err != nil {
+			return nil, err
+		}
+		out[k] = &c
+	}
+	return out, rows.Err()
+}
+
 // gatewayHistories reads the configurations each gateway writer on one
 // destination has had, in one round trip.
 func (r *ReadRepo) gatewayHistories(ctx context.Context, target string, writers []CatalogWriter) error {

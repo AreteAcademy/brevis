@@ -1,7 +1,9 @@
 package pages
 
 import (
+	"context"
 	"fmt"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"strconv"
 	"strings"
 	"time"
@@ -14,8 +16,9 @@ import (
 // writer's own note, then its settings in sections, in the order the
 // writer declared them.
 type ConfigView struct {
-	// Summary is the configuration in one sentence. See Summary.
-	Summary string
+	// config is what the summary is written from, in the reader's language
+	// when the page is drawn (SummaryIn).
+	config *postgres.WriterConfig
 
 	// Note is the comment on the writer as a whole -- for a gateway, the one
 	// above `- name:`, which is usually the contract its producers follow.
@@ -29,6 +32,15 @@ type ConfigView struct {
 	// DeadLetter is where a gateway stream's refused batches go and how to get
 	// them back; nil for a writer that published none.
 	DeadLetter *DeadLetterView
+}
+
+// SummaryIn is the configuration in one sentence, in the reader's language.
+// See Summary.
+func (v ConfigView) SummaryIn(ctx context.Context) string {
+	if v.config == nil {
+		return ""
+	}
+	return Summary(ctx, v.config)
 }
 
 // DeadLetterView is the dead-letter panel of a gateway stream (#86): where the
@@ -82,7 +94,9 @@ func deadLetterOf(c *postgres.WriterConfig) *DeadLetterView {
 		write = text("sink.into.write")
 	}
 	return &DeadLetterView{
-		Where:    destination(text, "dead_letter", true),
+		// In English until the Streams screen speaks the reader's language
+		// (screen-streams): the panel is built before the page is drawn.
+		Where:    destination(context.Background(), text, "dead_letter", true),
 		Stream:   text("name"),
 		Readable: kind == "files",
 		Write:    write,
@@ -105,13 +119,17 @@ type ConfigChange struct {
 
 // ChangeLine is one setting's change, in words: "1m → 2m".
 type ChangeLine struct {
-	Path, Text string
+	Path   string
+	change catalog.Change
 }
+
+// TextIn is the change as a person reads it, in the reader's language.
+func (l ChangeLine) TextIn(ctx context.Context) string { return changeText(ctx, l.change) }
 
 // ConfigSection is one block of settings: `buffer`, `sink`. Settings with no
 // block of their own -- name, path, format -- are the "Stream" section.
 type ConfigSection struct {
-	Key, Title string
+	Key string
 
 	// Note is the comment on the block's own key.
 	Note string
@@ -178,7 +196,7 @@ func (w WriterConfigView) Key() string {
 // BuildConfig lays a configuration out by its paths alone, so a setting a
 // writer adds tomorrow has a place on the page with no change here.
 func BuildConfig(c *postgres.WriterConfig) ConfigView {
-	v := ConfigView{Summary: Summary(c), Note: c.Notes[""], DeadLetter: deadLetterOf(c)}
+	v := ConfigView{config: c, Note: c.Notes[""], DeadLetter: deadLetterOf(c)}
 	index := map[string]int{}
 	before := map[string]bool{}
 
@@ -191,7 +209,7 @@ func BuildConfig(c *postgres.WriterConfig) ConfigView {
 		if !ok {
 			i = len(v.Sections)
 			index[key] = i
-			sec := ConfigSection{Key: key, Title: sectionTitle(key)}
+			sec := ConfigSection{Key: key}
 			// The Stream section's key is "", which is also where the
 			// writer's own note lives -- already shown above the sections.
 			if key != "" {
@@ -236,33 +254,48 @@ func buildChanges(h []postgres.ConfigVersion) []ConfigChange {
 			continue
 		}
 		for _, c := range catalog.Diff(h[i+1].Fields, version.Fields) {
-			out[i].Lines = append(out[i].Lines, ChangeLine{Path: c.Path, Text: changeText(c)})
+			out[i].Lines = append(out[i].Lines, ChangeLine{Path: c.Path, change: c})
 		}
 	}
 	return out
 }
 
 // changeText is one change as a person reads it.
-func changeText(c catalog.Change) string {
+func changeText(ctx context.Context, c catalog.Change) string {
 	switch c.Kind {
 	case catalog.Added:
-		return "added: " + valueText(c.After)
+		return i18n.T(ctx, "config.change.added", "value", valueText(c.After))
 	case catalog.Removed:
-		return "removed (was " + valueText(c.Before) + ")"
+		return i18n.T(ctx, "config.change.removed", "value", valueText(c.Before))
 	case catalog.NowWritten:
-		return valueText(c.After) + ", now written in the file"
+		return i18n.T(ctx, "config.change.written", "value", valueText(c.After))
 	case catalog.NowDefault:
-		return valueText(c.After) + ", now the default"
+		return i18n.T(ctx, "config.change.default", "value", valueText(c.After))
 	}
 	return valueText(c.Before) + " → " + valueText(c.After)
 }
 
-// sectionTitle is a block's key as a heading: `dead_letter` is "Dead letter".
-func sectionTitle(key string) string {
-	if key == "" {
-		return "Stream"
+// TitleIn is a block's key as a heading, in the reader's language for the
+// blocks every writer has: `dead_letter` is "Dead letter". A block somebody
+// adds tomorrow is its own key, made a heading.
+func (s ConfigSection) TitleIn(ctx context.Context) string {
+	switch s.Key {
+	case "":
+		return i18n.T(ctx, "config.section.stream")
+	case "source":
+		return i18n.T(ctx, "config.section.source")
+	case "transform":
+		return i18n.T(ctx, "config.section.transform")
+	case "target":
+		return i18n.T(ctx, "config.section.target")
+	case "sink":
+		return i18n.T(ctx, "config.section.sink")
+	case "buffer":
+		return i18n.T(ctx, "config.section.buffer")
+	case "dead_letter":
+		return i18n.T(ctx, "config.section.dead_letter")
 	}
-	t := strings.ReplaceAll(key, "_", " ")
+	t := strings.ReplaceAll(s.Key, "_", " ")
 	return strings.ToUpper(t[:1]) + t[1:]
 }
 

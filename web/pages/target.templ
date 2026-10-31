@@ -1,31 +1,9 @@
 package pages
 
 import (
-	"fmt"
 	"github.com/AreteAcademy/brevis/web/components"
 	"github.com/AreteAcademy/brevis/web/i18n"
 )
-
-// targetActions are the page's verbs. Copy URI is hidden until ui.js can
-// drive it. Query in SQL only where there is a SQL service to ask: the
-// workbench, not a second tab -- a preview is "show me this table", a query
-// joins and reaches across -- and it carries the destination, so nobody has
-// to find the connection again in a picker.
-templ targetActions(v TargetView) {
-	<span data-js>
-		@components.Button(components.ButtonSecondary, components.SizeRegular, templ.Attributes{"data-copy": "#destination-uri"}) {
-			@components.Icon("copy", "h-3.5 w-3.5")
-			Copy URI
-		}
-	</span>
-	if v.Tabs {
-		@components.ButtonLink(components.ButtonPrimary, components.SizeRegular, v.WorkbenchHref()) {
-			@components.Icon("terminal", "h-3.5 w-3.5")
-			Query in SQL
-		}
-	}
-}
-
 
 // configurations is how each writer of this destination is configured: its
 // settings by section, the default ones marked, and the config file's comments
@@ -55,7 +33,7 @@ templ configurations(v TargetView) {
 				</p>
 			} else {
 				<div class="divide-y divide-line-soft rounded-card border border-line bg-surface shadow-warm-sm">
-					<p class="px-4 py-3 text-sm text-ink sm:px-6" data-summary>{ c.Config.Summary }</p>
+					<p class="px-4 py-3 text-sm text-ink sm:px-6" data-summary>{ c.Config.SummaryIn(ctx) }</p>
 					if c.Flow != nil {
 						@flowDiagram(c.Flow)
 					}
@@ -69,7 +47,7 @@ templ configurations(v TargetView) {
 					}
 					for _, s := range c.Config.Sections {
 						<div class="px-4 py-3 sm:px-6">
-							<h4 class="text-xs font-semibold text-ink">{ s.Title }</h4>
+							<h4 class="text-xs font-semibold text-ink">{ s.TitleIn(ctx) }</h4>
 							if s.Note != "" {
 								<div class="mt-1">
 									@configNote(s.Note)
@@ -127,7 +105,7 @@ templ configurations(v TargetView) {
 												for _, l := range ch.Lines {
 													<li>
 														<span class="font-mono text-muted">{ l.Path }</span>
-														<span class="ml-2 font-mono break-all text-ink">{ l.Text }</span>
+														<span class="ml-2 font-mono break-all text-ink">{ l.TextIn(ctx) }</span>
 													</li>
 												}
 											</ul>
@@ -153,55 +131,6 @@ templ configNote(text string) {
 			<summary class="cursor-pointer hover:text-ink">{ NoteHead(text) }</summary>
 			<p class="mt-1 whitespace-pre-wrap">{ NoteRest(text) }</p>
 		</details>
-	}
-}
-
-// panels is the tab strip and whichever one is open.
-//
-// SERVER-RENDERED, like everything else here: `base.templ` states the rule --
-// "the HTML already arrives complete, the script only enriches it" -- and a
-// grid is exactly the thing somebody would reach for a framework to draw.
-// The tab is a LINK with a query parameter, which also makes it shareable,
-// the way /data's filters already are.
-templ panels(v TargetView) {
-	if v.Tabs {
-		<section>
-			<nav class="mb-4 flex items-center gap-1 border-b border-line-soft text-sm" aria-label="Destination tools">
-				@tab(v, "preview", "Preview")
-			</nav>
-			if v.Tab == "preview" {
-				@preview(v)
-			}
-		</section>
-	}
-}
-
-// tab is one link in the strip. `aria-current` is what says which one is open
-// to somebody who is not looking at the underline.
-templ tab(v TargetView, name, label string) {
-	if v.Tab == name {
-		<a
-			href={ templ.SafeURL(v.TabHref(name)) }
-			aria-current="page"
-			class="-mb-px border-b-2 border-ink px-3 py-2 font-medium text-ink"
-		>{ label }</a>
-	} else {
-		<a
-			href={ templ.SafeURL(v.TabHref(name)) }
-			class="-mb-px border-b-2 border-transparent px-3 py-2 text-muted hover:text-ink"
-		>{ label }</a>
-	}
-}
-
-// preview is the destination's first rows, when a SQL service answered.
-templ preview(v TargetView) {
-	if v.HasPreview() {
-		if v.PreviewErr != "" {
-			<p class="rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.PreviewErr }</p>
-		} else if v.Preview != nil {
-			@grid(v.Preview.Columns, v.Preview.Rows)
-			<p class="mt-2 text-xs text-muted">{ v.PreviewNote() }</p>
-		}
 	}
 }
 
@@ -275,7 +204,7 @@ templ flowDiagram(f *Flow) {
 				<li data-flow-node={ n.Kind } class={ "flow-step min-w-0 flex-1 rounded-card border bg-surface px-3 py-2", flowBorder(n.Kind) }>
 					<p class="flex items-center gap-1.5 text-[0.68rem] font-medium tracking-[0.08em] text-muted uppercase">
 						@components.Icon(flowIcon(n.Kind), "h-3.5 w-3.5")
-						{ n.Title }
+						{ flowTitle(ctx, n.Kind) }
 					</p>
 					<p class="mt-1 font-mono text-[0.78rem] break-all text-ink">{ n.Main }</p>
 					if n.Detail != "" {
@@ -289,7 +218,7 @@ templ flowDiagram(f *Flow) {
 				<div data-flow-node={ dl.Kind } class="flow-branch w-full min-w-0 rounded-card border border-dashed border-line px-3 py-2 min-[700px]:w-[calc((100%-1.5rem)/3)]">
 					<p class="flex items-center gap-1.5 text-[0.68rem] font-medium tracking-[0.08em] text-muted uppercase">
 						@components.Icon(flowIcon(dl.Kind), "h-3.5 w-3.5")
-						{ dl.Title }
+						{ flowTitle(ctx, dl.Kind) }
 					</p>
 					<p class="mt-1 font-mono text-[0.78rem] break-all text-ink">{ dl.Main }</p>
 					<p class="mt-0.5 text-[0.72rem] text-state-failed">{ dl.Detail }</p>
@@ -299,34 +228,3 @@ templ flowDiagram(f *Flow) {
 	</div>
 }
 
-// recentLoads is the destination's loads, newest first, each with its run.
-templ recentLoads(v TargetView) {
-	@components.Panel("Recent loads", fmt.Sprint(len(v.Loads))) {
-		<div class="overflow-x-auto">
-			<table class="ct w-full text-[0.82rem]">
-				<thead>
-					<tr class="border-b border-line bg-canvas-subtle text-left">
-						@th("Loaded", "pl-4")
-						@th("Step", "")
-						@th("Rows", "text-right")
-						@th("Bytes", "text-right")
-						@th("Run", "pr-4")
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-line-soft">
-					for _, l := range v.Loads {
-						<tr>
-							<td class="px-3 py-2 pl-4 font-mono text-[0.75rem] whitespace-nowrap text-muted tabular-nums">@components.ShortStamp(&l.LoadedAt)</td>
-							<td class="px-3 py-2 text-[0.78rem]"><span class="font-mono text-ink">{ l.Workflow }</span> <span class="text-muted">· { l.Node }</span></td>
-							<td class="px-3 py-2 text-right text-[0.78rem] tabular-nums">{ rowsText(l.Rows) }</td>
-							<td class="px-3 py-2 text-right text-[0.78rem] tabular-nums">{ rowsText(l.Bytes) }</td>
-							<td class="px-3 py-2 pr-4 text-[0.78rem]">
-								<a href={ templ.SafeURL("/runs/" + l.RunID) } class="font-mono text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ shortID(l.RunID) }</a>
-							</td>
-						</tr>
-					}
-				</tbody>
-			</table>
-		</div>
-	}
-}

@@ -180,7 +180,7 @@ func Catalog(v CatalogScreen) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, " <div id=\"catalog-list\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, " <div id=\"catalog-list\" data-drawer-list data-drawer-fragment=\"target\" data-drawer-path=\"/data/target\" data-drawer-exact>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -240,14 +240,14 @@ func TargetDrawer(v CatalogScreen) templ.Component {
 		ctx = templ.ClearChildren(ctx)
 		t := *v.Drawer
 		r := t.Row
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<dialog id=\"target\" class=\"drawer\" aria-labelledby=\"target-title\" open data-catalog-drawer data-close=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<dialog id=\"target\" class=\"drawer\" aria-labelledby=\"target-title\" open data-url-drawer data-close=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.CloseHref())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/catalog.templ`, Line: 61, Col: 118}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/catalog.templ`, Line: 61, Col: 114}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {

@@ -425,3 +425,26 @@ func TestTheCurlFollowsTheForm(t *testing.T) {
 		}
 	}
 }
+
+// rowHidden finds the row whose search text holds needle and says whether it
+// is drawn hidden. A search on the server HIDES rows rather than dropping
+// them: hidden, they are invisible with no script, and the filter in ui.js can
+// bring them back as somebody deletes a letter.
+func rowHidden(t *testing.T, body, needle string) bool {
+	t.Helper()
+	at := strings.Index(body, `data-filter-text="`)
+	for at >= 0 {
+		start := strings.LastIndex(body[:at], "<tr")
+		tag := body[start : at+strings.Index(body[at:], ">")]
+		if strings.Contains(tag, strings.ToLower(needle)) {
+			return strings.Contains(tag, " hidden")
+		}
+		next := strings.Index(body[at+1:], `data-filter-text="`)
+		if next < 0 {
+			break
+		}
+		at += 1 + next
+	}
+	t.Fatalf("no row's search text holds %q", needle)
+	return false
+}

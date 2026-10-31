@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"context"
 	"testing"
 
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
@@ -77,7 +78,7 @@ func TestTheSummarySaysWhatTheStreamDoesInOneSentence(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := Summary(c.c); got != c.want {
+			if got := Summary(context.Background(), c.c); got != c.want {
 				t.Fatalf("\n got: %s\nwant: %s", got, c.want)
 			}
 		})
@@ -89,7 +90,7 @@ func TestDurationsAreWrittenInWords(t *testing.T) {
 		"1m": "1 minute", "5m": "5 minutes", "1s": "1 second", "60s": "1 minute",
 		"500ms": "500 milliseconds", "1h": "1 hour", "1m30s": "90 seconds", "bogus": "bogus",
 	} {
-		if got := durationWords(in); got != want {
+		if got := durationWords(context.Background(), in); got != want {
 			t.Errorf("durationWords(%q) = %q, want %q", in, got, want)
 		}
 	}
@@ -136,7 +137,7 @@ func TestTheSummarySaysWhatAPipelineDoes(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := Summary(c.c); got != c.want {
+			if got := Summary(context.Background(), c.c); got != c.want {
 				t.Fatalf("\n got: %s\nwant: %s", got, c.want)
 			}
 		})

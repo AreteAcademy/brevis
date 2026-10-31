@@ -1,7 +1,9 @@
 package pages
 
 import (
+	"context"
 	"fmt"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"net/url"
 	"sort"
 	"strings"
@@ -156,13 +158,6 @@ func StreamsOf(entries []postgres.CatalogEntry) []GatewayGroup {
 	return out
 }
 
-// LoadGroup is one workflow and what its steps land.
-type LoadGroup struct {
-	Workflow       string
-	Cron, Timezone string // empty for a workflow that only runs by hand
-	Targets        []LoadTarget
-}
-
 // LoadTarget is one step landing on one destination, judged against that
 // step's own schedule.
 type LoadTarget struct {
@@ -173,9 +168,19 @@ type LoadTarget struct {
 	LastLoaded time.Time
 	Rows       *int64
 
-	// Recent is the rows of the destination's last loads, oldest first --
-	// only when this step is its only writer: an entry's history is shared,
-	// and another step's loads in this step's sparkline would be a lie.
+	// Cron and Timezone are the step's schedule; HasSchedule is false for
+	// a workflow that only runs by hand.
+	Cron, Timezone string
+	HasSchedule    bool
+
+	// Source is where the step reads, as its configuration declares it;
+	// zero when it declared none.
+	Source Source
+
+	// Recent is the rows of the destination's last loads, oldest first, at
+	// most recentShown -- only when this step is its only writer: an entry's
+	// history is shared, and another step's loads in this step's sparkline
+	// would be a lie.
 	Recent []*int64
 
 	// Many is set when the step writes more than one destination, so its
@@ -206,10 +211,15 @@ func (t LoadTarget) Href() string {
 	return h
 }
 
-// LoadsOf regroups the catalog's step writers by the workflow that runs them,
-// each workflow's targets by step and destination. `now` judges freshness.
-func LoadsOf(entries []postgres.CatalogEntry, now time.Time) []LoadGroup {
-	groups := map[string]*LoadGroup{}
+// recentShown is how many of a destination's last loads a row draws: the
+// handoff's "last 12".
+const recentShown = 12
+
+// LoadsOf is every step landing on every destination, one row each, in the
+// Catalog's order (screen-loads T2): worst first, then the most recently
+// loaded. A gateway's stream is not a load. `now` judges freshness.
+func LoadsOf(entries []postgres.CatalogEntry, now time.Time) []LoadTarget {
+	var out []LoadTarget
 	written := map[[2]string]int{}
 	for _, e := range entries {
 		steps := 0
@@ -222,187 +232,166 @@ func LoadsOf(entries []postgres.CatalogEntry, now time.Time) []LoadGroup {
 			if w.Gateway != nil {
 				continue
 			}
-			g := groups[w.Workflow]
-			if g == nil {
-				g = &LoadGroup{Workflow: w.Workflow}
-				groups[w.Workflow] = g
-			}
-			if w.HasSchedule && g.Cron == "" {
-				g.Cron, g.Timezone = w.Cron, w.Timezone
-			}
 			t := LoadTarget{
 				Workflow: w.Workflow, Step: w.Node, Place: Place{URI: e.Target, Kind: e.Kind},
 				Legacy: e.Legacy, Status: verdictOf(e, w, now).Status,
 				LastLoaded: w.LastLoaded, Rows: w.LastRows, RunInFlight: w.RunInFlight,
+				Cron: w.Cron, Timezone: w.Timezone, HasSchedule: w.HasSchedule,
+				Source: SourceOf(w.Config),
 			}
 			if steps == 1 {
-				t.Recent = e.Recent
+				t.Recent = e.Recent[max(0, len(e.Recent)-recentShown):]
 			}
-			g.Targets = append(g.Targets, t)
+			out = append(out, t)
 			written[[2]string{w.Workflow, w.Node}]++
 		}
 	}
-
-	names := make([]string, 0, len(groups))
-	for n := range groups {
-		names = append(names, n)
+	for i := range out {
+		out[i].Many = written[[2]string{out[i].Workflow, out[i].Step}] > 1
 	}
-	sort.Strings(names)
-	out := make([]LoadGroup, 0, len(names))
-	for _, n := range names {
-		g := groups[n]
-		for i := range g.Targets {
-			g.Targets[i].Many = written[[2]string{g.Workflow, g.Targets[i].Step}] > 1
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if worstFirst[a.Status] != worstFirst[b.Status] {
+			return worstFirst[a.Status] < worstFirst[b.Status]
 		}
-		sort.SliceStable(g.Targets, func(i, j int) bool {
-			a, b := g.Targets[i], g.Targets[j]
-			if a.Step != b.Step {
-				return a.Step < b.Step
-			}
-			return a.URI < b.URI
-		})
-		out = append(out, *g)
-	}
+		if !a.LastLoaded.Equal(b.LastLoaded) {
+			return a.LastLoaded.After(b.LastLoaded)
+		}
+		if a.Workflow != b.Workflow {
+			return a.Workflow < b.Workflow
+		}
+		if a.Step != b.Step {
+			return a.Step < b.Step
+		}
+		return a.URI < b.URI
+	})
 	return out
 }
 
-// LoadsView is /ingest/loads as the template draws it: the workflows and their
-// loads under the filter, and the counts of every load whatever is shown.
+// LoadsView is /ingest/loads as the template draws it (screen-loads): the
+// loads the filter keeps, and the counts beside them.
 type LoadsView struct {
-	Groups []LoadGroupView
-	Counts map[catalog.Status]int
+	Rows []LoadTarget
 
-	// Total is every load and Workflows every workflow that writes one.
+	// Summary, Total and Workflows describe every load the page holds --
+	// legacy ones only when asked for -- whatever else is filtered: the line
+	// under the title is the page's, not the filter's.
+	Summary          map[catalog.Status]int
 	Total, Workflows int
 
-	Kinds     []string
+	// counts is each band choice's count, with the origin, the search and
+	// the legacy switch as they are and the status left out, so a count
+	// cannot disagree with the list its link opens.
+	counts map[string]int
+
+	// Sources are the origins present, in sourceOrder, for the origin
+	// filter; "none" is a step that declared none.
+	Sources   []string
 	HasLegacy bool
 	Filter    DataFilter
+	Now       time.Time
+
+	// Drawer is the load the URL names (/ingest/loads/{workflow}/{step}),
+	// drawn open over the list (screen-loads T4); nil draws none. Missing is
+	// a step it named that writes no destination Brevis knows.
+	Drawer  *LoadView
+	Missing string
 }
 
-// LoadGroupView is one workflow's group under the filter. Hidden is a group
-// the search hides every row of: drawn hidden, so deleting a letter brings it
-// back.
-type LoadGroupView struct {
-	LoadGroup
-	Rows   []LoadRow
-	Hidden bool
-}
+// CloseHref is the list the drawer was opened from, as it was filtered.
+func (v LoadsView) CloseHref() string { return v.Filter.With("", "") }
 
-// LoadRow is one load under the filter.
-type LoadRow struct {
-	LoadTarget
-	Hidden bool
-}
-
-// SearchText is what a search looks in, lower-cased: the workflow, the step
-// and the destination. The same text on the server and in data-filter-text.
-func (t LoadTarget) SearchText() string {
-	return strings.ToLower(t.Workflow + "\n" + t.Step + "\n" + t.URI)
-}
-
-// BuildLoads is every load, counted.
-func BuildLoads(entries []postgres.CatalogEntry, now time.Time) LoadsView {
-	v := LoadsView{Counts: map[catalog.Status]int{}}
-	for _, g := range LoadsOf(entries, now) {
-		gv := LoadGroupView{LoadGroup: g}
-		for _, t := range g.Targets {
-			gv.Rows = append(gv.Rows, LoadRow{LoadTarget: t})
-			v.Counts[t.Status]++
-			v.Total++
-			if t.Kind != "" && !containsString(v.Kinds, t.Kind) {
-				v.Kinds = append(v.Kinds, t.Kind)
-			}
-			v.HasLegacy = v.HasLegacy || t.Legacy
-		}
-		v.Groups = append(v.Groups, gv)
+// keepFilter is a load's address with the list's filter after it, so that
+// closing its drawer comes back to the same list.
+func (v LoadsView) keepFilter(href string) string {
+	_, query, ok := strings.Cut(v.CloseHref(), "?")
+	if !ok {
+		return href
 	}
-	v.Workflows = len(v.Groups)
-	sort.Strings(v.Kinds)
-	return v
+	if strings.Contains(href, "?") {
+		return href + "&" + query
+	}
+	return href + "?" + query
 }
 
-// Apply narrows the loads to the filter: status, kind and legacy drop what
-// they exclude (and a group left empty); the search hides. Counts and totals
-// still describe every load.
-func (v LoadsView) Apply(f DataFilter) LoadsView {
-	v.Filter = f
-	groups := make([]LoadGroupView, 0, len(v.Groups))
-	for _, g := range v.Groups {
-		var rows []LoadRow
-		visible := 0
-		for _, r := range g.Rows {
-			if !f.keepsLoad(r.LoadTarget) {
-				continue
-			}
-			r.Hidden = f.Q != "" && !strings.Contains(r.SearchText(), strings.ToLower(f.Q))
-			if !r.Hidden {
-				visible++
-			}
-			rows = append(rows, r)
-		}
-		if len(rows) == 0 {
+// rowHref is where a row goes: its load's drawer, keeping the filter.
+func (v LoadsView) rowHref(t LoadTarget) string { return v.keepFilter(t.Href()) }
+
+// Count is how many loads a band choice would show: "" for all, "attention",
+// or a status.
+func (v LoadsView) Count(status string) int { return v.counts[status] }
+
+// loadStatuses are the band's statuses, in the Catalog's order, without the
+// gateway's: a step is never continuous, nor its destination unidentified.
+var loadStatuses = []catalog.Status{catalog.Stale, catalog.Late, catalog.OnTime, catalog.Paused, catalog.Unscheduled}
+
+// sourceOrder is the origin filter's order: the SDK's own kinds, somebody
+// else's driver, then none declared.
+var sourceOrder = []string{"http", "file", "database", "other", "none"}
+
+// sourceKey is a load's origin as the filter names it.
+func sourceKey(s Source) string {
+	if s.Kind == "" {
+		return "none"
+	}
+	return s.Kind
+}
+
+// SearchText is what a search looks in, lower-cased: the workflow, the step,
+// where the step reads and the destination.
+func (t LoadTarget) SearchText() string {
+	return strings.ToLower(strings.Join([]string{t.Workflow, t.Step, t.Source.Driver, t.Source.Where, t.URI}, "\n"))
+}
+
+// BuildLoads is every load under the filter (screen-loads T3). A legacy row
+// waits until it is asked for, as in the Catalog; the search is the
+// server's, so a searched list is a link and works with no script.
+func BuildLoads(entries []postgres.CatalogEntry, f DataFilter, now time.Time) LoadsView {
+	v := LoadsView{Summary: map[catalog.Status]int{}, counts: map[string]int{}, Filter: f, Now: now}
+	workflows := map[string]bool{}
+	present := map[string]bool{}
+	q := strings.ToLower(f.Q)
+	for _, t := range LoadsOf(entries, now) {
+		v.HasLegacy = v.HasLegacy || t.Legacy
+		if t.Legacy && !f.Legacy {
 			continue
 		}
-		g.Rows, g.Hidden = rows, visible == 0
-		groups = append(groups, g)
+		v.Summary[t.Status]++
+		v.Total++
+		workflows[t.Workflow] = true
+		present[sourceKey(t.Source)] = true
+
+		if f.Source != "" && sourceKey(t.Source) != f.Source || q != "" && !strings.Contains(t.SearchText(), q) {
+			continue
+		}
+		v.counts[""]++
+		v.counts[string(t.Status)]++
+		if t.Status == catalog.Late || t.Status == catalog.Stale {
+			v.counts["attention"]++
+		}
+		if f.keepsStatus(t.Status) {
+			v.Rows = append(v.Rows, t)
+		}
 	}
-	v.Groups = groups
+	v.Workflows = len(workflows)
+	for _, s := range sourceOrder {
+		if present[s] {
+			v.Sources = append(v.Sources, s)
+		}
+	}
 	return v
 }
 
-// Shown is how many loads are drawn visible.
-func (v LoadsView) Shown() int {
-	n := 0
-	for _, g := range v.Groups {
-		for _, r := range g.Rows {
-			if !r.Hidden {
-				n++
-			}
-		}
+// loadSchedule is when a step runs, as its row says it: in words where they
+// are sure, the expression otherwise, "by hand" with none.
+func loadSchedule(ctx context.Context, t LoadTarget) string {
+	if !t.HasSchedule {
+		return i18n.T(ctx, "loads.manual")
 	}
-	return n
-}
-
-func (f DataFilter) keepsLoad(t LoadTarget) bool {
-	switch {
-	case f.Status == "attention" && t.Status != catalog.Late && t.Status != catalog.Stale:
-		return false
-	case f.Status != "" && f.Status != "attention" && string(t.Status) != f.Status:
-		return false
-	case f.Kind != "" && t.Kind != f.Kind:
-		return false
-	case f.Legacy && !t.Legacy:
-		return false
+	if words := CronTextIn(ctx, t.Cron); words != "" {
+		return words + zoneSuffix(t.Timezone)
 	}
-	return true
-}
-
-// loadStatusOptions is the status filter over loads: everything, what needs a
-// person, then each status present with its count.
-func loadStatusOptions(v LoadsView) []components.SegOption {
-	return statusOptions(DataView{Counts: v.Counts, Filter: v.Filter})
-}
-
-// loadKindOptions and loadLegacyOptions are the kind and label filters.
-func loadKindOptions(v LoadsView) []components.SegOption {
-	return kindOptions(DataView{Kinds: v.Kinds, Filter: v.Filter})
-}
-
-func loadLegacyOptions(v LoadsView) []components.SegOption {
-	return legacyOptions(DataView{Filter: v.Filter})
-}
-
-// groupSchedule is a workflow's schedule as the group header says it: in
-// words where they are sure, the expression otherwise, "manual" with none.
-func groupSchedule(g LoadGroup) string {
-	if g.Cron == "" {
-		return "manual"
-	}
-	if words := CronText(g.Cron); words != "" {
-		return words + zoneSuffix(g.Timezone)
-	}
-	return g.Cron
+	return t.Cron
 }
 
 func containsString(list []string, s string) bool {
@@ -414,8 +403,9 @@ func containsString(list []string, s string) bool {
 	return false
 }
 
-// LoadView is one load's page: the destination's view (TargetView) narrowed
-// to the one step, plus who that step is.
+// LoadView is one load's drawer (screen-loads T4): the destination's view
+// (TargetView) narrowed to the one step, plus who that step is and where it
+// reads.
 type LoadView struct {
 	TargetView
 	Workflow, Step string
@@ -423,7 +413,24 @@ type LoadView struct {
 	// Read is how many rows the newest load's step read (RowsRead), nil
 	// when its run's stages do not say.
 	Read *int64
+
+	// Source is where the step reads, as it declared.
+	Source Source
+
+	// Choices are the destinations a step writing several writes, the open
+	// one marked; with none open (no ?target=) the drawer asks which.
+	Choices []LoadChoice
+
+	// Run is what Run now does (screen-loads T6): "now" runs a workflow with
+	// no parameters at once, "params" opens its Run drawer to ask them, and
+	// "" offers nothing -- a console with no scheduler, or a workflow it
+	// cannot read. Back is the drawer's own address, which the run comes
+	// back to.
+	Run, Back string
 }
+
+// Choosing is a drawer that asks which destination, having none open.
+func (v LoadView) Choosing() bool { return v.Row.Target == "" && len(v.Choices) > 0 }
 
 // BuildLoad narrows a destination to the loads and the writer of one step:
 // another workflow writing the same destination is a different load, and
@@ -456,64 +463,14 @@ func (v LoadView) Writer() *WriterView {
 	return &v.Row.Writers[0]
 }
 
-// loadStats are the four numbers at the top of a load's page. "Recent loads"
-// and not "recorded": the page reads the last loadsShown, and above that a
-// count would be a floor presented as a total.
-func loadStats(v LoadView) []components.Stat {
-	bytes := "—"
-	if len(v.Loads) > 0 && v.Loads[0].Bytes != nil {
-		bytes = bytesText(*v.Loads[0].Bytes)
-	}
-	var recent components.Stat
-	rows := components.Stat{Label: "Rows, last load", Value: rowsText(v.Row.LastRows)}
-	if v.Read != nil {
-		rows.Note = "of " + rowsText(v.Read) + " read"
-		// Nothing written out of something read is the load that needs a
-		// look: a merge that found every row already there, or a filter
-		// that kept none.
-		if v.Row.LastRows != nil && *v.Row.LastRows == 0 && *v.Read > 0 {
-			rows.Tone = "text-state-failed"
-		}
-	}
-	recent.Label = "Rows per load"
-	recent.Value = ""
-	recent.Note = ""
-	recent.Sub = loadsCount(len(v.Loads))
-	recent.Body = components.LoadBarsSized(v.Bars, v.Missed, "h-[26px]")
-	recent.Title = barsLegend(v.Missed)
-	return []components.Stat{
-		{Label: "Last load", Value: components.When(v.Row.LastWhen), Note: components.UTCStamp(v.Row.LastWhen)},
-		rows,
-		{Label: "Bytes, last load", Value: bytes},
-		recent,
-	}
-}
-
 // loadsShown is how many loads the destination read returns (its LIMIT).
 const loadsShown = 30
 
-// writerSchedule is a step writer's schedule as a sentence.
-func writerSchedule(w *WriterView) string {
-	if w == nil || !w.HasSchedule {
-		return "runs by hand"
-	}
-	if words := CronText(w.Cron); words != "" {
-		return words + zoneSuffix(w.Timezone)
-	}
-	return w.Cron + " " + w.Timezone
-}
-
-// LoadChoice is one destination a step writes, on the page that asks which.
+// LoadChoice is one destination a step writes, in the drawer that asks
+// which; Current is the one open.
 type LoadChoice struct {
 	URI, Href string
-}
-
-// loadKind is the destination's kind as the eyebrow says it.
-func loadKind(v LoadView) string {
-	if v.Row.Kind == "" {
-		return "label"
-	}
-	return v.Row.Kind
+	Current   bool
 }
 
 // AttachStreamConfigs gives each gateway writer its stream's configuration,
@@ -749,9 +706,9 @@ func (v StreamView) Queryable() bool {
 func (v StreamView) QueryHref() string { return "/sql?target=" + url.QueryEscape(v.Sink.URI) }
 
 // Summary is one paragraph on what the stream does, from what it declares.
-func (v StreamView) Summary() string {
+func (v StreamView) Summary(ctx context.Context) string {
 	if v.Config != nil {
-		return Summary(v.Config)
+		return Summary(ctx, v.Config)
 	}
 	return "Events posted to " + v.Path + " land in " + v.Sink.URI + ". The stream was published without its configuration, so this is all it says."
 }
@@ -962,22 +919,25 @@ func wholeNumber(v any) (int64, bool) {
 
 // loadsCount says how many loads the bars draw, and that it is the last
 // loadsShown when the read was cut there: a count at the LIMIT is a floor.
-func loadsCount(n int) string {
+func loadsCount(ctx context.Context, n int) string {
 	if n >= loadsShown {
-		return fmt.Sprintf("the last %d loads", loadsShown)
+		return i18n.T(ctx, "loads.drawer.recent.last", "n", fmt.Sprint(loadsShown))
 	}
-	if n == 1 {
-		return "1 load"
-	}
-	return fmt.Sprintf("%d loads", n)
+	return i18n.N(ctx, "loads.drawer.recent.count", n)
 }
 
-// barsLegend is how to read the bars, in the cell's title now that they sit
-// in the strip.
-func barsLegend(missed int) string {
-	s := "Oldest on the left; each bar opens the run that wrote it. A hollow bar is a load that did not say how many rows it wrote, and a red one wrote none."
-	if missed > 0 {
-		s += " Dashed bars are scheduled loads that did not arrive."
+// loadWhen is when a step runs, in words where they are sure and the
+// expression otherwise; the drawer writes the expression beside it anyway.
+func loadWhen(ctx context.Context, w *WriterView) string {
+	if words := CronTextIn(ctx, w.Cron); words != "" {
+		return words + zoneSuffix(w.Timezone)
 	}
-	return s
+	return w.Cron
+}
+
+// ReadNothing is a last load that wrote nothing out of something read: a
+// merge that found every row already there, or a filter that kept none --
+// the load that needs a look.
+func (v LoadView) ReadNothing() bool {
+	return v.Row.LastRows != nil && *v.Row.LastRows == 0 && v.Read != nil && *v.Read > 0
 }

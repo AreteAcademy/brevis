@@ -43,7 +43,7 @@ func TestTheConfigurationIsLaidOutInTheFilesOrder(t *testing.T) {
 
 	var titles []string
 	for _, s := range v.Sections {
-		titles = append(titles, s.Title)
+		titles = append(titles, s.TitleIn(context.Background()))
 	}
 	if got := strings.Join(titles, ","); got != "Stream,Buffer,Sink,Dead letter" {
 		t.Fatalf("sections = %s", got)
@@ -167,13 +167,13 @@ func TestTheConfigurationsChangesAreListedNewestFirst(t *testing.T) {
 	if !newest.At.Equal(at.Add(2*time.Hour)) || len(newest.Lines) != 2 {
 		t.Fatalf("newest = %+v", newest)
 	}
-	if l := newest.Lines[0]; l.Path != "buffer.flush.every" || l.Text != "1m → 2m" {
+	if l := newest.Lines[0]; l.Path != "buffer.flush.every" || l.TextIn(context.Background()) != "1m → 2m" {
 		t.Fatalf("a changed value = %+v", l)
 	}
-	if l := newest.Lines[1]; l.Path != "retry.attempts" || l.Text != "removed (was 2)" {
+	if l := newest.Lines[1]; l.Path != "retry.attempts" || l.TextIn(context.Background()) != "removed (was 2)" {
 		t.Fatalf("a removed value = %+v", l)
 	}
-	if l := v.Changes[1].Lines; len(l) != 2 || l[0].Text != "merge → append" || l[1].Text != "added: 2" {
+	if l := v.Changes[1].Lines; len(l) != 2 || l[0].TextIn(context.Background()) != "merge → append" || l[1].TextIn(context.Background()) != "added: 2" {
 		t.Fatalf("the middle version = %+v", l)
 	}
 	if oldest := v.Changes[2]; !oldest.First || len(oldest.Lines) != 0 {

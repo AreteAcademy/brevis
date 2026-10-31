@@ -808,34 +808,47 @@
   });
 
   // ------------------------------------------------------------------
-  // The Catalog's drawer (screen-catalog T4)
+  // A list's drawer, by its address (screen-catalog T4, screen-loads T7)
   //
-  // The server draws /data/target?u= with the drawer open, which is all a
-  // page with no script gets: the row is a link to it, and its × a link back
-  // to the list. Here a row fetches the drawer alone (X-Brevis-Fragment:
-  // target) and opens it over the list without leaving it, the address
-  // following (pushState), so Back and Forward open and close it and a
-  // reload or a sent link shows the same. A drawer the page came with is
-  // re-opened modal, which `open` in the markup is not.
+  // The server draws a drawer's address -- /data/target?u=, a load's
+  // /ingest/loads/{workflow}/{step} -- as the list with the drawer open,
+  // which is all a page with no script gets: the row is a link to it, and
+  // its × a link back to the list. The list says which drawer is its own
+  // (`data-drawer-list`: the fragment to ask for and the addresses that are
+  // a drawer), so one piece of code serves both screens.
+  //
+  // Here a row fetches the drawer alone (X-Brevis-Fragment) and opens it
+  // over the list without leaving it, the address following (pushState), so
+  // Back and Forward open and close it and a reload or a sent link shows the
+  // same. A drawer the page came with is re-opened modal, which `open` in
+  // the markup is not. A link inside it to another of the same kind -- a
+  // load's destination choice -- swaps it in place, replacing the address,
+  // so closing still goes back to the list.
   //
   // Closing -- the ×, Esc, the backdrop -- goes back to the list as it was
   // filtered: a step back when this page opened it, else the list's address
   // in place of the drawer's. Any doubt navigates, as the link would.
   // ------------------------------------------------------------------
 
-  var catalogList = document.getElementById("catalog-list");
+  var drawerList = document.querySelector("[data-drawer-list]");
 
-  function drawerHref(path) {
-    return path === "/data/target";
+  function isDrawerPath(path) {
+    var at = drawerList.getAttribute("data-drawer-path");
+    var exact = drawerList.hasAttribute("data-drawer-exact");
+    return exact ? path === at : path.indexOf(at) === 0 && path.length > at.length;
+  }
+
+  function currentDrawer() {
+    return document.querySelector("dialog[data-url-drawer]");
   }
 
   function watchDrawer(d) {
     d.addEventListener("close", function () {
-      var back = d.getAttribute("data-close") || "/data";
+      var back = d.getAttribute("data-close") || "/";
       d.remove();
       // Closed by Back or by the next drawer: the address is already right.
       if (d._quiet) return;
-      if (history.state && history.state.catalogDrawer) history.back();
+      if (history.state && history.state.urlDrawer) history.back();
       else history.replaceState(null, "", back);
     });
   }
@@ -853,18 +866,21 @@
     d.showModal();
   }
 
-  function openTarget(href, push) {
-    fetch(href, { headers: { "X-Brevis-Fragment": "target" } })
+  // openDrawer fetches the drawer at href; how is "push" (a row), "replace"
+  // (a choice inside it) or "" (Back and Forward, the address already set).
+  function openDrawer(href, how) {
+    fetch(href, { headers: { "X-Brevis-Fragment": drawerList.getAttribute("data-drawer-fragment") } })
       .then(function (r) {
         if (r.redirected || !r.ok) throw new Error("not a fragment");
         return r.text();
       })
       .then(function (html) {
-        var old = document.getElementById("target");
+        var old = currentDrawer();
         if (old) quietClose(old);
-        catalogList.insertAdjacentHTML("afterend", html);
-        var d = document.getElementById("target");
-        if (push) history.pushState({ catalogDrawer: true }, "", href);
+        drawerList.insertAdjacentHTML("afterend", html);
+        var d = currentDrawer();
+        if (how === "push") history.pushState({ urlDrawer: true }, "", href);
+        if (how === "replace") history.replaceState(history.state, "", href);
         watchDrawer(d);
         showDrawer(d);
       })
@@ -873,9 +889,9 @@
       });
   }
 
-  if (catalogList && window.fetch && window.history && history.pushState) {
-    var arrived = document.getElementById("target");
-    if (arrived && arrived.hasAttribute("data-catalog-drawer")) {
+  if (drawerList && window.fetch && window.history && history.pushState) {
+    var arrived = currentDrawer();
+    if (arrived) {
       watchDrawer(arrived);
       showDrawer(arrived);
     }
@@ -895,23 +911,29 @@
           }
           return;
         }
-        var row = e.target.closest("#catalog-list tr[data-href]");
-        if (!row) return;
+        var swap = e.target.closest("dialog[data-url-drawer] a[data-drawer-swap]");
+        if (swap) {
+          e.preventDefault();
+          openDrawer(swap.getAttribute("href"), "replace");
+          return;
+        }
+        var row = e.target.closest("tr[data-href]");
+        if (!row || !drawerList.contains(row)) return;
         var a = e.target.closest("a, button, input, label");
         if (a && !(a.tagName === "A" && row.contains(a) && a.getAttribute("href") === row.getAttribute("data-href"))) return;
         if (window.getSelection && String(window.getSelection()).length > 0) return;
         var href = row.getAttribute("data-href");
-        if (!drawerHref(new URL(href, window.location.href).pathname)) return;
+        if (!isDrawerPath(new URL(href, window.location.href).pathname)) return;
         e.preventDefault();
-        openTarget(href, true);
+        openDrawer(href, "push");
       },
       true
     );
 
     window.addEventListener("popstate", function () {
-      var d = document.getElementById("target");
-      if (drawerHref(window.location.pathname)) {
-        openTarget(window.location.href, false);
+      var d = currentDrawer();
+      if (isDrawerPath(window.location.pathname)) {
+        openDrawer(window.location.href, "");
       } else if (d) {
         quietClose(d);
       }
@@ -1041,18 +1063,6 @@
       var hide = !preview.hasAttribute("data-hide-null");
       preview.toggleAttribute("data-hide-null", hide);
       button.setAttribute("aria-checked", hide ? "true" : "false");
-    });
-  });
-
-  // A group that collapses (`[data-group-toggle]` in a tbody): the button,
-  // shown only where a script runs (data-js), folds the group's rows under
-  // its header. With no script every group stays open.
-  document.querySelectorAll("[data-group-toggle]").forEach(function (button) {
-    button.addEventListener("click", function () {
-      var open = button.getAttribute("aria-expanded") !== "false";
-      button.setAttribute("aria-expanded", open ? "false" : "true");
-      var group = button.closest("tbody");
-      if (group) group.toggleAttribute("data-collapsed", open);
     });
   });
 
