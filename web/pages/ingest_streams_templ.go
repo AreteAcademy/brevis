@@ -659,7 +659,7 @@ func StreamsList(v StreamsView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</th><th class=\"px-2.5 py-2 font-medium max-[860px]:hidden\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</th><th class=\"px-2.5 py-2 font-medium max-[960px]:hidden\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -672,7 +672,7 @@ func StreamsList(v StreamsView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</th><th class=\"px-2.5 py-2 font-medium max-[1100px]:hidden\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</th><th class=\"px-2.5 py-2 font-medium max-[1180px]:hidden\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -698,14 +698,14 @@ func StreamsList(v StreamsView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</th><th class=\"px-2.5 py-2 font-medium max-[640px]:hidden\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</th><th class=\"px-2.5 py-2 font-medium max-[1280px]:hidden\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var36 string
 			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "streams.col.dead_letter"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 137, Col: 102}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 137, Col: 103}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 			if templ_7745c5c3_Err != nil {
@@ -731,7 +731,9 @@ func StreamsList(v StreamsView) templ.Component {
 }
 
 // streamRow is one stream: where events are posted, from the gateway to the
-// destination, how they are batched, and where refusals go. The whole row
+// destination, how they are batched, and where refusals go. Narrower, the
+// columns go in the order a reader needs them least -- the dead letter, the
+// batch, then the flow -- and the path and the status stay. The whole row
 // opens the stream; its path is a real link for the keyboard and no script.
 func streamRow(s Stream) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -761,7 +763,7 @@ func streamRow(s Stream) templ.Component {
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.ResolveAttributeValue(s.Href())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 156, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 158, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var38)
 		if templ_7745c5c3_Err != nil {
@@ -774,7 +776,7 @@ func streamRow(s Stream) templ.Component {
 		var templ_7745c5c3_Var39 templ.SafeURL
 		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(s.Href()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 158, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 160, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 		if templ_7745c5c3_Err != nil {
@@ -795,7 +797,7 @@ func streamRow(s Stream) templ.Component {
 		var templ_7745c5c3_Var40 string
 		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(s.Path)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 160, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 162, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 		if templ_7745c5c3_Err != nil {
@@ -813,7 +815,7 @@ func streamRow(s Stream) templ.Component {
 			var templ_7745c5c3_Var41 string
 			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue(n)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 163, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 165, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41)
 			if templ_7745c5c3_Err != nil {
@@ -826,7 +828,7 @@ func streamRow(s Stream) templ.Component {
 			var templ_7745c5c3_Var42 string
 			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(n)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 163, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 165, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 			if templ_7745c5c3_Err != nil {
@@ -837,7 +839,7 @@ func streamRow(s Stream) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "</td><td class=\"px-2.5 py-3 max-[860px]:hidden\"><div class=\"flex items-start gap-3\"><div class=\"min-w-0\"><span class=\"flex items-center gap-1.5 text-[12px] text-ink-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "</td><td class=\"px-2.5 py-3 max-[960px]:hidden\"><div class=\"flex items-start gap-3\"><div class=\"min-w-0\"><span class=\"flex items-center gap-1.5 text-[12px] text-ink-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -848,7 +850,7 @@ func streamRow(s Stream) templ.Component {
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "streams.gateway"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 171, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 173, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 		if templ_7745c5c3_Err != nil {
@@ -861,7 +863,7 @@ func streamRow(s Stream) templ.Component {
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(s.Gateway)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 173, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 175, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {
@@ -875,7 +877,7 @@ func streamRow(s Stream) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "</div></td><td class=\"px-2.5 py-3 text-[12.5px] text-ink-2 max-[1100px]:hidden\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "</div></td><td class=\"px-2.5 py-3 text-[12.5px] text-ink-2 max-[1180px]:hidden\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -883,7 +885,7 @@ func streamRow(s Stream) templ.Component {
 			var templ_7745c5c3_Var45 string
 			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(b)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 181, Col: 7}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 183, Col: 7}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {
@@ -903,7 +905,7 @@ func streamRow(s Stream) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</td><td class=\"px-2.5 py-3 max-[640px]:hidden\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</td><td class=\"px-2.5 py-3 max-[1280px]:hidden\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -981,7 +983,7 @@ func streamPlace(p Place) templ.Component {
 			var templ_7745c5c3_Var47 string
 			templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(components.LogoTitle(ctx, kindLogo(p.Kind)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 213, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 215, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 			if templ_7745c5c3_Err != nil {
@@ -1000,7 +1002,7 @@ func streamPlace(p Place) templ.Component {
 			var templ_7745c5c3_Var48 string
 			templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Note)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 217, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 219, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var48)
 			if templ_7745c5c3_Err != nil {
@@ -1013,7 +1015,7 @@ func streamPlace(p Place) templ.Component {
 			var templ_7745c5c3_Var49 string
 			templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "streams.unidentified"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 217, Col: 98}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 219, Col: 98}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 			if templ_7745c5c3_Err != nil {
@@ -1032,7 +1034,7 @@ func streamPlace(p Place) templ.Component {
 			var templ_7745c5c3_Var50 string
 			templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.ResolveAttributeValue(joinWords(" — ", p.URI, p.Note))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 220, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 222, Col: 97}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var50)
 			if templ_7745c5c3_Err != nil {
@@ -1045,7 +1047,7 @@ func streamPlace(p Place) templ.Component {
 			var templ_7745c5c3_Var51 string
 			templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(where)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 220, Col: 141}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 222, Col: 141}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 			if templ_7745c5c3_Err != nil {
@@ -1058,7 +1060,7 @@ func streamPlace(p Place) templ.Component {
 			var templ_7745c5c3_Var52 string
 			templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(what)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 220, Col: 188}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 222, Col: 188}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 			if templ_7745c5c3_Err != nil {
@@ -1112,7 +1114,7 @@ func howItWorks() templ.Component {
 			var templ_7745c5c3_Var54 string
 			templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(howStep(ctx, i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 231, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 233, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 			if templ_7745c5c3_Err != nil {
@@ -1125,7 +1127,7 @@ func howItWorks() templ.Component {
 			var templ_7745c5c3_Var55 string
 			templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(howTitle(ctx, step))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 232, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 234, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 			if templ_7745c5c3_Err != nil {
@@ -1138,7 +1140,7 @@ func howItWorks() templ.Component {
 			var templ_7745c5c3_Var56 string
 			templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(howText(ctx, step))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 233, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/ingest_streams.templ`, Line: 235, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 			if templ_7745c5c3_Err != nil {

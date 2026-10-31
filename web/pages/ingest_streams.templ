@@ -131,10 +131,10 @@ templ StreamsList(v StreamsView) {
 					<thead>
 						<tr class="border-b border-line text-left text-[11.5px] font-medium text-muted">
 							<th class="px-2.5 py-2 pl-4 font-medium">{ i18n.T(ctx, "streams.col.stream") }</th>
-							<th class="px-2.5 py-2 font-medium max-[860px]:hidden">{ i18n.T(ctx, "streams.col.flow") }</th>
-							<th class="px-2.5 py-2 font-medium max-[1100px]:hidden">{ i18n.T(ctx, "streams.col.batch") }</th>
+							<th class="px-2.5 py-2 font-medium max-[960px]:hidden">{ i18n.T(ctx, "streams.col.flow") }</th>
+							<th class="px-2.5 py-2 font-medium max-[1180px]:hidden">{ i18n.T(ctx, "streams.col.batch") }</th>
 							<th class="px-2.5 py-2 font-medium">{ i18n.T(ctx, "streams.col.status") }</th>
-							<th class="px-2.5 py-2 font-medium max-[640px]:hidden">{ i18n.T(ctx, "streams.col.dead_letter") }</th>
+							<th class="px-2.5 py-2 font-medium max-[1280px]:hidden">{ i18n.T(ctx, "streams.col.dead_letter") }</th>
 							<th class="w-8 px-2.5 py-2 pr-4"></th>
 						</tr>
 					</thead>
@@ -150,7 +150,9 @@ templ StreamsList(v StreamsView) {
 }
 
 // streamRow is one stream: where events are posted, from the gateway to the
-// destination, how they are batched, and where refusals go. The whole row
+// destination, how they are batched, and where refusals go. Narrower, the
+// columns go in the order a reader needs them least -- the dead letter, the
+// batch, then the flow -- and the path and the status stay. The whole row
 // opens the stream; its path is a real link for the keyboard and no script.
 templ streamRow(s Stream) {
 	<tr data-href={ s.Href() } class="cursor-pointer align-top transition-colors hover:bg-hover">
@@ -163,7 +165,7 @@ templ streamRow(s Stream) {
 				<p class="mt-1 max-w-[16rem] truncate text-[12px] text-muted" title={ n }>{ n }</p>
 			}
 		</td>
-		<td class="px-2.5 py-3 max-[860px]:hidden">
+		<td class="px-2.5 py-3 max-[960px]:hidden">
 			<div class="flex items-start gap-3">
 				<div class="min-w-0">
 					<span class="flex items-center gap-1.5 text-[12px] text-ink-2">
@@ -176,7 +178,7 @@ templ streamRow(s Stream) {
 				@streamPlace(s.Sink)
 			</div>
 		</td>
-		<td class="px-2.5 py-3 text-[12.5px] text-ink-2 max-[1100px]:hidden">
+		<td class="px-2.5 py-3 text-[12.5px] text-ink-2 max-[1180px]:hidden">
 			if b := s.BatchIn(ctx); b != "" {
 				{ b }
 			} else {
@@ -186,7 +188,7 @@ templ streamRow(s Stream) {
 		<td class="px-2.5 py-3">
 			@components.Freshness("continuous")
 		</td>
-		<td class="px-2.5 py-3 max-[640px]:hidden">
+		<td class="px-2.5 py-3 max-[1280px]:hidden">
 			if dl := s.DeadLetterShown(); dl != nil {
 				// Narrower than the destination: it is the column a reader
 				// looks at last.
