@@ -721,45 +721,23 @@ func (v StreamView) Summary(ctx context.Context) string {
 	if v.Config != nil {
 		return Summary(ctx, v.Config)
 	}
-	return "Events posted to " + v.Path + " land in " + v.Sink.URI + ". The stream was published without its configuration, so this is all it says."
+	return i18n.T(ctx, "streams.page.summary.v1", "path", v.Path, "sink", placeName(ctx, v.Sink))
 }
 
-// Declared is one setting in the Configuration tab: what it is and its
-// value, "" when the stream does not declare it (drawn "—").
-type Declared struct {
-	Key, Label, Value string
-}
-
-// DeclaredGroup is one block of the Configuration tab.
-type DeclaredGroup struct {
-	Title string
-	Rows  []Declared
-}
-
-// DeclaredGroups is everything a stream may declare, in one place, each
-// setting it does not declare left empty rather than guessed.
-func (v StreamView) DeclaredGroups() []DeclaredGroup {
-	f := func(key, label string) Declared { return Declared{Key: key, Label: label, Value: v.Field(key)} }
-	merge := Declared{Key: "merge", Label: "merge"}
-	if m := v.Merge(); m != nil {
-		merge.Value = "no"
-		if *m {
-			merge.Value = "yes"
-		}
+// changeSaid is one publish in the history line: the first, or what it
+// changed.
+func changeSaid(ctx context.Context, ch ConfigChange) string {
+	switch {
+	case ch.First:
+		return i18n.T(ctx, "streamcfg.history.first")
+	case len(ch.Lines) == 0:
+		return i18n.T(ctx, "config.earlier")
 	}
-	dl := Declared{Key: "dead_letter", Label: "where"}
-	if v.DeadLetter != nil {
-		dl.Value = v.DeadLetter.URI
+	paths := make([]string, len(ch.Lines))
+	for i, l := range ch.Lines {
+		paths[i] = l.Path
 	}
-	return []DeclaredGroup{
-		{"Stream", []Declared{f("name", "name"), {Key: "path", Label: "path", Value: v.Path}, f("format", "format"), f("hook", "hook")}},
-		{"Buffer", []Declared{f("buffer.flush.every", "flush every"), f("buffer.flush.records", "flush at records"), f("buffer.durability", "durability")}},
-		{"Destination", []Declared{{Key: "sink", Label: "where", Value: v.Sink.URI}, f("sink.type", "type"),
-			{Key: "mode", Label: "write", Value: v.Mode()}, merge}},
-		{"Identity", []Declared{f("identity.provider", "provider"), f("identity.entity", "entity"),
-			f("identity.source_key", "source key"), f("identity.record_ts", "record time")}},
-		{"Dead letter", []Declared{dl, f("dead_letter.type", "type")}},
-	}
+	return i18n.T(ctx, "streamcfg.history.changed", "paths", strings.Join(paths, ", "))
 }
 
 // Lede is the page's one sentence under its name: what comes in, where it

@@ -1964,6 +1964,25 @@
   }
 
   // ------------------------------------------------------------------
+  // A stream's configuration: Explained or YAML (screen-streams T4)
+  //
+  // Both are drawn; the segment says which shows, by an attribute the CSS
+  // reads. With no script the segment is not drawn and the two stack.
+  // ------------------------------------------------------------------
+
+  document.addEventListener("click", function (e) {
+    if (!e.target || typeof e.target.closest !== "function") return;
+    var set = e.target.closest("[data-config-view] [data-view-set]");
+    if (!set) return;
+    var box = set.closest("[data-config-view]");
+    var view = set.getAttribute("data-view-set");
+    box.setAttribute("data-config-view", view);
+    box.querySelectorAll("[data-view-set]").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-view-set") === view ? "true" : "false");
+    });
+  });
+
+  // ------------------------------------------------------------------
   // A workflow's steps: graph or list (screen-workflows T8)
   //
   // The segment chooses the view, by an attribute the CSS reads; the graph is

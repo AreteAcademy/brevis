@@ -1005,6 +1005,13 @@ li.CodeMirror-hint-active {
     height: 1px;
   }
 }
+/* A STREAM'S CONFIGURATION, EXPLAINED OR AS YAML: one at a time where a
+   script drives the segment, both stacked where none does. */
+.js [data-config-view="explained"] [data-view-pane="yaml"],
+.js [data-config-view="yaml"] [data-view-pane="explained"] {
+  display: none;
+}
+
 /* A BATCH ON ITS WAY: a dot travelling the edge before a step, down where
    the steps stack and across from 700px, so the diagram reads as data
    moving. Still with reduced motion -- the dot sits on the edge. */

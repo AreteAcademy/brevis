@@ -42,6 +42,15 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   destination, in the Catalog, and the endpoints that read it. The flow's
   words and the dead letter's are now the reader's, on every screen that
   draws them.
+- **A stream's configuration, Explained or as YAML.** Explained lays the
+  settings out in cards -- what comes in, when it is written, where, retries,
+  the event's identity, what happens to refusals -- each with a label in the
+  reader's language over its YAML key, its value, "default" when the
+  gateway filled it in, and the file's note; a setting the console has no
+  words for is under Others by its key, never dropped. YAML is the stream
+  written back from what was published, notes as comments, to copy -- not
+  the gateway's own file, and it says so. The history of publishes is one
+  line under them. With no script both are drawn, one under the other.
 - **New stream** says how a stream is made rather than asking for one: the
   shape of a stream in `gateway.yaml` and the two commands that publish it,
   to copy. `#novo` opens it with no script.

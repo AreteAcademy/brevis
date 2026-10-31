@@ -149,27 +149,24 @@ func TestAStreamPageHasItsThreeTabs(t *testing.T) {
 	}
 }
 
-// THE CONFIGURATION TAB IS EVERYTHING THE STREAM DECLARES IN ONE PLACE, and a
-// setting it does not declare is "—", never a guess. Merge is "—" when no
-// write mode is declared, "yes" when it merges.
-func TestAStreamsConfigurationSaysWhatIsUndeclared(t *testing.T) {
+// THE CONFIGURATION TAB IS EVERYTHING THE STREAM DECLARES, and only that
+// (screen-streams T4): a part it does not declare has no card -- not a card
+// of guesses -- and a write mode is the one it declares.
+func TestAStreamsConfigurationSaysOnlyWhatIsDeclared(t *testing.T) {
 	gws := StreamsOf(printFixtures(time.Now()))
 	clicks := draw(t, StreamPage(BuildStream(gws[0].Streams[0], nil)))
 	cfg := clicks[strings.Index(clicks, `id="config"`):strings.Index(clicks, `id="deadletter"`)]
-	for _, want := range []string{"enrich_clicks", "1s", "500", "pubsub://brevis-local/clicks", "file:///var/dead-letter/clicks/"} {
+	for _, want := range []string{"enrich_clicks", "1s", "500", `data-explained="sink.type"`, "pubsub"} {
 		if !strings.Contains(cfg, want) {
 			t.Errorf("the configuration has no %s", want)
 		}
 	}
-	if !strings.Contains(cfg, `data-declared="identity.provider">—`) {
-		t.Error("an undeclared identity is not shown as —")
-	}
-	if !strings.Contains(cfg, `data-declared="merge">—`) {
-		t.Error("an undeclared write mode is called merge or not")
+	if strings.Contains(cfg, "Event identity") || strings.Contains(cfg, `data-explained="sink.write"`) {
+		t.Error("an undeclared identity or write mode has a row")
 	}
 	orders := draw(t, StreamPage(BuildStream(gws[0].Streams[1], nil)))
-	if !strings.Contains(orders, `data-declared="merge">yes`) {
-		t.Error("a merging stream is not called merge")
+	if !strings.Contains(orders, `data-explained="sink.write"`) || !strings.Contains(orders, ">merge<") {
+		t.Error("a merging stream does not say so")
 	}
 }
 

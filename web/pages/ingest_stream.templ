@@ -47,29 +47,11 @@ templ StreamPage(v StreamView) {
 				</div>
 			</section>
 			<section id="config" data-tab-panel="config" class="mb-3">
-				<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">Configuration</h2>
-				<div class="mb-3 grid grid-cols-1 gap-4 min-[900px]:grid-cols-2">
-					for _, g := range v.DeclaredGroups() {
-						@components.Panel(g.Title, "") {
-							<dl class="grid grid-cols-[9rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 px-4 py-3 text-[0.78rem]">
-								for _, d := range g.Rows {
-									<dt class="font-mono text-muted">{ d.Label }</dt>
-									if d.Value == "" {
-										<dd class="font-mono text-faint" data-declared={ d.Key }>—</dd>
-									} else {
-										<dd class="font-mono break-all text-ink" data-declared={ d.Key }>{ d.Value }</dd>
-									}
-								}
-							</dl>
-						}
-					}
-				</div>
-				if v.Configured != nil {
-					@configurations(TargetView{Configs: []WriterConfigView{*v.Configured}})
+				<h2 data-panel-heading class="mb-3 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "streams.tab.config") }</h2>
+				if v.Config == nil {
+					<p class="rounded-card border border-line bg-surface px-4 py-3 text-xs text-muted">{ i18n.T(ctx, "streamcfg.v1") }</p>
 				} else {
-					<p class="rounded-card border border-line bg-surface px-4 py-3 text-xs text-muted">
-						This stream was published without its configuration (a version-1 manifest), so only where it lands is known. Publishing the gateway again with this version sends the rest.
-					</p>
+					@streamConfig(v)
 				}
 			</section>
 			<section id="deadletter" data-tab-panel="deadletter" class="mb-3">
@@ -251,4 +233,70 @@ templ testEventDrawer(v StreamView) {
 			</div>
 		</div>
 	</dialog>
+}
+
+// streamConfig is the Configuration tab (screen-streams T4): the settings
+// Explained -- in cards, a label in the reader's words over each YAML key --
+// or as the YAML they make. Both are drawn; a script shows one at a time by
+// data-view, and with none they stack, the YAML under its heading.
+templ streamConfig(v StreamView) {
+	<div data-config-view="explained">
+		<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+			<p class="text-[12.5px] text-muted">{ i18n.T(ctx, "streamcfg.lead") }</p>
+			<div data-js role="group" aria-label={ i18n.T(ctx, "streams.tab.config") } class="inline-flex h-8 items-center gap-0.5 rounded-card border border-line bg-surface p-0.5">
+				<button type="button" data-view-set="explained" aria-pressed="true" class="rounded-[5px] px-2.5 py-1 text-[12.5px] text-muted aria-pressed:bg-surface-2 aria-pressed:text-ink">{ i18n.T(ctx, "streamcfg.explained") }</button>
+				<button type="button" data-view-set="yaml" aria-pressed="false" class="rounded-[5px] px-2.5 py-1 text-[12.5px] text-muted aria-pressed:bg-surface-2 aria-pressed:text-ink">YAML</button>
+			</div>
+		</div>
+		<div data-view-pane="explained" class="grid grid-cols-1 gap-3 min-[900px]:grid-cols-2">
+			for _, card := range ExplainConfig(v.Config) {
+				@components.Panel(cardTitle(ctx, card.Key), "") {
+					<dl class="divide-y divide-line-soft">
+						for _, r := range card.Rows {
+							<div class="grid grid-cols-[minmax(0,11rem)_minmax(0,1fr)] gap-x-4 px-4 py-2.5 text-[12.5px]" data-explained={ r.Path }>
+								<dt>
+									<span class="text-ink-2">{ r.LabelIn(ctx) }</span>
+									<span class="mt-0.5 block font-mono text-[11px] text-faint">{ r.Path }</span>
+								</dt>
+								<dd class="min-w-0">
+									<span class="font-mono break-all text-ink">{ r.Value }</span>
+									if r.Default {
+										<span class="ml-2 rounded-card border border-line px-1 py-px text-[0.65rem] text-muted uppercase" title={ i18n.T(ctx, "config.default.tip") }>{ i18n.T(ctx, "config.default") }</span>
+									}
+									if r.Note != "" {
+										// The note's first line; the rest a click away, as
+										// everywhere a configuration's notes are drawn.
+										<div class="mt-1">
+											@configNote(r.Note)
+										</div>
+									}
+								</dd>
+							</div>
+						}
+					</dl>
+				}
+			}
+		</div>
+		<section data-view-pane="yaml">
+			<div class="mb-1.5 flex items-center justify-between">
+				<h3 class="text-[12.5px] text-muted">{ i18n.T(ctx, "streamcfg.yaml") }</h3>
+				<span data-js>
+					@components.IconButton(i18n.T(ctx, "loads.drawer.copy"), "copy", templ.Attributes{"data-copy": "#stream-yaml"})
+				</span>
+			</div>
+			<pre class="overflow-x-auto rounded-card border border-line bg-canvas px-4 py-3 font-mono text-[12px] text-ink-2"><code id="stream-yaml">{ ConfigYAML(v.Config) }</code></pre>
+			<p class="mt-1.5 text-[11.5px] text-faint">{ i18n.T(ctx, "catalog.drawer.credentials") }</p>
+		</section>
+		if v.Configured != nil && len(v.Configured.Config.Changes) > 0 {
+			<p data-config-history class="mt-3 text-[12px] text-muted">
+				{ i18n.T(ctx, "streamcfg.history") }
+				for i, ch := range v.Configured.Config.Changes {
+					if i > 0 {
+						<span class="text-faint">·</span>
+					}
+					<span>{ i18n.Date(ctx, ch.At.UTC(), "brief") } UTC — { changeSaid(ctx, ch) }</span>
+				}
+			</p>
+		}
+	</div>
 }
