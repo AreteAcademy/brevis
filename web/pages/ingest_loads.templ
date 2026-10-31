@@ -34,7 +34,7 @@ templ Loads(v LoadsView) {
 		if v.Missing != "" {
 			<p data-missing class="mb-3 rounded-card border border-line bg-surface-2 px-3 py-2 text-[12.5px] text-muted">{ i18n.T(ctx, "loads.missing", "step", v.Missing) }</p>
 		}
-		<div id="loads-list">
+		<div id="loads-list" data-drawer-list data-drawer-fragment="load" data-drawer-path="/ingest/loads/">
 			@LoadsList(v)
 		</div>
 		if v.Drawer != nil {

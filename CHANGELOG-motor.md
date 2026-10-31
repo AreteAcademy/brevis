@@ -55,6 +55,11 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   destination's in the Catalog, a stream's page. The settings' names and
   values are the data's own and stay as written. (A gateway's dead letter
   is still described in English, until the Streams screen.)
+- **A row opens its load's drawer in place**, as the Catalog's do: the
+  address follows, Esc, the × and the backdrop close it back to the list as
+  it was filtered, Back and Forward close and open it, and a destination
+  choice swaps it without a new step in the history. One script serves both
+  screens: a list names its drawer (`data-drawer-list`).
 - **The load's Preview tab is gone**, with the page: the drawer is narrow,
   and Query destination opens the workbench on the same table. A load never
   asks the warehouse anything now.

@@ -18,7 +18,7 @@ import (
 // loads; what reads its destination; and the verbs.
 templ LoadDrawer(v LoadsView) {
 	{{ l := *v.Drawer }}
-	<dialog id="load" class="drawer" aria-labelledby="load-title" open data-loads-drawer data-close={ v.CloseHref() }>
+	<dialog id="load" class="drawer" aria-labelledby="load-title" open data-url-drawer data-close={ v.CloseHref() }>
 		<header class="dialog-head">
 			<div class="min-w-0">
 				<p class="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{ i18n.T(ctx, "loads.drawer.kicker", "workflow", l.Workflow) }</p>
@@ -42,6 +42,7 @@ templ LoadDrawer(v LoadsView) {
 							<li>
 								<a
 									href={ templ.SafeURL(v.keepFilter(c.Href)) }
+									data-drawer-swap
 									if c.Current {
 										aria-current="true"
 									}

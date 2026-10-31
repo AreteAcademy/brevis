@@ -227,3 +227,24 @@ func TestNothingTheLoadPageShowedIsLost(t *testing.T) {
 		t.Error("the recent loads are not in the drawer, as a compact table")
 	}
 }
+
+// THE LIST SAYS WHICH DRAWER IS ITS OWN (screen-loads T7), for the one
+// script that opens it in place on both screens: the fragment to ask for and
+// the addresses that are a drawer; the drawer is marked as one, and a
+// destination choice inside it swaps it in place.
+func TestTheLoadsListNamesItsDrawerForTheScript(t *testing.T) {
+	_, body := get(t, dataUI(loadCatalog()), "/ingest/loads/multi/split")
+	for _, want := range []string{`id="loads-list" data-drawer-list data-drawer-fragment="load" data-drawer-path="/ingest/loads/"`,
+		`<dialog id="load" class="drawer" aria-labelledby="load-title" open data-url-drawer`, "data-drawer-swap"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page has no %s", want)
+		}
+	}
+	_, ui := browsing(t)
+	_, js := get(t, ui, "/assets/ui.js")
+	for _, want := range []string{"[data-drawer-list]", "data-drawer-fragment", "dialog[data-url-drawer]", "data-drawer-swap", "pushState"} {
+		if !strings.Contains(strip(js), want) {
+			t.Errorf("ui.js does not read %s", want)
+		}
+	}
+}

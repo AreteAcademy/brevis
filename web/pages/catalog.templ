@@ -37,7 +37,7 @@ templ Catalog(v CatalogScreen) {
 		if v.Missing != "" {
 			<p data-missing class="mb-3 rounded-card border border-line bg-surface-2 px-3 py-2 text-[12.5px] text-muted">{ i18n.T(ctx, "catalog.missing", "target", v.Missing) }</p>
 		}
-		<div id="catalog-list">
+		<div id="catalog-list" data-drawer-list data-drawer-fragment="target" data-drawer-path="/data/target" data-drawer-exact>
 			@CatalogList(v)
 		</div>
 		if v.Drawer != nil {
@@ -58,7 +58,7 @@ templ Catalog(v CatalogScreen) {
 templ TargetDrawer(v CatalogScreen) {
 	{{ t := *v.Drawer }}
 	{{ r := t.Row }}
-	<dialog id="target" class="drawer" aria-labelledby="target-title" open data-catalog-drawer data-close={ v.CloseHref() }>
+	<dialog id="target" class="drawer" aria-labelledby="target-title" open data-url-drawer data-close={ v.CloseHref() }>
 		<header class="dialog-head">
 			<div class="flex min-w-0 items-start gap-3">
 				@components.Logo(kindLogo(r.Kind), 40)
