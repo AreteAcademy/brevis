@@ -1045,6 +1045,16 @@ func (u *UI) runsScreen(w http.ResponseWriter, r *http.Request, open *uuid.UUID)
 		u.failure(w, r, err)
 		return
 	}
+	f.All = f.State == "" && q.Has("state")
+	// No state in the address: Running while anything is in flight, else All.
+	if !q.Has("state") && inFlight(counts) > 0 {
+		f.State = "running"
+		query.State, query.States = "", pages.InFlight
+		if runs, total, counts, err = u.runsList(r.Context(), query); err != nil {
+			u.failure(w, r, err)
+			return
+		}
+	}
 	screen := pages.RunsScreen{Runs: runs, Filter: f, Counts: counts, Total: total,
 		Logos: u.runsLogos(r.Context(), runs)}
 	// The open run: the one the address names, or the newest on the list.
@@ -1092,6 +1102,13 @@ func (u *UI) runsList(ctx context.Context, query postgres.RunFilter) ([]postgres
 		return nil, 0, nil, err
 	}
 	return runs, total, counts, nil
+}
+
+func inFlight(counts map[string]int) (n int) {
+	for _, s := range pages.InFlight {
+		n += counts[s]
+	}
+	return
 }
 
 // validState refuses any state outside §7's machine.

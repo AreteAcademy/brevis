@@ -118,6 +118,7 @@ templ Base(p Page) {
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ p.Title } · { brand.Title }</title>
+			<link rel="icon" href={ assets.URL("favicon.svg") } type="image/svg+xml"/>
 			// Both fonts are served from the binary. The preload avoids the
 			// layout jump on the serif title, which is the first thing the eye
 			// goes to.
