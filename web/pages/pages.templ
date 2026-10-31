@@ -405,6 +405,9 @@ templ chip(rota, text string, active1 bool, ponto string) {
 // a dashboard chart can point at "that hour's runs" with a link.
 type RunFilter struct {
 	State   string
+	// All says the operator picked "All" -- without it, no state means "the
+	// default": Running when something is in flight, else All.
+	All     bool
 	Workflow string
 	De       string // YYYY-MM-DDTHH, the same format the chart emits
 	Ate      string
@@ -422,6 +425,9 @@ func (f RunFilter) url(field, value string, resetsPage bool) string {
 		}
 	}
 	put("state", f.State)
+	if f.State == "" && f.All {
+		q.Set("state", "all")
+	}
 	put("workflow", f.Workflow)
 	put("from", f.De)
 	put("to", f.Ate)

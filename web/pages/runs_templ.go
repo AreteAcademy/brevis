@@ -61,9 +61,9 @@ func runsSegment(ctx context.Context, f RunFilter, counts map[string]int) []comp
 		}
 	}
 	return []components.SegOption{
-		{Label: i18n.T(ctx, "runs.all"), Href: f.With("state", ""), Count: fmt.Sprint(all), Current: f.State == ""},
-		{Label: i18n.T(ctx, "runs.failed"), Href: f.With("state", "failed"), Count: fmt.Sprint(counts["failed"]), Current: f.State == "failed"},
 		{Label: i18n.T(ctx, "runs.in_flight"), Href: f.With("state", "running"), Count: fmt.Sprint(going), Current: f.State == "running"},
+		{Label: i18n.T(ctx, "runs.failed"), Href: f.With("state", "failed"), Count: fmt.Sprint(counts["failed"]), Current: f.State == "failed"},
+		{Label: i18n.T(ctx, "runs.all"), Href: f.With("state", "all"), Count: fmt.Sprint(all), Current: f.State == ""},
 	}
 }
 

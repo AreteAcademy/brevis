@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="brevis.sh">
+  <!-- Solid ground: a favicon sits on a light or a dark browser tab, and the
+       mark alone would vanish against one of them. Shifted down 0.4 to sit
+       optically centred inside the square. -->
+  <rect width="24" height="24" fill="#141711"/>
+  <path d="M4 10.8C4 15.6 20 15.6 20 10.8" fill="none" stroke="#c7d66d"
+        stroke-width="3" stroke-linecap="round"/>
+</svg>

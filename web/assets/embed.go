@@ -45,7 +45,7 @@ import (
 // catches the omission now is a test that walks a rendered page and GETs
 // everything it asks for.
 //
-//go:embed app.css ui.js dag.js jsx-shim.js sql.js logo.svg vendor fonts
+//go:embed app.css ui.js dag.js jsx-shim.js sql.js logo.svg favicon.svg vendor fonts
 var FS embed.FS
 
 // LogoSVG is the default mark, already read out of the embedded FS.
