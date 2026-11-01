@@ -22,17 +22,19 @@ import (
 
 // Release is a published version and the page that describes it.
 type Release struct {
-	Tag   string // "v0.41.0"
-	URL   string
-	Notes string // the release notes, as safe HTML
+	Tag       string // "v0.41.0"
+	URL       string
+	Notes     string // the release notes, as safe HTML
+	Published time.Time
 }
 
 type listed struct {
-	Tag        string `json:"tag_name"`
-	URL        string `json:"html_url"`
-	NotesHTML  string `json:"body_html"`
-	Draft      bool   `json:"draft"`
-	Prerelease bool   `json:"prerelease"`
+	Tag        string    `json:"tag_name"`
+	URL        string    `json:"html_url"`
+	NotesHTML  string    `json:"body_html"`
+	Published  time.Time `json:"published_at"`
+	Draft      bool      `json:"draft"`
+	Prerelease bool      `json:"prerelease"`
 }
 
 // Interval is how often the list is read. GitHub allows sixty anonymous reads
@@ -128,7 +130,7 @@ func (c *Checker) Check(ctx context.Context) {
 			continue
 		}
 		if best.Tag == "" || newer(v, bestV) {
-			best, bestV = Release{Tag: r.Tag, URL: r.URL, Notes: Sanitize(r.NotesHTML)}, v
+			best, bestV = Release{Tag: r.Tag, URL: r.URL, Notes: Sanitize(r.NotesHTML), Published: r.Published}, v
 		}
 	}
 	c.mu.Lock()

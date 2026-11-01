@@ -263,7 +263,7 @@ func (u *UI) withVersion(ctx context.Context) context.Context {
 	ctx = layouts.WithVersion(ctx, u.version)
 	if u.updates != nil {
 		if r, newer, ok := u.updates.Latest(); ok {
-			ctx = layouts.WithRelease(ctx, r.Tag, r.URL, r.Notes, newer)
+			ctx = layouts.WithRelease(ctx, r.Tag, r.URL, r.Notes, r.Published, newer)
 		}
 	}
 	return ctx

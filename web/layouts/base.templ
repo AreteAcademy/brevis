@@ -447,11 +447,11 @@ templ themeButton(pref, icon, label string) {
 	</button>
 }
 
-// versionRow is the menu's first line: the running Brevis, and when a newer
-// one is out, which. It opens the release notes (versionModal) -- the newest
-// release's, whether or not it is newer than this one. Where the release is
-// not known (a development build, or a host that cannot reach GitHub) it is
-// the version alone, as plain text.
+// versionRow is the menu's first block: the Brevis mark, the running version
+// in mono, and -- when a newer one is out -- a blue pill with which. It opens
+// the release notes (versionModal): the newest release's, whether or not it is
+// newer than this one. Where the release is not known (a development build,
+// or a host that cannot reach GitHub) it is the same block, not a button.
 templ versionRow() {
 	{{ v := versionLabel(ctx) }}
 	if v != "" {
@@ -462,32 +462,84 @@ templ versionRow() {
 					type="button"
 					data-dialogo="version"
 					title={ i18n.T(ctx, "update.notes") }
-					class="flex w-full items-center justify-between gap-2 border-b border-line px-3 py-2.5 text-left text-[0.78rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+					class="flex w-full items-center gap-3 border-b border-line px-3 py-3 text-left transition-colors hover:bg-surface-2"
 				>
-					<span class="font-medium text-ink">{ i18n.T(ctx, "shell.version", "version", v) }</span>
+					@versionIdentity(v)
 					if r.newer {
-						<span class="inline-flex items-center gap-1 text-state-running">
-							@components.Icon("arrow-up-circle", "h-3.5 w-3.5")
-							{ i18n.T(ctx, "update.available", "version", r.tag) }
+						<span class="inline-flex shrink-0 items-center gap-1 rounded-full border border-state-running/40 bg-state-running/10 py-0.5 pr-2 pl-1.5 font-mono text-[0.7rem] font-medium text-state-running" title={ i18n.T(ctx, "update.available", "version", r.tag) }>
+							@components.Icon("arrow-up", "h-3 w-3")
+							{ r.tag }
 						</span>
+					} else {
+						<span class="shrink-0 text-faint">@components.Icon("chevron-right", "h-3.5 w-3.5")</span>
 					}
 				</button>
 			</span>
 		} else {
-			<p class="border-b border-line px-3 py-2.5 text-[0.78rem] font-medium text-ink">{ i18n.T(ctx, "shell.version", "version", v) }</p>
+			<div class="flex items-center gap-3 border-b border-line px-3 py-3">
+				@versionIdentity(v)
+			</div>
 		}
 	}
 }
 
-// versionModal is the newest release's notes, as GitHub renders them, and the
-// way to download it. Drawn only when the release is known.
+// versionIdentity is the mark on a quiet tile, "Brevis" and the version under
+// it. Brevis's own mark, whatever the installation's brand: the version is the
+// engine's.
+templ versionIdentity(v string) {
+	<span
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-card border border-line bg-canvas text-accent"
+	>
+		<span class="block h-[55%] w-[55%]">
+			@templ.Raw(assets.LogoSVG)
+		</span>
+	</span>
+	<span class="min-w-0 flex-1">
+		<span class="block text-[0.82rem] leading-tight font-semibold text-ink">Brevis</span>
+		<span class="mt-1 block font-mono text-[0.72rem] leading-none text-muted">{ v }</span>
+	</span>
+}
+
+// versionModal is the newest release as a small product page: its number big,
+// whether it is the news or just the latest, when it came out, then the notes
+// as GitHub renders them, and the way to download it. Drawn only when the
+// release is known.
 templ versionModal() {
 	if r, ok := latestRelease(ctx); ok {
-		@components.Modal("version", i18n.T(ctx, "shell.version", "version", r.tag), downloadFoot(r.url)) {
-			if r.newer {
-				<p class="mb-3 text-[0.8rem] text-muted">{ i18n.T(ctx, "update.running", "version", versionLabel(ctx)) }</p>
-			}
-			<div class="release-notes">
+		@components.Modal("version", i18n.T(ctx, "update.notes"), downloadFoot(r.url)) {
+			<div class="flex items-center gap-4">
+				<span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-card border border-line bg-canvas text-accent">
+					<span class="block h-6 w-6">
+						@templ.Raw(assets.LogoSVG)
+					</span>
+				</span>
+				<div class="min-w-0 flex-1">
+					<div class="flex flex-wrap items-center gap-2.5">
+						<span class="font-mono text-[1.4rem] leading-none font-semibold tracking-tight text-ink">{ r.tag }</span>
+						if r.newer {
+							<span class="rounded-full border border-state-running/40 bg-state-running/10 px-2 py-0.5 text-[0.68rem] font-semibold tracking-wide text-state-running uppercase">{ i18n.T(ctx, "update.new") }</span>
+						} else {
+							<span class="rounded-full border border-state-success/40 bg-state-success/10 px-2 py-0.5 text-[0.68rem] font-semibold tracking-wide text-state-success uppercase">{ i18n.T(ctx, "update.latest") }</span>
+						}
+					</div>
+					<p class="mt-2 text-[0.78rem] leading-none text-muted">
+						if !r.published.IsZero() {
+							{ i18n.T(ctx, "update.released", "date", i18n.Date(ctx, r.published.Local(), "day")) }
+						}
+						if r.newer {
+							if !r.published.IsZero() {
+								<span class="px-1.5 text-line-strong">·</span>
+							}
+							{ i18n.T(ctx, "update.running", "version", versionLabel(ctx)) }
+						}
+					</p>
+				</div>
+			</div>
+			<div class="mt-6 flex items-center gap-3">
+				<span class="text-[0.68rem] font-semibold tracking-[0.14em] text-faint uppercase">{ i18n.T(ctx, "update.whats_new") }</span>
+				<span class="h-px flex-1 bg-line-soft"></span>
+			</div>
+			<div class="release-notes mt-4">
 				@notesHTML(r.notes)
 			</div>
 		}

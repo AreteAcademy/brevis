@@ -3,6 +3,7 @@ package layouts
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 )
@@ -13,6 +14,7 @@ type releaseKey struct{}
 
 type release struct {
 	tag, url, notes string
+	published       time.Time
 	newer           bool
 }
 
@@ -23,8 +25,8 @@ func WithVersion(ctx context.Context, v string) context.Context {
 
 // WithRelease carries the newest release: its tag, its page, its notes (safe
 // HTML) and whether it is newer than the one running.
-func WithRelease(ctx context.Context, tag, url, notes string, newer bool) context.Context {
-	return context.WithValue(ctx, releaseKey{}, release{tag, url, notes, newer})
+func WithRelease(ctx context.Context, tag, url, notes string, published time.Time, newer bool) context.Context {
+	return context.WithValue(ctx, releaseKey{}, release{tag, url, notes, published, newer})
 }
 
 // versionLabel is "v0.40.0" however the build stamped it ("0.40.0", "v0.40.0"),

@@ -30,7 +30,7 @@ func TestTheAccountMenuShowsTheVersionAndANewerRelease(t *testing.T) {
 	ui := versionUI(releaseFake{r: updates.Release{Tag: "v0.41.0", URL: "https://github.com/AreteAcademy/brevis/releases/tag/v0.41.0", Notes: updates.Sanitize(notes)}, newer: true})
 	_, body := get(t, ui, "/ingest/loads")
 	for _, want := range []string{
-		`data-dialogo="version"`, "Brevis v0.40.0", "v0.41.0 available", "data-update-icon", "data-update-notice",
+		`data-dialogo="version"`, ">v0.40.0<", "v0.41.0 available", "data-update-icon", "data-update-notice",
 		`data-version="v0.41.0"`, `id="version"`, "<h3>Added</h3>", "You are running v0.40.0",
 		`href="https://github.com/AreteAcademy/brevis/releases/tag/v0.41.0"`, ">Download<",
 	} {
@@ -48,7 +48,7 @@ func TestTheAccountMenuShowsTheVersionAndANewerRelease(t *testing.T) {
 func TestACurrentConsoleHasNoUpdateIconOrNotice(t *testing.T) {
 	ui := versionUI(releaseFake{r: updates.Release{Tag: "v0.40.0", URL: "u", Notes: "<p>n</p>"}})
 	_, body := get(t, ui, "/ingest/loads")
-	if !strings.Contains(body, `data-dialogo="version"`) || !strings.Contains(body, "Brevis v0.40.0") {
+	if !strings.Contains(body, `data-dialogo="version"`) || !strings.Contains(body, ">v0.40.0<") {
 		t.Error("the version does not open the notes")
 	}
 	for _, bad := range []string{"data-update-icon", "data-update-notice", "v0.40.0 available"} {
@@ -62,7 +62,7 @@ func TestACurrentConsoleHasNoUpdateIconOrNotice(t *testing.T) {
 // version alone, as text.
 func TestWithoutAReleaseSourceTheVersionIsPlainText(t *testing.T) {
 	_, body := get(t, versionUI(nil), "/ingest/loads")
-	if !strings.Contains(body, "Brevis v0.40.0") || strings.Contains(body, `data-dialogo="version"`) {
+	if !strings.Contains(body, ">v0.40.0<") || strings.Contains(body, `data-dialogo="version"`) {
 		t.Error("the version is not plain text without a source")
 	}
 }
