@@ -3,6 +3,7 @@ package gateway
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -307,4 +308,42 @@ func okHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprint(w, "ok")
 	})
+}
+
+// A body is bounded in time as well as in size: the server carries both
+// deadlines, and a client that sends headers and then stalls is cut off.
+func TestListenerBoundsTheBodyInTime(t *testing.T) {
+	s := listener(&Config{}, ":0", nil)
+	if s.ReadTimeout <= 0 || s.WriteTimeout <= 0 {
+		t.Fatalf("ReadTimeout=%s WriteTimeout=%s, want both set", s.ReadTimeout, s.WriteTimeout)
+	}
+	if s.WriteTimeout <= archiveTimeout {
+		t.Errorf("WriteTimeout %s must exceed archiveTimeout %s", s.WriteTimeout, archiveTimeout)
+	}
+}
+
+func TestAStalledBodyIsClosed(t *testing.T) {
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	// The real server's settings, with the read deadline shortened so the
+	// test does not wait thirty seconds.
+	ts.Config.ReadTimeout = 200 * time.Millisecond
+	ts.Config.ReadHeaderTimeout = listener(&Config{}, ":0", nil).ReadHeaderTimeout
+	ts.Start()
+	defer ts.Close()
+
+	c, err := net.Dial("tcp", ts.Listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = c.Close() }()
+	_, _ = c.Write([]byte("POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 1048576\r\n\r\nx"))
+	_ = c.SetReadDeadline(time.Now().Add(5 * time.Second))
+	start := time.Now()
+	_, _ = io.ReadAll(c) // returns when the server closes the connection
+	if d := time.Since(start); d > 3*time.Second {
+		t.Errorf("stalled body held the connection for %s", d)
+	}
 }

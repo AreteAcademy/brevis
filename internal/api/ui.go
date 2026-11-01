@@ -33,6 +33,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/endpointcall"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
+	"github.com/AreteAcademy/brevis/internal/updates"
 	"github.com/AreteAcademy/brevis/web/assets"
 	"github.com/AreteAcademy/brevis/web/components"
 	"github.com/AreteAcademy/brevis/web/i18n"
@@ -61,6 +62,8 @@ type Leitura interface {
 	Runs(ctx context.Context, f postgres.RunFilter) ([]postgres.RunSummary, error)
 	CountRuns(ctx context.Context, f postgres.RunFilter) (int, error)
 	CountRunsByState(ctx context.Context, f postgres.RunFilter) (map[string]int, error)
+	// CountRunsInFlight is the sidebar badge's number; it must stay cheap.
+	CountRunsInFlight(ctx context.Context) (int, error)
 	// WorkflowHistory is a workflow's runs with their params, newest first;
 	// with a day, that UTC day's.
 	WorkflowHistory(ctx context.Context, slug string, day *time.Time, limit int) ([]postgres.RunSummary, error)
@@ -132,7 +135,11 @@ type Actions interface {
 
 // UI registers the server-rendered pages and the JSON the React island consumes.
 type UI struct {
-	leitura Leitura
+	leitura  Leitura
+	inFlight func(context.Context) (int, error)
+	// version is what the console runs; updates says if there is newer.
+	version string
+	updates UpdateSource
 	defs    Definitions
 	execs   RunsChart
 	actions Actions
@@ -236,6 +243,34 @@ func (u *UI) WithEvents(r EventsReader) *UI {
 	return u
 }
 
+// UpdateSource knows the newest Brevis released and whether it is newer than
+// the one running.
+type UpdateSource interface {
+	Latest() (r updates.Release, newer, ok bool)
+}
+
+// WithVersion shows the running version in the account menu and, when src
+// knows a newer release, an update icon and a notice. A nil src is the version
+// alone.
+func (u *UI) WithVersion(current string, src UpdateSource) *UI {
+	u.version, u.updates = current, src
+	return u
+}
+
+// withVersion carries the version and the update, if any, to the layout.
+func (u *UI) withVersion(ctx context.Context) context.Context {
+	if u.version == "" {
+		return ctx
+	}
+	ctx = layouts.WithVersion(ctx, u.version)
+	if u.updates != nil {
+		if r, newer, ok := u.updates.Latest(); ok {
+			ctx = layouts.WithRelease(ctx, r.Tag, r.URL, r.Notes, r.Published, newer)
+		}
+	}
+	return ctx
+}
+
 // WithFailing turns on the list of failing workflows.
 func (u *UI) WithFailing(r FailingReader) *UI {
 	u.failing = r
@@ -279,7 +314,12 @@ func (u *UI) dataTools(target string) bool {
 func NewUI(l Leitura, d Definitions, e RunsChart, a Actions, al AlertsReader,
 	c CatalogReader, m branding.Brand, log *slog.Logger,
 ) *UI {
-	return &UI{leitura: l, defs: d, execs: e, actions: a, alerts: al, catalog: c, brand: m, log: log}
+	u := &UI{leitura: l, defs: d, execs: e, actions: a, alerts: al, catalog: c, brand: m, log: log}
+	if l != nil {
+		// Every page and every open tab's 10 s poll draws the badge.
+		u.inFlight = CachedInFlight(l.CountRunsInFlight, 5*time.Second, time.Now)
+	}
+	return u
 }
 
 // Registrar wires the routes into the mux.
@@ -2012,6 +2052,7 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	ctx = layouts.WithRequestURI(ctx, r.URL.RequestURI())
 	ctx = layouts.TakeFlash(ctx, w, r)
 	ctx = u.withRunsBadges(ctx, r)
+	ctx = u.withVersion(ctx)
 	ctx = u.withAttention(ctx, r)
 	if err := c.Render(ctx, w); err != nil {
 		u.log.Error("rendering the page", "path", r.URL.Path, "error", err)
@@ -2030,11 +2071,11 @@ func (u *UI) withRunsBadges(ctx context.Context, r *http.Request) context.Contex
 			ctx = layouts.WithFailing(ctx, len(failing))
 		}
 	}
-	if u.leitura != nil {
-		if counts, err := u.leitura.CountRunsByState(ctx, postgres.RunFilter{}); err != nil {
+	if u.inFlight != nil {
+		if n, err := u.inFlight(ctx); err != nil {
 			u.log.Error("counting the runs in flight", "path", r.URL.Path, "error", err)
 		} else {
-			ctx = layouts.WithRunning(ctx, inFlight(counts))
+			ctx = layouts.WithRunning(ctx, n)
 		}
 	}
 	return ctx

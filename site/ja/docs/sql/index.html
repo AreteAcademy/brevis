@@ -240,21 +240,21 @@ brevis-sql: 1 of 2 tests failed"><div class="code-head"><span class="code-lang">
       SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
 brevis-sql: 1 of 2 tests failed</code></pre></div>
 <p>プロセスは終了コード 1 で終了し、ワークフローのステップもそれとともに失敗します。</p>
-<h2 id="tests-are-selects-that-return-violating-rows">テストは、違反する行を返す SELECT<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
+<h2 id="an-incremental-model-and-its-lookback">テストは、違反する行を返す SELECT<a class="anchor" href="#an-incremental-model-and-its-lookback" aria-label="link">#</a></h2>
 <p><code>not_null</code>、<code>unique</code>、<code>accepted_values</code>、<code>relationships</code>。ゼロ行ならパスで、解釈すべきことはほかにありません。</p>
-<h2 id="it-says-what-it-wrote">書き込んだものを自分で伝える<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
+<h2 id="tests-are-selects-that-return-violating-rows">書き込んだものを自分で伝える<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
 <p>マテリアライズされたすべてのモデルは、Brevis エンジンがすでに読んでいる <code>@brevis:</code> の行を出力するため、 <code>/data</code> に他のすべてと並んで表示されます(上の <code>build</code> の出力を参照)。ビューは行数をゼロではなく 報告しません。ビューは行を持たず、そこでのゼロは、本当に空のテーブルと区別がつかないからです。</p>
-<h2 id="two-warehouses-one-suite">2 つのウェアハウス、1 つのスイート<a class="anchor" href="#two-warehouses-one-suite" aria-label="link">#</a></h2>
+<h2 id="it-says-what-it-wrote">2 つのウェアハウス、1 つのスイート<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
 <p>PostgreSQL と BigQuery(<code>--dialect bigquery</code>)で、どちらも同じテストスイートを実行します。実装が 1 つしかなかった間に書かれたもので、2 つ目が黙って乖離することはありません。</p>
 <p>BigQuery は Application Default Credentials で認証します。ワークロード ID では、それは pod 自身の ID であり、<code>--dsn-from</code> はプロジェクト id を保持する変数を指定します。</p>
-<h2 id="13-mb">13 MB<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
+<h2 id="two-warehouses-one-suite">13 MB<a class="anchor" href="#two-warehouses-one-suite" aria-label="link">#</a></h2>
 <p>distroless、nonroot、シェルなし。公式の BigQuery クライアントは、空のバイナリで 31 MB、526 パッケージ なので、代わりに REST エンドポイントを通じて BigQuery と通信します。約 200 行で、黙って間違いうる あらゆる形に対して 1 つずつテストがあります。リポジトリのゲートがそのクライアントを名前で拒否するので、 この判断は、通常の依存関係のバージョンアップを越えて保たれます。</p>
-<h2 id="verified-against-dbt">dbt との照合<a class="anchor" href="#verified-against-dbt" aria-label="link">#</a></h2>
+<h2 id="13-mb">dbt との照合<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
 <p>jaffle-shop を、dbt が使ったのと同じシードデータに対して、このイメージでビルドしました。</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>結果</th></tr></thead><tbody><tr><td>モデルごとの、行と各行の md5</td><td><strong>一致、13 個中 13 個</strong></td></tr><tr><td>モデルごとの、列と型</td><td><strong>一致、13 個中 13 個</strong></td></tr><tr><td>13 モデル、初回ビルド</td><td>1.56 秒</td></tr></tbody></table></div>
-<h2 id="what-it-does-not-do">やらないこと<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
+<h2 id="verified-against-dbt">やらないこと<a class="anchor" href="#verified-against-dbt" aria-label="link">#</a></h2>
 <p><strong>dbt との互換性はありません</strong>。これは欠陥ではなく判断です。実際の dbt プロジェクトのモデルの約 3 分の 1 は、 <code>ref</code>、<code>source</code>、<code>config</code> 以上のものを使いません。残りはマクロを使い、パッケージは設計上テンプレートです。 誰にも予測できない半端な互換性は、ないよりも悪いものです。</p>
-<h2 id="where-to-go-next">次に進む先<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-do">次に進む先<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>目的</th><th>参照先</th></tr></thead><tbody><tr><td>4 つの構成要素の中での SQL の位置づけを見る</td><td><a href="/ja/docs/ecosystem/">エコシステム</a></td></tr><tr><td>brevis-sql をスケジュールされたステップとして実行する</td><td><a href="/ja/docs/core/">Core</a></td></tr><tr><td>モデリング対象のデータを着地させる</td><td><a href="/ja/docs/sdk/">Go SDK</a>または<a href="/ja/docs/ingestion/">取り込み</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="ページ">
@@ -269,7 +269,7 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#six-commands">6 つのコマンド</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve — 認証情報なしでウェアハウスを読む</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">誰かが変更してよい開発用ウェアハウス</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">モデルは有効な SQL のままのファイル</a></li><li class="toc-2"><a href="#from-compile-to-test">compile から test まで</a></li><li class="toc-3"><a href="#when-a-test-fails">テストが失敗したとき</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">テストは、違反する行を返す SELECT</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">書き込んだものを自分で伝える</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">2 つのウェアハウス、1 つのスイート</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#verified-against-dbt">dbt との照合</a></li><li class="toc-2"><a href="#what-it-does-not-do">やらないこと</a></li><li class="toc-2"><a href="#where-to-go-next">次に進む先</a></li></ul>
+      <ul><li class="toc-2"><a href="#six-commands">6 つのコマンド</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve — 認証情報なしでウェアハウスを読む</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">誰かが変更してよい開発用ウェアハウス</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">モデルは有効な SQL のままのファイル</a></li><li class="toc-2"><a href="#from-compile-to-test">compile から test まで</a></li><li class="toc-3"><a href="#when-a-test-fails">テストが失敗したとき</a></li><li class="toc-2"><a href="#an-incremental-model-and-its-lookback">テストは、違反する行を返す SELECT</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">書き込んだものを自分で伝える</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">2 つのウェアハウス、1 つのスイート</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">13 MB</a></li><li class="toc-2"><a href="#13-mb">dbt との照合</a></li><li class="toc-2"><a href="#verified-against-dbt">やらないこと</a></li><li class="toc-2"><a href="#what-it-does-not-do">次に進む先</a></li></ul>
     </aside>
   </main>
 </div>

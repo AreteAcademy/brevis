@@ -71,7 +71,7 @@ func TestBytesSurviveABatchComingBack(t *testing.T) {
 		}},
 		// Unbuffered, and nobody reading: every handoff fails and gives the
 		// batch back, which is the path under test.
-		queue:   make(chan []sdk.Envelope),
+		queue:   make(chan queued),
 		buckets: map[string]*bucket{},
 	}
 
@@ -116,7 +116,7 @@ func TestARefusedHandoffIsNotCountedAsAFlush(t *testing.T) {
 	m := NewMetrics()
 	p := &pipe{
 		stream:  Stream{Name: "s", Buffer: Buffer{Flush: Flush{Records: 1_000_000, Every: time.Hour}, MaxRecords: 10}},
-		queue:   make(chan []sdk.Envelope),
+		queue:   make(chan queued),
 		metrics: m,
 		buckets: map[string]*bucket{},
 	}
@@ -487,7 +487,7 @@ func TestTheBatchRemembersItsOldestEvent(t *testing.T) {
 			Flush:      Flush{Records: 1_000_000, Every: time.Hour},
 			MaxRecords: 1_000_000,
 		}},
-		queue:   make(chan []sdk.Envelope, 1),
+		queue:   make(chan queued, 1),
 		now:     func() time.Time { return clock },
 		buckets: map[string]*bucket{},
 	}
@@ -628,7 +628,7 @@ func TestArmUsesTheDeadline(t *testing.T) {
 			Every:  time.Hour,
 			MaxAge: Duration(60 * time.Millisecond),
 		}}},
-		queue: make(chan []sdk.Envelope, 1),
+		queue: make(chan queued, 1),
 		// A pipe production builds always has these, and handoff reaches
 		// through the pointer to name the counter before count() can guard
 		// it. An incomplete pipe panics rather than skipping the metric.

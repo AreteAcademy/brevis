@@ -3,6 +3,7 @@ package postgres
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 	"github.com/AreteAcademy/brevis/sql/internal/model"
@@ -138,5 +139,17 @@ func TestKindOfAsksForTheRelationsKind(t *testing.T) {
 	// identifiers, so there is nothing here to inject.
 	if strings.Contains(q, "$1") {
 		t.Error("KindOf expects a parameter and Scalar has nowhere to put one")
+	}
+}
+
+func TestTheIncrementalFilterTakesALookback(t *testing.T) {
+	m := model.Model{Schema: "s", Name: "t", Watermark: "w", UniqueKey: []string{"k"},
+		Materialised: model.Incremental, SQL: "select 1", Lookback: 2 * time.Hour}
+	if got := mergeInto(m, dialect.State{Columns: []string{"k", "w"}}, "s.t"); !strings.Contains(got, "w >= (SELECT MAX(w) FROM s.t) - INTERVAL '7200 seconds'") {
+		t.Errorf("no lookback bound in:\n%s", got)
+	}
+	m.Lookback = 0
+	if got := mergeInto(m, dialect.State{Columns: []string{"k", "w"}}, "s.t"); !strings.Contains(got, "OR w > (SELECT MAX(w) FROM s.t)") {
+		t.Errorf("the default filter changed:\n%s", got)
 	}
 }

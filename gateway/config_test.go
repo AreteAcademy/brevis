@@ -348,6 +348,9 @@ func TestAMinimalConfigGetsWorkingDefaults(t *testing.T) {
 	if cfg.Listen.MaxBody == 0 {
 		t.Error("max_body defaulted to zero, which accepts nothing")
 	}
+	if s.Buffer.MaxBytes < 64<<20 {
+		t.Errorf("max_bytes defaulted to %s: the byte ceiling must never be off", s.Buffer.MaxBytes)
+	}
 	if cfg.Listen.Addr == "" {
 		t.Error("addr defaulted to empty")
 	}

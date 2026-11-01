@@ -114,6 +114,13 @@ templ Base(p Page) {
 			// hidden and revealed by the deferred ui.js -- after a paint, on
 			// every navigation where the HTML arrives in pieces -- and popped
 			// in (nav-latency N6). No logic here: anything more is ui.js's.
+			// THE THEME AND THE LANGUAGE ARE THE VISITOR'S, kept in
+			// localStorage and read here, ahead of any paint. The theme is
+			// applied at once (auto follows the system); the language is what
+			// the server draws from, so when localStorage and the cookie
+			// disagree the cookie is mended and the page asked for again --
+			// once per session, so a browser that refuses cookies cannot loop.
+			@templ.Raw(`<script>(function(){var d=document.documentElement,p="auto",l,m;try{p=localStorage.getItem("brevis_theme")||"auto";l=localStorage.getItem("brevis_lang")}catch(e){}if(p!=="light"&&p!=="dark")p="auto";d.dataset.themePref=p;try{d.dataset.navMode=localStorage.getItem("brevis_sidebar")==="short"?"short":"full"}catch(e){d.dataset.navMode="full"}d.dataset.theme=p==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):p;m=document.cookie.match(/(?:^|; )brevis_lang=([^;]*)/);if(l&&/^[a-z]{2}(-[A-Z]{2})?$/.test(l)){if(!m||m[1]!==l){try{if(sessionStorage.getItem("brevis_lang_sync"))return;sessionStorage.setItem("brevis_lang_sync","1")}catch(e){return}document.cookie="brevis_lang="+l+"; Path=/; Max-Age=31536000; SameSite=Lax";location.reload()}}else if(m){try{localStorage.setItem("brevis_lang",m[1])}catch(e){}}})()</script>`)
 			@templ.Raw(`<script>document.documentElement.classList.add("js");document.documentElement.dataset.hash=location.hash.slice(1)</script>`)
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -157,11 +164,18 @@ templ Base(p Page) {
 					// A FILL PAGE DRAWS NO PAGE HEADER: its panes take the height,
 					// and the breadcrumb already says where it is.
 					if !p.Fill {
-					<header data-page-header class="px-3 pt-4 pb-3 min-[860px]:px-6 min-[860px]:pt-5">
-						<div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+					// ONE HEADER, ONE HEIGHT. The title sits at the same place on every
+					// page: the row is always at least a button tall and centres what
+					// is in it, so a page with actions and one without put the title on
+					// the same line; the eyebrow lives in the top padding, so having
+					// one does not push the title down; and the content always begins
+					// the same distance below. A page's intro line is the content's
+					// first block, not a negative margin that reaches back up.
+					<header data-page-header class="relative px-3 pt-3 pb-1 min-[860px]:px-6">
+						<div class="flex min-h-8 flex-wrap items-center justify-between gap-x-6 gap-y-3">
 							<div class="min-w-0">
 								if p.Eyebrow != nil {
-									<div class="mb-1.5 flex flex-wrap items-center gap-2">
+									<div class="absolute top-0.5 left-3 flex flex-wrap items-center gap-2 leading-none min-[860px]:left-6">
 										@p.Eyebrow
 									</div>
 								}
@@ -214,6 +228,8 @@ templ Base(p Page) {
 			</div>
 			@palette()
 			@shortcuts()
+			@versionModal()
+			@updateNotice()
 			// The sentences ui.js writes itself, in this page's language.
 			@templ.Raw(`<script type="application/json" id="i18n">` + scriptMessages(ctx) + `</script>`)
 			@toasts()
@@ -235,7 +251,8 @@ templ Base(p Page) {
 templ accountMenu(operator string, brand branding.Brand) {
 	<details class="account-menu relative">
 		<summary
-			class="flex cursor-pointer list-none items-center justify-between gap-1.5 rounded-card px-2 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			data-name={ accountName(ctx, operator) }
+			class="sb-item flex cursor-pointer list-none items-center justify-between gap-1.5 rounded-card px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
 			<span class="flex min-w-0 items-center gap-2">
 				<svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
@@ -243,60 +260,31 @@ templ accountMenu(operator string, brand branding.Brand) {
 					<path d="M2.5 14c0-2.6 2.5-4.2 5.5-4.2s5.5 1.6 5.5 4.2"></path>
 				</svg>
 				if operator != "" {
-					<span class="truncate" title={ operator }>{ operator }</span>
+					<span data-collapse class="truncate" title={ operator }>{ operator }</span>
 				} else {
-					<span class="truncate">{ i18n.T(ctx, "shell.account") }</span>
+					<span data-collapse class="truncate">{ i18n.T(ctx, "shell.account") }</span>
 				}
 			</span>
+			<span class="flex shrink-0 items-center gap-1.5">
+			if r, ok := newerRelease(ctx); ok {
+				<span class="text-state-running" data-sb-badge data-tip={ i18n.T(ctx, "update.available", "version", r.tag) } data-update-icon>
+					@components.Icon("arrow-up-circle", "h-4 w-4")
+				</span>
+			}
 			// Rotates when the menu opens, which is the only thing that says
 			// the button is a menu before it is clicked.
-			<svg class="account-menu-arrow h-3.5 w-3.5 shrink-0 transition-transform" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+			<svg data-collapse class="account-menu-arrow h-3.5 w-3.5 shrink-0 transition-transform" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
 				<path d="M4 10l4-4 4 4"></path>
 			</svg>
+			</span>
 		</summary>
 		// IT OPENS UPWARDS, because it sits at the foot of the sidebar: a
 		// dropdown from there would be drawn past the bottom of the window.
 		// It dropped down for the while it lived in a top bar.
-		<div class="absolute bottom-full left-0 z-20 mb-1 w-60 overflow-hidden rounded-card border border-line bg-surface shadow-warm">
-			// The installation's phrase, INSIDE the menu.
-			//
-			// It used to sit in the sidebar's footer, where it was a paragraph
-			// of prose between the navigation and a button -- read once, then
-			// skipped forever, and taking vertical room from the only two
-			// things down there anybody clicks. In here it is still the
-			// customer's voice and it costs nothing until the menu is open.
-			if rows := brand.Lines(); len(rows) > 0 {
-				<p class="border-b border-line px-3 py-2.5 text-[0.75rem] leading-snug text-muted">
-					for i, l := range rows {
-						if i == 0 {
-							{ "“" + l }
-						} else {
-							<br/>
-							if i == len(rows)-1 {
-								{ l + "”" }
-							} else {
-								{ l }
-							}
-						}
-					}
-					if len(rows) == 1 {
-						{ "”" }
-					}
-				</p>
-			}
+		<div class="absolute right-0 bottom-full left-0 z-20 mb-1 rounded-card border border-line bg-surface shadow-warm">
 			<div class="py-1">
-			<a
-				href={ templ.SafeURL(branding.DocsURL) }
-				target="_blank"
-				rel="noreferrer"
-				class="flex items-center gap-2.5 px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-			>
-				<svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
-					<path d="M3 2.5h6.5L13 6v7.5H3z"></path>
-					<path d="M9.5 2.5V6H13"></path>
-				</svg>
-				{ i18n.T(ctx, "shell.docs") }
-			</a>
+			@langChoice()
+			@themeChoice()
 			if operator != "" {
 				<form method="post" action="/logout">
 					// A POST, and not a link. A GET that signs somebody out is
@@ -314,7 +302,35 @@ templ accountMenu(operator string, brand branding.Brand) {
 					</button>
 				</form>
 			}
+			<div class="my-1 border-t border-line-soft"></div>
+			<a
+				href={ templ.SafeURL(branding.DocsIn(i18n.Lang(ctx), "")) }
+				target="_blank"
+				rel="noreferrer"
+				class="flex items-center gap-2.5 px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			>
+				<svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+					<path d="M3 2.5h6.5L13 6v7.5H3z"></path>
+					<path d="M9.5 2.5V6H13"></path>
+				</svg>
+				{ i18n.T(ctx, "shell.docs") }
+			</a>
+			<span class="block" data-js>
+				<button
+					type="button"
+					data-dialogo="shortcuts"
+					title={ i18n.T(ctx, "shortcuts.tip") }
+					class="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-left text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+				>
+					<span class="flex items-center gap-2.5">
+						@components.Icon("keyboard", "h-4 w-4")
+						{ i18n.T(ctx, "shortcuts.title") }
+					</span>
+					<span class="font-mono text-[0.7rem] text-faint">?</span>
+				</button>
+			</span>
 			</div>
+			@versionRow()
 		</div>
 	</details>
 }
@@ -329,8 +345,8 @@ templ accountMenu(operator string, brand branding.Brand) {
 // while the page beside it crossfades.
 templ sidebar(active string, brand branding.Brand) {
 	<aside id="app-sidebar" class="app-sidebar flex h-full w-[236px] shrink-0 flex-col border-r border-line-soft bg-canvas-subtle">
-		<div class="flex h-13 shrink-0 items-center border-b border-line-soft pr-2">
-		<a href="/" class="flex min-w-0 flex-1 items-center gap-2.5 px-4">
+		<div class="sb-head flex h-13 shrink-0 items-center border-b border-line-soft pr-2">
+		<a href="/" data-name={ brand.Title } class="sb-item sb-logo flex min-w-0 flex-1 items-center gap-2.5 px-4">
 			if brand.Logo == branding.DefaultLogo {
 				// Inline, so the symbol inherits the theme's colour.
 				<span class="block h-6 w-6 shrink-0 text-accent">
@@ -339,8 +355,9 @@ templ sidebar(active string, brand branding.Brand) {
 			} else if brand.Logo != "" {
 				<img src={ brand.Logo } alt={ brand.Title } class="h-6 w-6 shrink-0 rounded-card object-contain"/>
 			}
-			<span class="display block truncate text-[1.05rem] leading-none text-ink">{ brand.Title }</span>
+			<span data-collapse class="display block truncate text-[1.05rem] leading-none text-ink">{ brand.Title }</span>
 		</a>
+		@sidebarToggle()
 		// Closes the drawer; only there when the sidebar is one. A link to
 		// `#` so that, with no script, it clears the `:target` that opened it.
 		<a
@@ -354,44 +371,46 @@ templ sidebar(active string, brand branding.Brand) {
 		</div>
 		// THE PROJECT SWITCHER: the scope a reader works in, above the places
 		// to go. It opens the list of projects, which is still a page.
-		<div class="px-2.5 pt-3">
+		<div class="sb-pad px-2.5 pt-3">
 			<a
 				href={ templ.SafeURL(projectsPlace(ctx).Href) }
 				data-project-switcher
+				data-name={ projectsPlace(ctx).Name }
 				data-tip={ projectsPlace(ctx).Tip }
 				if active == projectsPlace(ctx).Key {
 					aria-current="page"
 				}
-				class="flex h-8 w-full items-center gap-2 rounded-card border border-line px-2.5 text-[0.8rem] text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
+				class="sb-item flex h-8 w-full items-center gap-2 rounded-card border border-line px-2.5 text-[0.8rem] text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
 			>
 				@components.Icon(projectsPlace(ctx).Icon, "h-3.5 w-3.5")
-				<span class="flex-1 truncate">{ projectsPlace(ctx).Name }</span>
-				@components.Icon("chevron-right", "h-3.5 w-3.5")
+				<span data-collapse class="flex-1 truncate">{ projectsPlace(ctx).Name }</span>
+				<span data-collapse>@components.Icon("chevron-right", "h-3.5 w-3.5")</span>
 			</a>
 		</div>
 		// THE PALETTE'S OPENER, only where a script will drive it (data-js):
 		// without one it would be a button that opens nothing.
-		<span class="block px-2.5 pt-3" data-js>
+		<span class="sb-pad block px-2.5 pt-3" data-js>
 			<button
 				type="button"
 				data-palette-open
+				data-name={ i18n.T(ctx, "shell.search_open") }
 				aria-haspopup="dialog"
 				aria-controls="palette"
-				class="flex h-8 w-full items-center gap-2 rounded-card border border-line bg-surface px-2.5 text-[0.8rem] text-muted transition-colors hover:border-line-strong hover:text-ink"
+				class="sb-item flex h-8 w-full items-center gap-2 rounded-card border border-line bg-surface px-2.5 text-[0.8rem] text-muted transition-colors hover:border-line-strong hover:text-ink"
 			>
 				@components.Icon("search", "h-3.5 w-3.5")
-				<span class="flex-1 truncate text-left">{ i18n.T(ctx, "shell.search_open") }</span>
-				@components.Kbd("⌘K")
+				<span data-collapse class="flex-1 truncate text-left">{ i18n.T(ctx, "shell.search_open") }</span>
+				<span data-collapse>@components.Kbd("⌘K")</span>
 			</button>
 		</span>
-		<nav aria-label={ i18n.T(ctx, "shell.sections") } class="flex-1 overflow-y-auto px-2.5 py-3">
+		<nav aria-label={ i18n.T(ctx, "shell.sections") } class="sb-pad flex-1 overflow-y-auto px-2.5 py-3">
 			// A GROUP IS ANNOUNCED AS ONE -- `role="group"` with its name -- so
 			// the label a sighted reader sees in small caps is heard too, and
 			// the visible copy is hidden from a screen reader rather than read
 			// twice.
 			for _, g := range groups(ctx) {
-				<div role="group" aria-label={ g.Name } class="mb-4 flex flex-col gap-0.5">
-					<p aria-hidden="true" class="px-2.5 pb-1 text-[0.68rem] font-medium tracking-[0.08em] text-faint uppercase">{ g.Name }</p>
+				<div role="group" aria-label={ g.Name } class="sb-group mb-4 flex flex-col gap-0.5">
+					<p data-collapse aria-hidden="true" class="px-2.5 pb-1 text-[0.68rem] font-medium tracking-[0.08em] text-faint uppercase">{ g.Name }</p>
 					for _, s := range g.Sections {
 						@navLink(s, active)
 					}
@@ -400,23 +419,8 @@ templ sidebar(active string, brand branding.Brand) {
 		</nav>
 		// WHO YOU ARE, AT THE FOOT, which is where a console keeps "who am I
 		// and how do I leave". The menu opens upwards from here.
-		<div class="flex shrink-0 items-center gap-0.5 border-t border-line-soft p-2">
-			<div class="min-w-0 flex-1">
-				@accountMenu(auth.De(ctx), brand)
-			</div>
-			<span class="block shrink-0" data-js>
-				<button
-					type="button"
-					data-dialogo="shortcuts"
-					aria-label={ i18n.T(ctx, "shortcuts.title") }
-					data-tip={ i18n.T(ctx, "shortcuts.tip") }
-					class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-				>
-					@components.Icon("keyboard", "h-4 w-4")
-				</button>
-			</span>
-			@langSwitch()
-			@themeSwitch()
+		<div class="sb-pad shrink-0 border-t border-line-soft p-2">
+			@accountMenu(auth.De(ctx), brand)
 		</div>
 	</aside>
 	// The drawer's backdrop: a click on it closes the drawer. A sibling AFTER
@@ -425,43 +429,163 @@ templ sidebar(active string, brand branding.Brand) {
 	<a href="#" data-drawer-close class="app-drawer-backdrop" aria-hidden="true" tabindex="-1"></a>
 }
 
-// themeSwitch flips the theme in place and remembers it in the cookie the
-// server reads. Only where a script will drive it (data-js): without one it
-// would be a button that does nothing. Both glyphs are drawn and the CSS shows
-// the one for the theme the click leads to, so the script only flips the
-// attribute and the label.
-templ themeSwitch() {
-	<span class="block shrink-0" data-js>
-		<button
-			type="button"
-			data-theme-toggle
-			aria-label={ themeSwitchLabel(ctx) }
-			title={ themeSwitchLabel(ctx) }
-			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-		>
-			<span class="theme-to-light">@components.Icon("sun", "h-4 w-4")</span>
-			<span class="theme-to-dark">@components.Icon("moon", "h-4 w-4")</span>
-		</button>
+// themeChoice is the menu's theme row: auto, light and dark as three icons,
+// the chosen one lit. The choice lives in localStorage (ui.js writes it, the
+// first script in the head reads it before the first paint), so it is only
+// drawn where a script will drive it (data-js). Auto, the default, follows the
+// system.
+templ themeChoice() {
+	<div class="flex items-center justify-between gap-2 px-3 py-1.5 text-[0.82rem] text-muted" data-js role="group" aria-label={ i18n.T(ctx, "theme.label") }>
+		<span>{ i18n.T(ctx, "theme.label") }</span>
+		<span class="flex items-center gap-0.5">
+			@themeButton("auto", "monitor", i18n.T(ctx, "theme.auto"))
+			@themeButton("light", "sun", i18n.T(ctx, "theme.light"))
+			@themeButton("dark", "moon", i18n.T(ctx, "theme.dark"))
+		</span>
+	</div>
+}
+
+templ themeButton(pref, icon, label string) {
+	<button
+		type="button"
+		data-theme-set={ pref }
+		aria-pressed="false"
+		aria-label={ label }
+		title={ label }
+		class="flex h-6 w-7 items-center justify-center rounded-[5px] text-muted transition-colors hover:text-ink aria-pressed:bg-surface-2 aria-pressed:text-ink"
+	>
+		@components.Icon(icon, "h-3.5 w-3.5")
+	</button>
+}
+
+// versionRow is the menu's first block: the Brevis mark, the running version
+// in mono, and -- when a newer one is out -- a blue pill with which. It opens
+// the release notes (versionModal): the newest release's, whether or not it is
+// newer than this one. Where the release is not known (a development build,
+// or a host that cannot reach GitHub) it is the same block, not a button.
+templ versionRow() {
+	{{ v := versionLabel(ctx) }}
+	if v != "" {
+		{{ r, known := latestRelease(ctx) }}
+		if known {
+			<span class="block" data-js>
+				<button
+					type="button"
+					data-dialogo="version"
+					title={ i18n.T(ctx, "update.notes") }
+					class="flex w-full items-center gap-3 border-t border-line px-3 py-3 text-left transition-colors hover:bg-surface-2"
+				>
+					@versionIdentity(v)
+					if r.newer {
+						<span class="shrink-0 rounded-full border border-state-running/40 bg-state-running/10 px-2 py-0.5 font-mono text-[0.7rem] font-medium text-state-running" title={ i18n.T(ctx, "update.available", "version", r.tag) }>
+							{ r.tag }
+						</span>
+					}
+				</button>
+			</span>
+		} else {
+			<div class="flex items-center gap-3 border-t border-line px-3 py-3">
+				@versionIdentity(v)
+			</div>
+		}
+	}
+}
+
+// versionIdentity is "Brevis" and the version under it, in mono. Brevis's own
+// name, whatever the installation's brand: the version is the engine's.
+templ versionIdentity(v string) {
+	<span class="min-w-0 flex-1">
+		<span class="block text-[0.82rem] leading-tight font-semibold text-ink">Brevis</span>
+		<span class="mt-1 block font-mono text-[0.72rem] leading-none text-muted">{ v }</span>
 	</span>
 }
 
-// langSwitch chooses the console's language. A <details> menu of three
-// submit buttons in one form, so it needs no script at all: the server
-// remembers the choice and comes back to this page. ui.js closes it on Escape
-// and on a click elsewhere, as it does every [data-popover]. Each language is
-// named in itself and carries its own lang, so a screen reader says it right.
-templ langSwitch() {
+// versionModal is the newest release as a small product page: its number big,
+// whether it is the news or just the latest, when it came out, then the notes
+// as GitHub renders them, and the way to download it. Drawn only when the
+// release is known.
+templ versionModal() {
+	if r, ok := latestRelease(ctx); ok {
+		@components.Modal("version", i18n.T(ctx, "update.notes"), downloadFoot(r.url)) {
+			<div class="flex items-center gap-4">
+				<div class="min-w-0 flex-1">
+					<div class="flex flex-wrap items-center gap-2.5">
+						<span class="font-mono text-[1.4rem] leading-none font-semibold tracking-tight text-ink">{ r.tag }</span>
+						if r.newer {
+							<span class="rounded-full border border-state-running/40 bg-state-running/10 px-2 py-0.5 text-[0.68rem] font-semibold tracking-wide text-state-running uppercase">{ i18n.T(ctx, "update.new") }</span>
+						} else {
+							<span class="rounded-full border border-state-success/40 bg-state-success/10 px-2 py-0.5 text-[0.68rem] font-semibold tracking-wide text-state-success uppercase">{ i18n.T(ctx, "update.latest") }</span>
+						}
+					</div>
+					<p class="mt-2 text-[0.78rem] leading-none text-muted">
+						if !r.published.IsZero() {
+							{ i18n.T(ctx, "update.released", "date", i18n.Date(ctx, r.published.Local(), "day")) }
+						}
+						if r.newer {
+							if !r.published.IsZero() {
+								<span class="px-1.5 text-line-strong">·</span>
+							}
+							{ i18n.T(ctx, "update.running", "version", versionLabel(ctx)) }
+						}
+					</p>
+				</div>
+			</div>
+			<div class="mt-6 flex items-center gap-3">
+				<span class="text-[0.68rem] font-semibold tracking-[0.14em] text-faint uppercase">{ i18n.T(ctx, "update.whats_new") }</span>
+				<span class="h-px flex-1 bg-line-soft"></span>
+			</div>
+			<div class="release-notes mt-4">
+				@notesHTML(r.notes)
+			</div>
+		}
+	}
+}
+
+templ downloadFoot(url string) {
+	<a
+		href={ templ.SafeURL(url) }
+		target="_blank"
+		rel="noopener noreferrer"
+		class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }
+	>
+		@components.Icon("download", "h-4 w-4")
+		{ i18n.T(ctx, "update.download") }
+	</a>
+}
+
+// updateNotice is read by ui.js: one toast per new version, remembered in
+// localStorage so it does not come back on every page.
+templ updateNotice() {
+	if r, ok := newerRelease(ctx); ok {
+		<div
+			hidden
+			data-update-notice
+			data-version={ r.tag }
+			data-message={ i18n.T(ctx, "update.toast", "version", r.tag) }
+			data-action={ i18n.T(ctx, "update.view") }
+		></div>
+	}
+}
+
+// langChoice chooses the console's language: a <details> inside the account
+// menu, its summary saying the current one. The list is a form of submit
+// buttons, so it works with no script: the server remembers the choice in the
+// cookie it draws the page from, and ui.js also keeps it in localStorage. Each
+// language is named in itself and carries its own lang, so a screen reader
+// says it right.
+templ langChoice() {
 	{{ current := i18n.Lang(ctx) }}
-	<details class="relative shrink-0" data-popover>
+	<details class="relative" data-popover>
 		<summary
-			aria-label={ i18n.T(ctx, "lang.label") }
-			data-tip={ i18n.T(ctx, "lang.label") }
-			class="flex h-8 cursor-pointer list-none items-center gap-0.5 rounded-card px-1 text-[0.72rem] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			class="flex cursor-pointer list-none items-center justify-between gap-2.5 px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
-			@components.Icon("globe", "h-4 w-4")
-			{ i18n.Codes[current] }
+			<span class="flex items-center gap-2.5">
+				@components.Icon("globe", "h-4 w-4")
+				{ i18n.T(ctx, "lang.label") }
+			</span>
+			<span class="font-mono text-[0.7rem] text-faint">{ i18n.Names[current] }</span>
 		</summary>
-		<form method="post" action="/preferences/lang" data-lang-form class="absolute right-0 bottom-full z-20 mb-1 max-h-[min(24rem,70vh)] w-44 overflow-y-auto rounded-card border border-line bg-surface py-1 shadow-warm">
+		<form method="post" action="/preferences/lang" data-lang-form class="absolute right-2 bottom-full left-2 z-30 mb-1 max-h-56 overflow-y-auto rounded-card border border-line bg-surface py-1 shadow-warm">
 			<input type="hidden" name="next" value={ requestURI(ctx) }/>
 			for _, lang := range i18n.Langs {
 				<button
@@ -489,16 +613,41 @@ templ sectionBadge(s section) {
 	if s.Key == "runs" {
 		// Always drawn, even empty: it is what the script swaps (/nav/runs),
 		// so a failure or a run that starts after the page loaded still shows.
-		<span data-nav-runs class="ml-auto inline-flex items-center gap-1">
+		<span data-nav-runs data-sb-badge class="ml-auto inline-flex items-center gap-1">
 			@RunsBadges()
 		</span>
 	}
 	if n := attention(ctx); s.Key == "catalog" && n > 0 {
 		<span class="sr-only">{ i18n.N(ctx, "nav.catalog.attention", n) }</span>
-		<span aria-hidden="true" class="ml-auto inline-flex">
+		<span aria-hidden="true" data-sb-badge class="ml-auto inline-flex">
 			@components.NavBadge("fail", i18n.Number(ctx, int64(n)))
 		</span>
 	}
+}
+
+// sidebarToggle folds the sidebar to its icons and back (full / short): at the
+// logo's right while it is open; folded, it takes the logo's place when the
+// pointer is over it (or the keyboard is on it). Its hint says what a click
+// does -- Collapse menu, or Expand menu -- and ui.js keeps the words and
+// aria-expanded true to the state. The choice is localStorage's (ui.js writes
+// it; the head script reads it before the first paint). Only where a script
+// will drive it, and not in the drawer a phone gets, which is always full.
+templ sidebarToggle() {
+	<span class="sb-fold hidden shrink-0 min-[860px]:block" data-js>
+		<button
+			type="button"
+			data-nav-fold
+			data-label-collapse={ i18n.T(ctx, "shell.collapse") }
+			data-label-expand={ i18n.T(ctx, "shell.expand") }
+			data-tip={ i18n.T(ctx, "shell.collapse") }
+			aria-label={ i18n.T(ctx, "shell.collapse") }
+			aria-expanded="true"
+			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+		>
+			<span class="sb-when-full">@components.Icon("panel-left-close", "h-4 w-4")</span>
+			<span class="sb-when-short">@components.Icon("panel-left-open", "h-4 w-4")</span>
+		</button>
+	</span>
 }
 
 // RunsBadges is the Runs section's two numbers, failing (red) then in flight
@@ -526,26 +675,28 @@ templ navLink(s section, active string) {
 			href={ templ.SafeURL(s.Href) }
 			aria-current="page"
 			data-tip={ s.Tip }
+			data-name={ s.Name }
 			if s.GoKey != "" {
 				data-go-key={ s.GoKey }
 			}
-			class="flex h-8 items-center gap-2.5 rounded-card border border-line bg-surface-2 px-2.5 text-[0.85rem] font-medium text-ink shadow-[inset_2px_0_0_var(--color-accent-strong)]"
+			class="sb-item flex h-8 items-center gap-2.5 rounded-card border border-line bg-surface-2 px-2.5 text-[0.85rem] font-medium text-ink shadow-[inset_2px_0_0_var(--color-accent-strong)]"
 		>
 			@components.Icon(s.Icon, "h-4 w-4")
-			<span>{ s.Name }</span>
+			<span data-collapse>{ s.Name }</span>
 			@sectionBadge(s)
 		</a>
 	} else {
 		<a
 			href={ templ.SafeURL(s.Href) }
 			data-tip={ s.Tip }
+			data-name={ s.Name }
 			if s.GoKey != "" {
 				data-go-key={ s.GoKey }
 			}
-			class="flex h-8 items-center gap-2.5 rounded-card border border-transparent px-2.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			class="sb-item flex h-8 items-center gap-2.5 rounded-card border border-transparent px-2.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
 			@components.Icon(s.Icon, "h-4 w-4")
-			<span>{ s.Name }</span>
+			<span data-collapse>{ s.Name }</span>
 			@sectionBadge(s)
 		</a>
 	}

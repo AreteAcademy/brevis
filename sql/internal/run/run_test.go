@@ -301,3 +301,99 @@ func TestFunctionsRunBeforeAnyModel(t *testing.T) {
 		}
 	}
 }
+
+// atomicConn is a spyConn that, like Postgres, can run a model's statements
+// as one unit, and can be told to refuse the one that creates.
+type atomicConn struct {
+	spyConn
+	units  [][]string
+	failAt string // a statement prefix ExecAtomic refuses; "" refuses none
+}
+
+func (a *atomicConn) ExecAtomic(_ context.Context, stmts []string) (int, error) {
+	a.units = append(a.units, stmts)
+	for i, s := range stmts {
+		if a.failAt != "" && strings.HasPrefix(s, a.failAt) {
+			return i, fmt.Errorf("boom")
+		}
+	}
+	return 0, nil
+}
+
+// A TABLE'S DROP AND CREATE TRAVEL TOGETHER, and a failing CREATE is reported
+// with its own statement. Run one by one, the DROP would already have
+// happened and the old table would be gone.
+func TestATableRebuildIsOneAtomicUnit(t *testing.T) {
+	p := load(t)
+	order, _ := p.Select("")
+	ctx := context.Background()
+
+	ok := &atomicConn{}
+	if _, err := run.Build(ctx, postgres.Dialect{}, ok, p, order, run.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	var unit []string
+	for _, u := range ok.units {
+		if strings.HasPrefix(u[len(u)-1], "CREATE TABLE "+schema+".top") {
+			unit = u
+		}
+	}
+	if len(unit) != 2 || !strings.HasPrefix(unit[0], "DROP TABLE") {
+		t.Fatalf("the table's DROP and CREATE were not sent as one unit: %q", unit)
+	}
+	for _, s := range ok.ran {
+		if strings.HasPrefix(s, "DROP TABLE") || strings.HasPrefix(s, "CREATE TABLE") {
+			t.Errorf("%q was sent on its own, outside the atomic unit", s)
+		}
+	}
+
+	bad := &atomicConn{failAt: "CREATE TABLE"}
+	_, err := run.Build(ctx, postgres.Dialect{}, bad, p, order, run.Options{})
+	if err == nil {
+		t.Fatal("a refused CREATE was reported as built")
+	}
+	if !strings.Contains(err.Error(), "the warehouse refused this:\nCREATE TABLE "+schema+".top") {
+		t.Errorf("the failure does not name the model and the CREATE: %v", err)
+	}
+}
+
+// A conn WITHOUT dialect.Atomic (BigQuery) still runs statement by statement.
+func TestWithoutAtomicTheStatementsRunOneByOne(t *testing.T) {
+	p := load(t)
+	order, _ := p.Select("")
+	spy := &spyConn{}
+	if _, err := run.Build(context.Background(), postgres.Dialect{}, spy, p, order, run.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	var creates int
+	for _, s := range spy.ran {
+		if strings.HasPrefix(s, "CREATE TABLE") {
+			creates++
+		}
+	}
+	if creates == 0 {
+		t.Fatal("no CREATE TABLE reached Exec")
+	}
+}
+
+// THE OLD TABLE SURVIVES A CREATE THAT FAILS, against a real server.
+func TestAFailingTableRebuildKeepsTheOldTable(t *testing.T) {
+	ctx, d, conn := live(t)
+	p := load(t)
+	order, _ := p.Select("")
+	if _, err := run.Build(ctx, d, conn, p, order, run.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	top := schema + ".top"
+	before := reads(t, ctx, conn, top)
+
+	broken := p.Models[top]
+	broken.SQL = "SELECT this_column_is_not_there FROM " + schema + ".base"
+	p.Models[top] = broken
+	if _, err := run.Build(ctx, d, conn, p, order, run.Options{}); err == nil {
+		t.Fatal("a refused CREATE was reported as built")
+	}
+	if after := reads(t, ctx, conn, top); after != before {
+		t.Errorf("the table changed after a failed rebuild: %q -> %q", before, after)
+	}
+}

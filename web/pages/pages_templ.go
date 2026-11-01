@@ -1200,7 +1200,7 @@ func liveSwitch() templ.Component {
 			templ_7745c5c3_Var47 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<span data-js><button type=\"button\" data-live-list=\"runs-list\" aria-pressed=\"false\" class=\"inline-flex h-8 items-center gap-2 rounded-card border border-line bg-surface px-3 text-[0.82rem] text-muted transition-colors duration-150 hover:text-ink aria-pressed:border-line-strong aria-pressed:bg-surface-2 aria-pressed:text-ink\"><span data-live-dot class=\"h-1.5 w-1.5 rounded-full bg-line-strong\"></span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "<span data-js><button type=\"button\" data-live-list=\"runs-list\" aria-pressed=\"false\" class=\"inline-flex h-8 items-center gap-2 rounded-card border border-line bg-surface px-3 text-[0.82rem] text-muted transition-colors duration-150 hover:text-ink aria-pressed:border-state-success/50 aria-pressed:bg-state-success/10 aria-pressed:text-state-success\"><span data-live-dot class=\"h-2 w-2 rounded-full bg-line-strong\"></span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1891,7 +1891,7 @@ func RunDetail(p RunPage) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "</div><p id=\"live-indicator\" class=\"mb-3 -mt-3 hidden items-center gap-1.5 text-[0.7rem] text-muted\"><span class=\"h-1.5 w-1.5 rounded-full bg-state-running\"></span> <span data-live-label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "</div><p id=\"live-indicator\" class=\"mb-3 hidden items-center gap-1.5 text-[0.7rem] text-muted\"><span class=\"h-1.5 w-1.5 rounded-full bg-state-running\"></span> <span data-live-label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -5299,7 +5299,7 @@ func waitLine(w *postgres.Wait) templ.Component {
 			templ_7745c5c3_Var240 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 371, "<p class=\"mb-3 -mt-2 text-xs text-muted\" data-wait><span class=\"text-state-queued\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 371, "<p class=\"mb-3 text-xs text-muted\" data-wait><span class=\"text-state-queued\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

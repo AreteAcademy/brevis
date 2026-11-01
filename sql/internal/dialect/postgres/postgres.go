@@ -174,7 +174,7 @@ func mergeInto(m model.Model, st dialect.State, ref string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "MERGE INTO %s AS t\nUSING (\n", ref)
 	fmt.Fprintf(&b, "  SELECT DISTINCT ON (%s) * FROM (\n%s\n  ) AS brevis_src\n",
-		keys, dialect.NewRows(m, m.SQL))
+		keys, dialect.NewRows(m, m.SQL, minus))
 	fmt.Fprintf(&b, "   ORDER BY %s, %s DESC\n) AS s\n", keys, m.Watermark)
 	fmt.Fprintf(&b, "   ON %s\n", p.On)
 	if p.Set != "" {
@@ -182,4 +182,10 @@ func mergeInto(m model.Model, st dialect.State, ref string) string {
 	}
 	fmt.Fprintf(&b, " WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)", p.Columns, p.Values)
 	return b.String()
+}
+
+// minus is the one spelling of "less so many seconds" this dialect adds to the
+// incremental filter; it assumes a timestamp watermark.
+var minus = func(e string, secs int64) string {
+	return fmt.Sprintf("%s - INTERVAL '%d seconds'", e, secs)
 }

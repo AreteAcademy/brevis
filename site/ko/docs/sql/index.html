@@ -240,21 +240,21 @@ brevis-sql: 1 of 2 tests failed"><div class="code-head"><span class="code-lang">
       SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
 brevis-sql: 1 of 2 tests failed</code></pre></div>
 <p>프로세스는 코드 1로 종료하며, workflow step도 함께 실패합니다.</p>
-<h2 id="tests-are-selects-that-return-violating-rows">테스트는 위반 행을 반환하는 SELECT입니다<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
+<h2 id="an-incremental-model-and-its-lookback">테스트는 위반 행을 반환하는 SELECT입니다<a class="anchor" href="#an-incremental-model-and-its-lookback" aria-label="link">#</a></h2>
 <p><code>not_null</code>, <code>unique</code>, <code>accepted_values</code>, <code>relationships</code>가 있습니다. 행이 0개면 통과이고, 그 외에 해석할 것은 없습니다.</p>
-<h2 id="it-says-what-it-wrote">무엇을 썼는지 알려 줍니다<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
+<h2 id="tests-are-selects-that-return-violating-rows">무엇을 썼는지 알려 줍니다<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
 <p>구체화되는 모든 모델은 Brevis 엔진이 이미 읽고 있는 <code>@brevis:</code> 라인을 출력하므로, 다른 모든 것과 나란히 <code>/data</code>에 나타납니다(위의 <code>build</code> 출력을 참고하세요). 뷰는 행이 없으므로 0이 아니라 행 수를 보고하지 않습니다. 0은 실제로 비어 있는 테이블과 구별되지 않기 때문입니다.</p>
-<h2 id="two-warehouses-one-suite">웨어하우스 둘, 스위트 하나<a class="anchor" href="#two-warehouses-one-suite" aria-label="link">#</a></h2>
+<h2 id="it-says-what-it-wrote">웨어하우스 둘, 스위트 하나<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
 <p>PostgreSQL과 BigQuery(<code>--dialect bigquery</code>)가 있으며, 둘 다 같은 테스트 스위트를 실행합니다. 구현이 하나뿐일 때 작성된 스위트이므로, 두 번째 구현이 조용히 어긋날 수 없습니다.</p>
 <p>BigQuery는 Application Default Credentials로 인증합니다. 워크로드 아이덴티티에서는 pod 자신의 아이덴티티이며, <code>--dsn-from</code>은 프로젝트 id를 담은 변수를 지정합니다.</p>
-<h2 id="13-mb">13 MB<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
+<h2 id="two-warehouses-one-suite">13 MB<a class="anchor" href="#two-warehouses-one-suite" aria-label="link">#</a></h2>
 <p>Distroless, nonroot이며 셸이 없습니다. 공식 BigQuery 클라이언트는 빈 바이너리에서 31 MB와 패키지 526개이므로, 이 도구는 REST 엔드포인트로 BigQuery와 통신합니다. 약 200줄이며, 조용히 틀릴 수 있는 방식마다 테스트가 하나씩 있습니다. 저장소의 게이트가 해당 클라이언트를 이름으로 거부하므로, 일상적인 의존성 갱신에서도 이 결정은 유지됩니다.</p>
-<h2 id="verified-against-dbt">dbt와 대조해 검증<a class="anchor" href="#verified-against-dbt" aria-label="link">#</a></h2>
+<h2 id="13-mb">dbt와 대조해 검증<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
 <p>jaffle-shop을 dbt가 사용한 것과 같은 시드 데이터로 이 이미지가 빌드했습니다.</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>결과</th></tr></thead><tbody><tr><td>모델별 모든 행의 행 수와 md5</td><td><strong>동일, 13개 중 13개</strong></td></tr><tr><td>모델별 컬럼과 타입</td><td><strong>동일, 13개 중 13개</strong></td></tr><tr><td>모델 13개, 첫 빌드</td><td>1.56 s</td></tr></tbody></table></div>
-<h2 id="what-it-does-not-do">하지 않는 것<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
+<h2 id="verified-against-dbt">하지 않는 것<a class="anchor" href="#verified-against-dbt" aria-label="link">#</a></h2>
 <p><strong>dbt 호환성은 없으며</strong>, 빈틈이 아니라 결정입니다. 실제 dbt 프로젝트의 모델 중 약 3분의 1은 <code>ref</code>, <code>source</code>, <code>config</code> 외에는 아무것도 쓰지 않습니다. 나머지는 매크로를 쓰며, 패키지는 설계상 템플릿입니다. 아무도 예측할 수 없는 절반의 호환성은 없는 것보다 나쁩니다.</p>
-<h2 id="where-to-go-next">다음으로 이동<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-do">다음으로 이동<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>원하는 것</th><th>이동할 곳</th></tr></thead><tbody><tr><td>네 가지 구성 요소 중 SQL의 위치 보기</td><td><a href="/ko/docs/ecosystem/">에코시스템</a></td></tr><tr><td>brevis-sql을 스케줄된 step으로 실행하기</td><td><a href="/ko/docs/core/">Core</a></td></tr><tr><td>모델링할 데이터 적재하기</td><td><a href="/ko/docs/sdk/">Go SDK</a> 또는 <a href="/ko/docs/ingestion/">수집</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="페이지">
@@ -269,7 +269,7 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
 
     <aside class="toc" aria-label="이 페이지에서">
       <p class="toc-t">이 페이지에서</p>
-      <ul><li class="toc-2"><a href="#six-commands">명령 여섯 개</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve — 자격 증명 없이 웨어하우스 읽기</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">누군가 변경해도 되는 개발 웨어하우스</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">모델은 유효한 SQL로 남는 파일입니다</a></li><li class="toc-2"><a href="#from-compile-to-test">compile에서 test까지</a></li><li class="toc-3"><a href="#when-a-test-fails">테스트가 실패할 때</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">테스트는 위반 행을 반환하는 SELECT입니다</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">무엇을 썼는지 알려 줍니다</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">웨어하우스 둘, 스위트 하나</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#verified-against-dbt">dbt와 대조해 검증</a></li><li class="toc-2"><a href="#what-it-does-not-do">하지 않는 것</a></li><li class="toc-2"><a href="#where-to-go-next">다음으로 이동</a></li></ul>
+      <ul><li class="toc-2"><a href="#six-commands">명령 여섯 개</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve — 자격 증명 없이 웨어하우스 읽기</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">누군가 변경해도 되는 개발 웨어하우스</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">모델은 유효한 SQL로 남는 파일입니다</a></li><li class="toc-2"><a href="#from-compile-to-test">compile에서 test까지</a></li><li class="toc-3"><a href="#when-a-test-fails">테스트가 실패할 때</a></li><li class="toc-2"><a href="#an-incremental-model-and-its-lookback">테스트는 위반 행을 반환하는 SELECT입니다</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">무엇을 썼는지 알려 줍니다</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">웨어하우스 둘, 스위트 하나</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">13 MB</a></li><li class="toc-2"><a href="#13-mb">dbt와 대조해 검증</a></li><li class="toc-2"><a href="#verified-against-dbt">하지 않는 것</a></li><li class="toc-2"><a href="#what-it-does-not-do">다음으로 이동</a></li></ul>
     </aside>
   </main>
 </div>

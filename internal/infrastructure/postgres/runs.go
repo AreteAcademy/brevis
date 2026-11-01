@@ -284,6 +284,25 @@ func (r *RunRepo) RecordError(ctx context.Context, id uuid.UUID, msg string) err
 	return err
 }
 
+// Stranded finds the run behind an idempotency key that never reached the
+// queue: still `created` or `queued` and with no queue_items row.
+//
+// Create, Transicionar and Enqueue are three statements, so a process that dies
+// between them leaves exactly this run -- and the queue's orphan sweep only
+// looks at CLAIMED items, so nothing else would ever see it. A run that is
+// running, finished or already queued is not stranded; found is false for it.
+func (r *RunRepo) Stranded(ctx context.Context, key string) (id uuid.UUID, status dom.Status, found bool, err error) {
+	err = r.pool.QueryRow(ctx, `
+		SELECT id, status FROM runs
+		WHERE idempotency_key = $1 AND status IN ('created', 'queued')
+		  AND NOT EXISTS (SELECT 1 FROM queue_items WHERE run_id = runs.id)`, key).
+		Scan(&id, &status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, "", false, nil
+	}
+	return id, status, err == nil, err
+}
+
 // Buscar le um Run.
 func (r *RunRepo) Get(ctx context.Context, id uuid.UUID) (dom.Run, error) {
 	var run dom.Run

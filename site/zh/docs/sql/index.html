@@ -240,21 +240,21 @@ brevis-sql: 1 of 2 tests failed"><div class="code-head"><span class="code-lang">
       SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
 brevis-sql: 1 of 2 tests failed</code></pre></div>
 <p>进程以退出码 1 结束，workflow 的 step 也随之失败。</p>
-<h2 id="tests-are-selects-that-return-violating-rows">测试是返回违规行的 SELECT<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
+<h2 id="an-incremental-model-and-its-lookback">测试是返回违规行的 SELECT<a class="anchor" href="#an-incremental-model-and-its-lookback" aria-label="link">#</a></h2>
 <p><code>not_null</code>、<code>unique</code>、<code>accepted_values</code>、<code>relationships</code>。零行就是通过，没有其他需要解读的东西。</p>
-<h2 id="it-says-what-it-wrote">它会说明自己写了什么<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
+<h2 id="tests-are-selects-that-return-violating-rows">它会说明自己写了什么<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
 <p>每个物化的模型都会打印 Brevis 引擎本来就会读取的 <code>@brevis:</code> 行，所以它会与其他所有内容一起出现在 <code>/data</code> 中（见上面 <code>build</code> 的输出）。视图报告的是没有行数，而不是零：它不保存任何行，而那里的零与一张真正为空的表无法区分。</p>
-<h2 id="two-warehouses-one-suite">两个数据仓库，一套测试<a class="anchor" href="#two-warehouses-one-suite" aria-label="link">#</a></h2>
+<h2 id="it-says-what-it-wrote">两个数据仓库，一套测试<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
 <p>PostgreSQL 和 BigQuery（<code>--dialect bigquery</code>），两者运行同一套测试，这套测试是在只有一种实现时编写的，所以第二种实现不会悄悄偏离。</p>
 <p>BigQuery 使用 Application Default Credentials 进行认证：在 workload identity 上，那就是 pod 自己的身份，而 <code>--dsn-from</code> 指定保存项目 id 的变量。</p>
-<h2 id="13-mb">13 MB<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
+<h2 id="two-warehouses-one-suite">13 MB<a class="anchor" href="#two-warehouses-one-suite" aria-label="link">#</a></h2>
 <p>Distroless，nonroot，没有 shell。官方的 BigQuery 客户端在一个空二进制文件中就有 31 MB 和 526 个包，所以这里改为通过 REST 端点与 BigQuery 通信，大约 200 行，并为每一种可能悄悄出错的情形各写了一个测试。仓库中有一道关卡会按名称拒绝那个客户端，所以这个决定能经受常规依赖升级的考验。</p>
-<h2 id="verified-against-dbt">已对照 dbt 验证<a class="anchor" href="#verified-against-dbt" aria-label="link">#</a></h2>
+<h2 id="13-mb">已对照 dbt 验证<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
 <p>jaffle-shop，由这个镜像在 dbt 所用的同一份种子数据上构建：</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>结果</th></tr></thead><tbody><tr><td>每个模型的行数和每行的 md5</td><td><strong>完全一致，13 个中的 13 个</strong></td></tr><tr><td>每个模型的列和类型</td><td><strong>完全一致，13 个中的 13 个</strong></td></tr><tr><td>13 个模型，首次构建</td><td>1.56 秒</td></tr></tbody></table></div>
-<h2 id="what-it-does-not-do">它不做什么<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
+<h2 id="verified-against-dbt">它不做什么<a class="anchor" href="#verified-against-dbt" aria-label="link">#</a></h2>
 <p><strong>不兼容 dbt</strong>，这是一项决定，而不是缺陷。真实 dbt 项目中大约三分之一的模型只用到 <code>ref</code>、<code>source</code> 和 <code>config</code>；其余的用到宏，而包本质上就是模板。没有人能预测的半吊子兼容，比没有兼容更糟。</p>
-<h2 id="where-to-go-next">接下来去哪里<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-do">接下来去哪里<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>如果你想</th><th>前往</th></tr></thead><tbody><tr><td>看 SQL 在四个组成部分中的位置</td><td><a href="/zh/docs/ecosystem/">生态</a></td></tr><tr><td>把 brevis-sql 作为定时 step 运行</td><td><a href="/zh/docs/core/">Core</a></td></tr><tr><td>落地它将要建模的数据</td><td><a href="/zh/docs/sdk/">Go SDK</a> 或<a href="/zh/docs/ingestion/">摄取</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="页面">
@@ -269,7 +269,7 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#six-commands">六条命令</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve：无需凭据即可读取数据仓库</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">有人可能会修改的开发数据仓库</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">模型是一个始终保持为合法 SQL 的文件</a></li><li class="toc-2"><a href="#from-compile-to-test">从 compile 到 test</a></li><li class="toc-3"><a href="#when-a-test-fails">当测试失败时</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">测试是返回违规行的 SELECT</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">它会说明自己写了什么</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">两个数据仓库，一套测试</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#verified-against-dbt">已对照 dbt 验证</a></li><li class="toc-2"><a href="#what-it-does-not-do">它不做什么</a></li><li class="toc-2"><a href="#where-to-go-next">接下来去哪里</a></li></ul>
+      <ul><li class="toc-2"><a href="#six-commands">六条命令</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve：无需凭据即可读取数据仓库</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">有人可能会修改的开发数据仓库</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">模型是一个始终保持为合法 SQL 的文件</a></li><li class="toc-2"><a href="#from-compile-to-test">从 compile 到 test</a></li><li class="toc-3"><a href="#when-a-test-fails">当测试失败时</a></li><li class="toc-2"><a href="#an-incremental-model-and-its-lookback">测试是返回违规行的 SELECT</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">它会说明自己写了什么</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">两个数据仓库，一套测试</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">13 MB</a></li><li class="toc-2"><a href="#13-mb">已对照 dbt 验证</a></li><li class="toc-2"><a href="#verified-against-dbt">它不做什么</a></li><li class="toc-2"><a href="#what-it-does-not-do">接下来去哪里</a></li></ul>
     </aside>
   </main>
 </div>

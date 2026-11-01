@@ -19,6 +19,7 @@ func TestLoadRequiresDatabaseURL(t *testing.T) {
 
 func TestLoadAppliesTheDefaults(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://u:p@localhost:5432/db")
+	t.Setenv("BREVIS_ENV", "local")
 
 	c, err := Load()
 	if err != nil {
@@ -115,6 +116,7 @@ func TestTheWildcardDoesNotCarryBrevisOwnVariables(t *testing.T) {
 // environment to the field.
 func TestLoadReadsTheEnvironmentForEveryField(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
+	t.Setenv("BREVIS_ENV", "local")
 	t.Setenv("BREVIS_SLACK_WEBHOOK", "https://hooks.slack.com/services/abc")
 	t.Setenv("BREVIS_UI_URL", "https://brevis.example.com")
 	t.Setenv("BREVIS_TASK_ENV", "GOOGLE_PROJECT_ID,STAGE")
@@ -169,6 +171,23 @@ func TestOutsideLocalACredentialIsRequired(t *testing.T) {
 	}
 	if !c.Auth.Enabled() {
 		t.Error("the credential did not reach the Config")
+	}
+}
+
+// Forgetting BREVIS_ENV must fail closed: unset is production, so a deploy
+// that also forgot the credential does not come up as an open console on every
+// interface. The message says how to get out for development.
+func TestUnsetEnvIsProductionAndRefusesWithoutCredential(t *testing.T) {
+	t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
+	t.Setenv("BREVIS_ENV", "")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("an unset BREVIS_ENV started with no credential")
+	}
+	for _, want := range []string{"BREVIS_ENV=production", "BREVIS_AUTH_USER", "BREVIS_ENV=local"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not mention %q", err, want)
+		}
 	}
 }
 
@@ -256,6 +275,7 @@ func TestTheRenamedVariablesAcceptTheOldNameToo(t *testing.T) {
 // refuses to start: a typo must not quietly pick one for you.
 func TestHostHandoverIsOnUnlessTurnedOff(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://u:p@localhost:5432/db")
+	t.Setenv("BREVIS_ENV", "local")
 	for value, want := range map[string]bool{"": true, "on": true, "off": false} {
 		t.Setenv("BREVIS_HOST_HANDOVER", value)
 		c, err := Load()

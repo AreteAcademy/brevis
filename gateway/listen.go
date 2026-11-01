@@ -77,6 +77,18 @@ func boundConnections(next http.Handler, maxAge time.Duration) http.Handler {
 	})
 }
 
+// bodyTimeout bounds reading a whole request and writing its response.
+//
+// Without it a client could send the headers (the auth guard runs before
+// the body is read), then trickle a max_body body at one byte a second: a
+// goroutine and up to max_body bytes pinned per connection, for ever, and
+// a dead client never timed out its 202 either. Thirty seconds sits well
+// above a legitimate upload and the archiveTimeout (10 s) that happens on
+// the request path. The only other handler, /metrics, answers in
+// milliseconds. shortcut: constant, not a knob; make it a listen.* setting
+// when a deployment needs slower uploads.
+const bodyTimeout = 30 * time.Second
+
 // listener builds an http.Server with this gateway's timeouts on it.
 //
 // ONE FUNCTION FOR BOTH LISTENERS. The report named the ingest server and
@@ -101,6 +113,9 @@ func listener(cfg *Config, addr string, h http.Handler) *http.Server {
 		// ReadTimeout were zero, so Go had no fallback and a connection
 		// had no timeout at all. [#44]
 		IdleTimeout: cfg.IdleTimeout(),
+
+		ReadTimeout:  bodyTimeout,
+		WriteTimeout: bodyTimeout,
 
 		ConnContext: stampAccept,
 	}

@@ -471,7 +471,7 @@ transaction. That is why `Table.BatchSize` exists here and does not exist on the
 Postgres driver: large packets run into `max_allowed_packet`, and the batch size
 is the caller's call. It defaults to 1000.
 
-**Dedup is `INSERT IGNORE`**, which needs the same unique index on
+**Dedup is `INSERT ... ON DUPLICATE KEY UPDATE key = key`**, which needs the same unique index on
 `ingestion_id`, checked the same way and never created.
 
 Types come from `information_schema.data_type`, because `database/sql` hands
@@ -1103,7 +1103,7 @@ the code and fails if a driver accepts an option it does not implement.
 |---|---|---|
 | `bigquery.Table` | `MERGE` | **yes** — from `Schema` or `CreateSQL` |
 | `postgres.Table` | `ON CONFLICT DO NOTHING` | **yes** — from `Schema` or `CreateSQL` |
-| `mysql.Table` | `INSERT IGNORE` | **yes** — from `Schema` or `CreateSQL` |
+| `mysql.Table` | `INSERT ... ON DUPLICATE KEY UPDATE` | **yes** — from `Schema` or `CreateSQL` |
 | `redshift.Table` | `MERGE … WHEN NOT MATCHED` | **no such field** — the table must exist |
 | `to.Files` | **refused**, naming the field | **no such field** |
 

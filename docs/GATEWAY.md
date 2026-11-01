@@ -346,7 +346,7 @@ somebody choosing this.
 |---|---|---|---|
 | `pubsub` | **runs** | one publish per batch, attributes and ordering key from the event's own fields | the emulator |
 | `postgres` | **runs** | `COPY FROM STDIN`, or a staged `INSERT … ON CONFLICT` in one transaction | a real Postgres |
-| `mysql` | **runs** | multi-row `INSERT` in a transaction, or `INSERT IGNORE` | a real MySQL |
+| `mysql` | **runs** | multi-row `INSERT` in a transaction, or `INSERT ... ON DUPLICATE KEY UPDATE` | a real MySQL |
 | `files` | **runs** | NDJSON to a directory, `gs://` or `s3://` — also what the dead letter uses | the filesystem, and S3 |
 | `bigquery` | **runs** | rows loaded, or staged and `MERGE`d on `ingestion_id` | **config only — no emulator exists** |
 | `redshift` | **runs** | the batch to S3, then `COPY`, then `MERGE` | **config only — no emulator exists** |
@@ -382,7 +382,7 @@ the idempotent insert and the **first delivery wins**, in all four:
 | | `append` | `merge` |
 |---|---|---|
 | **postgres** | `COPY FROM STDIN` | `INSERT … ON CONFLICT (ingestion_id) DO NOTHING` |
-| **mysql** | multi-row `INSERT` per block | `INSERT IGNORE` |
+| **mysql** | multi-row `INSERT` per block | `INSERT ... ON DUPLICATE KEY UPDATE` |
 | **bigquery** | rows loaded (staged through GCS above the driver's inline limit) | `MERGE … WHEN NOT MATCHED THEN INSERT` |
 | **redshift** | `COPY` from S3 | `COPY` to a staging table, then `MERGE` |
 

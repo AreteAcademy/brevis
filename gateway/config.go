@@ -289,10 +289,14 @@ type Buffer struct {
 	// nothing in the file could have expressed the limit.
 	//
 	// It bounds the BUFFER and not one batch: `flush.size` shapes what leaves,
-	// this bounds what is held. They are different numbers -- with `queue: 64`
-	// there can be many batches in flight beyond what this counts.
+	// this bounds what is held. Batches already queued for a worker, or in
+	// one, count until the sink is done with them, so a sink that is down
+	// cannot make `queue` x `flush.records` events pile up past this.
 	//
-	// Zero leaves it off, which is what every existing config gets.
+	// Zero takes the default: 64 MiB, or more when `listen.max_body` or
+	// `flush.size` need it (4x the body, 2x the size) so one request and one
+	// batch always fit. It is never off: a ceiling that is off turns a slow
+	// sink into an OOM that loses every event already answered 202.
 	MaxBytes Size `yaml:"max_bytes"`
 }
 
@@ -774,6 +778,13 @@ const (
 	// events of shock absorption -- roughly a sink pausing for a minute at
 	// 500 events a second -- before any caller is told to slow down.
 	defaultQueue = 64
+
+	// defaultMaxBytes is the per-stream byte ceiling when none is declared.
+	// Events held as maps take several times their JSON size, so 64 MiB of
+	// wire bytes is a few hundred MiB of heap at worst: conservative enough for
+	// a pod, and 64x the default max_body.
+	defaultMaxBytes Size = 64 << 20
+
 	// The buffer's ceiling as a multiple of one batch. Twenty batches of room
 	// above the flush size: enough that a brief handoff failure is invisible,
 	// small enough that the number of events a crash can lose stays a number
@@ -964,6 +975,9 @@ func (s *Stream) check() error {
 			"apply. `every` is the age this TRIES to flush at and `max_age` the "+
 			"age it flushes at regardless, so max_age has to be the larger",
 			s.Buffer.Flush.MaxAge, s.Buffer.Flush.Every)
+	}
+	if s.Buffer.MaxBytes == 0 {
+		s.Buffer.MaxBytes = max(defaultMaxBytes, 4*s.maxBodyFloor, 2*s.Buffer.Flush.Size)
 	}
 	if s.Buffer.MaxBytes < 0 {
 		return fmt.Errorf("`buffer.max_bytes` is %s", s.Buffer.MaxBytes)

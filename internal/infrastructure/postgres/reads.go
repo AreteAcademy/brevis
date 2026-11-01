@@ -427,8 +427,8 @@ func (r *ReadRepo) RunsPer(ctx context.Context, g Grain, n int) ([]Bucket, error
 	rows, err := r.pool.Query(ctx, `
 		WITH janela AS (
 		    SELECT generate_series(
-		        date_trunc('`+unit+`', now()) - ($1::int - 1) * interval '1 `+unit+`',
-		        date_trunc('`+unit+`', now()),
+		        date_trunc('`+unit+`', now() AT TIME ZONE 'UTC') - ($1::int - 1) * interval '1 `+unit+`',
+		        date_trunc('`+unit+`', now() AT TIME ZONE 'UTC'),
 		        interval '1 `+unit+`') AS inicio
 		)
 		SELECT j.inicio,
@@ -439,7 +439,10 @@ func (r *ReadRepo) RunsPer(ctx context.Context, g Grain, n int) ([]Bucket, error
 		       avg(EXTRACT(EPOCH FROM (r.terminado_em - r.iniciado_em)) * 1000)
 		FROM janela j
 		LEFT JOIN runs r
-		       ON date_trunc('`+unit+`', r.criado_em) = j.inicio
+		       ON date_trunc('`+unit+`', r.criado_em AT TIME ZONE 'UTC') = j.inicio
+		      -- the range is what lets criado_em's index bound the scan to the
+		      -- window; without it the join read every run ever made.
+		      AND r.criado_em >= (SELECT min(inicio) FROM janela) AT TIME ZONE 'UTC'
 		GROUP BY j.inicio
 		ORDER BY j.inicio`, n)
 	if err != nil {
@@ -580,6 +583,17 @@ func (r *ReadRepo) CountRuns(ctx context.Context, f RunFilter) (int, error) {
 	var n int
 	err := r.pool.QueryRow(ctx,
 		fmt.Sprintf(`SELECT count(*) FROM runs WHERE %s`, predicado), args...).Scan(&n)
+	return n, err
+}
+
+// CountRunsInFlight is how many runs are queued, running or retrying: the
+// sidebar badge's number, drawn on every page. It names the states so the
+// partial index on runs(status) serves it; counting every state (as
+// CountRunsByState does) scans the whole table, finished runs included.
+func (r *ReadRepo) CountRunsInFlight(ctx context.Context) (int, error) {
+	var n int
+	err := r.pool.QueryRow(ctx,
+		`SELECT count(*) FROM runs WHERE status = ANY('{running,queued,retrying}')`).Scan(&n)
 	return n, err
 }
 

@@ -240,21 +240,21 @@ brevis-sql: 1 of 2 tests failed"><div class="code-head"><span class="code-lang">
       SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
 brevis-sql: 1 of 2 tests failed</code></pre></div>
 <p>Процесс завершается с кодом 1, и шаг workflow падает вместе с ним.</p>
-<h2 id="tests-are-selects-that-return-violating-rows">Тесты — это SELECT, возвращающие нарушающие строки<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
+<h2 id="an-incremental-model-and-its-lookback">Тесты — это SELECT, возвращающие нарушающие строки<a class="anchor" href="#an-incremental-model-and-its-lookback" aria-label="link">#</a></h2>
 <p><code>not_null</code>, <code>unique</code>, <code>accepted_values</code>, <code>relationships</code>. Ноль строк — это успех, и больше нечего интерпретировать.</p>
-<h2 id="it-says-what-it-wrote">Он сообщает, что записал<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
+<h2 id="tests-are-selects-that-return-violating-rows">Он сообщает, что записал<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
 <p>Каждая материализованная модель выводит строку <code>@brevis:</code>, которую engine Brevis уже читает, поэтому она появляется в <code>/data</code> рядом со всем остальным (см. вывод <code>build</code> выше). Представление сообщает об отсутствии числа строк, а не о нуле: в нём их нет, а ноль там неотличим от таблицы, которая действительно пуста.</p>
-<h2 id="two-warehouses-one-suite">Два хранилища, один набор тестов<a class="anchor" href="#two-warehouses-one-suite" aria-label="link">#</a></h2>
+<h2 id="it-says-what-it-wrote">Два хранилища, один набор тестов<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
 <p>PostgreSQL и BigQuery (<code>--dialect bigquery</code>), и оба прогоняют один и тот же набор тестов — написанный, пока была единственная реализация, чтобы вторая не могла тихо разойтись.</p>
 <p>BigQuery аутентифицируется через Application Default Credentials: при workload identity это собственная идентичность pod, а <code>--dsn-from</code> называет переменную, содержащую id проекта.</p>
-<h2 id="13-mb">13 МБ<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
+<h2 id="two-warehouses-one-suite">13 МБ<a class="anchor" href="#two-warehouses-one-suite" aria-label="link">#</a></h2>
 <p>Distroless, nonroot, без оболочки. Официальный клиент BigQuery — это 31 МБ и 526 пакетов в пустом бинарном файле, поэтому здесь используется обращение к BigQuery через его REST endpoint — около 200 строк, с тестом на каждый способ, которым оно могло бы тихо ошибиться. Проверка в репозитории отклоняет этот клиент по имени, так что решение переживает плановое обновление зависимостей.</p>
-<h2 id="verified-against-dbt">Проверено на dbt<a class="anchor" href="#verified-against-dbt" aria-label="link">#</a></h2>
+<h2 id="13-mb">Проверено на dbt<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
 <p>jaffle-shop, собранный этим образом на тех же исходных данных, что использовал dbt:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>результат</th></tr></thead><tbody><tr><td>строки и md5 каждой строки, по моделям</td><td><strong>идентичны, 13 из 13</strong></td></tr><tr><td>столбцы и типы, по моделям</td><td><strong>идентичны, 13 из 13</strong></td></tr><tr><td>13 моделей, первая сборка</td><td>1,56 с</td></tr></tbody></table></div>
-<h2 id="what-it-does-not-do">Чего он не делает<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
+<h2 id="verified-against-dbt">Чего он не делает<a class="anchor" href="#verified-against-dbt" aria-label="link">#</a></h2>
 <p><strong>Совместимости с dbt нет</strong>, и это решение, а не пробел. Около трети моделей реального проекта dbt не используют ничего, кроме <code>ref</code>, <code>source</code> и <code>config</code>; остальные используют макросы, а пакеты — это шаблонизация по замыслу. Половина совместимости, которую никто не может предсказать, хуже, чем её отсутствие.</p>
-<h2 id="where-to-go-next">Что читать дальше<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-do">Что читать дальше<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>если вы хотите</th><th>перейдите к</th></tr></thead><tbody><tr><td>увидеть, где SQL находится среди четырёх компонентов</td><td><a href="/ru/docs/ecosystem/">Экосистема</a></td></tr><tr><td>запускать brevis-sql как шаг по расписанию</td><td><a href="/ru/docs/core/">Core</a></td></tr><tr><td>приземлить данные, которые он будет моделировать</td><td><a href="/ru/docs/sdk/">Go SDK</a> или <a href="/ru/docs/ingestion/">Приём данных</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="Страницы">
@@ -269,7 +269,7 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
 
     <aside class="toc" aria-label="На этой странице">
       <p class="toc-t">На этой странице</p>
-      <ul><li class="toc-2"><a href="#six-commands">Шесть команд</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve — чтение хранилища без учётных данных</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">Хранилище для разработки, которое можно менять</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">Модель — это файл, остающийся валидным SQL</a></li><li class="toc-2"><a href="#from-compile-to-test">От compile до test</a></li><li class="toc-3"><a href="#when-a-test-fails">Когда тест падает</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">Тесты — это SELECT, возвращающие нарушающие строки</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">Он сообщает, что записал</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">Два хранилища, один набор тестов</a></li><li class="toc-2"><a href="#13-mb">13 МБ</a></li><li class="toc-2"><a href="#verified-against-dbt">Проверено на dbt</a></li><li class="toc-2"><a href="#what-it-does-not-do">Чего он не делает</a></li><li class="toc-2"><a href="#where-to-go-next">Что читать дальше</a></li></ul>
+      <ul><li class="toc-2"><a href="#six-commands">Шесть команд</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve — чтение хранилища без учётных данных</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">Хранилище для разработки, которое можно менять</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">Модель — это файл, остающийся валидным SQL</a></li><li class="toc-2"><a href="#from-compile-to-test">От compile до test</a></li><li class="toc-3"><a href="#when-a-test-fails">Когда тест падает</a></li><li class="toc-2"><a href="#an-incremental-model-and-its-lookback">Тесты — это SELECT, возвращающие нарушающие строки</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">Он сообщает, что записал</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">Два хранилища, один набор тестов</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">13 МБ</a></li><li class="toc-2"><a href="#13-mb">Проверено на dbt</a></li><li class="toc-2"><a href="#verified-against-dbt">Чего он не делает</a></li><li class="toc-2"><a href="#what-it-does-not-do">Что читать дальше</a></li></ul>
     </aside>
   </main>
 </div>

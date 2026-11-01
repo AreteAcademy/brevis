@@ -46,16 +46,21 @@ func TestTheThemeIsTheCookiesAndDarkByDefault(t *testing.T) {
 	}
 }
 
-// THE SWITCH SAYS WHAT IT DOES. An icon alone is a guess to whoever cannot
-// see it, and "toggle theme" does not say which way.
-func TestTheThemeSwitchNamesTheThemeItSwitchesTo(t *testing.T) {
-	for cookie, label := range map[string]string{
-		"":      `aria-label="Switch to the light theme"`,
-		"light": `aria-label="Switch to the dark theme"`,
+// THE THEME IS CHOSEN IN THE ACCOUNT MENU: auto, light, dark -- three
+// icon buttons, each named for a screen reader -- and the choice is
+// localStorage's, read by the first script in the head, before the paint.
+func TestTheAccountMenuOffersAutoLightAndDark(t *testing.T) {
+	body := getWithTheme(t, "")
+	for _, want := range []string{
+		`data-theme-set="auto"`, `data-theme-set="light"`, `data-theme-set="dark"`,
+		`aria-label="Auto"`, `aria-label="Light"`, `aria-label="Dark"`,
+		`localStorage.getItem("brevis_theme")`, `localStorage.getItem("brevis_lang")`,
 	} {
-		body := getWithTheme(t, cookie)
-		if !strings.Contains(body, "data-theme-toggle") || !strings.Contains(body, label) {
-			t.Errorf("cookie %q: no theme switch with %s", cookie, label)
+		if !strings.Contains(body, want) {
+			t.Errorf("the page lacks %s", want)
 		}
+	}
+	if strings.Contains(body, "data-theme-toggle") {
+		t.Error("the old toggle is still drawn")
 	}
 }

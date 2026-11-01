@@ -124,6 +124,56 @@
     dismiss(t);
   };
 
+  // --- The sidebar, full or short -------------------------------------------
+  //
+  // Short is the icon rail. The choice is the visitor's, kept in localStorage
+  // and applied by the head script before the first paint; this flips it in
+  // place. Below 860px the sidebar is a drawer and always full (the CSS only
+  // folds it above that).
+  function drawSidebar() {
+    var short = folded();
+    document.querySelectorAll("[data-nav-fold]").forEach(function (b) {
+      var label = short ? b.dataset.labelExpand : b.dataset.labelCollapse;
+      b.setAttribute("aria-expanded", short ? "false" : "true");
+      b.setAttribute("aria-label", label);
+      b.dataset.tip = label;
+      b.dataset.name = label;
+    });
+  }
+  drawSidebar();
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-nav-fold]");
+    if (!b) return;
+    var next = folded() ? "full" : "short";
+    document.documentElement.dataset.navMode = next;
+    remember("brevis_sidebar", next);
+    hideHint();
+    drawSidebar();
+  });
+
+  // --- A new Brevis ----------------------------------------------------------
+  //
+  // The page draws [data-update-notice] when a release newer than this one is
+  // out. Told once per version: localStorage remembers the one already shown,
+  // so the same news is not a toast on every screen. The words come from the
+  // server, in the reader's language.
+  (function () {
+    var n = document.querySelector("[data-update-notice]");
+    if (!n || typeof window.Brevis.toast !== "function") return;
+    var v = n.dataset.version, seen = "";
+    try { seen = localStorage.getItem("brevis_update_seen") || ""; } catch (e) { /* a private window */ }
+    if (seen === v) return;
+    try { localStorage.setItem("brevis_update_seen", v); } catch (e) { /* the toast shows again next page */ }
+    window.Brevis.toast(n.dataset.message, {
+      kind: "run",
+      action: n.dataset.action,
+      onAction: function () {
+        var d = document.getElementById("version");
+        if (d && typeof d.showModal === "function") d.showModal();
+      }
+    });
+  })();
+
   // --- Switches --------------------------------------------------------------
   //
   // components.Switch flips its own aria-checked; one marked data-manual is
@@ -228,7 +278,7 @@
       document.body.appendChild(hint);
     }
     hideHint();
-    hint.textContent = target.getAttribute("data-tip");
+    hint.textContent = hintText(target);
     hint.style.display = "block";
     var r = target.getBoundingClientRect();
     var left = r.right + 8;
@@ -245,8 +295,22 @@
     hinted = null;
   }
 
+  // The sidebar's hints belong to the folded sidebar: with the labels showing,
+  // a tooltip repeats what is already read, so an open sidebar draws none --
+  // folded to its icons, each one is NAMED. Two have no label to repeat, in
+  // either state: the update icon on the account button, and the fold button,
+  // whose hint says what a click does.
+  function folded() { return document.documentElement.dataset.navMode === "short"; }
+  function hintText(el) {
+    if (folded() && el.dataset.name && el.closest(".app-sidebar")) return el.dataset.name;
+    return el.getAttribute("data-tip");
+  }
   function hintTarget(e) {
-    return e.target && typeof e.target.closest === "function" ? e.target.closest("[data-tip]") : null;
+    if (!e.target || typeof e.target.closest !== "function") return null;
+    var el = e.target.closest("[data-tip], [data-name]");
+    if (!el) return null;
+    if (!el.closest(".app-sidebar") || el.hasAttribute("data-update-icon") || el.hasAttribute("data-nav-fold")) return el.hasAttribute("data-tip") ? el : null;
+    return folded() ? el : null;
   }
 
   document.addEventListener("mouseover", function (e) {
@@ -294,26 +358,48 @@
   });
 
   // ------------------------------------------------------------------
-  // The theme switch
+  // The theme and the language (the account menu)
   //
-  // The server chose the theme from the `brevis_theme` cookie before the page
-  // was painted; this only flips it in place and writes the cookie the next
-  // page will be drawn from. No request: the theme is a preference, not
-  // state anybody else reads.
+  // Both are the visitor's own and live in localStorage; the first script in
+  // the head reads them before the first paint (base.templ). The theme is
+  // auto (follows the system, the default), light or dark: this writes the
+  // choice, flips <html data-theme> in place and lights the chosen icon. No
+  // request. The language is what the SERVER draws from, so its button still
+  // posts the form; this only remembers the choice in localStorage first.
   //
   // What reads a colour ONCE when it starts -- the DAG island -- keeps the
   // old one until the next navigation.
   // ------------------------------------------------------------------
 
+  var systemLight = window.matchMedia("(prefers-color-scheme: light)");
+  function remember(key, value) {
+    try { localStorage.setItem(key, value); } catch (e) { /* private mode: not kept */ }
+  }
+  function applyTheme(pref) {
+    var root = document.documentElement;
+    root.dataset.themePref = pref;
+    root.dataset.theme = pref === "auto" ? (systemLight.matches ? "light" : "dark") : pref;
+    document.querySelectorAll("[data-theme-set]").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.dataset.themeSet === pref ? "true" : "false");
+    });
+  }
+  function setTheme(pref) {
+    remember("brevis_theme", pref);
+    applyTheme(pref);
+  }
+  applyTheme(document.documentElement.dataset.themePref || "auto");
+  systemLight.addEventListener("change", function () {
+    if (document.documentElement.dataset.themePref === "auto") applyTheme("auto");
+  });
+
   document.addEventListener("click", function (e) {
-    var btn = e.target.closest && e.target.closest("[data-theme-toggle]");
-    if (!btn) return;
-    var next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
-    document.documentElement.dataset.theme = next;
-    document.cookie = "brevis_theme=" + next + "; Path=/; Max-Age=31536000; SameSite=Lax";
-    var label = next === "light" ? t("theme.to_dark") : t("theme.to_light");
-    btn.setAttribute("aria-label", label);
-    btn.setAttribute("title", label);
+    var btn = e.target.closest && e.target.closest("[data-theme-set]");
+    if (btn) { setTheme(btn.dataset.themeSet); return; }
+    var lang = e.target.closest && e.target.closest('[data-lang-form] button[name="lang"]');
+    if (lang) remember("brevis_lang", lang.value);
+    // The shortcuts list opens over the menu; the menu has done its job.
+    var open = e.target.closest && e.target.closest(".account-menu [data-dialogo]");
+    if (open) open.closest("details").open = false;
   });
 
 
@@ -361,7 +447,7 @@
       var label = indicator.querySelector("[data-live-label]");
       if (label) label.textContent = text;
       var dot = indicator.querySelector("span");
-      if (dot) dot.className = "h-1.5 w-1.5 rounded-full " +
+      if (dot) dot.className = "h-2 w-2 rounded-full " +
         (live ? "bg-state-running" : "bg-line-strong");
     }
 
@@ -530,7 +616,7 @@
     function on() { return button.getAttribute("aria-pressed") === "true"; }
     function draw(live) {
       button.setAttribute("aria-pressed", live ? "true" : "false");
-      if (dot) dot.className = "h-1.5 w-1.5 rounded-full " + (live ? "bg-state-running animate-pulse" : "bg-line-strong");
+      if (dot) dot.className = "h-2 w-2 rounded-full " + (live ? "bg-state-success live-dot-on" : "bg-line-strong");
     }
     function schedule() {
       clearTimeout(timer);
@@ -1701,8 +1787,7 @@
       dialog.close();
       // An action is done here rather than followed.
       if (it.action === "toggle-theme") {
-        var sw = document.querySelector("[data-theme-toggle]");
-        if (sw) sw.click();
+        setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
         return;
       }
       // A language is the sidebar's own switcher pressed: the same POST, the

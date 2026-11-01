@@ -3,6 +3,7 @@ package bigquery
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 	"github.com/AreteAcademy/brevis/sql/internal/model"
@@ -144,5 +145,17 @@ func TestNameIsBigquery(t *testing.T) {
 	// string `refs` switches on.
 	if got := (Dialect{}).Name(); got != "bigquery" {
 		t.Errorf("%q", got)
+	}
+}
+
+func TestTheIncrementalFilterTakesALookback(t *testing.T) {
+	m := model.Model{Schema: "s", Name: "t", Watermark: "w", UniqueKey: []string{"k"},
+		Materialised: model.Incremental, SQL: "select 1", Lookback: 2 * time.Hour}
+	if got := mergeInto(m, dialect.State{Columns: []string{"k", "w"}}, "s.t"); !strings.Contains(got, "w >= TIMESTAMP_SUB((SELECT MAX(w) FROM s.t), INTERVAL 7200 SECOND)") {
+		t.Errorf("no lookback bound in:\n%s", got)
+	}
+	m.Lookback = 0
+	if got := mergeInto(m, dialect.State{Columns: []string{"k", "w"}}, "s.t"); !strings.Contains(got, "OR w > (SELECT MAX(w) FROM s.t)") {
+		t.Errorf("the default filter changed:\n%s", got)
 	}
 }

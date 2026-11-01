@@ -45,6 +45,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/observability/metrics"
 	"github.com/AreteAcademy/brevis/internal/queue"
 	"github.com/AreteAcademy/brevis/internal/scheduler"
+	"github.com/AreteAcademy/brevis/internal/updates"
 )
 
 func main() {
@@ -1426,7 +1427,8 @@ func serve(ctx context.Context) error {
 		// The Overview's event log: runs, publishes, pauses, as one feed.
 		WithEvents(postgres.NewEventRepo(pool)).
 		// The component gallery, for whoever is building the console.
-		WithGallery(cfg.Env == "local")
+		WithGallery(cfg.Env == "local").
+		WithVersion(Version, updateChecker(ctx, log))
 	// `inseguro` follows the environment: locally the server listens on plain
 	// http, and a Secure cookie would never come back — the login would look
 	// broken.
@@ -1468,4 +1470,21 @@ func serve(ctx context.Context) error {
 	ctxEnc, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 	return srv.Shutdown(ctxEnc)
+}
+
+// updateChecker starts the look for a newer release on GitHub, every few hours,
+// and returns it for the console to ask. Off with BREVIS_UPDATE_CHECK=off (a
+// host that must not reach the internet), and absent for a development build,
+// which has no version to be behind. A nil interface, not a nil *Checker: the
+// console asks only when there is somebody to ask.
+func updateChecker(ctx context.Context, log *slog.Logger) api.UpdateSource {
+	if strings.EqualFold(os.Getenv("BREVIS_UPDATE_CHECK"), "off") {
+		return nil
+	}
+	c := updates.New(Version, log)
+	if c == nil {
+		return nil
+	}
+	go c.Run(ctx)
+	return c
 }
