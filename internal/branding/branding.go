@@ -107,27 +107,14 @@ func Default() Brand {
 		Subtitle: "Orchestration",
 		Logo:     DefaultLogo,
 		Phrase:   "Clarity, structure and virtue\nare also part\nof whoever builds.",
-		Theme: Theme{
-			Background:     "#f4efe4",
-			BackgroundSoft: "#fbf8f1",
-			Surface:        "#fffdf8",
-			Ink:            "#21180f",
-			Muted:          "#6e6254",
-			Accent:         "#aa8450",
-			AccentStrong:   "#8a693d",
-			Succeeded:      "#4c7a56",
-			Failed:         "#b0503c",
-			Running:        "#3f6d8f",
-			Queued:         "#b3822f",
-			Retrying:       "#a35f28",
-			Canceled:       "#8a8175",
-			Waiting:        "#a89b8a",
-			// A dusty plum: distinct in HUE from the two warm greys beside it,
-			// so "did not run" and "has not run yet" are told apart at a
-			// glance, and desaturated enough that a graph full of correctly
-			// skipped steps does not look alarming.
-			Skipped: "#8b7089",
-		},
+		// THE THEME IS EMPTY, ON PURPOSE. An empty colour means "the product's
+		// own", and the product's colours live in the compiled stylesheet --
+		// the dark console. They used to be copied here as well, as the
+		// parchment palette from before the console went dark, so a file
+		// that changed ONE colour repainted the other fourteen in a palette
+		// the stylesheet no longer had (issue #142). There is no second list
+		// to fall out of step with the first.
+		Theme: Theme{},
 	}
 }
 
@@ -182,7 +169,8 @@ func (m Brand) Validate() error {
 		return fmt.Errorf("the title cannot be empty")
 	}
 	for name, colour := range m.Theme.colours() {
-		if !hex.MatchString(colour) {
+		// Empty keeps the product's colour; anything else must be hex.
+		if colour != "" && !hex.MatchString(colour) {
 			return fmt.Errorf("colour %s: %q is not a hex value (#rgb, #rrggbb or #rrggbbaa)", name, colour)
 		}
 	}
@@ -239,16 +227,17 @@ func (t Theme) colours() map[string]string {
 
 // CSS returns the variables to inject into the <head>.
 //
-// Empty when the theme is the default and there is no light theme: the
-// compiled sheet already carries those values, and repeating them would be
-// bytes on every page to change nothing.
+// Empty when no colour is set and there is no light theme: the compiled sheet
+// already carries the product's, and repeating them would be bytes on every
+// page to change nothing. A colour left out is not written, so the file's one
+// accent repaints the accent and nothing else.
 //
 // The dark block is `:root`, as it always was. The light one is
 // `:root[data-theme="light"]`, the attribute the server writes on <html> from
 // the visitor's cookie: it outranks `:root`, so a light visitor gets the light
 // colours whatever the dark block says.
 func (m Brand) CSS() string {
-	dark := m.Theme != Default().Theme
+	dark := m.Theme != Theme{}
 	if !dark && m.ThemeLight == nil {
 		return ""
 	}
@@ -257,12 +246,7 @@ func (m Brand) CSS() string {
 	if dark {
 		b.WriteString(":root{")
 		writeTheme(&b, m.Theme)
-		// The body's background is a hand-written gradient in the source
-		// CSS, so it does not follow the variables on its own. It is the
-		// dark theme's: in the light one it would lay this ground under
-		// light colours.
-		fmt.Fprintf(&b, `}:root:not([data-theme="light"]) body{background:linear-gradient(180deg,%s 0%%,%s 44%%,%s 100%%);}`,
-			m.Theme.BackgroundSoft, m.Theme.Background, m.Theme.BackgroundSoft)
+		b.WriteString("}")
 	}
 	if m.ThemeLight != nil {
 		b.WriteString(`:root[data-theme="light"]{`)
@@ -302,6 +286,7 @@ func writeTheme(b *strings.Builder, t Theme) {
 	write("--color-state-retrying", t.Retrying)
 	write("--color-state-canceled", t.Canceled)
 	write("--color-state-pending", t.Waiting)
+	write("--color-state-skipped", t.Skipped)
 }
 
 // withAlpha appends the alpha channel to a 6-digit colour. Short formats, or ones
