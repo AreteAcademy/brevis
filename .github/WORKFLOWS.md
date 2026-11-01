@@ -1,6 +1,6 @@
 # GitHub Actions workflows
 
-CI/CD for Brevis. Six workflow files plus Dependabot.
+CI/CD for Brevis. Workflow files plus Dependabot.
 
 ## The workflows
 
@@ -76,11 +76,21 @@ updates the GitHub Release's body.
 Runs on `push` to main and on `pull_request`. gofmt, go vet, and a coverage
 figure with a badge updated on main.
 
-### 7. `dependabot.yml` — dependency updates
+### 7. `dependabot.yml` and `dependabot-auto-merge.yml` — dependency updates
 
-Weekly, Mondays: the SDK's Go dependencies at 03:00 UTC and the GitHub Actions
-at 04:00. It opens at most 5 pull requests at a time and labels them
-`dependencies`, `go` and `ci`.
+The same model as the other Zarv repositories. Weekly, Mondays at 09:00 BRT, for
+the seven Go modules, the Python library, the Dockerfiles, docker-compose and
+the GitHub Actions. A new release waits out a cooldown (7 days, 14 for majors)
+before a PR is opened. Each ecosystem has two groups: `security` (security
+updates) and one for the week's minor and patch bumps. A major is never grouped.
+
+`dependabot-auto-merge.yml` merges a Dependabot PR once every other check has
+passed: any non-major security update, and the minor and patch version updates
+(patch only for Docker images, whose minor often swaps the runtime). A major is
+left for a person. The merge uses the Dependabot secret
+`DEPENDABOT_AUTOMERGE_TOKEN`: a merge made with the default token would not
+trigger the workflows that run on `master`. Without the secret the job only
+warns, and the PR waits for a person.
 
 ## Triggers
 
@@ -94,6 +104,7 @@ at 04:00. It opens at most 5 pull requests at a time and labels them
 | `release-notes.yml` | — | — | ✅ | — |
 | `quality.yml` | ✅ | ✅ | — | — |
 | `dependabot.yml` | — | — | — | weekly |
+| `dependabot-auto-merge.yml` | — | ✅ (Dependabot) | — | — |
 
 ## The secrets
 
