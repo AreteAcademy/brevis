@@ -229,7 +229,7 @@ services:
 
   kafka:
     profiles: [queue, all]
-    image: apache/kafka:3.9.0
+    image: apache/kafka:4.3.1
     ports:
       - "59092:9092"
     environment:
