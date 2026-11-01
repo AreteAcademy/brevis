@@ -607,13 +607,14 @@ templ langChoice() {
 }
 
 // sectionBadge is what a section has to say before it is opened: on Runs,
-// how many workflows are failing. The number is for the eye; a screen reader
+// how many runs are in flight. The number is for the eye; a screen reader
 // hears the sentence, as part of the link's name.
 templ sectionBadge(s section) {
-	if n := failing(ctx); s.Key == "runs" && n > 0 {
-		<span class="sr-only">{ i18n.N(ctx, "nav.runs.failing", n) }</span>
-		<span aria-hidden="true" data-sb-badge class="ml-auto inline-flex">
-			@components.NavBadge("fail", i18n.Number(ctx, int64(n)))
+	if s.Key == "runs" {
+		// Always drawn, even empty: it is what the script swaps (/nav/runs),
+		// so a failure or a run that starts after the page loaded still shows.
+		<span data-nav-runs data-sb-badge class="ml-auto inline-flex items-center gap-1">
+			@RunsBadges()
 		</span>
 	}
 	if n := attention(ctx); s.Key == "catalog" && n > 0 {
@@ -647,6 +648,23 @@ templ sidebarToggle() {
 			<span class="sb-when-short">@components.Icon("panel-left-open", "h-4 w-4")</span>
 		</button>
 	</span>
+}
+
+// RunsBadges is the Runs section's two numbers, failing (red) then in flight
+// (blue). Each is for the eye; a screen reader hears the sentence.
+templ RunsBadges() {
+	if n := failing(ctx); n > 0 {
+		<span class="sr-only">{ i18n.N(ctx, "nav.runs.failing", n) }</span>
+		<span aria-hidden="true">
+			@components.NavBadge("fail", i18n.Number(ctx, int64(n)))
+		</span>
+	}
+	if n := running(ctx); n > 0 {
+		<span class="sr-only">{ i18n.N(ctx, "nav.runs.running", n) }</span>
+		<span aria-hidden="true">
+			@components.NavBadge("run", i18n.Number(ctx, int64(n)))
+		</span>
+	}
 }
 
 templ navLink(s section, active string) {

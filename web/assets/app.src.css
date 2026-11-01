@@ -1555,6 +1555,12 @@ tr[data-paused] > td[data-fade] {
   background: color-mix(in srgb, var(--color-state-failed) 16%, transparent);
   color: var(--color-state-failed);
 }
+.nav-badge-run {
+  padding: 0 6px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-state-running) 16%, transparent);
+  color: var(--color-state-running);
+}
 .nav-badge-live {
   color: var(--color-state-success);
 }

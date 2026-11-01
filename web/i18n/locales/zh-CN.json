@@ -472,6 +472,10 @@
     "one": "{count} 个 workflows 失败中",
     "other": "{count} 个 workflows 失败中"
   },
+  "nav.runs.running": {
+    "one": "{count} 个运行进行中",
+    "other": "{count} 个运行进行中"
+  },
   "nav.runs.tip": "workflow 的每一次运行：耗时、参数和日志",
   "nav.sql": "SQL",
   "nav.sql.tip": "只读查询 Postgres 和 BigQuery",

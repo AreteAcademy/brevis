@@ -472,6 +472,10 @@
     "one": "{count} workflow en échec",
     "other": "{count} workflows en échec"
   },
+  "nav.runs.running": {
+    "one": "{count} exécution en cours",
+    "other": "{count} exécutions en cours"
+  },
   "nav.runs.tip": "Chaque exécution d'un workflow : durée, paramètres et logs",
   "nav.sql": "SQL",
   "nav.sql.tip": "Interroger Postgres et BigQuery, en lecture seule",

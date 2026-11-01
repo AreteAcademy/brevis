@@ -472,6 +472,10 @@
     "one": "{count} Workflow schlägt fehl",
     "other": "{count} Workflows schlagen fehl"
   },
+  "nav.runs.running": {
+    "one": "{count} Lauf in Arbeit",
+    "other": "{count} Läufe in Arbeit"
+  },
   "nav.runs.tip": "Jede Ausführung eines Workflows: Zeiten, Parameter und Logs",
   "nav.sql": "SQL",
   "nav.sql.tip": "Postgres und BigQuery abfragen, schreibgeschützt",

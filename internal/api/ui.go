@@ -221,8 +221,7 @@ func (u *UI) WithGallery(on bool) *UI {
 	return u
 }
 
-// FailingReader is what the Runs section's badge counts: the workflows whose
-// last finished run failed.
+// FailingReader is the workflows whose last finished run failed.
 type FailingReader interface {
 	FailingWorkflows(ctx context.Context) ([]postgres.FailingWorkflow, error)
 	// FailureStreak is how many times in a row a workflow failed, for the
@@ -269,7 +268,7 @@ func (u *UI) withVersion(ctx context.Context) context.Context {
 	return ctx
 }
 
-// WithFailing turns on the Runs section's badge. Without it there is none.
+// WithFailing turns on the list of failing workflows.
 func (u *UI) WithFailing(r FailingReader) *UI {
 	u.failing = r
 	return u
@@ -319,6 +318,7 @@ func NewUI(l Leitura, d Definitions, e RunsChart, a Actions, al AlertsReader,
 func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /{$}", u.overview) // {$} matches the EXACT root, not the prefix
 	mux.HandleFunc("GET /overview/attention", u.overviewAttention)
+	mux.HandleFunc("GET /nav/runs", u.navRuns)
 	mux.HandleFunc("GET /runs", u.runs)
 	mux.HandleFunc("GET /workflows", u.workflows)
 	mux.HandleFunc("GET /projects", u.projetos)
@@ -2043,7 +2043,7 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	ctx = i18n.WithLang(ctx, i18n.Negotiate(r))
 	ctx = layouts.WithRequestURI(ctx, r.URL.RequestURI())
 	ctx = layouts.TakeFlash(ctx, w, r)
-	ctx = u.withFailing(ctx, r)
+	ctx = u.withRunsBadges(ctx, r)
 	ctx = u.withVersion(ctx)
 	ctx = u.withAttention(ctx, r)
 	if err := c.Render(ctx, w); err != nil {
@@ -2051,19 +2051,39 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	}
 }
 
-// withFailing counts the failing workflows for the sidebar's badge. A number
-// for decoration cannot take a page down: when it cannot be read, the error
-// is logged and the page is drawn without it.
-func (u *UI) withFailing(ctx context.Context, r *http.Request) context.Context {
-	if u.failing == nil {
-		return ctx
+// withRunsBadges counts, for the sidebar's Runs badges, the workflows failing
+// (red) and the runs in flight (blue). A number for decoration cannot take a
+// page down: when one cannot be read, the error is logged and the page is
+// drawn without it.
+func (u *UI) withRunsBadges(ctx context.Context, r *http.Request) context.Context {
+	if u.failing != nil {
+		if failing, err := u.failing.FailingWorkflows(ctx); err != nil {
+			u.log.Error("counting the failing workflows", "path", r.URL.Path, "error", err)
+		} else {
+			ctx = layouts.WithFailing(ctx, len(failing))
+		}
 	}
-	failing, err := u.failing.FailingWorkflows(ctx)
-	if err != nil {
-		u.log.Error("counting the failing workflows", "path", r.URL.Path, "error", err)
-		return ctx
+	if u.leitura != nil {
+		if counts, err := u.leitura.CountRunsByState(ctx, postgres.RunFilter{}); err != nil {
+			u.log.Error("counting the runs in flight", "path", r.URL.Path, "error", err)
+		} else {
+			ctx = layouts.WithRunning(ctx, inFlight(counts))
+		}
 	}
-	return layouts.WithFailing(ctx, len(failing))
+	return ctx
+}
+
+// navRuns is the Runs badges alone, for the sidebar to swap in: the page was
+// drawn once, and a run that starts or a workflow that breaks afterwards
+// should show without a reload.
+func (u *UI) navRuns(w http.ResponseWriter, r *http.Request) {
+	ctx := i18n.WithLang(r.Context(), i18n.Negotiate(r))
+	ctx = u.withRunsBadges(ctx, r)
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := layouts.RunsBadges().Render(ctx, w); err != nil {
+		u.log.Warn("rendering the Runs badges", "error", err)
+	}
 }
 
 // chooseLang remembers the reader's language and goes back to the page they

@@ -472,6 +472,10 @@
     "one": "失敗中の Workflows {count} 件",
     "other": "失敗中の Workflows {count} 件"
   },
+  "nav.runs.running": {
+    "one": "{count} 件の実行が進行中",
+    "other": "{count} 件の実行が進行中"
+  },
   "nav.runs.tip": "workflow が実行されるたびの記録: 所要時間、パラメータ、ログ",
   "nav.sql": "SQL",
   "nav.sql.tip": "Postgres と BigQuery を読み取り専用でクエリ",

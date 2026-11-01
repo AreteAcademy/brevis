@@ -407,6 +407,7 @@
   "nav.projects.tip": "Todos los proyectos y sus workflows",
   "nav.runs": "Ejecuciones",
   "nav.runs.failing": {"one": "{count} workflow fallando", "other": "{count} workflows fallando"},
+  "nav.runs.running": {"one": "{count} ejecución en curso", "other": "{count} ejecuciones en curso"},
   "nav.runs.tip": "Cada vez que un workflow se ejecutó: tiempos, parámetros y logs",
   "nav.sql": "SQL",
   "nav.sql.tip": "Consultar Postgres y BigQuery, solo lectura",
