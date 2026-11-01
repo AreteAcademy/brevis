@@ -27,7 +27,7 @@ services:
   # does the same thing one layer down. It is said here rather than discovered
   # by somebody reading the file after it is already running.
   k3s:
-    image: rancher/k3s:v1.31.5-k3s1
+    image: rancher/k3s:v1.37.1-k3s1
     privileged: true
     command:
       - server
@@ -69,7 +69,7 @@ services:
   # Installs Argo CD and exits. The only imperative step in the whole design:
   # everything after this is a commit.
   bootstrap:
-    image: alpine/k8s:1.31.3
+    image: alpine/k8s:1.37.1
     depends_on:
       k3s:
         condition: service_healthy
