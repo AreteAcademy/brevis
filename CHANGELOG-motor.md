@@ -16,6 +16,18 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Fixed: the site's ten translations were never published
+
+- `brevis.sh/pt/`, `/es/`, `/fr/`, `/de/`, `/zh/`, `/ja/`, `/ru/`, `/ko/`,
+  `/hi/` and `/id/` answered 404, though the home page and every page's
+  language picker link to them. `site/build.py` lists what goes into the
+  `dist/` Cloudflare publishes, and the list named `docs` and `en` (which has
+  no folder: English is the root) and none of the ten added with the eleven
+  languages. The folders now come from the language list itself.
+- `build.py --check`, which CI runs, now also assembles the `dist/` and fails
+  when a page it generated is not in it, so a page left out fails the pull
+  request rather than production.
+
 ### Changed: the SQL console, its tree
 
 - **The connection is a picker at the top of the tree**, with its logo,

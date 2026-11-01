@@ -891,10 +891,13 @@ def jsonld_doc(lang, s, p):
     }
 
 
+# O que vai para o dist/ que o Cloudflare publica. As pastas de idioma saem de
+# IDIOMAS (o padrão mora na raiz e não tem pasta): uma lista escrita à mão
+# esqueceu as dez do #166, e `fora_do_dist` segura isso agora.
 SERVIDO = ("index.html", "404.html", "robots.txt", "sitemap.xml",
            "search-index.json", "_headers", "_redirects",
            "llms.txt", "llms-full.txt",
-           "docs", "en", "assets", "css", "js")
+           "docs", "assets", "css", "js") + tuple(lang for lang in IDIOMAS if lang != PADRAO)
 
 
 def montar_dist(destino):
@@ -913,6 +916,17 @@ def montar_dist(destino):
     return sum(1 for _ in destino.rglob("*") if _.is_file())
 
 
+def fora_do_dist(escritos, destino):
+    """O que o build gerou e o dist não serve.
+
+    Cada página que o site anuncia (o seletor de idioma, o hreflang, o
+    sitemap) tem que estar no que o Cloudflare publica. Uma pasta de idioma que
+    o `SERVIDO` esqueceu é uma página gerada, commitada, linkada e 404 em
+    produção -- o que aconteceu com os dez idiomas do #166.
+    """
+    return [rel for rel in escritos if not (destino / rel).exists()]
+
+
 def main():
     ap = argparse.ArgumentParser(description="Gera o site do brevis.sh")
     ap.add_argument("--check", action="store_true",
@@ -924,6 +938,12 @@ def main():
     if args.dist:
         escritos = gerar(SAIDA)
         n = montar_dist(RAIZ / "dist")
+        faltam = fora_do_dist(escritos, RAIZ / "dist")
+        if faltam:
+            print("gerado e fora do dist/ (falta em SERVIDO):", file=sys.stderr)
+            for f in faltam[:20]:
+                print("  " + f, file=sys.stderr)
+            return 1
         print("%d páginas geradas · dist/ com %d arquivos" % (len(escritos), n))
         return 0
 
@@ -946,7 +966,20 @@ def main():
                 for d in divergentes:
                     print("  " + d, file=sys.stderr)
                 return 1
-            print("build em dia — %d páginas" % len(escritos))
+            # E O QUE É SERVIDO: a CI roda só este modo, e o Cloudflare só o
+            # --dist; sem isto, uma página fora do dist passava aqui e virava
+            # 404 em produção.
+            dist = tmp / "dist"
+            montar_dist(dist)
+            faltam = fora_do_dist(escritos, dist)
+            if faltam:
+                print("gerado e fora do dist/ (falta em SERVIDO):", file=sys.stderr)
+                for f in faltam[:20]:
+                    print("  " + f, file=sys.stderr)
+                if len(faltam) > 20:
+                    print("  … e mais %d" % (len(faltam) - 20), file=sys.stderr)
+                return 1
+            print("build em dia — %d páginas, todas servidas" % len(escritos))
             return 0
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
