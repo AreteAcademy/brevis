@@ -965,6 +965,7 @@ li.CodeMirror-hint-active {
 }
 .palette::backdrop {
   background: rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(4px);
 }
 
 /* A WRITER'S FLOW, on a dot grid like the graph's ground. The connectors are
@@ -1330,6 +1331,8 @@ dialog.modal[open] {
 dialog.drawer::backdrop,
 dialog.modal::backdrop {
   background: rgb(0 0 0 / 0.5);
+  /* What is behind a dialog is out of reach, so it is out of focus too. */
+  backdrop-filter: blur(4px);
 }
 /* FIXED, MODAL OR NOT. A drawer the server draws open (the Catalog's and a
    load's, for a link with no script) is a non-modal <dialog>, which the
