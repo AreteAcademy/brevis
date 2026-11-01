@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Перейти к содержимому</a>
+<a class="skip-link" href="#content">Перейти к содержимому</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Основная навигация">
-      <a href="/ru/#ecossistema">Экосистема</a>
+      <a href="/ru/#ecosystem">Экосистема</a>
       <a href="/ru/docs/">Документация</a>
-      <details class="lang-dd"><summary aria-label="Язык: Русский"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Русский</span></summary><ul><li><a href="/docs/ecosystem/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ecosystem/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ecosystem/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ecosystem/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ecosystem/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ecosystem/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ecosystem/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ecosystem/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/ecosystem/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ecosystem/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ecosystem/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Язык: Русский"><span>Русский</span></summary><ul><li><a href="/docs/ecosystem/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ecosystem/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ecosystem/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ecosystem/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ecosystem/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ecosystem/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ecosystem/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ecosystem/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/ecosystem/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ecosystem/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ecosystem/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open source на GitHub
@@ -119,25 +119,25 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Документация</p>
       <h1>Экосистема</h1>
       <p class="doc-desc">Четыре компонента brevis.sh, что делает каждый из них и через что проходят данные.</p>
       <p>Core планирует, ставит в очередь и наблюдает, но никогда не касается данных. Данных касаются SDK, который их забирает, Gateway, который их принимает, и SQL, который моделирует то, что уже легло в хранилище.</p>
-<h2 id="четыре-компонента">Четыре компонента<a class="anchor" href="#четыре-компонента" aria-label="link">#</a></h2>
+<h2 id="the-four-pieces">Четыре компонента<a class="anchor" href="#the-four-pieces" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>компонент</th><th>что делает</th><th>как получить</th><th>руководство</th></tr></thead><tbody><tr><td><strong>Core</strong></td><td>Планирует, ставит в очередь и запускает по одному pod на каждый шаг. Никогда не касается данных.</td><td><code>areteacademy/brevis</code></td><td><a href="/ru/docs/core/">Core</a></td></tr><tr><td><strong>SDK</strong></td><td>Библиотека на Go, которая извлекает, преобразует и загружает данные внутри вашего шага.</td><td><code>go get github.com/AreteAcademy/brevis/sdk</code></td><td><a href="/ru/docs/sdk/">Go SDK</a></td></tr><tr><td><strong>Gateway</strong></td><td>Принимает HTTP POST, отвечает 202 и пишет пакетами. Собственной базы данных нет.</td><td><code>areteacademy/brevis-gateway</code></td><td><a href="/ru/docs/ingestion/">Приём данных</a></td></tr><tr><td><strong>SQL</strong></td><td>Обычные .sql-файлы превращаются в таблицы и представления в порядке зависимостей.</td><td><code>areteacademy/brevis-sql</code></td><td><a href="/ru/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="плоскость-управления-и-плоскость-данных">Плоскость управления и плоскость данных<a class="anchor" href="#плоскость-управления-и-плоскость-данных" aria-label="link">#</a></h2>
+<h2 id="control-plane-data-plane">Плоскость управления и плоскость данных<a class="anchor" href="#control-plane-data-plane" aria-label="link">#</a></h2>
 <p><strong>Плоскость управления</strong> — это Core: он решает, когда запускается каждый шаг, хранит очередь и состояние в Postgres и запускает по одному pod на шаг. Данные через него не проходят.</p>
 <p><strong>Плоскость данных</strong> — остальные три компонента. Данные поступают из API, базы данных или файлов и попадают в место назначения одним из двух путей: их <strong>забирает SDK</strong> внутри вашего шага, либо их <strong>отправляют в Gateway</strong> по HTTP из webhook и приложений. Место назначения — таблица, топик или файлы в бакете. Когда данные легли, <strong>SQL</strong> моделирует таблицы прямо там, в той базе, куда они попали.</p>
-<h3 id="вокруг-них">Вокруг них<a class="anchor" href="#вокруг-них" aria-label="link">#</a></h3>
+<h3 id="around-it">Вокруг них<a class="anchor" href="#around-it" aria-label="link">#</a></h3>
 <p>Три вспомогательных компонента:</p>
-<ul><li><strong><a href="/ru/docs/console/">Console</a></strong> — веб-интерфейс поверх Core</li><li><strong><a href="/ru/docs/pod-per-step/#где-выполняется-каждый-шаг">agent</a></strong> — запускает шаг в уже имеющемся у вас кластере</li><li><strong><a href="/ru/docs/python/"><code>brevis</code> для Python</a></strong> — контекст запуска для шагов на Python</li></ul>
-<h2 id="использование-только-одного-компонента">Использование только одного компонента<a class="anchor" href="#использование-только-одного-компонента" aria-label="link">#</a></h2>
+<ul><li><strong><a href="/ru/docs/console/">Console</a></strong> — веб-интерфейс поверх Core</li><li><strong><a href="/ru/docs/pod-per-step/#where-each-step-runs">agent</a></strong> — запускает шаг в уже имеющемся у вас кластере</li><li><strong><a href="/ru/docs/python/"><code>brevis</code> для Python</a></strong> — контекст запуска для шагов на Python</li></ul>
+<h2 id="using-only-one-piece">Использование только одного компонента<a class="anchor" href="#using-only-one-piece" aria-label="link">#</a></h2>
 <p>Можно. У каждого компонента свой модуль, своя версия и свой образ: SDK — это библиотека на Go, которая работает в любой программе, Gateway запускается сам по YAML-файлу и без базы данных, а brevis-sql работает как контейнер. Core оркестрирует остальные, когда вы этого хотите, но ни для одного из них он не обязателен.</p>
-<h2 id="та-же-строка">Та же строка<a class="anchor" href="#та-же-строка" aria-label="link">#</a></h2>
+<h2 id="the-same-row">Та же строка<a class="anchor" href="#the-same-row" aria-label="link">#</a></h2>
 <p>Заказ, который забирает SDK, и заказ, который приходит в Gateway, попадают в одну и ту же таблицу с одним и тем же brevis_ingestion_id. Выбор между ними становится решением о развёртывании, а не о схеме.</p>
-<p>Через SDK, с помощью <code>sdk.Landing</code> (подробности в разделе <a href="/ru/docs/sdk/#структура-приземления">Структура приземления</a>):</p>
+<p>Через SDK, с помощью <code>sdk.Landing</code> (подробности в разделе <a href="/ru/docs/sdk/#the-landing-layout">Структура приземления</a>):</p>
 <div class="code-block" data-code="sdk.Execute(ctx, &amp;sdk.Pipeline{
 	Source:    sdk.Source{From: from.Files{Path: &quot;order.json&quot;}},
 	Transform: []sdk.Transformer{sdk.Landing(&quot;app_orders&quot;, sdk.LandingKey(&quot;id&quot;))},
@@ -153,7 +153,7 @@
 		Schema: sdk.LandingSchema(sdk.LandingOptions{}),
 	},
 }, <span class="t-k">nil</span>)</code></pre></div>
-<p>Через Gateway, POST-запросом на <code>/v1/tables</code> (подробности в разделе <a href="/ru/docs/ingestion/#один-маршрут-n-таблиц">Один маршрут, N таблиц</a>):</p>
+<p>Через Gateway, POST-запросом на <code>/v1/tables</code> (подробности в разделе <a href="/ru/docs/ingestion/#one-route-n-tables">Один маршрут, N таблиц</a>):</p>
 <div class="code-block" data-code="curl -X POST localhost:8080/v1/tables -H &#x27;Authorization: Bearer dev-key&#x27; \
     -d &#x27;{&quot;table_name&quot;:&quot;app_orders&quot;,&quot;unique_key&quot;:&quot;id&quot;,
          &quot;data&quot;:{&quot;id&quot;:&quot;A-1&quot;,&quot;customer&quot;:&quot;acme.example.com&quot;,&quot;total&quot;:150}}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/tables <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
@@ -177,7 +177,7 @@
 
     <aside class="toc" aria-label="На этой странице">
       <p class="toc-t">На этой странице</p>
-      <ul><li class="toc-2"><a href="#четыре-компонента">Четыре компонента</a></li><li class="toc-2"><a href="#плоскость-управления-и-плоскость-данных">Плоскость управления и плоскость данных</a></li><li class="toc-3"><a href="#вокруг-них">Вокруг них</a></li><li class="toc-2"><a href="#использование-только-одного-компонента">Использование только одного компонента</a></li><li class="toc-2"><a href="#та-же-строка">Та же строка</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-four-pieces">Четыре компонента</a></li><li class="toc-2"><a href="#control-plane-data-plane">Плоскость управления и плоскость данных</a></li><li class="toc-3"><a href="#around-it">Вокруг них</a></li><li class="toc-2"><a href="#using-only-one-piece">Использование только одного компонента</a></li><li class="toc-2"><a href="#the-same-row">Та же строка</a></li></ul>
     </aside>
   </main>
 </div>
@@ -197,9 +197,9 @@
       <div class="footer-col">
         <h2>проект</h2>
         <ul>
-          <li><a href="/ru/#ecossistema">Экосистема</a></li>
+          <li><a href="/ru/#ecosystem">Экосистема</a></li>
           <li><a href="/ru/docs/philosophy/">Принципы</a></li>
-          <li><a href="/ru/docs/introduction/#открытый-код-выберите-как-участвовать">Open source</a></li>
+          <li><a href="/ru/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/ru/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -222,7 +222,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

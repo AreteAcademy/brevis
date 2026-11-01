@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Zum Inhalt springen</a>
+<a class="skip-link" href="#content">Zum Inhalt springen</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Hauptnavigation">
-      <a href="/de/#ecossistema">Ökosystem</a>
+      <a href="/de/#ecosystem">Ökosystem</a>
       <a href="/de/docs/">Dokumentation</a>
-      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Deutsch</span></summary><ul><li><a href="/docs/configuration/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/configuration/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/configuration/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/configuration/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/configuration/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/configuration/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/configuration/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/configuration/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/configuration/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/configuration/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/configuration/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><span>Deutsch</span></summary><ul><li><a href="/docs/configuration/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/configuration/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/configuration/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/configuration/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/configuration/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/configuration/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/configuration/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/configuration/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/configuration/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/configuration/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/configuration/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open Source erkunden
@@ -119,19 +119,21 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentation</p>
       <h1>Konfiguration</h1>
       <p class="doc-desc">Jede Umgebungsvariable, mit Standardwert, Format und dem, was geschieht, wenn sie fehlt.</p>
       <p>Die gesamte Konfiguration kommt aus der <strong>Umgebung</strong> und wird einmal beim Start gelesen. Danach fragt nichts mehr die Umgebung ab: Ein Prozess, dessen Konfiguration sich mitten im Lauf ändert, ist ein Prozess, dessen Verhalten niemand nachvollziehen kann.</p>
-<h2 id="erforderlich">Erforderlich<a class="anchor" href="#erforderlich" aria-label="link">#</a></h2>
+<h2 id="required">Erforderlich<a class="anchor" href="#required" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>Variable</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_DATABASE_URL</code></td><td>Postgres. Fehlt sie, ist das ein <strong>Startfehler</strong> in den fünf Subcommands, die die Datenbank nutzen</td></tr></tbody></table></div>
-<h2 id="prozess">Prozess<a class="anchor" href="#prozess" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th>Variable</th><th>Standard</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_ENV</code></td><td><code>local</code></td><td><code>local</code> loggt als Text und lässt die Oberfläche offen; alles andere verlangt Zugangsdaten und loggt JSON</td></tr><tr><td><code>BREVIS_HTTP_ADDR</code></td><td><code>:8080</code></td><td>Listen-Adresse</td></tr><tr><td><code>BREVIS_LOG_LEVEL</code></td><td><code>info</code></td><td></td></tr><tr><td><code>BREVIS_SHUTDOWN_TIMEOUT_SECONDS</code></td><td><code>15</code></td><td>Ganzzahl; ein nicht numerischer Wert ist ein Startfehler</td></tr><tr><td><code>BREVIS_BRAND_FILE</code></td><td><code>brand.yaml</code></td><td>Branding; fehlt sie, gilt der Standard</td></tr><tr><td><code>BREVIS_UI_URL</code></td><td>—</td><td>Basis des Run-Links in Alarmen</td></tr><tr><td><code>BREVIS_METRICS_ADDR</code></td><td>—</td><td>Port der Prometheus-Metriken; leer = nicht exponiert. Siehe <a href="/de/docs/observability/">Observability</a></td></tr><tr><td><code>BREVIS_SLACK_WEBHOOK</code></td><td>—</td><td>Ziel für Fehleralarme. Leer = niemand wird informiert</td></tr></tbody></table></div>
-<h2 id="authentifizierung">Authentifizierung<a class="anchor" href="#authentifizierung" aria-label="link">#</a></h2>
+<h2 id="process">Prozess<a class="anchor" href="#process" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>Variable</th><th>Standard</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_ENV</code></td><td><code>production</code></td><td><code>local</code> loggt als Text und lässt die Oberfläche offen; alles andere, auch wenn die Variable nicht gesetzt ist, verlangt Zugangsdaten und loggt JSON. Setze für die Entwicklung <code>BREVIS_ENV=local</code></td></tr><tr><td><code>BREVIS_HTTP_ADDR</code></td><td><code>:8080</code></td><td>Listen-Adresse</td></tr><tr><td><code>BREVIS_LOG_LEVEL</code></td><td><code>info</code></td><td></td></tr><tr><td><code>BREVIS_SHUTDOWN_TIMEOUT_SECONDS</code></td><td><code>15</code></td><td>Ganzzahl; ein nicht numerischer Wert ist ein Startfehler</td></tr><tr><td><code>BREVIS_DB_MAX_CONNS</code></td><td>Treiber-Standard, <code>max(4, CPUs)</code></td><td>Obergrenze des Postgres-Pools jedes Prozesses; ein nicht numerischer oder negativer Wert ist ein Startfehler</td></tr><tr><td><code>BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS</code></td><td><code>0</code> (aus)</td><td>nur die Konsole (<code>brevis serve</code>): Postgres bricht jedes ihrer Statements ab, das länger läuft, damit eine außer Kontrolle geratene Listenabfrage keine Verbindung blockiert. <code>30</code> ist der empfohlene Wert überall dort, wo der Pool Startparameter akzeptiert; standardmäßig aus, weil ein PgBouncer im Transaction-Modus die Verbindung sonst ablehnt. Wird als Startparameter der Verbindung gesendet, daher braucht ein PgBouncer im Transaction-Modus <code>ignore_startup_parameters = statement_timeout</code></td></tr><tr><td><code>BREVIS_RETENTION_TRIM_DAYS</code></td><td><code>0</code> (aus)</td><td>optionales geplantes Prune, ausgeführt von <code>brevis scheduler</code>: leert Log, Phasen und Ausgabe von Runs, die älter als dieser Wert sind. Gleiche Wirkung wie <code>brevis prune --trim-after</code>. <code>0</code> = der Scheduler räumt nie auf</td></tr><tr><td><code>BREVIS_RETENTION_PURGE_DAYS</code></td><td><code>0</code> (nie)</td><td>löscht zusätzlich zum vorigen auch Runs, die älter als dieser Wert sind. Muss mindestens dem Trim-Wert entsprechen</td></tr><tr><td><code>BREVIS_RETENTION_INTERVAL_HOURS</code></td><td><code>24</code></td><td>wie oft das geplante Prune läuft (einmal beim Start, danach alle N Stunden)</td></tr><tr><td><code>BREVIS_BRAND_FILE</code></td><td><code>brand.yaml</code></td><td>Branding; fehlt sie, gilt der Standard</td></tr><tr><td><code>BREVIS_UI_URL</code></td><td>—</td><td>Basis des Run-Links in Alarmen</td></tr><tr><td><code>BREVIS_METRICS_ADDR</code></td><td>—</td><td>Port der Prometheus-Metriken; leer = nicht exponiert. Siehe <a href="/de/docs/observability/">Observability</a></td></tr><tr><td><code>BREVIS_SLACK_WEBHOOK</code></td><td>—</td><td>Ziel für Fehleralarme. Leer = niemand wird informiert</td></tr></tbody></table></div>
+<h2 id="authentication">Authentifizierung<a class="anchor" href="#authentication" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>Variable</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_AUTH_USER</code></td><td>Benutzer der Oberfläche</td></tr><tr><td><code>BREVIS_AUTH_PASSWORD_HASH</code></td><td>Hash <code>pbkdf2-sha256$…</code>, erzeugt von <code>brevis hash</code></td></tr><tr><td><code>BREVIS_AUTH_SECRET</code></td><td>32+ Byte zum Signieren der Sitzung (<code>openssl rand -base64 48</code>)</td></tr></tbody></table></div>
 <p>Alle drei gehören zusammen, oder keine.</p>
+<div class="table-wrap"><table><thead><tr><th>Variable</th><th>Standard</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_AUTH_CLIENT_IP_HEADER</code></td><td>—</td><td>Header, den dein Proxy mit der Client-Adresse setzt, z. B. <code>X-Forwarded-For</code>. Verwendet wird der <strong>letzte</strong> Eintrag (den dein Proxy angehängt hat). Leer = die Adresse der Verbindung</td></tr></tbody></table></div>
+<p>Die Anmeldung wird pro Client-Adresse gedrosselt (IPv6 nach ihrem /64): Nach drei Fehlversuchen wird die Adresse 2 Sekunden gesperrt, die Sperre verdoppelt sich bis auf 15 Minuten. <strong>Hinter einem Ingress oder Load Balancer die Variable setzen</strong> (das Helm-Chart tut das, wenn <code>api.ingress.enabled</code> aktiv ist; überschreiben mit <code>auth.clientIPHeader</code>): Ohne sie teilen sich alle Clients die Adresse des Proxys, sodass eine einzelne Person, die Passwörter errät, alle aussperren würde. In diesem Fall wird die Sperre außerhalb von <code>BREVIS_ENV=local</code> auf 30 Sekunden begrenzt, und beim Start wird eine Warnung geloggt. Setze die Variable nur, wenn der Header von einem Proxy geschrieben wird, dem du vertraust, und der Client ihn nicht fälschen kann. Pro Adresse läuft immer nur eine Passwortprüfung gleichzeitig; zwei Personen hinter demselben NAT, die sich in derselben Sekunde anmelden, sehen daher kurz ein 429.</p>
 <aside class="admon admon-danger"><p class="admon-t">Halb konfiguriert ist ein Startfehler</p><p>Wer den Benutzernamen eingetragen hat, glaubt, die Tür sei zu. Die Oberfläche löst Pipelines aus: Ein <code>POST /workflows/&lt;slug&gt;/trigger</code> startet einen <code>dbt build</code>, der ins Warehouse schreibt. Offen im Internet ist sie eine Fernbedienung für das Warehouse – und eine Warnung im Log nimmt diesen Glauben nicht zurück, weil niemand das Log eines Prozesses liest, der funktioniert.</p></aside>
 <p>Außerhalb von <code>BREVIS_ENV=local</code> wird ein Start ohne Zugangsdaten verweigert:</p>
 <div class="code-block" data-code="error: BREVIS_ENV=production requires a credential: set BREVIS_AUTH_USER,
@@ -140,7 +142,7 @@ BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and BREVIS_AUTH_SECR
 <aside class="admon admon-note"><p class="admon-t">Die alten Namen funktionieren weiterhin</p><p>Vier Variablen wurden am 10.09.2026 umbenannt, als die letzten portugiesischen Namen die Betreiberseite des Projekts verließen: <code>BREVIS_AUTH_USUARIO</code>, <code>BREVIS_AUTH_SENHA_HASH</code>, <code>BREVIS_AUTH_SEGREDO</code> und <code>BREVIS_POD_MANTER_EM_FALHA</code>. Eine Installation, die den alten Namen setzt, funktioniert weiter und loggt eine Warnung, die den neuen nennt.</p>
 <p>Fügen Sie den neuen Namen hinzu, deployen Sie, und entfernen Sie dann den alten – der neue Name gewinnt, wenn beide gesetzt sind. Die alten Namen verschwinden in einer Major-Version.</p>
 <p>Im SDK wurde <code>BREVIS_SDK_LIMITE_INLINE</code> nach derselben Regel zu <code>BREVIS_SDK_INLINE_LIMIT</code>.</p></aside>
-<h2 id="task-umgebung">Task-Umgebung<a class="anchor" href="#task-umgebung" aria-label="link">#</a></h2>
+<h2 id="task-environment">Task-Umgebung<a class="anchor" href="#task-environment" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>Variable</th><th>Standard</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TASK_ENV</code></td><td>leer</td><td>was jeder Step erhält</td></tr></tbody></table></div>
 <p>Ein Task erbt die Umgebung des Orchestrators <strong>nicht</strong>. Der Grund ist konkret: Der Prozess trägt <code>BREVIS_DATABASE_URL</code> mit Benutzername und Passwort von Postgres, und ein Workflow ist ein beliebiger Befehl, den jemand anderes geschrieben hat – Erben würde die Datenbank-Zugangsdaten an jeden Step jeder Pipeline weitergeben.</p>
 <p>Was der Task braucht, wird deklariert:</p>
@@ -160,7 +162,7 @@ BREVIS_TASK_ENV='*'                       <span class="t-c"># forwards everythin
 <h2 id="health-endpoints">Health-Endpoints<a class="anchor" href="#health-endpoints" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>GET /health</code></td><td>Liveness – fragt die Datenbank <strong>nicht</strong> ab</td></tr><tr><td><code>GET /ready</code></td><td>Readiness – fragt ab und nennt die Abhängigkeit, die ausgefallen ist</td></tr></tbody></table></div>
 <p>Die Trennung ist Absicht: Eine Liveness-Probe, die von einem externen Dienst abhängt, lässt Kubernetes den <strong>Pod killen</strong>, wenn die Datenbank wackelt, statt ihn nur aus dem Load Balancer zu nehmen.</p>
-<h2 id="ein-vollständiges-beispiel">Ein vollständiges Beispiel<a class="anchor" href="#ein-vollständiges-beispiel" aria-label="link">#</a></h2>
+<h2 id="a-complete-example">Ein vollständiges Beispiel<a class="anchor" href="#a-complete-example" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# required
 export BREVIS_DATABASE_URL=&#x27;postgres://brevis:secret@db:5432/brevis?sslmode=require&#x27;
 
@@ -215,7 +217,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
     <aside class="toc" aria-label="Auf dieser Seite">
       <p class="toc-t">Auf dieser Seite</p>
-      <ul><li class="toc-2"><a href="#erforderlich">Erforderlich</a></li><li class="toc-2"><a href="#prozess">Prozess</a></li><li class="toc-2"><a href="#authentifizierung">Authentifizierung</a></li><li class="toc-2"><a href="#task-umgebung">Task-Umgebung</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#tests">Tests</a></li><li class="toc-2"><a href="#health-endpoints">Health-Endpoints</a></li><li class="toc-2"><a href="#ein-vollständiges-beispiel">Ein vollständiges Beispiel</a></li></ul>
+      <ul><li class="toc-2"><a href="#required">Erforderlich</a></li><li class="toc-2"><a href="#process">Prozess</a></li><li class="toc-2"><a href="#authentication">Authentifizierung</a></li><li class="toc-2"><a href="#task-environment">Task-Umgebung</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#tests">Tests</a></li><li class="toc-2"><a href="#health-endpoints">Health-Endpoints</a></li><li class="toc-2"><a href="#a-complete-example">Ein vollständiges Beispiel</a></li></ul>
     </aside>
   </main>
 </div>
@@ -235,9 +237,9 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
       <div class="footer-col">
         <h2>Projekt</h2>
         <ul>
-          <li><a href="/de/#ecossistema">Ökosystem</a></li>
+          <li><a href="/de/#ecosystem">Ökosystem</a></li>
           <li><a href="/de/docs/philosophy/">Prinzipien</a></li>
-          <li><a href="/de/docs/introduction/#offener-code-wählen-sie-wie-sie-mitmachen">Open Source</a></li>
+          <li><a href="/de/docs/introduction/#open-code-choose-how-to-take-part">Open Source</a></li>
           <li><a href="/de/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -260,7 +262,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

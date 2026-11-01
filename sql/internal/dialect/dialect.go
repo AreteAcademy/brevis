@@ -225,13 +225,13 @@ func MergeOf(m model.Model, columns []string) Merge {
 // the one part that is spelled differently in each warehouse.
 func NewRows(m model.Model, body string, minus func(expr string, secs int64) string) string {
 	ref, w := m.Ref(), m.Watermark
-	max := "(SELECT MAX(" + w + ") FROM " + ref + ")"
-	cmp := w + " > " + max
+	maxW := "(SELECT MAX(" + w + ") FROM " + ref + ")"
+	cmp := w + " > " + maxW
 	if m.Lookback > 0 {
-		cmp = w + " >= " + minus(max, int64(m.Lookback/time.Second))
+		cmp = w + " >= " + minus(maxW, int64(m.Lookback/time.Second))
 	}
 	return "SELECT * FROM (\n" + body + "\n) AS brevis_new\n" +
-		" WHERE " + max + " IS NULL\n" +
+		" WHERE " + maxW + " IS NULL\n" +
 		"    OR " + cmp
 }
 
@@ -553,6 +553,21 @@ type Atomic interface {
 	// returns the index of the statement the warehouse refused, and nothing
 	// of the earlier ones remains.
 	ExecAtomic(ctx context.Context, statements []string) (failed int, err error)
+}
+
+// Swapper is implemented by a Dialect whose Build makes a table ASIDE and
+// swaps it in, so that the statements which must commit together are only
+// the end of the list.
+//
+// The statements before the tail (the slow CREATE TABLE AS into a scratch
+// table) run one by one, outside any transaction: readers of the old table
+// are not blocked while they run. Only the tail (drop the old, rename the
+// new) runs through Atomic, so the exclusive lock lasts for the swap.
+type Swapper interface {
+	// SwapTail says how many trailing statements of a Build are the swap.
+	// The first statement of the whole list must also be safe to run alone
+	// as the cleanup of a failed build.
+	SwapTail(statements []string) int
 }
 
 // Relation is one thing a SELECT could name.

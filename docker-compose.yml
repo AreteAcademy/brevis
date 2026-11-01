@@ -44,9 +44,6 @@ services:
       target: api
     command: ["migrate", "up"]
     environment:
-      # Every subcommand loads the same config, and an unset BREVIS_ENV is
-      # production, which refuses to start without a console credential.
-      BREVIS_ENV: local
       BREVIS_DATABASE_URL: postgres://brevis:brevis@postgres:5432/brevis?sslmode=disable
     depends_on:
       postgres: {condition: service_healthy}

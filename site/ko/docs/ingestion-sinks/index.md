@@ -252,7 +252,7 @@ sink:
 이 여덟 개는 이 sink의 것이 아니라 **SDK의 것**입니다. `sdk.LandingSchema`가 선언하고
 `sdk.LandingID`가 아이덴티티를 만들므로, 파이프라인도 같은 id로 같은 테이블을 적재할 수
 있습니다. 정의는 하나입니다. 둘이면 어긋나기 때문입니다.
-[SDK의 랜딩 레이아웃](/ko/docs/sdk/#랜딩-레이아웃)을 참고하세요.
+[SDK의 랜딩 레이아웃](/ko/docs/sdk/#the-landing-layout)을 참고하세요.
 
 **`brevis_`는 예약되어 있습니다.** 해당 접두사의 키를 가진 `data`는 **이벤트별로**
 거부됩니다. 그렇지 않으면 프로듀서가 제어 필드를 위조하게 되는데, 위조된
@@ -386,13 +386,13 @@ stream을 BigQuery로 향하게 하는 날 깨집니다.
 
 두 형태 모두 SDK에 대응하는 기능이 있으며, 일치하는 코드가 아니라 같은 코드입니다.
 `sdk.Landing(table, sdk.LandingKey("id"))`는 `document`를 적재하고,
-[`sdk.LandingColumns()`](/ko/docs/sdk/#두-가지-형태-레코드-통째로-또는-필드당-컬럼-하나)를
+[`sdk.LandingColumns()`](/ko/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field)를
 추가하면 `columns`를 적재합니다. 같은 컬럼, 같은 값, 같은 `brevis_ingestion_id`이므로
 마이그레이션 없이 stream을 게이트웨이와 파이프라인 사이에서 옮길 수 있고, 둘을 하나의
 테이블로 읽을 수 있습니다.
 
 파이프라인도 같은 방식으로 같은 컬럼을 늘릴 수 있습니다. 목적지에
-[`Evolve: sdk.EvolveAdditiveFromPayload`](/ko/docs/sdk/#테이블에-없는-필드가-나타났을-때)를
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/ko/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)를
 설정하면 배치가 가진 필드가 이 규칙에 따라 이 코드를 통해 컬럼이 됩니다.
 
 
@@ -405,13 +405,13 @@ stream을 BigQuery로 향하게 하는 날 깨집니다.
 **첫 번째 테이블을 만들기 전에 선택하세요.** 나중에 바꾸면 컬럼 여덟 개가 추가되고 여덟 개가
 버려집니다. 어떤 것도 컬럼을 삭제하지 않기 때문입니다. 그래서 한 접두사로 레이아웃을 이미
 가진 테이블은 다른 접두사를 선언한 적재를 거부합니다. 정규화와 해결 방법은
-[SDK 페이지](/ko/docs/sdk/#brevis-접두사는-바꿀-수-있습니다)를 참고하세요.
+[SDK 페이지](/ko/docs/sdk/#the-brevis-prefix-is-yours-to-change)를 참고하세요.
 
 **중첩 객체의 필드에 자기만의 컬럼을 줄 수 있습니다.** 게이트웨이 프로세스에서
 `BREVIS_NORMALIZE_DATA=true`로 설정하면 한 단계를 평탄화하여 `{"name": {"first": "x"}}`가
 `name_first`로 적재되며, 모든 stream이 이를 공유하므로 두 sink가 함께 쓸 수 있는
 테이블에 대해 서로 다를 수 없습니다. 켜기 전에 읽어야 할 부분인, 무엇의 이름이 바뀌는지는
-[SDK 페이지](/ko/docs/sdk/#중첩-필드당-컬럼-하나)를 참고하세요.
+[SDK 페이지](/ko/docs/sdk/#one-column-per-nested-field)를 참고하세요.
 
 **BigQuery에서 `nationalID`와 `nationalId`는 하나의 컬럼입니다.** BigQuery는 컬럼 대소문자를
 접으므로, 한 flush에서 `DELETE`에는 한 표기가, `INSERT`에는 다른 표기가 있으면

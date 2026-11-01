@@ -44,7 +44,7 @@ curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
 ```
 
 Sin credenciales de Google Cloud, el lote se reintenta y va al dead
-letter; ver [Cuando el sink rechaza](#cuando-el-sink-rechaza).
+letter; ver [Cuando el sink rechaza](#when-the-sink-refuses).
 
 La imagen `-slim` lleva solo los sinks `auto_table`, `files` y `postgres`;
 el `pubsub` de este ejemplo y los demás están en la imagen completa. Una imagen slim con un
@@ -468,7 +468,7 @@ tabla si no existe, y agrega una columna cuando aparece un campo nuevo:
 Campos de control arriba, el registro dentro de `data`, y siete columnas de seguimiento
 `brevis_*` en cada tabla. Una ruta, N tablas, nada declarado.
 
-Está en [Sinks de ingesta](/es/docs/ingestion-sinks/#una-ruta-n-tablas-nada-declarado).
+Está en [Sinks de ingesta](/es/docs/ingestion-sinks/#one-route-n-tables-nothing-declared).
 
 ## Adónde ir después
 

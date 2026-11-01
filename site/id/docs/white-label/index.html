@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+<a class="skip-link" href="#content">Lewati ke konten</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigasi utama">
-      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/#ecosystem">Ekosistem</a>
       <a href="/id/docs/">Dokumentasi</a>
-      <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/white-label/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/white-label/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/white-label/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/white-label/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/white-label/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/white-label/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/white-label/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/white-label/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/white-label/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/white-label/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/white-label/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/white-label/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/white-label/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/white-label/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/white-label/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/white-label/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/white-label/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/white-label/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/white-label/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/white-label/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/white-label/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/white-label/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Jelajahi open source
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentasi</p>
       <h1>White label</h1>
       <p class="doc-desc">Mengubah judul, motto, logo, dan palet antarmuka lewat satu file YAML.</p>
       <p>Antarmuka dapat dikustomisasi lewat sebuah file. Warna menimpa variabel CSS <strong>saat runtime</strong>, sehingga mengubah tema pelanggan tidak mengompilasi ulang apa pun.</p>
-<h2 id="file-nya">File-nya<a class="anchor" href="#file-nya" aria-label="link">#</a></h2>
+<h2 id="the-file">File-nya<a class="anchor" href="#the-file" aria-label="link">#</a></h2>
 <p>Salin <code>brand.example.yaml</code> ke <code>brand.yaml</code> di root, atau arahkan <code>BREVIS_BRAND_FILE</code> ke sana:</p>
 <div class="code-block" data-code="titulo: Acme Data
 subtitulo: Data platform
@@ -154,24 +154,24 @@ cores:
 <div class="code-block" data-code="logo: https://example.com/mark.svg"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">logo</span>: https://example.com/mark.svg</code></pre></div>
 <p>Menerima URL (<code>https://</code> atau <code>http://</code>) atau path internal yang diawali <code>/</code>. Bila tidak ada, ia memakai simbol bawaan, yang mengikuti warna tema.</p>
 <aside class="admon admon-warning"><p class="admon-t">Logo yang di-host di tempat lain bergantung pada host itu</p><p>Jika host-nya mati, atau jika klaster tidak punya egress internet, gambar tidak termuat. Bagian antarmuka lainnya tetap berfungsi, tetapi pertimbangkan itu saat memilih — sisa UI, termasuk font dan bundle, dilayani dari binary itu sendiri justru agar tidak bergantung pada jaringan.</p></aside>
-<h2 id="memvalidasi">Memvalidasi<a class="anchor" href="#memvalidasi" aria-label="link">#</a></h2>
+<h2 id="validating">Memvalidasi<a class="anchor" href="#validating" aria-label="link">#</a></h2>
 <p>Nilai hex yang salah baru akan muncul ketika container naik, dan pesannya akan datang lewat log pod — jauh dari orang yang mengedit file. Karena itu ada subcommand:</p>
 <div class="code-block" data-code="brevis marca brand.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">brevis</span> marca brand.yaml</code></pre></div>
 <div class="code-block" data-code="  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product&#x27;s own)
         Powered by Brevis"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis</code></pre></div>
 <p>Panggil di CI instalasi dan error kembali di pull request.</p>
 <aside class="admon admon-note"><p class="admon-t">Ketiadaan berarti hal yang berbeda</p><p>Di <code>serve</code>, file yang hilang berarti "pakai identitas default" — dan API tetap naik. Di <code>marca</code>, file yang hilang adalah <strong>error</strong>: orang yang meminta memvalidasi sebuah path berharap diberi tahu bahwa path itu tidak ada.</p></aside>
-<h2 id="perilaku-saat-boot">Perilaku saat boot<a class="anchor" href="#perilaku-saat-boot" aria-label="link">#</a></h2>
+<h2 id="behaviour-at-boot">Perilaku saat boot<a class="anchor" href="#behaviour-at-boot" aria-label="link">#</a></h2>
 <p>Error isi — warna tidak valid, YAML rusak — <strong>tidak menghentikan antarmuka naik</strong>. Proses mencatat peringatan dan memakai tema default. Menjatuhkan API karena sebuah warna akan lebih buruk daripada melayaninya dengan tema default.</p>
-<div class="code-block" data-code="level=WARN msg=&quot;identidade visual ignorada&quot; arquivo=brand.yaml erro=&quot;cor invalida: #gggggg&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>level=WARN msg="identidade visual ignorada" arquivo=brand.yaml erro="cor invalida: #gggggg"</code></pre></div>
-<h2 id="yang-tidak-dapat-dikustomisasi">Yang tidak dapat dikustomisasi<a class="anchor" href="#yang-tidak-dapat-dikustomisasi" aria-label="link">#</a></h2>
+<div class="code-block" data-code="level=WARN msg=&quot;visual identity ignored&quot; file=brand.yaml error=&quot;brand.yaml: colour accent: \&quot;#gggggg\&quot; is not a hex value (#rgb, #rrggbb or #rrggbbaa)&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>level=WARN msg="visual identity ignored" file=brand.yaml error="brand.yaml: colour accent: \"#gggggg\" is not a hex value (#rgb, #rrggbb or #rrggbbaa)"</code></pre></div>
+<h2 id="what-cannot-be-customised">Yang tidak dapat dikustomisasi<a class="anchor" href="#what-cannot-be-customised" aria-label="link">#</a></h2>
 <p>Baris <strong>"Powered by Brevis"</strong> di footer tidak berasal dari konfigurasi — ia berasal dari kode.</p>
-<h2 id="di-kubernetes">Di Kubernetes<a class="anchor" href="#di-kubernetes" aria-label="link">#</a></h2>
+<h2 id="on-kubernetes">Di Kubernetes<a class="anchor" href="#on-kubernetes" aria-label="link">#</a></h2>
 <p>Mount file dari ConfigMap:</p>
 <div class="code-block" data-code="volumes:
   - name: brand
@@ -205,7 +205,7 @@ containers:
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#file-nya">File-nya</a></li><li class="toc-2"><a href="#logo">Logo</a></li><li class="toc-2"><a href="#memvalidasi">Memvalidasi</a></li><li class="toc-2"><a href="#perilaku-saat-boot">Perilaku saat boot</a></li><li class="toc-2"><a href="#yang-tidak-dapat-dikustomisasi">Yang tidak dapat dikustomisasi</a></li><li class="toc-2"><a href="#di-kubernetes">Di Kubernetes</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file">File-nya</a></li><li class="toc-2"><a href="#logo">Logo</a></li><li class="toc-2"><a href="#validating">Memvalidasi</a></li><li class="toc-2"><a href="#behaviour-at-boot">Perilaku saat boot</a></li><li class="toc-2"><a href="#what-cannot-be-customised">Yang tidak dapat dikustomisasi</a></li><li class="toc-2"><a href="#on-kubernetes">Di Kubernetes</a></li></ul>
     </aside>
   </main>
 </div>
@@ -225,9 +225,9 @@ containers:
       <div class="footer-col">
         <h2>proyek</h2>
         <ul>
-          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/#ecosystem">Ekosistem</a></li>
           <li><a href="/id/docs/philosophy/">Prinsip</a></li>
-          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/id/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -250,7 +250,7 @@ containers:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

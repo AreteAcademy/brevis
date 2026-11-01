@@ -163,6 +163,26 @@ brevis-sql: 1 of 2 tests failed
 
 进程以退出码 1 结束，workflow 的 step 也随之失败。
 
+## 增量模型及其 lookback
+
+`materialized: incremental` 需要 `unique_key` 和 `watermark`。每次 build 只读取
+大于目标表中已有最大 watermark 的行，并按键用 MERGE 合并。这个过滤条件是严格的，
+因此与 watermark 相等但在 build 之后才提交的行，或者带着更早时间戳迟到的行，
+在执行 `--full-refresh` 之前都不会被看到。可选的 `lookback` 可以解决这个问题：
+
+```sql
+/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/
+```
+
+取值是一个整数加上 `s`、`m`、`h` 或 `d`；其他写法都会被拒绝，并附上模型名称。
+过滤条件变为 `updated_at >= max - 2h`，重复的行由 MERGE 吸收。设置 lookback 时，
+watermark 必须是 TIMESTAMP 列。不设置 `lookback` 时，SQL 保持不变。
+
 ## 测试是返回违规行的 SELECT
 
 `not_null`、`unique`、`accepted_values`、`relationships`。零行就是通过，没有其他需要解读的东西。

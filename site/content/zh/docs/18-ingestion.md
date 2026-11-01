@@ -38,7 +38,7 @@ curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
 {"accepted":1,"rejected":null}
 ```
 
-没有 Google Cloud 凭据时，批次会被重试，并进入 dead letter，见[当 sink 拒绝时](#当-sink-拒绝时)。
+没有 Google Cloud 凭据时，批次会被重试，并进入 dead letter，见[当 sink 拒绝时](#when-the-sink-refuses)。
 
 `-slim` 镜像只包含 `auto_table`、`files` 和 `postgres` 这几个 sink；这个示例中的 `pubsub` 和其他 sink 都在完整镜像里。带有它所不包含的 sink 的精简镜像，会在启动时被拒绝，并给出原因。
 
@@ -324,7 +324,7 @@ gateway 已经**接受**了这些事件。在 `durability: memory`（唯一已�
 
 控制字段在顶层，记录在 `data` 内部，每张表都有七个 `brevis_*` 跟踪列。一条路由，N 张表，无需声明任何东西。
 
-它位于[摄取 sink](/docs/ingestion-sinks/#一条路由n-张表无需声明任何东西) 中。
+它位于[摄取 sink](/docs/ingestion-sinks/#one-route-n-tables-nothing-declared) 中。
 
 ## 接下来去哪里
 

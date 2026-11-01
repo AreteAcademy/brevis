@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Aller au contenu</a>
+<a class="skip-link" href="#content">Aller au contenu</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigation principale">
-      <a href="/fr/#ecossistema">Écosystème</a>
+      <a href="/fr/#ecosystem">Écosystème</a>
       <a href="/fr/docs/">Documentation</a>
-      <details class="lang-dd"><summary aria-label="Langue: Français"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Français</span></summary><ul><li><a href="/docs/context/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/context/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/context/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/context/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/context/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/context/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/context/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/context/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/context/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/context/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/context/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Langue: Français"><span>Français</span></summary><ul><li><a href="/docs/context/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/context/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/context/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/context/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/context/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/context/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/context/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/context/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/context/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/context/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/context/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Explorer l&#x27;open source
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentation</p>
       <h1>Contexte entre steps</h1>
@@ -150,7 +150,7 @@ bucket = context.get(&quot;extract.bucket&quot;)"><div class="code-head"><span c
 bucket = context.get("extract.bucket")</code></pre></div>
 <p>La clé est toujours <code>&lt;step id&gt;.&lt;name&gt;</code>. Un step lit ce que <strong>ses propres dépendances</strong> ont publié, et rien d'autre.</p>
 <aside class="admon admon-note"><p class="admon-t">Ce que ce n&#x27;est pas</p><p>Ce n'est ni une file de messages, ni un état entre runs, ni un endroit où mettre des données. C'est la note qu'un step laisse au suivant — un chemin, un watermark, un compteur.</p></aside>
-<h2 id="nimporte-quel-langage-aucune-bibliothèque-requise">N'importe quel langage, aucune bibliothèque requise<a class="anchor" href="#nimporte-quel-langage-aucune-bibliothèque-requise" aria-label="link">#</a></h2>
+<h2 id="any-language-no-library-required">N'importe quel langage, aucune bibliothèque requise<a class="anchor" href="#any-language-no-library-required" aria-label="link">#</a></h2>
 <p>Le contrat tient en <strong>deux variables d'environnement et un fichier</strong>, de sorte qu'un step sans aucun SDK peut y participer :</p>
 <div class="code-block" data-code="window=$(jq -r &#x27;.extract.watermark&#x27; &lt;&lt;&lt; &quot;$BREVIS_INPUT&quot;)
 ./publish --until &quot;$window&quot;
@@ -162,13 +162,13 @@ jq <span class="t-n">-n</span> <span class="t-n">--arg</span> n "$(date <span cl
 <div class="table-wrap"><table><thead><tr><th>langage</th><th></th></tr></thead><tbody><tr><td>Python</td><td><a href="/fr/docs/python/"><code>pip install brevis</code></a> — elle apporte aussi <code>brevis.run</code>, avec les <a href="/fr/docs/parameters/">paramètres automatiques</a></td></tr><tr><td>Go</td><td><code>sdk/context</code>, qui fait partie du module du SDK, ne dépend de rien</td></tr><tr><td>tout autre</td><td>les deux variables ci-dessus</td></tr></tbody></table></div>
 <h2 id="isolation">Isolation<a class="anchor" href="#isolation" aria-label="link">#</a></h2>
 <p>Aucun step ne peut écraser ce qu'un autre a publié. Les clés sont préfixées par l'id de celui qui les a écrites, et c'est le moteur — pas le step — qui décide de ce préfixe. Deux steps qui publient <code>bucket</code> produisent <code>extract.bucket</code> et <code>load.bucket</code>, et aucun ne disparaît.</p>
-<h2 id="le-plafond-de-4096-octets">Le plafond de 4096 octets<a class="anchor" href="#le-plafond-de-4096-octets" aria-label="link">#</a></h2>
+<h2 id="the-4096-byte-ceiling">Le plafond de 4096 octets<a class="anchor" href="#the-4096-byte-ceiling" aria-label="link">#</a></h2>
 <p>Ce qu'un step publie tient dans <strong>4096 octets</strong>. La limite n'est pas arbitraire : sous Kubernetes, le transport est <code>/dev/termination-log</code>, et c'est ce que le kubelet accepte.</p>
 <p>Dépasser est une <strong>erreur du step</strong>, avec un message indiquant combien d'octets ont été écrits. L'alternative serait la troncature — et un JSON tronqué est un JSON invalide, découvert par le step suivant, qui n'a aucun moyen de savoir que la faute n'est pas la sienne.</p>
 <p>Si une valeur ne tient pas, ce n'est pas du contexte : écrivez-la dans un bucket et publiez le chemin.</p>
-<h2 id="nouvelles-tentatives-et-runs-repris">Nouvelles tentatives et runs repris<a class="anchor" href="#nouvelles-tentatives-et-runs-repris" aria-label="link">#</a></h2>
+<h2 id="retries-and-resumed-runs">Nouvelles tentatives et runs repris<a class="anchor" href="#retries-and-resumed-runs" aria-label="link">#</a></h2>
 <p>À une nouvelle tentative, le step publie de nouveau et la valeur précédente est remplacée. Un step qui a déjà réussi ne se relance ni ne republie — ce qu'il a dit reste valable pour ceux qui en dépendent.</p>
-<h2 id="executer-un-step-a-la-main">Exécuter un step à la main<a class="anchor" href="#executer-un-step-a-la-main" aria-label="link">#</a></h2>
+<h2 id="running-a-step-by-hand">Exécuter un step à la main<a class="anchor" href="#running-a-step-by-hand" aria-label="link">#</a></h2>
 <p>Les deux variables constituent tout le contrat, donc reproduire un run revient à les exporter :</p>
 <div class="code-block" data-code="export BREVIS_INPUT=&#x27;{&quot;extract&quot;:{&quot;bucket&quot;:&quot;s3://landing/2026-09-07&quot;}}&#x27;
 export BREVIS_OUTPUT=/tmp/out.json
@@ -177,7 +177,7 @@ cat /tmp/out.json"><div class="code-head"><span class="code-lang">bash</span><bu
 export BREVIS_OUTPUT=/tmp/out.json
 python transform.py
 cat /tmp/out.json</code></pre></div>
-<h2 id="etapes-suivantes">Étapes suivantes<a class="anchor" href="#etapes-suivantes" aria-label="link">#</a></h2>
+<h2 id="next-steps">Étapes suivantes<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/fr/docs/parameters/">Paramètres</a> — ce qui change d'un run à l'autre, et les paramètres automatiques</li><li><a href="/fr/docs/runtime/">Runtime d'un step</a> — ce qu'un step déclare sur l'endroit où il s'exécute</li><li><a href="/fr/docs/python/">Python</a> — la bibliothèque cliente, et les autres langages</li></ul>
 
       <nav class="pagers" aria-label="Pages">
@@ -192,7 +192,7 @@ cat /tmp/out.json</code></pre></div>
 
     <aside class="toc" aria-label="Sur cette page">
       <p class="toc-t">Sur cette page</p>
-      <ul><li class="toc-2"><a href="#nimporte-quel-langage-aucune-bibliothèque-requise">N&#x27;importe quel langage, aucune bibliothèque requise</a></li><li class="toc-2"><a href="#isolation">Isolation</a></li><li class="toc-2"><a href="#le-plafond-de-4096-octets">Le plafond de 4096 octets</a></li><li class="toc-2"><a href="#nouvelles-tentatives-et-runs-repris">Nouvelles tentatives et runs repris</a></li><li class="toc-2"><a href="#executer-un-step-a-la-main">Exécuter un step à la main</a></li><li class="toc-2"><a href="#etapes-suivantes">Étapes suivantes</a></li></ul>
+      <ul><li class="toc-2"><a href="#any-language-no-library-required">N&#x27;importe quel langage, aucune bibliothèque requise</a></li><li class="toc-2"><a href="#isolation">Isolation</a></li><li class="toc-2"><a href="#the-4096-byte-ceiling">Le plafond de 4096 octets</a></li><li class="toc-2"><a href="#retries-and-resumed-runs">Nouvelles tentatives et runs repris</a></li><li class="toc-2"><a href="#running-a-step-by-hand">Exécuter un step à la main</a></li><li class="toc-2"><a href="#next-steps">Étapes suivantes</a></li></ul>
     </aside>
   </main>
 </div>
@@ -212,9 +212,9 @@ cat /tmp/out.json</code></pre></div>
       <div class="footer-col">
         <h2>projet</h2>
         <ul>
-          <li><a href="/fr/#ecossistema">Écosystème</a></li>
+          <li><a href="/fr/#ecosystem">Écosystème</a></li>
           <li><a href="/fr/docs/philosophy/">Principes</a></li>
-          <li><a href="/fr/docs/introduction/#code-ouvert-choisissez-comment-participer">Open source</a></li>
+          <li><a href="/fr/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/fr/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -237,7 +237,7 @@ cat /tmp/out.json</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -14,27 +14,27 @@
 
 |  | 接続方法 | ガイド |
 |---|---|---|
-| **HTTP** | SDK: `from.HTTP` | [Go SDK](/ja/docs/sdk/#ソースと宛先) |
-| **Postgres** | SDK: `from/postgres` | [Go SDK](/ja/docs/sdk/#ソースと宛先) |
-| **MySQL** | SDK: `from/mysql` | [Go SDK](/ja/docs/sdk/#ソースと宛先) |
-| **ファイル** | SDK: `from.Files` — ローカル、S3、GCS | [Go SDK](/ja/docs/sdk/#ソースと宛先) |
+| **HTTP** | SDK: `from.HTTP` | [Go SDK](/ja/docs/sdk/#sources-and-destinations) |
+| **Postgres** | SDK: `from/postgres` | [Go SDK](/ja/docs/sdk/#sources-and-destinations) |
+| **MySQL** | SDK: `from/mysql` | [Go SDK](/ja/docs/sdk/#sources-and-destinations) |
+| **ファイル** | SDK: `from.Files` — ローカル、S3、GCS | [Go SDK](/ja/docs/sdk/#sources-and-destinations) |
 
 ## 着地先
 
 |  | 接続方法 | ガイド |
 |---|---|---|
-| **BigQuery** | SDK: `to/bigquery` · Gateway: `bigquery` | [Go SDK](/ja/docs/sdk/#ソースと宛先)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
-| **Postgres** | SDK: `to/postgres` · Gateway: `postgres` | [Go SDK](/ja/docs/sdk/#ソースと宛先)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
-| **MySQL** | SDK: `to/mysql` · Gateway: `mysql` | [Go SDK](/ja/docs/sdk/#ソースと宛先)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
-| **Redshift** | SDK: `to/redshift` · Gateway: `redshift` | [Go SDK](/ja/docs/sdk/#ソースと宛先)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
-| **Pub/Sub** | SDK: `to/pubsub` · Gateway: `pubsub` | [Go SDK](/ja/docs/sdk/#ソースと宛先)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
+| **BigQuery** | SDK: `to/bigquery` · Gateway: `bigquery` | [Go SDK](/ja/docs/sdk/#sources-and-destinations)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
+| **Postgres** | SDK: `to/postgres` · Gateway: `postgres` | [Go SDK](/ja/docs/sdk/#sources-and-destinations)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
+| **MySQL** | SDK: `to/mysql` · Gateway: `mysql` | [Go SDK](/ja/docs/sdk/#sources-and-destinations)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
+| **Redshift** | SDK: `to/redshift` · Gateway: `redshift` | [Go SDK](/ja/docs/sdk/#sources-and-destinations)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
+| **Pub/Sub** | SDK: `to/pubsub` · Gateway: `pubsub` | [Go SDK](/ja/docs/sdk/#sources-and-destinations)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
 
 ## ファイルの着地先
 
 |  | 接続方法 | ガイド |
 |---|---|---|
-| **S3** | SDK: `store/s3` · Gateway: `s3://` 上の `files` | [Go SDK](/ja/docs/sdk/#ソースと宛先)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
-| **GCS** | SDK: `store/gcs` · Gateway: `gs://` 上の `files` | [Go SDK](/ja/docs/sdk/#ソースと宛先)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
+| **S3** | SDK: `store/s3` · Gateway: `s3://` 上の `files` | [Go SDK](/ja/docs/sdk/#sources-and-destinations)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
+| **GCS** | SDK: `store/gcs` · Gateway: `gs://` 上の `files` | [Go SDK](/ja/docs/sdk/#sources-and-destinations)、[取り込みの sink](/ja/docs/ingestion-sinks/index.md) |
 
 ## モデリングの場所
 
@@ -49,7 +49,7 @@
 |---|---|---|
 | **Docker** | 構成要素ごとに 1 つのイメージ: `areteacademy/brevis`、`brevis-gateway`、`brevis-sql` | [インストール](/ja/docs/installation/#docker) |
 | **Kubernetes** | ステップごとに 1 つの pod | [Kubernetes](/ja/docs/kubernetes/index.md)、[ステップごとの pod](/ja/docs/pod-per-step/index.md) |
-| **Helm** | `deployments/helm/brevis` にあるチャート | [Kubernetes](/ja/docs/kubernetes/#helm-でインストールする) |
+| **Helm** | `deployments/helm/brevis` にあるチャート | [Kubernetes](/ja/docs/kubernetes/#install-it-with-helm) |
 
 ## 実装言語
 

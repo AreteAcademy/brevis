@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
-      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/scheduler-and-queue/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/scheduler-and-queue/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/scheduler-and-queue/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/scheduler-and-queue/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/scheduler-and-queue/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/scheduler-and-queue/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/scheduler-and-queue/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/scheduler-and-queue/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/scheduler-and-queue/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/scheduler-and-queue/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/scheduler-and-queue/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><span>简体中文</span></summary><ul><li><a href="/docs/scheduler-and-queue/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/scheduler-and-queue/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/scheduler-and-queue/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/scheduler-and-queue/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/scheduler-and-queue/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/scheduler-and-queue/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/scheduler-and-queue/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/scheduler-and-queue/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/scheduler-and-queue/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/scheduler-and-queue/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/scheduler-and-queue/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         探索开源项目
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>调度器与队列</h1>
@@ -142,20 +142,20 @@ creates the Run  ─────────────►  (pending in the dat
                                    walks the graph
                                    executes each step
                                    records state and log</code></pre></div>
-<h2 id="为什么要分开">为什么要分开<a class="anchor" href="#为什么要分开" aria-label="link">#</a></h2>
+<h2 id="why-separate">为什么要分开<a class="anchor" href="#why-separate" aria-label="link">#</a></h2>
 <p>一个既负责调度又负责执行的单一循环有个糟糕的特性：执行一旦卡住，调度也随之停止。接下来十二个小时的 slot 根本不会存在，直到有人去找一直没有到达的数据时才会发现。</p>
 <p>分开之后：</p>
 <ul><li><strong>调度器</strong>可以宕机，而队列继续消费已创建的 run；</li><li><strong>队列</strong>可以宕机，而 slot 仍会继续生成，等它恢复后再执行；</li><li><strong>重新处理不依赖时钟</strong>：<code>backfill</code> 通过与 cron 相同的路径创建过去的 run。</li></ul>
-<h2 id="进程">进程<a class="anchor" href="#进程" aria-label="link">#</a></h2>
+<h2 id="the-process">进程<a class="anchor" href="#the-process" aria-label="link">#</a></h2>
 <p>两个循环位于同一条命令中：</p>
 <div class="code-block" data-code="brevis scheduler --interval 5s --concurrency 4 --max-pods 10"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--interval</span> 5s <span class="t-n">--concurrency</span> 4 <span class="t-n">--max-pods</span> 10</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>标志</th><th>默认值</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td><code>10s</code></td><td>调度器周期之间的间隔</td></tr><tr><td><code>--concurrency</code></td><td><code>5</code></td><td>同时运行的 <strong>run</strong> 数</td></tr><tr><td><code>--max-pods</code></td><td><code>5</code></td><td>同时运行的 <strong>step</strong> 总数</td></tr></tbody></table></div>
 <p><code>--concurrency</code> 与 <code>--max-pods</code> 刻意统计不同的东西：如果只限制 run，五个 run 各有三个并行 step，就是十五个 pod。</p>
 <aside class="admon admon-note"><p class="admon-t">`serve` 不生成调度 slot</p><p>API 进程也会启动同一个调度器，但<strong>不带循环</strong>：它只用来处理来自界面的手动触发，这样“调度器创建 run”这条规则就只有唯一的归属。要让调度生效，必须同时运行一个 <code>brevis scheduler</code>。</p></aside>
-<h2 id="定义快照">定义快照<a class="anchor" href="#定义快照" aria-label="link">#</a></h2>
+<h2 id="the-definition-snapshot">定义快照<a class="anchor" href="#the-definition-snapshot" aria-label="link">#</a></h2>
 <p>调度器创建 run 时，会把 <strong>workflow 定义保存在 run 内部</strong>。执行时读取的是这份快照，而不是磁盘上的 YAML。</p>
 <p>原因很具体：在触发与执行之间，可能有人编辑了文件并完成了部署。没有快照的话，05:00 用一份定义创建的 run，会在 05:02 用另一份定义执行，而日志无从解释这种差异。</p>
-<h2 id="重试">重试<a class="anchor" href="#重试" aria-label="link">#</a></h2>
+<h2 id="retries">重试<a class="anchor" href="#retries" aria-label="link">#</a></h2>
 <p>失败的 run 会尝试<strong>三次</strong>，延迟<strong>翻倍</strong>：按默认值，三次尝试分别发生在 <strong>0 秒、30 秒和 1 分 30 秒</strong>。</p>
 <div class="code-block" data-code="brevis scheduler --max-attempts 3 --retry-backoff 30s --retry-backoff-max 1h"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--max-attempts</span> 3 <span class="t-n">--retry-backoff</span> 30s <span class="t-n">--retry-backoff-max</span> 1h</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>标志</th><th>默认值</th><th></th></tr></thead><tbody><tr><td><code>--max-attempts</code></td><td><code>3</code></td><td>每个 run 的尝试次数，包含第一次</td></tr><tr><td><code>--retry-backoff</code></td><td><code>30s</code></td><td>第一次延迟，之后每次尝试翻倍</td></tr><tr><td><code>--retry-backoff-max</code></td><td><code>1h</code></td><td>该延迟的上限</td></tr></tbody></table></div>
@@ -170,11 +170,11 @@ creates the Run  ─────────────►  (pending in the dat
 <div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31
 brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31
 <span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
-<div class="code-block" data-code="  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los</code></pre></div>
+<div class="code-block" data-code="  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them</code></pre></div>
 <p>它只<strong>入队，不执行</strong>。执行是 <code>scheduler</code> 的工作，同样是这种分离。<code>--to</code> 包含整整一天。</p>
-<h2 id="由数据落地触发">由数据落地触发<a class="anchor" href="#由数据落地触发" aria-label="link">#</a></h2>
+<h2 id="started-by-a-landing">由数据落地触发<a class="anchor" href="#started-by-a-landing" aria-label="link">#</a></h2>
 <p>workflow 可以因为数据到达而运行，而不是因为时钟到点：</p>
 <div class="code-block" data-code="trigger:
   on_landed:
@@ -187,23 +187,23 @@ brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true">
   <span class="t-k">debounce</span>: 5m</code></pre></div>
 <p>每个 step 都已经在承载各阶段的管道上声明了它写入了什么，<code>/data</code> 正是由此填充的。workflow 订阅其中一个名称，当有数据落到该名称上时启动。</p>
 <p>末尾的 <code>/*</code> 表示订阅整个 dataset。它是为 <code>auto_table</code> 而存在的，后者为每条路由创建一张表：对于没有人声明过的表，唯一能指名的就是 dataset。它匹配 <code>bronze/orders</code>，不匹配 <code>bronze_raw/orders</code>。</p>
-<h3 id="时间窗口以及为什么十次落地只算一个-run">时间窗口，以及为什么十次落地只算一个 run<a class="anchor" href="#时间窗口以及为什么十次落地只算一个-run" aria-label="link">#</a></h3>
+<h3 id="the-window-and-why-ten-landings-are-one-run">时间窗口，以及为什么十次落地只算一个 run<a class="anchor" href="#the-window-and-why-ten-landings-are-one-run" aria-label="link">#</a></h3>
 <p><code>debounce</code> 会把一阵集中到达的落地合并起来。五分钟内落地的十张表只会启动<strong>一个</strong> run，而不是十个，并且 run 会说明是哪几张：</p>
 <div class="code-block" data-code="BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items</code></pre></div>
 <p>完整列表也以 JSON 形式放在 <code>BREVIS_AUTO_PARAMS</code> 中；当目标名称里可能含有逗号时，应读取它。</p>
 <p>窗口是从<strong>引擎记录该次落地的时间</strong>开始计算的，而不是从 step 声称落地发生的时间。如果 step 报告的是其查询开始的那一刻，那么它报告的既真实又陈旧，而一个偏移的时钟就会把一阵集中到达的落地拆成两个 run。</p>
 <p>省略 <code>debounce</code> 时，每次落地都会启动一个 run。</p>
-<h3 id="它不会做什么">它不会做什么<a class="anchor" href="#它不会做什么" aria-label="link">#</a></h3>
+<h3 id="what-it-will-not-do">它不会做什么<a class="anchor" href="#what-it-will-not-do" aria-label="link">#</a></h3>
 <p><strong>workflow 绝不会被自己的写入启动。</strong> 如果某次落地的写入方就是订阅它的 workflow，引擎会丢弃这次落地并在日志中说明原因，否则读写同一张表的 workflow 会无限地触发自己。</p>
 <p>它是在<strong>触发时</strong>被拒绝的，而不是在检查文件时，这是一个限制，而不是疏忽：<code>brevis validate</code> 读取的是文件，而没有任何文件声明某个 step 写入了什么。数据仓库中的目标是由连接决定的，不是由 YAML 决定的。所以 <code>validate</code> 会放行一个在运行时每次都会被拒绝的 workflow，原因会记录在日志中。</p>
 <p><strong>第一个周期不会启动任何东西。</strong> 触发器从它生效的那一刻开始计数，与调度相同；否则发布一个触发器就会为目录历史中的每一次落地各启动一个 run。</p>
-<h2 id="告警">告警<a class="anchor" href="#告警" aria-label="link">#</a></h2>
+<h2 id="alerts">告警<a class="anchor" href="#alerts" aria-label="link">#</a></h2>
 <div class="code-block" data-code="export BREVIS_SLACK_WEBHOOK=&#x27;https://hooks.slack.com/services/...&#x27;
 export BREVIS_UI_URL=&#x27;https://brevis.example.com&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
 export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code></pre></div>
 <p>没有 webhook 时，进程会在启动时警告失败将不会被上报。一个悄无声息地失败的安装，往往是由客户而不是团队发现的。</p>
 <p><code>BREVIS_UI_URL</code> 用来在告警中生成指向 run 的链接；没有它，告警会说明什么失败了，却要读者自己手动去找那个 run。</p>
-<h2 id="下一步">下一步<a class="anchor" href="#下一步" aria-label="link">#</a></h2>
+<h2 id="next-steps">下一步<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/zh/docs/pod-per-step/">每个 step 一个 pod</a>：每个 step 实际在哪里运行</li><li><a href="/zh/docs/cli/">CLI</a>：<code>scheduler</code> 和 <code>backfill</code> 的所有标志</li></ul>
 
       <nav class="pagers" aria-label="页面">
@@ -218,7 +218,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#为什么要分开">为什么要分开</a></li><li class="toc-2"><a href="#进程">进程</a></li><li class="toc-2"><a href="#定义快照">定义快照</a></li><li class="toc-2"><a href="#重试">重试</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#由数据落地触发">由数据落地触发</a></li><li class="toc-3"><a href="#时间窗口以及为什么十次落地只算一个-run">时间窗口，以及为什么十次落地只算一个 run</a></li><li class="toc-3"><a href="#它不会做什么">它不会做什么</a></li><li class="toc-2"><a href="#告警">告警</a></li><li class="toc-2"><a href="#下一步">下一步</a></li></ul>
+      <ul><li class="toc-2"><a href="#why-separate">为什么要分开</a></li><li class="toc-2"><a href="#the-process">进程</a></li><li class="toc-2"><a href="#the-definition-snapshot">定义快照</a></li><li class="toc-2"><a href="#retries">重试</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#started-by-a-landing">由数据落地触发</a></li><li class="toc-3"><a href="#the-window-and-why-ten-landings-are-one-run">时间窗口，以及为什么十次落地只算一个 run</a></li><li class="toc-3"><a href="#what-it-will-not-do">它不会做什么</a></li><li class="toc-2"><a href="#alerts">告警</a></li><li class="toc-2"><a href="#next-steps">下一步</a></li></ul>
     </aside>
   </main>
 </div>
@@ -238,9 +238,9 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -263,7 +263,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

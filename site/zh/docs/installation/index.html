@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
-      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/installation/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/installation/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/installation/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/installation/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/installation/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/installation/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/installation/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/installation/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/installation/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/installation/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/installation/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><span>简体中文</span></summary><ul><li><a href="/docs/installation/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/installation/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/installation/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/installation/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/installation/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/installation/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/installation/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/installation/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/installation/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/installation/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/installation/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         探索开源项目
@@ -119,16 +119,16 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>安装</h1>
       <p class="doc-desc">如何获取二进制文件、它有哪些要求，以及如何确认安装正确。</p>
       <p>brevis.sh 以<strong>单个二进制文件</strong>和 <strong>Docker 镜像</strong>的形式发布。除此之外无需安装任何运行时：迁移、界面资源和字体都包含在二进制文件内部。</p>
-<h2 id="要求">要求<a class="anchor" href="#要求" aria-label="link">#</a></h2>
+<h2 id="requirements">要求<a class="anchor" href="#requirements" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><strong>PostgreSQL</strong></td><td><code>serve</code>、<code>scheduler</code>、<code>migrate</code>、<code>publish</code> 和 <code>backfill</code> 需要</td></tr><tr><td><strong>Go 1.25+</strong></td><td>仅在从源码构建时需要</td></tr><tr><td><strong>Kubernetes</strong></td><td>可选：没有集群时，step 作为本地进程运行</td></tr></tbody></table></div>
 <p><code>brevis run</code>、<code>validate</code>、<code>marca</code>、<code>hash</code> 和 <code>version</code> <strong>不需要</strong>数据库。</p>
-<h2 id="从源码构建">从源码构建<a class="anchor" href="#从源码构建" aria-label="link">#</a></h2>
+<h2 id="building-from-source">从源码构建<a class="anchor" href="#building-from-source" aria-label="link">#</a></h2>
 <p>这条路径生成的二进制文件会写入版本号和 commit：</p>
 <div class="code-block" data-code="git clone https://github.com/AreteAcademy/brevis.git
 cd brevis
@@ -150,7 +150,7 @@ cd <span class="t-k">brevis</span>
 <div class="table-wrap"><table><thead><tr><th>标签</th><th>基础镜像</th><th>原因</th></tr></thead><tbody><tr><td><code>:0.11.2</code></td><td>distroless</td><td>API 只提供 HTTP 服务，不执行任何东西：没有 shell，攻击面最小</td></tr><tr><td><code>:0.11.2-worker</code></td><td>alpine + tini</td><td><code>run:</code> step 需要 shell</td></tr></tbody></table></div>
 <div class="code-block" data-code="docker run --rm areteacademy/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> areteacademy/<span class="t-k">brevis</span>:latest version</code></pre></div>
 <p>两个镜像都在 <a href="https://hub.docker.com/r/areteacademy/brevis" target="_blank" rel="noopener">hub.docker.com/r/areteacademy/brevis</a>，提供 <code>amd64</code> 和 <code>arm64</code> 两种架构。</p>
-<h2 id="完整的本地环境">完整的本地环境<a class="anchor" href="#完整的本地环境" aria-label="link">#</a></h2>
+<h2 id="a-full-local-environment">完整的本地环境<a class="anchor" href="#a-full-local-environment" aria-label="link">#</a></h2>
 <p>仓库附带一个 <code>docker-compose.yml</code>，可以启动 Postgres、API 和调度器：</p>
 <div class="code-block" data-code="make up      # Postgres + API + scheduler
 make smoke   # checks /health and /ready
@@ -160,7 +160,7 @@ make down"><div class="code-head"><span class="code-lang">bash</span><button cla
 <span class="t-k">make</span> logs
 <span class="t-k">make</span> down</code></pre></div>
 <p>界面位于 <code>http://localhost:8080</code>。</p>
-<h2 id="最小配置">最小配置<a class="anchor" href="#最小配置" aria-label="link">#</a></h2>
+<h2 id="minimum-configuration">最小配置<a class="anchor" href="#minimum-configuration" aria-label="link">#</a></h2>
 <p>只有一个变量是必需的：</p>
 <div class="code-block" data-code="export BREVIS_DATABASE_URL=&#x27;postgres://brevis:brevis@localhost:5432/brevis?sslmode=disable&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>export BREVIS_DATABASE_URL='postgres://<span class="t-k">brevis</span>:<span class="t-k">brevis</span>@localhost:5432/<span class="t-k">brevis</span>?sslmode=disable'</code></pre></div>
 <p>缺少它时，使用数据库的子命令会在启动时失败，这是有意为之。没有凭据就启动的进程，要到第一次请求时才会发现问题，而那时就绪探针早已向编排器撒了谎。</p>
@@ -168,12 +168,12 @@ make down"><div class="code-head"><span class="code-lang">bash</span><button cla
 erro: BREVIS_DATABASE_URL e obrigatoria"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>$ brevis migrate status
 erro: BREVIS_DATABASE_URL e obrigatoria</code></pre></div>
 <p>完整列表见<a href="/zh/docs/configuration/">配置</a>。</p>
-<h2 id="应用-schema">应用 schema<a class="anchor" href="#应用-schema" aria-label="link">#</a></h2>
+<h2 id="applying-the-schema">应用 schema<a class="anchor" href="#applying-the-schema" aria-label="link">#</a></h2>
 <p>迁移内嵌在二进制文件中，并由专门的子命令应用：<strong><code>serve</code> 绝不会修改 schema</strong>：</p>
 <div class="code-block" data-code="brevis migrate up
 brevis migrate status"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> migrate up
 <span class="t-k">brevis</span> migrate status</code></pre></div>
-<h2 id="确认">确认<a class="anchor" href="#确认" aria-label="link">#</a></h2>
+<h2 id="confirming">确认<a class="anchor" href="#confirming" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis version
 brevis validate examples/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> version
 <span class="t-k">brevis</span> validate examples/</code></pre></div>
@@ -196,7 +196,7 @@ brevis validate examples/"><div class="code-head"><span class="code-lang">bash</
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#要求">要求</a></li><li class="toc-2"><a href="#从源码构建">从源码构建</a></li><li class="toc-2"><a href="#docker">Docker</a></li><li class="toc-2"><a href="#完整的本地环境">完整的本地环境</a></li><li class="toc-2"><a href="#最小配置">最小配置</a></li><li class="toc-2"><a href="#应用-schema">应用 schema</a></li><li class="toc-2"><a href="#确认">确认</a></li></ul>
+      <ul><li class="toc-2"><a href="#requirements">要求</a></li><li class="toc-2"><a href="#building-from-source">从源码构建</a></li><li class="toc-2"><a href="#docker">Docker</a></li><li class="toc-2"><a href="#a-full-local-environment">完整的本地环境</a></li><li class="toc-2"><a href="#minimum-configuration">最小配置</a></li><li class="toc-2"><a href="#applying-the-schema">应用 schema</a></li><li class="toc-2"><a href="#confirming">确认</a></li></ul>
     </aside>
   </main>
 </div>
@@ -216,9 +216,9 @@ brevis validate examples/"><div class="code-head"><span class="code-lang">bash</
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -241,7 +241,7 @@ brevis validate examples/"><div class="code-head"><span class="code-lang">bash</
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

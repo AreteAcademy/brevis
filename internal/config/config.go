@@ -28,6 +28,23 @@ type Config struct {
 	LogLevel        string
 	ShutdownTimeout time.Duration
 
+	// DBMaxConns caps the Postgres pool (BREVIS_DB_MAX_CONNS). Zero is the
+	// driver's default, max(4, NumCPU), which is what it always was.
+	DBMaxConns int
+
+	// ConsoleStatementTimeout aborts a console query that runs longer
+	// (BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS). It applies to the `serve`
+	// process only, never to the scheduler, whose claims and lease renewals
+	// must not be cut. Zero turns it off.
+	ConsoleStatementTimeout time.Duration
+
+	// Retention is the opt-in scheduled prune, run by `brevis scheduler`.
+	// TrimAfter zero (the default) means the scheduler never prunes; the
+	// `brevis prune` command is unaffected either way.
+	RetentionTrimAfter  time.Duration
+	RetentionPurgeAfter time.Duration // zero: never delete runs
+	RetentionInterval   time.Duration
+
 	// BrandFile points at the visual identity YAML. Optional: without it the
 	// interface uses the default identity.
 	BrandFile string
@@ -204,6 +221,10 @@ func Load() (Config, error) {
 		Hosts:           pares("BREVIS_HOSTS"),
 		HostToken:       os.Getenv("BREVIS_HOST_TOKEN"),
 		ShutdownTimeout: 15 * time.Second,
+		// Off by default: it is sent as a startup parameter, which a PgBouncer
+		// in transaction mode refuses, and an upgrade must not stop a console
+		// from coming up over a setting nobody chose. 30 s is recommended.
+		RetentionInterval: 24 * time.Hour,
 	}
 
 	if v := os.Getenv("BREVIS_SHUTDOWN_TIMEOUT_SECONDS"); v != "" {
@@ -213,6 +234,42 @@ func Load() (Config, error) {
 		}
 		c.ShutdownTimeout = time.Duration(n) * time.Second
 	}
+
+	var err error
+	if c.DBMaxConns, err = envInt("BREVIS_DB_MAX_CONNS", 0); err != nil {
+		return Config{}, err
+	}
+	secs, err := envInt("BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS", 0)
+	if err != nil {
+		return Config{}, err
+	}
+	c.ConsoleStatementTimeout = time.Duration(secs) * time.Second
+	trim, err := envInt("BREVIS_RETENTION_TRIM_DAYS", 0)
+	if err != nil {
+		return Config{}, err
+	}
+	purge, err := envInt("BREVIS_RETENTION_PURGE_DAYS", 0)
+	if err != nil {
+		return Config{}, err
+	}
+	hours, err := envInt("BREVIS_RETENTION_INTERVAL_HOURS", 24)
+	if err != nil {
+		return Config{}, err
+	}
+	if trim > 0 && hours < 1 {
+		return Config{}, fmt.Errorf("BREVIS_RETENTION_INTERVAL_HOURS: %d must be at least 1", hours)
+	}
+	if purge > 0 && trim == 0 {
+		return Config{}, fmt.Errorf("BREVIS_RETENTION_PURGE_DAYS is set but BREVIS_RETENTION_TRIM_DAYS is not: " +
+			"the scheduled prune is off until trim is set")
+	}
+	if purge > 0 && purge < trim {
+		return Config{}, fmt.Errorf("BREVIS_RETENTION_PURGE_DAYS (%d) is shorter than BREVIS_RETENTION_TRIM_DAYS (%d): "+
+			"the runs would be gone before their logs were", purge, trim)
+	}
+	c.RetentionTrimAfter = time.Duration(trim) * 24 * time.Hour
+	c.RetentionPurgeAfter = time.Duration(purge) * 24 * time.Hour
+	c.RetentionInterval = time.Duration(hours) * time.Hour
 
 	// Two words and not a boolean: `off` is what an operator types to get
 	// #122's cancel back, and a "false" or a "0" read as `on` would hand over
@@ -239,27 +296,35 @@ func Load() (Config, error) {
 	if err := c.Auth.Validate(); err != nil {
 		return Config{}, err
 	}
-	// Outside local, starting without a credential is refused.
-	//
-	// The interface triggers pipelines: a POST to /workflows/<slug>/trigger runs
-	// a `dbt build` that writes to the warehouse. Open on the internet, it is a
-	// remote control for the warehouse available to anyone -- which is exactly
-	// the state the dev environment came up in, and nobody noticed because
-	// nothing failed. A warning in the log would not have been enough: nobody
-	// reads the log of a process that works. Failing at boot is what makes the
-	// oversight visible.
-	//
-	// `local` is left out because there the server listens on the developer's
-	// own machine, and demanding a password on every `make up` would push the
-	// team to turn authentication off for good.
+	return c, nil
+}
+
+// RequireConsoleCredential refuses a console that would come up open. It lives
+// apart from Load because Load serves every subcommand (migrate, publish,
+// scheduler...) and only `serve` exposes the console.
+//
+// Outside local, starting without a credential is refused.
+//
+// The interface triggers pipelines: a POST to /workflows/<slug>/trigger runs
+// a `dbt build` that writes to the warehouse. Open on the internet, it is a
+// remote control for the warehouse available to anyone -- which is exactly
+// the state the dev environment came up in, and nobody noticed because
+// nothing failed. A warning in the log would not have been enough: nobody
+// reads the log of a process that works. Failing at boot is what makes the
+// oversight visible.
+//
+// `local` is left out because there the server listens on the developer's
+// own machine, and demanding a password on every `make up` would push the
+// team to turn authentication off for good.
+func (c Config) RequireConsoleCredential() error {
 	if c.Env != "local" && !c.Auth.Enabled() {
-		return Config{}, fmt.Errorf(
+		return fmt.Errorf(
 			"BREVIS_ENV=%s requires a credential: set BREVIS_AUTH_USER, "+
 				"BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and "+
 				"BREVIS_AUTH_SECRET -- or set BREVIS_ENV=local for development, "+
 				"where the console stays open on your own machine", c.Env)
 	}
-	return c, nil
+	return nil
 }
 
 // TasksEnvironment builds the environment each local step receives.
@@ -309,6 +374,19 @@ func TasksEnvironment(names []string) map[string]string {
 		}
 	}
 	return env
+}
+
+// envInt reads a non-negative integer setting; unset is the fallback.
+func envInt(key string, fallback int) (int, error) {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("%s: %q is not a non-negative integer", key, v)
+	}
+	return n, nil
 }
 
 // toleracoes reads "key=value:effect,other=value:effect".

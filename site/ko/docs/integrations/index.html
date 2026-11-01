@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+<a class="skip-link" href="#content">본문으로 건너뛰기</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="주 내비게이션">
-      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/#ecosystem">에코시스템</a>
       <a href="/ko/docs/">문서</a>
-      <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/integrations/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/integrations/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/integrations/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/integrations/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/integrations/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/integrations/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/integrations/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/integrations/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/integrations/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/integrations/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/integrations/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="언어: 한국어"><span>한국어</span></summary><ul><li><a href="/docs/integrations/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/integrations/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/integrations/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/integrations/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/integrations/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/integrations/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/integrations/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/integrations/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/integrations/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/integrations/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/integrations/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         오픈 소스 둘러보기
@@ -119,26 +119,26 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">문서</p>
       <h1>통합</h1>
       <p class="doc-desc">무엇이 무엇과 연결되는지: 데이터가 어디서 오고, 어디에 도착하고, 어디서 모델링되고, 전체가 어디서 실행되는지 정리합니다.</p>
       <p><strong>이미 쓰고 있는 것은 모두, 아직 존재하지 않는 것은 하나도 없습니다.</strong> 드라이버는 저장소에 코드가 들어온 뒤에야 여기에 나타나며, 그 전에는 나타나지 않습니다.</p>
 <p>각 행은 어떤 구성 요소가 어떤 패키지나 sink를 통해 해당 대상에 연결되는지, 그리고 자세한 방법은 어디서 볼 수 있는지 알려 줍니다.</p>
-<h2 id="데이터-가져오기">데이터 가져오기<a class="anchor" href="#데이터-가져오기" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>연결 방법</th><th>가이드</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK: <code>from.HTTP</code></td><td><a href="/ko/docs/sdk/#소스와-목적지">Go SDK</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>from/postgres</code></td><td><a href="/ko/docs/sdk/#소스와-목적지">Go SDK</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>from/mysql</code></td><td><a href="/ko/docs/sdk/#소스와-목적지">Go SDK</a></td></tr><tr><td><strong>files</strong></td><td>SDK: <code>from.Files</code> — 로컬, S3, GCS</td><td><a href="/ko/docs/sdk/#소스와-목적지">Go SDK</a></td></tr></tbody></table></div>
-<h2 id="데이터-적재-대상">데이터 적재 대상<a class="anchor" href="#데이터-적재-대상" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>연결 방법</th><th>가이드</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK: <code>to/bigquery</code> · Gateway: <code>bigquery</code></td><td><a href="/ko/docs/sdk/#소스와-목적지">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>to/postgres</code> · Gateway: <code>postgres</code></td><td><a href="/ko/docs/sdk/#소스와-목적지">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>to/mysql</code> · Gateway: <code>mysql</code></td><td><a href="/ko/docs/sdk/#소스와-목적지">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK: <code>to/redshift</code> · Gateway: <code>redshift</code></td><td><a href="/ko/docs/sdk/#소스와-목적지">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK: <code>to/pubsub</code> · Gateway: <code>pubsub</code></td><td><a href="/ko/docs/sdk/#소스와-목적지">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr></tbody></table></div>
-<h2 id="파일-적재-대상">파일 적재 대상<a class="anchor" href="#파일-적재-대상" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>연결 방법</th><th>가이드</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK: <code>store/s3</code> · Gateway: <code>s3://</code>에 대한 <code>files</code></td><td><a href="/ko/docs/sdk/#소스와-목적지">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK: <code>store/gcs</code> · Gateway: <code>gs://</code>에 대한 <code>files</code></td><td><a href="/ko/docs/sdk/#소스와-목적지">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr></tbody></table></div>
-<h2 id="모델링-대상">모델링 대상<a class="anchor" href="#모델링-대상" aria-label="link">#</a></h2>
+<h2 id="pulls-from">데이터 가져오기<a class="anchor" href="#pulls-from" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>연결 방법</th><th>가이드</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK: <code>from.HTTP</code></td><td><a href="/ko/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>from/postgres</code></td><td><a href="/ko/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>from/mysql</code></td><td><a href="/ko/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>files</strong></td><td>SDK: <code>from.Files</code> — 로컬, S3, GCS</td><td><a href="/ko/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr></tbody></table></div>
+<h2 id="lands-in">데이터 적재 대상<a class="anchor" href="#lands-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>연결 방법</th><th>가이드</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK: <code>to/bigquery</code> · Gateway: <code>bigquery</code></td><td><a href="/ko/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>to/postgres</code> · Gateway: <code>postgres</code></td><td><a href="/ko/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>to/mysql</code> · Gateway: <code>mysql</code></td><td><a href="/ko/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK: <code>to/redshift</code> · Gateway: <code>redshift</code></td><td><a href="/ko/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK: <code>to/pubsub</code> · Gateway: <code>pubsub</code></td><td><a href="/ko/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr></tbody></table></div>
+<h2 id="files-in">파일 적재 대상<a class="anchor" href="#files-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>연결 방법</th><th>가이드</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK: <code>store/s3</code> · Gateway: <code>s3://</code>에 대한 <code>files</code></td><td><a href="/ko/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK: <code>store/gcs</code> · Gateway: <code>gs://</code>에 대한 <code>files</code></td><td><a href="/ko/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr></tbody></table></div>
+<h2 id="models-in">모델링 대상<a class="anchor" href="#models-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>연결 방법</th><th>가이드</th></tr></thead><tbody><tr><td><strong>Postgres</strong></td><td>SQL: <code>--dialect postgres</code> (기본값)</td><td><a href="/ko/docs/sql/">SQL</a></td></tr><tr><td><strong>BigQuery</strong></td><td>SQL: <code>--dialect bigquery</code></td><td><a href="/ko/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="실행-환경">실행 환경<a class="anchor" href="#실행-환경" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>연결 방법</th><th>가이드</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>구성 요소마다 이미지 하나: <code>areteacademy/brevis</code>, <code>brevis-gateway</code>, <code>brevis-sql</code></td><td><a href="/ko/docs/installation/#docker">설치</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>step마다 pod 하나</td><td><a href="/ko/docs/kubernetes/">Kubernetes</a>, <a href="/ko/docs/pod-per-step/">step당 pod 하나</a></td></tr><tr><td><strong>Helm</strong></td><td><code>deployments/helm/brevis</code>의 차트</td><td><a href="/ko/docs/kubernetes/#helm으로-설치하기">Kubernetes</a></td></tr></tbody></table></div>
-<h2 id="작성-언어">작성 언어<a class="anchor" href="#작성-언어" aria-label="link">#</a></h2>
+<h2 id="runs-on">실행 환경<a class="anchor" href="#runs-on" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>연결 방법</th><th>가이드</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>구성 요소마다 이미지 하나: <code>areteacademy/brevis</code>, <code>brevis-gateway</code>, <code>brevis-sql</code></td><td><a href="/ko/docs/installation/#docker">설치</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>step마다 pod 하나</td><td><a href="/ko/docs/kubernetes/">Kubernetes</a>, <a href="/ko/docs/pod-per-step/">step당 pod 하나</a></td></tr><tr><td><strong>Helm</strong></td><td><code>deployments/helm/brevis</code>의 차트</td><td><a href="/ko/docs/kubernetes/#install-it-with-helm">Kubernetes</a></td></tr></tbody></table></div>
+<h2 id="written-in">작성 언어<a class="anchor" href="#written-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>연결 방법</th><th>가이드</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td>Core, SDK, Gateway, SQL</td><td><a href="/ko/docs/ecosystem/">에코시스템</a></td></tr><tr><td><strong>Python</strong></td><td><code>pip install brevis</code>: Python step에서 step 간 컨텍스트 전달</td><td><a href="/ko/docs/python/">Python</a></td></tr><tr><td><strong>SQL</strong></td><td>brevis-sql의 모델은 일반 <code>.sql</code> 파일입니다</td><td><a href="/ko/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="클라우드">클라우드<a class="anchor" href="#클라우드" aria-label="link">#</a></h2>
+<h2 id="clouds">클라우드<a class="anchor" href="#clouds" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>연결 방법</th><th>가이드</th></tr></thead><tbody><tr><td><strong>Google Cloud</strong></td><td>위의 BigQuery, Pub/Sub, GCS</td><td>—</td></tr><tr><td><strong>AWS</strong></td><td>위의 Redshift, S3</td><td>—</td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="페이지">
@@ -153,7 +153,7 @@
 
     <aside class="toc" aria-label="이 페이지에서">
       <p class="toc-t">이 페이지에서</p>
-      <ul><li class="toc-2"><a href="#데이터-가져오기">데이터 가져오기</a></li><li class="toc-2"><a href="#데이터-적재-대상">데이터 적재 대상</a></li><li class="toc-2"><a href="#파일-적재-대상">파일 적재 대상</a></li><li class="toc-2"><a href="#모델링-대상">모델링 대상</a></li><li class="toc-2"><a href="#실행-환경">실행 환경</a></li><li class="toc-2"><a href="#작성-언어">작성 언어</a></li><li class="toc-2"><a href="#클라우드">클라우드</a></li></ul>
+      <ul><li class="toc-2"><a href="#pulls-from">데이터 가져오기</a></li><li class="toc-2"><a href="#lands-in">데이터 적재 대상</a></li><li class="toc-2"><a href="#files-in">파일 적재 대상</a></li><li class="toc-2"><a href="#models-in">모델링 대상</a></li><li class="toc-2"><a href="#runs-on">실행 환경</a></li><li class="toc-2"><a href="#written-in">작성 언어</a></li><li class="toc-2"><a href="#clouds">클라우드</a></li></ul>
     </aside>
   </main>
 </div>
@@ -173,9 +173,9 @@
       <div class="footer-col">
         <h2>프로젝트</h2>
         <ul>
-          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/#ecosystem">에코시스템</a></li>
           <li><a href="/ko/docs/philosophy/">원칙</a></li>
-          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/introduction/#open-code-choose-how-to-take-part">오픈 소스</a></li>
           <li><a href="/ko/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -198,7 +198,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

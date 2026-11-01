@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
-      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/white-label/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/white-label/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/white-label/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/white-label/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/white-label/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/white-label/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/white-label/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/white-label/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/white-label/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/white-label/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/white-label/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><span>简体中文</span></summary><ul><li><a href="/docs/white-label/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/white-label/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/white-label/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/white-label/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/white-label/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/white-label/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/white-label/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/white-label/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/white-label/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/white-label/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/white-label/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         探索开源项目
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>白标</h1>
       <p class="doc-desc">通过一个 YAML 文件修改界面的标题、格言、logo 和配色。</p>
       <p>界面可以通过一个文件来定制。颜色会在<strong>运行时</strong>覆盖 CSS 变量，所以更换客户的主题不需要重新编译任何东西。</p>
-<h2 id="文件">文件<a class="anchor" href="#文件" aria-label="link">#</a></h2>
+<h2 id="the-file">文件<a class="anchor" href="#the-file" aria-label="link">#</a></h2>
 <p>把 <code>brand.example.yaml</code> 复制为根目录下的 <code>brand.yaml</code>，或者让 <code>BREVIS_BRAND_FILE</code> 指向它：</p>
 <div class="code-block" data-code="titulo: Acme Data
 subtitulo: Data platform
@@ -154,24 +154,24 @@ cores:
 <div class="code-block" data-code="logo: https://example.com/mark.svg"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">logo</span>: https://example.com/mark.svg</code></pre></div>
 <p>接受 URL（<code>https://</code> 或 <code>http://</code>）或以 <code>/</code> 开头的内部路径。省略时使用内置符号，它会跟随主题颜色。</p>
 <aside class="admon admon-warning"><p class="admon-t">托管在别处的 logo 依赖那个主机</p><p>如果它宕机，或者集群没有出站互联网访问，图片就无法加载。界面的其余部分仍会正常工作，但选择时请权衡这一点：界面的其余部分（包括字体和资源包）都是由二进制文件自己提供的，正是为了不依赖网络。</p></aside>
-<h2 id="校验">校验<a class="anchor" href="#校验" aria-label="link">#</a></h2>
+<h2 id="validating">校验<a class="anchor" href="#validating" aria-label="link">#</a></h2>
 <p>写错的十六进制值只有在容器启动时才会暴露，而且错误信息会通过 pod 日志到达，离编辑文件的人很远。因此有了一个子命令：</p>
 <div class="code-block" data-code="brevis marca brand.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> marca brand.yaml</code></pre></div>
 <div class="code-block" data-code="  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product&#x27;s own)
         Powered by Brevis"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis</code></pre></div>
 <p>在安装环境的 CI 中调用它，错误就会在 pull request 中返回。</p>
 <aside class="admon admon-note"><p class="admon-t">缺失在不同地方含义不同</p><p>在 <code>serve</code> 中，文件缺失表示“使用默认标识”，API 照常启动。在 <code>marca</code> 中，文件缺失是<strong>错误</strong>：要求校验某个路径的人，期望被告知它不存在。</p></aside>
-<h2 id="启动时的行为">启动时的行为<a class="anchor" href="#启动时的行为" aria-label="link">#</a></h2>
+<h2 id="behaviour-at-boot">启动时的行为<a class="anchor" href="#behaviour-at-boot" aria-label="link">#</a></h2>
 <p>内容错误（无效的颜色、损坏的 YAML）<strong>不会阻止界面启动</strong>。进程会记录一条警告并使用默认主题。因为一个颜色而让 API 下线，比用默认主题提供服务更糟糕。</p>
-<div class="code-block" data-code="level=WARN msg=&quot;identidade visual ignorada&quot; arquivo=brand.yaml erro=&quot;cor invalida: #gggggg&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>level=WARN msg="identidade visual ignorada" arquivo=brand.yaml erro="cor invalida: #gggggg"</code></pre></div>
-<h2 id="无法定制的内容">无法定制的内容<a class="anchor" href="#无法定制的内容" aria-label="link">#</a></h2>
+<div class="code-block" data-code="level=WARN msg=&quot;visual identity ignored&quot; file=brand.yaml error=&quot;brand.yaml: colour accent: \&quot;#gggggg\&quot; is not a hex value (#rgb, #rrggbb or #rrggbbaa)&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>level=WARN msg="visual identity ignored" file=brand.yaml error="brand.yaml: colour accent: \"#gggggg\" is not a hex value (#rgb, #rrggbb or #rrggbbaa)"</code></pre></div>
+<h2 id="what-cannot-be-customised">无法定制的内容<a class="anchor" href="#what-cannot-be-customised" aria-label="link">#</a></h2>
 <p>页脚中的 <strong>“Powered by Brevis”</strong> 这一行不来自配置，而来自代码。</p>
-<h2 id="在-kubernetes-上">在 Kubernetes 上<a class="anchor" href="#在-kubernetes-上" aria-label="link">#</a></h2>
+<h2 id="on-kubernetes">在 Kubernetes 上<a class="anchor" href="#on-kubernetes" aria-label="link">#</a></h2>
 <p>从 ConfigMap 挂载该文件：</p>
 <div class="code-block" data-code="volumes:
   - name: brand
@@ -205,7 +205,7 @@ containers:
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#文件">文件</a></li><li class="toc-2"><a href="#logo">Logo</a></li><li class="toc-2"><a href="#校验">校验</a></li><li class="toc-2"><a href="#启动时的行为">启动时的行为</a></li><li class="toc-2"><a href="#无法定制的内容">无法定制的内容</a></li><li class="toc-2"><a href="#在-kubernetes-上">在 Kubernetes 上</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file">文件</a></li><li class="toc-2"><a href="#logo">Logo</a></li><li class="toc-2"><a href="#validating">校验</a></li><li class="toc-2"><a href="#behaviour-at-boot">启动时的行为</a></li><li class="toc-2"><a href="#what-cannot-be-customised">无法定制的内容</a></li><li class="toc-2"><a href="#on-kubernetes">在 Kubernetes 上</a></li></ul>
     </aside>
   </main>
 </div>
@@ -225,9 +225,9 @@ containers:
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -250,7 +250,7 @@ containers:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

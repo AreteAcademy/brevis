@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Aller au contenu</a>
+<a class="skip-link" href="#content">Aller au contenu</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigation principale">
-      <a href="/fr/#ecossistema">Écosystème</a>
+      <a href="/fr/#ecosystem">Écosystème</a>
       <a href="/fr/docs/">Documentation</a>
-      <details class="lang-dd"><summary aria-label="Langue: Français"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Français</span></summary><ul><li><a href="/docs/observability/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/observability/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/observability/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/observability/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/observability/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/observability/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/observability/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/observability/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/observability/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/observability/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/observability/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Langue: Français"><span>Français</span></summary><ul><li><a href="/docs/observability/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/observability/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/observability/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/observability/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/observability/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/observability/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/observability/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/observability/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/observability/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/observability/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/observability/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Explorer l&#x27;open source
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentation</p>
       <h1>Observabilité</h1>
@@ -127,11 +127,11 @@
       <p>Brevis expose des métriques Prometheus sur un port dédié, depuis <strong>les deux</strong> processus.</p>
 <div class="code-block" data-code="GET http://&lt;pod&gt;:9090/metrics"><div class="code-head"><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>GET http://&lt;pod&gt;:9090/metrics</code></pre></div>
 <p>Le port vient de <code>BREVIS_METRICS_ADDR</code>. Il est séparé du port HTTP à dessein : les métriques ne passent pas par l'authentification de l'interface, et les servir depuis un seul endroit forcerait à choisir entre un scrape authentifié et un tableau de bord ouvert.</p>
-<h2 id="deux-processus-deux-endpoints">Deux processus, deux endpoints<a class="anchor" href="#deux-processus-deux-endpoints" aria-label="link">#</a></h2>
+<h2 id="two-processes-two-endpoints">Deux processus, deux endpoints<a class="anchor" href="#two-processes-two-endpoints" aria-label="link">#</a></h2>
 <p>C'est la partie que la plupart des installations ratent, en ne scrutant que l'API.</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>sert</th><th>rapporte</th></tr></thead><tbody><tr><td><code>brevis serve</code></td><td>l'UI et l'API HTTP</td><td>profondeur de la file</td></tr><tr><td><code>brevis scheduler</code></td><td>rien en HTTP</td><td>profondeur de la file, latence de réclamation, slots, orphelins, runs, steps</td></tr></tbody></table></div>
 <p>Le scheduler est ce qui exécute, donc presque tout vient de lui. Un tableau de bord construit uniquement sur l'API montre la file qui grossit et <strong>rien</strong> de ce qui la vide.</p>
-<h2 id="les-metriques-quun-step-publie">Les métriques qu'un step publie<a class="anchor" href="#les-metriques-quun-step-publie" aria-label="link">#</a></h2>
+<h2 id="the-metrics-a-step-publishes">Les métriques qu'un step publie<a class="anchor" href="#the-metrics-a-step-publishes" aria-label="link">#</a></h2>
 <p>Au-delà de ce que le moteur mesure, un step peut publier les siennes — combien de lignes ont atterri, combien le fournisseur en a rejeté :</p>
 <div class="code-block" data-code="from brevis import metrics
 metrics.set(&quot;rows_loaded&quot;, 48213)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> metrics
@@ -139,7 +139,7 @@ metrics.set("rows_loaded", 48213)</code></pre></div>
 <p>Elles apparaissent sur le <strong>même</strong> <code>/metrics</code> du scheduler, préfixées et étiquetées par le moteur :</p>
 <div class="code-block" data-code="brevis_step_rows_loaded{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 48213"><div class="code-head"><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213</code></pre></div>
 <p>Le step n'ouvre aucun port : il écrit une ligne sur stdout et le moteur l'enregistre — un pod qui vit quarante secondes n'est pas scrutable. Voir <a href="/fr/docs/python/">Python</a>.</p>
-<h2 id="ce-quil-faut-surveiller">Ce qu'il faut surveiller<a class="anchor" href="#ce-quil-faut-surveiller" aria-label="link">#</a></h2>
+<h2 id="what-to-watch">Ce qu'il faut surveiller<a class="anchor" href="#what-to-watch" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>signal</th><th>pourquoi</th></tr></thead><tbody><tr><td>profondeur de la file qui monte sans redescendre</td><td>le scheduler est mort, ou <code>--concurrency</code> est trop bas pour la charge</td></tr><tr><td>latence de réclamation qui augmente</td><td>contention sur la base de données, ou file trop grande pour l'intervalle</td></tr><tr><td>orphelins &gt; 0</td><td>runs réclamés par un processus mort avant d'avoir terminé</td></tr><tr><td>slots non matérialisés</td><td>la boucle du scheduler s'est arrêtée, et les planifications avec elle</td></tr></tbody></table></div>
 <p>Les deux premiers seuls ne permettent pas de distinguer « forte charge » de « processus mort » — c'est pourquoi les slots comptent. Une file qui monte <strong>avec</strong> des slots créés, c'est de la charge ; une file qui monte <strong>sans</strong> slots, c'est une boucle arrêtée.</p>
 <h2 id="kubernetes">Kubernetes<a class="anchor" href="#kubernetes" aria-label="link">#</a></h2>
@@ -155,10 +155,10 @@ ports:
   - <span class="t-k">name</span>: metrics
     <span class="t-k">containerPort</span>: 9090</code></pre></div>
 <p>Avec le Prometheus Operator, un <code>PodMonitor</code> par rôle — et il en faut bien un par rôle, parce que les deux Deployments portent des étiquettes différentes et rapportent des ensembles différents.</p>
-<h2 id="ce-qui-est-deliberement-absent">Ce qui est délibérément absent<a class="anchor" href="#ce-qui-est-deliberement-absent" aria-label="link">#</a></h2>
+<h2 id="what-is-deliberately-absent">Ce qui est délibérément absent<a class="anchor" href="#what-is-deliberately-absent" aria-label="link">#</a></h2>
 <p><strong>Les traces.</strong> Il n'y a pas encore d'OpenTelemetry. Un step s'exécute comme son propre pod, et ce qui compte à son sujet — début, fin, tentative, code de sortie, log — est déjà dans la base et à l'écran. La trace utile serait celle à l'intérieur du step, et celle-là relève du code du step, pas de l'orchestrateur.</p>
 <p>Cela tient tant que le step est l'unité. Le jour où un step appelle un autre service et où la question devient « où sont passées les 40 secondes », la trace commence à valoir ce qu'elle coûte.</p>
-<h2 id="etapes-suivantes">Étapes suivantes<a class="anchor" href="#etapes-suivantes" aria-label="link">#</a></h2>
+<h2 id="next-steps">Étapes suivantes<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/fr/docs/kubernetes/">Kubernetes</a> — déployer les deux processus</li><li><a href="/fr/docs/configuration/">Configuration</a> — <code>BREVIS_METRICS_ADDR</code> et le reste</li></ul>
 
       <nav class="pagers" aria-label="Pages">
@@ -173,7 +173,7 @@ ports:
 
     <aside class="toc" aria-label="Sur cette page">
       <p class="toc-t">Sur cette page</p>
-      <ul><li class="toc-2"><a href="#deux-processus-deux-endpoints">Deux processus, deux endpoints</a></li><li class="toc-2"><a href="#les-metriques-quun-step-publie">Les métriques qu&#x27;un step publie</a></li><li class="toc-2"><a href="#ce-quil-faut-surveiller">Ce qu&#x27;il faut surveiller</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#ce-qui-est-deliberement-absent">Ce qui est délibérément absent</a></li><li class="toc-2"><a href="#etapes-suivantes">Étapes suivantes</a></li></ul>
+      <ul><li class="toc-2"><a href="#two-processes-two-endpoints">Deux processus, deux endpoints</a></li><li class="toc-2"><a href="#the-metrics-a-step-publishes">Les métriques qu&#x27;un step publie</a></li><li class="toc-2"><a href="#what-to-watch">Ce qu&#x27;il faut surveiller</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#what-is-deliberately-absent">Ce qui est délibérément absent</a></li><li class="toc-2"><a href="#next-steps">Étapes suivantes</a></li></ul>
     </aside>
   </main>
 </div>
@@ -193,9 +193,9 @@ ports:
       <div class="footer-col">
         <h2>projet</h2>
         <ul>
-          <li><a href="/fr/#ecossistema">Écosystème</a></li>
+          <li><a href="/fr/#ecosystem">Écosystème</a></li>
           <li><a href="/fr/docs/philosophy/">Principes</a></li>
-          <li><a href="/fr/docs/introduction/#code-ouvert-choisissez-comment-participer">Open source</a></li>
+          <li><a href="/fr/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/fr/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -218,7 +218,7 @@ ports:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

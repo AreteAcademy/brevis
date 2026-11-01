@@ -269,7 +269,7 @@ Kedelapan ini milik **SDK**, bukan milik sink ini: `sdk.LandingSchema`
 mendeklarasikannya dan `sdk.LandingID` mencetak identitasnya, sehingga pipeline
 dapat mendaratkan tabel yang sama dengan id yang sama. Satu definisi, karena dua
 akan menyimpang. Lihat
-[layout landing SDK](/id/docs/sdk/#layout-landing).
+[layout landing SDK](/id/docs/sdk/#the-landing-layout).
 
 **`brevis_` dicadangkan.** `data` yang membawa key dengan prefiks itu ditolak
 **per event** — kalau tidak, produser memalsukan field kontrol, dan
@@ -416,13 +416,13 @@ dibuat di sana dan rusak pada hari seseorang mengarahkan stream ke BigQuery.
 
 Kedua bentuk punya padanan SDK, dan itu kode yang sama alih-alih yang
 sepadan: `sdk.Landing(table, sdk.LandingKey("id"))` mendaratkan `document`, dan
-menambahkan [`sdk.LandingColumns()`](/id/docs/sdk/#dua-bentuk-record-utuh-atau-satu-kolom-per-field)
+menambahkan [`sdk.LandingColumns()`](/id/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field)
 mendaratkan `columns`. Kolom yang sama, nilai yang sama, `brevis_ingestion_id`
 yang sama — sehingga stream dapat berpindah antara gateway dan pipeline tanpa
 migrasi, dan keduanya dapat dibaca sebagai satu tabel.
 
 Pipeline dapat menumbuhkan kolom yang sama dengan cara yang sama: atur
-[`Evolve: sdk.EvolveAdditiveFromPayload`](/id/docs/sdk/#ketika-muncul-field-yang-tidak-dimiliki-tabel)
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/id/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)
 pada tujuan dan field yang dibawa batch menjadi kolom, dengan aturan ini, lewat
 kode ini.
 
@@ -437,7 +437,7 @@ berpindah: di bawah `acme_`, produser yang mengirim `acme_region` ditolak dan
 **Pilih sebelum tabel pertama dibuat.** Mengubahnya kemudian menambah delapan
 kolom dan meninggalkan delapan — tidak ada yang menghapus kolom — sehingga tabel
 yang sudah membawa layout dengan satu prefiks menolak load yang mendeklarasikan
-yang lain. Lihat [halaman SDK](/id/docs/sdk/#prefiks-brevis-dapat-anda-ubah)
+yang lain. Lihat [halaman SDK](/id/docs/sdk/#the-brevis-prefix-is-yours-to-change)
 untuk normalisasi dan jalan keluarnya.
 
 **Field objek bersarang dapat mendapat kolomnya sendiri.**
@@ -445,7 +445,7 @@ untuk normalisasi dan jalan keluarnya.
 `{"name": {"first": "x"}}` mendarat sebagai `name_first` — dan setiap stream
 berbagi nilai itu, sehingga dua sink tidak bisa berselisih tentang tabel yang
 mungkin sama-sama mereka tulis. Lihat
-[halaman SDK](/id/docs/sdk/#satu-kolom-per-field-bersarang) untuk apa yang
+[halaman SDK](/id/docs/sdk/#one-column-per-nested-field) untuk apa yang
 di-rename-nya, yaitu bagian yang harus dibaca sebelum mengaktifkannya.
 
 **Di BigQuery, `nationalID` dan `nationalId` adalah satu kolom.** BigQuery

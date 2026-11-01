@@ -18,10 +18,15 @@ slug: configuration
 
 | 变量 | 默认值 | |
 |---|---|---|
-| `BREVIS_ENV` | `local` | `local` 以文本格式记录日志并让界面保持开放；其他任何值都需要凭据，并以 JSON 记录日志 |
+| `BREVIS_ENV` | `production` | `local` 以文本格式记录日志并让界面保持开放；其他任何值（包括未设置）都需要凭据，并以 JSON 记录日志。开发时请设置 `BREVIS_ENV=local` |
 | `BREVIS_HTTP_ADDR` | `:8080` | 监听地址 |
 | `BREVIS_LOG_LEVEL` | `info` | |
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | 整数；非数字的值会导致启动错误 |
+| `BREVIS_DB_MAX_CONNS` | 驱动默认值, `max(4, CPUs)` | 每个进程的 Postgres 连接池上限；非数字或负数的值会导致启动错误 |
+| `BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS` | `0`（关闭） | 仅限控制台（`brevis serve`）：Postgres 会中止其运行时间过长的任何语句，这样失控的列表查询就不会一直占用连接。凡是连接池接受启动参数的地方，推荐值为 `30`；默认关闭，因为事务模式的 PgBouncer 否则会拒绝该连接。它作为连接启动参数发送，因此事务模式的 PgBouncer 需要 `ignore_startup_parameters = statement_timeout` |
+| `BREVIS_RETENTION_TRIM_DAYS` | `0`（关闭） | 可选的定时清理，由 `brevis scheduler` 执行：清空早于该天数的 run 的日志、阶段和输出。效果与 `brevis prune --trim-after` 相同。`0` = scheduler 从不清理 |
+| `BREVIS_RETENTION_PURGE_DAYS` | `0`（从不） | 与上一项配合使用，同时删除早于该天数的 run。必须不小于 trim 的值 |
+| `BREVIS_RETENTION_INTERVAL_HOURS` | `24` | 定时清理的运行频率（启动时运行一次，之后每 N 小时一次） |
 | `BREVIS_BRAND_FILE` | `brand.yaml` | 品牌；缺失 = 默认 |
 | `BREVIS_UI_URL` | — | 告警中 run 链接的基础地址 |
 | `BREVIS_METRICS_ADDR` | — | Prometheus 指标端口；为空 = 不暴露。见[可观测性](/docs/observability/) |
@@ -36,6 +41,12 @@ slug: configuration
 | `BREVIS_AUTH_SECRET` | 用于签署会话的 32 字节以上内容（`openssl rand -base64 48`） |
 
 三者要么全部提供，要么全部不提供。
+
+| 变量 | 默认值 | |
+|---|---|---|
+| `BREVIS_AUTH_CLIENT_IP_HEADER` | — | 你的代理用客户端地址设置的请求头，例如 `X-Forwarded-For`。使用**最后**一项（由你的代理追加的那一项）。留空 = 使用连接的地址 |
+
+登录按客户端地址限流（IPv6 按其 /64）：失败三次后，该地址被锁定 2 秒，之后每次翻倍，最长 15 分钟。**位于 ingress 或负载均衡器之后时，请设置该变量**（当 `api.ingress.enabled` 开启时，Helm chart 会自动设置，可用 `auth.clientIPHeader` 覆盖）：否则所有客户端共用代理的地址，一个人猜密码就会把所有人锁在外面。这种情况下，在 `BREVIS_ENV=local` 之外，锁定时间上限为 30 秒，并在启动时记录一条警告。仅当该请求头由你信任的代理写入、且客户端无法伪造时，才设置该变量。每个地址同一时间只执行一次密码校验，因此同一个 NAT 后的两个人在同一秒登录时，可能会短暂看到 429。
 
 :::danger 只配置一半是启动错误
 填写了用户名的人，会以为门已经关上了。界面可以触发 pipeline：`POST /workflows/<slug>/trigger` 会运行一个写入数据仓库的 `dbt build`。如果暴露在互联网上，它就是数据仓库的遥控器，而一条日志警告无法消除这种误以为，因为没有人会去读一个正常运行的进程的日志。

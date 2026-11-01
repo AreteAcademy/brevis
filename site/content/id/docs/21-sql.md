@@ -168,6 +168,29 @@ brevis-sql: 1 of 2 tests failed
 
 Proses keluar dengan kode 1, dan step workflow gagal bersamanya.
 
+## Model inkremental dan lookback-nya
+
+`materialized: incremental` membutuhkan `unique_key` dan `watermark`. Setiap build
+hanya membaca baris di atas watermark terbesar yang sudah ada di target, lalu
+menggabungkannya berdasarkan kunci dengan MERGE. Filter itu ketat, sehingga baris yang
+sama dengan watermark tetapi di-commit setelah build, atau yang datang terlambat
+dengan timestamp lebih lama, tidak terlihat sampai `--full-refresh`. `lookback`
+opsional mengatasinya:
+
+```sql
+/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/
+```
+
+Nilainya bilangan bulat diikuti `s`, `m`, `h`, atau `d`; selain itu ditolak dengan
+menyebut nama model. Filter menjadi `updated_at >= max - 2h`, dan MERGE menyerap
+baris yang berulang. Watermark harus berupa kolom TIMESTAMP saat lookback diatur.
+Tanpa `lookback`, SQL tidak berubah.
+
 ## Test adalah SELECT yang mengembalikan baris pelanggar
 
 `not_null`, `unique`, `accepted_values`, `relationships`. Nol baris berarti lolos, dan tidak ada lagi yang perlu ditafsirkan.

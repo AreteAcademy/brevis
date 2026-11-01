@@ -10,15 +10,15 @@ O brevis.sh separa **criar** uma execução de **executá-la**. São dois laços
 correm juntos e não dependem um do outro.
 
 ```
-scheduler                          fila
-─────────                          ────
-lê a agenda
-materializa o slot
-cria o Run  ──────────────────►  (pendente no banco)
-                                   reivindica
-                                   percorre o grafo
-                                   executa cada passo
-                                   grava estado e log
+scheduler                          queue
+─────────                          ─────
+reads the schedule
+materialises the slot
+creates the Run  ─────────────►  (pending in the database)
+                                   claims it
+                                   walks the graph
+                                   executes each step
+                                   records state and log
 ```
 
 ## Por que separados
@@ -116,13 +116,13 @@ preso em `Pending` para sempre.
 Materializa slots passados de um workflow já publicado:
 
 ```bash
-brevis backfill diario --from 2026-01-01 --to 2026-01-31
-brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true
+brevis backfill daily --from 2026-01-01 --to 2026-01-31
+brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true
 ```
 
 ```
-  31 run(s) de backfill enfileirados para diario (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los
+  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them
 ```
 
 **Enfileira, não executa.** Quem executa é o `scheduler` — de novo, a mesma
@@ -190,7 +190,7 @@ cada aterrissagem da história do catálogo.
 
 ```bash
 export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
-export BREVIS_UI_URL='https://brevis.exemplo.com'
+export BREVIS_UI_URL='https://brevis.example.com'
 ```
 
 Sem o webhook, o processo avisa no boot que falhas não serão comunicadas. Uma

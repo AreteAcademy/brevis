@@ -14,6 +14,14 @@
     'contraste': 'philosophy/', 'principios': 'philosophy/', 'editorial': 'philosophy/',
     'open-source': 'introduction/'
   };
+  /* The landing's own ids were Portuguese; they are English now, and an old link
+     to one still lands on the section. */
+  var renomeadas = { 'ecossistema': 'ecosystem', 'quem-usa': 'users', 'implantar': 'deploy', 'topo': 'top', 'conteudo': 'content' };
+  var novo = renomeadas[location.hash.slice(1)];
+  if (novo && document.getElementById(novo)) {
+    location.replace('#' + novo);
+    return;
+  }
   var destino = antigas[location.hash.slice(1)];
   if (destino && document.body.classList.contains('page-landing')) {
     location.replace((document.documentElement.dataset.docs || '') + '/docs/' + destino);

@@ -34,7 +34,7 @@ step 안에서 **SDK가 가져오는** 것이고, 다른 하나는 웹훅과 앱
 보조 구성 요소가 세 가지 있습니다.
 
 - **[Console](/ko/docs/console/index.md)** — Core 위에서 동작하는 웹 인터페이스
-- **[agent](/ko/docs/pod-per-step/#각-step이-실행되는-곳)** — 이미 가지고 있는 클러스터에서 step을 실행
+- **[agent](/ko/docs/pod-per-step/#where-each-step-runs)** — 이미 가지고 있는 클러스터에서 step을 실행
 - **[Python용 `brevis`](/ko/docs/python/index.md)** — Python step을 위한 실행 컨텍스트
 
 ## 한 가지 구성 요소만 사용하기
@@ -45,7 +45,7 @@ step 안에서 **SDK가 가져오는** 것이고, 다른 하나는 웹훅과 앱
 
 SDK가 가져온 주문과 Gateway에 도착한 주문은 동일한 brevis_ingestion_id를 가진 채 같은 테이블에 도착합니다. 둘 중 무엇을 쓸지는 스키마의 문제가 아니라 배포의 문제가 됩니다.
 
-SDK에서는 `sdk.Landing`을 사용합니다([랜딩 레이아웃](/ko/docs/sdk/#랜딩-레이아웃) 참고).
+SDK에서는 `sdk.Landing`을 사용합니다([랜딩 레이아웃](/ko/docs/sdk/#the-landing-layout) 참고).
 
 ```go
 sdk.Execute(ctx, &sdk.Pipeline{
@@ -58,7 +58,7 @@ sdk.Execute(ctx, &sdk.Pipeline{
 }, nil)
 ```
 
-Gateway에서는 `/v1/tables`로 POST합니다([하나의 라우트, N개의 테이블](/ko/docs/ingestion/#하나의-라우트-n개의-테이블) 참고).
+Gateway에서는 `/v1/tables`로 POST합니다([하나의 라우트, N개의 테이블](/ko/docs/ingestion/#one-route-n-tables) 참고).
 
 ```bash
 curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \

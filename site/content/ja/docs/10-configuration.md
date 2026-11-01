@@ -19,10 +19,15 @@ slug: configuration
 
 | 変数 | デフォルト | |
 |---|---|---|
-| `BREVIS_ENV` | `local` | `local` ではテキスト形式でログを出し、インターフェースを開放します。それ以外では認証情報が必須になり、JSON でログを出します |
+| `BREVIS_ENV` | `production` | `local` ではテキスト形式でログを出し、インターフェースを開放します。それ以外(未設定を含む)では認証情報が必須になり、JSON でログを出します。開発時は `BREVIS_ENV=local` を設定してください |
 | `BREVIS_HTTP_ADDR` | `:8080` | リッスンするアドレス |
 | `BREVIS_LOG_LEVEL` | `info` | |
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | 整数。数値でない値は起動エラー |
+| `BREVIS_DB_MAX_CONNS` | ドライバーのデフォルト, `max(4, CPUs)` | 各プロセスの Postgres プールの上限。数値でない値や負の値は起動エラー |
+| `BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS` | `0`(オフ) | コンソール(`brevis serve`)のみ。実行が長引いたステートメントを Postgres が中止し、暴走した一覧クエリが接続を握り続けないようにします。プールが起動パラメーターを受け付ける環境では `30` を推奨します。トランザクションモードの PgBouncer は接続を拒否するため、デフォルトではオフです。接続の起動パラメーターとして送られるので、トランザクションモードの PgBouncer では `ignore_startup_parameters = statement_timeout` が必要です |
+| `BREVIS_RETENTION_TRIM_DAYS` | `0`(オフ) | オプトインの定期プルーン。`brevis scheduler` が実行し、この日数より古い run のログ、フェーズ、出力を空にします。`brevis prune --trim-after` と同じ効果です。`0` = scheduler はプルーンしません |
+| `BREVIS_RETENTION_PURGE_DAYS` | `0`(なし) | 上記と併せて、この日数より古い run も削除します。trim の値以上である必要があります |
+| `BREVIS_RETENTION_INTERVAL_HOURS` | `24` | 定期プルーンの実行間隔(起動時に 1 回、その後は N 時間ごと) |
 | `BREVIS_BRAND_FILE` | `brand.yaml` | ブランディング。なければデフォルト |
 | `BREVIS_UI_URL` | — | アラート内の run リンクのベース |
 | `BREVIS_METRICS_ADDR` | — | Prometheus メトリクスのポート。空なら公開しない。[オブザーバビリティ](/docs/observability/)を参照 |
@@ -37,6 +42,12 @@ slug: configuration
 | `BREVIS_AUTH_SECRET` | セッションの署名用の 32 バイト以上(`openssl rand -base64 48`) |
 
 3 つは全部そろえるか、全部設定しないかのどちらかです。
+
+| 変数 | デフォルト | |
+|---|---|---|
+| `BREVIS_AUTH_CLIENT_IP_HEADER` | — | プロキシがクライアントのアドレスを設定するヘッダー。例: `X-Forwarded-For`。**最後**のエントリ(プロキシが追加したもの)が使われます。空 = 接続のアドレス |
+
+サインインはクライアントのアドレスごと(IPv6 は /64 単位)に制限されます。3 回失敗するとそのアドレスは 2 秒間ロックされ、最大 15 分まで倍々に延びます。**ingress やロードバランサーの背後では、この変数を設定してください**(`api.ingress.enabled` が有効なときは Helm chart が設定します。`auth.clientIPHeader` で上書きできます)。設定しないと全クライアントがプロキシのアドレスを共有するため、1 人がパスワードを試しただけで全員がロックアウトされます。その場合、`BREVIS_ENV=local` 以外ではロックは 30 秒が上限となり、起動時に警告がログに出ます。この変数は、ヘッダーが信頼できるプロキシによって書き込まれ、クライアントが偽造できない場合にのみ設定してください。パスワードの検証はアドレスごとに同時に 1 件しか実行されないため、同じ NAT の背後の 2 人が同じ秒にサインインすると、一時的に 429 が返ることがあります。
 
 :::danger 中途半端な設定は起動エラーです
 ユーザー名を入れた人は、扉が閉まっていると信じています。インターフェースはパイプラインを

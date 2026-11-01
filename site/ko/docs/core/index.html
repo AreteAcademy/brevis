@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+<a class="skip-link" href="#content">본문으로 건너뛰기</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="주 내비게이션">
-      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/#ecosystem">에코시스템</a>
       <a href="/ko/docs/">문서</a>
-      <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/core/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/core/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/core/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/core/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/core/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/core/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/core/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/core/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/core/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/core/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/core/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="언어: 한국어"><span>한국어</span></summary><ul><li><a href="/docs/core/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/core/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/core/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/core/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/core/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/core/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/core/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/core/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/core/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/core/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/core/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         오픈 소스 둘러보기
@@ -119,16 +119,16 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">문서</p>
       <h1>Core</h1>
       <p class="doc-desc">오케스트레이터입니다. run을 스케줄링하고, Postgres에 큐를 보관하고, step마다 pod 하나를 시작하며, 데이터는 절대 만지지 않습니다.</p>
       <p>workflow 전체가 버전 관리되는 파일 하나이므로, 파이프라인을 리뷰한다는 것은 diff를 읽는 일이 됩니다. Core는 스케줄링하고, 큐에 넣고, 각 step을 자기만의 이미지로 시작하며, 데이터는 절대 만지지 않습니다.</p>
 <figure class="doc-figure"><img src="/assets/flow-core.svg" width="360" height="436" alt="The Core flow: a scheduler and a queue, kept in Postgres, start one pod per step of the workflow — prepare, extract, validate and publish. Only control lines leave the Core. The data goes from an HTTP source into the extract pod, which runs the SDK, and from there to BigQuery; no data passes through the Core." loading="lazy"></figure>
-<h2 id="하는-일">하는 일<a class="anchor" href="#하는-일" aria-label="link">#</a></h2>
+<h2 id="what-it-does">하는 일<a class="anchor" href="#what-it-does" aria-label="link">#</a></h2>
 <ul><li><strong>스케줄링합니다.</strong> 스케줄러는 각 workflow의 스케줄을 읽고 run을 만듭니다. 스케줄러와 큐는 서로 독립된 두 루프이므로, 한쪽이 막혀도 다른 쪽은 멈추지 않습니다. 자세한 내용은 <a href="/ko/docs/scheduler-and-queue/">스케줄러와 큐</a>를 참고하세요.</li><li><strong>큐에 넣습니다.</strong> 큐는 Postgres에 있습니다. 실행하는 쪽이 대기 중인 run을 가져가 그래프를 따라가며 각 step의 상태를 기록합니다.</li><li><strong>step마다 pod 하나를 시작합니다.</strong> 각각 자기만의 이미지를 사용합니다. 자세한 내용은 <a href="/ko/docs/pod-per-step/">step당 pod 하나</a>를 참고하세요.</li><li><strong>데이터는 절대 만지지 않습니다.</strong> Core에서 나가는 것은 제어 라인뿐입니다. 데이터를 읽고 쓰는 것은 <a href="/ko/docs/sdk/">SDK</a>나 직접 작성한 코드를 사용하는 step입니다.</li></ul>
-<h2 id="하나의-workflow-처음부터-끝까지">하나의 workflow, 처음부터 끝까지<a class="anchor" href="#하나의-workflow-처음부터-끝까지" aria-label="link">#</a></h2>
+<h2 id="one-workflow-end-to-end">하나의 workflow, 처음부터 끝까지<a class="anchor" href="#one-workflow-end-to-end" aria-label="link">#</a></h2>
 <p>workflow는 YAML 파일 하나입니다. 같은 step에 의존하는 두 step은 병렬로 실행됩니다.</p>
 <div class="code-block" data-code="name: hello
 type: dag
@@ -204,7 +204,7 @@ workflow hello finished"><div class="code-head"><span class="code-lang">text</sp
 
 workflow hello finished</code></pre></div>
 <p>게시된 이미지에서 얻은 실제 출력입니다. brevis run은 큐 없이 로컬에서 실행하며, pod는 스케줄러가 시작합니다.</p>
-<h2 id="다음으로-이동">다음으로 이동<a class="anchor" href="#다음으로-이동" aria-label="link">#</a></h2>
+<h2 id="where-to-go-next">다음으로 이동<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>원하는 것</th><th>이동할 곳</th></tr></thead><tbody><tr><td>YAML 형식 전체</td><td><a href="/ko/docs/workflows/">Workflows</a></td></tr><tr><td>run을 만드는 쪽과 실행하는 쪽</td><td><a href="/ko/docs/scheduler-and-queue/">스케줄러와 큐</a></td></tr><tr><td>step마다 pod 하나를 쓰는 이유</td><td><a href="/ko/docs/pod-per-step/">step당 pod 하나</a></td></tr><tr><td>step이 다음 step에 전달하는 것</td><td><a href="/ko/docs/context/">step 간 컨텍스트</a></td></tr><tr><td>전체를 띄우고 인터페이스에서 그래프 보기</td><td><a href="/ko/docs/quickstart/">빠른 시작</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="페이지">
@@ -219,7 +219,7 @@ workflow hello finished</code></pre></div>
 
     <aside class="toc" aria-label="이 페이지에서">
       <p class="toc-t">이 페이지에서</p>
-      <ul><li class="toc-2"><a href="#하는-일">하는 일</a></li><li class="toc-2"><a href="#하나의-workflow-처음부터-끝까지">하나의 workflow, 처음부터 끝까지</a></li><li class="toc-2"><a href="#다음으로-이동">다음으로 이동</a></li></ul>
+      <ul><li class="toc-2"><a href="#what-it-does">하는 일</a></li><li class="toc-2"><a href="#one-workflow-end-to-end">하나의 workflow, 처음부터 끝까지</a></li><li class="toc-2"><a href="#where-to-go-next">다음으로 이동</a></li></ul>
     </aside>
   </main>
 </div>
@@ -239,9 +239,9 @@ workflow hello finished</code></pre></div>
       <div class="footer-col">
         <h2>프로젝트</h2>
         <ul>
-          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/#ecosystem">에코시스템</a></li>
           <li><a href="/ko/docs/philosophy/">원칙</a></li>
-          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/introduction/#open-code-choose-how-to-take-part">오픈 소스</a></li>
           <li><a href="/ko/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -264,7 +264,7 @@ workflow hello finished</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

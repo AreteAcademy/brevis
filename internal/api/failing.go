@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
@@ -15,32 +14,16 @@ import (
 //
 // An error is not kept: the next page asks again.
 func CachedFailing(r FailingReader, ttl time.Duration, now func() time.Time) FailingReader {
-	return &cachedFailing{r: r, ttl: ttl, now: now}
+	return &cachedFailing{r: r, list: cached(r.FailingWorkflows, ttl, now)}
 }
 
 type cachedFailing struct {
-	r   FailingReader
-	ttl time.Duration
-	now func() time.Time
-
-	mu   sync.Mutex
-	list []postgres.FailingWorkflow
-	at   time.Time
-	held bool
+	r    FailingReader
+	list func(context.Context) ([]postgres.FailingWorkflow, error)
 }
 
 func (c *cachedFailing) FailingWorkflows(ctx context.Context) ([]postgres.FailingWorkflow, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.held && c.now().Sub(c.at) < c.ttl {
-		return c.list, nil
-	}
-	list, err := c.r.FailingWorkflows(ctx)
-	if err != nil {
-		return nil, err
-	}
-	c.list, c.at, c.held = list, c.now(), true
-	return list, nil
+	return c.list(ctx)
 }
 
 // FailureStreak is not cached: it is one workflow's, read for the run open on

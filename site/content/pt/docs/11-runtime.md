@@ -29,11 +29,11 @@ Dois campos, ambos opcionais, ambos por passo:
 steps:
   - id: fetch
     run: /opt/brevis/bin/fetch-weather
-    runtime: go            # um binário compilado; o caminho não diz nada
+    runtime: go            # a compiled binary; the path says nothing
 
   - id: transform
     run: dbt build --select gold+
-    tools: [dbt]           # o que ele dirige, não o que ele é
+    tools: [dbt]           # what it drives, not what it is
 ```
 
 | campo | |

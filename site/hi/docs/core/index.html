@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
-      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/core/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/core/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/core/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/core/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/core/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/core/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/core/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/core/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/core/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/core/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/core/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><span>हिन्दी</span></summary><ul><li><a href="/docs/core/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/core/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/core/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/core/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/core/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/core/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/core/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/core/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/core/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/core/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/core/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         ओपन सोर्स देखें
@@ -119,16 +119,16 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>Core</h1>
       <p class="doc-desc">ऑर्केस्ट्रेटर: run शेड्यूल करता है, कतार Postgres में रखता है और हर step के लिए एक pod शुरू करता है — और डेटा को कभी नहीं छूता।</p>
       <p>पूरा workflow एक versioned फ़ाइल है: pipeline की समीक्षा करना diff की समीक्षा करना बन जाता है। Core शेड्यूल करता है, कतार में रखता है और हर step को उसकी अपनी image के साथ शुरू करता है — और डेटा को कभी नहीं छूता।</p>
 <figure class="doc-figure"><img src="/assets/flow-core.svg" width="360" height="436" alt="Core का प्रवाह: Postgres में रखे गए एक शेड्यूलर और एक कतार workflow के हर step के लिए एक pod शुरू करते हैं — prepare, extract, validate और publish। Core से सिर्फ़ नियंत्रण की रेखाएँ निकलती हैं। डेटा HTTP स्रोत से extract pod में जाता है, जो SDK चलाता है, और वहाँ से BigQuery में; कोई डेटा Core से होकर नहीं गुज़रता।" loading="lazy"></figure>
-<h2 id="यह-कय-करत-ह">यह क्या करता है<a class="anchor" href="#यह-कय-करत-ह" aria-label="link">#</a></h2>
+<h2 id="what-it-does">यह क्या करता है<a class="anchor" href="#what-it-does" aria-label="link">#</a></h2>
 <ul><li><strong>शेड्यूल करता है।</strong> शेड्यूलर हर workflow का शेड्यूल पढ़कर run बनाता है। वह और कतार दो स्वतंत्र लूप हैं: एक अटक जाए तो दूसरा नहीं रुकता — <a href="/hi/docs/scheduler-and-queue/">शेड्यूलर और कतार</a>।</li><li><strong>कतार में रखता है।</strong> कतार Postgres में रहती है: जो चलाता है वह एक लंबित run को दावा करता है, ग्राफ़ पर चलता है और हर step की स्थिति दर्ज करता है।</li><li><strong>हर step के लिए एक pod शुरू करता है</strong>, हर एक अपनी image के साथ — <a href="/hi/docs/pod-per-step/">हर step के लिए एक pod</a>।</li><li><strong>डेटा को कभी नहीं छूता।</strong> Core से सिर्फ़ नियंत्रण की रेखाएँ निकलती हैं: डेटा को पढ़ने-लिखने का काम step करता है, <a href="/hi/docs/sdk/">SDK</a> से या आपके अपने किसी भी कोड से।</li></ul>
-<h2 id="एक-workflow-शर-स-अत-तक">एक workflow, शुरू से अंत तक<a class="anchor" href="#एक-workflow-शर-स-अत-तक" aria-label="link">#</a></h2>
+<h2 id="one-workflow-end-to-end">एक workflow, शुरू से अंत तक<a class="anchor" href="#one-workflow-end-to-end" aria-label="link">#</a></h2>
 <p>Workflow एक YAML फ़ाइल है। जो दो steps एक ही step पर निर्भर हैं, वे समानांतर चलते हैं:</p>
 <div class="code-block" data-code="name: hello
 type: dag
@@ -204,7 +204,7 @@ workflow hello finished"><div class="code-head"><span class="code-lang">text</sp
 
 workflow hello finished</code></pre></div>
 <p>प्रकाशित image से लिया गया असली आउटपुट। brevis run स्थानीय रूप से, कतार के बिना चलता है; pods शेड्यूलर शुरू करता है।</p>
-<h2 id="आग-कह-जए">आगे कहाँ जाएँ<a class="anchor" href="#आग-कह-जए" aria-label="link">#</a></h2>
+<h2 id="where-to-go-next">आगे कहाँ जाएँ<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>अगर आप चाहते हैं</th><th>यहाँ जाएँ</th></tr></thead><tbody><tr><td>पूरा YAML फ़ॉर्मेट</td><td><a href="/hi/docs/workflows/">Workflows</a></td></tr><tr><td>run कौन बनाता है और कौन चलाता है</td><td><a href="/hi/docs/scheduler-and-queue/">शेड्यूलर और कतार</a></td></tr><tr><td>हर step के लिए एक pod क्यों</td><td><a href="/hi/docs/pod-per-step/">हर step के लिए एक pod</a></td></tr><tr><td>एक step अगले को क्या देता है</td><td><a href="/hi/docs/context/">steps के बीच संदर्भ</a></td></tr><tr><td>सब कुछ खड़ा करना और इंटरफ़ेस में ग्राफ़ देखना</td><td><a href="/hi/docs/quickstart/">क्विकस्टार्ट</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="पेज">
@@ -219,7 +219,7 @@ workflow hello finished</code></pre></div>
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#यह-कय-करत-ह">यह क्या करता है</a></li><li class="toc-2"><a href="#एक-workflow-शर-स-अत-तक">एक workflow, शुरू से अंत तक</a></li><li class="toc-2"><a href="#आग-कह-जए">आगे कहाँ जाएँ</a></li></ul>
+      <ul><li class="toc-2"><a href="#what-it-does">यह क्या करता है</a></li><li class="toc-2"><a href="#one-workflow-end-to-end">एक workflow, शुरू से अंत तक</a></li><li class="toc-2"><a href="#where-to-go-next">आगे कहाँ जाएँ</a></li></ul>
     </aside>
   </main>
 </div>
@@ -239,9 +239,9 @@ workflow hello finished</code></pre></div>
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -264,7 +264,7 @@ workflow hello finished</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

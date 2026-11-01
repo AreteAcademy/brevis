@@ -223,7 +223,7 @@ créer une table sans certitude est pire que de ne pas la créer.
 ### L'horloge
 
 `p.Run.Auto` est ce que le moteur a calculé à propos de ce run — les
-[paramètres automatiques](/docs/parameters/#paramètres-automatiques). `Auto.Now()` est
+[paramètres automatiques](/docs/parameters/#auto-params). `Auto.Now()` est
 l'horloge à lire à la place de `time.Now()` : sur un run planifié, c'est le slot,
 donc elle ne bouge pas quand le run est en retard et ne bouge pas quand le run
 est relancé trois heures plus tard.
@@ -336,7 +336,7 @@ producteur est un inconnu qui poste ce qu'il a ; ici, l'auteur du pipeline conna
 la forme et l'écrit, dans un diff que quelqu'un relit.
 
 C'est la même forme qu'un gateway fait atterrir avec
-[`shape: columns`](/docs/ingestion-sinks/#deux-formes-un-contrat), par le même
+[`shape: columns`](/docs/ingestion-sinks/#two-shapes-one-contract), par le même
 code — mêmes colonnes, mêmes valeurs, même `brevis_ingestion_id`.
 
 **Un nom de champ doit pouvoir être un nom de colonne** : une lettre ou un
@@ -351,7 +351,7 @@ sous la clé qui le contenait : `customer` contient `{"id": 7, "uf": "SP"}`, pas
 `customer_id` et `customer_uf`. Un tableau est aussi `JSON`. Un enregistrement qui
 veut une ligne *par élément de tableau* veut `sdk.ArrayAt` dans le `Expand` de la
 source — il s'exécute avant `Landing`, et c'est une autre opération avec un autre
-nom. [`BREVIS_NORMALIZE_DATA`](#une-colonne-par-champ-imbrique) change la première
+nom. [`BREVIS_NORMALIZE_DATA`](#one-column-per-nested-field) change la première
 moitié de cela pour un déploiement entier ; un tableau reste `JSON` dans les deux
 cas :
 

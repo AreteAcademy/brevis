@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Перейти к содержимому</a>
+<a class="skip-link" href="#content">Перейти к содержимому</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Основная навигация">
-      <a href="/ru/#ecossistema">Экосистема</a>
+      <a href="/ru/#ecosystem">Экосистема</a>
       <a href="/ru/docs/">Документация</a>
-      <details class="lang-dd"><summary aria-label="Язык: Русский"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Русский</span></summary><ul><li><a href="/docs/parameters/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/parameters/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/parameters/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/parameters/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/parameters/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/parameters/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/parameters/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/parameters/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/parameters/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/parameters/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/parameters/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Язык: Русский"><span>Русский</span></summary><ul><li><a href="/docs/parameters/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/parameters/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/parameters/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/parameters/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/parameters/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/parameters/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/parameters/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/parameters/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/parameters/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/parameters/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/parameters/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open source на GitHub
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Документация</p>
       <h1>Параметры</h1>
       <p class="doc-desc">Что меняется между двумя запусками одного и того же workflow без правки файла.</p>
       <p>Workflow может объявлять <strong>параметры запуска</strong>: значения, которые меняются между двумя запусками без изменения файла.</p>
-<h2 id="объявление">Объявление<a class="anchor" href="#объявление" aria-label="link">#</a></h2>
+<h2 id="declaring">Объявление<a class="anchor" href="#declaring" aria-label="link">#</a></h2>
 <div class="code-block" data-code="params:
   - name: load_full
     type: boolean
@@ -167,7 +167,7 @@ steps:
     <span class="t-k">group</span>: Load
     <span class="t-k">warn</span>: reprocesses the whole table; it costs
     <span class="t-k">uses</span>: bigquery</code></pre></div>
-<h2 id="список-значений">Список значений<a class="anchor" href="#список-значений" aria-label="link">#</a></h2>
+<h2 id="a-list-of-values">Список значений<a class="anchor" href="#a-list-of-values" aria-label="link">#</a></h2>
 <p><code>list|&lt;type&gt;</code> объявляет параметр, несущий много значений: таблицы для загрузки, слои для пересборки, окна для backfill:</p>
 <div class="code-block" data-code="params:
   - name: tables
@@ -198,7 +198,7 @@ steps:
 <p>Везде это <strong>одна строка через запятую</strong>: в базе данных, в <code>BREVIS_RUN_PARAMS</code> и в команде. Именно поэтому это работает в шаге без каких-либо особых случаев —</p>
 <div class="code-block" data-code="run: dbt build --select {{ .tables }}      # dbt build --select users,orders"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">run</span>: dbt build --select {{ .tables }}      <span class="t-c"># dbt build --select users,orders</span></code></pre></div>
 <p>— и именно поэтому запятая не может встречаться внутри элемента. Пустой элемент и повторяющийся тоже отклоняются: повтор молча удваивает всё, что шаг делает на каждый элемент.</p>
-<h3 id="как-массив-в-шаге">Как массив, в шаге<a class="anchor" href="#как-массив-в-шаге" aria-label="link">#</a></h3>
+<h3 id="as-an-array-in-a-step">Как массив, в шаге<a class="anchor" href="#as-an-array-in-a-step" aria-label="link">#</a></h3>
 <div class="code-block" data-code="for _, table := range p.Run.ParamList(&quot;tables&quot;) {
     load(table)
 }"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">for</span> _, table := <span class="t-k">range</span> p.Run.ParamList("tables") {
@@ -212,27 +212,27 @@ for table in run.param_list(&quot;tables&quot;):
 <span class="t-k">for</span> table <span class="t-k">in</span> run.param_list("tables"):
     load(table)</code></pre></div>
 <p>Обе возвращают <code>[]</code> для параметра, который никто не заполнил, а не список с одной пустой строкой: итерация по «нечего делать» ничего делать не должна. Элементы возвращаются как строки, включая <code>list|integer</code>, потому что шаг лучше библиотеки знает, что делать с числом.</p>
-<h3 id="в-интерфейсе">В интерфейсе<a class="anchor" href="#в-интерфейсе" aria-label="link">#</a></h3>
+<h3 id="in-the-interface">В интерфейсе<a class="anchor" href="#in-the-interface" aria-label="link">#</a></h3>
 <p>Список с <code>enum</code> отображается как флажки, которым не нужен JavaScript и которые браузер отправляет по одному значению на каждый отмеченный флажок. Без <code>enum</code> это текстовое поле, элементы которого становятся удаляемыми метками, а при выключенном JavaScript оно остаётся полем со значением <code>users,orders</code> — именно то, чего ожидает сервер.</p>
-<h3 id="в-командной-строке">В командной строке<a class="anchor" href="#в-командной-строке" aria-label="link">#</a></h3>
+<h3 id="on-the-command-line">В командной строке<a class="anchor" href="#on-the-command-line" aria-label="link">#</a></h3>
 <div class="code-block" data-code="brevis run wf.yaml --param tables=events,sessions --param days=1,30"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> tables=events,sessions <span class="t-n">--param</span> days=1,30</code></pre></div>
 <aside class="admon admon-note"><p class="admon-t">Более старый engine его не прочитает</p><p>Тип сохраняется вместе с workflow, а engine, выпущенный до этой функции, отклоняет <code>list|string</code> при публикации как неизвестный тип. Обновите engine перед публикацией workflow, использующего такой параметр.</p></aside>
-<h2 id="использование-в-команде">Использование в команде<a class="anchor" href="#использование-в-команде" aria-label="link">#</a></h2>
+<h2 id="using-it-in-the-command">Использование в команде<a class="anchor" href="#using-it-in-the-command" aria-label="link">#</a></h2>
 <p>Значение попадает в <code>run</code> через шаблон, в двойных фигурных скобках с точкой:</p>
 <div class="code-block" data-code="run: ./load.sh --since {{ .start_date }}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">run</span>: ./load.sh --since {{ .start_date }}</code></pre></div>
-<h2 id="передача-в-командной-строке">Передача в командной строке<a class="anchor" href="#передача-в-командной-строке" aria-label="link">#</a></h2>
+<h2 id="passing-it-on-the-command-line">Передача в командной строке<a class="anchor" href="#passing-it-on-the-command-line" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis run wf.yaml --param load_full=true
 brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true
 <span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true <span class="t-n">--param</span> start_date=2026-01-01</code></pre></div>
 <p><code>--param</code> можно повторять. Ввод без <code>=</code> — это <strong>ошибка</strong>:</p>
-<div class="code-block" data-code="erro: --param &quot;load_full&quot;: use chave=valor"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>erro: --param "load_full": use chave=valor</code></pre></div>
+<div class="code-block" data-code="error: --param &quot;load_full&quot;: use key=value"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>error: --param "load_full": use key=value</code></pre></div>
 <p>Это сделано намеренно. <code>--param load_full</code>, с забытым значением, выполнился бы со значением по умолчанию — и оператор считал бы, что backfill прошёл с тем параметром, который он имел в виду.</p>
-<h2 id="в-backfill">В backfill<a class="anchor" href="#в-backfill" aria-label="link">#</a></h2>
+<h2 id="in-a-backfill">В backfill<a class="anchor" href="#in-a-backfill" aria-label="link">#</a></h2>
 <p>Значения применяются к <strong>каждому</strong> слоту диапазона. Это центральный сценарий: «переобработать весь январь с <code>load_full=true</code>».</p>
 <div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
-<h2 id="в-интерфейсе">В интерфейсе<a class="anchor" href="#в-интерфейсе" aria-label="link">#</a></h2>
+<h2 id="in-the-interface-2">В интерфейсе<a class="anchor" href="#in-the-interface-2" aria-label="link">#</a></h2>
 <p>У workflow с <code>params</code> вместо простой кнопки запуска появляется <strong>форма</strong>. Поля берутся из объявления, а <code>pattern</code> проверяется до отправки.</p>
-<h2 id="в-окружении-шага">В окружении шага<a class="anchor" href="#в-окружении-шага" aria-label="link">#</a></h2>
+<h2 id="in-the-step-environment">В окружении шага<a class="anchor" href="#in-the-step-environment" aria-label="link">#</a></h2>
 <p>Параметры запуска также попадают в <strong>окружение</strong> каждого шага, с префиксом. Это нужно, чтобы загрузчик, написанный с помощью <a href="/ru/docs/sdk/">SDK</a>, мог их видеть, не получая ничего в виде аргумента:</p>
 <div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
     if p.Run.Params[&quot;load_full&quot;] == &quot;true&quot; {
@@ -245,7 +245,7 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div cl
     }
     <span class="t-k">return</span> <span class="t-k">nil</span>
 },</code></pre></div>
-<h2 id="авто-параметры">Авто-параметры<a class="anchor" href="#авто-параметры" aria-label="link">#</a></h2>
+<h2 id="auto-params">Авто-параметры<a class="anchor" href="#auto-params" aria-label="link">#</a></h2>
 <p>Каждый запуск также несёт <strong>авто-параметры</strong>: значения, которые engine вычисляет сам. Их никто не объявляет, они есть у каждого запуска, и они показаны на экране запуска.</p>
 <p>Важнее всего <code>adjusted_at</code>, и баг, который он устраняет, стоит назвать. Загрузчик читает <code>now()</code>, вычитает своё окно и запрашивает у вендора последние два часа. Для запуска, начавшегося вовремя, это верно. Для запуска, который очередь задержала на сорок минут, это неверно на сорок минут — и эти сорок минут принадлежат <strong>ни одному запуску</strong>, потому что следующий слот тоже читает собственный <code>now()</code>. Ничего не падает; данных просто нет, и это обнаруживается спустя недели.</p>
 <p>Поэтому engine передаёт часы. Читайте <code>adjusted_at</code> там, где вы прочитали бы <code>now()</code>:</p>
@@ -254,7 +254,7 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div cl
 <p><strong>Все метки времени здесь в UTC</strong>, записаны в RFC 3339 с <code>Z</code>, и экран запуска тоже показывает их в UTC — поэтому страница и <code>$BREVIS_AUTO_ADJUSTED_AT</code> никогда не расходятся. <code>date</code> — это <strong>день по UTC</strong>, который для workflow, чей слот пересекает полночь UTC, не совпадает с локальным днём: <code>0 22 * * *</code> в <code>America/Sao_Paulo</code> имеет <code>date</code> следующего дня. <code>ds</code> в Airflow ведёт себя так же по той же причине — слот есть момент времени, а у момента времени есть один день только после выбора часового пояса.</p>
 <p><code>interval_start</code> и <code>interval_end</code> определяются <strong>cron</strong>, а не историей: backfill слота из марта даёт окно, которое было в марте, а не окно, которое сегодня описывают запуски этого workflow. Пайплайн, запрашивающий <code>[start, end)</code>, никогда не пересекается и не оставляет пробелов, как бы поздно он ни запускался и как бы часто ни повторялся.</p>
 <p>Это <strong>снимок</strong>, вычисляемый при старте запуска и сохраняемый в нём. <code>previous_error</code> — факт о моменте, когда этот запуск начался; пересчёт завтра — после того как предыдущий запуск был повторён и прошёл — отвечал бы на другой вопрос под тем же именем.</p>
-<h3 id="как-их-читать">Как их читать<a class="anchor" href="#как-их-читать" aria-label="link">#</a></h3>
+<h3 id="reading-them">Как их читать<a class="anchor" href="#reading-them" aria-label="link">#</a></h3>
 <p>В shell-шаге — по одной переменной на значение, чтобы ничего не нужно было разбирать:</p>
 <div class="code-block" data-code="steps:
   - id: extract
@@ -298,7 +298,7 @@ since, until = run.window() <span class="t-k">or</span> (run.now() - timedelta(d
 df = fetch(since, until)
 df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 <p><code>window()</code> возвращает <code>None</code>, если у workflow нет расписания, а не пару нулевых значений времени: запрос с начала эпохи выбирает всё, и такой сбой не должен быть тихим. <code>or</code> выше — это весь запасной вариант.</p>
-<h3 id="в-dlt-читать-вообще-ничего-не-нужно">В dlt читать вообще ничего не нужно<a class="anchor" href="#в-dlt-читать-вообще-ничего-не-нужно" aria-label="link">#</a></h3>
+<h3 id="in-dlt-nothing-to-read-at-all">В dlt читать вообще ничего не нужно<a class="anchor" href="#in-dlt-nothing-to-read-at-all" aria-label="link">#</a></h3>
 <p><a href="https://dlthub.com" target="_blank" rel="noopener">dlt</a> хранит собственный курсор в состоянии, которое пишет в место назначения. Это состояние двигается только <strong>вперёд</strong>, что нормально, пока вы не перезапускаете старый слот: курсор всё ещё указывает на сегодня, поэтому backfill читает сегодняшнее окно, а собственный ответ dlt на это — сбросить состояние.</p>
 <p>Окно, которое передаёт Brevis, определяется cron, поэтому запуск за март даёт мартовское окно, сколько бы раз он ни повторялся. dlt его примет — имена его собственные, он читает их, прежде чем искать Airflow, и engine задаёт их при каждом запуске по расписанию:</p>
 <div class="code-block" data-code="@dlt.resource(primary_key=&quot;id&quot;)
@@ -323,9 +323,9 @@ def events(
 <p>Две вещи, которые нужно знать, чтобы это заработало:</p>
 <ul><li><strong>Курсор должен быть datetime, а не строкой.</strong> dlt не приводит <code>text</code>-курсор для сравнения и вообще отказывается подключаться к планировщику, выдавая <code>JoinSchedulerError</code>, который не очевидно говорит об этом. Преобразуйте его в ресурсе — <code>add_map</code> — или задайте тип <code>initial_value</code>, как выше.</li><li><strong>Workflow без расписания ничего не передаёт</strong>, и тогда dlt выбрасывает <code>ExternalSchedulerNotAvailable</code>, а не тихо откатывается к своему курсору. Если пайплайн должен работать в обоих режимах, оставьте <code>allow_external_schedulers</code> выключенным и передавайте окно сами из <code>run.window()</code>.</li></ul>
 <p>Объявление <code>tools: [dlt]</code> для шага — отдельная вещь, она лишь рисует метку на графе — окно передаётся в любом случае.</p>
-<h2 id="снимок">Снимок<a class="anchor" href="#снимок" aria-label="link">#</a></h2>
+<h2 id="the-snapshot">Снимок<a class="anchor" href="#the-snapshot" aria-label="link">#</a></h2>
 <p>Параметры сохраняются <strong>в запуске</strong>, а не читаются из workflow во время исполнения. Запуск несёт вход, с которым его запустили, и журнал январского запуска продолжает показывать январские значения, даже когда значение по умолчанию изменилось.</p>
-<h2 id="дальнейшие-шаги">Дальнейшие шаги<a class="anchor" href="#дальнейшие-шаги" aria-label="link">#</a></h2>
+<h2 id="next-steps">Дальнейшие шаги<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ru/docs/configuration/">Конфигурация</a> — переменные окружения процесса</li><li><a href="/ru/docs/sdk/">SDK</a> — как загрузчик читает контекст запуска</li><li><a href="/ru/docs/context/">Контекст между шагами</a> — что шаг публикует для следующего</li></ul>
 
       <nav class="pagers" aria-label="Страницы">
@@ -340,7 +340,7 @@ def events(
 
     <aside class="toc" aria-label="На этой странице">
       <p class="toc-t">На этой странице</p>
-      <ul><li class="toc-2"><a href="#объявление">Объявление</a></li><li class="toc-2"><a href="#список-значений">Список значений</a></li><li class="toc-3"><a href="#как-массив-в-шаге">Как массив, в шаге</a></li><li class="toc-3"><a href="#в-интерфейсе">В интерфейсе</a></li><li class="toc-3"><a href="#в-командной-строке">В командной строке</a></li><li class="toc-2"><a href="#использование-в-команде">Использование в команде</a></li><li class="toc-2"><a href="#передача-в-командной-строке">Передача в командной строке</a></li><li class="toc-2"><a href="#в-backfill">В backfill</a></li><li class="toc-2"><a href="#в-интерфейсе">В интерфейсе</a></li><li class="toc-2"><a href="#в-окружении-шага">В окружении шага</a></li><li class="toc-2"><a href="#авто-параметры">Авто-параметры</a></li><li class="toc-3"><a href="#как-их-читать">Как их читать</a></li><li class="toc-3"><a href="#в-dlt-читать-вообще-ничего-не-нужно">В dlt читать вообще ничего не нужно</a></li><li class="toc-2"><a href="#снимок">Снимок</a></li><li class="toc-2"><a href="#дальнейшие-шаги">Дальнейшие шаги</a></li></ul>
+      <ul><li class="toc-2"><a href="#declaring">Объявление</a></li><li class="toc-2"><a href="#a-list-of-values">Список значений</a></li><li class="toc-3"><a href="#as-an-array-in-a-step">Как массив, в шаге</a></li><li class="toc-3"><a href="#in-the-interface">В интерфейсе</a></li><li class="toc-3"><a href="#on-the-command-line">В командной строке</a></li><li class="toc-2"><a href="#using-it-in-the-command">Использование в команде</a></li><li class="toc-2"><a href="#passing-it-on-the-command-line">Передача в командной строке</a></li><li class="toc-2"><a href="#in-a-backfill">В backfill</a></li><li class="toc-2"><a href="#in-the-interface-2">В интерфейсе</a></li><li class="toc-2"><a href="#in-the-step-environment">В окружении шага</a></li><li class="toc-2"><a href="#auto-params">Авто-параметры</a></li><li class="toc-3"><a href="#reading-them">Как их читать</a></li><li class="toc-3"><a href="#in-dlt-nothing-to-read-at-all">В dlt читать вообще ничего не нужно</a></li><li class="toc-2"><a href="#the-snapshot">Снимок</a></li><li class="toc-2"><a href="#next-steps">Дальнейшие шаги</a></li></ul>
     </aside>
   </main>
 </div>
@@ -360,9 +360,9 @@ def events(
       <div class="footer-col">
         <h2>проект</h2>
         <ul>
-          <li><a href="/ru/#ecossistema">Экосистема</a></li>
+          <li><a href="/ru/#ecosystem">Экосистема</a></li>
           <li><a href="/ru/docs/philosophy/">Принципы</a></li>
-          <li><a href="/ru/docs/introduction/#открытый-код-выберите-как-участвовать">Open source</a></li>
+          <li><a href="/ru/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/ru/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -385,7 +385,7 @@ def events(
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

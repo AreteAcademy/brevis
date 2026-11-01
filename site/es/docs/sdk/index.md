@@ -219,7 +219,7 @@ crear una tabla sin certeza es peor que no crearla.
 ### El reloj
 
 `p.Run.Auto` es lo que el engine calculó sobre este run: los
-[parámetros automáticos](/es/docs/parameters/#parametros-automaticos). `Auto.Now()` es el reloj que se lee
+[parámetros automáticos](/es/docs/parameters/#auto-params). `Auto.Now()` es el reloj que se lee
 en lugar de `time.Now()`: en un run programado es el slot, así que no se mueve
 cuando el run llega tarde y no se mueve cuando el run se reintenta tres horas
 después.
@@ -329,7 +329,7 @@ el autor del pipeline conoce la forma y la escribe, en un diff que alguien
 revisa.
 
 Es la misma forma que aterriza un gateway como
-[`shape: columns`](/es/docs/ingestion-sinks/#dos-formas-un-contrato), mediante el
+[`shape: columns`](/es/docs/ingestion-sinks/#two-shapes-one-contract), mediante el
 mismo código: mismas columnas, mismos valores, mismo `brevis_ingestion_id`.
 
 **Un nombre de campo tiene que poder ser un nombre de columna**: una letra o guion bajo,
@@ -343,7 +343,7 @@ clave que lo contenía: `customer` contiene `{"id": 7, "uf": "SP"}`, no `custome
 y `customer_uf`. Un arreglo también es `JSON`. Un registro que quiere una fila *por
 elemento del arreglo* quiere `sdk.ArrayAt` en el `Expand` de la fuente: se ejecuta antes de
 `Landing`, y es otra operación con otro nombre.
-[`BREVIS_NORMALIZE_DATA`](#una-columna-por-campo-anidado) cambia la primera mitad
+[`BREVIS_NORMALIZE_DATA`](#one-column-per-nested-field) cambia la primera mitad
 de eso para todo un despliegue; un arreglo sigue siendo `JSON` en ambos casos:
 
 ```go

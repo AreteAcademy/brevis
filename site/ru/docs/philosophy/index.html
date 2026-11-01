@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc serif">
 
-<a class="skip-link" href="#conteudo">Перейти к содержимому</a>
+<a class="skip-link" href="#content">Перейти к содержимому</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Основная навигация">
-      <a href="/ru/#ecossistema">Экосистема</a>
+      <a href="/ru/#ecosystem">Экосистема</a>
       <a href="/ru/docs/">Документация</a>
-      <details class="lang-dd"><summary aria-label="Язык: Русский"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Русский</span></summary><ul><li><a href="/docs/philosophy/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/philosophy/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/philosophy/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/philosophy/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/philosophy/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/philosophy/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/philosophy/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/philosophy/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/philosophy/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/philosophy/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/philosophy/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Язык: Русский"><span>Русский</span></summary><ul><li><a href="/docs/philosophy/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/philosophy/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/philosophy/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/philosophy/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/philosophy/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/philosophy/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/philosophy/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/philosophy/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/philosophy/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/philosophy/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/philosophy/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open source на GitHub
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Документация</p>
       <h1>Философия</h1>
@@ -130,9 +130,9 @@
 <p>Максима Сенеки направляет вопрос, стоящий за brevis.sh: какая сложность действительно заслуживает времени команды? Каждый workflow выполняется в изолированных pod, чтобы у сбоев, версий и зависимостей были чёткие границы.</p>
 <p>Из этого вопроса вытекают четыре решения в рантайме:</p>
 <ul><li><strong>образ на шаг</strong> — Каждый шаг объявляет нужное ему окружение. Обновление одной версии не заставляет трогать остальные.</li><li><strong>журналы по запускам</strong> — Вывод принадлежит запуску, который его породил. Расследование сбоя не означает восстановление утраченного контекста.</li><li><strong>постоянные повторные попытки</strong> — Попытка переживает процесс. Перезапуск не стирает то, что уже было известно о работе.</li><li><strong>изоляция зависимостей</strong> — То, что несёт один шаг, не протекает к соседям. Чёткая граница делает сбой читаемым.</li></ul>
-<h2 id="что-предлагает-проект">Что предлагает проект<a class="anchor" href="#что-предлагает-проект" aria-label="link">#</a></h2>
+<h2 id="what-the-project-proposes">Что предлагает проект<a class="anchor" href="#what-the-project-proposes" aria-label="link">#</a></h2>
 <p>Между <em>философией без практики</em> и <em>технологией без направления</em> — <strong>ясность, позволяющая делать то, что важно.</strong></p>
-<h2 id="инструменты-формируют-наш-способ-мыслить">Инструменты формируют наш способ мыслить.<a class="anchor" href="#инструменты-формируют-наш-способ-мыслить" aria-label="link">#</a></h2>
+<h2 id="tools-shape-the-way-we-think">Инструменты формируют наш способ мыслить.<a class="anchor" href="#tools-shape-the-way-we-think" aria-label="link">#</a></h2>
 <blockquote><p>«Устойчивый код — это не просто код, который продолжает работать. Это код, который оставляет людям место для рассуждения.» — Философия, применённая к программному обеспечению</p></blockquote>
 <blockquote><p>«Ясность — не противоположность изощрённости. Это критерий, который не даёт изощрённости превратиться в шум.» — Открытый исходный код по принципу</p></blockquote>
 
@@ -148,7 +148,7 @@
 
     <aside class="toc" aria-label="На этой странице">
       <p class="toc-t">На этой странице</p>
-      <ul><li class="toc-2"><a href="#de-brevitate-vitae">De brevitate vitae</a></li><li class="toc-2"><a href="#что-предлагает-проект">Что предлагает проект</a></li><li class="toc-2"><a href="#инструменты-формируют-наш-способ-мыслить">Инструменты формируют наш способ мыслить.</a></li></ul>
+      <ul><li class="toc-2"><a href="#de-brevitate-vitae">De brevitate vitae</a></li><li class="toc-2"><a href="#what-the-project-proposes">Что предлагает проект</a></li><li class="toc-2"><a href="#tools-shape-the-way-we-think">Инструменты формируют наш способ мыслить.</a></li></ul>
     </aside>
   </main>
 </div>
@@ -168,9 +168,9 @@
       <div class="footer-col">
         <h2>проект</h2>
         <ul>
-          <li><a href="/ru/#ecossistema">Экосистема</a></li>
+          <li><a href="/ru/#ecosystem">Экосистема</a></li>
           <li><a href="/ru/docs/philosophy/">Принципы</a></li>
-          <li><a href="/ru/docs/introduction/#открытый-код-выберите-как-участвовать">Open source</a></li>
+          <li><a href="/ru/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/ru/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -193,7 +193,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

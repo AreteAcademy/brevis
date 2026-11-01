@@ -35,7 +35,7 @@ Core はスケジューリング、キューイング、監視を担い、デー
 補助的な 3 つの構成要素があります。
 
 - **[Console](/docs/console/)** — Core の上に載る Web インターフェース
-- **[agent](/docs/pod-per-step/#各ステップが動く場所)** — 既存のクラスタでステップを実行します
+- **[agent](/docs/pod-per-step/#where-each-step-runs)** — 既存のクラスタでステップを実行します
 - **[Python 用の `brevis`](/docs/python/)** — Python ステップ向けの実行コンテキスト
 
 ## 1 つの構成要素だけを使う
@@ -46,7 +46,7 @@ Core はスケジューリング、キューイング、監視を担い、デー
 
 SDK が取得した注文と Gateway に届いた注文は、同じ brevis_ingestion_id を持つ同じテーブルに着地します。両者の選択はデプロイの判断であり、スキーマの判断ではなくなります。
 
-SDK では `sdk.Landing` を使います(詳細は[ランディングレイアウト](/docs/sdk/#ランディングレイアウト)):
+SDK では `sdk.Landing` を使います(詳細は[ランディングレイアウト](/docs/sdk/#the-landing-layout)):
 
 ```go
 sdk.Execute(ctx, &sdk.Pipeline{
@@ -59,7 +59,7 @@ sdk.Execute(ctx, &sdk.Pipeline{
 }, nil)
 ```
 
-Gateway では `/v1/tables` への POST を使います(詳細は[1 つのルート、N 個のテーブル](/docs/ingestion/#1-つのルートn-個のテーブル)):
+Gateway では `/v1/tables` への POST を使います(詳細は[1 つのルート、N 個のテーブル](/docs/ingestion/#one-route-n-tables)):
 
 ```bash
 curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \

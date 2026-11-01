@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Zum Inhalt springen</a>
+<a class="skip-link" href="#content">Zum Inhalt springen</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Hauptnavigation">
-      <a href="/de/#ecossistema">Ökosystem</a>
+      <a href="/de/#ecosystem">Ökosystem</a>
       <a href="/de/docs/">Dokumentation</a>
-      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Deutsch</span></summary><ul><li><a href="/docs/pod-per-step/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/pod-per-step/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/pod-per-step/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/pod-per-step/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/pod-per-step/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/pod-per-step/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/pod-per-step/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/pod-per-step/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/pod-per-step/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/pod-per-step/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/pod-per-step/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><span>Deutsch</span></summary><ul><li><a href="/docs/pod-per-step/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/pod-per-step/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/pod-per-step/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/pod-per-step/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/pod-per-step/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/pod-per-step/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/pod-per-step/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/pod-per-step/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/pod-per-step/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/pod-per-step/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/pod-per-step/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open Source erkunden
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentation</p>
       <h1>Pod pro Step</h1>
@@ -143,23 +143,23 @@ walks the graph
     follows the log     ◄───────  container stdout
     reads the exit code ◄───────  containerStatuses[0].terminated
     deletes the pod ───────────►  (gone)</code></pre></div>
-<h2 id="was-sich-dadurch-ändert">Was sich dadurch ändert<a class="anchor" href="#was-sich-dadurch-ändert" aria-label="link">#</a></h2>
+<h2 id="what-this-changes">Was sich dadurch ändert<a class="anchor" href="#what-this-changes" aria-label="link">#</a></h2>
 <p>Ein monolithischer Worker zwingt das Image, alles zu enthalten, was irgendein Step brauchen könnte. In der Praxis:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>ein einziges Image</th><th>Pod pro Step</th></tr></thead><tbody><tr><td>dbt-Step</td><td>1,9 GB · 1Gi RAM</td><td>1,9 GB · 1Gi RAM</td></tr><tr><td>Go-Fetcher daneben</td><td><strong>1,9 GB · 1Gi</strong></td><td><strong>12 MB · 32Mi</strong></td></tr><tr><td>die dbt-Version anheben</td><td>alles neu bauen</td><td>eine Zeile im YAML dieses Workflows</td></tr><tr><td>ein Step mit Speicherleck</td><td>reißt den Worker und seine Nachbarn mit</td><td>stirbt allein</td></tr></tbody></table></div>
 <p>Die dritte Zeile ist die am wenigsten offensichtliche und im Alltag die teuerste: Mit einem einzigen Image erzwingt der Wechsel von dbt 1.10 auf 1.11 in einer Pipeline den Wechsel in allen.</p>
-<h2 id="images-nach-rolle">Images nach Rolle<a class="anchor" href="#images-nach-rolle" aria-label="link">#</a></h2>
+<h2 id="images-by-role">Images nach Rolle<a class="anchor" href="#images-by-role" aria-label="link">#</a></h2>
 <p>Images gelten pro <strong>Rolle</strong>, nicht pro Projekt. Alles, was in einem Image überflüssig ist, wird von jedem Node gezogen, der diesen Step ausführt:</p>
 <div class="table-wrap"><table><thead><tr><th>Rolle</th><th>Größe</th><th>Kaltstart</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td><strong>5,8 MB</strong></td><td>0,18 s</td></tr><tr><td><strong>Python</strong></td><td><strong>118 MB</strong></td><td>0,54 s</td></tr><tr><td><strong>dbt</strong></td><td><strong>620 MB</strong></td><td>3,3 s</td></tr></tbody></table></div>
 <p>Vorher: ein einziges Image mit 1,87 GB für alles.</p>
 <p>Bei dbt läuft <code>dbt parse</code> zur Build-Zeit, und <code>target/partial_parse.msgpack</code> reist im Image mit – <strong>2,68 s weniger pro Pod</strong>, bei jedem Aufruf.</p>
-<h2 id="wo-jeder-step-läuft">Wo jeder Step läuft<a class="anchor" href="#wo-jeder-step-läuft" aria-label="link">#</a></h2>
+<h2 id="where-each-step-runs">Wo jeder Step läuft<a class="anchor" href="#where-each-step-runs" aria-label="link">#</a></h2>
 <p>Die Entscheidung fällt einmal, beim Start, und hängt von <code>BREVIS_PODS</code> ab und davon, ob es einen Cluster gibt:</p>
 <div class="table-wrap"><table><thead><tr><th><code>BREVIS_PODS</code></th><th>mit Cluster</th><th>ohne Cluster</th></tr></thead><tbody><tr><td><code>auto</code> (Standard)</td><td>ein Step mit <code>image:</code> wird zu einem Pod</td><td>alles als lokale Prozesse, mit einer Warnung im Log</td></tr><tr><td><code>on</code></td><td>ein Step mit <code>image:</code> wird zu einem Pod</td><td><strong>Startfehler</strong></td></tr><tr><td><code>off</code></td><td>alles als lokale Prozesse</td><td>alles als lokale Prozesse</td></tr></tbody></table></div>
 <p><strong>Ein Step mit <code>host:</code> durchläuft nichts davon.</strong> Er wird vor dem Pod und vor dem Prozess geprüft und geht an eine Maschine, die bereits läuft – <code>BREVIS_PODS</code> gilt für ihn nicht, und er fällt nie auf einen lokalen Prozess zurück. Das ist Absicht: <code>image:</code> weicht mit einer Warnung auf lokale Ausführung aus, weil ein Container und ein Prozess derselbe Befehl in zwei Hüllen sind, ein Host aber nicht. Dort liegt die Lizenz, oder die GPU, oder die Daten.</p>
 <p><code>auto</code> ist der Standard, weil dasselbe Binary an beiden Orten läuft: Auf einem Laptop ist kein Service Account eingehängt, und es fällt auf lokale Prozesse zurück; in einem Cluster ist einer da, und es beginnt, Pods zu erzeugen.</p>
 <p><code>on</code> gibt es für das Deployment, das <strong>nicht</strong> still zu lokaler Ausführung werden darf. Dort muss ein fehlender Cluster ein Startfehler sein.</p>
 <aside class="admon admon-warning"><p class="admon-t">`brevis run` erzeugt keine Pods</p><p>Der Befehl <code>run</code> baut nur den Prozess-Executor. Ein Step mit <code>image:</code> läuft auf der Instanz selbst – und sagt das. Zu schweigen ließe es so aussehen, als sei der Step auf dem deklarierten Image gelaufen, und das ist die Art Fehler, die erst auftaucht, wenn das Ergebnis schon falsch ist.</p></aside>
-<h2 id="identität-und-zugangsdaten">Identität und Zugangsdaten<a class="anchor" href="#identität-und-zugangsdaten" aria-label="link">#</a></h2>
+<h2 id="identity-and-credentials">Identität und Zugangsdaten<a class="anchor" href="#identity-and-credentials" aria-label="link">#</a></h2>
 <p>Mit welcher Identität Pods starten, ist eine Entscheidung der <strong>Installation</strong>, nicht des Workflows – eine Pipeline darf nicht den Service Account wählen können, unter dem sie läuft. Sie stammt deshalb aus der Umgebung:</p>
 <div class="code-block" data-code="BREVIS_POD_NAMESPACE=data
 BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
@@ -169,16 +169,16 @@ BREVIS_POD_SERVICE_ACCOUNT=<span class="t-k">brevis</span>-runner
 BREVIS_POD_PULL_SECRETS=registry-cred
 BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred,api-tokens</code></pre></div>
 <p>Im Pod-Modus stammt die Task-Umgebung aus Cluster-Secrets – nicht aus <code>BREVIS_TASK_ENV</code>.</p>
-<h2 id="node-selector-und-tolerations">Node-Selector und Tolerations<a class="anchor" href="#node-selector-und-tolerations" aria-label="link">#</a></h2>
+<h2 id="node-selector-and-tolerations">Node-Selector und Tolerations<a class="anchor" href="#node-selector-and-tolerations" aria-label="link">#</a></h2>
 <div class="code-block" data-code="BREVIS_POD_NODE_SELECTOR=&#x27;kubernetes.io/arch=arm64&#x27;
 BREVIS_POD_TOLERATIONS=&#x27;dedicated=data:NoSchedule&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>BREVIS_POD_NODE_SELECTOR='kubernetes.io/arch=arm64'
 BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
 <p>In Tolerations wird nur der Operator <code>Equal</code> akzeptiert: <code>Exists</code> würde <strong>jeden</strong> Taint mit diesem Schlüssel tolerieren, zu weit für eine Entscheidung, die aus einer Umgebungsvariablen kommt.</p>
 <p>Eine fehlerhafte Toleration wird <strong>ignoriert</strong>, statt zum Startfehler zu werden – sie lässt den Pod in <code>Pending</code>, was sichtbar ist, während eine Startverweigerung auch die Workflows stoppen würde, die diesen Pool nicht brauchen.</p>
-<h2 id="einen-fehler-debuggen">Einen Fehler debuggen<a class="anchor" href="#einen-fehler-debuggen" aria-label="link">#</a></h2>
+<h2 id="debugging-a-failure">Einen Fehler debuggen<a class="anchor" href="#debugging-a-failure" aria-label="link">#</a></h2>
 <div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>Behält den fehlgeschlagenen Pod für <code>kubectl logs</code> und <code>kubectl describe</code>. Lassen Sie es in Produktion aus: Angehaltene Pods verbrauchen Cluster-Quote.</p>
-<h2 id="nächste-schritte">Nächste Schritte<a class="anchor" href="#nächste-schritte" aria-label="link">#</a></h2>
+<h2 id="next-steps">Nächste Schritte<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/de/docs/kubernetes/">Kubernetes</a> – das vollständige Deployment</li><li><a href="/de/docs/configuration/">Konfiguration</a> – jede <code>BREVIS_POD_*</code>-Variable</li><li><a href="/de/docs/observability/">Observability</a> – Metriken aus beiden Prozessen</li></ul>
 
       <nav class="pagers" aria-label="Seiten">
@@ -193,7 +193,7 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
 
     <aside class="toc" aria-label="Auf dieser Seite">
       <p class="toc-t">Auf dieser Seite</p>
-      <ul><li class="toc-2"><a href="#was-sich-dadurch-ändert">Was sich dadurch ändert</a></li><li class="toc-2"><a href="#images-nach-rolle">Images nach Rolle</a></li><li class="toc-2"><a href="#wo-jeder-step-läuft">Wo jeder Step läuft</a></li><li class="toc-2"><a href="#identität-und-zugangsdaten">Identität und Zugangsdaten</a></li><li class="toc-2"><a href="#node-selector-und-tolerations">Node-Selector und Tolerations</a></li><li class="toc-2"><a href="#einen-fehler-debuggen">Einen Fehler debuggen</a></li><li class="toc-2"><a href="#nächste-schritte">Nächste Schritte</a></li></ul>
+      <ul><li class="toc-2"><a href="#what-this-changes">Was sich dadurch ändert</a></li><li class="toc-2"><a href="#images-by-role">Images nach Rolle</a></li><li class="toc-2"><a href="#where-each-step-runs">Wo jeder Step läuft</a></li><li class="toc-2"><a href="#identity-and-credentials">Identität und Zugangsdaten</a></li><li class="toc-2"><a href="#node-selector-and-tolerations">Node-Selector und Tolerations</a></li><li class="toc-2"><a href="#debugging-a-failure">Einen Fehler debuggen</a></li><li class="toc-2"><a href="#next-steps">Nächste Schritte</a></li></ul>
     </aside>
   </main>
 </div>
@@ -213,9 +213,9 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
       <div class="footer-col">
         <h2>Projekt</h2>
         <ul>
-          <li><a href="/de/#ecossistema">Ökosystem</a></li>
+          <li><a href="/de/#ecosystem">Ökosystem</a></li>
           <li><a href="/de/docs/philosophy/">Prinzipien</a></li>
-          <li><a href="/de/docs/introduction/#offener-code-wählen-sie-wie-sie-mitmachen">Open Source</a></li>
+          <li><a href="/de/docs/introduction/#open-code-choose-how-to-take-part">Open Source</a></li>
           <li><a href="/de/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -238,7 +238,7 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

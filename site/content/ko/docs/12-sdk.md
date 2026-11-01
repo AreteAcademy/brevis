@@ -209,7 +209,7 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 
 ### 시계
 
-`p.Run.Auto`는 엔진이 이 run에 대해 계산한 것으로, [자동 매개변수](/docs/parameters/#자동-매개변수)입니다.
+`p.Run.Auto`는 엔진이 이 run에 대해 계산한 것으로, [자동 매개변수](/docs/parameters/#auto-params)입니다.
 `Auto.Now()`는 `time.Now()` 대신 읽어야 하는 시계입니다. 스케줄된 run에서는 slot이므로,
 run이 늦어도 움직이지 않고 세 시간 뒤에 재시도해도 움직이지 않습니다.
 
@@ -316,7 +316,7 @@ Target{
 사람이기 때문입니다. 여기서는 파이프라인 작성자가 형태를 알고 있고, 누군가 리뷰하는
 diff에 그것을 적어 둡니다.
 
-게이트웨이가 [`shape: columns`](/docs/ingestion-sinks/#두-가지-형태-하나의-계약)로 적재하는 것과
+게이트웨이가 [`shape: columns`](/docs/ingestion-sinks/#two-shapes-one-contract)로 적재하는 것과
 같은 형태이며, 같은 코드를 통하므로 컬럼도, 값도, `brevis_ingestion_id`도 같습니다.
 
 **필드 이름은 컬럼 이름이 될 수 있어야 합니다.** 문자 또는 밑줄로 시작하고 그 뒤에
@@ -330,7 +330,7 @@ diff에 그것을 적어 둡니다.
 `{"id": 7, "uf": "SP"}`를 담습니다. 배열도 `JSON`입니다. 배열 요소마다 행 하나를 원하는
 레코드는 소스의 `Expand`에 `sdk.ArrayAt`을 써야 합니다. 이것은 `Landing`보다 먼저
 실행되며 이름도 다른 별개의 연산입니다.
-[`BREVIS_NORMALIZE_DATA`](#중첩-필드당-컬럼-하나)는 배포 전체에 대해 앞부분을
+[`BREVIS_NORMALIZE_DATA`](#one-column-per-nested-field)는 배포 전체에 대해 앞부분을
 바꾸며, 배열은 어느 쪽이든 `JSON`으로 남습니다.
 
 ```go

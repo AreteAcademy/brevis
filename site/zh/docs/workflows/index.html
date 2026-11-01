@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
-      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/workflows/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/workflows/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/workflows/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/workflows/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/workflows/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/workflows/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/workflows/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/workflows/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/workflows/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><span>简体中文</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/workflows/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/workflows/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/workflows/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/workflows/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/workflows/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/workflows/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/workflows/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/workflows/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/workflows/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         探索开源项目
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>Workflows</h1>
       <p class="doc-desc">完整的 YAML 格式：step、依赖、镜像、资源和调度。</p>
       <p>workflow 是一个 YAML 文件。它声明<strong>运行什么</strong>、<strong>以什么顺序</strong>以及<strong>使用什么运行时</strong>，除此之外别无其他。</p>
-<h2 id="最小结构">最小结构<a class="anchor" href="#最小结构" aria-label="link">#</a></h2>
+<h2 id="minimum-structure">最小结构<a class="anchor" href="#minimum-structure" aria-label="link">#</a></h2>
 <div class="code-block" data-code="name: hello
 steps:
   - id: only
@@ -134,7 +134,7 @@ steps:
   - <span class="t-k">id</span>: only
     <span class="t-k">run</span>: echo done</code></pre></div>
 <p><code>name</code> 在数据库和界面中标识这个 workflow。<code>steps</code> 是 step 列表，每个 step 都有唯一的 <code>id</code> 和一个 <code>run</code>。</p>
-<h3 id="description它的用途"><code>description</code>：它的用途<a class="anchor" href="#description它的用途" aria-label="link">#</a></h3>
+<h3 id="description-what-it-is-for"><code>description</code>：它的用途<a class="anchor" href="#description-what-it-is-for" aria-label="link">#</a></h3>
 <p>可选，自由格式，引擎中没有任何部分会读取它：</p>
 <div class="code-block" data-code="name: daily-orders
 description: &gt;
@@ -151,7 +151,7 @@ steps:
     <span class="t-k">run</span>: python fetch.py</code></pre></div>
 <p>它显示在 workflow 页面的顶部，位于计数和调度之上。图已经说明了一个流程<strong>做什么</strong>；这里是唯一说明它为何存在的地方，而这正是凌晨三点第一次打开它的人真正需要的。</p>
 <p>没有描述的 workflow 在这里什么都不显示，而不是显示一个空块，因为空块看起来像是加载失败了。</p>
-<h2 id="顺序chain-或-dag">顺序：chain 或 dag<a class="anchor" href="#顺序chain-或-dag" aria-label="link">#</a></h2>
+<h2 id="order-chain-or-dag">顺序：chain 或 dag<a class="anchor" href="#order-chain-or-dag" aria-label="link">#</a></h2>
 <div class="code-block" data-code="type: chain   # order is the file&#x27;s order
 type: dag     # order comes from depends_on"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">type</span>: chain   <span class="t-c"># order is the file's order</span>
 <span class="t-k">type</span>: dag     <span class="t-c"># order comes from depends_on</span></code></pre></div>
@@ -193,7 +193,7 @@ steps:
     <span class="t-k">depends_on</span>: [extract, validate]</code></pre></div>
 <p>运行器<strong>按层</strong>遍历图：同一层内的所有 step 并行运行，只有上一层完全结束，下一层才会开始。</p>
 <aside class="admon admon-warning"><p class="admon-t">一次失败会停止整层</p><p>运行器在一层中遇到<strong>第一个</strong>失败就会停下，不会启动下一层。出错后继续执行，会产生一个看起来完整的部分结果。</p></aside>
-<h2 id="调度">调度<a class="anchor" href="#调度" aria-label="link">#</a></h2>
+<h2 id="schedule">调度<a class="anchor" href="#schedule" aria-label="link">#</a></h2>
 <div class="code-block" data-code="schedule: &quot;0 5 * * *&quot;   # five-field cron
 concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">schedule</span>: "0 5 * * *"   <span class="t-c"># five-field cron</span>
 <span class="t-k">concurrency</span>: 1</code></pre></div>
@@ -207,7 +207,7 @@ concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><butto
   <span class="t-k">limit</span>: 1               <span class="t-c"># optional; a group without one means 1</span></code></pre></div>
 <p>组内所有 workflow 的 run 都计入同一个限制，无论是由什么触发的：调度、一次 landing、一次 backfill 还是一次点击。发现组已满的 run 会<strong>在队列中等待</strong>；它不会被跳过，也不会失败。第三个写入相同表的 workflow 只需指定该组名就能加入。等待期间，该 run 的页面会说明原因：哪个组、它的限制是多少，以及哪些 run 占用着 slot。</p>
 <ul><li>所有成员声明<strong>相同的限制</strong>。如果一个文件里组声明为 1，另一个文件里声明为 3，<code>validate</code> 和 <code>publish</code> 会拒绝，包括与已发布的成员比对时。</li><li>组只会让 <strong>Brevis 的 run</strong> 串行化。有人在自己的机器上启动的 <code>dbt run</code> 不在这个队列中，同样会失败。</li></ul>
-<h2 id="镜像与资源">镜像与资源<a class="anchor" href="#镜像与资源" aria-label="link">#</a></h2>
+<h2 id="image-and-resources">镜像与资源<a class="anchor" href="#image-and-resources" aria-label="link">#</a></h2>
 <div class="code-block" data-code="image: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
 resources:
   cpu: 200m
@@ -238,9 +238,9 @@ resources:
     <span class="t-k">resources</span>: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
 <p>正是这一点，使一个 Go 抓取器与一个 1.9 GB 的 <code>dbt build</code> 并存时只需 12 MB 和 32Mi，而不是两者都按较大的那个来付出代价。见<a href="/zh/docs/pod-per-step/">每个 step 一个 pod</a>。</p>
-<h2 id="step-字段">step 字段<a class="anchor" href="#step-字段" aria-label="link">#</a></h2>
+<h2 id="step-fields">step 字段<a class="anchor" href="#step-fields" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>字段</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>必填</strong></td><td>在 workflow 内唯一；显示在图和日志中的名称</td></tr><tr><td><code>run</code></td><td></td><td>命令</td></tr><tr><td><code>image</code></td><td></td><td>step 的镜像；省略时继承顶层的镜像</td></tr><tr><td><code>host</code></td><td></td><td>把命令发送到一台引擎<strong>不</strong>管理的机器，是 <code>image</code> 的替代方案，绝不与之并用。见 <a href="https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host" target="_blank" rel="noopener">Kubernetes 指南中的 <code>host:</code></a></td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> 表示不使用 shell 运行，distroless 镜像必须如此</td></tr><tr><td><code>depends_on</code></td><td></td><td>必须先完成的 <code>id</code> 列表；其中的条目可以是 <code>{step, label}</code></td></tr><tr><td><code>marker</code></td><td><code>false</code></td><td>没有命令的 step，用于 <code>start</code> 或 <code>end</code></td></tr><tr><td><code>resources</code></td><td></td><td>该 step 的 <code>cpu</code>、<code>memory</code> 和 <code>limits</code></td></tr><tr><td><code>runtime</code>, <code>tools</code></td><td></td><td>step 的语言和工具，见 <a href="/zh/docs/runtime/">step 运行时</a></td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>依赖处于什么状态时运行这个 step，见下文</td></tr><tr><td><code>unless_empty</code></td><td></td><td>一个 context 键，用来决定是否有事可做，见下文</td></tr><tr><td><code>for_each</code></td><td></td><td>一个保存列表的 context 键；step 对每个元素各运行一次，见下文</td></tr><tr><td><code>group</code></td><td></td><td>把这个 step 画在一个带名称的可折叠方框内，见下文</td></tr><tr><td><code>uses</code></td><td></td><td>另一个 workflow，其 step 将取代这个 step 的位置，见下文</td></tr><tr><td><code>on_error</code></td><td></td><td>通知这个 step 的失败，见下文</td></tr></tbody></table></div>
-<h2 id="仅在有事可做时运行-step">仅在有事可做时运行 step<a class="anchor" href="#仅在有事可做时运行-step" aria-label="link">#</a></h2>
+<h2 id="running-a-step-only-when-there-is-something-to-do">仅在有事可做时运行 step<a class="anchor" href="#running-a-step-only-when-there-is-something-to-do" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# in extract
 context.set(has_rows=len(rows) &gt; 0)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
@@ -254,15 +254,15 @@ context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
 <p><code>unless_empty</code> 指定的是一个<strong>键</strong>，而不是表达式。由 step 做出判断并发布答案；引擎只读取一个键，并判断它是否为空。</p>
 <div class="table-wrap"><table><thead><tr><th>视为空</th><th>视为非空</th></tr></thead><tbody><tr><td><code>false</code>、<code>0</code>、<code>""</code>、<code>null</code>、<code>[]</code>、<code>{}</code></td><td>其他所有值</td></tr></tbody></table></div>
 <p>作为<strong>字符串</strong>的 <code>"false"</code> 是非空的。发布了这五个字符的 step 发布的就是一个有内容的值，而去猜测它想表示布尔值，正是规则开始带上作者看不见的主观判断的方式。请发布真正的布尔值。</p>
-<h3 id="为什么不用表达式">为什么不用表达式<a class="anchor" href="#为什么不用表达式" aria-label="link">#</a></h3>
+<h3 id="why-not-an-expression">为什么不用表达式<a class="anchor" href="#why-not-an-expression" aria-label="link">#</a></h3>
 <p>看起来诱人的设计是 <code>when: "{{ context.extract.rows &gt; 0 }}"</code>。一门迷你表达式语言是一项庞大的承诺：需要解析器，需要类型系统来说明 <code>&gt;</code> 在 JSON 的 <code>any</code> 上意味着什么，需要一套安全方案（因为表达式来自别人写的 YAML），还有指向字符串内部的错误信息。每个提供这种能力的编排器，其 bug 跟踪器里都满是相关问题。</p>
 <p>在这里，判断留在作者本来就在使用的语言里，他们自己的测试框架可以触及它。</p>
-<h3 id="缺失的键是失败而不是空值">缺失的键是失败，而不是空值<a class="anchor" href="#缺失的键是失败而不是空值" aria-label="link">#</a></h3>
+<h3 id="a-missing-key-is-a-failure-not-an-empty-value">缺失的键是失败，而不是空值<a class="anchor" href="#a-missing-key-is-a-failure-not-an-empty-value" aria-label="link">#</a></h3>
 <p>如果键不存在，step 会<strong>失败</strong>，错误信息会指出这个键，以及发布方实际写入了什么：</p>
 <div class="code-block" data-code="step &quot;transform&quot; reads `extract.has_row`, and &quot;extract&quot; published &quot;has_rows&quot; but not &quot;has_row&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"</code></pre></div>
 <p>另一种做法是把缺失的键当作“为空，所以跳过”，这会把一个拼写错误变成一个悄悄地、永远停止运行的 step，而且任何地方都不会说明原因。这是这个功能可能出现的最糟糕的结果。</p>
 <p>键始终以发布它的 step 来限定，并且该 step 必须是当前 step 所依赖的 step。这两点都在 <strong>publish</strong> 时检查：以一个永远看不到的键作为条件的 step 将永远被跳过，等到某个夜间任务不再运行时才发现就太晚了。</p>
-<h2 id="对每个元素各运行一次-step">对每个元素各运行一次 step<a class="anchor" href="#对每个元素各运行一次-step" aria-label="link">#</a></h2>
+<h2 id="running-a-step-once-per-element">对每个元素各运行一次 step<a class="anchor" href="#running-a-step-once-per-element" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# in extract
 context.set(partitions=[&quot;2026-01&quot;, &quot;2026-02&quot;, &quot;2026-03&quot;])"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
@@ -277,20 +277,20 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>变量</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_MAP_INDEX</code></td><td><code>0</code>、<code>1</code>、<code>2</code> ……</td></tr><tr><td><code>BREVIS_MAP_VALUE</code></td><td>该元素</td></tr></tbody></table></div>
 <p>JSON 字符串会<strong>不带引号</strong>传入，因此对 <code>["2026-01"]</code> 做 <code>for_each</code> 时，shell 收到的是 <code>2026-01</code> 而不是 <code>"2026-01"</code>。其他任何类型（数字、对象、列表）都以其 JSON 形式传入。</p>
 <p>这两个变量在未做映射的 step 上都不存在。一个始终存在却始终为空的变量，只会教会读取环境的人忽略它。</p>
-<h3 id="dag-的形状不会改变">DAG 的形状不会改变<a class="anchor" href="#dag-的形状不会改变" aria-label="link">#</a></h3>
+<h3 id="the-shape-of-the-dag-does-not-change">DAG 的形状不会改变<a class="anchor" href="#the-shape-of-the-dag-does-not-change" aria-label="link">#</a></h3>
 <p>做了映射的 step 仍然是一个节点、一组边。只有它下面的行数会变化，因此布局与以往一致，<code>[3]</code> 是在读取时根据这些行统计出来的：没有存储任何东西，所以无需保持同步，查询修好之后错误的计数也不会残留。</p>
 <p>实例仍在运行时，卡片显示为 <code>[2/3]</code>。</p>
-<h3 id="一个实例失败整个-step-就失败">一个实例失败，整个 step 就失败<a class="anchor" href="#一个实例失败整个-step-就失败" aria-label="link">#</a></h3>
+<h3 id="one-failed-instance-fails-the-step">一个实例失败，整个 step 就失败<a class="anchor" href="#one-failed-instance-fails-the-step" aria-label="link">#</a></h3>
 <p>三个分区在加载，其中一个没有成功，这个 step 就没有完成它的工作，它下面的 step 会看到这一点。一个因为大部分成功就变绿的节点，是一个说谎的徽标。</p>
 <p><strong>重试只会重做失败的实例。</strong> 已经成功的十八个分区，不会因为另外两个出错而被重新加载。</p>
-<h3 id="空列表是-skipped而不是成功">空列表是 <code>skipped</code>，而不是成功<a class="anchor" href="#空列表是-skipped而不是成功" aria-label="link">#</a></h3>
+<h3 id="an-empty-list-is-skipped-not-success">空列表是 <code>skipped</code>，而不是成功<a class="anchor" href="#an-empty-list-is-skipped-not-success" aria-label="link">#</a></h3>
 <p>一个因为无事可做而什么都没做的 step，并没有成功地完成它。一个对应零个实例的绿色节点，恰恰是有人会拿来搭建仪表盘的那种东西。</p>
 <p><strong>不是列表</strong>的值会导致失败，键不存在也一样，这与 <code>unless_empty:</code> 的策略相同，原因也相同：一个悄悄产生零个实例的拼写错误，会让该 step 永久失效。</p>
-<h3 id="展开有上限且上限是继承来的">展开有上限，且上限是继承来的<a class="anchor" href="#展开有上限且上限是继承来的" aria-label="link">#</a></h3>
+<h3 id="the-fan-out-is-bounded-and-the-bound-is-inherited">展开有上限，且上限是继承来的<a class="anchor" href="#the-fan-out-is-bounded-and-the-bound-is-inherited" aria-label="link">#</a></h3>
 <p>列表通过 context 传递，而 context 有 4096 字节的上限，这个上限来自 kubelet。workflow 不能先不想办法用四千字节表达，就要求一万个 pod。这是一个值得保留而不是绕过的限制。</p>
-<h3 id="做了映射的-step-发布什么">做了映射的 step 发布什么<a class="anchor" href="#做了映射的-step-发布什么" aria-label="link">#</a></h3>
+<h3 id="what-a-mapped-step-publishes">做了映射的 step 发布什么<a class="anchor" href="#what-a-mapped-step-publishes" aria-label="link">#</a></h3>
 <p>它的输出记录在每个实例的行上，对其下方的 step <strong>不可见</strong>。四个实例以同一个 step 的名义发布，就是同一个键对应四个值，而对于 <code>context.String("load.bucket")</code> 来说，任何答案都只是猜测。step 会在日志中说明这一点，而不是悄悄丢弃。</p>
-<h2 id="在图上对-step-分组">在图上对 step 分组<a class="anchor" href="#在图上对-step-分组" aria-label="link">#</a></h2>
+<h2 id="grouping-steps-on-the-graph">在图上对 step 分组<a class="anchor" href="#grouping-steps-on-the-graph" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: extract_orders
     group: sales_data_reporting
@@ -310,7 +310,7 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <p><strong>仅限视觉。</strong> Airflow 的 TaskGroup 还会给其中的 id 加*前缀*，于是 <code>extract</code> 变成 <code>sales.extract</code>。这里不会这样：加前缀会改变现有 workflow 中的每个 <code>depends_on</code>、每个 context 键和每条已记录的行，而这个功能的全部价值仅仅在于让大图更易读。命名空间以后可以再加，它是对现有功能的严格补充。</p>
 <p>组是一个<strong>标签</strong>，而不是容器。step 保留它们的全局 id，组可以跨越多层，执行方面没有任何改变。</p>
 <p>点击组名即可折叠：其中的 step 消失，穿过边界的箭头改为指向方框。</p>
-<h2 id="复用另一个-workflow">复用另一个 workflow<a class="anchor" href="#复用另一个-workflow" aria-label="link">#</a></h2>
+<h2 id="reusing-another-workflow">复用另一个 workflow<a class="anchor" href="#reusing-another-workflow" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# nightly.yaml
 steps:
   - id: prepare
@@ -339,11 +339,11 @@ steps:
 <p>它们作为一个可折叠的组出现，因此图展示的就是文件所写的内容。</p>
 <p><strong>在 publish 时展开，而不是在运行时执行。</strong> 让 step 触发一次子 <em>run</em> 并等待，正是让 Airflow 发生死锁的设计，而这个引擎具备同样的条件：pod 上限是每个进程的信号量，所以父级占着一个 slot 等待需要同一个池中 slot 的子级时就会挂起，而且只在负载高时发生，也就是在生产环境中。一个 run，一张图，一个池。</p>
 <p>它放弃的是拥有自己 id 和自己历史的子 run。</p>
-<h3 id="规则">规则<a class="anchor" href="#规则" aria-label="link">#</a></h3>
+<h3 id="the-rules">规则<a class="anchor" href="#the-rules" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>子 workflow 必须在<strong>同一次 publish</strong> 中</td><td>仅仅已经发布过是不够的</td></tr><tr><td>箭头</td><td>指向该 step 的箭头变为指向子 workflow 每个<strong>根</strong>的箭头；从它出发的箭头改为从子 workflow 的每个<strong>叶</strong>出发</td></tr><tr><td>子 workflow 的 <code>image</code>、<code>env</code>、<code>secrets</code>、<code>resources</code></td><td>物化到每个 step 上，使其按自己文件所写的环境运行</td></tr><tr><td>子 workflow 的 <code>unless_empty</code> / <code>for_each</code> 键</td><td>随前缀一起移动</td></tr><tr><td>嵌套</td><td>展平，深度优先</td></tr><tr><td>循环引用</td><td>在 publish 时被拒绝，并指出整条链</td></tr></tbody></table></div>
 <p><strong>重要的是“同一次 publish”，而不是“已经发布”。</strong> 如果展开时读取数据库，<code>brevis validate</code>（它刻意不接触数据库）和 <code>brevis publish</code> 回答的就是不同的问题，通过 CI 的文件会在部署时失败。</p>
 <p>子 workflow 仍可单独发布：展开是<strong>复制</strong>，而不是消耗。一个 step 不能同时声明 <code>uses:</code> 和 <code>run:</code>、<code>action:</code> 或 <code>marker:</code>，因为那样文件就在说两件事。</p>
-<h2 id="说明箭头的含义">说明箭头的含义<a class="anchor" href="#说明箭头的含义" aria-label="link">#</a></h2>
+<h2 id="saying-what-an-arrow-means">说明箭头的含义<a class="anchor" href="#saying-what-an-arrow-means" aria-label="link">#</a></h2>
 <p>依赖可以带一个标签，显示在图中的箭头上。</p>
 <div class="code-block" data-code="steps:
   - id: determine_load_type
@@ -374,7 +374,7 @@ steps:
         <span class="t-k">label</span>: changed existing data</code></pre></div>
 <p>简写形式 <code>depends_on: [extract]</code> 仍然有效，并且仍是常规写法。大多数依赖没什么可说的，每个箭头上都加标签只会造成噪音。</p>
 <p>标签的价值体现在<strong>分支</strong>上：从同一个 step 发出的两个箭头上什么都没写，这样的图需要打开源文件才能读懂，而这恰恰是图应该避免的。</p>
-<h2 id="什么都不做的-step">什么都不做的 step<a class="anchor" href="#什么都不做的-step" aria-label="link">#</a></h2>
+<h2 id="a-step-that-does-nothing">什么都不做的 step<a class="anchor" href="#a-step-that-does-nothing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: start
     marker: true
@@ -391,7 +391,7 @@ steps:
 <p><code>marker: true</code> 是没有命令的 step。它不运行任何东西，立即成功，并显示在图上。</p>
 <p>它不是装饰。一个依赖所有分支的 <code>end</code>，把“整件事完成了吗？”变成一个节点，而不是要跟踪的六条箭头。它的行为与其他 step 一样，所以位于失败分支之下的 <code>end</code> 会被<strong>跳过</strong>，而不是变绿。</p>
 <p><strong>既没有 <code>run:</code> 也没有 <code>marker: true</code> 的 step 仍然会被拒绝。</strong> 这两种情况不能混为一谈：空命令几乎总是一个错误，而 <code>marker: true</code> 是有人表明自己确实是有意为之的方式。同时声明了 <code>run:</code> 的 marker 也会被拒绝，因为那样文件就在说两件事。</p>
-<h2 id="仅在有东西失败时运行-step">仅在有东西失败时运行 step<a class="anchor" href="#仅在有东西失败时运行-step" aria-label="link">#</a></h2>
+<h2 id="running-a-step-only-when-something-failed">仅在有东西失败时运行 step<a class="anchor" href="#running-a-step-only-when-something-failed" aria-label="link">#</a></h2>
 <p>默认情况下，step 在它之前的一切都成功时运行。<code>when:</code> 可以改变这一点。</p>
 <div class="code-block" data-code="steps:
   - id: extract
@@ -420,11 +420,11 @@ steps:
     <span class="t-k">when</span>: all_done            <span class="t-c"># runs either way</span></code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>规则</th><th></th></tr></thead><tbody><tr><td><code>all_success</code></td><td>默认值。该 step 所依赖的一切都成功了，指的是它<strong>自己的</strong>依赖，与 Airflow 相同</td></tr><tr><td><code>any_failed</code></td><td>该 step 所依赖的 step 中至少有一个失败</td></tr><tr><td><code>all_done</code></td><td>该 step 所依赖的一切都已结束，无论结果如何</td></tr></tbody></table></div>
 <p>未知的规则会在 publish 时被拒绝，并指出有效的取值。必须如此：如果 <code>when: on_failure</code> 被当作“默认值”，它会在<strong>成功</strong>时运行，与字面意思正好相反，而且会在最关键的那个夜晚才被发现。</p>
-<h3 id="不运行的-step-是-skipped">不运行的 step 是 <code>skipped</code><a class="anchor" href="#不运行的-step-是-skipped" aria-label="link">#</a></h3>
+<h3 id="a-step-that-does-not-run-is-skipped">不运行的 step 是 <code>skipped</code><a class="anchor" href="#a-step-that-does-not-run-is-skipped" aria-label="link">#</a></h3>
 <p>它是一个独立的状态，用独立的颜色绘制，并带有原因：<em><code>extract</code> 失败了</em>。在此之前，失败之下的 step 完全没有记录，界面会一直显示它处于 pending。</p>
 <p><code>skipped</code> 既不是失败，也不是成功。上游出错的 step 并没有失败，它只是从未获得运行的机会；把它称为成功是一种谎言，会一直传到 run 自身的状态。</p>
 <p>触发规则决定哪些 step <strong>运行</strong>，不决定 run 的结果：成功送出消息的 <code>notify_failure</code> 并不意味着 pipeline 正常工作，这次 run 仍然是失败的。</p>
-<h3 id="all-success-是局部的与-airflow-一样"><code>all_success</code> 是局部的，与 Airflow 一样<a class="anchor" href="#all-success-是局部的与-airflow-一样" aria-label="link">#</a></h3>
+<h3 id="all-success-is-local-as-in-airflow"><code>all_success</code> 是局部的，与 Airflow 一样<a class="anchor" href="#all-success-is-local-as-in-airflow" aria-label="link">#</a></h3>
 <p>该规则只询问 step <strong>自己的</strong>依赖，别无其他。不相关分支中的失败不会阻止这个 step：</p>
 <div class="code-block" data-code="extract_orders ──✕                 (failed)
 extract_users  ──✓── transform_users ──✓     keeps going"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>extract_orders ──✕                 (failed)
@@ -435,7 +435,7 @@ extract_users  ──✓── transform_users ──✓     keeps going</code><
 <ul><li>run 仍然会<strong>失败</strong>，并带着同样的错误；</li><li>图中把失败的 step 标为红色，每个被跳过的 step 用自己的颜色，并各自说明是哪个 step 阻止了它；</li><li>run 放弃时，告警仍然会发出。</li></ul>
 <p>部分结果不再看起来完整，因为 run 会说明它并不完整。</p>
 <p><strong>放弃的是什么</strong>，直说：不相关的分支现在会在别处失败的 run 上写入它的数据。</p>
-<h3 id="重试只重新运行失败的部分">重试只重新运行失败的部分<a class="anchor" href="#重试只重新运行失败的部分" aria-label="link">#</a></h3>
+<h3 id="a-retry-re-runs-only-what-failed">重试只重新运行失败的部分<a class="anchor" href="#a-retry-re-runs-only-what-failed" aria-label="link">#</a></h3>
 <p>run 的重试不会重做整张图。在<strong>同一个 run</strong> 的早先尝试中已经成功的 step 会保留其结果，不再重新运行，这与 Airflow 中清除 DAG run 的行为一致。</p>
 <div class="code-block" data-code="attempt 1   extract ✓    load ✕    report (skipped)
 attempt 2   extract –    load ✓    report ✓            extract is not re-run"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>attempt 1   extract ✓    load ✕    report (skipped)
@@ -443,7 +443,7 @@ attempt 2   extract –    load ✓    report ✓            extract is not re-r
 <p>它保留原来的行：其耗时、日志和所发布的内容都属于第一次尝试，因为工作就是在那时完成的。<strong>它下面的 step 仍然读取它发布的内容</strong>，因为 run 的 context 是存储下来的，而不是重新构建的。</p>
 <p>关键的区别在于：这只涉及<strong>这个 run</strong> 先前的尝试。在*昨天的* run 中成功的 step，今天照常运行。（另一个问题同样存在，它告诉 SDK 这是否是某个 step 的首次运行，见 <code>BREVIS_RUN_FIRST</code>。）</p>
 <p>被<strong>跳过</strong>的 step 不算已确定：它从未运行，重试会根据新一次尝试的结果再次决定它。</p>
-<h2 id="通知-step-的失败">通知 step 的失败<a class="anchor" href="#通知-step-的失败" aria-label="link">#</a></h2>
+<h2 id="announcing-a-steps-failures">通知 step 的失败<a class="anchor" href="#announcing-a-steps-failures" aria-label="link">#</a></h2>
 <p>每次失败都已经会被通知：配置了 webhook 后，放弃的 run 会发出一条消息，任何文件中都不需要重复任何块。<code>on_error</code> 适用于需要自己专属通知的 step。</p>
 <div class="code-block" data-code="steps:
   - id: fetch_observations
@@ -460,22 +460,22 @@ attempt 2   extract –    load ✓    report ✓            extract is not re-r
 <p><strong><code>when: give_up</code> 是默认值，是出于被打扰的是谁的夜晚的考虑。</strong> 一个失败两次、第三次通过的 step，在另一种默认值下会发出两条消息，而第二条到达时问题已经消失了。</p>
 <p><strong>没有失败的 step 绝不会被通知。</strong> 在一个分支出错的 workflow 中，另一个分支的负责人不会被吵醒。</p>
 <p>投递由 <code>brevis alert</code> 负责：告警与失败记录在同一个事务中，所以 Slack 故障只会延迟告警，而不会丢失它。</p>
-<h2 id="标签">标签<a class="anchor" href="#标签" aria-label="link">#</a></h2>
+<h2 id="tags">标签<a class="anchor" href="#tags" aria-label="link">#</a></h2>
 <div class="code-block" data-code="tags: [analytics, dbt, daily]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">tags</span>: [analytics, dbt, daily]</code></pre></div>
 <p>它们用于在界面中筛选，不影响执行。</p>
-<h2 id="校验">校验<a class="anchor" href="#校验" aria-label="link">#</a></h2>
+<h2 id="validation">校验<a class="anchor" href="#validation" aria-label="link">#</a></h2>
 <p>校验不需要数据库，因此可以在 CI 中与测试一起运行：</p>
 <div class="code-block" data-code="brevis validate workflows/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> validate workflows/</code></pre></div>
 <div class="code-block" data-code="  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *</code></pre></div>
 <p>它接受文件或目录。对于目录，它匹配 <code>*.y*ml</code> 并排序：两次运行产生相同的日志，两次部署之间的差异不会变成噪音。</p>
-<h2 id="发布">发布<a class="anchor" href="#发布" aria-label="link">#</a></h2>
+<h2 id="publishing">发布<a class="anchor" href="#publishing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis publish workflows/
 brevis publish workflows/ --project acme --prune"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> publish workflows/
 <span class="t-k">brevis</span> publish workflows/ <span class="t-n">--project</span> acme <span class="t-n">--prune</span></code></pre></div>
 <p><code>--prune</code> 会从项目中删除不在已发布列表中的 workflow，但保留它们的历史。它<strong>不是</strong>默认行为，原因很实际：<code>publish one-file.yaml</code> 不应该仅仅因为另外四十八个文件没有在命令行中列出，就把它们删掉。</p>
-<h2 id="下一步">下一步<a class="anchor" href="#下一步" aria-label="link">#</a></h2>
+<h2 id="next-steps">下一步<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/zh/docs/parameters/">参数</a>：两次 run 之间可以变化的内容</li><li><a href="/zh/docs/scheduler-and-queue/">调度器与队列</a>：workflow 如何变成执行</li><li><a href="/zh/docs/context/">step 之间的上下文</a>：一个 step 告诉下一个 step 什么</li></ul>
 
       <nav class="pagers" aria-label="页面">
@@ -490,7 +490,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#最小结构">最小结构</a></li><li class="toc-3"><a href="#description它的用途">description：它的用途</a></li><li class="toc-2"><a href="#顺序chain-或-dag">顺序：chain 或 dag</a></li><li class="toc-2"><a href="#调度">调度</a></li><li class="toc-2"><a href="#镜像与资源">镜像与资源</a></li><li class="toc-2"><a href="#step-字段">step 字段</a></li><li class="toc-2"><a href="#仅在有事可做时运行-step">仅在有事可做时运行 step</a></li><li class="toc-3"><a href="#为什么不用表达式">为什么不用表达式</a></li><li class="toc-3"><a href="#缺失的键是失败而不是空值">缺失的键是失败，而不是空值</a></li><li class="toc-2"><a href="#对每个元素各运行一次-step">对每个元素各运行一次 step</a></li><li class="toc-3"><a href="#dag-的形状不会改变">DAG 的形状不会改变</a></li><li class="toc-3"><a href="#一个实例失败整个-step-就失败">一个实例失败，整个 step 就失败</a></li><li class="toc-3"><a href="#空列表是-skipped而不是成功">空列表是 skipped，而不是成功</a></li><li class="toc-3"><a href="#展开有上限且上限是继承来的">展开有上限，且上限是继承来的</a></li><li class="toc-3"><a href="#做了映射的-step-发布什么">做了映射的 step 发布什么</a></li><li class="toc-2"><a href="#在图上对-step-分组">在图上对 step 分组</a></li><li class="toc-2"><a href="#复用另一个-workflow">复用另一个 workflow</a></li><li class="toc-3"><a href="#规则">规则</a></li><li class="toc-2"><a href="#说明箭头的含义">说明箭头的含义</a></li><li class="toc-2"><a href="#什么都不做的-step">什么都不做的 step</a></li><li class="toc-2"><a href="#仅在有东西失败时运行-step">仅在有东西失败时运行 step</a></li><li class="toc-3"><a href="#不运行的-step-是-skipped">不运行的 step 是 skipped</a></li><li class="toc-3"><a href="#all-success-是局部的与-airflow-一样">all_success 是局部的，与 Airflow 一样</a></li><li class="toc-3"><a href="#重试只重新运行失败的部分">重试只重新运行失败的部分</a></li><li class="toc-2"><a href="#通知-step-的失败">通知 step 的失败</a></li><li class="toc-2"><a href="#标签">标签</a></li><li class="toc-2"><a href="#校验">校验</a></li><li class="toc-2"><a href="#发布">发布</a></li><li class="toc-2"><a href="#下一步">下一步</a></li></ul>
+      <ul><li class="toc-2"><a href="#minimum-structure">最小结构</a></li><li class="toc-3"><a href="#description-what-it-is-for">description：它的用途</a></li><li class="toc-2"><a href="#order-chain-or-dag">顺序：chain 或 dag</a></li><li class="toc-2"><a href="#schedule">调度</a></li><li class="toc-2"><a href="#image-and-resources">镜像与资源</a></li><li class="toc-2"><a href="#step-fields">step 字段</a></li><li class="toc-2"><a href="#running-a-step-only-when-there-is-something-to-do">仅在有事可做时运行 step</a></li><li class="toc-3"><a href="#why-not-an-expression">为什么不用表达式</a></li><li class="toc-3"><a href="#a-missing-key-is-a-failure-not-an-empty-value">缺失的键是失败，而不是空值</a></li><li class="toc-2"><a href="#running-a-step-once-per-element">对每个元素各运行一次 step</a></li><li class="toc-3"><a href="#the-shape-of-the-dag-does-not-change">DAG 的形状不会改变</a></li><li class="toc-3"><a href="#one-failed-instance-fails-the-step">一个实例失败，整个 step 就失败</a></li><li class="toc-3"><a href="#an-empty-list-is-skipped-not-success">空列表是 skipped，而不是成功</a></li><li class="toc-3"><a href="#the-fan-out-is-bounded-and-the-bound-is-inherited">展开有上限，且上限是继承来的</a></li><li class="toc-3"><a href="#what-a-mapped-step-publishes">做了映射的 step 发布什么</a></li><li class="toc-2"><a href="#grouping-steps-on-the-graph">在图上对 step 分组</a></li><li class="toc-2"><a href="#reusing-another-workflow">复用另一个 workflow</a></li><li class="toc-3"><a href="#the-rules">规则</a></li><li class="toc-2"><a href="#saying-what-an-arrow-means">说明箭头的含义</a></li><li class="toc-2"><a href="#a-step-that-does-nothing">什么都不做的 step</a></li><li class="toc-2"><a href="#running-a-step-only-when-something-failed">仅在有东西失败时运行 step</a></li><li class="toc-3"><a href="#a-step-that-does-not-run-is-skipped">不运行的 step 是 skipped</a></li><li class="toc-3"><a href="#all-success-is-local-as-in-airflow">all_success 是局部的，与 Airflow 一样</a></li><li class="toc-3"><a href="#a-retry-re-runs-only-what-failed">重试只重新运行失败的部分</a></li><li class="toc-2"><a href="#announcing-a-steps-failures">通知 step 的失败</a></li><li class="toc-2"><a href="#tags">标签</a></li><li class="toc-2"><a href="#validation">校验</a></li><li class="toc-2"><a href="#publishing">发布</a></li><li class="toc-2"><a href="#next-steps">下一步</a></li></ul>
     </aside>
   </main>
 </div>
@@ -510,9 +510,9 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -535,7 +535,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

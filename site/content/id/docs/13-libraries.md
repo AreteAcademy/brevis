@@ -90,7 +90,7 @@ engine mencatatnya. Tidak ada yang dipasang, tidak ada yang dioperasikan, dan
 label-labelnya milik engine karena step tidak bisa mengetahui slug workflow-nya
 sendiri.
 
-Detail API ada di [Python](/docs/python/#metrik-yang-hanya-diketahui-pipeline-anda).
+Detail API ada di [Python](/docs/python/#metrics-only-your-pipeline-knows).
 
 ## Menulis klien untuk bahasa lain
 

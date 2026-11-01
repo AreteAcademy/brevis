@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc serif">
 
-<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+<a class="skip-link" href="#content">Pular para o conteúdo</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegação principal">
-      <a href="/pt/#ecossistema">Ecossistema</a>
+      <a href="/pt/#ecosystem">Ecossistema</a>
       <a href="/pt/docs/">Documentação</a>
-      <details class="lang-dd"><summary aria-label="Idioma: Português"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Português</span></summary><ul><li><a href="/docs/philosophy/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/philosophy/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/philosophy/" lang="pt-BR" hreflang="pt-BR" aria-current="true">Português</a></li><li><a href="/fr/docs/philosophy/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/philosophy/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/philosophy/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/philosophy/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/philosophy/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/philosophy/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/philosophy/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/philosophy/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Idioma: Português"><span>Português</span></summary><ul><li><a href="/docs/philosophy/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/philosophy/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/philosophy/" lang="pt-BR" hreflang="pt-BR" aria-current="true">Português</a></li><li><a href="/fr/docs/philosophy/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/philosophy/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/philosophy/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/philosophy/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/philosophy/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/philosophy/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/philosophy/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/philosophy/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Explorar open source
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentação</p>
       <h1>Filosofia</h1>
@@ -130,9 +130,9 @@
 <p>A máxima de Sêneca guia a pergunta por trás do brevis.sh: quais complexidades realmente merecem o tempo de uma equipe? Cada workflow executa em pods isolados para que falhas, versões e dependências tenham limites claros.</p>
 <p>Quatro escolhas do runtime saem dessa pergunta:</p>
 <ul><li><strong>imagem por etapa</strong> — Cada passo declara o runtime de que precisa. Trocar a versão de um não obriga a mexer nos outros.</li><li><strong>logs por execução</strong> — A saída pertence ao run que a produziu. Investigar uma falha não é reconstruir um contexto perdido.</li><li><strong>retries persistentes</strong> — A tentativa sobrevive ao processo. Uma reinicialização não apaga o que já se sabia sobre o trabalho.</li><li><strong>isolamento de dependências</strong> — O que uma etapa carrega não vaza para as vizinhas. Limite claro é o que torna a falha legível.</li></ul>
-<h2 id="a-proposta-do-projeto">A proposta do projeto<a class="anchor" href="#a-proposta-do-projeto" aria-label="link">#</a></h2>
+<h2 id="what-the-project-proposes">A proposta do projeto<a class="anchor" href="#what-the-project-proposes" aria-label="link">#</a></h2>
 <p>Entre <em>filosofia sem prática</em> e <em>tecnologia sem direção</em>, <strong>clareza para fazer o que importa.</strong></p>
-<h2 id="ferramentas-moldam-a-forma-como-pensamos">Ferramentas moldam a forma como pensamos.<a class="anchor" href="#ferramentas-moldam-a-forma-como-pensamos" aria-label="link">#</a></h2>
+<h2 id="tools-shape-the-way-we-think">Ferramentas moldam a forma como pensamos.<a class="anchor" href="#tools-shape-the-way-we-think" aria-label="link">#</a></h2>
 <blockquote><p>“Código sustentável não é apenas código que continua rodando. É código que deixa espaço para as pessoas raciocinarem.” — Filosofia aplicada ao software</p></blockquote>
 <blockquote><p>“A clareza não é o oposto da sofisticação. É o critério que impede a sofisticação de se tornar ruído.” — Open source por princípio</p></blockquote>
 
@@ -148,7 +148,7 @@
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#de-brevitate-vitae">De brevitate vitae</a></li><li class="toc-2"><a href="#a-proposta-do-projeto">A proposta do projeto</a></li><li class="toc-2"><a href="#ferramentas-moldam-a-forma-como-pensamos">Ferramentas moldam a forma como pensamos.</a></li></ul>
+      <ul><li class="toc-2"><a href="#de-brevitate-vitae">De brevitate vitae</a></li><li class="toc-2"><a href="#what-the-project-proposes">A proposta do projeto</a></li><li class="toc-2"><a href="#tools-shape-the-way-we-think">Ferramentas moldam a forma como pensamos.</a></li></ul>
     </aside>
   </main>
 </div>
@@ -168,9 +168,9 @@
       <div class="footer-col">
         <h2>projeto</h2>
         <ul>
-          <li><a href="/pt/#ecossistema">Ecossistema</a></li>
+          <li><a href="/pt/#ecosystem">Ecossistema</a></li>
           <li><a href="/pt/docs/philosophy/">Princípios</a></li>
-          <li><a href="/pt/docs/introduction/#codigo-aberto-escolha-como-participar">Open source</a></li>
+          <li><a href="/pt/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/pt/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -193,7 +193,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

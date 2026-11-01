@@ -34,7 +34,7 @@ step के भीतर, या वह webhook और ऐप्स से HTTP 
 तीन सहायक हिस्से:
 
 - **[Console](/docs/console/)** — Core के ऊपर बना वेब इंटरफ़ेस
-- **[agent](/docs/pod-per-step/#हर-step-कह-चलत-ह)** — किसी step को आपके पहले से मौजूद cluster में चलाता है
+- **[agent](/docs/pod-per-step/#where-each-step-runs)** — किसी step को आपके पहले से मौजूद cluster में चलाता है
 - **[Python के लिए `brevis`](/docs/python/)** — Python step के लिए run संदर्भ
 
 ## सिर्फ़ एक हिस्सा इस्तेमाल करना
@@ -45,7 +45,7 @@ step के भीतर, या वह webhook और ऐप्स से HTTP 
 
 SDK जो ऑर्डर लाता है और Gateway पर जो ऑर्डर आता है, दोनों एक ही तालिका में उतरते हैं, एक ही brevis_ingestion_id के साथ। दोनों में से चुनना deployment का फ़ैसला बन जाता है, स्कीमा का नहीं।
 
-SDK के ज़रिए, `sdk.Landing` के साथ (विवरण [लैंडिंग लेआउट](/docs/sdk/#लडग-लआउट) में):
+SDK के ज़रिए, `sdk.Landing` के साथ (विवरण [लैंडिंग लेआउट](/docs/sdk/#the-landing-layout) में):
 
 ```go
 sdk.Execute(ctx, &sdk.Pipeline{
@@ -58,7 +58,7 @@ sdk.Execute(ctx, &sdk.Pipeline{
 }, nil)
 ```
 
-Gateway के ज़रिए, `/v1/tables` पर एक POST (विवरण [एक route, N तालिकाएँ](/docs/ingestion/#एक-route-n-तलकए) में):
+Gateway के ज़रिए, `/v1/tables` पर एक POST (विवरण [एक route, N तालिकाएँ](/docs/ingestion/#one-route-n-tables) में):
 
 ```bash
 curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \

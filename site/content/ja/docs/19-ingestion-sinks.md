@@ -250,7 +250,7 @@ sink:
 この 8 つは、この sink のものではなく **SDK のもの**です。`sdk.LandingSchema` がそれらを宣言し、
 `sdk.LandingID` が識別子を生成するため、パイプラインは同じテーブルを同じ id で着地させられます。
 定義は 1 つです。2 つあればずれていくからです。
-[SDK のランディングレイアウト](/docs/sdk/#ランディングレイアウト)を参照してください。
+[SDK のランディングレイアウト](/docs/sdk/#the-landing-layout)を参照してください。
 
 **`brevis_` は予約されています。** そのプレフィックスを持つキーが `data` にあると、**イベントごとに**
 拒否されます。さもなければプロデューサーが制御フィールドを偽造でき、偽造された `brevis_received_at` は
@@ -382,12 +382,12 @@ BigQuery で**両方の**形についてそうなっていました。1 行で�
 
 どちらの形にも SDK に相当するものがあり、それは一致するコードではなく同じコードです。
 `sdk.Landing(table, sdk.LandingKey("id"))` は `document` を着地させ、
-[`sdk.LandingColumns()`](/docs/sdk/#2-つの形-レコードを丸ごとまたはフィールドごとに-1-列)を加えると
+[`sdk.LandingColumns()`](/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field)を加えると
 `columns` を着地させます。列も、値も、`brevis_ingestion_id` も同じなので、ストリームはマイグレーションなしで
 gateway とパイプラインの間を移動でき、両者を 1 つのテーブルとして読めます。
 
 パイプラインも、同じ列を同じ方法で増やせます。宛先に
-[`Evolve: sdk.EvolveAdditiveFromPayload`](/docs/sdk/#テーブルにないフィールドが現れたとき)を
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)を
 設定すると、バッチが持つフィールドが、このルール、このコードによって列になります。
 
 
@@ -400,13 +400,13 @@ gateway とパイプラインの間を移動でき、両者を 1 つのテーブ
 **最初のテーブルを作る前に選んでください。** 後から変更すると、8 つの列が追加されて 8 つが放棄されます。
 列を削除するものはないため、あるプレフィックスでレイアウトをすでに持つテーブルは、別のプレフィックスを
 宣言したロードを拒否します。正規化と回避方法は
-[SDK のページ](/docs/sdk/#brevis-プレフィックスは変更できる)を参照してください。
+[SDK のページ](/docs/sdk/#the-brevis-prefix-is-yours-to-change)を参照してください。
 
 **ネストされたオブジェクトのフィールドに、独自の列を持たせることができます。**
 gateway のプロセスで `BREVIS_NORMALIZE_DATA=true` にすると 1 階層がフラット化され、
 `{"name": {"first": "x"}}` は `name_first` として着地します。すべてのストリームがこれを共有するため、
 両方が書き込むかもしれないテーブルについて 2 つの sink が食い違うことはありません。何がリネームされるかは
-[SDK のページ](/docs/sdk/#ネストされたフィールドごとに-1-列)を参照してください。有効にする前に読むべきなのは
+[SDK のページ](/docs/sdk/#one-column-per-nested-field)を参照してください。有効にする前に読むべきなのは
 そちらの半分です。
 
 **BigQuery では、`nationalID` と `nationalId` は 1 つの列です。** BigQuery は列の大文字小文字を畳み込む

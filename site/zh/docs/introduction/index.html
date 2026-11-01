@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
-      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/introduction/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/introduction/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/introduction/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/introduction/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/introduction/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/introduction/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/introduction/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/introduction/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/introduction/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/introduction/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/introduction/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><span>简体中文</span></summary><ul><li><a href="/docs/introduction/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/introduction/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/introduction/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/introduction/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/introduction/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/introduction/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/introduction/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/introduction/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/introduction/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/introduction/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/introduction/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         探索开源项目
@@ -119,17 +119,17 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>简介</h1>
       <p class="doc-desc">brevis.sh 是什么，它解决什么问题，以及它在什么情况下不是合适的选择。</p>
       <p>brevis.sh 是一个<strong>用 Go 编写的数据编排运行时</strong>。一个二进制文件就集成了通常需要四种工具才能完成的工作：声明式转换、workflow 编排、持久化队列、调度器，以及用于操作这一切的界面。</p>
 <p>它以 MIT 许可证开源，项目诞生于 <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a>。</p>
-<h2 id="问题">问题<a class="anchor" href="#问题" aria-label="link">#</a></h2>
+<h2 id="the-problem">问题<a class="anchor" href="#the-problem" aria-label="link">#</a></h2>
 <p>常见的数据技术栈由转换工具、编排器、队列和界面组合而成。每一块都擅长自己的事，但它们之间的集成却成了永久性的工作：四套版本方案、四种配置方式、出错时要查看四个地方。</p>
 <p>这项成本从不出现在架构图上，而是体现在团队的时间里：他们花在维护胶水代码上的时间，本可以用来处理只有他们才懂的业务领域。</p>
-<h2 id="方案">方案<a class="anchor" href="#方案" aria-label="link">#</a></h2>
+<h2 id="the-proposal">方案<a class="anchor" href="#the-proposal" aria-label="link">#</a></h2>
 <p>一个制品，按角色需要选择对应的子命令：</p>
 <div class="code-block" data-code="brevis serve        # API + interface
 brevis scheduler    # materialises schedules and drains the queue
@@ -160,32 +160,32 @@ steps:
     <span class="t-k">image</span>: ghcr.io/example/notify:0.3
     <span class="t-k">run</span>: /notify --channel data
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
-<h2 id="它的不同之处">它的不同之处<a class="anchor" href="#它的不同之处" aria-label="link">#</a></h2>
+<h2 id="what-makes-it-different">它的不同之处<a class="anchor" href="#what-makes-it-different" aria-label="link">#</a></h2>
 <p><strong>每个 step 都在自己的 pod 中运行，使用自己的镜像。</strong> 没有等待任务的通用 worker：任务自带运行时。<code>dbt</code> step 用 dbt 镜像启动；旁边的 Go 抓取器只占 5.8 MB 和 32Mi 内存，而不会继承最大邻居的体积。</p>
 <p><strong>调度器创建 run，队列执行 run。</strong> 两个相互独立的循环，这种分离是刻意的：其中一个宕机不会打断另一个，重新处理过去一个月的数据也不依赖时钟。</p>
 <p><strong>校验不需要数据库。</strong> <code>brevis validate</code> 可以在 CI 中与测试一起运行，因此 YAML 错误会在 pull request 中失败，而不是在集群里失败。</p>
-<h2 id="三个部分刻意分开">三个部分，刻意分开<a class="anchor" href="#三个部分刻意分开" aria-label="link">#</a></h2>
+<h2 id="three-pieces-separate-on-purpose">三个部分，刻意分开<a class="anchor" href="#three-pieces-separate-on-purpose" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>组成部分</th><th>它是什么</th><th>版本</th></tr></thead><tbody><tr><td><strong>engine</strong></td><td><code>brevis</code>，本页所讲的二进制文件：负责编排、调度、执行和运维</td><td><code>0.15</code></td></tr><tr><td><strong>SDK</strong></td><td>一个 Go 模块，用来编写负责抽取和加载的 step</td><td><code>0.66</code></td></tr><tr><td><strong>gateway</strong></td><td>一个 HTTP 端点，用来接收*主动到达*的数据，而不是去抓取数据</td><td><code>0.8</code></td></tr></tbody></table></div>
 <p>版本相互独立，因为成熟度本来就不同。仅仅因为 engine 在那里，就把 gateway 编号为 <code>0.15.3</code>，等于宣称了它并不具备的成熟度，而已发布的版本无法撤回。</p>
 <p>把这三者缝合在一起的是一个数字：<code>ingestion_id</code>，即对 <code>provider|entity|source_key|record_ts</code> 计算的固定 UUID v5。同一条记录，由 <a href="/zh/docs/ingestion/">gateway</a> 落地的行与由 <a href="/zh/docs/sdk/">SDK</a> 抓取器落地的行是*同一行*，两者之间无需对账。</p>
-<h2 id="什么时候-brevissh-不是合适的选择">什么时候 brevis.sh 不是合适的选择<a class="anchor" href="#什么时候-brevissh-不是合适的选择" aria-label="link">#</a></h2>
+<h2 id="when-brevissh-is-not-the-choice">什么时候 brevis.sh 不是合适的选择<a class="anchor" href="#when-brevissh-is-not-the-choice" aria-label="link">#</a></h2>
 <p>记录一个工具不做什么，比记录它做什么更能节省时间：</p>
 <ul><li><strong>你已经在运行 Airflow 或 Dagster，并且用得很满意。</strong> 迁移的成本高于少运维一个二进制文件所节省的成本。</li><li><strong>你的 workflow 与数据无关。</strong> brevis.sh 假定处理的是转换和加载的 DAG；通用编排器更适合你。</li><li><strong>你需要一套现成的 operator 目录。</strong> 这里的 step 就是一个镜像加一条命令。这很简单，也有局限：没有成百上千的集成可以直接拿来用。</li><li><strong>你的团队不使用 Kubernetes，也不打算使用。</strong> 本地模式可以工作，但设计是以 pod 为前提的。</li></ul>
-<h2 id="开放的代码自选参与方式">开放的代码，自选参与方式。<a class="anchor" href="#开放的代码自选参与方式" aria-label="link">#</a></h2>
+<h2 id="open-code-choose-how-to-take-part">开放的代码，自选参与方式。<a class="anchor" href="#open-code-choose-how-to-take-part" aria-label="link">#</a></h2>
 <p>brevis.sh 是 100% 开源的。没有专有许可证，没有受限版本，也不会限制你构建的东西。</p>
-<h3 id="100-开放">100% 开放<a class="anchor" href="#100-开放" aria-label="link">#</a></h3>
+<h3 id="100-open">100% 开放<a class="anchor" href="#100-open" aria-label="link">#</a></h3>
 <p><em>代码 · 开源许可证</em></p>
 <p>阅读、使用、改造并改进运行时，用在你自己的业务中。完整的运行时 · 可审计的代码 · 开放的贡献。</p>
 <p><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">查看仓库</a></p>
-<h3 id="共同构建">共同构建<a class="anchor" href="#共同构建" aria-label="link">#</a></h3>
+<h3 id="build-together">共同构建<a class="anchor" href="#build-together" aria-label="link">#</a></h3>
 <p><em>社区 · 公开的 issue</em> · <strong>主要途径</strong></p>
 <p>参与决定项目走向的讨论。Issue 与提案 · 同行交流 · 公开的路线图。</p>
 <p><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">关注项目</a></p>
-<h3 id="深入学习">深入学习<a class="anchor" href="#深入学习" aria-label="link">#</a></h3>
+<h3 id="learn-deeply">深入学习<a class="anchor" href="#learn-deeply" aria-label="link">#</a></h3>
 <p><em>aretê · 有目标的技术</em></p>
 <p>了解这所将哲学思考与软件工程相结合的学校。原创内容 · 持续学习 · 开放的渠道。</p>
 <p><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">访问 Aretê</a></p>
-<h2 id="接下来去哪里">接下来去哪里<a class="anchor" href="#接下来去哪里" aria-label="link">#</a></h2>
+<h2 id="where-to-go-next">接下来去哪里<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>如果你想</th><th>前往</th></tr></thead><tbody><tr><td>安装并看到它运行</td><td><a href="/zh/docs/installation/">安装</a> 和<a href="/zh/docs/quickstart/">快速开始</a></td></tr><tr><td>了解 workflow 格式</td><td><a href="/zh/docs/workflows/">Workflows</a></td></tr><tr><td>了解架构</td><td><a href="/zh/docs/scheduler-and-queue/">调度器与队列</a></td></tr><tr><td>查看命令和标志列表</td><td><a href="/zh/docs/cli/">CLI</a></td></tr><tr><td>用 Go 编写抓取器</td><td><a href="/zh/docs/sdk/">SDK</a></td></tr><tr><td>把一个值从一个 step 传给下一个</td><td><a href="/zh/docs/context/">step 之间的上下文</a></td></tr><tr><td>用 Python 编写 step</td><td><a href="/zh/docs/libraries/">客户端库</a></td></tr><tr><td>通过 HTTP 接收数据，而不是去抓取</td><td><a href="/zh/docs/ingestion/">摄取</a></td></tr><tr><td>构建仪表盘和告警</td><td><a href="/zh/docs/observability/">可观测性</a></td></tr></tbody></table></div>
 <aside class="admon admon-note"><p class="admon-t">关于名字</p><p><em>Brevis</em> 在拉丁语中是“短、简短”的意思，也是英文 <em>brevity</em> 的词根。它出自塞内卡的 <strong>De Brevitate Vitae</strong>：不是我们的时间太少，而是我们浪费了太多。</p></aside>
 
@@ -201,7 +201,7 @@ steps:
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#问题">问题</a></li><li class="toc-2"><a href="#方案">方案</a></li><li class="toc-2"><a href="#它的不同之处">它的不同之处</a></li><li class="toc-2"><a href="#三个部分刻意分开">三个部分，刻意分开</a></li><li class="toc-2"><a href="#什么时候-brevissh-不是合适的选择">什么时候 brevis.sh 不是合适的选择</a></li><li class="toc-2"><a href="#开放的代码自选参与方式">开放的代码，自选参与方式。</a></li><li class="toc-3"><a href="#100-开放">100% 开放</a></li><li class="toc-3"><a href="#共同构建">共同构建</a></li><li class="toc-3"><a href="#深入学习">深入学习</a></li><li class="toc-2"><a href="#接下来去哪里">接下来去哪里</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-problem">问题</a></li><li class="toc-2"><a href="#the-proposal">方案</a></li><li class="toc-2"><a href="#what-makes-it-different">它的不同之处</a></li><li class="toc-2"><a href="#three-pieces-separate-on-purpose">三个部分，刻意分开</a></li><li class="toc-2"><a href="#when-brevissh-is-not-the-choice">什么时候 brevis.sh 不是合适的选择</a></li><li class="toc-2"><a href="#open-code-choose-how-to-take-part">开放的代码，自选参与方式。</a></li><li class="toc-3"><a href="#100-open">100% 开放</a></li><li class="toc-3"><a href="#build-together">共同构建</a></li><li class="toc-3"><a href="#learn-deeply">深入学习</a></li><li class="toc-2"><a href="#where-to-go-next">接下来去哪里</a></li></ul>
     </aside>
   </main>
 </div>
@@ -221,9 +221,9 @@ steps:
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -246,7 +246,7 @@ steps:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

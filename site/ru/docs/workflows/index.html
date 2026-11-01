@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Перейти к содержимому</a>
+<a class="skip-link" href="#content">Перейти к содержимому</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Основная навигация">
-      <a href="/ru/#ecossistema">Экосистема</a>
+      <a href="/ru/#ecosystem">Экосистема</a>
       <a href="/ru/docs/">Документация</a>
-      <details class="lang-dd"><summary aria-label="Язык: Русский"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Русский</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/workflows/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/workflows/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/workflows/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/workflows/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/workflows/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/workflows/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/workflows/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/workflows/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/workflows/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Язык: Русский"><span>Русский</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/workflows/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/workflows/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/workflows/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/workflows/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/workflows/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/workflows/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/workflows/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/workflows/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/workflows/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open source на GitHub
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Документация</p>
       <h1>Workflows</h1>
       <p class="doc-desc">Полный формат YAML — шаги, зависимости, образы, ресурсы и расписание.</p>
       <p>Workflow — это YAML-файл. Он объявляет <strong>что запускать</strong>, <strong>в каком порядке</strong> и <strong>в каком окружении</strong> — и ничего сверх этого.</p>
-<h2 id="минимальная-структура">Минимальная структура<a class="anchor" href="#минимальная-структура" aria-label="link">#</a></h2>
+<h2 id="minimum-structure">Минимальная структура<a class="anchor" href="#minimum-structure" aria-label="link">#</a></h2>
 <div class="code-block" data-code="name: hello
 steps:
   - id: only
@@ -134,7 +134,7 @@ steps:
   - <span class="t-k">id</span>: only
     <span class="t-k">run</span>: echo done</code></pre></div>
 <p><code>name</code> идентифицирует workflow в базе данных и в интерфейсе. <code>steps</code> — список шагов, у каждого из которых есть уникальный <code>id</code> и <code>run</code>.</p>
-<h3 id="description-для-чего-он-нужен"><code>description</code> — для чего он нужен<a class="anchor" href="#description-для-чего-он-нужен" aria-label="link">#</a></h3>
+<h3 id="description-what-it-is-for"><code>description</code> — для чего он нужен<a class="anchor" href="#description-what-it-is-for" aria-label="link">#</a></h3>
 <p>Необязательное, произвольное и не читаемое ничем в engine:</p>
 <div class="code-block" data-code="name: daily-orders
 description: &gt;
@@ -151,7 +151,7 @@ steps:
     <span class="t-k">run</span>: python fetch.py</code></pre></div>
 <p>Оно появляется в верхней части экрана workflow, над счётчиками и расписанием. Граф уже говорит, что поток <strong>делает</strong>; это единственное место, которое говорит, зачем он существует, а именно это нужно тому, кто открывает его впервые в три часа ночи.</p>
 <p>У workflow без описания там ничего не показывается — не пустой блок, который выглядит как что-то, что не загрузилось.</p>
-<h2 id="порядок-chain-или-dag">Порядок: chain или dag<a class="anchor" href="#порядок-chain-или-dag" aria-label="link">#</a></h2>
+<h2 id="order-chain-or-dag">Порядок: chain или dag<a class="anchor" href="#order-chain-or-dag" aria-label="link">#</a></h2>
 <div class="code-block" data-code="type: chain   # order is the file&#x27;s order
 type: dag     # order comes from depends_on"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">type</span>: chain   <span class="t-c"># order is the file's order</span>
 <span class="t-k">type</span>: dag     <span class="t-c"># order comes from depends_on</span></code></pre></div>
@@ -193,7 +193,7 @@ steps:
     <span class="t-k">depends_on</span>: [extract, validate]</code></pre></div>
 <p>Раннер обходит граф <strong>по уровням</strong>: всё внутри уровня выполняется параллельно, а следующий уровень начинается только после полного завершения предыдущего.</p>
 <aside class="admon admon-warning"><p class="admon-t">Сбой останавливает весь уровень</p><p>Раннер останавливается на <strong>первом</strong> сбое в уровне, не запуская следующий. Продолжение после ошибки дало бы частичный результат, выглядящий законченным.</p></aside>
-<h2 id="расписание">Расписание<a class="anchor" href="#расписание" aria-label="link">#</a></h2>
+<h2 id="schedule">Расписание<a class="anchor" href="#schedule" aria-label="link">#</a></h2>
 <div class="code-block" data-code="schedule: &quot;0 5 * * *&quot;   # five-field cron
 concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">schedule</span>: "0 5 * * *"   <span class="t-c"># five-field cron</span>
 <span class="t-k">concurrency</span>: 1</code></pre></div>
@@ -207,7 +207,7 @@ concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><butto
   <span class="t-k">limit</span>: 1               <span class="t-c"># optional; a group without one means 1</span></code></pre></div>
 <p>Запуски каждого workflow группы учитываются в одном лимите, что бы их ни запустило — расписание, приземление, backfill или щелчок. Запуск, обнаруживший группу заполненной, <strong>ждёт в очереди</strong>; он не пропускается и не падает. Третий workflow, пишущий в те же таблицы, присоединяется, назвав группу. Пока он ждёт, страница запуска сообщает об этом: какая группа, её лимит и какие запуски занимают слоты.</p>
 <ul><li>Все участники объявляют <strong>один и тот же лимит</strong>. <code>validate</code> и <code>publish</code> отклоняют группу, объявленную с 1 в одном файле и с 3 в другом, в том числе относительно участников, которые уже опубликованы.</li><li>Группа сериализует <strong>запуски Brevis</strong>. <code>dbt run</code>, который кто-то запускает на своей машине, не находится в этой очереди и падает так же.</li></ul>
-<h2 id="образ-и-ресурсы">Образ и ресурсы<a class="anchor" href="#образ-и-ресурсы" aria-label="link">#</a></h2>
+<h2 id="image-and-resources">Образ и ресурсы<a class="anchor" href="#image-and-resources" aria-label="link">#</a></h2>
 <div class="code-block" data-code="image: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
 resources:
   cpu: 200m
@@ -238,9 +238,9 @@ resources:
     <span class="t-k">resources</span>: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
 <p>Именно поэтому Go-загрузчик стоит 12 МБ и 32Mi рядом с <code>dbt build</code> на 1,9 ГБ, а не оба платят размер большего. См. <a href="/ru/docs/pod-per-step/">Pod на шаг</a>.</p>
-<h2 id="поля-шага">Поля шага<a class="anchor" href="#поля-шага" aria-label="link">#</a></h2>
+<h2 id="step-fields">Поля шага<a class="anchor" href="#step-fields" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>поле</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>обязательно</strong></td><td>уникален в workflow; имя, показываемое на графе и в журналах</td></tr><tr><td><code>run</code></td><td></td><td>команда</td></tr><tr><td><code>image</code></td><td></td><td>образ шага; без него наследуется образ верхнего уровня</td></tr><tr><td><code>host</code></td><td></td><td>отправить команду на машину, которой engine <strong>не</strong> управляет — альтернатива <code>image</code>, но не дополнение к нему. См. <a href="https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host" target="_blank" rel="noopener"><code>host:</code> в руководстве по Kubernetes</a></td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> запускает без оболочки — обязательно для distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>список <code>id</code>, которые должны завершиться первыми; элемент может быть <code>{step, label}</code></td></tr><tr><td><code>marker</code></td><td><code>false</code></td><td>шаг без команды, для <code>start</code> или <code>end</code></td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> и <code>limits</code> для этого шага</td></tr><tr><td><code>runtime</code>, <code>tools</code></td><td></td><td>язык и инструменты шага — см. <a href="/ru/docs/runtime/">Рантайм шага</a></td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>при каком состоянии его зависимостей шаг запускается — см. ниже</td></tr><tr><td><code>unless_empty</code></td><td></td><td>ключ контекста, который определяет, есть ли что делать — см. ниже</td></tr><tr><td><code>for_each</code></td><td></td><td>ключ контекста со списком; шаг выполняется один раз на элемент — см. ниже</td></tr><tr><td><code>group</code></td><td></td><td>рисует этот шаг внутри именованного сворачиваемого блока — см. ниже</td></tr><tr><td><code>uses</code></td><td></td><td>другой workflow, чьи шаги занимают место этого — см. ниже</td></tr><tr><td><code>on_error</code></td><td></td><td>объявляет о сбоях этого шага — см. ниже</td></tr></tbody></table></div>
-<h2 id="запуск-шага-только-когда-есть-что-делать">Запуск шага только когда есть что делать<a class="anchor" href="#запуск-шага-только-когда-есть-что-делать" aria-label="link">#</a></h2>
+<h2 id="running-a-step-only-when-there-is-something-to-do">Запуск шага только когда есть что делать<a class="anchor" href="#running-a-step-only-when-there-is-something-to-do" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# in extract
 context.set(has_rows=len(rows) &gt; 0)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
@@ -254,15 +254,15 @@ context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
 <p><code>unless_empty</code> называет <strong>ключ</strong>, а не выражение. Шаг решает и публикует ответ; engine читает один ключ и спрашивает, пуст ли он.</p>
 <div class="table-wrap"><table><thead><tr><th>считается пустым</th><th>считается заполненным</th></tr></thead><tbody><tr><td><code>false</code>, <code>0</code>, <code>""</code>, <code>null</code>, <code>[]</code>, <code>{}</code></td><td>всё остальное</td></tr></tbody></table></div>
 <p><code>"false"</code> как <strong>строка</strong> — заполнено. Шаг, опубликовавший эти пять символов, опубликовал нечто, а угадывание, что имелся в виду логический тип, — это то, как у правила появляются мнения, которых автор не видит. Публикуйте настоящий boolean.</p>
-<h3 id="почему-не-выражение">Почему не выражение<a class="anchor" href="#почему-не-выражение" aria-label="link">#</a></h3>
+<h3 id="why-not-an-expression">Почему не выражение<a class="anchor" href="#why-not-an-expression" aria-label="link">#</a></h3>
 <p>Соблазнительный вариант — <code>when: "{{ context.extract.rows &gt; 0 }}"</code>. Мини-язык выражений — это большое обязательство: парсер, система типов, чтобы сказать, что значит <code>&gt;</code> над JSON <code>any</code>, вопрос безопасности, потому что выражение приходит из YAML, написанного кем-то другим, и сообщения об ошибках, указывающие внутрь строки. У каждого оркестратора, где он есть, трекер ошибок полон такого.</p>
 <p>Здесь решение живёт на языке, на котором его автор уже пишет, там, где до него может дотянуться его собственный тестовый фреймворк.</p>
-<h3 id="отсутствующий-ключ-это-сбой-а-не-пустое-значение">Отсутствующий ключ — это сбой, а не пустое значение<a class="anchor" href="#отсутствующий-ключ-это-сбой-а-не-пустое-значение" aria-label="link">#</a></h3>
+<h3 id="a-missing-key-is-a-failure-not-an-empty-value">Отсутствующий ключ — это сбой, а не пустое значение<a class="anchor" href="#a-missing-key-is-a-failure-not-an-empty-value" aria-label="link">#</a></h3>
 <p>Если ключа нет, шаг <strong>падает</strong>, и сообщение называет его рядом с тем, что издатель на самом деле записал:</p>
 <div class="code-block" data-code="step &quot;transform&quot; reads `extract.has_row`, and &quot;extract&quot; published &quot;has_rows&quot; but not &quot;has_row&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"</code></pre></div>
 <p>Альтернатива — читать отсутствующий ключ как «пусто, значит пропустить» — превращает опечатку в шаг, который молча и навсегда перестаёт выполняться, и нигде нет объяснения почему. Это худший исход, который может быть у этой функции.</p>
 <p>Ключ всегда квалифицирован шагом, который его публикует, и этот шаг должен быть одним из тех, от которых зависит данный. Оба условия проверяются при <strong>публикации</strong>: шаг, привязанный к ключу, который он никогда не увидит, пропускался бы вечно, а узнать об этом, когда ночной запуск перестал выполняться, слишком поздно.</p>
-<h2 id="запуск-шага-один-раз-на-элемент">Запуск шага один раз на элемент<a class="anchor" href="#запуск-шага-один-раз-на-элемент" aria-label="link">#</a></h2>
+<h2 id="running-a-step-once-per-element">Запуск шага один раз на элемент<a class="anchor" href="#running-a-step-once-per-element" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# in extract
 context.set(partitions=[&quot;2026-01&quot;, &quot;2026-02&quot;, &quot;2026-03&quot;])"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
@@ -277,20 +277,20 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>переменная</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_MAP_INDEX</code></td><td><code>0</code>, <code>1</code>, <code>2</code> …</td></tr><tr><td><code>BREVIS_MAP_VALUE</code></td><td>элемент</td></tr></tbody></table></div>
 <p>JSON-строка приходит <strong>без кавычек</strong>, поэтому <code>for_each</code> по <code>["2026-01"]</code> передаёт оболочке <code>2026-01</code>, а не <code>"2026-01"</code>. Всё остальное — число, объект, список — приходит как свой JSON.</p>
 <p>Ни одной из этих переменных нет у не размноженного шага. Переменная, которая есть всегда и всегда пуста, приучает того, кто читает окружение, её игнорировать.</p>
-<h3 id="форма-dag-не-меняется">Форма DAG не меняется<a class="anchor" href="#форма-dag-не-меняется" aria-label="link">#</a></h3>
+<h3 id="the-shape-of-the-dag-does-not-change">Форма DAG не меняется<a class="anchor" href="#the-shape-of-the-dag-does-not-change" aria-label="link">#</a></h3>
 <p>Размноженный шаг — по-прежнему один узел с одним набором рёбер. Меняется лишь число строк под ним, поэтому раскладка прежняя, а <code>[3]</code> подсчитывается по этим строкам при чтении — ничего не хранится, поэтому нечего синхронизировать, и неверный счёт не переживёт исправленный запрос.</p>
 <p>Пока экземпляры ещё выполняются, карточка показывает <code>[2/3]</code>.</p>
-<h3 id="один-упавший-экземпляр-роняет-шаг">Один упавший экземпляр роняет шаг<a class="anchor" href="#один-упавший-экземпляр-роняет-шаг" aria-label="link">#</a></h3>
+<h3 id="one-failed-instance-fails-the-step">Один упавший экземпляр роняет шаг<a class="anchor" href="#one-failed-instance-fails-the-step" aria-label="link">#</a></h3>
 <p>Три партиции загружаются, а одна нет — это шаг, не выполнивший свою работу, и шаги ниже это видят. Узел, ставший зелёным потому, что большая часть сработала, — это значок, который лжёт.</p>
 <p><strong>Повторная попытка переделывает только упавшие экземпляры.</strong> Восемнадцать партиций, которые отработали, не перезагружаются из-за того, что сломались две.</p>
-<h3 id="пустой-список-это-skipped-а-не-успех">Пустой список — это <code>skipped</code>, а не успех<a class="anchor" href="#пустой-список-это-skipped-а-не-успех" aria-label="link">#</a></h3>
+<h3 id="an-empty-list-is-skipped-not-success">Пустой список — это <code>skipped</code>, а не успех<a class="anchor" href="#an-empty-list-is-skipped-not-success" aria-label="link">#</a></h3>
 <p>Шаг, ничего не сделавший, потому что делать было нечего, не преуспел в этом. Зелёный узел над нулём экземпляров — именно то, на чём кто-нибудь построит дашборд.</p>
 <p>Значение, которое <strong>не является списком</strong>, приводит к сбою, как и отсутствующий ключ — та же политика, что у <code>unless_empty:</code>, и по той же причине: опечатка, молча породившая ноль экземпляров, навсегда отключила бы шаг.</p>
-<h3 id="разветвление-ограничено-и-ограничение-унаследовано">Разветвление ограничено, и ограничение унаследовано<a class="anchor" href="#разветвление-ограничено-и-ограничение-унаследовано" aria-label="link">#</a></h3>
+<h3 id="the-fan-out-is-bounded-and-the-bound-is-inherited">Разветвление ограничено, и ограничение унаследовано<a class="anchor" href="#the-fan-out-is-bounded-and-the-bound-is-inherited" aria-label="link">#</a></h3>
 <p>Список передаётся в контексте, а у контекста потолок в 4096 байт, идущий от kubelet. Workflow не может запросить десять тысяч pod, не найдя сначала способ сказать об этом в четырёх килобайтах. Это ограничение, которое стоит сохранить, а не обходить.</p>
-<h3 id="что-публикует-размноженный-шаг">Что публикует размноженный шаг<a class="anchor" href="#что-публикует-размноженный-шаг" aria-label="link">#</a></h3>
+<h3 id="what-a-mapped-step-publishes">Что публикует размноженный шаг<a class="anchor" href="#what-a-mapped-step-publishes" aria-label="link">#</a></h3>
 <p>Его вывод записывается в строку каждого экземпляра и <strong>не</strong> виден шагам ниже. Четыре экземпляра, публикующие под именем одного шага, — это четыре значения для одного ключа, и у <code>context.String("load.bucket")</code> нет ответа, который не был бы догадкой. Шаг сообщает об этом в своём журнале, а не отбрасывает тихо.</p>
-<h2 id="группировка-шагов-на-графе">Группировка шагов на графе<a class="anchor" href="#группировка-шагов-на-графе" aria-label="link">#</a></h2>
+<h2 id="grouping-steps-on-the-graph">Группировка шагов на графе<a class="anchor" href="#grouping-steps-on-the-graph" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: extract_orders
     group: sales_data_reporting
@@ -310,7 +310,7 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <p><strong>Только визуально.</strong> TaskGroup в Airflow также <em>добавляют префикс</em> к id внутри себя, так что <code>extract</code> становится <code>sales.extract</code>. Здесь этого нет: префикс изменил бы каждый <code>depends_on</code>, каждый ключ контекста и каждую записанную строку в существующем workflow ради функции, вся ценность которой в том, что большой граф читается лучше. Пространство имён можно добавить позже — это строгое дополнение к существующему.</p>
 <p>Группа — это <strong>метка</strong>, а не контейнер. Шаги сохраняют свои глобальные id, группа может охватывать несколько уровней, и ничто в исполнении не меняется.</p>
 <p>Щелчок по имени группы сворачивает её: её шаги исчезают, а стрелки, пересекавшие границу, указывают на блок.</p>
-<h2 id="повторное-использование-другого-workflow">Повторное использование другого workflow<a class="anchor" href="#повторное-использование-другого-workflow" aria-label="link">#</a></h2>
+<h2 id="reusing-another-workflow">Повторное использование другого workflow<a class="anchor" href="#reusing-another-workflow" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# nightly.yaml
 steps:
   - id: prepare
@@ -339,11 +339,11 @@ steps:
 <p>Они приходят как одна сворачиваемая группа, так что граф показывает то, что сказал файл.</p>
 <p><strong>Раскрывается при публикации, а не запускается во время выполнения.</strong> Шаг, запускавший дочерний <em>запуск</em> и ждавший его, — это дизайн, из-за которого Airflow попадал в взаимную блокировку, а у этого engine тот же ингредиент: потолок pod — это семафор на процесс, так что родитель, держащий слот и ожидающий дочерний запуск, которому нужны слоты из того же пула, зависает — и только под нагрузкой, то есть в продакшене. Один запуск, один граф, один пул.</p>
 <p>Чем приходится жертвовать — дочерний запуск со своим id и своей историей.</p>
-<h3 id="правила">Правила<a class="anchor" href="#правила" aria-label="link">#</a></h3>
+<h3 id="the-rules">Правила<a class="anchor" href="#the-rules" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>дочерний workflow должен быть в <strong>той же публикации</strong></td><td>а не просто уже опубликован</td></tr><tr><td>стрелки</td><td>входящие в шаг становятся входящими в каждый из <strong>корней</strong> дочернего; исходящие из него — исходящими из каждого из его <strong>листьев</strong></td></tr><tr><td><code>image</code>, <code>env</code>, <code>secrets</code>, <code>resources</code> дочернего</td><td>материализуются на каждом шаге, так что он выполняется в том, что сказал его собственный файл</td></tr><tr><td>ключи <code>unless_empty</code> / <code>for_each</code> дочернего</td><td>перемещаются вместе с префиксом</td></tr><tr><td>вложенность</td><td>разворачивается, в глубину</td></tr><tr><td>цикл</td><td>отклоняется при публикации с указанием цепочки</td></tr></tbody></table></div>
 <p><strong>Та же публикация, а не «уже опубликован» — самое важное.</strong> Раскрытие, читающее базу данных, заставило бы <code>brevis validate</code> — который намеренно не обращается к базе — отвечать на другой вопрос, чем <code>brevis publish</code>, и файл, прошедший CI, был бы файлом, провалившим развёртывание.</p>
 <p>Дочерний workflow по-прежнему можно опубликовать отдельно: раскрытие <strong>копирует</strong>, а не потребляет. Шаг не может одновременно иметь <code>uses:</code> и объявлять <code>run:</code>, <code>action:</code> или <code>marker:</code> — это файл, говорящий две вещи.</p>
-<h2 id="как-сказать-что-означает-стрелка">Как сказать, что означает стрелка<a class="anchor" href="#как-сказать-что-означает-стрелка" aria-label="link">#</a></h2>
+<h2 id="saying-what-an-arrow-means">Как сказать, что означает стрелка<a class="anchor" href="#saying-what-an-arrow-means" aria-label="link">#</a></h2>
 <p>Зависимость может нести метку, показываемую на стрелке на графе.</p>
 <div class="code-block" data-code="steps:
   - id: determine_load_type
@@ -374,7 +374,7 @@ steps:
         <span class="t-k">label</span>: changed existing data</code></pre></div>
 <p>Простая форма — <code>depends_on: [extract]</code> — продолжает работать и остаётся обычной. Большинству зависимостей нечего сказать, а метка на каждой стрелке — шум.</p>
 <p>Метки оправдывают себя на <strong>ветвлении</strong>: две стрелки, выходящие из одного шага без подписей, — это схема, чтобы прочитать которую нужно открывать исходник, а граф существует именно для того, чтобы этого избегать.</p>
-<h2 id="шаг-который-ничего-не-делает">Шаг, который ничего не делает<a class="anchor" href="#шаг-который-ничего-не-делает" aria-label="link">#</a></h2>
+<h2 id="a-step-that-does-nothing">Шаг, который ничего не делает<a class="anchor" href="#a-step-that-does-nothing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: start
     marker: true
@@ -391,7 +391,7 @@ steps:
 <p><code>marker: true</code> — это шаг без команды. Он ничего не запускает, мгновенно завершается успешно и появляется на графе.</p>
 <p>Это не украшение. <code>end</code>, зависящий от каждой ветки, превращает вопрос <em>всё ли завершилось?</em> в один узел вместо шести стрелок, за которыми нужно следить, — и он ведёт себя как любой другой шаг, так что <code>end</code> под упавшей веткой <strong>пропускается</strong>, а не зеленеет.</p>
 <p><strong>Шаг без <code>run:</code> и без <code>marker: true</code> по-прежнему отклоняется.</strong> Эти два случая не должны сливаться в один: пустая команда почти всегда ошибка, а <code>marker: true</code> — способ сказать, что так и задумано. Маркер, который к тому же объявляет <code>run:</code>, тоже отклоняется — это файл, говорящий две вещи.</p>
-<h2 id="запуск-шага-только-когда-что-то-упало">Запуск шага только когда что-то упало<a class="anchor" href="#запуск-шага-только-когда-что-то-упало" aria-label="link">#</a></h2>
+<h2 id="running-a-step-only-when-something-failed">Запуск шага только когда что-то упало<a class="anchor" href="#running-a-step-only-when-something-failed" aria-label="link">#</a></h2>
 <p>По умолчанию шаг выполняется, когда всё до него сработало. <code>when:</code> меняет это.</p>
 <div class="code-block" data-code="steps:
   - id: extract
@@ -420,11 +420,11 @@ steps:
     <span class="t-k">when</span>: all_done            <span class="t-c"># runs either way</span></code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>правило</th><th></th></tr></thead><tbody><tr><td><code>all_success</code></td><td>по умолчанию. Всё, от чего зависит этот шаг, завершилось успешно — его <strong>собственные</strong> зависимости, как в Airflow</td></tr><tr><td><code>any_failed</code></td><td>хотя бы один шаг, от которого зависит этот, упал</td></tr><tr><td><code>all_done</code></td><td>всё, от чего зависит этот шаг, завершилось, как бы ни закончилось</td></tr></tbody></table></div>
 <p>Неизвестное правило отклоняется при публикации с указанием допустимых. Иначе нельзя: <code>when: on_failure</code>, прочитанное как «по умолчанию», выполнялось бы при <strong>успехе</strong> — наоборот тому, что написано, и это обнаружилось бы в ту ночь, когда это имело значение.</p>
-<h3 id="шаг-который-не-выполняется-это-skipped">Шаг, который не выполняется, — это <code>skipped</code><a class="anchor" href="#шаг-который-не-выполняется-это-skipped" aria-label="link">#</a></h3>
+<h3 id="a-step-that-does-not-run-is-skipped">Шаг, который не выполняется, — это <code>skipped</code><a class="anchor" href="#a-step-that-does-not-run-is-skipped" aria-label="link">#</a></h3>
 <p>Это отдельное состояние, нарисованное собственным цветом, и оно несёт причину: <em><code>extract</code> был failed</em>. Раньше у шага ниже сбоя вообще не было записи, и экран показывал его ожидающим вечно.</p>
 <p><code>skipped</code> — не сбой и не успех. Шаг, у которого сломался предшественник, не упал — ему просто не дали шанса, — а назвать его успехом значит солгать, и эта ложь дойдёт до статуса самого запуска.</p>
 <p>Правило запуска решает, какие шаги <strong>выполняются</strong>. Оно не решает исход запуска: <code>notify_failure</code>, доставивший своё сообщение, не означает, что пайплайн сработал, и запуск остаётся упавшим.</p>
-<h3 id="all-success-локален-как-в-airflow"><code>all_success</code> локален, как в Airflow<a class="anchor" href="#all-success-локален-как-в-airflow" aria-label="link">#</a></h3>
+<h3 id="all-success-is-local-as-in-airflow"><code>all_success</code> локален, как в Airflow<a class="anchor" href="#all-success-is-local-as-in-airflow" aria-label="link">#</a></h3>
 <p>Правило спрашивает о <strong>собственных</strong> зависимостях шага и больше ни о чём. Сбой в несвязанной ветке не останавливает этот:</p>
 <div class="code-block" data-code="extract_orders ──✕                 (failed)
 extract_users  ──✓── transform_users ──✓     keeps going"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>extract_orders ──✕                 (failed)
@@ -435,7 +435,7 @@ extract_users  ──✓── transform_users ──✓     keeps going</code><
 <ul><li>запуск всё равно <strong>падает</strong> с той же ошибкой;</li><li>граф показывает упавший шаг красным, а каждый пропущенный — своим цветом, и каждый говорит, какой шаг его остановил;</li><li>алерт всё равно уходит, когда запуск сдаётся.</li></ul>
 <p>Частичный результат больше не выглядит законченным, потому что запуск говорит, что это не так.</p>
 <p><strong>От чего отказались</strong>, прямо: несвязанная ветка теперь записывает свои данные в запуске, упавшем в другом месте.</p>
-<h3 id="повторная-попытка-перезапускает-только-упавшее">Повторная попытка перезапускает только упавшее<a class="anchor" href="#повторная-попытка-перезапускает-только-упавшее" aria-label="link">#</a></h3>
+<h3 id="a-retry-re-runs-only-what-failed">Повторная попытка перезапускает только упавшее<a class="anchor" href="#a-retry-re-runs-only-what-failed" aria-label="link">#</a></h3>
 <p>Повторная попытка запуска не переделывает весь граф. Шаг, уже успешно выполнившийся в более ранней попытке <strong>того же запуска</strong>, сохраняет свой результат и не выполняется снова — так же ведёт себя очищенный запуск DAG в Airflow.</p>
 <div class="code-block" data-code="attempt 1   extract ✓    load ✕    report (skipped)
 attempt 2   extract –    load ✓    report ✓            extract is not re-run"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>attempt 1   extract ✓    load ✕    report (skipped)
@@ -443,7 +443,7 @@ attempt 2   extract –    load ✓    report ✓            extract is not re-r
 <p>Он сохраняет свою исходную строку: его длительность, журнал и опубликованное им принадлежат первой попытке, потому что именно тогда была выполнена работа. <strong>Шаг ниже по-прежнему читает то, что тот опубликовал</strong> — контекст запуска хранится, а не перестраивается.</p>
 <p>Важное различие: речь о более ранних попытках <strong>этого</strong> запуска. Шаг, успешный в запуске <em>вчерашнего</em> дня, сегодня выполняется как обычно. (Существует и тот другой вопрос — он говорит SDK, первый ли это раз для шага; см. <code>BREVIS_RUN_FIRST</code>.)</p>
 <p><strong>Пропущенный</strong> шаг не считается урегулированным: он не выполнялся, и повторная попытка решает о нём заново, исходя из исходов новой попытки.</p>
-<h2 id="объявление-о-сбоях-шага">Объявление о сбоях шага<a class="anchor" href="#объявление-о-сбоях-шага" aria-label="link">#</a></h2>
+<h2 id="announcing-a-steps-failures">Объявление о сбоях шага<a class="anchor" href="#announcing-a-steps-failures" aria-label="link">#</a></h2>
 <p>Каждый сбой уже объявляется: при настроенном webhook запуск, который сдаётся, отправляет одно сообщение, без блока, повторяемого в каждом файле. <code>on_error</code> нужен шагу, которому нужно собственное.</p>
 <div class="code-block" data-code="steps:
   - id: fetch_observations
@@ -460,22 +460,22 @@ attempt 2   extract –    load ✓    report ✓            extract is not re-r
 <p><strong><code>when: give_up</code> — значение по умолчанию из-за того, чья это ночь.</strong> Шаг, дважды падающий и проходящий с третьей попытки, при другом значении по умолчанию отправил бы два сообщения, и второе пришло бы после того, как проблема исчезла.</p>
 <p><strong>О шаге, который не падал, никогда не объявляется.</strong> В workflow, где ломается одна ветка, владельца другой ветки не будят.</p>
 <p>Доставка — работа <code>brevis alert</code>: алерт записывается в той же транзакции, что и сбой, поэтому сбой Slack задерживает его, а не теряет.</p>
-<h2 id="теги">Теги<a class="anchor" href="#теги" aria-label="link">#</a></h2>
+<h2 id="tags">Теги<a class="anchor" href="#tags" aria-label="link">#</a></h2>
 <div class="code-block" data-code="tags: [analytics, dbt, daily]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">tags</span>: [analytics, dbt, daily]</code></pre></div>
 <p>Они используются для фильтрации в интерфейсе. На исполнение они не влияют.</p>
-<h2 id="валидация">Валидация<a class="anchor" href="#валидация" aria-label="link">#</a></h2>
+<h2 id="validation">Валидация<a class="anchor" href="#validation" aria-label="link">#</a></h2>
 <p>Валидации не нужна база данных, поэтому она запускается в CI вместе с тестами:</p>
 <div class="code-block" data-code="brevis validate workflows/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">brevis</span> validate workflows/</code></pre></div>
 <div class="code-block" data-code="  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *</code></pre></div>
 <p>Принимает файл или каталог. В каталоге она сопоставляет <code>*.y*ml</code> и сортирует — два запуска дают один и тот же журнал, а разница между двумя развёртываниями не превращается в шум.</p>
-<h2 id="публикация">Публикация<a class="anchor" href="#публикация" aria-label="link">#</a></h2>
+<h2 id="publishing">Публикация<a class="anchor" href="#publishing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis publish workflows/
 brevis publish workflows/ --project acme --prune"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">brevis</span> publish workflows/
 <span class="t-k">brevis</span> publish workflows/ <span class="t-n">--project</span> acme <span class="t-n">--prune</span></code></pre></div>
 <p><code>--prune</code> удаляет из проекта workflow, отсутствующие в опубликованном списке, сохраняя их историю. Это <strong>не</strong> значение по умолчанию по практической причине: <code>publish one-file.yaml</code> не должен удалять остальные сорок восемь только потому, что они не названы в командной строке.</p>
-<h2 id="дальнейшие-шаги">Дальнейшие шаги<a class="anchor" href="#дальнейшие-шаги" aria-label="link">#</a></h2>
+<h2 id="next-steps">Дальнейшие шаги<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ru/docs/parameters/">Параметры</a> — что меняется между двумя запусками</li><li><a href="/ru/docs/scheduler-and-queue/">Планировщик и очередь</a> — как workflow становится исполнением</li><li><a href="/ru/docs/context/">Контекст между шагами</a> — что один шаг сообщает следующему</li></ul>
 
       <nav class="pagers" aria-label="Страницы">
@@ -490,7 +490,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 
     <aside class="toc" aria-label="На этой странице">
       <p class="toc-t">На этой странице</p>
-      <ul><li class="toc-2"><a href="#минимальная-структура">Минимальная структура</a></li><li class="toc-3"><a href="#description-для-чего-он-нужен">description — для чего он нужен</a></li><li class="toc-2"><a href="#порядок-chain-или-dag">Порядок: chain или dag</a></li><li class="toc-2"><a href="#расписание">Расписание</a></li><li class="toc-2"><a href="#образ-и-ресурсы">Образ и ресурсы</a></li><li class="toc-2"><a href="#поля-шага">Поля шага</a></li><li class="toc-2"><a href="#запуск-шага-только-когда-есть-что-делать">Запуск шага только когда есть что делать</a></li><li class="toc-3"><a href="#почему-не-выражение">Почему не выражение</a></li><li class="toc-3"><a href="#отсутствующий-ключ-это-сбой-а-не-пустое-значение">Отсутствующий ключ — это сбой, а не пустое значение</a></li><li class="toc-2"><a href="#запуск-шага-один-раз-на-элемент">Запуск шага один раз на элемент</a></li><li class="toc-3"><a href="#форма-dag-не-меняется">Форма DAG не меняется</a></li><li class="toc-3"><a href="#один-упавший-экземпляр-роняет-шаг">Один упавший экземпляр роняет шаг</a></li><li class="toc-3"><a href="#пустой-список-это-skipped-а-не-успех">Пустой список — это skipped, а не успех</a></li><li class="toc-3"><a href="#разветвление-ограничено-и-ограничение-унаследовано">Разветвление ограничено, и ограничение унаследовано</a></li><li class="toc-3"><a href="#что-публикует-размноженный-шаг">Что публикует размноженный шаг</a></li><li class="toc-2"><a href="#группировка-шагов-на-графе">Группировка шагов на графе</a></li><li class="toc-2"><a href="#повторное-использование-другого-workflow">Повторное использование другого workflow</a></li><li class="toc-3"><a href="#правила">Правила</a></li><li class="toc-2"><a href="#как-сказать-что-означает-стрелка">Как сказать, что означает стрелка</a></li><li class="toc-2"><a href="#шаг-который-ничего-не-делает">Шаг, который ничего не делает</a></li><li class="toc-2"><a href="#запуск-шага-только-когда-что-то-упало">Запуск шага только когда что-то упало</a></li><li class="toc-3"><a href="#шаг-который-не-выполняется-это-skipped">Шаг, который не выполняется, — это skipped</a></li><li class="toc-3"><a href="#all-success-локален-как-в-airflow">all_success локален, как в Airflow</a></li><li class="toc-3"><a href="#повторная-попытка-перезапускает-только-упавшее">Повторная попытка перезапускает только упавшее</a></li><li class="toc-2"><a href="#объявление-о-сбоях-шага">Объявление о сбоях шага</a></li><li class="toc-2"><a href="#теги">Теги</a></li><li class="toc-2"><a href="#валидация">Валидация</a></li><li class="toc-2"><a href="#публикация">Публикация</a></li><li class="toc-2"><a href="#дальнейшие-шаги">Дальнейшие шаги</a></li></ul>
+      <ul><li class="toc-2"><a href="#minimum-structure">Минимальная структура</a></li><li class="toc-3"><a href="#description-what-it-is-for">description — для чего он нужен</a></li><li class="toc-2"><a href="#order-chain-or-dag">Порядок: chain или dag</a></li><li class="toc-2"><a href="#schedule">Расписание</a></li><li class="toc-2"><a href="#image-and-resources">Образ и ресурсы</a></li><li class="toc-2"><a href="#step-fields">Поля шага</a></li><li class="toc-2"><a href="#running-a-step-only-when-there-is-something-to-do">Запуск шага только когда есть что делать</a></li><li class="toc-3"><a href="#why-not-an-expression">Почему не выражение</a></li><li class="toc-3"><a href="#a-missing-key-is-a-failure-not-an-empty-value">Отсутствующий ключ — это сбой, а не пустое значение</a></li><li class="toc-2"><a href="#running-a-step-once-per-element">Запуск шага один раз на элемент</a></li><li class="toc-3"><a href="#the-shape-of-the-dag-does-not-change">Форма DAG не меняется</a></li><li class="toc-3"><a href="#one-failed-instance-fails-the-step">Один упавший экземпляр роняет шаг</a></li><li class="toc-3"><a href="#an-empty-list-is-skipped-not-success">Пустой список — это skipped, а не успех</a></li><li class="toc-3"><a href="#the-fan-out-is-bounded-and-the-bound-is-inherited">Разветвление ограничено, и ограничение унаследовано</a></li><li class="toc-3"><a href="#what-a-mapped-step-publishes">Что публикует размноженный шаг</a></li><li class="toc-2"><a href="#grouping-steps-on-the-graph">Группировка шагов на графе</a></li><li class="toc-2"><a href="#reusing-another-workflow">Повторное использование другого workflow</a></li><li class="toc-3"><a href="#the-rules">Правила</a></li><li class="toc-2"><a href="#saying-what-an-arrow-means">Как сказать, что означает стрелка</a></li><li class="toc-2"><a href="#a-step-that-does-nothing">Шаг, который ничего не делает</a></li><li class="toc-2"><a href="#running-a-step-only-when-something-failed">Запуск шага только когда что-то упало</a></li><li class="toc-3"><a href="#a-step-that-does-not-run-is-skipped">Шаг, который не выполняется, — это skipped</a></li><li class="toc-3"><a href="#all-success-is-local-as-in-airflow">all_success локален, как в Airflow</a></li><li class="toc-3"><a href="#a-retry-re-runs-only-what-failed">Повторная попытка перезапускает только упавшее</a></li><li class="toc-2"><a href="#announcing-a-steps-failures">Объявление о сбоях шага</a></li><li class="toc-2"><a href="#tags">Теги</a></li><li class="toc-2"><a href="#validation">Валидация</a></li><li class="toc-2"><a href="#publishing">Публикация</a></li><li class="toc-2"><a href="#next-steps">Дальнейшие шаги</a></li></ul>
     </aside>
   </main>
 </div>
@@ -510,9 +510,9 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
       <div class="footer-col">
         <h2>проект</h2>
         <ul>
-          <li><a href="/ru/#ecossistema">Экосистема</a></li>
+          <li><a href="/ru/#ecosystem">Экосистема</a></li>
           <li><a href="/ru/docs/philosophy/">Принципы</a></li>
-          <li><a href="/ru/docs/introduction/#открытый-код-выберите-как-участвовать">Open source</a></li>
+          <li><a href="/ru/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/ru/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -535,7 +535,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

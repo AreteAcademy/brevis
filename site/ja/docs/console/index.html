@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
-      <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/console/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/console/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/console/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/console/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/console/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/console/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/console/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/console/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/console/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/console/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/console/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="言語: 日本語"><span>日本語</span></summary><ul><li><a href="/docs/console/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/console/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/console/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/console/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/console/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/console/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/console/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/console/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/console/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/console/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/console/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         オープンソースを見る
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>Console</h1>
@@ -127,25 +127,25 @@
       <p>インターフェースはバイナリに同梱されています。別途インストールして稼働させ続ける必要のある別サービスではありません。成功率、平均所要時間、キュー、試行履歴、そして次に実行される予定のスケジュールを備えています。</p>
 <p>Console は <code>brevis serve</code> とともに、HTTP API と同じポート(<code>BREVIS_HTTP_ADDR</code>、デフォルトは <code>:8080</code>)で起動します。 <a href="/ja/docs/quickstart/">クイックスタート</a>では、<code>localhost:8080</code> で開きます。</p>
 <p>以下の画面は、サンプルデータを使って Console から SVG で再現したものです。 スクリーンショットは使っていません。実際の Console は、本番で顧客のデータを扱っているためです。</p>
-<h2 id="概要">概要<a class="anchor" href="#概要" aria-label="link">#</a></h2>
+<h2 id="overview">概要<a class="anchor" href="#overview" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console.svg" width="1000" height="600" alt="概要画面の Brevis Console: 344 件の run に対する成功率 94.2%、平均所要時間付きの 1 時間あたりの run 数の棒グラフ、分布のリング、実行中のもの、そして次に予定されている run。" loading="lazy"></figure>
 <p>メトリクスとグラフを備えた概要です。成功率、平均所要時間、実行中のもの、次に予定されている run が 1 つの画面に収まっています。</p>
 <h2 id="workflows">Workflows<a class="anchor" href="#workflows" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflows.svg" width="1000" height="600" alt="ワークフロー一覧: 検索、状態とタグによるフィルタ、そして 12 個のワークフロー。それぞれに一時停止の切り替え、cron 式、次回と前回の run、タグ、今すぐ実行するボタンがあります。" loading="lazy"></figure>
 <p>検索、フィルタ、一時停止、実行を備えたワークフロー一覧です。各行に、cron、次回と前回の run、タグがあります。</p>
-<h2 id="1-つのワークフロー">1 つのワークフロー<a class="anchor" href="#1-つのワークフロー" aria-label="link">#</a></h2>
+<h2 id="one-workflow">1 つのワークフロー<a class="anchor" href="#one-workflow" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflow.svg" width="1000" height="600" alt="1 つのワークフローのページ: 4 つのステップ、3 つの依存関係、cron とタグ。パラメータ付きで実行するためのフォーム。176 件の run に対する成功率 96.1%。各ステップの状態付きの DAG。そして 1 年分のカレンダーで、各マスは 1 日を表し、その日の最悪の結果で色が付いています。" loading="lazy"></figure>
 <p>ステップと依存関係、パラメータ付きで実行するためのフォーム、各ステップの状態付きの DAG、そして各日がその日の最悪の結果の色になる 1 年分のカレンダーです。</p>
-<h2 id="実行">実行<a class="anchor" href="#実行" aria-label="link">#</a></h2>
+<h2 id="runs">実行<a class="anchor" href="#runs" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-runs.svg" width="1000" height="600" alt="run の履歴: 1,284 件の run について、状態、ワークフロー、トリガー、属する slot、所要時間、作成時刻を表示しています。どの試行が成功したかを示すものもあります。" loading="lazy"></figure>
 <p>run の履歴で、それぞれの試行も確認できます。状態、ワークフロー、トリガー、run が属する slot、所要時間、作成時刻があります。</p>
-<h2 id="1-つの-run">1 つの run<a class="anchor" href="#1-つの-run" aria-label="link">#</a></h2>
+<h2 id="one-run">1 つの run<a class="anchor" href="#one-run" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-run.svg" width="1000" height="600" alt="完了した run: その状態、トリガー、slot。各ステップのコマンド、イメージ、所要時間付きのグラフ。エンジンがすべての run について算出する 9 つの自動パラメータ(now() の代わりに読む時計、パーティションの日付、試行の開始がどれだけ遅れたか、カバーするウィンドウ)。そして各ステップの出力。" loading="lazy"></figure>
 <p>run の DAG をリアルタイムで表示し、エンジンが算出した自動パラメータも見られます。各ステップのコマンド、イメージ、所要時間付きのグラフと、各ステップの出力があります。</p>
-<h2 id="プロジェクト">プロジェクト<a class="anchor" href="#プロジェクト" aria-label="link">#</a></h2>
+<h2 id="projects">プロジェクト<a class="anchor" href="#projects" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-projects.svg" width="1000" height="600" alt="analytics と platform の 2 つのプロジェクト。それぞれが自分のワークフローの名前空間を持ち、どちらも衝突せずに daily_ingest を持てます。" loading="lazy"></figure>
 <p>プロジェクトがあるため、2 つのチームが 1 つの名前で衝突することはありません。各プロジェクトがワークフローの名前空間を持つので、2 つのプロジェクトがそれぞれ <code>daily_ingest</code> を持てます。</p>
-<h2 id="バイナリに同梱">バイナリに同梱<a class="anchor" href="#バイナリに同梱" aria-label="link">#</a></h2>
+<h2 id="it-ships-in-the-binary">バイナリに同梱<a class="anchor" href="#it-ships-in-the-binary" aria-label="link">#</a></h2>
 <p>フォントとバンドルはバイナリから配信されます。インターネットがなくても動作します。</p>
 
       <nav class="pagers" aria-label="ページ">
@@ -160,7 +160,7 @@
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#概要">概要</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#1-つのワークフロー">1 つのワークフロー</a></li><li class="toc-2"><a href="#実行">実行</a></li><li class="toc-2"><a href="#1-つの-run">1 つの run</a></li><li class="toc-2"><a href="#プロジェクト">プロジェクト</a></li><li class="toc-2"><a href="#バイナリに同梱">バイナリに同梱</a></li></ul>
+      <ul><li class="toc-2"><a href="#overview">概要</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#one-workflow">1 つのワークフロー</a></li><li class="toc-2"><a href="#runs">実行</a></li><li class="toc-2"><a href="#one-run">1 つの run</a></li><li class="toc-2"><a href="#projects">プロジェクト</a></li><li class="toc-2"><a href="#it-ships-in-the-binary">バイナリに同梱</a></li></ul>
     </aside>
   </main>
 </div>
@@ -180,9 +180,9 @@
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -205,7 +205,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

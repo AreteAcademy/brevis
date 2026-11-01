@@ -21,10 +21,15 @@ niemand nachvollziehen kann.
 
 | Variable | Standard | |
 |---|---|---|
-| `BREVIS_ENV` | `local` | `local` loggt als Text und lässt die Oberfläche offen; alles andere verlangt Zugangsdaten und loggt JSON |
+| `BREVIS_ENV` | `production` | `local` loggt als Text und lässt die Oberfläche offen; alles andere, auch wenn die Variable nicht gesetzt ist, verlangt Zugangsdaten und loggt JSON. Setze für die Entwicklung `BREVIS_ENV=local` |
 | `BREVIS_HTTP_ADDR` | `:8080` | Listen-Adresse |
 | `BREVIS_LOG_LEVEL` | `info` | |
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | Ganzzahl; ein nicht numerischer Wert ist ein Startfehler |
+| `BREVIS_DB_MAX_CONNS` | Treiber-Standard, `max(4, CPUs)` | Obergrenze des Postgres-Pools jedes Prozesses; ein nicht numerischer oder negativer Wert ist ein Startfehler |
+| `BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS` | `0` (aus) | nur die Konsole (`brevis serve`): Postgres bricht jedes ihrer Statements ab, das länger läuft, damit eine außer Kontrolle geratene Listenabfrage keine Verbindung blockiert. `30` ist der empfohlene Wert überall dort, wo der Pool Startparameter akzeptiert; standardmäßig aus, weil ein PgBouncer im Transaction-Modus die Verbindung sonst ablehnt. Wird als Startparameter der Verbindung gesendet, daher braucht ein PgBouncer im Transaction-Modus `ignore_startup_parameters = statement_timeout` |
+| `BREVIS_RETENTION_TRIM_DAYS` | `0` (aus) | optionales geplantes Prune, ausgeführt von `brevis scheduler`: leert Log, Phasen und Ausgabe von Runs, die älter als dieser Wert sind. Gleiche Wirkung wie `brevis prune --trim-after`. `0` = der Scheduler räumt nie auf |
+| `BREVIS_RETENTION_PURGE_DAYS` | `0` (nie) | löscht zusätzlich zum vorigen auch Runs, die älter als dieser Wert sind. Muss mindestens dem Trim-Wert entsprechen |
+| `BREVIS_RETENTION_INTERVAL_HOURS` | `24` | wie oft das geplante Prune läuft (einmal beim Start, danach alle N Stunden) |
 | `BREVIS_BRAND_FILE` | `brand.yaml` | Branding; fehlt sie, gilt der Standard |
 | `BREVIS_UI_URL` | — | Basis des Run-Links in Alarmen |
 | `BREVIS_METRICS_ADDR` | — | Port der Prometheus-Metriken; leer = nicht exponiert. Siehe [Observability](/docs/observability/) |
@@ -39,6 +44,12 @@ niemand nachvollziehen kann.
 | `BREVIS_AUTH_SECRET` | 32+ Byte zum Signieren der Sitzung (`openssl rand -base64 48`) |
 
 Alle drei gehören zusammen, oder keine.
+
+| Variable | Standard | |
+|---|---|---|
+| `BREVIS_AUTH_CLIENT_IP_HEADER` | — | Header, den dein Proxy mit der Client-Adresse setzt, z. B. `X-Forwarded-For`. Verwendet wird der **letzte** Eintrag (den dein Proxy angehängt hat). Leer = die Adresse der Verbindung |
+
+Die Anmeldung wird pro Client-Adresse gedrosselt (IPv6 nach ihrem /64): Nach drei Fehlversuchen wird die Adresse 2 Sekunden gesperrt, die Sperre verdoppelt sich bis auf 15 Minuten. **Hinter einem Ingress oder Load Balancer die Variable setzen** (das Helm-Chart tut das, wenn `api.ingress.enabled` aktiv ist; überschreiben mit `auth.clientIPHeader`): Ohne sie teilen sich alle Clients die Adresse des Proxys, sodass eine einzelne Person, die Passwörter errät, alle aussperren würde. In diesem Fall wird die Sperre außerhalb von `BREVIS_ENV=local` auf 30 Sekunden begrenzt, und beim Start wird eine Warnung geloggt. Setze die Variable nur, wenn der Header von einem Proxy geschrieben wird, dem du vertraust, und der Client ihn nicht fälschen kann. Pro Adresse läuft immer nur eine Passwortprüfung gleichzeitig; zwei Personen hinter demselben NAT, die sich in derselben Sekunde anmelden, sehen daher kurz ein 429.
 
 :::danger Halb konfiguriert ist ein Startfehler
 Wer den Benutzernamen eingetragen hat, glaubt, die Tür sei zu. Die Oberfläche

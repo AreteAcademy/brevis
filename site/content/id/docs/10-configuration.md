@@ -20,10 +20,15 @@ tengah jalan adalah proses yang perilakunya tidak dapat direproduksi siapa pun.
 
 | variabel | default | |
 |---|---|---|
-| `BREVIS_ENV` | `local` | `local` mencatat log dalam teks dan membiarkan antarmuka terbuka; selain itu membutuhkan kredensial dan mencatat log JSON |
+| `BREVIS_ENV` | `production` | `local` mencatat log dalam teks dan membiarkan antarmuka terbuka; selain itu, termasuk bila tidak diset, membutuhkan kredensial dan mencatat log JSON. Set `BREVIS_ENV=local` untuk pengembangan |
 | `BREVIS_HTTP_ADDR` | `:8080` | alamat listen |
 | `BREVIS_LOG_LEVEL` | `info` | |
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | integer; nilai non-numerik adalah error boot |
+| `BREVIS_DB_MAX_CONNS` | default driver, `max(4, CPUs)` | batas pool Postgres di tiap proses; nilai non-numerik atau negatif adalah error boot |
+| `BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS` | `0` (mati) | hanya konsol (`brevis serve`): Postgres membatalkan statement-nya yang berjalan lebih lama, sehingga query daftar yang lepas kendali tidak menahan koneksi. `30` adalah nilai yang direkomendasikan di mana pun pool menerima parameter startup; mati secara default karena PgBouncer dalam mode transaction akan menolak koneksi jika tidak. Dikirim sebagai parameter startup koneksi, jadi PgBouncer dalam mode transaction memerlukan `ignore_startup_parameters = statement_timeout` |
+| `BREVIS_RETENTION_TRIM_DAYS` | `0` (mati) | prune terjadwal opt-in, dijalankan oleh `brevis scheduler`: mengosongkan log, fase, dan output run yang lebih lama dari nilai ini. Efeknya sama dengan `brevis prune --trim-after`. `0` = scheduler tidak pernah melakukan prune |
+| `BREVIS_RETENTION_PURGE_DAYS` | `0` (tidak pernah) | bersama nilai di atas, juga menghapus run yang lebih lama dari nilai ini. Harus minimal sama dengan nilai trim |
+| `BREVIS_RETENTION_INTERVAL_HOURS` | `24` | seberapa sering prune terjadwal berjalan (sekali saat start, lalu setiap N jam) |
 | `BREVIS_BRAND_FILE` | `brand.yaml` | branding; tidak ada = default |
 | `BREVIS_UI_URL` | — | basis tautan run di alert |
 | `BREVIS_METRICS_ADDR` | — | port metrik Prometheus; kosong = tidak diekspos. Lihat [Observabilitas](/docs/observability/) |
@@ -38,6 +43,12 @@ tengah jalan adalah proses yang perilakunya tidak dapat direproduksi siapa pun.
 | `BREVIS_AUTH_SECRET` | 32+ byte untuk menandatangani sesi (`openssl rand -base64 48`) |
 
 Ketiganya datang bersama, atau tidak sama sekali.
+
+| variabel | default | |
+|---|---|---|
+| `BREVIS_AUTH_CLIENT_IP_HEADER` | — | header yang diisi proxy Anda dengan alamat klien, mis. `X-Forwarded-For`. Entri **terakhir** yang dipakai (yang ditambahkan proxy Anda). Kosong = alamat koneksi |
+
+Sign-in dibatasi per alamat klien (IPv6 berdasarkan /64-nya): setelah tiga kegagalan, alamat dikunci 2 detik, lalu menggandakan hingga 15 menit. **Di belakang ingress atau load balancer, set variabel ini** (Helm chart melakukannya saat `api.ingress.enabled` aktif; timpa dengan `auth.clientIPHeader`): tanpanya semua klien berbagi alamat proxy, sehingga satu orang yang menebak password akan mengunci semua orang. Dalam kasus itu, di luar `BREVIS_ENV=local`, penguncian dibatasi 30 detik dan peringatan dicatat di log saat boot. Set variabel ini hanya jika header ditulis oleh proxy yang Anda percaya dan tidak dapat dipalsukan klien. Hanya satu pengecekan password yang berjalan per alamat pada satu waktu, jadi dua orang di belakang satu NAT yang sign-in pada detik yang sama mungkin melihat 429 sesaat.
 
 :::danger Setengah terkonfigurasi adalah error boot
 Siapa pun yang mengisi nama pengguna percaya pintunya tertutup. Antarmuka

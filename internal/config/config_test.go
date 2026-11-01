@@ -19,14 +19,14 @@ func TestLoadRequiresDatabaseURL(t *testing.T) {
 
 func TestLoadAppliesTheDefaults(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://u:p@localhost:5432/db")
-	t.Setenv("BREVIS_ENV", "local")
+	t.Setenv("BREVIS_ENV", "")
 
 	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Env != "local" {
-		t.Errorf("Env = %q, wanted local", c.Env)
+	if c.Env != "production" {
+		t.Errorf("Env = %q, wanted production", c.Env)
 	}
 	if c.HTTPAddr != ":8080" {
 		t.Errorf("HTTPAddr = %q, wanted :8080", c.HTTPAddr)
@@ -153,7 +153,11 @@ func TestOutsideLocalACredentialIsRequired(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
 	t.Setenv("BREVIS_ENV", "prod")
 
-	if _, err := Load(); err == nil {
+	c0, err := Load()
+	if err != nil {
+		t.Fatalf("Load must not need a credential (migrate, publish... use it): %v", err)
+	}
+	if c0.RequireConsoleCredential() == nil {
 		t.Fatal("BREVIS_ENV=prod started with no credential")
 	}
 
@@ -180,7 +184,11 @@ func TestOutsideLocalACredentialIsRequired(t *testing.T) {
 func TestUnsetEnvIsProductionAndRefusesWithoutCredential(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
 	t.Setenv("BREVIS_ENV", "")
-	_, err := Load()
+	c, err := Load()
+	if err != nil {
+		t.Fatalf("Load must not need a credential: %v", err)
+	}
+	err = c.RequireConsoleCredential()
 	if err == nil {
 		t.Fatal("an unset BREVIS_ENV started with no credential")
 	}
@@ -198,7 +206,11 @@ func TestUnsetEnvIsProductionAndRefusesWithoutCredential(t *testing.T) {
 func TestLocalStartsWithNoCredential(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
 	t.Setenv("BREVIS_ENV", "local")
-	if _, err := Load(); err != nil {
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.RequireConsoleCredential(); err != nil {
 		t.Fatalf("local should start with no credential: %v", err)
 	}
 }
@@ -290,5 +302,66 @@ func TestHostHandoverIsOnUnlessTurnedOff(t *testing.T) {
 	t.Setenv("BREVIS_HOST_HANDOVER", "false")
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "BREVIS_HOST_HANDOVER") {
 		t.Errorf("BREVIS_HOST_HANDOVER=false loaded (%v); wanted a refusal naming the variable", err)
+	}
+}
+
+func TestLoadPoolAndRetentionSettings(t *testing.T) {
+	t.Setenv("BREVIS_ENV", "local") // an unset one is production, which wants a credential
+	t.Setenv("BREVIS_DATABASE_URL", "postgres://u:p@localhost:5432/db")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.DBMaxConns != 0 || c.ConsoleStatementTimeout != 0 ||
+		c.RetentionTrimAfter != 0 || c.RetentionPurgeAfter != 0 || c.RetentionInterval != 24*time.Hour {
+		t.Errorf("defaults changed: %+v", c)
+	}
+
+	t.Setenv("BREVIS_DB_MAX_CONNS", "20")
+	t.Setenv("BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS", "30")
+	t.Setenv("BREVIS_RETENTION_TRIM_DAYS", "30")
+	t.Setenv("BREVIS_RETENTION_PURGE_DAYS", "365")
+	t.Setenv("BREVIS_RETENTION_INTERVAL_HOURS", "6")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.DBMaxConns != 20 || c.ConsoleStatementTimeout != 30*time.Second ||
+		c.RetentionTrimAfter != 30*24*time.Hour || c.RetentionPurgeAfter != 365*24*time.Hour ||
+		c.RetentionInterval != 6*time.Hour {
+		t.Errorf("parsed wrong: %+v", c)
+	}
+}
+
+func TestLoadRejectsBadPoolAndRetentionSettings(t *testing.T) {
+	// The variable each case's error must name.
+	want := map[string]string{
+		"max conns not a number": "DB_MAX_CONNS",
+		"negative timeout":       "CONSOLE_STATEMENT_TIMEOUT_SECONDS",
+		"purge before trim":      "RETENTION_PURGE_DAYS",
+		"purge without trim":     "RETENTION_PURGE_DAYS",
+		"zero interval":          "RETENTION_INTERVAL_HOURS",
+	}
+	for name, env := range map[string]map[string]string{
+		"max conns not a number": {"BREVIS_DB_MAX_CONNS": "many"},
+		"negative timeout":       {"BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS": "-1"},
+		"purge before trim":      {"BREVIS_RETENTION_TRIM_DAYS": "30", "BREVIS_RETENTION_PURGE_DAYS": "7"},
+		"purge without trim":     {"BREVIS_RETENTION_PURGE_DAYS": "7"},
+		"zero interval":          {"BREVIS_RETENTION_TRIM_DAYS": "30", "BREVIS_RETENTION_INTERVAL_HOURS": "0"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("BREVIS_DATABASE_URL", "postgres://u:p@localhost:5432/db")
+			t.Setenv("BREVIS_ENV", "local") // else the missing-credential error passes every case
+			for k, v := range env {
+				t.Setenv(k, v)
+			}
+			_, err := Load()
+			if err == nil {
+				t.Fatal("loaded; wanted a boot error")
+			}
+			if !strings.Contains(err.Error(), "BREVIS_"+want[name]) {
+				t.Errorf("error %q does not name BREVIS_%s", err, want[name])
+			}
+		})
 	}
 }

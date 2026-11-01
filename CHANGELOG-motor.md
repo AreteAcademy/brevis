@@ -50,6 +50,46 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   service", with its sentence and the way to Workflows.
 - The whole SQL screen is in every language the console speaks.
 
+### Changed: an unset `BREVIS_ENV` is `production` (breaking)
+
+- **A console that forgets `BREVIS_ENV` now refuses to start without a
+  credential**, instead of serving an open console on every interface. Local
+  development sets `BREVIS_ENV=local` (`make up` and the Compose file already
+  do). `brevis-sql-api` and the gateway keep `local` as their default; the
+  three binaries do not yet agree on what "unset" means.
+
+### Fixed: what the audit found in the engine
+
+- **A scheduled slot is no longer lost** when the process dies between
+  creating a run and queueing it: the next cycle finds the run still `created`
+  or `queued` with no queue item and finishes the job (`RunRepo.Stranded`).
+  Manual runs too.
+- **Two processes can no longer exceed a concurrency limit**: `Claim` takes
+  a transaction-scoped advisory lock, so claims take turns across processes.
+- **A step timeout on an agent kills the whole process group** (as the local
+  executor already did), so a grandchild holding the output pipes no longer
+  hangs the step until the lease expires.
+- **A failed outcome write keeps the queue item** and `fail()` is idempotent:
+  a run is no longer left `failed` with no retry, or `queued` for ever with no
+  item, or released in a 200 ms loop.
+- **The sidebar's counts and the Runs queries stay off a full table scan**:
+  the in-flight count is cached for 5 s and counts only the states the partial
+  index covers, the overview chart has a range predicate and explicit UTC
+  buckets, and migration `00032` adds `runs (criado_em DESC, id DESC)`,
+  built concurrently like `00027`: on a large `runs` table it takes a while.
+- **Cross-site requests are refused** (`Sec-Fetch-Site`/`Origin`) for every
+  write and for the "Try it" call, and every response carries
+  `X-Frame-Options: DENY`, `Referrer-Policy: same-origin` and
+  `X-Content-Type-Options: nosniff`. No CSP yet: the layout's inline script and
+  style need nonces first.
+- **Login is throttled**: two password hashes at once, a per-source lockout
+  that doubles up to 15 min, and the typed username is no longer logged.
+  Behind a proxy set `BREVIS_AUTH_CLIENT_IP_HEADER` (see the configuration
+  page) so each client has its own key.
+- **CI runs only what a change touches** (`What changed` job): a docs or site
+  change skips the Go jobs, a change in `sdk/` runs everything that builds
+  against it.
+
 ### Security: the scan's findings, and the vulnerable dependencies
 
 - **`gosec` reads `#nosec`, not `//nolint:gosec`.** Twenty-seven findings were

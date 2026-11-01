@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Перейти к содержимому</a>
+<a class="skip-link" href="#content">Перейти к содержимому</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Основная навигация">
-      <a href="/ru/#ecossistema">Экосистема</a>
+      <a href="/ru/#ecosystem">Экосистема</a>
       <a href="/ru/docs/">Документация</a>
-      <details class="lang-dd"><summary aria-label="Язык: Русский"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Русский</span></summary><ul><li><a href="/docs/scheduler-and-queue/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/scheduler-and-queue/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/scheduler-and-queue/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/scheduler-and-queue/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/scheduler-and-queue/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/scheduler-and-queue/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/scheduler-and-queue/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/scheduler-and-queue/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/scheduler-and-queue/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/scheduler-and-queue/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/scheduler-and-queue/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Язык: Русский"><span>Русский</span></summary><ul><li><a href="/docs/scheduler-and-queue/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/scheduler-and-queue/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/scheduler-and-queue/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/scheduler-and-queue/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/scheduler-and-queue/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/scheduler-and-queue/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/scheduler-and-queue/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/scheduler-and-queue/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/scheduler-and-queue/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/scheduler-and-queue/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/scheduler-and-queue/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open source на GitHub
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Документация</p>
       <h1>Планировщик и очередь</h1>
@@ -142,20 +142,20 @@ creates the Run  ─────────────►  (pending in the dat
                                    walks the graph
                                    executes each step
                                    records state and log</code></pre></div>
-<h2 id="зачем-разделять">Зачем разделять<a class="anchor" href="#зачем-разделять" aria-label="link">#</a></h2>
+<h2 id="why-separate">Зачем разделять<a class="anchor" href="#why-separate" aria-label="link">#</a></h2>
 <p>У единого цикла, который и планирует, и исполняет, есть одно плохое свойство: когда исполнение застревает, вместе с ним останавливается и планирование. Слотов на следующие двенадцать часов попросту не существует, и никто этого не замечает, пока кто-нибудь не начнёт искать данные, которые так и не пришли.</p>
 <p>При разделении:</p>
 <ul><li><strong>планировщик</strong> может упасть, а очередь продолжит разбирать уже созданное;</li><li><strong>очередь</strong> может упасть, а слоты продолжат материализоваться, чтобы исполниться после её возвращения;</li><li><strong>повторная обработка не зависит от часов</strong> — <code>backfill</code> создаёт прошлые запуски тем же путём, каким их создал бы cron.</li></ul>
-<h2 id="процесс">Процесс<a class="anchor" href="#процесс" aria-label="link">#</a></h2>
+<h2 id="the-process">Процесс<a class="anchor" href="#the-process" aria-label="link">#</a></h2>
 <p>Оба цикла находятся в одной команде:</p>
 <div class="code-block" data-code="brevis scheduler --interval 5s --concurrency 4 --max-pods 10"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--interval</span> 5s <span class="t-n">--concurrency</span> 4 <span class="t-n">--max-pods</span> 10</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>флаг</th><th>по умолчанию</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td><code>10s</code></td><td>интервал между циклами планировщика</td></tr><tr><td><code>--concurrency</code></td><td><code>5</code></td><td>одновременные <strong>запуски</strong></td></tr><tr><td><code>--max-pods</code></td><td><code>5</code></td><td>одновременные <strong>шаги</strong> в сумме</td></tr></tbody></table></div>
 <p><code>--concurrency</code> и <code>--max-pods</code> считают разное, и это сделано намеренно: пять запусков по три параллельных шага в каждом дали бы пятнадцать pod, если бы ограничение было только на запуски.</p>
 <aside class="admon admon-note"><p class="admon-t">`serve` не материализует расписания</p><p>Процесс API поднимает тот же планировщик, но <strong>без цикла</strong> — он нужен только для обслуживания ручных запусков из интерфейса, чтобы у правила «планировщик создаёт запуски» оставался единственный владелец. Чтобы расписания срабатывали, рядом должен работать <code>brevis scheduler</code>.</p></aside>
-<h2 id="снимок-определения">Снимок определения<a class="anchor" href="#снимок-определения" aria-label="link">#</a></h2>
+<h2 id="the-definition-snapshot">Снимок определения<a class="anchor" href="#the-definition-snapshot" aria-label="link">#</a></h2>
 <p>Когда планировщик создаёт запуск, он сохраняет <strong>определение workflow внутри запуска</strong>. Исполнение читает этот снимок, а не YAML на диске.</p>
 <p>Причина вполне конкретна: между запуском и исполнением кто-то мог изменить файл и выкатить его. Без снимка запуск, созданный в 05:00 с одним определением, исполнялся бы в 05:02 с другим — и журнал не смог бы объяснить разницу.</p>
-<h2 id="повторные-попытки">Повторные попытки<a class="anchor" href="#повторные-попытки" aria-label="link">#</a></h2>
+<h2 id="retries">Повторные попытки<a class="anchor" href="#retries" aria-label="link">#</a></h2>
 <p>Неудавшийся запуск выполняется <strong>три раза</strong>, причём задержка <strong>удваивается</strong>: со значениями по умолчанию попытки приходятся на <strong>0 с, 30 с и 1 мин 30 с</strong>.</p>
 <div class="code-block" data-code="brevis scheduler --max-attempts 3 --retry-backoff 30s --retry-backoff-max 1h"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--max-attempts</span> 3 <span class="t-n">--retry-backoff</span> 30s <span class="t-n">--retry-backoff-max</span> 1h</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>флаг</th><th>по умолчанию</th><th></th></tr></thead><tbody><tr><td><code>--max-attempts</code></td><td><code>3</code></td><td>попыток на запуск, считая первую</td></tr><tr><td><code>--retry-backoff</code></td><td><code>30s</code></td><td>первая задержка, удваивающаяся с каждой следующей попыткой</td></tr><tr><td><code>--retry-backoff-max</code></td><td><code>1h</code></td><td>потолок этой задержки</td></tr></tbody></table></div>
@@ -170,11 +170,11 @@ creates the Run  ─────────────►  (pending in the dat
 <div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31
 brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31
 <span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
-<div class="code-block" data-code="  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los</code></pre></div>
+<div class="code-block" data-code="  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them</code></pre></div>
 <p>Он <strong>ставит в очередь, но не исполняет.</strong> Исполнение — работа <code>scheduler</code>, то же самое разделение. <code>--to</code> включает весь день целиком.</p>
-<h2 id="запуск-по-приземлению">Запуск по приземлению<a class="anchor" href="#запуск-по-приземлению" aria-label="link">#</a></h2>
+<h2 id="started-by-a-landing">Запуск по приземлению<a class="anchor" href="#started-by-a-landing" aria-label="link">#</a></h2>
 <p>Workflow может запускаться потому, что пришли данные, а не потому, что так сказали часы:</p>
 <div class="code-block" data-code="trigger:
   on_landed:
@@ -187,23 +187,23 @@ brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true">
   <span class="t-k">debounce</span>: 5m</code></pre></div>
 <p>Каждый шаг уже объявляет, что он записал, по каналу, который несёт фазы, — это то, что наполняет <code>/data</code>. Workflow подписывается на одно из этих имён и стартует, когда в него что-то приземляется.</p>
 <p>Завершающий <code>/*</code> подписывает на весь датасет. Он существует для <code>auto_table</code>, которая создаёт таблицу на каждый маршрут: для таблиц, которые никто не объявлял, единственное, что можно назвать, — это датасет. Он совпадает с <code>bronze/orders</code>, но не с <code>bronze_raw/orders</code>.</p>
-<h3 id="окно-и-почему-десять-приземлений-это-один-запуск">Окно, и почему десять приземлений — это один запуск<a class="anchor" href="#окно-и-почему-десять-приземлений-это-один-запуск" aria-label="link">#</a></h3>
+<h3 id="the-window-and-why-ten-landings-are-one-run">Окно, и почему десять приземлений — это один запуск<a class="anchor" href="#the-window-and-why-ten-landings-are-one-run" aria-label="link">#</a></h3>
 <p><code>debounce</code> схлопывает всплеск. Десять таблиц, приземлившихся в течение пяти минут, запускают <strong>один</strong> запуск, а не десять, и запуск сообщает, какие именно:</p>
 <div class="code-block" data-code="BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items</code></pre></div>
 <p>Точный список также лежит в <code>BREVIS_AUTO_PARAMS</code> в виде JSON — читайте его, если в целевом имени может оказаться запятая.</p>
 <p>Окно отсчитывается от <strong>момента, когда engine зафиксировал приземление</strong>, а не от момента, который сообщил шаг. Шаг, сообщающий время начала своего запроса, говорит нечто верное и устаревшее, и одни неверные часы иначе разделили бы всплеск на два запуска.</p>
 <p>Если опустить <code>debounce</code>, каждое приземление запускает запуск.</p>
-<h3 id="чего-он-не-сделает">Чего он не сделает<a class="anchor" href="#чего-он-не-сделает" aria-label="link">#</a></h3>
+<h3 id="what-it-will-not-do">Чего он не сделает<a class="anchor" href="#what-it-will-not-do" aria-label="link">#</a></h3>
 <p><strong>Workflow никогда не запускается собственной записью.</strong> Engine отбрасывает приземление, автором которого является подписанный workflow, и записывает причину в журнал — иначе workflow, читающий и пишущий одну и ту же таблицу, бесконечно запускал бы сам себя.</p>
 <p>Отказ происходит <strong>в момент срабатывания</strong>, а не при проверке файла, и это ограничение, а не недосмотр: <code>brevis validate</code> читает файлы, а ни в одном файле не объявлено, что пишет шаг. Целевое хранилище определяется подключением, а не YAML. Поэтому <code>validate</code> пропускает workflow, который во время выполнения будет отклонён, каждый раз, с причиной в журнале.</p>
 <p><strong>Первый цикл ничего не запускает.</strong> Триггер начинает отсчёт с момента, когда он включился, как расписание — иначе публикация триггера запустила бы по запуску на каждое приземление за всю историю каталога.</p>
-<h2 id="алерты">Алерты<a class="anchor" href="#алерты" aria-label="link">#</a></h2>
+<h2 id="alerts">Алерты<a class="anchor" href="#alerts" aria-label="link">#</a></h2>
 <div class="code-block" data-code="export BREVIS_SLACK_WEBHOOK=&#x27;https://hooks.slack.com/services/...&#x27;
 export BREVIS_UI_URL=&#x27;https://brevis.example.com&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
 export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code></pre></div>
 <p>Без webhook процесс при старте предупреждает, что о сбоях сообщаться не будет. Установка, которая падает молча, обычно обнаруживается клиентом, а не командой.</p>
 <p><code>BREVIS_UI_URL</code> формирует ссылку на запуск внутри алерта — без неё алерт говорит, что упало, но заставляет читателя искать запуск вручную.</p>
-<h2 id="дальнейшие-шаги">Дальнейшие шаги<a class="anchor" href="#дальнейшие-шаги" aria-label="link">#</a></h2>
+<h2 id="next-steps">Дальнейшие шаги<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ru/docs/pod-per-step/">Pod на шаг</a> — где на самом деле выполняется каждый шаг</li><li><a href="/ru/docs/cli/">CLI</a> — все флаги <code>scheduler</code> и <code>backfill</code></li></ul>
 
       <nav class="pagers" aria-label="Страницы">
@@ -218,7 +218,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
     <aside class="toc" aria-label="На этой странице">
       <p class="toc-t">На этой странице</p>
-      <ul><li class="toc-2"><a href="#зачем-разделять">Зачем разделять</a></li><li class="toc-2"><a href="#процесс">Процесс</a></li><li class="toc-2"><a href="#снимок-определения">Снимок определения</a></li><li class="toc-2"><a href="#повторные-попытки">Повторные попытки</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#запуск-по-приземлению">Запуск по приземлению</a></li><li class="toc-3"><a href="#окно-и-почему-десять-приземлений-это-один-запуск">Окно, и почему десять приземлений — это один запуск</a></li><li class="toc-3"><a href="#чего-он-не-сделает">Чего он не сделает</a></li><li class="toc-2"><a href="#алерты">Алерты</a></li><li class="toc-2"><a href="#дальнейшие-шаги">Дальнейшие шаги</a></li></ul>
+      <ul><li class="toc-2"><a href="#why-separate">Зачем разделять</a></li><li class="toc-2"><a href="#the-process">Процесс</a></li><li class="toc-2"><a href="#the-definition-snapshot">Снимок определения</a></li><li class="toc-2"><a href="#retries">Повторные попытки</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#started-by-a-landing">Запуск по приземлению</a></li><li class="toc-3"><a href="#the-window-and-why-ten-landings-are-one-run">Окно, и почему десять приземлений — это один запуск</a></li><li class="toc-3"><a href="#what-it-will-not-do">Чего он не сделает</a></li><li class="toc-2"><a href="#alerts">Алерты</a></li><li class="toc-2"><a href="#next-steps">Дальнейшие шаги</a></li></ul>
     </aside>
   </main>
 </div>
@@ -238,9 +238,9 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
       <div class="footer-col">
         <h2>проект</h2>
         <ul>
-          <li><a href="/ru/#ecossistema">Экосистема</a></li>
+          <li><a href="/ru/#ecosystem">Экосистема</a></li>
           <li><a href="/ru/docs/philosophy/">Принципы</a></li>
-          <li><a href="/ru/docs/introduction/#открытый-код-выберите-как-участвовать">Open source</a></li>
+          <li><a href="/ru/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/ru/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -263,7 +263,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

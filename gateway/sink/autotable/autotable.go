@@ -309,6 +309,8 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 		// write it again (append would duplicate it). A single-table batch
 		// never lands without succeeding, so it never gets here.
 		if len(tables) > 1 && r.wasWritten(ctx, table) {
+			// Metric only: an earlier attempt may have written fewer rows
+			// (merge dedup), and the real count is not kept. Do not "fix".
 			wrote += int64(len(groups[table]))
 			continue
 		}

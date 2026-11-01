@@ -11,7 +11,7 @@ workers são papéis do mesmo sistema, e um binário só mantém uma versão, um
 imagem e um caminho de build.
 
 ```
-brevis [comando] [flags]
+brevis [command] [flags]
 ```
 
 | comando | banco | credencial fora de `local` | papel |
@@ -110,8 +110,8 @@ está esperando uma mensagem que não vem.
 Manda o resumo periódico do que rodou.
 
 ```bash
-brevis report --window 168h              # envia
-brevis report --window 168h --dry-run    # imprime, não envia
+brevis report --window 168h              # sends it
+brevis report --window 168h --dry-run    # prints it, sends nothing
 ```
 
 | flag | tipo | padrão | |
@@ -144,9 +144,9 @@ O `deployments/kubernetes/report.yaml` roda isso toda semana.
 ## migrate
 
 ```bash
-brevis migrate up      # aplica o que falta
-brevis migrate down    # desfaz a última
-brevis migrate status  # mostra o estado
+brevis migrate up      # applies what is missing
+brevis migrate down    # reverts the last one
+brevis migrate status  # shows the state
 ```
 
 Aceita exatamente um argumento. As migrations estão embutidas no binário e são
@@ -226,7 +226,7 @@ Materializa slots passados de um workflow já publicado. **Enfileira, não
 executa.**
 
 ```bash
-brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true
+brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true
 ```
 
 | flag | | |
@@ -264,7 +264,7 @@ Como um gateway aparece no `/data`: a configuração dele, publicada como ato
 deliberado — nunca o tráfego, e nunca em tempo de execução.
 
 ```bash
-gateway describe gateway.yaml > manifest.json   # o binário do próprio gateway
+gateway describe gateway.yaml > manifest.json   # the gateway's own binary
 brevis gateway publish manifest.json
 brevis gateway unpublish events_gateway
 ```
@@ -278,7 +278,7 @@ Como um `brevis-sql-api` aparece em Data → Endpoints: o que cada endpoint
 recebe e lê, publicado como ato deliberado — nunca o tráfego.
 
 ```bash
-brevis-sql-api describe --config api.yaml --out manifest.json   # o binário da própria API
+brevis-sql-api describe --config api.yaml --out manifest.json   # the API's own binary
 brevis endpoints publish manifest.json
 brevis endpoints unpublish metrics-api
 ```
@@ -299,9 +299,9 @@ Aplica a política de retenção. É a **única** coisa no Brevis que apaga algu
 coisa, e não roda sozinha — quem agenda é o operador.
 
 ```bash
-brevis prune --dry-run          # o que sairia, sem mudar nada
+brevis prune --dry-run          # what would go, changing nothing
 brevis prune
-brevis prune --purge-after 0    # só enxuga, nunca apaga um run
+brevis prune --purge-after 0    # trim only, never delete a run
 ```
 
 | flag | padrão | |
@@ -320,9 +320,9 @@ brevis brand brand.yaml
 ```
 
 ```
-  ok    Brevis · Orquestração
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+  ok    Brevis · Orchestration
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis
 ```
 

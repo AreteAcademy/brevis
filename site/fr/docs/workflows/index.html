@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Aller au contenu</a>
+<a class="skip-link" href="#content">Aller au contenu</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigation principale">
-      <a href="/fr/#ecossistema">Écosystème</a>
+      <a href="/fr/#ecosystem">Écosystème</a>
       <a href="/fr/docs/">Documentation</a>
-      <details class="lang-dd"><summary aria-label="Langue: Français"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Français</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/workflows/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/workflows/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/workflows/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/workflows/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/workflows/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/workflows/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/workflows/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/workflows/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/workflows/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Langue: Français"><span>Français</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/workflows/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/workflows/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/workflows/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/workflows/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/workflows/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/workflows/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/workflows/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/workflows/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/workflows/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Explorer l&#x27;open source
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentation</p>
       <h1>Workflows</h1>
       <p class="doc-desc">Le format YAML complet — steps, dépendances, images, ressources et planification.</p>
       <p>Un workflow est un fichier YAML. Il déclare <strong>ce qu'il faut exécuter</strong>, <strong>dans quel ordre</strong> et <strong>avec quel runtime</strong> — et rien d'autre.</p>
-<h2 id="structure-minimale">Structure minimale<a class="anchor" href="#structure-minimale" aria-label="link">#</a></h2>
+<h2 id="minimum-structure">Structure minimale<a class="anchor" href="#minimum-structure" aria-label="link">#</a></h2>
 <div class="code-block" data-code="name: hello
 steps:
   - id: only
@@ -134,7 +134,7 @@ steps:
   - <span class="t-k">id</span>: only
     <span class="t-k">run</span>: echo done</code></pre></div>
 <p><code>name</code> identifie le workflow dans la base et dans l'interface. <code>steps</code> est la liste des steps, chacun avec un <code>id</code> unique et un <code>run</code>.</p>
-<h3 id="description-a-quoi-il-sert"><code>description</code> — à quoi il sert<a class="anchor" href="#description-a-quoi-il-sert" aria-label="link">#</a></h3>
+<h3 id="description-what-it-is-for"><code>description</code> — à quoi il sert<a class="anchor" href="#description-what-it-is-for" aria-label="link">#</a></h3>
 <p>Facultatif, de forme libre, et lu par rien dans le moteur :</p>
 <div class="code-block" data-code="name: daily-orders
 description: &gt;
@@ -151,7 +151,7 @@ steps:
     <span class="t-k">run</span>: python fetch.py</code></pre></div>
 <p>Il apparaît en haut de l'écran du workflow, au-dessus des compteurs et de la planification. Le graphe dit déjà ce qu'un flux <strong>fait</strong> ; c'est le seul endroit qui dit pourquoi il existe, ce dont a réellement besoin la personne qui l'ouvre pour la première fois à trois heures du matin.</p>
 <p>Un workflow sans description n'affiche rien à cet endroit — pas un bloc vide, qui se lit comme quelque chose qui n'a pas réussi à se charger.</p>
-<h2 id="ordre-chain-ou-dag">Ordre : chain ou dag<a class="anchor" href="#ordre-chain-ou-dag" aria-label="link">#</a></h2>
+<h2 id="order-chain-or-dag">Ordre : chain ou dag<a class="anchor" href="#order-chain-or-dag" aria-label="link">#</a></h2>
 <div class="code-block" data-code="type: chain   # order is the file&#x27;s order
 type: dag     # order comes from depends_on"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">type</span>: chain   <span class="t-c"># order is the file's order</span>
 <span class="t-k">type</span>: dag     <span class="t-c"># order comes from depends_on</span></code></pre></div>
@@ -193,7 +193,7 @@ steps:
     <span class="t-k">depends_on</span>: [extract, validate]</code></pre></div>
 <p>Le runner parcourt le graphe <strong>par niveaux</strong> : tout ce qui se trouve dans un niveau s'exécute en parallèle, et le niveau suivant ne démarre que lorsque le précédent est entièrement terminé.</p>
 <aside class="admon admon-warning"><p class="admon-t">Un échec arrête tout le niveau</p><p>Le runner s'arrête au <strong>premier</strong> échec d'un niveau, sans démarrer le suivant. Continuer après une erreur produirait un résultat partiel qui a l'air complet.</p></aside>
-<h2 id="planification">Planification<a class="anchor" href="#planification" aria-label="link">#</a></h2>
+<h2 id="schedule">Planification<a class="anchor" href="#schedule" aria-label="link">#</a></h2>
 <div class="code-block" data-code="schedule: &quot;0 5 * * *&quot;   # five-field cron
 concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">schedule</span>: "0 5 * * *"   <span class="t-c"># five-field cron</span>
 <span class="t-k">concurrency</span>: 1</code></pre></div>
@@ -207,7 +207,7 @@ concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><butto
   <span class="t-k">limit</span>: 1               <span class="t-c"># optional; a group without one means 1</span></code></pre></div>
 <p>Les runs de tous les workflows du groupe comptent pour une seule limite, quoi qu'il les ait déclenchés — la planification, un atterrissage, un backfill ou un clic. Un run qui trouve le groupe plein <strong>attend dans la file</strong> ; il n'est pas ignoré et n'échoue pas. Un troisième workflow qui écrit les mêmes tables le rejoint en nommant le groupe. Pendant l'attente, la page du run l'indique : quel groupe, sa limite, et quels runs occupent les slots.</p>
 <ul><li>Chaque membre déclare la <strong>même limite</strong>. <code>validate</code> et <code>publish</code> refusent un groupe déclaré avec 1 dans un fichier et 3 dans un autre, y compris face à des membres déjà publiés.</li><li>Un groupe sérialise les <strong>runs Brevis</strong>. Un <code>dbt run</code> lancé par quelqu'un sur sa propre machine n'est pas dans cette file, et échoue de la même façon.</li></ul>
-<h2 id="image-et-ressources">Image et ressources<a class="anchor" href="#image-et-ressources" aria-label="link">#</a></h2>
+<h2 id="image-and-resources">Image et ressources<a class="anchor" href="#image-and-resources" aria-label="link">#</a></h2>
 <div class="code-block" data-code="image: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
 resources:
   cpu: 200m
@@ -238,9 +238,9 @@ resources:
     <span class="t-k">resources</span>: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
 <p>C'est ce qui permet à un fetcher Go de coûter 12 Mo et 32Mi à côté d'un <code>dbt build</code> de 1,9 Go, au lieu que les deux paient la taille du plus gros. Voir <a href="/fr/docs/pod-per-step/">Un pod par step</a>.</p>
-<h2 id="champs-dun-step">Champs d'un step<a class="anchor" href="#champs-dun-step" aria-label="link">#</a></h2>
+<h2 id="step-fields">Champs d'un step<a class="anchor" href="#step-fields" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>champ</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>requis</strong></td><td>unique dans le workflow ; le nom affiché dans le graphe et les logs</td></tr><tr><td><code>run</code></td><td></td><td>la commande</td></tr><tr><td><code>image</code></td><td></td><td>l'image du step ; sans elle, hérite de celle du niveau supérieur</td></tr><tr><td><code>host</code></td><td></td><td>envoie la commande à une machine que le moteur ne gère <strong>pas</strong> — une alternative à <code>image</code>, jamais un complément. Voir <a href="https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host" target="_blank" rel="noopener"><code>host:</code> dans le guide Kubernetes</a></td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> exécute sans shell — requis sur distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>liste d'<code>id</code> qui doivent se terminer avant ; une entrée peut être <code>{step, label}</code></td></tr><tr><td><code>marker</code></td><td><code>false</code></td><td>un step sans commande, pour un <code>start</code> ou un <code>end</code></td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> et <code>limits</code> pour ce step</td></tr><tr><td><code>runtime</code>, <code>tools</code></td><td></td><td>le langage et les outils du step — voir <a href="/fr/docs/runtime/">Runtime d'un step</a></td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>sous quel état de ses dépendances ce step s'exécute — voir ci-dessous</td></tr><tr><td><code>unless_empty</code></td><td></td><td>une clé de contexte qui décide s'il y a quelque chose à faire — voir ci-dessous</td></tr><tr><td><code>for_each</code></td><td></td><td>une clé de contexte contenant une liste ; le step s'exécute une fois par élément — voir ci-dessous</td></tr><tr><td><code>group</code></td><td></td><td>dessine ce step dans une boîte nommée et repliable — voir ci-dessous</td></tr><tr><td><code>uses</code></td><td></td><td>un autre workflow dont les steps prennent la place de celui-ci — voir ci-dessous</td></tr><tr><td><code>on_error</code></td><td></td><td>annonce les échecs de ce step — voir ci-dessous</td></tr></tbody></table></div>
-<h2 id="executer-un-step-seulement-quand-il-y-a-quelque-chose-a-faire">Exécuter un step seulement quand il y a quelque chose à faire<a class="anchor" href="#executer-un-step-seulement-quand-il-y-a-quelque-chose-a-faire" aria-label="link">#</a></h2>
+<h2 id="running-a-step-only-when-there-is-something-to-do">Exécuter un step seulement quand il y a quelque chose à faire<a class="anchor" href="#running-a-step-only-when-there-is-something-to-do" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# in extract
 context.set(has_rows=len(rows) &gt; 0)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
@@ -254,15 +254,15 @@ context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
 <p><code>unless_empty</code> nomme une <strong>clé</strong>, pas une expression. Le step décide et publie la réponse ; le moteur lit une clé et demande si elle est vide.</p>
 <div class="table-wrap"><table><thead><tr><th>compte comme vide</th><th>compte comme présent</th></tr></thead><tbody><tr><td><code>false</code>, <code>0</code>, <code>""</code>, <code>null</code>, <code>[]</code>, <code>{}</code></td><td>tout le reste</td></tr></tbody></table></div>
 <p><code>"false"</code> comme <strong>chaîne</strong> est présent. Un step qui a publié ces cinq caractères a publié quelque chose, et deviner qu'il voulait dire un booléen, c'est ainsi qu'une règle se met à avoir des opinions que son auteur ne voit pas. Publiez un vrai booléen.</p>
-<h3 id="pourquoi-pas-une-expression">Pourquoi pas une expression<a class="anchor" href="#pourquoi-pas-une-expression" aria-label="link">#</a></h3>
+<h3 id="why-not-an-expression">Pourquoi pas une expression<a class="anchor" href="#why-not-an-expression" aria-label="link">#</a></h3>
 <p>La conception tentante est <code>when: "{{ context.extract.rows &gt; 0 }}"</code>. Un mini-langage d'expressions est un engagement considérable : un parseur, un système de types pour dire ce que <code>&gt;</code> signifie sur un <code>any</code> JSON, un volet sécurité parce que l'expression sort d'un YAML écrit par quelqu'un d'autre, et des messages d'erreur qui pointent à l'intérieur d'une chaîne. Tous les orchestrateurs qui en ont un ont un bug tracker plein de cela.</p>
 <p>Ici, la décision vit dans le langage que son auteur écrit déjà, là où son propre framework de test peut l'atteindre.</p>
-<h3 id="une-cle-manquante-est-un-echec-pas-une-valeur-vide">Une clé manquante est un échec, pas une valeur vide<a class="anchor" href="#une-cle-manquante-est-un-echec-pas-une-valeur-vide" aria-label="link">#</a></h3>
+<h3 id="a-missing-key-is-a-failure-not-an-empty-value">Une clé manquante est un échec, pas une valeur vide<a class="anchor" href="#a-missing-key-is-a-failure-not-an-empty-value" aria-label="link">#</a></h3>
 <p>Si la clé n'est pas là, le step <strong>échoue</strong> et le message la nomme à côté de ce que le publieur a réellement écrit :</p>
 <div class="code-block" data-code="step &quot;transform&quot; reads `extract.has_row`, and &quot;extract&quot; published &quot;has_rows&quot; but not &quot;has_row&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"</code></pre></div>
 <p>L'alternative — lire une clé manquante comme « vide, donc on saute » — transforme une faute de frappe en un step qui cesse de s'exécuter en silence et pour toujours, sans que rien n'indique pourquoi. C'est le pire résultat que cette fonctionnalité puisse avoir.</p>
 <p>La clé est toujours qualifiée par le step qui la publie, et ce step doit être l'un de ceux dont celui-ci dépend. Les deux sont refusés à la <strong>publication</strong> : un step conditionné par une clé qu'il ne peut jamais voir serait sauté pour toujours, et le découvrir quand un traitement nocturne cesse de tourner est trop tard.</p>
-<h2 id="executer-un-step-une-fois-par-element">Exécuter un step une fois par élément<a class="anchor" href="#executer-un-step-une-fois-par-element" aria-label="link">#</a></h2>
+<h2 id="running-a-step-once-per-element">Exécuter un step une fois par élément<a class="anchor" href="#running-a-step-once-per-element" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# in extract
 context.set(partitions=[&quot;2026-01&quot;, &quot;2026-02&quot;, &quot;2026-03&quot;])"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
@@ -277,20 +277,20 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>variable</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_MAP_INDEX</code></td><td><code>0</code>, <code>1</code>, <code>2</code> …</td></tr><tr><td><code>BREVIS_MAP_VALUE</code></td><td>l'élément</td></tr></tbody></table></div>
 <p>Une chaîne JSON arrive <strong>sans ses guillemets</strong> : <code>for_each</code> sur <code>["2026-01"]</code> transmet à un shell <code>2026-01</code> et non <code>"2026-01"</code>. Tout le reste — un nombre, un objet, une liste — arrive sous forme de son JSON.</p>
 <p>Aucune des deux variables n'existe sur un step non mappé. Une variable toujours présente et toujours vide apprend à celui qui lit l'environnement à l'ignorer.</p>
-<h3 id="la-forme-du-dag-ne-change-pas">La forme du DAG ne change pas<a class="anchor" href="#la-forme-du-dag-ne-change-pas" aria-label="link">#</a></h3>
+<h3 id="the-shape-of-the-dag-does-not-change">La forme du DAG ne change pas<a class="anchor" href="#the-shape-of-the-dag-does-not-change" aria-label="link">#</a></h3>
 <p>Un step mappé reste un nœud avec un seul jeu d'arêtes. Seul le nombre de lignes en dessous varie : la disposition est donc celle de toujours et le <code>[3]</code> est compté à partir de ces lignes à la lecture — rien n'est stocké, donc rien à garder synchronisé, et un compte erroné ne peut pas survivre à une requête corrigée.</p>
 <p>Tant que des instances sont en cours, la carte affiche <code>[2/3]</code>.</p>
-<h3 id="une-instance-en-echec-fait-echouer-le-step">Une instance en échec fait échouer le step<a class="anchor" href="#une-instance-en-echec-fait-echouer-le-step" aria-label="link">#</a></h3>
+<h3 id="one-failed-instance-fails-the-step">Une instance en échec fait échouer le step<a class="anchor" href="#one-failed-instance-fails-the-step" aria-label="link">#</a></h3>
 <p>Trois partitions qui se chargent et une qui ne le fait pas, c'est un step qui n'a pas fait son travail, et les steps en dessous le voient. Un nœud qui devient vert parce que la plupart a fonctionné est un badge qui ment.</p>
 <p><strong>Une nouvelle tentative ne refait que les instances en échec.</strong> Dix-huit partitions qui ont fonctionné ne sont pas rechargées parce que deux ont cassé.</p>
-<h3 id="une-liste-vide-est-skipped-pas-un-succès">Une liste vide est <code>skipped</code>, pas un succès<a class="anchor" href="#une-liste-vide-est-skipped-pas-un-succès" aria-label="link">#</a></h3>
+<h3 id="an-empty-list-is-skipped-not-success">Une liste vide est <code>skipped</code>, pas un succès<a class="anchor" href="#an-empty-list-is-skipped-not-success" aria-label="link">#</a></h3>
 <p>Un step qui n'a rien fait parce qu'il n'y avait rien à faire n'a pas réussi à le faire. Un nœud vert au-dessus de zéro instance est exactement le genre de chose sur lequel quelqu'un construit un tableau de bord.</p>
 <p>Une valeur qui <strong>n'est pas une liste</strong> échoue, tout comme une clé absente — la même politique que <code>unless_empty:</code>, et pour la même raison : une faute de frappe qui produirait silencieusement zéro instance désactiverait le step pour toujours.</p>
-<h3 id="le-fan-out-est-borne-et-la-borne-est-heritee">Le fan-out est borné, et la borne est héritée<a class="anchor" href="#le-fan-out-est-borne-et-la-borne-est-heritee" aria-label="link">#</a></h3>
+<h3 id="the-fan-out-is-bounded-and-the-bound-is-inherited">Le fan-out est borné, et la borne est héritée<a class="anchor" href="#the-fan-out-is-bounded-and-the-bound-is-inherited" aria-label="link">#</a></h3>
 <p>La liste voyage dans le contexte, et le contexte a un plafond de 4096 octets qui vient du kubelet. Un workflow ne peut pas demander dix mille pods sans d'abord trouver le moyen de le dire en quatre kilo-octets. C'est une limite qui vaut la peine d'être gardée plutôt que contournée.</p>
-<h3 id="ce-quun-step-mappe-publie">Ce qu'un step mappé publie<a class="anchor" href="#ce-quun-step-mappe-publie" aria-label="link">#</a></h3>
+<h3 id="what-a-mapped-step-publishes">Ce qu'un step mappé publie<a class="anchor" href="#what-a-mapped-step-publishes" aria-label="link">#</a></h3>
 <p>Sa sortie est enregistrée sur la ligne de chaque instance et n'est <strong>pas</strong> visible des steps en dessous. Quatre instances qui publient sous le nom d'un même step, ce sont quatre valeurs pour une seule clé, et il n'y a pas de réponse à <code>context.String("load.bucket")</code> qui ne soit pas une devinette. Le step le dit dans son log plutôt que de l'ignorer discrètement.</p>
-<h2 id="regrouper-des-steps-sur-le-graphe">Regrouper des steps sur le graphe<a class="anchor" href="#regrouper-des-steps-sur-le-graphe" aria-label="link">#</a></h2>
+<h2 id="grouping-steps-on-the-graph">Regrouper des steps sur le graphe<a class="anchor" href="#grouping-steps-on-the-graph" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: extract_orders
     group: sales_data_reporting
@@ -310,7 +310,7 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <p><strong>Purement visuel.</strong> Les TaskGroups d'Airflow <em>préfixent</em> aussi les ids qu'ils contiennent, de sorte que <code>extract</code> devient <code>sales.extract</code>. Ici non : préfixer changerait chaque <code>depends_on</code>, chaque clé de contexte et chaque ligne enregistrée d'un workflow existant, pour une fonctionnalité dont toute la valeur est qu'un gros graphe se lit mieux. Les espaces de noms pourront être ajoutés plus tard — c'est un ajout strict à ceci.</p>
 <p>Un groupe est une <strong>étiquette</strong>, pas un conteneur. Les steps gardent leurs ids globaux, un groupe peut s'étendre sur plusieurs niveaux, et rien ne change dans l'exécution.</p>
 <p>Cliquer sur le nom du groupe le replie : ses steps disparaissent et les flèches qui traversaient la frontière pointent alors vers la boîte.</p>
-<h2 id="reutiliser-un-autre-workflow">Réutiliser un autre workflow<a class="anchor" href="#reutiliser-un-autre-workflow" aria-label="link">#</a></h2>
+<h2 id="reusing-another-workflow">Réutiliser un autre workflow<a class="anchor" href="#reusing-another-workflow" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# nightly.yaml
 steps:
   - id: prepare
@@ -339,11 +339,11 @@ steps:
 <p>Ils arrivent sous forme d'un seul groupe repliable, de sorte que le graphe montre ce que le fichier disait.</p>
 <p><strong>Développé à la publication, pas exécuté à l'exécution.</strong> Un step qui déclenchait un <em>run</em> enfant et l'attendait est la conception qui a fait provoquer des interblocages dans Airflow, et ce moteur a le même ingrédient : le plafond de pods est un sémaphore par processus, donc un parent qui garde un slot en attendant un enfant qui a besoin de slots dans le même pool se bloque — et seulement sous charge, c'est-à-dire en production. Un run, un graphe, un pool.</p>
 <p>Ce à quoi il renonce, c'est un run enfant avec son propre id et son propre historique.</p>
-<h3 id="les-règles">Les règles<a class="anchor" href="#les-règles" aria-label="link">#</a></h3>
+<h3 id="the-rules">Les règles<a class="anchor" href="#the-rules" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>l'enfant doit être dans la <strong>même publication</strong></td><td>pas simplement déjà publié</td></tr><tr><td>flèches</td><td>vers le step : deviennent des flèches vers chacune des <strong>racines</strong> de l'enfant ; depuis le step : depuis chacune de ses <strong>feuilles</strong></td></tr><tr><td><code>image</code>, <code>env</code>, <code>secrets</code>, <code>resources</code> de l'enfant</td><td>matérialisés sur chaque step, qui s'exécute donc dans ce que son propre fichier disait</td></tr><tr><td>les clés <code>unless_empty</code> / <code>for_each</code> de l'enfant</td><td>suivent avec le préfixe</td></tr><tr><td>imbrication</td><td>aplatie, en profondeur d'abord</td></tr><tr><td>un cycle</td><td>refusé à la publication, avec la chaîne nommée</td></tr></tbody></table></div>
 <p><strong>« Même publication », et non « déjà publié », est le point important.</strong> Une expansion qui lirait la base de données ferait répondre à <code>brevis validate</code> — qui ne touche aucune base, à dessein — une autre question que <code>brevis publish</code>, et le fichier qui a passé la CI serait celui qui échoue au déploiement.</p>
 <p>L'enfant reste publiable seul : l'expansion <strong>copie</strong>, elle ne consomme pas. Un step ne peut pas à la fois <code>uses:</code> et déclarer <code>run:</code>, <code>action:</code> ou <code>marker:</code> — ce serait un fichier qui dit deux choses.</p>
-<h2 id="dire-ce-que-signifie-une-flèche">Dire ce que signifie une flèche<a class="anchor" href="#dire-ce-que-signifie-une-flèche" aria-label="link">#</a></h2>
+<h2 id="saying-what-an-arrow-means">Dire ce que signifie une flèche<a class="anchor" href="#saying-what-an-arrow-means" aria-label="link">#</a></h2>
 <p>Une dépendance peut porter une étiquette, affichée sur la flèche dans le graphe.</p>
 <div class="code-block" data-code="steps:
   - id: determine_load_type
@@ -374,7 +374,7 @@ steps:
         <span class="t-k">label</span>: changed existing data</code></pre></div>
 <p>La forme nue — <code>depends_on: [extract]</code> — continue de fonctionner et reste la forme normale. La plupart des dépendances n'ont rien à dire, et une étiquette sur chaque flèche est du bruit.</p>
 <p>Les étiquettes gagnent leur place sur une <strong>branche</strong> : deux flèches qui partent du même step sans rien d'écrit dessus, c'est un schéma qu'il faut ouvrir dans la source pour le lire, ce que justement un graphe existe pour éviter.</p>
-<h2 id="un-step-qui-ne-fait-rien">Un step qui ne fait rien<a class="anchor" href="#un-step-qui-ne-fait-rien" aria-label="link">#</a></h2>
+<h2 id="a-step-that-does-nothing">Un step qui ne fait rien<a class="anchor" href="#a-step-that-does-nothing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: start
     marker: true
@@ -391,7 +391,7 @@ steps:
 <p><code>marker: true</code> est un step sans commande. Il n'exécute rien, réussit instantanément, et apparaît sur le graphe.</p>
 <p>Ce n'est pas de la décoration. Un <code>end</code> qui dépend de chaque branche transforme <em>tout s'est-il terminé ?</em> en un seul nœud au lieu de six flèches à suivre — et il se comporte comme n'importe quel autre step, donc un <code>end</code> sous une branche en échec est <strong>sauté</strong>, pas vert.</p>
 <p><strong>Un step sans <code>run:</code> et sans <code>marker: true</code> est toujours refusé.</strong> Les deux cas ne doivent pas se confondre : une commande vide est presque toujours une erreur, et <code>marker: true</code> est la façon de dire qu'on l'a voulu. Un marker qui déclare aussi <code>run:</code> est refusé lui aussi — c'est un fichier qui dit deux choses.</p>
-<h2 id="executer-un-step-seulement-quand-quelque-chose-a-echoue">Exécuter un step seulement quand quelque chose a échoué<a class="anchor" href="#executer-un-step-seulement-quand-quelque-chose-a-echoue" aria-label="link">#</a></h2>
+<h2 id="running-a-step-only-when-something-failed">Exécuter un step seulement quand quelque chose a échoué<a class="anchor" href="#running-a-step-only-when-something-failed" aria-label="link">#</a></h2>
 <p>Par défaut, un step s'exécute quand tout ce qui le précède a fonctionné. <code>when:</code> change cela.</p>
 <div class="code-block" data-code="steps:
   - id: extract
@@ -420,11 +420,11 @@ steps:
     <span class="t-k">when</span>: all_done            <span class="t-c"># runs either way</span></code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>règle</th><th></th></tr></thead><tbody><tr><td><code>all_success</code></td><td>la valeur par défaut. Tout ce dont ce step dépend a réussi — ses <strong>propres</strong> dépendances, comme dans Airflow</td></tr><tr><td><code>any_failed</code></td><td>au moins un step dont celui-ci dépend a échoué</td></tr><tr><td><code>all_done</code></td><td>tout ce dont ce step dépend est terminé, quelle que soit la façon</td></tr></tbody></table></div>
 <p>Une règle inconnue est refusée à la publication, en nommant ce qui est valide. Il le faut : un <code>when: on_failure</code> lu comme « la valeur par défaut » s'exécuterait en cas de <strong>succès</strong> — l'opposé de ce qu'il dit, découvert la nuit où cela comptait.</p>
-<h3 id="un-step-qui-ne-sexecute-pas-est-skipped">Un step qui ne s'exécute pas est <code>skipped</code><a class="anchor" href="#un-step-qui-ne-sexecute-pas-est-skipped" aria-label="link">#</a></h3>
+<h3 id="a-step-that-does-not-run-is-skipped">Un step qui ne s'exécute pas est <code>skipped</code><a class="anchor" href="#a-step-that-does-not-run-is-skipped" aria-label="link">#</a></h3>
 <p>C'est un état à part entière, dessiné dans sa propre couleur, et il porte la raison : <em><code>extract</code> était failed</em>. Avant cela, un step en dessous d'un échec n'avait aucun enregistrement et l'écran l'affichait en attente pour toujours.</p>
 <p><code>skipped</code> n'est ni un échec ni un succès. Un step dont l'amont a cassé n'a pas échoué — on ne lui a jamais donné la chance — et l'appeler succès est un mensonge qui atteint le statut du run lui-même.</p>
 <p>Une règle de déclenchement décide quels steps <strong>s'exécutent</strong>. Elle ne décide pas du résultat du run : un <code>notify_failure</code> qui a délivré son message ne signifie pas que le pipeline a fonctionné, et le run est toujours en échec.</p>
-<h3 id="all-success-est-local-comme-dans-airflow"><code>all_success</code> est local, comme dans Airflow<a class="anchor" href="#all-success-est-local-comme-dans-airflow" aria-label="link">#</a></h3>
+<h3 id="all-success-is-local-as-in-airflow"><code>all_success</code> est local, comme dans Airflow<a class="anchor" href="#all-success-is-local-as-in-airflow" aria-label="link">#</a></h3>
 <p>La règle interroge les dépendances <strong>propres</strong> d'un step et rien d'autre. Un échec dans une branche sans rapport n'arrête pas celle-ci :</p>
 <div class="code-block" data-code="extract_orders ──✕                 (failed)
 extract_users  ──✓── transform_users ──✓     keeps going"><div class="code-head"><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>extract_orders ──✕                 (failed)
@@ -435,7 +435,7 @@ extract_users  ──✓── transform_users ──✓     keeps going</code><
 <ul><li>le run <strong>échoue</strong> toujours, avec la même erreur ;</li><li>le graphe montre le step en échec en rouge et chaque step sauté dans sa propre couleur, chacun indiquant quel step l'a arrêté ;</li><li>l'alerte part toujours quand le run abandonne.</li></ul>
 <p>Un résultat partiel n'a plus l'air complet, parce que le run dit qu'il ne l'est pas.</p>
 <p><strong>Ce à quoi l'on renonce</strong>, dit clairement : une branche sans rapport écrit désormais ses données lors d'un run qui a échoué ailleurs.</p>
-<h3 id="une-nouvelle-tentative-ne-relance-que-ce-qui-a-echoue">Une nouvelle tentative ne relance que ce qui a échoué<a class="anchor" href="#une-nouvelle-tentative-ne-relance-que-ce-qui-a-echoue" aria-label="link">#</a></h3>
+<h3 id="a-retry-re-runs-only-what-failed">Une nouvelle tentative ne relance que ce qui a échoué<a class="anchor" href="#a-retry-re-runs-only-what-failed" aria-label="link">#</a></h3>
 <p>La nouvelle tentative d'un run ne refait pas tout le graphe. Un step qui a déjà réussi lors d'une tentative antérieure du <strong>même run</strong> garde son résultat et n'est pas relancé — comme se comporte un run de DAG effacé dans Airflow.</p>
 <div class="code-block" data-code="attempt 1   extract ✓    load ✕    report (skipped)
 attempt 2   extract –    load ✓    report ✓            extract is not re-run"><div class="code-head"><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>attempt 1   extract ✓    load ✕    report (skipped)
@@ -443,7 +443,7 @@ attempt 2   extract –    load ✓    report ✓            extract is not re-r
 <p>Il garde sa ligne d'origine : sa durée, son log et ce qu'il a publié sont ceux de la première tentative, car c'est là que le travail a eu lieu. <strong>Le step en dessous lit toujours ce qu'il a publié</strong> — le contexte du run est stocké, pas reconstruit.</p>
 <p>La distinction qui compte : il s'agit des tentatives antérieures de <strong>ce run</strong>. Un step qui a réussi lors du run d'<em>hier</em> s'exécute normalement aujourd'hui. (Cette autre question existe aussi, et c'est elle qui dit au SDK s'il s'agit de la première fois d'un step — voir <code>BREVIS_RUN_FIRST</code>.)</p>
 <p>Un step qui a été <strong>sauté</strong> n'est pas réglé : il n'a jamais tourné, et la nouvelle tentative en décide de nouveau avec les résultats de la nouvelle tentative.</p>
-<h2 id="annoncer-les-echecs-dun-step">Annoncer les échecs d'un step<a class="anchor" href="#annoncer-les-echecs-dun-step" aria-label="link">#</a></h2>
+<h2 id="announcing-a-steps-failures">Annoncer les échecs d'un step<a class="anchor" href="#announcing-a-steps-failures" aria-label="link">#</a></h2>
 <p>Chaque échec est déjà annoncé : avec un webhook configuré, un run qui abandonne envoie un message, sans aucun bloc répété dans un fichier. <code>on_error</code> est pour le step qui a besoin du sien.</p>
 <div class="code-block" data-code="steps:
   - id: fetch_observations
@@ -470,12 +470,12 @@ attempt 2   extract –    load ✓    report ✓            extract is not re-r
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *"><div class="code-head"><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *</code></pre></div>
 <p>Elle accepte un fichier ou un répertoire. Dans un répertoire, elle sélectionne <code>*.y*ml</code> et trie — deux exécutions produisent le même log, et la différence entre deux déploiements ne devient pas du bruit.</p>
-<h2 id="publication">Publication<a class="anchor" href="#publication" aria-label="link">#</a></h2>
+<h2 id="publishing">Publication<a class="anchor" href="#publishing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis publish workflows/
 brevis publish workflows/ --project acme --prune"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">brevis</span> publish workflows/
 <span class="t-k">brevis</span> publish workflows/ <span class="t-n">--project</span> acme <span class="t-n">--prune</span></code></pre></div>
 <p><code>--prune</code> retire du projet les workflows absents de la liste publiée, en préservant leur historique. Ce n'est <strong>pas</strong> la valeur par défaut, pour une raison pratique : <code>publish one-file.yaml</code> ne doit pas supprimer les quarante-huit autres simplement parce qu'ils n'ont pas été nommés sur la ligne de commande.</p>
-<h2 id="etapes-suivantes">Étapes suivantes<a class="anchor" href="#etapes-suivantes" aria-label="link">#</a></h2>
+<h2 id="next-steps">Étapes suivantes<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/fr/docs/parameters/">Paramètres</a> — ce qui change d'un run à l'autre</li><li><a href="/fr/docs/scheduler-and-queue/">Scheduler et file</a> — comment un workflow devient une exécution</li><li><a href="/fr/docs/context/">Contexte entre steps</a> — ce qu'un step dit au suivant</li></ul>
 
       <nav class="pagers" aria-label="Pages">
@@ -490,7 +490,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 
     <aside class="toc" aria-label="Sur cette page">
       <p class="toc-t">Sur cette page</p>
-      <ul><li class="toc-2"><a href="#structure-minimale">Structure minimale</a></li><li class="toc-3"><a href="#description-a-quoi-il-sert">description — à quoi il sert</a></li><li class="toc-2"><a href="#ordre-chain-ou-dag">Ordre : chain ou dag</a></li><li class="toc-2"><a href="#planification">Planification</a></li><li class="toc-2"><a href="#image-et-ressources">Image et ressources</a></li><li class="toc-2"><a href="#champs-dun-step">Champs d&#x27;un step</a></li><li class="toc-2"><a href="#executer-un-step-seulement-quand-il-y-a-quelque-chose-a-faire">Exécuter un step seulement quand il y a quelque chose à faire</a></li><li class="toc-3"><a href="#pourquoi-pas-une-expression">Pourquoi pas une expression</a></li><li class="toc-3"><a href="#une-cle-manquante-est-un-echec-pas-une-valeur-vide">Une clé manquante est un échec, pas une valeur vide</a></li><li class="toc-2"><a href="#executer-un-step-une-fois-par-element">Exécuter un step une fois par élément</a></li><li class="toc-3"><a href="#la-forme-du-dag-ne-change-pas">La forme du DAG ne change pas</a></li><li class="toc-3"><a href="#une-instance-en-echec-fait-echouer-le-step">Une instance en échec fait échouer le step</a></li><li class="toc-3"><a href="#une-liste-vide-est-skipped-pas-un-succès">Une liste vide est skipped, pas un succès</a></li><li class="toc-3"><a href="#le-fan-out-est-borne-et-la-borne-est-heritee">Le fan-out est borné, et la borne est héritée</a></li><li class="toc-3"><a href="#ce-quun-step-mappe-publie">Ce qu&#x27;un step mappé publie</a></li><li class="toc-2"><a href="#regrouper-des-steps-sur-le-graphe">Regrouper des steps sur le graphe</a></li><li class="toc-2"><a href="#reutiliser-un-autre-workflow">Réutiliser un autre workflow</a></li><li class="toc-3"><a href="#les-règles">Les règles</a></li><li class="toc-2"><a href="#dire-ce-que-signifie-une-flèche">Dire ce que signifie une flèche</a></li><li class="toc-2"><a href="#un-step-qui-ne-fait-rien">Un step qui ne fait rien</a></li><li class="toc-2"><a href="#executer-un-step-seulement-quand-quelque-chose-a-echoue">Exécuter un step seulement quand quelque chose a échoué</a></li><li class="toc-3"><a href="#un-step-qui-ne-sexecute-pas-est-skipped">Un step qui ne s&#x27;exécute pas est skipped</a></li><li class="toc-3"><a href="#all-success-est-local-comme-dans-airflow">all_success est local, comme dans Airflow</a></li><li class="toc-3"><a href="#une-nouvelle-tentative-ne-relance-que-ce-qui-a-echoue">Une nouvelle tentative ne relance que ce qui a échoué</a></li><li class="toc-2"><a href="#annoncer-les-echecs-dun-step">Annoncer les échecs d&#x27;un step</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validation">Validation</a></li><li class="toc-2"><a href="#publication">Publication</a></li><li class="toc-2"><a href="#etapes-suivantes">Étapes suivantes</a></li></ul>
+      <ul><li class="toc-2"><a href="#minimum-structure">Structure minimale</a></li><li class="toc-3"><a href="#description-what-it-is-for">description — à quoi il sert</a></li><li class="toc-2"><a href="#order-chain-or-dag">Ordre : chain ou dag</a></li><li class="toc-2"><a href="#schedule">Planification</a></li><li class="toc-2"><a href="#image-and-resources">Image et ressources</a></li><li class="toc-2"><a href="#step-fields">Champs d&#x27;un step</a></li><li class="toc-2"><a href="#running-a-step-only-when-there-is-something-to-do">Exécuter un step seulement quand il y a quelque chose à faire</a></li><li class="toc-3"><a href="#why-not-an-expression">Pourquoi pas une expression</a></li><li class="toc-3"><a href="#a-missing-key-is-a-failure-not-an-empty-value">Une clé manquante est un échec, pas une valeur vide</a></li><li class="toc-2"><a href="#running-a-step-once-per-element">Exécuter un step une fois par élément</a></li><li class="toc-3"><a href="#the-shape-of-the-dag-does-not-change">La forme du DAG ne change pas</a></li><li class="toc-3"><a href="#one-failed-instance-fails-the-step">Une instance en échec fait échouer le step</a></li><li class="toc-3"><a href="#an-empty-list-is-skipped-not-success">Une liste vide est skipped, pas un succès</a></li><li class="toc-3"><a href="#the-fan-out-is-bounded-and-the-bound-is-inherited">Le fan-out est borné, et la borne est héritée</a></li><li class="toc-3"><a href="#what-a-mapped-step-publishes">Ce qu&#x27;un step mappé publie</a></li><li class="toc-2"><a href="#grouping-steps-on-the-graph">Regrouper des steps sur le graphe</a></li><li class="toc-2"><a href="#reusing-another-workflow">Réutiliser un autre workflow</a></li><li class="toc-3"><a href="#the-rules">Les règles</a></li><li class="toc-2"><a href="#saying-what-an-arrow-means">Dire ce que signifie une flèche</a></li><li class="toc-2"><a href="#a-step-that-does-nothing">Un step qui ne fait rien</a></li><li class="toc-2"><a href="#running-a-step-only-when-something-failed">Exécuter un step seulement quand quelque chose a échoué</a></li><li class="toc-3"><a href="#a-step-that-does-not-run-is-skipped">Un step qui ne s&#x27;exécute pas est skipped</a></li><li class="toc-3"><a href="#all-success-is-local-as-in-airflow">all_success est local, comme dans Airflow</a></li><li class="toc-3"><a href="#a-retry-re-runs-only-what-failed">Une nouvelle tentative ne relance que ce qui a échoué</a></li><li class="toc-2"><a href="#announcing-a-steps-failures">Annoncer les échecs d&#x27;un step</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validation">Validation</a></li><li class="toc-2"><a href="#publishing">Publication</a></li><li class="toc-2"><a href="#next-steps">Étapes suivantes</a></li></ul>
     </aside>
   </main>
 </div>
@@ -510,9 +510,9 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
       <div class="footer-col">
         <h2>projet</h2>
         <ul>
-          <li><a href="/fr/#ecossistema">Écosystème</a></li>
+          <li><a href="/fr/#ecosystem">Écosystème</a></li>
           <li><a href="/fr/docs/philosophy/">Principes</a></li>
-          <li><a href="/fr/docs/introduction/#code-ouvert-choisissez-comment-participer">Open source</a></li>
+          <li><a href="/fr/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/fr/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -535,7 +535,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

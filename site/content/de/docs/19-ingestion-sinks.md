@@ -274,7 +274,7 @@ werde gespeichert.
 Diese acht gehören **dem SDK**, nicht dieser Sink: `sdk.LandingSchema` deklariert
 sie und `sdk.LandingID` prägt die Identität, sodass eine Pipeline dieselbe Tabelle
 mit denselben Ids landen kann. Eine Definition, weil zwei auseinanderdriften
-würden. Siehe [das Landing-Layout des SDK](/docs/sdk/#das-landing-layout).
+würden. Siehe [das Landing-Layout des SDK](/docs/sdk/#the-landing-layout).
 
 **`brevis_` ist reserviert.** Ein `data`, das einen Schlüssel mit diesem Präfix
 trägt, wird **pro Event** verweigert – sonst fälscht ein Produzent ein Steuerfeld,
@@ -425,13 +425,13 @@ BigQuery richtet.
 
 Beide Formen haben ein SDK-Äquivalent, und es ist derselbe Code und kein
 passender: `sdk.Landing(table, sdk.LandingKey("id"))` landet `document`, und mit
-[`sdk.LandingColumns()`](/docs/sdk/#zwei-formen-der-datensatz-als-ganzes-oder-eine-spalte-pro-feld)
+[`sdk.LandingColumns()`](/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field)
 landet es `columns`. Dieselben Spalten, dieselben Werte, dieselbe
 `brevis_ingestion_id` – ein Stream kann also ohne Migration zwischen einem Gateway
 und einer Pipeline wechseln, und die beiden lassen sich als eine Tabelle lesen.
 
 Die Pipeline kann dieselbe Spalte auf dieselbe Weise wachsen lassen: Setzen Sie
-[`Evolve: sdk.EvolveAdditiveFromPayload`](/docs/sdk/#wenn-ein-feld-auftaucht-das-die-tabelle-nicht-hat)
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)
 am Ziel, und ein Feld, das der Batch trägt, wird nach dieser Regel, durch diesen
 Code, zu einer Spalte.
 
@@ -446,14 +446,14 @@ Regel zu reservierten Namen wandert mit: Unter `acme_` wird ein Produzent, der
 **Wählen Sie es, bevor die erste Tabelle angelegt wird.** Es später zu ändern
 fügt acht Spalten hinzu und verlässt acht – nichts löscht eine Spalte –, sodass
 eine Tabelle, die das Layout bereits unter einem Präfix trägt, einen Load
-verweigert, der ein anderes deklariert. Siehe [die SDK-Seite](/docs/sdk/#das-präfix-brevis-können-sie-ändern)
+verweigert, der ein anderes deklariert. Siehe [die SDK-Seite](/docs/sdk/#the-brevis-prefix-is-yours-to-change)
 für die Normalisierung und den Ausweg.
 
 **Die Felder eines verschachtelten Objekts können eigene Spalten bekommen.**
 `BREVIS_NORMALIZE_DATA=true` am Prozess des Gateways flacht eine Ebene ab –
 `{"name": {"first": "x"}}` landet als `name_first` –, und jeder Stream teilt es,
 sodass zwei Sinks sich nicht über eine Tabelle widersprechen können, die beide
-schreiben könnten. Siehe [die SDK-Seite](/docs/sdk/#eine-spalte-pro-verschachteltem-feld)
+schreiben könnten. Siehe [die SDK-Seite](/docs/sdk/#one-column-per-nested-field)
 dafür, was es umbenennt – die Hälfte, die man vor dem Einschalten lesen sollte.
 
 **Bei BigQuery sind `nationalID` und `nationalId` eine Spalte.** BigQuery faltet

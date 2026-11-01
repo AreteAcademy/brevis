@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Saltar al contenido</a>
+<a class="skip-link" href="#content">Saltar al contenido</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegación principal">
-      <a href="/es/#ecossistema">Ecosistema</a>
+      <a href="/es/#ecosystem">Ecosistema</a>
       <a href="/es/docs/">Documentación</a>
-      <details class="lang-dd"><summary aria-label="Idioma: Español"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Español</span></summary><ul><li><a href="/docs/integrations/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/integrations/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/integrations/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/integrations/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/integrations/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/integrations/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/integrations/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/integrations/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/integrations/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/integrations/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/integrations/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Idioma: Español"><span>Español</span></summary><ul><li><a href="/docs/integrations/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/integrations/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/integrations/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/integrations/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/integrations/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/integrations/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/integrations/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/integrations/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/integrations/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/integrations/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/integrations/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Explorar el código abierto
@@ -119,26 +119,26 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentación</p>
       <h1>Integraciones</h1>
       <p class="doc-desc">Qué se conecta con qué: de dónde vienen los datos, dónde aterrizan, dónde se modelan y dónde corre todo.</p>
       <p><strong>Lo que ya usas, y nada que todavía no exista.</strong> Un driver aparece aquí cuando recibe código en el repositorio, nunca antes.</p>
 <p>Cada fila indica qué pieza llega a él, mediante qué paquete o sink, y adónde ir para ver cómo.</p>
-<h2 id="extrae-de">Extrae de<a class="anchor" href="#extrae-de" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>cómo llega</th><th>guía</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK: <code>from.HTTP</code></td><td><a href="/es/docs/sdk/#fuentes-y-destinos">SDK de Go</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>from/postgres</code></td><td><a href="/es/docs/sdk/#fuentes-y-destinos">SDK de Go</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>from/mysql</code></td><td><a href="/es/docs/sdk/#fuentes-y-destinos">SDK de Go</a></td></tr><tr><td><strong>archivos</strong></td><td>SDK: <code>from.Files</code> — local, S3, GCS</td><td><a href="/es/docs/sdk/#fuentes-y-destinos">SDK de Go</a></td></tr></tbody></table></div>
-<h2 id="aterriza-en">Aterriza en<a class="anchor" href="#aterriza-en" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>cómo llega</th><th>guía</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK: <code>to/bigquery</code> · Gateway: <code>bigquery</code></td><td><a href="/es/docs/sdk/#fuentes-y-destinos">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>to/postgres</code> · Gateway: <code>postgres</code></td><td><a href="/es/docs/sdk/#fuentes-y-destinos">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>to/mysql</code> · Gateway: <code>mysql</code></td><td><a href="/es/docs/sdk/#fuentes-y-destinos">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK: <code>to/redshift</code> · Gateway: <code>redshift</code></td><td><a href="/es/docs/sdk/#fuentes-y-destinos">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK: <code>to/pubsub</code> · Gateway: <code>pubsub</code></td><td><a href="/es/docs/sdk/#fuentes-y-destinos">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr></tbody></table></div>
-<h2 id="archivos-en">Archivos en<a class="anchor" href="#archivos-en" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>cómo llega</th><th>guía</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK: <code>store/s3</code> · Gateway: <code>files</code> sobre <code>s3://</code></td><td><a href="/es/docs/sdk/#fuentes-y-destinos">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK: <code>store/gcs</code> · Gateway: <code>files</code> sobre <code>gs://</code></td><td><a href="/es/docs/sdk/#fuentes-y-destinos">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr></tbody></table></div>
-<h2 id="modela-en">Modela en<a class="anchor" href="#modela-en" aria-label="link">#</a></h2>
+<h2 id="pulls-from">Extrae de<a class="anchor" href="#pulls-from" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>cómo llega</th><th>guía</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK: <code>from.HTTP</code></td><td><a href="/es/docs/sdk/#sources-and-destinations">SDK de Go</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>from/postgres</code></td><td><a href="/es/docs/sdk/#sources-and-destinations">SDK de Go</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>from/mysql</code></td><td><a href="/es/docs/sdk/#sources-and-destinations">SDK de Go</a></td></tr><tr><td><strong>archivos</strong></td><td>SDK: <code>from.Files</code> — local, S3, GCS</td><td><a href="/es/docs/sdk/#sources-and-destinations">SDK de Go</a></td></tr></tbody></table></div>
+<h2 id="lands-in">Aterriza en<a class="anchor" href="#lands-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>cómo llega</th><th>guía</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK: <code>to/bigquery</code> · Gateway: <code>bigquery</code></td><td><a href="/es/docs/sdk/#sources-and-destinations">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>to/postgres</code> · Gateway: <code>postgres</code></td><td><a href="/es/docs/sdk/#sources-and-destinations">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>to/mysql</code> · Gateway: <code>mysql</code></td><td><a href="/es/docs/sdk/#sources-and-destinations">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK: <code>to/redshift</code> · Gateway: <code>redshift</code></td><td><a href="/es/docs/sdk/#sources-and-destinations">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK: <code>to/pubsub</code> · Gateway: <code>pubsub</code></td><td><a href="/es/docs/sdk/#sources-and-destinations">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr></tbody></table></div>
+<h2 id="files-in">Archivos en<a class="anchor" href="#files-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>cómo llega</th><th>guía</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK: <code>store/s3</code> · Gateway: <code>files</code> sobre <code>s3://</code></td><td><a href="/es/docs/sdk/#sources-and-destinations">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK: <code>store/gcs</code> · Gateway: <code>files</code> sobre <code>gs://</code></td><td><a href="/es/docs/sdk/#sources-and-destinations">SDK de Go</a>, <a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></td></tr></tbody></table></div>
+<h2 id="models-in">Modela en<a class="anchor" href="#models-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>cómo llega</th><th>guía</th></tr></thead><tbody><tr><td><strong>Postgres</strong></td><td>SQL: <code>--dialect postgres</code> (el valor por defecto)</td><td><a href="/es/docs/sql/">SQL</a></td></tr><tr><td><strong>BigQuery</strong></td><td>SQL: <code>--dialect bigquery</code></td><td><a href="/es/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="corre-en">Corre en<a class="anchor" href="#corre-en" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>cómo llega</th><th>guía</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>una imagen por pieza: <code>areteacademy/brevis</code>, <code>brevis-gateway</code>, <code>brevis-sql</code></td><td><a href="/es/docs/installation/#docker">Instalación</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>un pod por step</td><td><a href="/es/docs/kubernetes/">Kubernetes</a>, <a href="/es/docs/pod-per-step/">Pod por step</a></td></tr><tr><td><strong>Helm</strong></td><td>el chart en <code>deployments/helm/brevis</code></td><td><a href="/es/docs/kubernetes/#instalarlo-con-helm">Kubernetes</a></td></tr></tbody></table></div>
-<h2 id="escrito-en">Escrito en<a class="anchor" href="#escrito-en" aria-label="link">#</a></h2>
+<h2 id="runs-on">Corre en<a class="anchor" href="#runs-on" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>cómo llega</th><th>guía</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>una imagen por pieza: <code>areteacademy/brevis</code>, <code>brevis-gateway</code>, <code>brevis-sql</code></td><td><a href="/es/docs/installation/#docker">Instalación</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>un pod por step</td><td><a href="/es/docs/kubernetes/">Kubernetes</a>, <a href="/es/docs/pod-per-step/">Pod por step</a></td></tr><tr><td><strong>Helm</strong></td><td>el chart en <code>deployments/helm/brevis</code></td><td><a href="/es/docs/kubernetes/#install-it-with-helm">Kubernetes</a></td></tr></tbody></table></div>
+<h2 id="written-in">Escrito en<a class="anchor" href="#written-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>cómo llega</th><th>guía</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td>Core, SDK, Gateway y SQL</td><td><a href="/es/docs/ecosystem/">Ecosistema</a></td></tr><tr><td><strong>Python</strong></td><td><code>pip install brevis</code>: contexto entre steps en un step de Python</td><td><a href="/es/docs/python/">Python</a></td></tr><tr><td><strong>SQL</strong></td><td>los modelos de brevis-sql son archivos <code>.sql</code> simples</td><td><a href="/es/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="nubes">Nubes<a class="anchor" href="#nubes" aria-label="link">#</a></h2>
+<h2 id="clouds">Nubes<a class="anchor" href="#clouds" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>cómo llega</th><th>guía</th></tr></thead><tbody><tr><td><strong>Google Cloud</strong></td><td>BigQuery, Pub/Sub y GCS, arriba</td><td>—</td></tr><tr><td><strong>AWS</strong></td><td>Redshift y S3, arriba</td><td>—</td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="Páginas">
@@ -153,7 +153,7 @@
 
     <aside class="toc" aria-label="En esta página">
       <p class="toc-t">En esta página</p>
-      <ul><li class="toc-2"><a href="#extrae-de">Extrae de</a></li><li class="toc-2"><a href="#aterriza-en">Aterriza en</a></li><li class="toc-2"><a href="#archivos-en">Archivos en</a></li><li class="toc-2"><a href="#modela-en">Modela en</a></li><li class="toc-2"><a href="#corre-en">Corre en</a></li><li class="toc-2"><a href="#escrito-en">Escrito en</a></li><li class="toc-2"><a href="#nubes">Nubes</a></li></ul>
+      <ul><li class="toc-2"><a href="#pulls-from">Extrae de</a></li><li class="toc-2"><a href="#lands-in">Aterriza en</a></li><li class="toc-2"><a href="#files-in">Archivos en</a></li><li class="toc-2"><a href="#models-in">Modela en</a></li><li class="toc-2"><a href="#runs-on">Corre en</a></li><li class="toc-2"><a href="#written-in">Escrito en</a></li><li class="toc-2"><a href="#clouds">Nubes</a></li></ul>
     </aside>
   </main>
 </div>
@@ -173,9 +173,9 @@
       <div class="footer-col">
         <h2>proyecto</h2>
         <ul>
-          <li><a href="/es/#ecossistema">Ecosistema</a></li>
+          <li><a href="/es/#ecosystem">Ecosistema</a></li>
           <li><a href="/es/docs/philosophy/">Principios</a></li>
-          <li><a href="/es/docs/introduction/#codigo-abierto-elige-como-participar">Código abierto</a></li>
+          <li><a href="/es/docs/introduction/#open-code-choose-how-to-take-part">Código abierto</a></li>
           <li><a href="/es/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -198,7 +198,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

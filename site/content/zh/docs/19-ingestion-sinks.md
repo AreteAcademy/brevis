@@ -205,7 +205,7 @@ sink:
 | `brevis_gateway` | `STRING` | 哪个部署 |
 | `brevis_received_bytes` | `INT64` | 事件**到达**时有多大，包含信封 |
 
-这八列属于 **SDK**，而不属于这个 sink：`sdk.LandingSchema` 声明它们，`sdk.LandingID` 生成标识，所以 pipeline 可以用相同的 id 落地同一张表。只有一份定义，因为两份会产生偏差。见 [SDK 的落地布局](/docs/sdk/#落地布局)。
+这八列属于 **SDK**，而不属于这个 sink：`sdk.LandingSchema` 声明它们，`sdk.LandingID` 生成标识，所以 pipeline 可以用相同的 id 落地同一张表。只有一份定义，因为两份会产生偏差。见 [SDK 的落地布局](/docs/sdk/#the-landing-layout)。
 
 **`brevis_` 是保留的。** 带有任何该前缀的键的 `data` 会**按事件**被拒绝，否则生产者就能伪造控制字段，而伪造的 `brevis_received_at` 比没有更糟，因为它看起来是真的。
 
@@ -292,16 +292,16 @@ SELECT JSON_VALUE(customer, '$.uf') ...;           -- SP
 
 字段名必须符合 BigQuery 的规则，这是四者中最严格的。Postgres 几乎接受任何带引号的名称，而这正是陷阱：表在那里创建出来了，却在有人把 stream 指向 BigQuery 的那天出问题。
 
-两种形态都有对应的 SDK 等价物，而且是同一段代码，而不是一段相匹配的代码：`sdk.Landing(table, sdk.LandingKey("id"))` 落地 `document`，加上 [`sdk.LandingColumns()`](/docs/sdk/#两种形态整条记录或每个字段一列) 则落地 `columns`。相同的列，相同的值，相同的 `brevis_ingestion_id`，因此 stream 可以在 gateway 与 pipeline 之间切换而无需迁移，两者也可以当作一张表来读取。
+两种形态都有对应的 SDK 等价物，而且是同一段代码，而不是一段相匹配的代码：`sdk.Landing(table, sdk.LandingKey("id"))` 落地 `document`，加上 [`sdk.LandingColumns()`](/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field) 则落地 `columns`。相同的列，相同的值，相同的 `brevis_ingestion_id`，因此 stream 可以在 gateway 与 pipeline 之间切换而无需迁移，两者也可以当作一张表来读取。
 
-pipeline 也可以用同样的方式增加同样的列：在目的地上设置 [`Evolve: sdk.EvolveAdditiveFromPayload`](/docs/sdk/#当出现表中没有的字段时)，批次携带的字段就会按这条规则、通过这段代码变成一列。
+pipeline 也可以用同样的方式增加同样的列：在目的地上设置 [`Evolve: sdk.EvolveAdditiveFromPayload`](/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)，批次携带的字段就会按这条规则、通过这段代码变成一列。
 
 
 **前缀是可配置的，而且是整个进程的一项决定。** `BREVIS_LANDING_PREFIX=acme` 会让它们变成 `acme_ingestion_id` 等等，适用于这个 gateway 中的每个 stream，所以两个 sink 不会对它们都可能写入的表产生分歧。上面的保留规则随之移动：在 `acme_` 下，发送 `acme_region` 的生产者会被拒绝，而 `brevis_region` 是普通字段。
 
-**请在创建第一张表之前选定它。** 之后再修改会新增八列并遗弃八列，因为没有任何东西会删除列，所以已经带有某个前缀布局的表，会拒绝声明了另一个前缀的加载。规范化的方式以及出路见 [SDK 页面](/docs/sdk/#brevis-前缀可以由你修改)。
+**请在创建第一张表之前选定它。** 之后再修改会新增八列并遗弃八列，因为没有任何东西会删除列，所以已经带有某个前缀布局的表，会拒绝声明了另一个前缀的加载。规范化的方式以及出路见 [SDK 页面](/docs/sdk/#the-brevis-prefix-is-yours-to-change)。
 
-**嵌套对象的字段可以拥有自己的列。** 在 gateway 的进程上设置 `BREVIS_NORMALIZE_DATA=true` 会展开一层，`{"name": {"first": "x"}}` 落地为 `name_first`，并且每个 stream 共享它，所以两个 sink 不会对它们都可能写入的表产生分歧。它会重命名什么，请见 [SDK 页面](/docs/sdk/#每个嵌套字段一列)，这是开启之前需要阅读的那一半。
+**嵌套对象的字段可以拥有自己的列。** 在 gateway 的进程上设置 `BREVIS_NORMALIZE_DATA=true` 会展开一层，`{"name": {"first": "x"}}` 落地为 `name_first`，并且每个 stream 共享它，所以两个 sink 不会对它们都可能写入的表产生分歧。它会重命名什么，请见 [SDK 页面](/docs/sdk/#one-column-per-nested-field)，这是开启之前需要阅读的那一半。
 
 **在 BigQuery 上，`nationalID` 和 `nationalId` 是同一列。** BigQuery 会折叠列名的大小写，所以一次 flush 中，一个 `DELETE` 带有一种写法而一个 `INSERT` 带有另一种写法，会创建**一个**列（排序后的第一个），而不是让 `CREATE` 失败。单个事件同时携带两者会被拒绝，并指出两个字段。Postgres 和 MySQL 把它们保留为两列，这对它们来说是正确的。哪种写法胜出以及哪些内容不会迁移，见 [SDK 页面](/docs/sdk/)。
 

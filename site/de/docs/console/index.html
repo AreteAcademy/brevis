@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Zum Inhalt springen</a>
+<a class="skip-link" href="#content">Zum Inhalt springen</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Hauptnavigation">
-      <a href="/de/#ecossistema">Ökosystem</a>
+      <a href="/de/#ecosystem">Ökosystem</a>
       <a href="/de/docs/">Dokumentation</a>
-      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Deutsch</span></summary><ul><li><a href="/docs/console/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/console/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/console/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/console/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/console/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/console/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/console/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/console/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/console/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/console/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/console/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><span>Deutsch</span></summary><ul><li><a href="/docs/console/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/console/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/console/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/console/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/console/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/console/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/console/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/console/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/console/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/console/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/console/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open Source erkunden
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentation</p>
       <h1>Console</h1>
@@ -127,25 +127,25 @@
       <p>Die Oberfläche wird im Binary mitgeliefert – kein separater Dienst, den man installieren und am Laufen halten müsste. Erfolgsquote, durchschnittliche Dauer, die Queue, die Versuchshistorie und der Zeitplan dessen, was als Nächstes kommt.</p>
 <p>Die Console startet mit <code>brevis serve</code>, auf demselben Port wie die HTTP-API (<code>BREVIS_HTTP_ADDR</code>, standardmäßig <code>:8080</code>). Im <a href="/de/docs/quickstart/">Schnellstart</a> öffnet sie sich unter <code>localhost:8080</code>.</p>
 <p>Die folgenden Bildschirme sind in SVG aus der Console nachgebaut, mit Beispieldaten – nie Screenshots: Die echte Console verarbeitet in Produktion Kundendaten.</p>
-<h2 id="übersicht">Übersicht<a class="anchor" href="#übersicht" aria-label="link">#</a></h2>
+<h2 id="overview">Übersicht<a class="anchor" href="#overview" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console.svg" width="1000" height="600" alt="Die Brevis-Console auf dem Übersichtsbildschirm: eine Erfolgsquote von 94,2 Prozent über 344 Runs, ein Balkendiagramm der Runs pro Stunde mit durchschnittlicher Dauer, ein Verteilungsring, was gerade läuft, und die nächsten geplanten Runs." loading="lazy"></figure>
 <p>Eine Übersicht mit Metriken und Diagrammen. Erfolgsquote, durchschnittliche Dauer, was gerade läuft und die nächsten geplanten Runs, auf einem Bildschirm.</p>
 <h2 id="workflows">Workflows<a class="anchor" href="#workflows" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflows.svg" width="1000" height="600" alt="Die Workflow-Liste: Suche, Filter nach Zustand und nach Tag und zwölf Workflows mit einem Pausenschalter, dem Cron-Ausdruck, dem nächsten und dem letzten Run, Tags und einem Button, um jeden sofort auszuführen." loading="lazy"></figure>
 <p>Eine Workflow-Liste mit Suche, Filtern, Pause und Ausführen. Jede Zeile trägt den Cron, den nächsten und den letzten Run sowie die Tags.</p>
-<h2 id="ein-workflow">Ein Workflow<a class="anchor" href="#ein-workflow" aria-label="link">#</a></h2>
+<h2 id="one-workflow">Ein Workflow<a class="anchor" href="#one-workflow" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflow.svg" width="1000" height="600" alt="Die Seite eines Workflows: seine vier Steps, drei Abhängigkeiten, Cron und Tags; ein Formular, um ihn mit Parametern auszuführen; eine Erfolgsquote von 96,1 Prozent über 176 Runs; der DAG mit dem Zustand jedes Steps; und ein Kalender eines Jahres, in dem jedes Quadrat ein Tag ist, gefärbt nach dem schlechtesten Ergebnis dieses Tages." loading="lazy"></figure>
 <p>Die Steps und Abhängigkeiten, ein Formular zum Ausführen mit Parametern, der DAG mit dem Zustand jedes Steps und ein Jahreskalender, in dem jeder Tag die Farbe seines schlechtesten Ergebnisses annimmt.</p>
 <h2 id="runs">Runs<a class="anchor" href="#runs" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-runs.svg" width="1000" height="600" alt="Die Run-Historie: 1.284 Runs mit ihrem Zustand, Workflow, Auslöser, dem Slot, zu dem sie gehören, wie lange jeder dauerte und wann er erstellt wurde. Einige zeigen, welcher Versuch erfolgreich war." loading="lazy"></figure>
 <p>Run-Historie, mit dem Versuch jedes Runs. Zustand, Workflow, Auslöser, der Slot, zu dem der Run gehört, Dauer und Erstellungszeitpunkt.</p>
-<h2 id="ein-run">Ein Run<a class="anchor" href="#ein-run" aria-label="link">#</a></h2>
+<h2 id="one-run">Ein Run<a class="anchor" href="#one-run" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-run.svg" width="1000" height="600" alt="Ein abgeschlossener Run: sein Zustand, Auslöser und Slot; der Graph mit Befehl, Image und Dauer jedes Steps; die neun Auto-Parameter, die die Engine für jeden Run ermittelt – die Uhr, die statt now() zu lesen ist, das Partitionsdatum, wie spät der Versuch startete und das Fenster, das er abdeckt; und die Ausgabe jedes Steps." loading="lazy"></figure>
 <p>Der DAG eines Runs live und die Auto-Parameter, die die Engine dafür ermittelt hat. Der Graph mit Befehl, Image und Dauer jedes Steps sowie die Ausgabe jedes Steps.</p>
-<h2 id="projekte">Projekte<a class="anchor" href="#projekte" aria-label="link">#</a></h2>
+<h2 id="projects">Projekte<a class="anchor" href="#projects" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-projects.svg" width="1000" height="600" alt="Zwei Projekte, analytics und platform, jedes mit einem eigenen Namensraum für seine Workflows – beide können ein daily_ingest haben, ohne zu kollidieren." loading="lazy"></figure>
 <p>Projekte, damit zwei Teams nicht über einen Namen kollidieren. Jedes Projekt gibt seinen Workflows einen eigenen Namensraum: Zwei können je ein <code>daily_ingest</code> haben.</p>
-<h2 id="sie-wird-im-binary-mitgeliefert">Sie wird im Binary mitgeliefert<a class="anchor" href="#sie-wird-im-binary-mitgeliefert" aria-label="link">#</a></h2>
+<h2 id="it-ships-in-the-binary">Sie wird im Binary mitgeliefert<a class="anchor" href="#it-ships-in-the-binary" aria-label="link">#</a></h2>
 <p>Schriften und Bundles werden aus dem Binary ausgeliefert – funktioniert ohne Internet.</p>
 
       <nav class="pagers" aria-label="Seiten">
@@ -160,7 +160,7 @@
 
     <aside class="toc" aria-label="Auf dieser Seite">
       <p class="toc-t">Auf dieser Seite</p>
-      <ul><li class="toc-2"><a href="#übersicht">Übersicht</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#ein-workflow">Ein Workflow</a></li><li class="toc-2"><a href="#runs">Runs</a></li><li class="toc-2"><a href="#ein-run">Ein Run</a></li><li class="toc-2"><a href="#projekte">Projekte</a></li><li class="toc-2"><a href="#sie-wird-im-binary-mitgeliefert">Sie wird im Binary mitgeliefert</a></li></ul>
+      <ul><li class="toc-2"><a href="#overview">Übersicht</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#one-workflow">Ein Workflow</a></li><li class="toc-2"><a href="#runs">Runs</a></li><li class="toc-2"><a href="#one-run">Ein Run</a></li><li class="toc-2"><a href="#projects">Projekte</a></li><li class="toc-2"><a href="#it-ships-in-the-binary">Sie wird im Binary mitgeliefert</a></li></ul>
     </aside>
   </main>
 </div>
@@ -180,9 +180,9 @@
       <div class="footer-col">
         <h2>Projekt</h2>
         <ul>
-          <li><a href="/de/#ecossistema">Ökosystem</a></li>
+          <li><a href="/de/#ecosystem">Ökosystem</a></li>
           <li><a href="/de/docs/philosophy/">Prinzipien</a></li>
-          <li><a href="/de/docs/introduction/#offener-code-wählen-sie-wie-sie-mitmachen">Open Source</a></li>
+          <li><a href="/de/docs/introduction/#open-code-choose-how-to-take-part">Open Source</a></li>
           <li><a href="/de/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -205,7 +205,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

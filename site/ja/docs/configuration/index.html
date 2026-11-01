@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
-      <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/configuration/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/configuration/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/configuration/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/configuration/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/configuration/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/configuration/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/configuration/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/configuration/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/configuration/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/configuration/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/configuration/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="言語: 日本語"><span>日本語</span></summary><ul><li><a href="/docs/configuration/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/configuration/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/configuration/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/configuration/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/configuration/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/configuration/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/configuration/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/configuration/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/configuration/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/configuration/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/configuration/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         オープンソースを見る
@@ -119,19 +119,21 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>設定</h1>
       <p class="doc-desc">すべての環境変数について、デフォルト、形式、未設定の場合に何が起きるか。</p>
       <p>すべての設定は<strong>環境</strong>から取得され、起動時に一度だけ読み込まれます。その後に環境を参照する ものはありません。実行中に設定が変わるプロセスは、誰にも再現できない挙動を示すプロセスです。</p>
-<h2 id="必須">必須<a class="anchor" href="#必須" aria-label="link">#</a></h2>
+<h2 id="required">必須<a class="anchor" href="#required" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>変数</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_DATABASE_URL</code></td><td>Postgres。データベースを使う 5 つのサブコマンドでは、未設定は<strong>起動エラー</strong>です</td></tr></tbody></table></div>
-<h2 id="プロセス">プロセス<a class="anchor" href="#プロセス" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th>変数</th><th>デフォルト</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_ENV</code></td><td><code>local</code></td><td><code>local</code> ではテキスト形式でログを出し、インターフェースを開放します。それ以外では認証情報が必須になり、JSON でログを出します</td></tr><tr><td><code>BREVIS_HTTP_ADDR</code></td><td><code>:8080</code></td><td>リッスンするアドレス</td></tr><tr><td><code>BREVIS_LOG_LEVEL</code></td><td><code>info</code></td><td></td></tr><tr><td><code>BREVIS_SHUTDOWN_TIMEOUT_SECONDS</code></td><td><code>15</code></td><td>整数。数値でない値は起動エラー</td></tr><tr><td><code>BREVIS_BRAND_FILE</code></td><td><code>brand.yaml</code></td><td>ブランディング。なければデフォルト</td></tr><tr><td><code>BREVIS_UI_URL</code></td><td>—</td><td>アラート内の run リンクのベース</td></tr><tr><td><code>BREVIS_METRICS_ADDR</code></td><td>—</td><td>Prometheus メトリクスのポート。空なら公開しない。<a href="/ja/docs/observability/">オブザーバビリティ</a>を参照</td></tr><tr><td><code>BREVIS_SLACK_WEBHOOK</code></td><td>—</td><td>失敗アラートの宛先。空なら誰にも通知されない</td></tr></tbody></table></div>
-<h2 id="認証">認証<a class="anchor" href="#認証" aria-label="link">#</a></h2>
+<h2 id="process">プロセス<a class="anchor" href="#process" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>変数</th><th>デフォルト</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_ENV</code></td><td><code>production</code></td><td><code>local</code> ではテキスト形式でログを出し、インターフェースを開放します。それ以外(未設定を含む)では認証情報が必須になり、JSON でログを出します。開発時は <code>BREVIS_ENV=local</code> を設定してください</td></tr><tr><td><code>BREVIS_HTTP_ADDR</code></td><td><code>:8080</code></td><td>リッスンするアドレス</td></tr><tr><td><code>BREVIS_LOG_LEVEL</code></td><td><code>info</code></td><td></td></tr><tr><td><code>BREVIS_SHUTDOWN_TIMEOUT_SECONDS</code></td><td><code>15</code></td><td>整数。数値でない値は起動エラー</td></tr><tr><td><code>BREVIS_DB_MAX_CONNS</code></td><td>ドライバーのデフォルト, <code>max(4, CPUs)</code></td><td>各プロセスの Postgres プールの上限。数値でない値や負の値は起動エラー</td></tr><tr><td><code>BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS</code></td><td><code>0</code>(オフ)</td><td>コンソール(<code>brevis serve</code>)のみ。実行が長引いたステートメントを Postgres が中止し、暴走した一覧クエリが接続を握り続けないようにします。プールが起動パラメーターを受け付ける環境では <code>30</code> を推奨します。トランザクションモードの PgBouncer は接続を拒否するため、デフォルトではオフです。接続の起動パラメーターとして送られるので、トランザクションモードの PgBouncer では <code>ignore_startup_parameters = statement_timeout</code> が必要です</td></tr><tr><td><code>BREVIS_RETENTION_TRIM_DAYS</code></td><td><code>0</code>(オフ)</td><td>オプトインの定期プルーン。<code>brevis scheduler</code> が実行し、この日数より古い run のログ、フェーズ、出力を空にします。<code>brevis prune --trim-after</code> と同じ効果です。<code>0</code> = scheduler はプルーンしません</td></tr><tr><td><code>BREVIS_RETENTION_PURGE_DAYS</code></td><td><code>0</code>(なし)</td><td>上記と併せて、この日数より古い run も削除します。trim の値以上である必要があります</td></tr><tr><td><code>BREVIS_RETENTION_INTERVAL_HOURS</code></td><td><code>24</code></td><td>定期プルーンの実行間隔(起動時に 1 回、その後は N 時間ごと)</td></tr><tr><td><code>BREVIS_BRAND_FILE</code></td><td><code>brand.yaml</code></td><td>ブランディング。なければデフォルト</td></tr><tr><td><code>BREVIS_UI_URL</code></td><td>—</td><td>アラート内の run リンクのベース</td></tr><tr><td><code>BREVIS_METRICS_ADDR</code></td><td>—</td><td>Prometheus メトリクスのポート。空なら公開しない。<a href="/ja/docs/observability/">オブザーバビリティ</a>を参照</td></tr><tr><td><code>BREVIS_SLACK_WEBHOOK</code></td><td>—</td><td>失敗アラートの宛先。空なら誰にも通知されない</td></tr></tbody></table></div>
+<h2 id="authentication">認証<a class="anchor" href="#authentication" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>変数</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_AUTH_USER</code></td><td>インターフェースのユーザー</td></tr><tr><td><code>BREVIS_AUTH_PASSWORD_HASH</code></td><td><code>brevis hash</code> が生成する <code>pbkdf2-sha256$…</code> のハッシュ</td></tr><tr><td><code>BREVIS_AUTH_SECRET</code></td><td>セッションの署名用の 32 バイト以上(<code>openssl rand -base64 48</code>)</td></tr></tbody></table></div>
 <p>3 つは全部そろえるか、全部設定しないかのどちらかです。</p>
+<div class="table-wrap"><table><thead><tr><th>変数</th><th>デフォルト</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_AUTH_CLIENT_IP_HEADER</code></td><td>—</td><td>プロキシがクライアントのアドレスを設定するヘッダー。例: <code>X-Forwarded-For</code>。<strong>最後</strong>のエントリ(プロキシが追加したもの)が使われます。空 = 接続のアドレス</td></tr></tbody></table></div>
+<p>サインインはクライアントのアドレスごと(IPv6 は /64 単位)に制限されます。3 回失敗するとそのアドレスは 2 秒間ロックされ、最大 15 分まで倍々に延びます。<strong>ingress やロードバランサーの背後では、この変数を設定してください</strong>(<code>api.ingress.enabled</code> が有効なときは Helm chart が設定します。<code>auth.clientIPHeader</code> で上書きできます)。設定しないと全クライアントがプロキシのアドレスを共有するため、1 人がパスワードを試しただけで全員がロックアウトされます。その場合、<code>BREVIS_ENV=local</code> 以外ではロックは 30 秒が上限となり、起動時に警告がログに出ます。この変数は、ヘッダーが信頼できるプロキシによって書き込まれ、クライアントが偽造できない場合にのみ設定してください。パスワードの検証はアドレスごとに同時に 1 件しか実行されないため、同じ NAT の背後の 2 人が同じ秒にサインインすると、一時的に 429 が返ることがあります。</p>
 <aside class="admon admon-danger"><p class="admon-t">中途半端な設定は起動エラーです</p><p>ユーザー名を入れた人は、扉が閉まっていると信じています。インターフェースはパイプラインを トリガーします。<code>POST /workflows/&lt;slug&gt;/trigger</code> は、ウェアハウスに書き込む <code>dbt build</code> を 実行します。インターネットに開放されていれば、ウェアハウスのリモコンになってしまいます。 そして、ログの警告ではその思い込みは解けません。正常に動いているプロセスのログは誰も読まないからです。</p></aside>
 <p><code>BREVIS_ENV=local</code> 以外では、認証情報なしの起動は拒否されます。</p>
 <div class="code-block" data-code="error: BREVIS_ENV=production requires a credential: set BREVIS_AUTH_USER,
@@ -140,7 +142,7 @@ BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and BREVIS_AUTH_SECR
 <aside class="admon admon-note"><p class="admon-t">古い名前も引き続き使えます</p><p>2026-09-10 に、最後のポルトガル語の名前がプロジェクトのオペレータ側から消えたとき、4 つの変数の 名前が変更されました。<code>BREVIS_AUTH_USUARIO</code>、<code>BREVIS_AUTH_SENHA_HASH</code>、<code>BREVIS_AUTH_SEGREDO</code>、 <code>BREVIS_POD_MANTER_EM_FALHA</code> です。古い名前を設定しているインストールは引き続き動作し、 新しい名前を示す警告をログに出します。</p>
 <p>新しい名前を追加してデプロイし、その後で古い名前を削除してください。両方が設定されている場合は 新しい名前が優先されます。古い名前はメジャーバージョンで廃止されます。</p>
 <p>SDK では、<code>BREVIS_SDK_LIMITE_INLINE</code> が同じルールで <code>BREVIS_SDK_INLINE_LIMIT</code> になりました。</p></aside>
-<h2 id="タスクの環境">タスクの環境<a class="anchor" href="#タスクの環境" aria-label="link">#</a></h2>
+<h2 id="task-environment">タスクの環境<a class="anchor" href="#task-environment" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>変数</th><th>デフォルト</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TASK_ENV</code></td><td>空</td><td>各ステップが受け取るもの</td></tr></tbody></table></div>
 <p>タスクはオーケストレータの環境を<strong>継承しません</strong>。理由は具体的です。プロセスは Postgres のユーザー名と パスワードを含む <code>BREVIS_DATABASE_URL</code> を持っており、ワークフローは他の誰かが書いた任意のコマンドです。 継承すると、すべてのパイプラインのすべてのステップにデータベースの認証情報を渡すことになります。</p>
 <p>タスクが必要とするものは、宣言します。</p>
@@ -155,12 +157,12 @@ BREVIS_TASK_ENV='*'                       <span class="t-c"># forwards everythin
 <p>ワークフローではなく、<strong>インストール</strong>の判断です。</p>
 <div class="table-wrap"><table><thead><tr><th>変数</th><th>デフォルト</th><th>形式</th></tr></thead><tbody><tr><td><code>BREVIS_PODS</code></td><td><code>auto</code></td><td><code>auto</code>、<code>on</code>、<code>off</code>。それ以外は起動エラー</td></tr><tr><td><code>BREVIS_POD_NAMESPACE</code></td><td>クラスタのもの</td><td></td></tr><tr><td><code>BREVIS_POD_SERVICE_ACCOUNT</code></td><td>—</td><td></td></tr><tr><td><code>BREVIS_POD_PULL_SECRETS</code></td><td>—</td><td>カンマ区切りのリスト</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_SECRETS</code></td><td>—</td><td>カンマ区切りのリスト</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_CONFIGMAPS</code></td><td>—</td><td>カンマ区切りのリスト</td></tr><tr><td><code>BREVIS_POD_ALLOWED_SECRETS</code></td><td>—</td><td>カンマ区切りのリスト</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PATH</code></td><td>—</td><td>pod にマウントされるパス</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PVC</code></td><td>—</td><td>認証情報を保持する PVC</td></tr><tr><td><code>BREVIS_POD_NODE_SELECTOR</code></td><td>—</td><td><code>key=value,other=value</code></td></tr><tr><td><code>BREVIS_POD_TOLERATIONS</code></td><td>—</td><td><code>key=value:effect,…</code>。<code>Equal</code> 演算子のみ</td></tr><tr><td><code>BREVIS_POD_KEEP_ON_FAILURE</code></td><td><code>false</code></td><td><code>true</code> で調査用に pod を残す</td></tr></tbody></table></div>
 <p>リスト内の空の要素は無視されます。<code>a,,b</code> はタイプミスであり、空の Secret 名があると、 サーバーが pod 全体を拒否してしまうからです。</p>
-<h2 id="テスト">テスト<a class="anchor" href="#テスト" aria-label="link">#</a></h2>
+<h2 id="tests">テスト<a class="anchor" href="#tests" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>変数</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TEST_DATABASE_URL</code></td><td>結合テスト用のデータベース。なければスキップされる</td></tr></tbody></table></div>
-<h2 id="ヘルスエンドポイント">ヘルスエンドポイント<a class="anchor" href="#ヘルスエンドポイント" aria-label="link">#</a></h2>
+<h2 id="health-endpoints">ヘルスエンドポイント<a class="anchor" href="#health-endpoints" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>GET /health</code></td><td>liveness — データベースへのクエリは<strong>行いません</strong></td></tr><tr><td><code>GET /ready</code></td><td>readiness — クエリを行い、失敗した依存先の名前を示します</td></tr></tbody></table></div>
 <p>この分離は意図的です。外部サービスに依存する liveness プローブは、データベースが不安定になると、 ロードバランサから外すだけでは済まず、Kubernetes に <strong>pod を kill</strong> させてしまいます。</p>
-<h2 id="完全な例">完全な例<a class="anchor" href="#完全な例" aria-label="link">#</a></h2>
+<h2 id="a-complete-example">完全な例<a class="anchor" href="#a-complete-example" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# required
 export BREVIS_DATABASE_URL=&#x27;postgres://brevis:secret@db:5432/brevis?sslmode=require&#x27;
 
@@ -215,7 +217,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#必須">必須</a></li><li class="toc-2"><a href="#プロセス">プロセス</a></li><li class="toc-2"><a href="#認証">認証</a></li><li class="toc-2"><a href="#タスクの環境">タスクの環境</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#テスト">テスト</a></li><li class="toc-2"><a href="#ヘルスエンドポイント">ヘルスエンドポイント</a></li><li class="toc-2"><a href="#完全な例">完全な例</a></li></ul>
+      <ul><li class="toc-2"><a href="#required">必須</a></li><li class="toc-2"><a href="#process">プロセス</a></li><li class="toc-2"><a href="#authentication">認証</a></li><li class="toc-2"><a href="#task-environment">タスクの環境</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#tests">テスト</a></li><li class="toc-2"><a href="#health-endpoints">ヘルスエンドポイント</a></li><li class="toc-2"><a href="#a-complete-example">完全な例</a></li></ul>
     </aside>
   </main>
 </div>
@@ -235,9 +237,9 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -260,7 +262,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
-      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/parameters/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/parameters/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/parameters/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/parameters/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/parameters/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/parameters/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/parameters/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/parameters/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/parameters/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/parameters/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/parameters/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><span>简体中文</span></summary><ul><li><a href="/docs/parameters/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/parameters/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/parameters/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/parameters/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/parameters/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/parameters/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/parameters/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/parameters/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/parameters/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/parameters/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/parameters/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         探索开源项目
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>参数</h1>
       <p class="doc-desc">同一个 workflow 的两次 run 之间可以变化的内容，无需编辑文件。</p>
       <p>workflow 可以声明 <strong>run 参数</strong>：在两次触发之间变化、而文件本身不变的值。</p>
-<h2 id="声明">声明<a class="anchor" href="#声明" aria-label="link">#</a></h2>
+<h2 id="declaring">声明<a class="anchor" href="#declaring" aria-label="link">#</a></h2>
 <div class="code-block" data-code="params:
   - name: load_full
     type: boolean
@@ -167,7 +167,7 @@ steps:
     <span class="t-k">group</span>: Load
     <span class="t-k">warn</span>: reprocesses the whole table; it costs
     <span class="t-k">uses</span>: bigquery</code></pre></div>
-<h2 id="值列表">值列表<a class="anchor" href="#值列表" aria-label="link">#</a></h2>
+<h2 id="a-list-of-values">值列表<a class="anchor" href="#a-list-of-values" aria-label="link">#</a></h2>
 <p><code>list|&lt;type&gt;</code> 声明一个携带多个值的参数，比如要加载的表、要重建的层、要 backfill 的窗口：</p>
 <div class="code-block" data-code="params:
   - name: tables
@@ -198,7 +198,7 @@ steps:
 <p>它在所有地方都是<strong>一个以逗号分隔的字符串</strong>：在数据库中、在 <code>BREVIS_RUN_PARAMS</code> 中、在命令中。正因如此，它在 step 中无需任何特殊处理就能工作：</p>
 <div class="code-block" data-code="run: dbt build --select {{ .tables }}      # dbt build --select users,orders"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">run</span>: dbt build --select {{ .tables }}      <span class="t-c"># dbt build --select users,orders</span></code></pre></div>
 <p>这也是逗号不能出现在某一项内部的原因。空项和重复项同样会被拒绝：重复项会悄悄地让 step 对每一项所做的事翻倍。</p>
-<h3 id="在-step-中作为数组">在 step 中作为数组<a class="anchor" href="#在-step-中作为数组" aria-label="link">#</a></h3>
+<h3 id="as-an-array-in-a-step">在 step 中作为数组<a class="anchor" href="#as-an-array-in-a-step" aria-label="link">#</a></h3>
 <div class="code-block" data-code="for _, table := range p.Run.ParamList(&quot;tables&quot;) {
     load(table)
 }"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">for</span> _, table := <span class="t-k">range</span> p.Run.ParamList("tables") {
@@ -212,27 +212,27 @@ for table in run.param_list(&quot;tables&quot;):
 <span class="t-k">for</span> table <span class="t-k">in</span> run.param_list("tables"):
     load(table)</code></pre></div>
 <p>对于没人填写的参数，两者都返回 <code>[]</code>，而不是包含一个空字符串的列表：遍历“无事可做”应该什么都不做。各项以字符串形式返回，<code>list|integer</code> 也不例外，因为 step 比库更清楚该如何处理数字。</p>
-<h3 id="在界面中">在界面中<a class="anchor" href="#在界面中" aria-label="link">#</a></h3>
+<h3 id="in-the-interface">在界面中<a class="anchor" href="#in-the-interface" aria-label="link">#</a></h3>
 <p>带 <code>enum</code> 的列表渲染为复选框，不需要 JavaScript，浏览器会为每个勾选的框提交一个值。没有 <code>enum</code> 时，它是一个文本字段，各项变成可移除的标签；关闭 JavaScript 时，它仍是一个内容为 <code>users,orders</code> 的字段，这正是服务器所期望的。</p>
-<h3 id="在命令行中">在命令行中<a class="anchor" href="#在命令行中" aria-label="link">#</a></h3>
+<h3 id="on-the-command-line">在命令行中<a class="anchor" href="#on-the-command-line" aria-label="link">#</a></h3>
 <div class="code-block" data-code="brevis run wf.yaml --param tables=events,sessions --param days=1,30"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> tables=events,sessions <span class="t-n">--param</span> days=1,30</code></pre></div>
 <aside class="admon admon-note"><p class="admon-t">旧版引擎无法读取它</p><p>该类型与 workflow 一起保存，而在这个功能出现之前的引擎，会在 publish 时把 <code>list|string</code> 当作未知类型而拒绝。使用它的 workflow 发布之前，请先升级引擎。</p></aside>
-<h2 id="在命令中使用">在命令中使用<a class="anchor" href="#在命令中使用" aria-label="link">#</a></h2>
+<h2 id="using-it-in-the-command">在命令中使用<a class="anchor" href="#using-it-in-the-command" aria-label="link">#</a></h2>
 <p>值通过模板进入 <code>run</code>，写法是双大括号加一个点：</p>
 <div class="code-block" data-code="run: ./load.sh --since {{ .start_date }}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">run</span>: ./load.sh --since {{ .start_date }}</code></pre></div>
-<h2 id="在命令行中传递">在命令行中传递<a class="anchor" href="#在命令行中传递" aria-label="link">#</a></h2>
+<h2 id="passing-it-on-the-command-line">在命令行中传递<a class="anchor" href="#passing-it-on-the-command-line" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis run wf.yaml --param load_full=true
 brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true
 <span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true <span class="t-n">--param</span> start_date=2026-01-01</code></pre></div>
 <p><code>--param</code> 可以重复。不带 <code>=</code> 的输入是<strong>错误</strong>：</p>
-<div class="code-block" data-code="erro: --param &quot;load_full&quot;: use chave=valor"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>erro: --param "load_full": use chave=valor</code></pre></div>
+<div class="code-block" data-code="error: --param &quot;load_full&quot;: use key=value"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>error: --param "load_full": use key=value</code></pre></div>
 <p>这是有意为之。<code>--param load_full</code> 忘了写值，就会以默认值运行，而操作者还以为 backfill 用的是他们想要的参数。</p>
-<h2 id="在-backfill-中">在 backfill 中<a class="anchor" href="#在-backfill-中" aria-label="link">#</a></h2>
+<h2 id="in-a-backfill">在 backfill 中<a class="anchor" href="#in-a-backfill" aria-label="link">#</a></h2>
 <p>这些值适用于范围内的<strong>每一个</strong> slot。这是核心用例：“用 <code>load_full=true</code> 重新处理整个一月份”。</p>
 <div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
-<h2 id="在界面中">在界面中<a class="anchor" href="#在界面中" aria-label="link">#</a></h2>
+<h2 id="in-the-interface-2">在界面中<a class="anchor" href="#in-the-interface-2" aria-label="link">#</a></h2>
 <p>带有 <code>params</code> 的 workflow 会得到一个<strong>表单</strong>，取代简单的触发按钮。字段来自声明，<code>pattern</code> 在提交前校验。</p>
-<h2 id="在-step-的环境中">在 step 的环境中<a class="anchor" href="#在-step-的环境中" aria-label="link">#</a></h2>
+<h2 id="in-the-step-environment">在 step 的环境中<a class="anchor" href="#in-the-step-environment" aria-label="link">#</a></h2>
 <p>run 参数也会带着前缀进入每个 step 的<strong>环境</strong>。这样，用 <a href="/zh/docs/sdk/">SDK</a> 编写的抓取器无需以参数形式接收任何东西，就能看到它们：</p>
 <div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
     if p.Run.Params[&quot;load_full&quot;] == &quot;true&quot; {
@@ -245,7 +245,7 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div cl
     }
     <span class="t-k">return</span> <span class="t-k">nil</span>
 },</code></pre></div>
-<h2 id="自动参数">自动参数<a class="anchor" href="#自动参数" aria-label="link">#</a></h2>
+<h2 id="auto-params">自动参数<a class="anchor" href="#auto-params" aria-label="link">#</a></h2>
 <p>每个 run 还带有<strong>自动参数</strong>：引擎自己算出的值。没有人声明它们，每个 run 都有，并且显示在 run 的页面上。</p>
 <p>其中最重要的是 <code>adjusted_at</code>，值得说明它消除的那个 bug。抓取器读取 <code>now()</code>，减去自己的窗口，向供应商请求最近两个小时的数据。对于按时启动的 run，这是对的。对于被队列延迟了四十分钟的 run，就错了四十分钟，而这四十分钟<strong>不属于任何 run</strong>，因为下一个 slot 读取的也是它自己的 <code>now()</code>。没有任何东西失败；数据就是缺了，而且几周后才会被发现。</p>
 <p>所以引擎改为提供一个时钟。在你原本会读取 <code>now()</code> 的地方，读取 <code>adjusted_at</code>：</p>
@@ -254,7 +254,7 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div cl
 <p><strong>这里的每个时间戳都是 UTC</strong>，写成带 <code>Z</code> 的 RFC 3339 格式，run 的页面也以 UTC 显示，因此页面与 <code>$BREVIS_AUTO_ADJUSTED_AT</code> 永远一致。<code>date</code> 是 <strong>UTC 日期</strong>，对于 slot 跨越 UTC 午夜的 workflow 来说，它不是本地日期：<code>America/Sao_Paulo</code> 时区中的 <code>0 22 * * *</code>，其 <code>date</code> 是第二天。Airflow 的 <code>ds</code> 行为相同，原因也相同：slot 是一个时刻，只有选定时区之后，一个时刻才属于某一天。</p>
 <p><code>interval_start</code> 和 <code>interval_end</code> 来自 <strong>cron</strong>，而不是历史：对三月的某个 slot 做 backfill，得到的是三月当时的窗口，而不是这个 workflow 的 run 今天恰好描述出的窗口。请求 <code>[start, end)</code> 的 pipeline，无论运行得多晚、重试得多频繁，都不会重叠，也不会出现空缺。</p>
 <p>它们是一份<strong>快照</strong>，在 run 开始时计算并存储在 run 上。<code>previous_error</code> 是关于这个 run 开始那一刻的事实；明天重新计算它，在前一个 run 被重试并通过之后，会用同一个名称回答另一个问题。</p>
-<h3 id="读取它们">读取它们<a class="anchor" href="#读取它们" aria-label="link">#</a></h3>
+<h3 id="reading-them">读取它们<a class="anchor" href="#reading-them" aria-label="link">#</a></h3>
 <p>在 shell step 中，每个值对应一个变量，因此无需解析任何东西：</p>
 <div class="code-block" data-code="steps:
   - id: extract
@@ -298,7 +298,7 @@ since, until = run.window() <span class="t-k">or</span> (run.now() - timedelta(d
 df = fetch(since, until)
 df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 <p>当 workflow 没有调度时，<code>window()</code> 返回 <code>None</code>，而不是一对零值时间：从纪元开始的查询会选中所有数据，这种失败不该是无声的。上面的 <code>or</code> 就是全部的回退逻辑。</p>
-<h3 id="在-dlt-中什么都不用读取">在 dlt 中，什么都不用读取<a class="anchor" href="#在-dlt-中什么都不用读取" aria-label="link">#</a></h3>
+<h3 id="in-dlt-nothing-to-read-at-all">在 dlt 中，什么都不用读取<a class="anchor" href="#in-dlt-nothing-to-read-at-all" aria-label="link">#</a></h3>
 <p><a href="https://dlthub.com" target="_blank" rel="noopener">dlt</a> 在自己的游标上保存状态，写入目的地。这个状态只会<strong>向前</strong>移动，这在重新运行旧 slot 之前都没问题：游标仍然指向今天，于是 backfill 读取的是今天的窗口，而 dlt 对此的处理方式是丢弃状态。</p>
 <p>Brevis 提供的窗口来自 cron，所以三月的 run 无论重试多少次，得到的都是三月的窗口。dlt 会接受它：这些名称是 dlt 自己的，它会在去找 Airflow 之前先读取它们，而引擎会在每个调度的 run 上设置它们：</p>
 <div class="code-block" data-code="@dlt.resource(primary_key=&quot;id&quot;)
@@ -323,9 +323,9 @@ def events(
 <p>在它生效之前，有两件事需要知道：</p>
 <ul><li><strong>游标必须是 datetime，而不是字符串。</strong> dlt 不会为比较而强制转换 <code>text</code> 类型的游标，并且会彻底拒绝加入调度器，抛出一个不太容易看出原因的 <code>JoinSchedulerError</code>。请在 resource 上转换它（<code>add_map</code>），或像上面那样为 <code>initial_value</code> 指定类型。</li><li><strong>没有调度的 workflow 不会提供任何东西</strong>，这时 dlt 会抛出 <code>ExternalSchedulerNotAvailable</code>，而不是悄悄回退到它自己的游标。如果一条 pipeline 需要两种方式都能工作，请不要开启 <code>allow_external_schedulers</code>，而是自己通过 <code>run.window()</code> 传入窗口。</li></ul>
 <p>在 step 上声明 <code>tools: [dlt]</code> 是另一回事，它只会在图上画出标签，无论是否声明，窗口都会被传入。</p>
-<h2 id="快照">快照<a class="anchor" href="#快照" aria-label="link">#</a></h2>
+<h2 id="the-snapshot">快照<a class="anchor" href="#the-snapshot" aria-label="link">#</a></h2>
 <p>参数存储在 <strong>run 中</strong>，而不是在执行时从 workflow 读取。run 携带触发它时的输入，因此一月份某次执行的日志，即使默认值之后发生变化，仍会显示一月份的值。</p>
-<h2 id="下一步">下一步<a class="anchor" href="#下一步" aria-label="link">#</a></h2>
+<h2 id="next-steps">下一步<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/zh/docs/configuration/">配置</a>：进程的环境变量</li><li><a href="/zh/docs/sdk/">SDK</a>：抓取器如何读取 run 的上下文</li><li><a href="/zh/docs/context/">step 之间的上下文</a>：step 为下一个 step 发布什么</li></ul>
 
       <nav class="pagers" aria-label="页面">
@@ -340,7 +340,7 @@ def events(
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#声明">声明</a></li><li class="toc-2"><a href="#值列表">值列表</a></li><li class="toc-3"><a href="#在-step-中作为数组">在 step 中作为数组</a></li><li class="toc-3"><a href="#在界面中">在界面中</a></li><li class="toc-3"><a href="#在命令行中">在命令行中</a></li><li class="toc-2"><a href="#在命令中使用">在命令中使用</a></li><li class="toc-2"><a href="#在命令行中传递">在命令行中传递</a></li><li class="toc-2"><a href="#在-backfill-中">在 backfill 中</a></li><li class="toc-2"><a href="#在界面中">在界面中</a></li><li class="toc-2"><a href="#在-step-的环境中">在 step 的环境中</a></li><li class="toc-2"><a href="#自动参数">自动参数</a></li><li class="toc-3"><a href="#读取它们">读取它们</a></li><li class="toc-3"><a href="#在-dlt-中什么都不用读取">在 dlt 中，什么都不用读取</a></li><li class="toc-2"><a href="#快照">快照</a></li><li class="toc-2"><a href="#下一步">下一步</a></li></ul>
+      <ul><li class="toc-2"><a href="#declaring">声明</a></li><li class="toc-2"><a href="#a-list-of-values">值列表</a></li><li class="toc-3"><a href="#as-an-array-in-a-step">在 step 中作为数组</a></li><li class="toc-3"><a href="#in-the-interface">在界面中</a></li><li class="toc-3"><a href="#on-the-command-line">在命令行中</a></li><li class="toc-2"><a href="#using-it-in-the-command">在命令中使用</a></li><li class="toc-2"><a href="#passing-it-on-the-command-line">在命令行中传递</a></li><li class="toc-2"><a href="#in-a-backfill">在 backfill 中</a></li><li class="toc-2"><a href="#in-the-interface-2">在界面中</a></li><li class="toc-2"><a href="#in-the-step-environment">在 step 的环境中</a></li><li class="toc-2"><a href="#auto-params">自动参数</a></li><li class="toc-3"><a href="#reading-them">读取它们</a></li><li class="toc-3"><a href="#in-dlt-nothing-to-read-at-all">在 dlt 中，什么都不用读取</a></li><li class="toc-2"><a href="#the-snapshot">快照</a></li><li class="toc-2"><a href="#next-steps">下一步</a></li></ul>
     </aside>
   </main>
 </div>
@@ -360,9 +360,9 @@ def events(
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -385,7 +385,7 @@ def events(
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

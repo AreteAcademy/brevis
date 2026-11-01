@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Saltar al contenido</a>
+<a class="skip-link" href="#content">Saltar al contenido</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegación principal">
-      <a href="/es/#ecossistema">Ecosistema</a>
+      <a href="/es/#ecosystem">Ecosistema</a>
       <a href="/es/docs/">Documentación</a>
-      <details class="lang-dd"><summary aria-label="Idioma: Español"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Español</span></summary><ul><li><a href="/docs/quickstart/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/quickstart/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/quickstart/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/quickstart/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/quickstart/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/quickstart/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/quickstart/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/quickstart/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/quickstart/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/quickstart/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/quickstart/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Idioma: Español"><span>Español</span></summary><ul><li><a href="/docs/quickstart/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/quickstart/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/quickstart/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/quickstart/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/quickstart/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/quickstart/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/quickstart/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/quickstart/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/quickstart/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/quickstart/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/quickstart/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Explorar el código abierto
@@ -119,18 +119,18 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentación</p>
       <h1>Inicio rápido</h1>
       <p class="doc-desc">De cero a un DAG en vivo en la interfaz, en cuatro pasos.</p>
       <p>Esta guía levanta brevis.sh, publica un workflow y lo ejecuta. Al final se ve el grafo con el estado en vivo de cada step.</p>
 <p>Requisito: un PostgreSQL accesible y la variable <code>BREVIS_DATABASE_URL</code>.</p>
-<h2 id="1-aplicar-el-esquema">1. Aplicar el esquema<a class="anchor" href="#1-aplicar-el-esquema" aria-label="link">#</a></h2>
+<h2 id="1-apply-the-schema">1. Aplicar el esquema<a class="anchor" href="#1-apply-the-schema" aria-label="link">#</a></h2>
 <div class="code-block" data-code="export BREVIS_DATABASE_URL=&#x27;postgres://brevis:brevis@localhost:5432/brevis?sslmode=disable&#x27;
 brevis migrate up"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>export BREVIS_DATABASE_URL='postgres://<span class="t-k">brevis</span>:<span class="t-k">brevis</span>@localhost:5432/<span class="t-k">brevis</span>?sslmode=disable'
 <span class="t-k">brevis</span> migrate up</code></pre></div>
-<h2 id="2-escribir-un-workflow">2. Escribir un workflow<a class="anchor" href="#2-escribir-un-workflow" aria-label="link">#</a></h2>
+<h2 id="2-write-a-workflow">2. Escribir un workflow<a class="anchor" href="#2-write-a-workflow" aria-label="link">#</a></h2>
 <p>Crear <code>hello.yaml</code>. Este ejemplo usa solo shell, así que corre en cualquier parte:</p>
 <div class="code-block" data-code="name: hello
 type: dag
@@ -174,7 +174,7 @@ steps:
 <p>Verificarlo antes de publicar; esto no toca la base de datos:</p>
 <div class="code-block" data-code="brevis validate hello.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> validate hello.yaml</code></pre></div>
 <div class="code-block" data-code="  ok    hello                        dag  4 steps, 4 dependencies  (manual)"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>  ok    hello                        dag  4 steps, 4 dependencies  (manual)</code></pre></div>
-<h2 id="3-ejecutarlo-ahora-sin-la-cola">3. Ejecutarlo ahora, sin la cola<a class="anchor" href="#3-ejecutarlo-ahora-sin-la-cola" aria-label="link">#</a></h2>
+<h2 id="3-run-it-now-without-the-queue">3. Ejecutarlo ahora, sin la cola<a class="anchor" href="#3-run-it-now-without-the-queue" aria-label="link">#</a></h2>
 <p>El camino más corto para ver el grafo funcionando:</p>
 <div class="code-block" data-code="brevis run hello.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> run hello.yaml</code></pre></div>
 <div class="code-block" data-code="workflow hello (dag, 4 steps) in .
@@ -208,7 +208,7 @@ workflow hello finished"><div class="code-head"><span class="code-lang">text</sp
 workflow hello finished</code></pre></div>
 <p><code>extract</code> y <code>validate</code> arrancan juntos porque dependen del mismo step. El runner recorre el grafo <strong>por niveles</strong>: todo lo que está dentro de un nivel corre en paralelo, y el siguiente nivel empieza solo cuando el anterior termina por completo.</p>
 <aside class="admon admon-note"><p class="admon-t">`run` es local por naturaleza</p><p><code>brevis run</code> solo opera con <code>BREVIS_ENV=local</code> (vacío cuenta como local) y ejecuta los steps como procesos en la propia instancia, incluso aquellos que declaran <code>image:</code>. Los pods los crea el <code>scheduler</code>.</p></aside>
-<h2 id="4-publicar-y-operar">4. Publicar y operar<a class="anchor" href="#4-publicar-y-operar" aria-label="link">#</a></h2>
+<h2 id="4-publish-and-operate">4. Publicar y operar<a class="anchor" href="#4-publish-and-operate" aria-label="link">#</a></h2>
 <p>Para que el workflow exista en la base de datos, aparezca en la interfaz y siga su programación:</p>
 <div class="code-block" data-code="brevis publish hello.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> publish hello.yaml</code></pre></div>
 <div class="code-block" data-code="  published  hello                      (manual)"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>  published  hello                      (manual)</code></pre></div>
@@ -216,9 +216,9 @@ workflow hello finished</code></pre></div>
 <div class="code-block" data-code="brevis serve"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> serve</code></pre></div>
 <div class="code-block" data-code="brevis scheduler --interval 5s --concurrency 4"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--interval</span> 5s <span class="t-n">--concurrency</span> 4</code></pre></div>
 <p>Abrir <code>http://localhost:8080</code>, buscar <code>hello</code> en la lista de workflows y hacer clic en ▶. El grafo muestra cada step cambiando de estado en vivo.</p>
-<h2 id="que-paso">Qué pasó<a class="anchor" href="#que-paso" aria-label="link">#</a></h2>
+<h2 id="what-happened">Qué pasó<a class="anchor" href="#what-happened" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>migrate up</code></td><td>creó las tablas</td></tr><tr><td><code>validate</code></td><td>verificó el YAML sin tocar la base de datos</td></tr><tr><td><code>run</code></td><td>se ejecutó en la propia instancia, sin cola</td></tr><tr><td><code>publish</code></td><td>almacenó el workflow y su programación</td></tr><tr><td><code>serve</code></td><td>levantó la API y la interfaz</td></tr><tr><td><code>scheduler</code></td><td>materializó la programación y vació la cola</td></tr></tbody></table></div>
-<h2 id="siguientes-pasos">Siguientes pasos<a class="anchor" href="#siguientes-pasos" aria-label="link">#</a></h2>
+<h2 id="next-steps">Siguientes pasos<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/es/docs/workflows/">Workflows</a> — el formato YAML completo</li><li><a href="/es/docs/parameters/">Parámetros</a> — lo que cambia entre dos runs</li><li><a href="/es/docs/pod-per-step/">Pod por step</a> — cómo esto se convierte en Kubernetes</li></ul>
 
       <nav class="pagers" aria-label="Páginas">
@@ -233,7 +233,7 @@ workflow hello finished</code></pre></div>
 
     <aside class="toc" aria-label="En esta página">
       <p class="toc-t">En esta página</p>
-      <ul><li class="toc-2"><a href="#1-aplicar-el-esquema">1. Aplicar el esquema</a></li><li class="toc-2"><a href="#2-escribir-un-workflow">2. Escribir un workflow</a></li><li class="toc-2"><a href="#3-ejecutarlo-ahora-sin-la-cola">3. Ejecutarlo ahora, sin la cola</a></li><li class="toc-2"><a href="#4-publicar-y-operar">4. Publicar y operar</a></li><li class="toc-2"><a href="#que-paso">Qué pasó</a></li><li class="toc-2"><a href="#siguientes-pasos">Siguientes pasos</a></li></ul>
+      <ul><li class="toc-2"><a href="#1-apply-the-schema">1. Aplicar el esquema</a></li><li class="toc-2"><a href="#2-write-a-workflow">2. Escribir un workflow</a></li><li class="toc-2"><a href="#3-run-it-now-without-the-queue">3. Ejecutarlo ahora, sin la cola</a></li><li class="toc-2"><a href="#4-publish-and-operate">4. Publicar y operar</a></li><li class="toc-2"><a href="#what-happened">Qué pasó</a></li><li class="toc-2"><a href="#next-steps">Siguientes pasos</a></li></ul>
     </aside>
   </main>
 </div>
@@ -253,9 +253,9 @@ workflow hello finished</code></pre></div>
       <div class="footer-col">
         <h2>proyecto</h2>
         <ul>
-          <li><a href="/es/#ecossistema">Ecosistema</a></li>
+          <li><a href="/es/#ecosystem">Ecosistema</a></li>
           <li><a href="/es/docs/philosophy/">Principios</a></li>
-          <li><a href="/es/docs/introduction/#codigo-abierto-elige-como-participar">Código abierto</a></li>
+          <li><a href="/es/docs/introduction/#open-code-choose-how-to-take-part">Código abierto</a></li>
           <li><a href="/es/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -278,7 +278,7 @@ workflow hello finished</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

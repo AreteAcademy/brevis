@@ -35,7 +35,7 @@ la base de datos donde aterrizaron.
 Tres piezas de apoyo:
 
 - **[Console](/es/docs/console/index.md)** — la interfaz web sobre el Core
-- **[agent](/es/docs/pod-per-step/#donde-se-ejecuta-cada-step)** — ejecuta un step en un clúster que ya existe
+- **[agent](/es/docs/pod-per-step/#where-each-step-runs)** — ejecuta un step en un clúster que ya existe
 - **[`brevis` para Python](/es/docs/python/index.md)** — contexto de ejecución para steps en Python
 
 ## Usar una sola pieza
@@ -46,7 +46,7 @@ Sí se puede. Cada pieza tiene su propio módulo, versión e imagen: el SDK es u
 
 Un pedido que el SDK obtiene y un pedido que llega al Gateway aterrizan en la misma tabla, con el mismo brevis_ingestion_id. Elegir entre ambos pasa a ser una decisión de despliegue, no de esquema.
 
-Con el SDK, usando `sdk.Landing` (detalles en [El layout de aterrizaje](/es/docs/sdk/#el-layout-de-aterrizaje)):
+Con el SDK, usando `sdk.Landing` (detalles en [El layout de aterrizaje](/es/docs/sdk/#the-landing-layout)):
 
 ```go
 sdk.Execute(ctx, &sdk.Pipeline{
@@ -59,7 +59,7 @@ sdk.Execute(ctx, &sdk.Pipeline{
 }, nil)
 ```
 
-Con el Gateway, un POST a `/v1/tables` (detalles en [Una ruta, N tablas](/es/docs/ingestion/#una-ruta-n-tablas)):
+Con el Gateway, un POST a `/v1/tables` (detalles en [Una ruta, N tablas](/es/docs/ingestion/#one-route-n-tables)):
 
 ```bash
 curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+<a class="skip-link" href="#content">본문으로 건너뛰기</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="주 내비게이션">
-      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/#ecosystem">에코시스템</a>
       <a href="/ko/docs/">문서</a>
-      <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/scheduler-and-queue/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/scheduler-and-queue/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/scheduler-and-queue/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/scheduler-and-queue/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/scheduler-and-queue/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/scheduler-and-queue/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/scheduler-and-queue/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/scheduler-and-queue/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/scheduler-and-queue/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/scheduler-and-queue/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/scheduler-and-queue/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="언어: 한국어"><span>한국어</span></summary><ul><li><a href="/docs/scheduler-and-queue/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/scheduler-and-queue/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/scheduler-and-queue/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/scheduler-and-queue/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/scheduler-and-queue/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/scheduler-and-queue/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/scheduler-and-queue/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/scheduler-and-queue/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/scheduler-and-queue/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/scheduler-and-queue/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/scheduler-and-queue/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         오픈 소스 둘러보기
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">문서</p>
       <h1>스케줄러와 큐</h1>
@@ -142,20 +142,20 @@ creates the Run  ─────────────►  (pending in the dat
                                    walks the graph
                                    executes each step
                                    records state and log</code></pre></div>
-<h2 id="분리하는-이유">분리하는 이유<a class="anchor" href="#분리하는-이유" aria-label="link">#</a></h2>
+<h2 id="why-separate">분리하는 이유<a class="anchor" href="#why-separate" aria-label="link">#</a></h2>
 <p>스케줄링과 실행을 모두 맡는 단일 루프에는 나쁜 성질이 하나 있습니다. 실행이 막히면 스케줄링도 함께 멈춘다는 것입니다. 이후 열두 시간 분량의 slot은 그냥 존재하지 않게 되고, 도착하지 않은 데이터를 누군가 찾으러 갈 때까지 아무도 알아채지 못합니다.</p>
 <p>둘을 분리하면 다음과 같습니다.</p>
 <ul><li><strong>스케줄러</strong>가 멈춰도 큐는 이미 만들어진 것을 계속 처리합니다.</li><li><strong>큐</strong>가 멈춰도 slot은 계속 구체화되고, 큐가 돌아오면 실행됩니다.</li><li><strong>재처리는 시계에 의존하지 않습니다.</strong> <code>backfill</code>은 cron이 사용했을 경로와 같은 경로로 과거 run을 만듭니다.</li></ul>
-<h2 id="프로세스">프로세스<a class="anchor" href="#프로세스" aria-label="link">#</a></h2>
+<h2 id="the-process">프로세스<a class="anchor" href="#the-process" aria-label="link">#</a></h2>
 <p>두 루프는 같은 명령 안에 있습니다.</p>
 <div class="code-block" data-code="brevis scheduler --interval 5s --concurrency 4 --max-pods 10"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--interval</span> 5s <span class="t-n">--concurrency</span> 4 <span class="t-n">--max-pods</span> 10</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>플래그</th><th>기본값</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td><code>10s</code></td><td>스케줄러 주기 사이의 간격</td></tr><tr><td><code>--concurrency</code></td><td><code>5</code></td><td>동시에 실행되는 <strong>run</strong> 수</td></tr><tr><td><code>--max-pods</code></td><td><code>5</code></td><td>동시에 실행되는 <strong>step</strong>의 전체 수</td></tr></tbody></table></div>
 <p><code>--concurrency</code>와 <code>--max-pods</code>는 의도적으로 서로 다른 것을 셉니다. 한도가 run에만 있다면, step 세 개를 병렬로 돌리는 run 다섯 개는 pod 열다섯 개가 됩니다.</p>
 <aside class="admon admon-note"><p class="admon-t">`serve`는 스케줄을 구체화하지 않습니다</p><p>API 프로세스도 같은 스케줄러를 띄우지만 <strong>루프는 돌리지 않습니다</strong>. 인터페이스의 수동 트리거를 처리하기 위한 것일 뿐이며, 덕분에 "스케줄러가 run을 만든다"는 규칙은 소유자가 하나로 유지됩니다. 스케줄이 실행되려면 <code>brevis scheduler</code>가 함께 실행되고 있어야 합니다.</p></aside>
-<h2 id="정의-스냅샷">정의 스냅샷<a class="anchor" href="#정의-스냅샷" aria-label="link">#</a></h2>
+<h2 id="the-definition-snapshot">정의 스냅샷<a class="anchor" href="#the-definition-snapshot" aria-label="link">#</a></h2>
 <p>스케줄러는 run을 만들 때 <strong>workflow 정의를 run 안에 저장</strong>합니다. 실행은 디스크의 YAML이 아니라 이 스냅샷을 읽습니다.</p>
 <p>이유는 구체적입니다. 트리거와 실행 사이에 누군가 파일을 수정하고 배포했을 수 있습니다. 스냅샷이 없으면 05:00에 한 정의로 만들어진 run이 05:02에 다른 정의로 실행되고, 로그에는 그 차이를 설명할 방법이 없습니다.</p>
-<h2 id="재시도">재시도<a class="anchor" href="#재시도" aria-label="link">#</a></h2>
+<h2 id="retries">재시도<a class="anchor" href="#retries" aria-label="link">#</a></h2>
 <p>실패한 run은 <strong>세 번</strong> 시도되며 지연은 <strong>두 배씩</strong> 늘어납니다. 기본값에서는 <strong>0초, 30초, 1분 30초</strong>에 시도됩니다.</p>
 <div class="code-block" data-code="brevis scheduler --max-attempts 3 --retry-backoff 30s --retry-backoff-max 1h"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--max-attempts</span> 3 <span class="t-n">--retry-backoff</span> 30s <span class="t-n">--retry-backoff-max</span> 1h</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>플래그</th><th>기본값</th><th></th></tr></thead><tbody><tr><td><code>--max-attempts</code></td><td><code>3</code></td><td>run당 시도 횟수(첫 시도 포함)</td></tr><tr><td><code>--retry-backoff</code></td><td><code>30s</code></td><td>첫 번째 지연. 이후 시도마다 두 배가 됩니다</td></tr><tr><td><code>--retry-backoff-max</code></td><td><code>1h</code></td><td>지연의 상한</td></tr></tbody></table></div>
@@ -170,11 +170,11 @@ creates the Run  ─────────────►  (pending in the dat
 <div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31
 brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31
 <span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
-<div class="code-block" data-code="  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los</code></pre></div>
+<div class="code-block" data-code="  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them</code></pre></div>
 <p>이 명령은 <strong>큐에 넣을 뿐 실행하지 않습니다.</strong> 실행은 <code>scheduler</code>의 일이며, 같은 분리 원칙입니다. <code>--to</code>는 그날 하루 전체를 포함합니다.</p>
-<h2 id="랜딩으로-시작하기">랜딩으로 시작하기<a class="anchor" href="#랜딩으로-시작하기" aria-label="link">#</a></h2>
+<h2 id="started-by-a-landing">랜딩으로 시작하기<a class="anchor" href="#started-by-a-landing" aria-label="link">#</a></h2>
 <p>workflow는 시계가 그렇게 말해서가 아니라 데이터가 도착했기 때문에 실행될 수 있습니다.</p>
 <div class="code-block" data-code="trigger:
   on_landed:
@@ -187,23 +187,23 @@ brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true">
   <span class="t-k">debounce</span>: 5m</code></pre></div>
 <p>모든 step은 이미 자신이 쓴 것을 단계를 전달하는 파이프를 통해 선언하며, <code>/data</code>를 채우는 것이 바로 그 정보입니다. workflow는 그 이름 중 하나를 구독하고, 그 이름에 무언가 도착하면 시작됩니다.</p>
 <p>끝에 <code>/*</code>를 붙이면 데이터셋 전체를 구독합니다. 이는 경로마다 테이블을 만드는 <code>auto_table</code>을 위해 존재합니다. 아무도 선언하지 않은 테이블에 대해 이름으로 지정할 수 있는 것은 데이터셋뿐이기 때문입니다. <code>bronze/orders</code>에는 일치하고 <code>bronze_raw/orders</code>에는 일치하지 않습니다.</p>
-<h3 id="시간-창-그리고-랜딩-열-건이-run-하나인-이유">시간 창, 그리고 랜딩 열 건이 run 하나인 이유<a class="anchor" href="#시간-창-그리고-랜딩-열-건이-run-하나인-이유" aria-label="link">#</a></h3>
+<h3 id="the-window-and-why-ten-landings-are-one-run">시간 창, 그리고 랜딩 열 건이 run 하나인 이유<a class="anchor" href="#the-window-and-why-ten-landings-are-one-run" aria-label="link">#</a></h3>
 <p><code>debounce</code>는 몰려드는 랜딩을 하나로 합칩니다. 테이블 열 개가 5분 안에 도착하면 run이 열 개가 아니라 <strong>하나</strong> 시작되며, run은 어떤 테이블인지 알려 줍니다.</p>
 <div class="code-block" data-code="BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items</code></pre></div>
 <p>정확한 목록은 JSON으로 <code>BREVIS_AUTO_PARAMS</code>에도 들어 있으며, 대상 이름에 쉼표가 들어 있을 수 있을 때 읽어야 하는 것은 이쪽입니다.</p>
 <p>시간 창은 step이 일어났다고 말한 시각이 아니라 <strong>엔진이 랜딩을 기록한 시각</strong>을 기준으로 잘립니다. 쿼리가 시작된 순간을 보고하는 step은 사실이지만 오래된 정보를 보고하는 것이며, 시계 하나가 어긋나면 몰려든 랜딩이 두 run으로 갈라질 수 있습니다.</p>
 <p><code>debounce</code>를 생략하면 랜딩마다 run이 시작됩니다.</p>
-<h3 id="하지-않는-것">하지 않는 것<a class="anchor" href="#하지-않는-것" aria-label="link">#</a></h3>
+<h3 id="what-it-will-not-do">하지 않는 것<a class="anchor" href="#what-it-will-not-do" aria-label="link">#</a></h3>
 <p><strong>workflow는 자신의 쓰기로 시작되지 않습니다.</strong> 엔진은 작성자가 구독 중인 workflow 자신인 랜딩을 버리고 그 이유를 로그에 남깁니다. 그렇지 않으면 같은 테이블을 읽고 쓰는 workflow가 영원히 스스로를 트리거합니다.</p>
 <p>이것은 파일을 검사할 때가 아니라 <strong>트리거가 발생할 때</strong> 거부되며, 이는 간과가 아니라 한계입니다. <code>brevis validate</code>는 파일을 읽는데, 어떤 파일도 step이 무엇을 쓰는지 선언하지 않습니다. 웨어하우스 대상은 YAML이 아니라 연결이 결정합니다. 그래서 <code>validate</code>는 런타임에 거부될 workflow를 매번 통과시키며, 이유는 로그에 남습니다.</p>
 <p><strong>첫 주기에는 아무것도 시작되지 않습니다.</strong> 트리거는 스케줄처럼 활성화된 순간부터 카운트를 시작합니다. 그렇지 않으면 트리거를 게시하는 순간 카탈로그 이력의 모든 랜딩에 대해 run이 발생할 것입니다.</p>
-<h2 id="알림">알림<a class="anchor" href="#알림" aria-label="link">#</a></h2>
+<h2 id="alerts">알림<a class="anchor" href="#alerts" aria-label="link">#</a></h2>
 <div class="code-block" data-code="export BREVIS_SLACK_WEBHOOK=&#x27;https://hooks.slack.com/services/...&#x27;
 export BREVIS_UI_URL=&#x27;https://brevis.example.com&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
 export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code></pre></div>
 <p>웹훅이 없으면 프로세스는 부팅 시 실패가 보고되지 않을 것이라고 경고합니다. 조용히 실패하는 설치 환경은 팀이 아니라 고객이 먼저 발견하기 쉽습니다.</p>
 <p><code>BREVIS_UI_URL</code>은 알림 안의 run 링크를 만듭니다. 이 변수가 없으면 알림은 무엇이 실패했는지는 알려 주지만 읽는 사람이 run을 직접 찾아야 합니다.</p>
-<h2 id="다음-단계">다음 단계<a class="anchor" href="#다음-단계" aria-label="link">#</a></h2>
+<h2 id="next-steps">다음 단계<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ko/docs/pod-per-step/">step당 pod 하나</a> — 각 step이 실제로 실행되는 곳</li><li><a href="/ko/docs/cli/">CLI</a> — <code>scheduler</code>와 <code>backfill</code>의 모든 플래그</li></ul>
 
       <nav class="pagers" aria-label="페이지">
@@ -218,7 +218,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
     <aside class="toc" aria-label="이 페이지에서">
       <p class="toc-t">이 페이지에서</p>
-      <ul><li class="toc-2"><a href="#분리하는-이유">분리하는 이유</a></li><li class="toc-2"><a href="#프로세스">프로세스</a></li><li class="toc-2"><a href="#정의-스냅샷">정의 스냅샷</a></li><li class="toc-2"><a href="#재시도">재시도</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#랜딩으로-시작하기">랜딩으로 시작하기</a></li><li class="toc-3"><a href="#시간-창-그리고-랜딩-열-건이-run-하나인-이유">시간 창, 그리고 랜딩 열 건이 run 하나인 이유</a></li><li class="toc-3"><a href="#하지-않는-것">하지 않는 것</a></li><li class="toc-2"><a href="#알림">알림</a></li><li class="toc-2"><a href="#다음-단계">다음 단계</a></li></ul>
+      <ul><li class="toc-2"><a href="#why-separate">분리하는 이유</a></li><li class="toc-2"><a href="#the-process">프로세스</a></li><li class="toc-2"><a href="#the-definition-snapshot">정의 스냅샷</a></li><li class="toc-2"><a href="#retries">재시도</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#started-by-a-landing">랜딩으로 시작하기</a></li><li class="toc-3"><a href="#the-window-and-why-ten-landings-are-one-run">시간 창, 그리고 랜딩 열 건이 run 하나인 이유</a></li><li class="toc-3"><a href="#what-it-will-not-do">하지 않는 것</a></li><li class="toc-2"><a href="#alerts">알림</a></li><li class="toc-2"><a href="#next-steps">다음 단계</a></li></ul>
     </aside>
   </main>
 </div>
@@ -238,9 +238,9 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
       <div class="footer-col">
         <h2>프로젝트</h2>
         <ul>
-          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/#ecosystem">에코시스템</a></li>
           <li><a href="/ko/docs/philosophy/">원칙</a></li>
-          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/introduction/#open-code-choose-how-to-take-part">오픈 소스</a></li>
           <li><a href="/ko/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -263,7 +263,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

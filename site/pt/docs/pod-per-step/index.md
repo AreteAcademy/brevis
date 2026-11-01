@@ -15,13 +15,13 @@ o seu runtime.
 ```
 scheduler                          cluster
 ─────────                          ───────
-percorre o grafo
-  para cada passo pronto:
-    monta o Pod  ──────────────►  Pod: imagem do passo, comando do passo
-    acompanha o status  ◄───────  Pending → Running → Succeeded/Failed
-    segue o log         ◄───────  stdout do container
-    lê o exit code      ◄───────  containerStatuses[0].terminated
-    apaga o pod  ──────────────►  (some)
+walks the graph
+  for each ready step:
+    builds the Pod  ───────────►  Pod: the step's image, the step's command
+    follows status      ◄───────  Pending → Running → Succeeded/Failed
+    follows the log     ◄───────  container stdout
+    reads the exit code ◄───────  containerStatuses[0].terminated
+    deletes the pod ───────────►  (gone)
 ```
 
 ## O que isso muda
@@ -94,7 +94,7 @@ um pipeline não deve poder escolher a service account com que roda. Por isso
 vem do ambiente:
 
 ```bash
-BREVIS_POD_NAMESPACE=dados
+BREVIS_POD_NAMESPACE=data
 BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
 BREVIS_POD_PULL_SECRETS=registry-cred
 BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred,api-tokens
@@ -107,7 +107,7 @@ Em modo pod, o ambiente da task vem dos Secrets do cluster — não de
 
 ```bash
 BREVIS_POD_NODE_SELECTOR='kubernetes.io/arch=arm64'
-BREVIS_POD_TOLERATIONS='dedicated=dados:NoSchedule'
+BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'
 ```
 
 Só o operador `Equal` é aceito nas tolerações: `Exists` toleraria **qualquer**

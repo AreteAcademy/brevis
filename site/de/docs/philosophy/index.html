@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc serif">
 
-<a class="skip-link" href="#conteudo">Zum Inhalt springen</a>
+<a class="skip-link" href="#content">Zum Inhalt springen</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Hauptnavigation">
-      <a href="/de/#ecossistema">Ökosystem</a>
+      <a href="/de/#ecosystem">Ökosystem</a>
       <a href="/de/docs/">Dokumentation</a>
-      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Deutsch</span></summary><ul><li><a href="/docs/philosophy/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/philosophy/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/philosophy/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/philosophy/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/philosophy/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/philosophy/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/philosophy/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/philosophy/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/philosophy/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/philosophy/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/philosophy/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><span>Deutsch</span></summary><ul><li><a href="/docs/philosophy/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/philosophy/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/philosophy/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/philosophy/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/philosophy/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/philosophy/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/philosophy/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/philosophy/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/philosophy/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/philosophy/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/philosophy/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open Source erkunden
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentation</p>
       <h1>Philosophie</h1>
@@ -130,9 +130,9 @@
 <p>Senecas Maxime leitet die Frage hinter brevis.sh: Welche Komplexitäten verdienen wirklich die Zeit eines Teams? Jeder Workflow läuft in isolierten Pods, damit Fehler, Versionen und Abhängigkeiten klare Grenzen haben.</p>
 <p>Vier Entscheidungen der Laufzeitumgebung folgen aus dieser Frage:</p>
 <ul><li><strong>Image pro Step</strong> – Jeder Step deklariert die Laufzeitumgebung, die er braucht. Eine Version anzuheben zwingt Sie nicht, die anderen anzufassen.</li><li><strong>Logs pro Run</strong> – Die Ausgabe gehört zu dem Run, der sie erzeugt hat. Einen Fehler zu untersuchen heißt nicht, einen verlorenen Kontext zu rekonstruieren.</li><li><strong>persistente Retries</strong> – Der Versuch überdauert den Prozess. Ein Neustart löscht nicht, was über die Arbeit bereits bekannt war.</li><li><strong>Isolation der Abhängigkeiten</strong> – Was ein Step mitbringt, sickert nicht in seine Nachbarn. Eine klare Grenze macht einen Fehler lesbar.</li></ul>
-<h2 id="was-das-projekt-vorschlägt">Was das Projekt vorschlägt<a class="anchor" href="#was-das-projekt-vorschlägt" aria-label="link">#</a></h2>
+<h2 id="what-the-project-proposes">Was das Projekt vorschlägt<a class="anchor" href="#what-the-project-proposes" aria-label="link">#</a></h2>
 <p>Zwischen <em>Philosophie ohne Praxis</em> und <em>Technologie ohne Richtung</em>: <strong>Klarheit, das Wesentliche zu tun.</strong></p>
-<h2 id="werkzeuge-prägen-die-art-wie-wir-denken">Werkzeuge prägen die Art, wie wir denken.<a class="anchor" href="#werkzeuge-prägen-die-art-wie-wir-denken" aria-label="link">#</a></h2>
+<h2 id="tools-shape-the-way-we-think">Werkzeuge prägen die Art, wie wir denken.<a class="anchor" href="#tools-shape-the-way-we-think" aria-label="link">#</a></h2>
 <blockquote><p>„Nachhaltiger Code ist nicht bloß Code, der weiterläuft. Es ist Code, der Menschen Raum zum Nachdenken lässt.“ – Philosophie, angewandt auf Software</p></blockquote>
 <blockquote><p>„Klarheit ist nicht das Gegenteil von Raffinesse. Sie ist das Kriterium, das verhindert, dass Raffinesse zu Rauschen wird.“ – Open Source aus Prinzip</p></blockquote>
 
@@ -148,7 +148,7 @@
 
     <aside class="toc" aria-label="Auf dieser Seite">
       <p class="toc-t">Auf dieser Seite</p>
-      <ul><li class="toc-2"><a href="#de-brevitate-vitae">De brevitate vitae</a></li><li class="toc-2"><a href="#was-das-projekt-vorschlägt">Was das Projekt vorschlägt</a></li><li class="toc-2"><a href="#werkzeuge-prägen-die-art-wie-wir-denken">Werkzeuge prägen die Art, wie wir denken.</a></li></ul>
+      <ul><li class="toc-2"><a href="#de-brevitate-vitae">De brevitate vitae</a></li><li class="toc-2"><a href="#what-the-project-proposes">Was das Projekt vorschlägt</a></li><li class="toc-2"><a href="#tools-shape-the-way-we-think">Werkzeuge prägen die Art, wie wir denken.</a></li></ul>
     </aside>
   </main>
 </div>
@@ -168,9 +168,9 @@
       <div class="footer-col">
         <h2>Projekt</h2>
         <ul>
-          <li><a href="/de/#ecossistema">Ökosystem</a></li>
+          <li><a href="/de/#ecosystem">Ökosystem</a></li>
           <li><a href="/de/docs/philosophy/">Prinzipien</a></li>
-          <li><a href="/de/docs/introduction/#offener-code-wählen-sie-wie-sie-mitmachen">Open Source</a></li>
+          <li><a href="/de/docs/introduction/#open-code-choose-how-to-take-part">Open Source</a></li>
           <li><a href="/de/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -193,7 +193,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

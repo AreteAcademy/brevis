@@ -8,6 +8,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -24,15 +25,48 @@ type Pool struct {
 	*pgxpool.Pool
 }
 
-// New opens the pool and checks the connection before returning. A pool that
-// only fails on first use turns a configuration error into a request error.
-func New(ctx context.Context, url string) (*Pool, error) {
+// PoolOptions are the limits an installation can put on the pool. The zero
+// value is the previous behavior: the driver's default size and no timeout.
+type PoolOptions struct {
+	// MaxConns caps the pool. Zero keeps pgx's default, max(4, NumCPU).
+	MaxConns int
+	// StatementTimeout makes the server abort any statement on this pool that
+	// runs longer. Zero leaves the URL's own setting (or none) untouched.
+	StatementTimeout time.Duration
+}
+
+// poolConfig is split from New so the options can be checked without a database.
+func poolConfig(url string, o PoolOptions) (*pgxpool.Config, error) {
 	cfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		return nil, fmt.Errorf("parse da BREVIS_DATABASE_URL: %w", err)
 	}
 	cfg.MaxConnLifetime = time.Hour
 	cfg.HealthCheckPeriod = 30 * time.Second
+	if o.MaxConns > 0 {
+		cfg.MaxConns = int32(o.MaxConns)
+	}
+	if o.StatementTimeout > 0 {
+		// A startup parameter, so every connection the pool opens carries it
+		// with no per-query round trip. shortcut: it needs a server or pooler
+		// that accepts startup parameters (PgBouncer in transaction mode needs
+		// ignore_startup_parameters).
+		cfg.ConnConfig.RuntimeParams["statement_timeout"] = strconv.FormatInt(o.StatementTimeout.Milliseconds(), 10)
+	}
+	return cfg, nil
+}
+
+// New opens the pool and checks the connection before returning. A pool that
+// only fails on first use turns a configuration error into a request error.
+func New(ctx context.Context, url string, opts ...PoolOptions) (*Pool, error) {
+	var o PoolOptions
+	if len(opts) > 0 {
+		o = opts[0]
+	}
+	cfg, err := poolConfig(url, o)
+	if err != nil {
+		return nil, err
+	}
 
 	p, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

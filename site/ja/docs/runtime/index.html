@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
-      <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/runtime/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/runtime/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/runtime/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/runtime/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/runtime/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/runtime/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/runtime/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/runtime/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/runtime/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/runtime/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/runtime/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="言語: 日本語"><span>日本語</span></summary><ul><li><a href="/docs/runtime/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/runtime/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/runtime/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/runtime/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/runtime/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/runtime/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/runtime/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/runtime/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/runtime/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/runtime/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/runtime/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         オープンソースを見る
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>ステップのランタイム</h1>
@@ -137,7 +137,7 @@
 │   2m14s · attempt 1                  │
 └──────────────────────────────────────┘</code></pre></div>
 <p><strong>たいていの場合、何も書く必要はありません。</strong> エンジンが <code>run:</code> と <code>image:</code> を読んで 判断します。</p>
-<h2 id="いつ宣言するか">いつ宣言するか<a class="anchor" href="#いつ宣言するか" aria-label="link">#</a></h2>
+<h2 id="when-to-declare-it">いつ宣言するか<a class="anchor" href="#when-to-declare-it" aria-label="link">#</a></h2>
 <p>フィールドは 2 つで、どちらも任意で、ステップごとに指定します。</p>
 <div class="code-block" data-code="steps:
   - id: fetch
@@ -156,14 +156,14 @@
     <span class="t-k">tools</span>: [dbt]           <span class="t-c"># what it drives, not what it is</span></code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>フィールド</th><th></th></tr></thead><tbody><tr><td><code>runtime</code></td><td>ステップの言語: <code>go</code>、<code>python</code>、<code>node</code>、<code>shell</code>…</td></tr><tr><td><code>tools</code></td><td>コマンドが操作するツール: <code>dbt</code>、<code>dlt</code>、<code>spark</code>…</td></tr></tbody></table></div>
 <p>経験則は、<strong>推論が間違うときに宣言する</strong>ことです。コンパイル済みのバイナリを指す <code>run:</code> には、 それが Go だと伝える手段がありません。内部で <code>dbt</code> を呼び出すラッパーには、dbt を操作していると 伝える手段がありません。</p>
-<h2 id="なぜ閉じた語彙なのか">なぜ閉じた語彙なのか<a class="anchor" href="#なぜ閉じた語彙なのか" aria-label="link">#</a></h2>
+<h2 id="why-a-closed-vocabulary">なぜ閉じた語彙なのか<a class="anchor" href="#why-a-closed-vocabulary" aria-label="link">#</a></h2>
 <p>語彙にない id は <strong>publish で拒否され</strong>、有効なものが示されます。代案は、3 日後の画面で空白の まま描画され、原因をたどる手がかりがないチップです。</p>
 <div class="code-block" data-code="workflow &quot;daily&quot;: step &quot;transform&quot;: `runtime: pyton` is not valid
   (valid: go, python, node, shell, …)"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>workflow "daily": step "transform": `runtime: pyton` is not valid
   (valid: go, python, node, shell, …)</code></pre></div>
-<h2 id="チップは何のためにあるか">チップは何のためにあるか<a class="anchor" href="#チップは何のためにあるか" aria-label="link">#</a></h2>
+<h2 id="what-the-chip-is-for">チップは何のためにあるか<a class="anchor" href="#what-the-chip-is-for" aria-label="link">#</a></h2>
 <p>飾りではありません。午前 3 時に run が失敗したとき、最初の疑問は「このステップは何を実行して いるのか?」であり、その答えはたいてい別のリポジトリにあります。チップはそれをグラフ上に 示します。ステップが使った SDK のバージョンと並べて表示されるため、「今日壊れた」と 「火曜日のバージョンアップから壊れている」を区別できます。</p>
-<h2 id="次のステップ">次のステップ<a class="anchor" href="#次のステップ" aria-label="link">#</a></h2>
+<h2 id="next-steps">次のステップ<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ja/docs/workflows/">Workflows</a> — ステップのすべてのフィールド</li><li><a href="/ja/docs/pod-per-step/">ステップごとの pod</a> — ステップが実際に動く場所</li><li><a href="/ja/docs/observability/">オブザーバビリティ</a> — それに付随するメトリクス</li></ul>
 
       <nav class="pagers" aria-label="ページ">
@@ -178,7 +178,7 @@
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#いつ宣言するか">いつ宣言するか</a></li><li class="toc-2"><a href="#なぜ閉じた語彙なのか">なぜ閉じた語彙なのか</a></li><li class="toc-2"><a href="#チップは何のためにあるか">チップは何のためにあるか</a></li><li class="toc-2"><a href="#次のステップ">次のステップ</a></li></ul>
+      <ul><li class="toc-2"><a href="#when-to-declare-it">いつ宣言するか</a></li><li class="toc-2"><a href="#why-a-closed-vocabulary">なぜ閉じた語彙なのか</a></li><li class="toc-2"><a href="#what-the-chip-is-for">チップは何のためにあるか</a></li><li class="toc-2"><a href="#next-steps">次のステップ</a></li></ul>
     </aside>
   </main>
 </div>
@@ -198,9 +198,9 @@
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -223,7 +223,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

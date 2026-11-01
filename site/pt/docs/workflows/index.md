@@ -14,8 +14,8 @@ e **com que runtime** — e nada além disso.
 ```yaml
 name: hello
 steps:
-  - id: unico
-    run: echo pronto
+  - id: only
+    run: echo done
 ```
 
 `name` é o identificador do workflow no banco e na interface. `steps` é a lista
@@ -28,8 +28,8 @@ Opcional, texto livre, e nada no motor a lê:
 ```yaml
 name: daily-orders
 description: >
-  Puxa os pedidos de ontem do fornecedor e grava no bronze.
-  Roda às 04:00 porque o fornecedor fecha os livros às 03:30.
+  Pulls yesterday's orders from the vendor and lands them in bronze.
+  Runs at 04:00 because the vendor closes its books at 03:30.
 steps:
   - id: extract
     run: python fetch.py
@@ -45,8 +45,8 @@ que falhou ao carregar.
 ## Ordem: chain ou dag
 
 ```yaml
-type: chain   # a ordem é a do arquivo
-type: dag     # a ordem vem de depends_on
+type: chain   # order is the file's order
+type: dag     # order comes from depends_on
 ```
 
 `chain` é açúcar: o parser converte a sequência em arestas, e **o motor conhece
@@ -56,21 +56,21 @@ apenas DAG**. Use `dag` quando a ordem não for linear:
 type: dag
 
 steps:
-  - id: preparar
-    run: ./preparar.sh
+  - id: prepare
+    run: ./prepare.sh
 
-  # Irmãos: dependem do mesmo passo, então rodam em paralelo.
-  - id: extrair
-    run: ./extrair.sh
-    depends_on: [preparar]
+  # Siblings: they depend on the same step, so they run in parallel.
+  - id: extract
+    run: ./extract.sh
+    depends_on: [prepare]
 
-  - id: validar
-    run: ./validar.sh
-    depends_on: [preparar]
+  - id: validate
+    run: ./validate.sh
+    depends_on: [prepare]
 
-  - id: publicar
-    run: ./publicar.sh
-    depends_on: [extrair, validar]
+  - id: publish
+    run: ./publish.sh
+    depends_on: [extract, validate]
 ```
 
 O runner percorre o grafo **por níveis**: tudo dentro de um nível roda em
@@ -84,7 +84,7 @@ depois de um erro produziria resultado parcial que parece completo.
 ## Agenda
 
 ```yaml
-schedule: "0 5 * * *"   # cron de cinco campos
+schedule: "0 5 * * *"   # five-field cron
 concurrency: 1
 ```
 
@@ -101,8 +101,8 @@ cada um:
 
 ```yaml
 concurrency:
-  group: jaffle_models   # o recurso compartilhado, com o mesmo nome nos dois arquivos
-  limit: 1               # opcional; um grupo sem limite vale 1
+  group: jaffle_models   # the shared resource, named the same in both files
+  limit: 1               # optional; a group without one means 1
 ```
 
 As execuções de todos os workflows do grupo contam contra um limite só, seja
@@ -121,7 +121,7 @@ execuções ocupam as vagas.
 ## Imagem e recursos
 
 ```yaml
-image: us-central1-docker.pkg.dev/exemplo/apps/dbt:1.10.3
+image: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
 resources:
   cpu: 200m
   memory: 1Gi
@@ -134,12 +134,12 @@ sobrescrever os seus:
 ```yaml
 steps:
   - id: bronze
-    run: dbt build --select bronze+          # herda a imagem do topo
+    run: dbt build --select bronze+          # inherits the top-level image
 
-  - id: notificar
-    image: ghcr.io/exemplo/notify:0.3        # outro runtime
-    shell: false                             # distroless não tem shell
-    run: /notify --canal dados
+  - id: notify
+    image: ghcr.io/example/notify:0.3        # another runtime
+    shell: false                             # distroless has no shell
+    run: /notify --channel data
     resources: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
     depends_on: [bronze]
 ```
@@ -171,7 +171,7 @@ steps:
 ## Rodando um passo só quando há o que fazer
 
 ```python
-# no extract
+# in extract
 context.set(has_rows=len(rows) > 0)
 ```
 
@@ -227,7 +227,7 @@ quando um noturno para de rodar é tarde demais.
 ## Rodando um passo uma vez por elemento
 
 ```python
-# no extract
+# in extract
 context.set(partitions=["2026-01", "2026-02", "2026-03"])
 ```
 
@@ -331,7 +331,7 @@ steps:
     run: ./prepare.sh
 
   - id: mlops
-    uses: ml_training       # outro workflow no mesmo publish
+    uses: ml_training       # another workflow in the same publish
     depends_on: [prepare]
 
   - id: report
@@ -389,13 +389,13 @@ steps:
   - id: load_full
     run: ./full.sh
     depends_on:
-      - {step: determine_load_type, label: dados adicionais}
+      - {step: determine_load_type, label: additional data}
 
   - id: load_delta
     run: ./delta.sh
     depends_on:
       - step: determine_load_type
-        label: dados que mudaram
+        label: changed existing data
 ```
 
 A forma simples — `depends_on: [extract]` — continua funcionando e continua
@@ -443,12 +443,12 @@ steps:
   - id: notify_failure
     run: ./notify.sh
     depends_on: [extract]
-    when: any_failed          # roda exatamente quando o extract não conseguiu
+    when: any_failed          # runs precisely when extract did not make it
 
   - id: cleanup
     run: ./cleanup.sh
     depends_on: [extract, transform]
-    when: all_done            # roda de qualquer jeito
+    when: all_done            # runs either way
 ```
 
 | regra | |
@@ -481,8 +481,8 @@ A regra pergunta sobre as dependências **do próprio passo** e nada mais. Uma
 falha num ramo sem relação não para este:
 
 ```
-extract_orders ──✕                 (falhou)
-extract_users  ──✓── transform_users ──✓     continua
+extract_orders ──✕                 (failed)
+extract_users  ──✓── transform_users ──✓     keeps going
 ```
 
 Um ramo **abaixo** da falha continua parando — `all_success` ser local não quer
@@ -511,8 +511,8 @@ tentativa anterior da **mesma run** mantém o resultado e não roda de novo — 
 se comporta uma DAG run limpa no Airflow.
 
 ```
-tentativa 1   extract ✓    load ✕    report (pulado)
-tentativa 2   extract –    load ✓    report ✓          o extract não roda de novo
+attempt 1   extract ✓    load ✕    report (skipped)
+attempt 2   extract –    load ✓    report ✓            extract is not re-run
 ```
 
 Ele mantém a linha original: a duração, o log e o que ele publicou são os da
@@ -571,7 +571,7 @@ da falha, então uma queda do Slack o atrasa em vez de perdê-lo.
 ## Tags
 
 ```yaml
-tags: [analytics, dbt, diario]
+tags: [analytics, dbt, daily]
 ```
 
 Servem para filtrar na interface. Não afetam a execução.

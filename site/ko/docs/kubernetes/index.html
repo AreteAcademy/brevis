@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+<a class="skip-link" href="#content">본문으로 건너뛰기</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="주 내비게이션">
-      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/#ecosystem">에코시스템</a>
       <a href="/ko/docs/">문서</a>
-      <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/kubernetes/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/kubernetes/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/kubernetes/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/kubernetes/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/kubernetes/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/kubernetes/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/kubernetes/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/kubernetes/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/kubernetes/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/kubernetes/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/kubernetes/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="언어: 한국어"><span>한국어</span></summary><ul><li><a href="/docs/kubernetes/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/kubernetes/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/kubernetes/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/kubernetes/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/kubernetes/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/kubernetes/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/kubernetes/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/kubernetes/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/kubernetes/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/kubernetes/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/kubernetes/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         오픈 소스 둘러보기
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">문서</p>
       <h1>Kubernetes</h1>
       <p class="doc-desc">엔진을 배포하는 방법, 필요한 권한, 배포 후 확인할 사항입니다.</p>
       <p>일반적인 설치는 같은 바이너리의 <strong>Deployment 두 개</strong>(API와 스케줄러)와 Postgres 하나로 구성됩니다.</p>
-<h2 id="helm으로-설치하기">Helm으로 설치하기<a class="anchor" href="#helm으로-설치하기" aria-label="link">#</a></h2>
+<h2 id="install-it-with-helm">Helm으로 설치하기<a class="anchor" href="#install-it-with-helm" aria-label="link">#</a></h2>
 <p>차트는 저장소의 <code>deployments/helm/brevis</code>에 있습니다. 값 네 개는 필수이고 나머지는 모두 동작하는 기본값이 있습니다.</p>
 <div class="code-block" data-code="helm install brevis ./deployments/helm/brevis \
   --namespace data --create-namespace \
@@ -151,11 +151,11 @@
   <span class="t-n">--set</span> api.ingress.tls.secretName=<span class="t-k">brevis</span>-tls</code></pre></div>
 <p>운영 환경에서는 연결 문자열을 릴리스에 넣지 마세요. Secret에 넣고 <code>--set database.existingSecret=brevis-db</code>를 전달하세요. 인라인으로 전달하면 릴리스의 저장된 manifest에 들어가고, 해당 네임스페이스의 Secret을 읽을 수 있는 누구나 읽을 수 있습니다.</p>
 <p><code>helm show values ./deployments/helm/brevis</code>는 모든 값을 이유와 함께 나열합니다.</p>
-<h3 id="차트가-거부하는-것">차트가 거부하는 것<a class="anchor" href="#차트가-거부하는-것" aria-label="link">#</a></h3>
+<h3 id="what-the-chart-refuses">차트가 거부하는 것<a class="anchor" href="#what-the-chart-refuses" aria-label="link">#</a></h3>
 <p>안전하게 만들 수 없는 것은 렌더링 시점에, 무엇이 깨질지 알려 주는 메시지와 함께 실패합니다. 새벽 3시에 중복 행을 만든 run에서 알게 되는 것이 아닙니다.</p>
 <div class="table-wrap"><table><thead><tr><th>거부되는 것</th><th>이유</th></tr></thead><tbody><tr><td><code>scheduler.replicas</code> 자체</td><td>두 개면 같은 slot을 구체화합니다. <code>FOR UPDATE SKIP LOCKED</code>는 같은 큐 항목을 가져가는 것을 막지만, 같은 스케줄된 run을 만드는 것은 아무것도 막지 못하며, <code>dbt build</code>가 아무것도 실패하지 않은 채 한 윈도우에 대해 두 번 실행됩니다</td></tr><tr><td><code>local</code> 외 환경에서 자격 증명 누락</td><td>엔진은 자격 증명 없이 부팅을 거부하므로, 차트가 CrashLoopBackOff를 건네주는 셈입니다</td></tr><tr><td>32바이트 미만의 <code>auth.secret</code></td><td>세션 쿠키에 서명하는 값이며, 엔진도 같은 최솟값을 강제합니다</td></tr><tr><td><code>host</code> 없는 Ingress</td><td>컨트롤러에 도달하는 모든 요청에 일치하게 됩니다. 공유 클러스터에서는 다른 사람의 호스트 이름에 대해 응답하게 됩니다</td></tr><tr><td>웹훅 없는 <code>alerts.enabled</code></td><td>pod가 아웃박스를 비우면서 어디에도 전달하지 않게 되는데, 실행하지 않는 것보다 나쁩니다. 실패가 알려진 것처럼 보이기 때문입니다</td></tr><tr><td>차트가 정의하지 않은 값</td><td><code>--set</code>의 오타는 그렇지 않으면 아무 일도 하지 않고 조용히 지나갑니다</td></tr></tbody></table></div>
 <p><code>.github/scripts/helm-check.sh</code>는 렌더링된 출력에 대해 이 모든 것에 더해 위의 불변 조건도 검증합니다. 스케줄러 하나, <code>pods/log</code> 존재, 마이그레이션 우선, 메트릭 포트가 Service에서 빠져 있음입니다.</p>
-<h2 id="helm-없이">Helm 없이<a class="anchor" href="#helm-없이" aria-label="link">#</a></h2>
+<h2 id="without-helm">Helm 없이<a class="anchor" href="#without-helm" aria-label="link">#</a></h2>
 <p><code>deployments/kubernetes/</code>에 manifest 일곱 개가 있으며, 네임스페이스와 이미지 태그를 수정한 뒤 <code>kubectl apply -f</code>로 바로 적용할 수 있습니다.</p>
 <div class="code-block" data-code="kubectl apply -f deployments/kubernetes/rbac.yaml
 kubectl apply -f deployments/kubernetes/api.yaml
@@ -163,11 +163,11 @@ kubectl apply -f deployments/kubernetes/scheduler.yaml"><div class="code-head"><
 <span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/api.yaml
 <span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/scheduler.yaml</code></pre></div>
 <p>차트와 같은 결정을 담고 있으며 이유는 주석에 있고, <code>alert.yaml</code>, <code>report.yaml</code>, <code>publish-job.yaml</code>도 함께 있습니다. 아래 섹션은 각 파일에 무엇이 들어 있는지 차례로 설명합니다.</p>
-<h2 id="두-가지-역할">두 가지 역할<a class="anchor" href="#두-가지-역할" aria-label="link">#</a></h2>
+<h2 id="the-two-roles">두 가지 역할<a class="anchor" href="#the-two-roles" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>역할</th><th>명령</th><th>이미지</th><th>레플리카</th></tr></thead><tbody><tr><td>API + 인터페이스</td><td><code>serve</code></td><td><code>:0.11.2</code> (distroless)</td><td>원하는 만큼</td></tr><tr><td>스케줄러 + 큐</td><td><code>scheduler</code></td><td><code>:0.11.2-worker</code> (alpine)</td><td><strong>하나</strong></td></tr></tbody></table></div>
 <p>API는 HTTP만 제공하고 아무것도 실행하지 않아 셸이 필요 없으므로 distroless입니다. worker는 <code>run:</code> step에 셸이 필요하므로 alpine입니다.</p>
 <aside class="admon admon-warning"><p class="admon-t">스케줄러 레플리카는 하나</p><p>같은 스케줄을 구체화하는 프로세스가 둘이면 중복 run이 만들어집니다. 가용성이 필요하다면 <code>strategy: Recreate</code>와 함께 <code>replicas: 1</code>을 사용하세요.</p></aside>
-<h2 id="마이그레이션">마이그레이션<a class="anchor" href="#마이그레이션" aria-label="link">#</a></h2>
+<h2 id="migrations">마이그레이션<a class="anchor" href="#migrations" aria-label="link">#</a></h2>
 <p><code>serve</code> 부팅 시가 아니라 배포 전에 Job으로 실행하세요.</p>
 <div class="code-block" data-code="apiVersion: batch/v1
 kind: Job
@@ -259,7 +259,7 @@ spec:
             <span class="t-k">requests</span>: {cpu: 100m, memory: 128Mi}
             <span class="t-k">limits</span>: {memory: 256Mi}</code></pre></div>
 <aside class="admon admon-note"><p class="admon-t">두 프로브가 다른 이유</p><p><code>/health</code>는 데이터베이스를 조회하지 <strong>않으며</strong>, <code>/ready</code>는 조회하고 실패한 의존 대상을 명시합니다. liveness가 Postgres에 의존하면 데이터베이스가 흔들릴 때 Kubernetes가 API pod를 로드 밸런서에서 빼기만 하는 것이 아니라 <strong>죽이게</strong> 되고, 시스템이 이미 부하를 받고 있을 때 오히려 복구가 느려집니다.</p></aside>
-<h2 id="스케줄러-deployment">스케줄러 Deployment<a class="anchor" href="#스케줄러-deployment" aria-label="link">#</a></h2>
+<h2 id="scheduler-deployment">스케줄러 Deployment<a class="anchor" href="#scheduler-deployment" aria-label="link">#</a></h2>
 <div class="code-block" data-code="apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -324,7 +324,7 @@ spec:
             - <span class="t-k">name</span>: BREVIS_POD_ENV_FROM_SECRETS
               <span class="t-k">value</span>: bigquery-cred</code></pre></div>
 <p><code>BREVIS_PODS=on</code>은 클러스터를 <strong>요구합니다</strong>. 서비스 계정이 마운트되지 않았다면 조용히 로컬 실행으로 폴백하는 대신 부팅이 실패합니다.</p>
-<h2 id="권한">권한<a class="anchor" href="#권한" aria-label="link">#</a></h2>
+<h2 id="permissions">권한<a class="anchor" href="#permissions" aria-label="link">#</a></h2>
 <p>스케줄러는 실행 네임스페이스에서 pod를 만들고, 감시하고, 삭제합니다. 그 이상은 하지 않습니다.</p>
 <div class="code-block" data-code="apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -350,7 +350,7 @@ rules:
     <span class="t-k">resources</span>: ["pods/log"]
     <span class="t-k">verbs</span>: ["get"]</code></pre></div>
 <p><code>pods/log</code>는 step의 출력을 인터페이스로 따라갈 수 있게 해 줍니다. 이 권한이 없으면 run은 동작하지만 로그는 비어 있습니다.</p>
-<h2 id="배포-후">배포 후<a class="anchor" href="#배포-후" aria-label="link">#</a></h2>
+<h2 id="after-the-deploy">배포 후<a class="anchor" href="#after-the-deploy" aria-label="link">#</a></h2>
 <div class="code-block" data-code="kubectl -n data get pods -l app=brevis-api
 kubectl -n data exec deploy/brevis-api -- brevis version
 curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">kubectl</span> <span class="t-n">-n</span> data get pods <span class="t-n">-l</span> app=<span class="t-k">brevis</span>-api
@@ -358,13 +358,13 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
 <span class="t-k">curl</span> <span class="t-n">-fsS</span> https://<span class="t-k">brevis</span>.example.com/ready</code></pre></div>
 <p>인터페이스에서 간단한 workflow를 트리거하고 step의 pod가 나타났다가 사라지는지 확인하세요.</p>
 <div class="code-block" data-code="kubectl -n data get pods -w"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">kubectl</span> <span class="t-n">-n</span> data get pods <span class="t-n">-w</span></code></pre></div>
-<h2 id="step이-pending에-머물-때">step이 Pending에 머물 때<a class="anchor" href="#step이-pending에-머물-때" aria-label="link">#</a></h2>
+<h2 id="when-a-step-stays-pending">step이 Pending에 머물 때<a class="anchor" href="#when-a-step-stays-pending" aria-label="link">#</a></h2>
 <p>거의 항상 다음 세 가지 중 하나입니다.</p>
 <div class="table-wrap"><table><thead><tr><th>원인</th><th>확인 방법</th></tr></thead><tbody><tr><td>톨러레이션 없는 taint</td><td><code>kubectl describe pod</code>에 <code>node(s) had untolerated taint</code>가 표시됩니다</td></tr><tr><td>노드가 없는 <code>nodeSelector</code></td><td><code>describe</code>에 <code>didn't match Pod's node affinity</code>가 표시됩니다</td></tr><tr><td>리소스 부족</td><td><code>describe</code>에 <code>Insufficient cpu</code> 또는 <code>memory</code>가 표시됩니다</td></tr></tbody></table></div>
 <p>실패한 step의 pod가 사라지는 것을 지켜보는 대신 점검하려면 다음과 같이 합니다.</p>
 <div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>운영 환경에서는 꺼 두세요. 중지된 pod가 쿼터를 소모합니다.</p>
-<h2 id="다음-단계">다음 단계<a class="anchor" href="#다음-단계" aria-label="link">#</a></h2>
+<h2 id="next-steps">다음 단계<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ko/docs/pod-per-step/">step당 pod 하나</a> — 실행 모델</li><li><a href="/ko/docs/configuration/">구성</a> — 모든 <code>BREVIS_POD_*</code> 변수</li><li><a href="/ko/docs/observability/">관측성</a> — 무엇을 어느 프로세스에서 수집할지</li></ul>
 
       <nav class="pagers" aria-label="페이지">
@@ -379,7 +379,7 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
 
     <aside class="toc" aria-label="이 페이지에서">
       <p class="toc-t">이 페이지에서</p>
-      <ul><li class="toc-2"><a href="#helm으로-설치하기">Helm으로 설치하기</a></li><li class="toc-3"><a href="#차트가-거부하는-것">차트가 거부하는 것</a></li><li class="toc-2"><a href="#helm-없이">Helm 없이</a></li><li class="toc-2"><a href="#두-가지-역할">두 가지 역할</a></li><li class="toc-2"><a href="#마이그레이션">마이그레이션</a></li><li class="toc-2"><a href="#api-deployment">API Deployment</a></li><li class="toc-2"><a href="#스케줄러-deployment">스케줄러 Deployment</a></li><li class="toc-2"><a href="#권한">권한</a></li><li class="toc-2"><a href="#배포-후">배포 후</a></li><li class="toc-2"><a href="#step이-pending에-머물-때">step이 Pending에 머물 때</a></li><li class="toc-2"><a href="#다음-단계">다음 단계</a></li></ul>
+      <ul><li class="toc-2"><a href="#install-it-with-helm">Helm으로 설치하기</a></li><li class="toc-3"><a href="#what-the-chart-refuses">차트가 거부하는 것</a></li><li class="toc-2"><a href="#without-helm">Helm 없이</a></li><li class="toc-2"><a href="#the-two-roles">두 가지 역할</a></li><li class="toc-2"><a href="#migrations">마이그레이션</a></li><li class="toc-2"><a href="#api-deployment">API Deployment</a></li><li class="toc-2"><a href="#scheduler-deployment">스케줄러 Deployment</a></li><li class="toc-2"><a href="#permissions">권한</a></li><li class="toc-2"><a href="#after-the-deploy">배포 후</a></li><li class="toc-2"><a href="#when-a-step-stays-pending">step이 Pending에 머물 때</a></li><li class="toc-2"><a href="#next-steps">다음 단계</a></li></ul>
     </aside>
   </main>
 </div>
@@ -399,9 +399,9 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
       <div class="footer-col">
         <h2>프로젝트</h2>
         <ul>
-          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/#ecosystem">에코시스템</a></li>
           <li><a href="/ko/docs/philosophy/">원칙</a></li>
-          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/introduction/#open-code-choose-how-to-take-part">오픈 소스</a></li>
           <li><a href="/ko/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -424,7 +424,7 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

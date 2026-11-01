@@ -52,8 +52,8 @@ brevis marca brand.yaml
 
 ```
   ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis
 ```
 
@@ -68,7 +68,7 @@ brevis marca brand.yaml
 内容错误（无效的颜色、损坏的 YAML）**不会阻止界面启动**。进程会记录一条警告并使用默认主题。因为一个颜色而让 API 下线，比用默认主题提供服务更糟糕。
 
 ```
-level=WARN msg="identidade visual ignorada" arquivo=brand.yaml erro="cor invalida: #gggggg"
+level=WARN msg="visual identity ignored" file=brand.yaml error="brand.yaml: colour accent: \"#gggggg\" is not a hex value (#rgb, #rrggbb or #rrggbbaa)"
 ```
 
 ## 无法定制的内容

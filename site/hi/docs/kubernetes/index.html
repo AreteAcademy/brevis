@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
-      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/kubernetes/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/kubernetes/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/kubernetes/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/kubernetes/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/kubernetes/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/kubernetes/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/kubernetes/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/kubernetes/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/kubernetes/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/kubernetes/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/kubernetes/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><span>हिन्दी</span></summary><ul><li><a href="/docs/kubernetes/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/kubernetes/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/kubernetes/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/kubernetes/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/kubernetes/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/kubernetes/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/kubernetes/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/kubernetes/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/kubernetes/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/kubernetes/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/kubernetes/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         ओपन सोर्स देखें
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>Kubernetes</h1>
       <p class="doc-desc">Engine को कैसे deploy करें, किन अनुमतियों के साथ, और उसके बाद क्या जाँचें।</p>
       <p>एक आम इंस्टॉलेशन में उसी बाइनरी के <strong>दो Deployments</strong> होते हैं — API और शेड्यूलर — और एक Postgres।</p>
-<h2 id="helm-स-इसटल-कर">Helm से इंस्टॉल करें<a class="anchor" href="#helm-स-इसटल-कर" aria-label="link">#</a></h2>
+<h2 id="install-it-with-helm">Helm से इंस्टॉल करें<a class="anchor" href="#install-it-with-helm" aria-label="link">#</a></h2>
 <p>Chart रिपॉज़िटरी में <code>deployments/helm/brevis</code> पर है। चार मान ज़रूरी हैं और बाकी सबके पास काम करने लायक डिफ़ॉल्ट है:</p>
 <div class="code-block" data-code="helm install brevis ./deployments/helm/brevis \
   --namespace data --create-namespace \
@@ -151,11 +151,11 @@
   <span class="t-n">--set</span> api.ingress.tls.secretName=<span class="t-k">brevis</span>-tls</code></pre></div>
 <p>Production में कनेक्शन स्ट्रिंग को release से बाहर रखें: उसे Secret में रखें और <code>--set database.existingSecret=brevis-db</code> दें। Inline देने पर वह release के सहेजे manifest में पहुँच जाती है, जिसे उस namespace में Secrets पढ़ सकने वाला कोई भी पढ़ सकता है।</p>
 <p><code>helm show values ./deployments/helm/brevis</code> हर मान को उसके कारण के साथ सूचीबद्ध करता है।</p>
-<h3 id="chart-कय-मन-करत-ह">Chart क्या मना करता है<a class="anchor" href="#chart-कय-मन-करत-ह" aria-label="link">#</a></h3>
+<h3 id="what-the-chart-refuses">Chart क्या मना करता है<a class="anchor" href="#what-the-chart-refuses" aria-label="link">#</a></h3>
 <p>जो कुछ वह सुरक्षित नहीं बना सकता, वह render के समय ही विफल होता है, ऐसे संदेश के साथ जो बताता है कि क्या टूटता — रात के 3 बजे, डुप्लिकेट पंक्तियाँ बना चुके किसी run में नहीं:</p>
 <div class="table-wrap"><table><thead><tr><th>मना किया जाता है</th><th>क्योंकि</th></tr></thead><tbody><tr><td><code>scheduler.replicas</code> बिल्कुल भी</td><td>दो replicas वही slots बना देंगे। <code>FOR UPDATE SKIP LOCKED</code> उन्हें कतार का एक ही आइटम दावा करने से रोकता है; उन्हें एक ही शेड्यूल्ड run बनाने से कुछ नहीं रोकता, और <code>dbt build</code> एक ही विंडो पर दो बार चलता, बिना कुछ विफल हुए</td></tr><tr><td><code>local</code> के बाहर क्रेडेंशियल का न होना</td><td>Engine बिना क्रेडेंशियल के boot से मना करता है, इसलिए chart आपको CrashLoopBackOff थमा रहा होता</td></tr><tr><td>32 बाइट से कम का <code>auth.secret</code></td><td>वह session cookie पर हस्ताक्षर करता है, और engine वही न्यूनतम लागू करता है</td></tr><tr><td>बिना <code>host</code> वाला Ingress</td><td>वह controller तक पहुँचने वाले हर अनुरोध से मेल खाता — साझा cluster में, किसी और के hostname का जवाब देता</td></tr><tr><td>बिना webhook के <code>alerts.enabled</code></td><td>Pod outbox खाली करता और कहीं डिलीवर न करता, जो न चलने से बुरा है: तब विफलता घोषित हुई-सी लगती है</td></tr><tr><td>ऐसा मान जिसे chart परिभाषित नहीं करता</td><td><code>--set</code> में टाइपो वरना चुपचाप कुछ नहीं करती</td></tr></tbody></table></div>
 <p><code>.github/scripts/helm-check.sh</code> यह सब render हुए आउटपुट पर जाँचता है, साथ में ऊपर की अपरिवर्तनीयताएँ भी — एक शेड्यूलर, <code>pods/log</code> मौजूद, migrations पहले, metrics port Service से बाहर।</p>
-<h2 id="helm-क-बन">Helm के बिना<a class="anchor" href="#helm-क-बन" aria-label="link">#</a></h2>
+<h2 id="without-helm">Helm के बिना<a class="anchor" href="#without-helm" aria-label="link">#</a></h2>
 <p>सात manifests <code>deployments/kubernetes/</code> में हैं, namespace और image tag बदलने के बाद <code>kubectl apply -f</code> के लिए तैयार:</p>
 <div class="code-block" data-code="kubectl apply -f deployments/kubernetes/rbac.yaml
 kubectl apply -f deployments/kubernetes/api.yaml
@@ -163,7 +163,7 @@ kubectl apply -f deployments/kubernetes/scheduler.yaml"><div class="code-head"><
 <span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/api.yaml
 <span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/scheduler.yaml</code></pre></div>
 <p>उनमें वही फ़ैसले हैं जो chart में हैं, तर्क टिप्पणियों में, और इनके अलावा <code>alert.yaml</code>, <code>report.yaml</code> और <code>publish-job.yaml</code>। नीचे के खंड बताते हैं कि हर एक में क्या है।</p>
-<h2 id="द-भमकए">दो भूमिकाएँ<a class="anchor" href="#द-भमकए" aria-label="link">#</a></h2>
+<h2 id="the-two-roles">दो भूमिकाएँ<a class="anchor" href="#the-two-roles" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>भूमिका</th><th>कमांड</th><th>image</th><th>replicas</th></tr></thead><tbody><tr><td>API + इंटरफ़ेस</td><td><code>serve</code></td><td><code>:0.11.2</code> (distroless)</td><td>जितने चाहें</td></tr><tr><td>शेड्यूलर + कतार</td><td><code>scheduler</code></td><td><code>:0.11.2-worker</code> (alpine)</td><td><strong>एक</strong></td></tr></tbody></table></div>
 <p>API distroless है क्योंकि वह सिर्फ़ HTTP परोसती है: कुछ चलाती नहीं, इसलिए उसे shell नहीं चाहिए। Worker alpine है क्योंकि <code>run:</code> steps को shell चाहिए।</p>
 <aside class="admon admon-warning"><p class="admon-t">एक शेड्यूलर replica</p><p>एक ही schedule बनाने वाली दो प्रोसेस डुप्लिकेट run बनाती हैं। उपलब्धता चाहिए तो <code>strategy: Recreate</code> के साथ <code>replicas: 1</code> इस्तेमाल करें।</p></aside>
@@ -259,7 +259,7 @@ spec:
             <span class="t-k">requests</span>: {cpu: 100m, memory: 128Mi}
             <span class="t-k">limits</span>: {memory: 256Mi}</code></pre></div>
 <aside class="admon admon-note"><p class="admon-t">दोनों probes अलग क्यों हैं</p><p><code>/health</code> डेटाबेस से query <strong>नहीं</strong> करता; <code>/ready</code> करता है, और विफल हुई निर्भरता का नाम बताता है। अगर liveness Postgres पर निर्भर होता, तो डेटाबेस की हल्की डगमगाहट Kubernetes से API pods को load balancer से हटाने भर के बजाय <strong>मरवा</strong> देती — और रिकवरी ठीक तब धीमी होती जब सिस्टम पहले से दबाव में है।</p></aside>
-<h2 id="शडयलर-deployment">शेड्यूलर Deployment<a class="anchor" href="#शडयलर-deployment" aria-label="link">#</a></h2>
+<h2 id="scheduler-deployment">शेड्यूलर Deployment<a class="anchor" href="#scheduler-deployment" aria-label="link">#</a></h2>
 <div class="code-block" data-code="apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -324,7 +324,7 @@ spec:
             - <span class="t-k">name</span>: BREVIS_POD_ENV_FROM_SECRETS
               <span class="t-k">value</span>: bigquery-cred</code></pre></div>
 <p><code>BREVIS_PODS=on</code> को cluster <strong>चाहिए</strong>: service account माउंट न हो तो boot चुपचाप स्थानीय execution पर लौटने के बजाय विफल होता है।</p>
-<h2 id="अनमतय">अनुमतियाँ<a class="anchor" href="#अनमतय" aria-label="link">#</a></h2>
+<h2 id="permissions">अनुमतियाँ<a class="anchor" href="#permissions" aria-label="link">#</a></h2>
 <p>शेड्यूलर execution namespace में pods बनाता, देखता और हटाता है। इससे ज़्यादा कुछ नहीं:</p>
 <div class="code-block" data-code="apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -350,7 +350,7 @@ rules:
     <span class="t-k">resources</span>: ["pods/log"]
     <span class="t-k">verbs</span>: ["get"]</code></pre></div>
 <p><code>pods/log</code> वह है जो step के आउटपुट को इंटरफ़ेस में फ़ॉलो करने देता है। इसके बिना run चलता है और लॉग खाली रहता है।</p>
-<h2 id="deploy-क-बद">Deploy के बाद<a class="anchor" href="#deploy-क-बद" aria-label="link">#</a></h2>
+<h2 id="after-the-deploy">Deploy के बाद<a class="anchor" href="#after-the-deploy" aria-label="link">#</a></h2>
 <div class="code-block" data-code="kubectl -n data get pods -l app=brevis-api
 kubectl -n data exec deploy/brevis-api -- brevis version
 curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">kubectl</span> <span class="t-n">-n</span> data get pods <span class="t-n">-l</span> app=<span class="t-k">brevis</span>-api
@@ -358,13 +358,13 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
 <span class="t-k">curl</span> <span class="t-n">-fsS</span> https://<span class="t-k">brevis</span>.example.com/ready</code></pre></div>
 <p>इंटरफ़ेस से कोई सरल workflow ट्रिगर करें और पुष्टि करें कि step का pod प्रकट होता और गायब होता है:</p>
 <div class="code-block" data-code="kubectl -n data get pods -w"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">kubectl</span> <span class="t-n">-n</span> data get pods <span class="t-n">-w</span></code></pre></div>
-<h2 id="जब-कई-step-pending-म-रह">जब कोई step Pending में रहे<a class="anchor" href="#जब-कई-step-pending-म-रह" aria-label="link">#</a></h2>
+<h2 id="when-a-step-stays-pending">जब कोई step Pending में रहे<a class="anchor" href="#when-a-step-stays-pending" aria-label="link">#</a></h2>
 <p>यह लगभग हमेशा इन तीन में से एक होता है:</p>
 <div class="table-wrap"><table><thead><tr><th>कारण</th><th>पुष्टि कैसे करें</th></tr></thead><tbody><tr><td>toleration के बिना taint</td><td><code>kubectl describe pod</code> में <code>node(s) had untolerated taint</code> दिखता है</td></tr><tr><td>बिना node वाला <code>nodeSelector</code></td><td><code>describe</code> में <code>didn't match Pod's node affinity</code> दिखता है</td></tr><tr><td>संसाधन उपलब्ध नहीं</td><td><code>describe</code> में <code>Insufficient cpu</code> या <code>memory</code> दिखता है</td></tr></tbody></table></div>
 <p>विफल step के pod को गायब होते देखने के बजाय जाँचने के लिए:</p>
 <div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>Production में इसे बंद रखें — रुके हुए pods quota खाते हैं।</p>
-<h2 id="अगल-कदम">अगले कदम<a class="anchor" href="#अगल-कदम" aria-label="link">#</a></h2>
+<h2 id="next-steps">अगले कदम<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/hi/docs/pod-per-step/">हर step के लिए एक pod</a> — execution मॉडल</li><li><a href="/hi/docs/configuration/">कॉन्फ़िगरेशन</a> — हर <code>BREVIS_POD_*</code> वेरिएबल</li><li><a href="/hi/docs/observability/">ऑब्ज़र्वेबिलिटी</a> — क्या scrape करें, और किस प्रोसेस से</li></ul>
 
       <nav class="pagers" aria-label="पेज">
@@ -379,7 +379,7 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#helm-स-इसटल-कर">Helm से इंस्टॉल करें</a></li><li class="toc-3"><a href="#chart-कय-मन-करत-ह">Chart क्या मना करता है</a></li><li class="toc-2"><a href="#helm-क-बन">Helm के बिना</a></li><li class="toc-2"><a href="#द-भमकए">दो भूमिकाएँ</a></li><li class="toc-2"><a href="#migrations">Migrations</a></li><li class="toc-2"><a href="#api-deployment">API Deployment</a></li><li class="toc-2"><a href="#शडयलर-deployment">शेड्यूलर Deployment</a></li><li class="toc-2"><a href="#अनमतय">अनुमतियाँ</a></li><li class="toc-2"><a href="#deploy-क-बद">Deploy के बाद</a></li><li class="toc-2"><a href="#जब-कई-step-pending-म-रह">जब कोई step Pending में रहे</a></li><li class="toc-2"><a href="#अगल-कदम">अगले कदम</a></li></ul>
+      <ul><li class="toc-2"><a href="#install-it-with-helm">Helm से इंस्टॉल करें</a></li><li class="toc-3"><a href="#what-the-chart-refuses">Chart क्या मना करता है</a></li><li class="toc-2"><a href="#without-helm">Helm के बिना</a></li><li class="toc-2"><a href="#the-two-roles">दो भूमिकाएँ</a></li><li class="toc-2"><a href="#migrations">Migrations</a></li><li class="toc-2"><a href="#api-deployment">API Deployment</a></li><li class="toc-2"><a href="#scheduler-deployment">शेड्यूलर Deployment</a></li><li class="toc-2"><a href="#permissions">अनुमतियाँ</a></li><li class="toc-2"><a href="#after-the-deploy">Deploy के बाद</a></li><li class="toc-2"><a href="#when-a-step-stays-pending">जब कोई step Pending में रहे</a></li><li class="toc-2"><a href="#next-steps">अगले कदम</a></li></ul>
     </aside>
   </main>
 </div>
@@ -399,9 +399,9 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -424,7 +424,7 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

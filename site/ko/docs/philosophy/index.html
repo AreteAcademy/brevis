@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc serif">
 
-<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+<a class="skip-link" href="#content">본문으로 건너뛰기</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="주 내비게이션">
-      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/#ecosystem">에코시스템</a>
       <a href="/ko/docs/">문서</a>
-      <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/philosophy/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/philosophy/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/philosophy/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/philosophy/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/philosophy/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/philosophy/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/philosophy/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/philosophy/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/philosophy/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/philosophy/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/philosophy/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="언어: 한국어"><span>한국어</span></summary><ul><li><a href="/docs/philosophy/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/philosophy/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/philosophy/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/philosophy/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/philosophy/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/philosophy/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/philosophy/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/philosophy/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/philosophy/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/philosophy/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/philosophy/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         오픈 소스 둘러보기
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">문서</p>
       <h1>철학</h1>
@@ -130,9 +130,9 @@
 <p>세네카의 이 격언은 brevis.sh의 바탕에 있는 질문을 이끕니다. 어떤 복잡성이 정말로 팀의 시간을 쓸 가치가 있는가? 모든 workflow는 격리된 pod에서 실행되어, 실패와 버전과 의존성이 명확한 경계를 갖습니다.</p>
 <p>이 질문에서 런타임의 네 가지 선택이 나왔습니다.</p>
 <ul><li><strong>step별 이미지</strong> — 각 step이 필요한 런타임을 선언합니다. 버전 하나를 올린다고 다른 step을 건드려야 하지 않습니다.</li><li><strong>run별 로그</strong> — 출력은 그것을 만든 run에 속합니다. 실패를 조사하는 일이 잃어버린 맥락을 다시 만드는 일이 되지 않습니다.</li><li><strong>영속적인 재시도</strong> — 시도는 프로세스보다 오래 삽니다. 재시작이 그 작업에 대해 이미 알려진 것을 지우지 않습니다.</li><li><strong>의존성 격리</strong> — 한 step이 가진 것이 이웃 step으로 새지 않습니다. 명확한 경계가 실패를 읽을 수 있게 만듭니다.</li></ul>
-<h2 id="프로젝트가-제안하는-것">프로젝트가 제안하는 것<a class="anchor" href="#프로젝트가-제안하는-것" aria-label="link">#</a></h2>
+<h2 id="what-the-project-proposes">프로젝트가 제안하는 것<a class="anchor" href="#what-the-project-proposes" aria-label="link">#</a></h2>
 <p>*실천 없는 철학*과 <em>방향 없는 기술</em> 사이에서, <strong>중요한 일을 할 수 있는 명료함.</strong></p>
-<h2 id="도구는-우리가-생각하는-방식을-만듭니다">도구는 우리가 생각하는 방식을 만듭니다.<a class="anchor" href="#도구는-우리가-생각하는-방식을-만듭니다" aria-label="link">#</a></h2>
+<h2 id="tools-shape-the-way-we-think">도구는 우리가 생각하는 방식을 만듭니다.<a class="anchor" href="#tools-shape-the-way-we-think" aria-label="link">#</a></h2>
 <blockquote><p>“지속 가능한 코드란 단지 계속 실행되는 코드가 아닙니다. 사람이 추론할 여지를 남기는 코드입니다.” — 소프트웨어에 적용한 철학</p></blockquote>
 <blockquote><p>“명료함은 정교함의 반대가 아닙니다. 정교함이 소음이 되지 않게 하는 기준입니다.” — 원칙으로서의 오픈 소스</p></blockquote>
 
@@ -148,7 +148,7 @@
 
     <aside class="toc" aria-label="이 페이지에서">
       <p class="toc-t">이 페이지에서</p>
-      <ul><li class="toc-2"><a href="#de-brevitate-vitae">De brevitate vitae</a></li><li class="toc-2"><a href="#프로젝트가-제안하는-것">프로젝트가 제안하는 것</a></li><li class="toc-2"><a href="#도구는-우리가-생각하는-방식을-만듭니다">도구는 우리가 생각하는 방식을 만듭니다.</a></li></ul>
+      <ul><li class="toc-2"><a href="#de-brevitate-vitae">De brevitate vitae</a></li><li class="toc-2"><a href="#what-the-project-proposes">프로젝트가 제안하는 것</a></li><li class="toc-2"><a href="#tools-shape-the-way-we-think">도구는 우리가 생각하는 방식을 만듭니다.</a></li></ul>
     </aside>
   </main>
 </div>
@@ -168,9 +168,9 @@
       <div class="footer-col">
         <h2>프로젝트</h2>
         <ul>
-          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/#ecosystem">에코시스템</a></li>
           <li><a href="/ko/docs/philosophy/">원칙</a></li>
-          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/introduction/#open-code-choose-how-to-take-part">오픈 소스</a></li>
           <li><a href="/ko/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -193,7 +193,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

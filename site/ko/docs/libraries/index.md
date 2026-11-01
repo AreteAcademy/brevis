@@ -86,7 +86,7 @@ metrics.inc("vendor_rejected_total")   # a counter: it adds up
 이미 읽고 있는 바로 그 파이프이며 엔진이 이를 기록합니다. 설치할 것도 운영할 것도
 없고, step은 자기 workflow slug를 알 수 없으므로 레이블은 엔진의 것입니다.
 
-API 세부 사항은 [Python](/ko/docs/python/#파이프라인만-아는-메트릭)에 있습니다.
+API 세부 사항은 [Python](/ko/docs/python/#metrics-only-your-pipeline-knows)에 있습니다.
 
 ## 다른 언어용 클라이언트 작성하기
 

@@ -164,6 +164,28 @@ brevis-sql: 1 of 2 tests failed
 
 प्रोसेस कोड 1 के साथ निकलती है, और workflow का step उसके साथ विफल होता है।
 
+## इन्क्रीमेंटल मॉडल और उसका lookback
+
+`materialized: incremental` को `unique_key` और `watermark` चाहिए। हर build केवल उन
+पंक्तियों को पढ़ता है जो टारगेट में पहले से मौजूद सबसे बड़े watermark से आगे हैं, और
+उन्हें कुंजी के आधार पर MERGE करता है। यह फ़िल्टर सख़्त है, इसलिए जो पंक्ति watermark के
+बराबर है पर build के बाद कमिट होती है, या पुराने टाइमस्टैम्प के साथ देर से पहुँचती है, वह
+`--full-refresh` तक दिखाई नहीं देती। वैकल्पिक `lookback` इसे ठीक करता है:
+
+```sql
+/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/
+```
+
+मान एक पूर्ण संख्या और उसके बाद `s`, `m`, `h` या `d` होता है; इसके अलावा कुछ भी
+मॉडल के नाम के साथ अस्वीकार कर दिया जाता है। फ़िल्टर `updated_at >= max - 2h` बन जाता है,
+और MERGE दोहराई गई पंक्तियों को समा लेता है। lookback सेट होने पर watermark TIMESTAMP
+कॉलम होना चाहिए। `lookback` के बिना SQL अपरिवर्तित रहता है।
+
 ## टेस्ट ऐसे SELECT हैं जो उल्लंघन करती पंक्तियाँ लौटाते हैं
 
 `not_null`, `unique`, `accepted_values`, `relationships`। शून्य पंक्तियाँ पास हैं, और व्याख्या करने को और कुछ नहीं।

@@ -44,7 +44,7 @@ curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
 ```
 
 Sem credenciais do Google Cloud, o lote é tentado de novo e vai para a fila de
-descarte — veja [Quando o destino recusa](#quando-o-destino-recusa).
+descarte — veja [Quando o destino recusa](#when-the-sink-refuses).
 
 A imagem `-slim` carrega só os destinos `auto_table`, `files` e `postgres`; o
 `pubsub` deste exemplo e os outros estão na imagem completa. Uma slim com um
@@ -62,19 +62,19 @@ name: events_gateway
 listen:
   addr: :8080
   max_body: 1MiB
-  idle_timeout: 90s                  # o padrão; não pode ser desligado
-  max_conn_age: 60s                  # desligado a menos que você ponha
+  idle_timeout: 90s                  # the default; it cannot be turned off
+  max_conn_age: 60s                  # off unless set — see below
   auth:
     type: bearer
-    keys_from: BREVIS_INGEST_KEYS   # o NOME da variável, nunca as chaves
+    keys_from: BREVIS_INGEST_KEYS   # the NAME of the variable, never the keys
 
 metrics:
-  addr: :9090                        # porta própria, nunca a de ingestão
+  addr: :9090                        # its own port, never the ingest one
 
 streams:
   - name: clicks
     path: /v1/clicks
-    format: json                     # json | array | ndjson — declarado, nunca adivinhado
+    format: json                     # json | array | ndjson — declared, never sniffed
 
     identity:
       provider: web
@@ -133,14 +133,14 @@ moldado por quem teve azar não é um p99 sobre o qual alguém age.
 ```yaml
 buffer:
   flush:
-    every: 1s         # idade
-    records: 500      # contagem
-    size: 8MiB        # bytes — o que for atingido PRIMEIRO manda o lote
-    max_age: 30s      # e este manda DE QUALQUER JEITO
-  workers: 4          # lotes entregues ao mesmo tempo
-  queue: 64           # lotes cheios esperando um worker
-  max_records: 10000  # eventos em memória antes de o gateway dizer não
-  max_bytes: 256MiB   # o mesmo teto em bytes
+    every: 1s         # age
+    records: 500      # count
+    size: 8MiB        # bytes — whichever is crossed FIRST sends the batch
+    max_age: 30s      # and this one sends it REGARDLESS
+  workers: 4          # batches delivered at once
+  queue: 64           # full batches that may wait for a worker
+  max_records: 10000  # events held in memory before the gateway says no
+  max_bytes: 256MiB   # the same ceiling in bytes
 ```
 
 ### O relógio do flush pertence ao deployment
@@ -149,7 +149,7 @@ buffer:
 jobs que uma tabela recebe são função da contagem de réplicas, não do tráfego:
 
 ```
-jobs / dia / tabela  =  réplicas × 86400 / every
+jobs / day / table  =  replicas × 86400 / every
 ```
 
 No BigQuery, contra 1.500 por tabela por dia, **duas réplicas a 60s já são 192%
@@ -280,8 +280,8 @@ ela.
 
 ```yaml
 listen:
-  idle_timeout: 90s     # fecha uma conexão a que ninguém voltou
-  max_conn_age: 60s     # depois disso, a próxima resposta pede que o cliente rediscque
+  idle_timeout: 90s     # closes a connection nobody came back to
+  max_conn_age: 60s     # after this, the next response asks the client to redial
 ```
 
 **`max_conn_age` vem desligado**, de propósito: por quanto tempo um cliente
@@ -333,7 +333,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 func enrichClicks(e map[string]any) (map[string]any, error) {
     host, _ := e["host"].(string)
     e["tenant"] = strings.Split(host, ".")[0]
-    return e, nil     // devolver nil DESCARTA o evento, de propósito
+    return e, nil     // returning nil DROPS the event, on purpose
 }
 ```
 
@@ -391,19 +391,19 @@ todo nome de stream, caminho e destino para quem encontrasse o path. Declarar o
 mesmo endereço nos dois é recusado no carregamento.
 
 ```
-brevis_gateway_events_received_total{stream,format}     contador
-brevis_gateway_events_rejected_total{stream,reason}     contador  por EVENTO, depois do decode
-brevis_gateway_requests_refused_total{stream,reason}    contador  por REQUISIÇÃO: unauthorized|body_too_large|malformed|empty|saturated
-brevis_gateway_batches_total{stream,sink,outcome}       contador  delivered|retried|buried
-brevis_gateway_reconciled_total{stream,sink}            contador  chegou depois da janela de envio; conta também em delivered
-brevis_gateway_flushes_total{stream,trigger}            contador  time|records|size
-brevis_gateway_flush_windows_total{stream,outcome}      contador  won|yielded|ceiling|unreachable
-brevis_gateway_ingested_bytes_total{stream,table}        contador  opt-in
-brevis_gateway_ingested_events_total{stream,table}      contador  opt-in
-brevis_gateway_table_flushes_total{stream,table,trigger}  contador  opt-in
-process_start_time_seconds                              gauge     sem prefixo, de propósito
-brevis_gateway_saturated_total{stream}                  contador  os 503
-brevis_gateway_delivery_seconds{stream,sink}            histograma
+brevis_gateway_events_received_total{stream,format}     counter
+brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
+brevis_gateway_requests_refused_total{stream,reason}    counter  per request: unauthorized|body_too_large|malformed|empty|saturated
+brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_reconciled_total{stream,sink}            counter  landed after the send window; also delivered
+brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
+brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
+brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger} counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
+brevis_gateway_saturated_total{stream}                  counter  the 503s
+brevis_gateway_delivery_seconds{stream,sink}            histogram
 brevis_gateway_buffer_records{stream}                   gauge
 brevis_gateway_queue_batches{stream}                    gauge
 ```
@@ -467,7 +467,7 @@ a tabela se ela não existir e cresce uma coluna quando um campo novo aparece:
 Campos de controle em cima, o registro dentro de `data`, e sete colunas
 `brevis_*` de rastreio em toda tabela. Uma rota, N tabelas, nada declarado.
 
-Está em [Destinos da ingestão](/docs/ingestion-sinks/#uma-rota-n-tabelas-nada-declarado).
+Está em [Destinos da ingestão](/docs/ingestion-sinks/#one-route-n-tables-nothing-declared).
 
 ## Por onde seguir
 

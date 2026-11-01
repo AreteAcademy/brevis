@@ -58,6 +58,11 @@ distroless image has none.
   valueFrom: {secretKeyRef: {name: {{ $secret }}, key: passwordHash}}
 - name: BREVIS_AUTH_SECRET
   valueFrom: {secretKeyRef: {name: {{ $secret }}, key: secret}}
+{{- $ip := .Values.auth.clientIPHeader | default (ternary "X-Forwarded-For" "" (.Values.api.ingress.enabled | default false)) }}
+{{- if $ip }}
+- name: BREVIS_AUTH_CLIENT_IP_HEADER
+  value: {{ $ip | quote }}
+{{- end }}
 {{- end -}}
 {{- end -}}
 

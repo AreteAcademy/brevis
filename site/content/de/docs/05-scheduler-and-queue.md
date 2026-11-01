@@ -125,8 +125,8 @@ brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true
 ```
 
 ```
-  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los
+  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them
 ```
 
 Er **reiht ein, er führt nicht aus.** Die Ausführung ist Aufgabe des
