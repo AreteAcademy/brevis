@@ -1307,9 +1307,8 @@ func TestIntegrationChainWritesEverything(t *testing.T) {
 // A null in a JSON column lands as SQL NULL, against real BigQuery. [#42]
 //
 // THE ONE THAT COULD NOT BE PROVEN HERE UNTIL 2026-10-08. The emulator
-// refuses load jobs -- `TestIntegrationBigQueryStillRefusesLoadJobs` exists
-// to fail the day it stops -- so how BigQuery STORES a null was the
-// reporter's measurement and nobody else's.
+// keeps JSON as text, so how BigQuery STORES a null was the reporter's
+// measurement and nobody else's. The floci twin proves the driver sends it.
 //
 // Run against the same project before the fix, it said:
 //

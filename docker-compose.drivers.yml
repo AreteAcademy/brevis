@@ -149,24 +149,10 @@ services:
   # It is also `:latest`, chosen by floci and not by us, which is a second
   # reason the emulated layer must never be the only thing a claim rests on.
   #
-  # WHAT IT DOES NOT DO, and this belongs here rather than in a wiki: floci
-  # refuses load jobs.
-  #
-  #     POST /bigquery/v2/projects/{p}/jobs
-  #       400 {"message":"Only QUERY jobs are supported ..."}
-  #
-  #     POST /upload/bigquery/v2/projects/{p}/jobs?uploadType=multipart
-  #       405, empty body -- no route at all
-  #
-  # The Go client takes the SECOND for an inline load, so what the driver
-  # actually meets is a bare 405.
-  #
-  # The SDK's BigQuery driver writes ONLY through load jobs -- inline, or
-  # staged through GCS above the threshold. So this emulator cannot exercise a
-  # single Brevis write to BigQuery. What it does cover is the other half, and
-  # it is the half with no local test at all today: creating a table with a
-  # partition and a clustering, and PATCHing a column onto it, which is what
-  # auto_table turns a payload into.
+  # WHAT IT DOES NOT DO, and this belongs here rather than in a wiki: it is
+  # not BigQuery. It runs load jobs, so the driver's writes are exercised, but
+  # quota, DDL concurrency, JSON storage and column-case folding are the real
+  # service's, and only the real-dataset job can say anything about them.
   floci:
     profiles: [gcp, all]
     image: floci/floci-gcp:nightly-10252026

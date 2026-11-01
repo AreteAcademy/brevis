@@ -83,10 +83,11 @@ a standing target through every third-party action the workflows pull; the
 project on hand holds a client's real data; and the emulator already covers
 the protocol.
 
-What the emulator does **not** cover is the write path — `floci` refuses load
-jobs by design, and a load job is how the SDK writes to BigQuery. So CI runs
-the emulated layer and then says, in a step of its own, that it did not run
-the other:
+The emulator runs load jobs, so it covers the write path too: rows landing,
+the merge not doubling, a JSON null stored as SQL NULL. What it does **not**
+cover is how the real service behaves: quota, DDL concurrency, how JSON is
+stored, column-case folding. So CI runs the emulated layer and then says, in a
+step of its own, that it did not run the other:
 
 > SKIPPED, which is green: nothing below this line was proven against a real
 > warehouse.
