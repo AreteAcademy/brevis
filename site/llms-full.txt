@@ -2456,6 +2456,16 @@ mid-run is a process whose behaviour nobody can reproduce.
 
 All three come together, or none does.
 
+| variable | default | |
+|---|---|---|
+| `BREVIS_AUTH_CLIENT_IP_HEADER` | — | header your proxy sets with the client address, e.g. `X-Forwarded-For`. The **last** entry is used (the one your proxy appended). Empty = the connection's address |
+
+Sign-in is throttled per client address (IPv6 by its /64): after three failures
+the address is locked for 2 seconds, doubling up to 15 minutes. **Behind an
+ingress or load balancer, leave the variable empty and every client shares the
+proxy's address, so one person guessing locks everybody out.** Set it only if
+the header is written by a proxy you trust and cannot be forged by the client.
+
 :::danger Half-configured is a boot error
 Whoever filled in the username believes the door is closed. The interface
 triggers pipelines: a `POST /workflows/<slug>/trigger` runs a `dbt build` that

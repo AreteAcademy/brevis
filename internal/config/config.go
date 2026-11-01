@@ -184,6 +184,8 @@ func Load() (Config, error) {
 			User:   renamed("BREVIS_AUTH_USER", "BREVIS_AUTH_USUARIO"),
 			Hash:   renamed("BREVIS_AUTH_PASSWORD_HASH", "BREVIS_AUTH_SENHA_HASH"),
 			Secret: []byte(renamed("BREVIS_AUTH_SECRET", "BREVIS_AUTH_SEGREDO")),
+			// Empty: throttle logins by the connection's address.
+			ClientIPHeader: os.Getenv("BREVIS_AUTH_CLIENT_IP_HEADER"),
 		},
 		Pods: PodsConfig{
 			Modo:              get("BREVIS_PODS", "auto"),
