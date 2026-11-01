@@ -100,6 +100,24 @@ const Attribution = "Powered by Brevis"
 // own runbook is a different link, and would be a different field.
 const DocsURL = "https://brevis.sh/docs/"
 
+// DocsIn is a page of the documentation in the reader's language: the site
+// keeps English at the root and every other language under its own prefix
+// (Portuguese is /pt/, Simplified Chinese /zh/). path is "" for the index or
+// a page such as "workflows/".
+func DocsIn(lang, path string) string {
+	prefix := ""
+	switch lang {
+	case "en", "":
+	case "pt-BR":
+		prefix = "pt/"
+	case "zh-CN":
+		prefix = "zh/"
+	default:
+		prefix = lang + "/"
+	}
+	return "https://brevis.sh/" + prefix + "docs/" + path
+}
+
 // Default is the default identity, used when there is no brand file.
 func Default() Brand {
 	return Brand{

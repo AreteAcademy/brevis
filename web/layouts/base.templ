@@ -292,18 +292,6 @@ templ accountMenu(operator string, brand branding.Brand) {
 				</p>
 			}
 			<div class="py-1">
-			<a
-				href={ templ.SafeURL(branding.DocsURL) }
-				target="_blank"
-				rel="noreferrer"
-				class="flex items-center gap-2.5 px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-			>
-				<svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
-					<path d="M3 2.5h6.5L13 6v7.5H3z"></path>
-					<path d="M9.5 2.5V6H13"></path>
-				</svg>
-				{ i18n.T(ctx, "shell.docs") }
-			</a>
 			@langChoice()
 			@themeChoice()
 			<span class="block" data-js>
@@ -337,6 +325,19 @@ templ accountMenu(operator string, brand branding.Brand) {
 					</button>
 				</form>
 			}
+			<div class="my-1 border-t border-line-soft"></div>
+			<a
+				href={ templ.SafeURL(branding.DocsIn(i18n.Lang(ctx), "")) }
+				target="_blank"
+				rel="noreferrer"
+				class="flex items-center gap-2.5 px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			>
+				<svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+					<path d="M3 2.5h6.5L13 6v7.5H3z"></path>
+					<path d="M9.5 2.5V6H13"></path>
+				</svg>
+				{ i18n.T(ctx, "shell.docs") }
+			</a>
 			</div>
 		</div>
 	</details>
