@@ -713,7 +713,9 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 					"attempt", attempt+1,
 					"backoff", backoff,
 					"error", err)
-				time.Sleep(backoff)
+				if err := sleepCtx(ctxTotal, backoff); err != nil {
+					return nil, err
+				}
 				continue
 			}
 			return nil, fmt.Errorf("fetch failed after %d attempts: %w", attempt+1, err)
@@ -736,13 +738,20 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 				"backoff", backoff)
 			_ = resp.Body.Close()
 			cancelAttempt()
-			time.Sleep(backoff)
+			if err := sleepCtx(ctxTotal, backoff); err != nil {
+				return nil, err
+			}
 			continue
 		}
 
-		body, _ := io.ReadAll(resp.Body)
+		// Bounded: an error page can be huge or hostile, and whatever the
+		// vendor echoes ends up in the error and from there in the logs.
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, errBodyLimit+1))
 		_ = resp.Body.Close()
 		cancelAttempt()
+		if len(body) > errBodyLimit {
+			return nil, fmt.Errorf("http %d: %s... (truncated at %d bytes)", resp.StatusCode, body[:errBodyLimit], errBodyLimit)
+		}
 		return nil, fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
 	}
 
@@ -937,14 +946,40 @@ func currentOffset(req *http.Request, key string) int {
 	return n
 }
 
+// errBodyLimit caps how much of a non-2xx body goes into the error.
+const errBodyLimit = 4 << 10
+
+// defaultMaxRetryWait caps a Retry-After when the config sets no MaxBackoff.
+const defaultMaxRetryWait = 60 * time.Second
+
+// sleepCtx waits d, or returns the context's error as soon as it ends: a plain
+// time.Sleep ignores a cancel or a deadline for as long as the wait lasts.
+func sleepCtx(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// retryAfter is the wait before the next attempt. The vendor's Retry-After is
+// honored but capped at MaxBackoff: "429 Retry-After: 86400" must not park the
+// step for a day.
 func retryAfter(resp *http.Response, attempt int, cfg *core.RetryConfig) time.Duration {
+	ceiling := cfg.MaxBackoff
+	if ceiling <= 0 {
+		ceiling = defaultMaxRetryWait
+	}
 	if v := resp.Header.Get("Retry-After"); v != "" {
 		if secs, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && secs >= 0 {
-			return time.Duration(secs) * time.Second
+			return min(time.Duration(secs)*time.Second, ceiling)
 		}
 		if t, err := http.ParseTime(v); err == nil {
 			if d := time.Until(t); d > 0 {
-				return d
+				return min(d, ceiling)
 			}
 		}
 	}
