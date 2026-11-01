@@ -60,7 +60,7 @@ func TestTheRunsBadgesAreFailingThenRunningAndHaveAFragment(t *testing.T) {
 		t.Errorf("the Runs link = %s; want red (4 failing) then blue (3 running), inside data-nav-runs", link)
 	}
 	code, frag := get(t, ui, "/nav/runs")
-	if code != 200 || strings.Index(frag, "nav-badge-fail") < 0 || strings.Index(frag, "nav-badge-run") < strings.Index(frag, "nav-badge-fail") {
+	if code != 200 || !strings.Contains(frag, "nav-badge-fail") || strings.Index(frag, "nav-badge-run") < strings.Index(frag, "nav-badge-fail") {
 		t.Errorf("/nav/runs = %d %s; want both badges, red first", code, frag)
 	}
 	_, none := get(t, withRuns(runsFake{}), "/nav/runs")
