@@ -34,27 +34,33 @@ phrase: |
 # boot, and the installation comes up with the default theme and a warning in the
 # log.
 #
+# EVERY COLOUR IS OPTIONAL, and one is enough: a colour you leave out stays the
+# product's own (the dark console), so `accent: "#c02a2a"` repaints the accent and
+# nothing else. Do not copy the whole block below -- write only what you change.
+#
 # `--color-line` and the golden highlight are derived from `ink` and `accent`,
 # with transparency. There is deliberately no field for them: a border that does
 # not match the very ink you chose is a mistake nobody should be able to make.
-theme:
-  background: "#f4efe4"       # paper
-  background_soft: "#fbf8f1"  # the gradient's top and bottom
-  surface: "#fffdf8"          # cards and tables
-  ink: "#21180f"              # the main text
-  muted: "#6e6254"            # secondary text
-  accent: "#aa8450"           # details and links
-  accent_strong: "#8a693d"    # small caps
-
-  # The run states. They are worth keeping distinguishable from each other even
-  # on a poor screen — they are the panel's most important information.
-  success: "#4c7a56"
-  failed: "#b0503c"
-  running: "#3f6d8f"
-  queued: "#b3822f"
-  retrying: "#a35f28"
-  canceled: "#8a8175"
-  pending: "#a89b8a"
+#
+# theme:
+#   background: "#0d1117"       # the page
+#   background_soft: "#1c2128"  # a step above it
+#   surface: "#161b22"          # cards and tables
+#   ink: "#e6edf3"              # the main text
+#   muted: "#a3abb5"            # secondary text
+#   accent: "#7d8e50"           # details and links
+#   accent_strong: "#c7d66d"    # the primary action and the open section
+#
+#   # The run states. They are worth keeping distinguishable from each other
+#   # even on a poor screen — they are the panel's most important information.
+#   success: "#3fb950"
+#   failed: "#f85149"
+#   running: "#58a6ff"
+#   queued: "#d29922"
+#   retrying: "#db6d28"
+#   canceled: "#8b949e"
+#   pending: "#8b949e"
+#   skipped: "#a371f7"
 
 # The console's LIGHT theme, for a visitor who switches to it (the button at the
 # sidebar's foot; the choice is kept in a cookie). Same keys as `theme:`, and
