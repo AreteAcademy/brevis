@@ -50,7 +50,7 @@ func desligarEco() (func(), error) {
 }
 
 func stty(args ...string) (string, error) {
-	c := exec.Command("stty", args...)
+	c := exec.Command("stty", args...) // #nosec G204 -- stty with the flags this file chooses, never user input
 	c.Stdin = os.Stdin
 	output, err := c.Output()
 	return strings.TrimSpace(string(output)), err

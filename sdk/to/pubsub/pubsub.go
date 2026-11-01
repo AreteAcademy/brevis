@@ -49,7 +49,8 @@ import (
 	"strings"
 	"time"
 
-	gps "cloud.google.com/go/pubsub"
+	// v2 is a different API, and its own change.
+	gps "cloud.google.com/go/pubsub" //nolint:staticcheck // SA1019: the v1 client, on purpose
 
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )

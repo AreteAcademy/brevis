@@ -392,7 +392,7 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	if dir == "" {
 		dir = a.opt.WorkDir
 	}
-	cmd := exec.CommandContext(runCtx, a.opt.Shell[0], append(a.opt.Shell[1:], req.Command)...)
+	cmd := exec.CommandContext(runCtx, a.opt.Shell[0], append(a.opt.Shell[1:], req.Command)...) // #nosec G204 -- running the command the control plane sent is what an agent is for; the request is authenticated
 	cmd.Dir = dir
 	cmd.Env = env
 	// Its own process group, so cancelling kills the shell AND whatever it
@@ -514,7 +514,7 @@ func (a *Agent) abandon(e *execution) {
 // absent file is the normal case -- the same reading readPublished makes on
 // the local executor.
 func (a *Agent) publish(e *execution, path string) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) // #nosec G304 -- the path the step was told to publish to
 	if err != nil || len(raw) == 0 {
 		return
 	}
@@ -729,7 +729,7 @@ func (a *Agent) secret(coord string) (string, error) {
 	if !strings.HasPrefix(path, filepath.Clean(a.opt.SecretsDir)+string(os.PathSeparator)) {
 		return "", fmt.Errorf("%q resolves outside the secret store", coord)
 	}
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) // #nosec G304 -- confined to the secrets directory by the prefix check above
 	if err != nil {
 		return "", fmt.Errorf("not in this host's store")
 	}
