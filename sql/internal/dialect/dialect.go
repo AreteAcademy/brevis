@@ -525,6 +525,23 @@ type ReadOnlyGuard interface {
 	ReadOnly(ctx context.Context, fn func(context.Context) error) error
 }
 
+// Atomic is implemented by a connection that can run several statements as
+// ONE unit: all of them take effect or none does.
+//
+// IT EXISTS FOR THE REBUILD OF A TABLE, which is `DROP` then `CREATE TABLE AS`.
+// Run one by one, a CREATE that fails or times out leaves the old table
+// already gone, and while a long one runs the table does not exist at all --
+// so whatever reads it fails for the whole time. Postgres puts DDL in a
+// transaction, so there the pair commits together or rolls back and the old
+// table stays readable throughout. BigQuery has no such transaction and does
+// not implement this; the runner falls back to one statement at a time.
+type Atomic interface {
+	// ExecAtomic runs the statements in order as one unit. On failure it
+	// returns the index of the statement the warehouse refused, and nothing
+	// of the earlier ones remains.
+	ExecAtomic(ctx context.Context, statements []string) (failed int, err error)
+}
+
 // Relation is one thing a SELECT could name.
 type Relation struct {
 	Schema string
