@@ -136,7 +136,8 @@
       var label = short ? b.dataset.labelExpand : b.dataset.labelCollapse;
       b.setAttribute("aria-expanded", short ? "false" : "true");
       b.setAttribute("aria-label", label);
-      b.dataset.name = b.dataset.labelExpand;
+      b.dataset.tip = label;
+      b.dataset.name = label;
     });
   }
   drawSidebar();
@@ -296,8 +297,9 @@
 
   // The sidebar's hints belong to the folded sidebar: with the labels showing,
   // a tooltip repeats what is already read, so an open sidebar draws none --
-  // folded to its icons, each one is NAMED. The update icon on the account
-  // button is the exception: it has no label, in either state.
+  // folded to its icons, each one is NAMED. Two have no label to repeat, in
+  // either state: the update icon on the account button, and the fold button,
+  // whose hint says what a click does.
   function folded() { return document.documentElement.dataset.navMode === "short"; }
   function hintText(el) {
     if (folded() && el.dataset.name && el.closest(".app-sidebar")) return el.dataset.name;
@@ -307,7 +309,7 @@
     if (!e.target || typeof e.target.closest !== "function") return null;
     var el = e.target.closest("[data-tip], [data-name]");
     if (!el) return null;
-    if (!el.closest(".app-sidebar") || el.hasAttribute("data-update-icon")) return el.hasAttribute("data-tip") ? el : null;
+    if (!el.closest(".app-sidebar") || el.hasAttribute("data-update-icon") || el.hasAttribute("data-nav-fold")) return el.hasAttribute("data-tip") ? el : null;
     return folded() ? el : null;
   }
 

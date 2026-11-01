@@ -1285,21 +1285,28 @@ table.ct > tbody > tr > td {
 }
 /* The Runs list's Live dot: a ring that spreads from it while Live is on. */
 .live-dot-on {
+  position: relative;
   color: var(--color-state-success);
-  animation: live-pulse 1.4s ease-out infinite;
 }
-@keyframes live-pulse {
+/* A halo behind the dot: it spreads and fades, and the dot holds still. */
+.live-dot-on::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+  animation: live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes live-ping {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 70%, transparent);
     transform: scale(1);
+    opacity: 0.6;
   }
-  60% {
-    box-shadow: 0 0 0 7px transparent;
-    transform: scale(1.15);
-  }
+  75%,
   100% {
-    box-shadow: 0 0 0 0 transparent;
-    transform: scale(1);
+    transform: scale(3);
+    opacity: 0;
   }
 }
 @keyframes st-spin {
@@ -1320,7 +1327,7 @@ table.ct > tbody > tr > td {
 @media (prefers-reduced-motion: reduce) {
   .st-spin::before,
   .st-spin-dashed::before,
-  .live-dot-on,
+  .live-dot-on::before,
   .st-pulse::before {
     animation: none;
   }
@@ -1840,6 +1847,28 @@ tr[data-paused] > td[data-fade] {
     margin: 0;
     transform: scale(0.8);
     transform-origin: top right;
+  }
+  /* Folded, the fold button takes the logo's place while the pointer is on
+     the header (or the keyboard is on the button). */
+  html[data-nav-mode="short"] .app-sidebar .sb-head .sb-fold {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-head:hover .sb-fold,
+  html[data-nav-mode="short"] .app-sidebar .sb-head:focus-within .sb-fold {
+    opacity: 1;
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-head .sb-logo {
+    transition: opacity 120ms ease;
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-head:hover .sb-logo,
+  html[data-nav-mode="short"] .app-sidebar .sb-head:focus-within .sb-logo {
+    opacity: 0;
   }
   html[data-nav-mode="short"] .sb-when-full {
     display: none;

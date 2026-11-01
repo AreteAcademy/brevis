@@ -346,7 +346,7 @@ templ accountMenu(operator string, brand branding.Brand) {
 templ sidebar(active string, brand branding.Brand) {
 	<aside id="app-sidebar" class="app-sidebar flex h-full w-[236px] shrink-0 flex-col border-r border-line-soft bg-canvas-subtle">
 		<div class="sb-head flex h-13 shrink-0 items-center border-b border-line-soft pr-2">
-		<a href="/" data-name={ brand.Title } class="sb-item flex min-w-0 flex-1 items-center gap-2.5 px-4">
+		<a href="/" data-name={ brand.Title } class="sb-item sb-logo flex min-w-0 flex-1 items-center gap-2.5 px-4">
 			if brand.Logo == branding.DefaultLogo {
 				// Inline, so the symbol inherits the theme's colour.
 				<span class="block h-6 w-6 shrink-0 text-accent">
@@ -357,6 +357,7 @@ templ sidebar(active string, brand branding.Brand) {
 			}
 			<span data-collapse class="display block truncate text-[1.05rem] leading-none text-ink">{ brand.Title }</span>
 		</a>
+		@sidebarToggle()
 		// Closes the drawer; only there when the sidebar is one. A link to
 		// `#` so that, with no script, it clears the `:target` that opened it.
 		<a
@@ -419,7 +420,6 @@ templ sidebar(active string, brand branding.Brand) {
 		// WHO YOU ARE, AT THE FOOT, which is where a console keeps "who am I
 		// and how do I leave". The menu opens upwards from here.
 		<div class="shrink-0 border-t border-line-soft p-2">
-			@sidebarToggle()
 			@accountMenu(auth.De(ctx), brand)
 		</div>
 	</aside>
@@ -624,25 +624,27 @@ templ sectionBadge(s section) {
 	}
 }
 
-// sidebarToggle folds the sidebar to its icons and back (full / short). The
-// choice is localStorage's (ui.js writes it; the head script reads it before
-// the first paint). Only where a script will drive it, and not in the drawer a
-// phone gets, which is always full.
+// sidebarToggle folds the sidebar to its icons and back (full / short): at the
+// logo's right while it is open; folded, it takes the logo's place when the
+// pointer is over it (or the keyboard is on it). Its hint says what a click
+// does -- Collapse menu, or Expand menu -- and ui.js keeps the words and
+// aria-expanded true to the state. The choice is localStorage's (ui.js writes
+// it; the head script reads it before the first paint). Only where a script
+// will drive it, and not in the drawer a phone gets, which is always full.
 templ sidebarToggle() {
-	<span class="mb-1 hidden min-[860px]:block" data-js>
+	<span class="sb-fold hidden shrink-0 min-[860px]:block" data-js>
 		<button
 			type="button"
 			data-nav-fold
 			data-label-collapse={ i18n.T(ctx, "shell.collapse") }
 			data-label-expand={ i18n.T(ctx, "shell.expand") }
-			data-name={ i18n.T(ctx, "shell.expand") }
+			data-tip={ i18n.T(ctx, "shell.collapse") }
 			aria-label={ i18n.T(ctx, "shell.collapse") }
 			aria-expanded="true"
-			class="sb-item flex h-8 w-full items-center gap-2.5 rounded-card px-2.5 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
 			<span class="sb-when-full">@components.Icon("panel-left-close", "h-4 w-4")</span>
 			<span class="sb-when-short">@components.Icon("panel-left-open", "h-4 w-4")</span>
-			<span data-collapse>{ i18n.T(ctx, "shell.collapse") }</span>
 		</button>
 	</span>
 }
