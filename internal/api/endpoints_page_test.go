@@ -285,7 +285,7 @@ func TestTheEndpointsListSearches(t *testing.T) {
 	if strings.Contains(answer, "<html") || strings.Contains(answer, `role="search"`) {
 		t.Error("the answer is the whole page, not the list")
 	}
-	if !strings.Contains(answer, "Nothing matches this search.") {
+	if !strings.Contains(answer, "Nothing matches this filter.") {
 		t.Errorf("a search that finds nothing does not say so: %s", answer)
 	}
 }
@@ -447,5 +447,26 @@ func TestTheCurlFollowsTheForm(t *testing.T) {
 		if !strings.Contains(js, want) {
 			t.Errorf("ui.js's curl never uses %s", want)
 		}
+	}
+}
+
+// THE LIST FILTERS BY API AND STATE IN THE URL (screen-endpoints T3), on the
+// page and in the answer the search box swaps in.
+func TestTheEndpointsListFiltersByAPIAndState(t *testing.T) {
+	ui := dataUI(catalogFake{}).WithEndpoints(twoAPIs())
+	_, body := get(t, ui, "/data/endpoints?api=sales-api")
+	if !strings.Contains(body, ">/v1/orders<") || strings.Contains(body, ">/v1/clicks<") {
+		t.Error("?api=sales-api did not keep sales-api's endpoint alone")
+	}
+	if !strings.Contains(body, `<input type="hidden" name="api" value="sales-api"`) {
+		t.Error("the search box forgets the API chosen")
+	}
+	_, answer := fragmentGet(t, ui, "/data/endpoints?api=metrics-api&q=clicks")
+	if !strings.Contains(answer, ">/v1/clicks<") || strings.Contains(answer, ">/v1/orders<") {
+		t.Error("the answer does not keep the API filter")
+	}
+	_, stale := get(t, ui, "/data/endpoints?state=stale")
+	if strings.Contains(stale, ">/v1/clicks<") || !strings.Contains(stale, "Nothing matches this filter.") {
+		t.Error("?state=stale drew an endpoint whose data nobody knows to be stale")
 	}
 }

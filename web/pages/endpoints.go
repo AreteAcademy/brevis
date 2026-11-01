@@ -26,6 +26,8 @@ type EndpointsView struct {
 	// (bigquery)" -- for the summary.
 	Total, APIs, Fresh, Stale int
 	Caches, Connections       []string
+	// APINames are the APIs present, sorted: the API filter's choices.
+	APINames []string
 
 	Filter EndpointFilter
 	Now    time.Time
@@ -34,7 +36,49 @@ type EndpointsView struct {
 // EndpointFilter narrows the list: Q searches the path, the API, the tables
 // read and the parameters.
 type EndpointFilter struct {
-	Q string
+	// Q searches the path, the API, the parameters and the tables read; API
+	// is one API's name; State is "fresh" or "stale". "" is all.
+	Q, API, State string
+}
+
+// ParseEndpointFilter reads the filter from a query string; a state it does
+// not know is ignored rather than turned into an empty page.
+func ParseEndpointFilter(q url.Values) EndpointFilter {
+	f := EndpointFilter{Q: strings.TrimSpace(q.Get("q")), API: strings.TrimSpace(q.Get("api"))}
+	if r := []rune(f.Q); len(r) > searchCeiling {
+		f.Q = string(r[:searchCeiling])
+	}
+	if s := q.Get("state"); s == "fresh" || s == "stale" {
+		f.State = s
+	}
+	return f
+}
+
+// With is the link to this filter with one field changed, the fields always
+// in the same order.
+func (f EndpointFilter) With(field, value string) string {
+	switch field {
+	case "api":
+		f.API = value
+	case "state":
+		f.State = value
+	case "q":
+		f.Q = value
+	}
+	var parts []string
+	if f.API != "" {
+		parts = append(parts, "api="+url.QueryEscape(f.API))
+	}
+	if f.State != "" {
+		parts = append(parts, "state="+url.QueryEscape(f.State))
+	}
+	if f.Q != "" {
+		parts = append(parts, "q="+url.QueryEscape(f.Q))
+	}
+	if len(parts) == 0 {
+		return "/data/endpoints"
+	}
+	return "/data/endpoints?" + strings.Join(parts, "&")
 }
 
 // EndpointRow is one published endpoint.
@@ -151,12 +195,19 @@ func BuildEndpoints(all []postgres.PublishedEndpoint, entries []postgres.Catalog
 				v.Connections = append(v.Connections, conn)
 			}
 		}
-		if q != "" && !strings.Contains(r.SearchText(), q) {
+		switch {
+		case f.API != "" && e.API != f.API,
+			f.State != "" && r.Freshness != f.State,
+			q != "" && !strings.Contains(r.SearchText(), q):
 			continue
 		}
 		v.Rows = append(v.Rows, r)
 	}
 	v.APIs = len(apis)
+	for api := range apis {
+		v.APINames = append(v.APINames, api)
+	}
+	sort.Strings(v.APINames)
 	sort.SliceStable(v.Rows, func(i, j int) bool {
 		a, b := v.Rows[i], v.Rows[j]
 		if freshnessRank[a.Freshness] != freshnessRank[b.Freshness] {
@@ -411,3 +462,27 @@ func kindOf(target string) string {
 	}
 	return scheme
 }
+
+// publishEndpointYAML and publishEndpointCommands are Publish endpoint's
+// example: an API's file with one endpoint, and how it reaches the console.
+// The cache names the variable its address is read from, never the address.
+const publishEndpointYAML = `name: metrics-api
+connection: warehouse
+
+cache:
+  type: redis
+  addr_from: BREVIS_CACHE_ADDR
+  ttl: 6h
+
+endpoints:
+  #: Clicks per day, for the customer's dashboard.
+  - name: clicks
+    path: /v1/clicks
+    tenant: key
+    params:
+      start_date: {type: date, required: true}
+      end_date: {type: date, required: true}
+    sql_file: endpoints/clicks.sql`
+
+const publishEndpointCommands = `brevis-sql-api describe --config api.yaml --out manifest.json
+brevis endpoints publish manifest.json`

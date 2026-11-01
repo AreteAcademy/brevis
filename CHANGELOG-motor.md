@@ -38,8 +38,14 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 - **A summary** of endpoints, APIs, how many serve fresh and stale data, and
   the caches and connections the APIs published; a footer on how an
   endpoint works.
-- **The search is the server's**, over the path, the API, the parameters and
-  the tables read, answering as you type; with no script it is a form.
+- **Filters**: the API, only the ones present, and the state -- all, fresh
+  data, stale data -- in the URL; and a search over the path, the API, the
+  parameters and the tables read, on the server, answering as you type. With
+  no script the filters are links and the search a form. The list's old
+  search in the browser, and its English "Showing N of M", are gone.
+- **Publish endpoint** says how an endpoint is published rather than asking
+  for one: an API's file with a cache, and the two commands that describe
+  and publish it, to copy. `#publicar` opens it with no script.
 - Everything is in English, Portuguese and Spanish.
 
 ### Changed: Real time, one row per stream

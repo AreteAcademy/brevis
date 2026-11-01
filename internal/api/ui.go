@@ -459,7 +459,7 @@ func (u *UI) dataEndpoints(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	v := pages.BuildEndpoints(all, entries, pages.EndpointFilter{Q: r.URL.Query().Get("q")}, time.Now())
+	v := pages.BuildEndpoints(all, entries, pages.ParseEndpointFilter(r.URL.Query()), time.Now())
 	if fragment(r) == "answer" {
 		u.render(w, r, pages.EndpointsList(v))
 		return

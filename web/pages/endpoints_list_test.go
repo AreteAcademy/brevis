@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -118,7 +120,11 @@ func TestTheEndpointsSummarySearchAndFoot(t *testing.T) {
 // tables, parameters and the authors' descriptions are the data's own.
 func TestTheEndpointsHaveNoEnglishLeft(t *testing.T) {
 	all, entries := endpointsFixture()
-	text := visibleText(drawIn(t, "pt-BR", Endpoints(BuildEndpoints(all, entries, EndpointFilter{}, catalogNow)))) + " " +
+	// Publish endpoint's file and commands are code, the same in every
+	// language.
+	code := regexp.MustCompile(`(?s)<pre[^>]*>.*?</pre>`)
+	page := code.ReplaceAllString(drawIn(t, "pt-BR", Endpoints(BuildEndpoints(all, entries, EndpointFilter{}, catalogNow))), " ")
+	text := visibleText(page) + " " +
 		visibleText(drawIn(t, "pt-BR", EndpointsList(BuildEndpoints(nil, nil, EndpointFilter{}, catalogNow)))) + " " +
 		visibleText(drawIn(t, "pt-BR", EndpointsList(BuildEndpoints(all, entries, EndpointFilter{Q: "zzz"}, catalogNow))))
 	for _, english := range []string{
@@ -129,6 +135,81 @@ func TestTheEndpointsHaveNoEnglishLeft(t *testing.T) {
 	} {
 		if at := strings.Index(text, english); at >= 0 {
 			t.Errorf("the Portuguese endpoints still say %q: …%s…", english, text[max(0, at-60):min(len(text), at+40)])
+		}
+	}
+}
+
+// THE LIST FILTERS BY API AND BY STATE (screen-endpoints T3), in the URL:
+// the APIs offered are the ones present, and the counts are every
+// endpoint's whatever is shown.
+func TestTheEndpointsFilterByAPIAndState(t *testing.T) {
+	all, entries := endpointsFixture()
+	for _, c := range []struct {
+		f    EndpointFilter
+		want string
+	}{
+		{EndpointFilter{API: "metrics"}, "old fresh"},
+		{EndpointFilter{API: "legacy"}, "lost"},
+		{EndpointFilter{State: "stale"}, "old"},
+		{EndpointFilter{State: "fresh"}, "fresh"},
+		{EndpointFilter{API: "metrics", State: "fresh", Q: "chart"}, "fresh"},
+		{EndpointFilter{API: "legacy", State: "fresh"}, ""},
+	} {
+		v := BuildEndpoints(all, entries, c.f, catalogNow)
+		if got := endpointKeys(v); got != c.want {
+			t.Errorf("%+v: rows = %q, want %q", c.f, got, c.want)
+		}
+		if v.Total != 3 {
+			t.Errorf("%+v: the total counts what is shown (%d)", c.f, v.Total)
+		}
+	}
+	v := BuildEndpoints(all, entries, EndpointFilter{}, catalogNow)
+	if strings.Join(v.APINames, " ") != "legacy metrics" {
+		t.Errorf("the APIs offered = %v", v.APINames)
+	}
+}
+
+// THE FILTER IS READ FROM THE URL AND WRITTEN BACK in one order; a state it
+// does not know is ignored rather than turned into an empty page.
+func TestTheEndpointFilterIsTheURL(t *testing.T) {
+	f := ParseEndpointFilter(url.Values{"api": {"metrics"}, "state": {"maybe"}, "q": {" chart "}})
+	if f.API != "metrics" || f.State != "" || f.Q != "chart" {
+		t.Errorf("parsed %+v", f)
+	}
+	if got := f.With("state", "stale"); got != "/data/endpoints?api=metrics&state=stale&q=chart" {
+		t.Errorf("with a state: %s", got)
+	}
+	if got := (EndpointFilter{}).With("api", ""); got != "/data/endpoints" {
+		t.Errorf("nothing: %s", got)
+	}
+}
+
+// THE FILTERS ARE LINKS, the search keeps them, and Publish endpoint says how
+// an endpoint is published -- a drawer `#publicar` opens with no script, with
+// no form: the API's file is the source, and the console only shows it.
+func TestTheEndpointsFiltersAndPublish(t *testing.T) {
+	all, entries := endpointsFixture()
+	page := drawIn(t, "en", Endpoints(BuildEndpoints(all, entries, EndpointFilter{API: "metrics"}, catalogNow)))
+	for _, want := range []string{
+		`href="/data/endpoints?api=metrics&amp;state=stale"`, `href="/data/endpoints?api=metrics&amp;state=fresh"`,
+		`href="/data/endpoints?api=legacy"`, `<input type="hidden" name="api" value="metrics"`,
+		`href="#publicar"`, `id="publicar"`, "brevis-sql-api describe --config api.yaml --out manifest.json",
+		"brevis endpoints publish manifest.json", "addr_from: BREVIS_CACHE_ADDR", `data-copy="#publicar-yaml"`,
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the page lacks %s", want)
+		}
+	}
+	drawer := page[strings.Index(page, `id="publicar"`):]
+	if strings.Contains(drawer[:strings.Index(drawer, "</dialog>")], "<input") {
+		t.Error("Publish endpoint asks for something: it should only say how")
+	}
+	for _, lang := range []string{"pt-BR"} {
+		text := visibleText(drawIn(t, lang, Endpoints(BuildEndpoints(all, entries, EndpointFilter{State: "stale"}, catalogNow))))
+		for _, english := range []string{"Publish endpoint", "All states", "Fresh data", "Stale data", "Every API"} {
+			if strings.Contains(text, english) {
+				t.Errorf("%s: %q left in English", lang, english)
+			}
 		}
 	}
 }

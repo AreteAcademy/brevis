@@ -944,62 +944,30 @@
   // A list that filters while somebody types
   //
   // The search box names the rows it filters (`data-filter-for`); each row
-  // carries, lower-cased, the text a search looks in -- written by the same
-  // function the server searches with, so the two cannot disagree. Typing
-  // hides and reveals rows the server already drew: a search on the server
-  // HIDES non-matches rather than dropping them, which is what lets deleting
-  // a letter bring a row back. Enter still submits the form, as with no
-  // script.
-  //
-  // THE URL FOLLOWS, with replaceState: a reload or a sent link shows the
-  // same rows, and the back button is not filled with one entry per letter.
-  // A list URL carries no statement -- the SQL screen's refusal to touch
-  // history is about SQL, and is kept in sql.js. The filter bar's links
-  // (`data-filter-keep`) are rewritten too, so a status clicked after typing
-  // keeps the search.
+  // carries, lower-cased, the text a search looks in. Typing hides and
+  // reveals rows already drawn, and says so when none is left. It is a
+  // popover's list (a workflow's tags), so the URL is left alone: the pages'
+  // lists search on the server, through `data-swap`.
   // ------------------------------------------------------------------
-
-  function withQuery(href, name, value) {
-    var u = new URL(href, window.location.href);
-    if (value) u.searchParams.set(name, value);
-    else u.searchParams.delete(name);
-    return u.pathname + u.search + u.hash;
-  }
 
   document.querySelectorAll("[data-filter-for]").forEach(function (box) {
     var rows = document.getElementById(box.getAttribute("data-filter-for"));
     if (!rows) return;
-    var scope = rows.closest("[data-filter-scope]") || document;
+    var empty = rows.parentElement.querySelector("[data-filter-empty]");
 
     box.addEventListener("input", function () {
-      var raw = box.value.trim();
-      var q = raw.toLowerCase();
+      var q = box.value.trim().toLowerCase();
       var shown = 0;
       rows.querySelectorAll("[data-filter-row]").forEach(function (row) {
         var hit = q === "" || (row.getAttribute("data-filter-text") || "").indexOf(q) >= 0;
         row.hidden = !hit;
         if (hit) shown++;
       });
-
-      var foot = scope.querySelector("[data-foot]");
-      if (foot) {
-        var total = parseInt(foot.getAttribute("data-foot-total"), 10) || 0;
-        var noun = foot.getAttribute("data-foot-noun") || "";
-        foot.textContent = shown === total ? total + " " + noun : "Showing " + shown + " of " + total + " " + noun;
-      }
-      var empty = scope.querySelector("[data-filter-empty]");
       if (empty) empty.hidden = shown > 0;
-
-      // A box with no name filters a list that is not the page's (a
-      // popover's), and says nothing in the URL.
-      if (!box.name) return;
-      history.replaceState(history.state, "", withQuery(window.location.href, box.name, raw));
-      document.querySelectorAll("[data-filter-keep] a[href]").forEach(function (a) {
-        a.setAttribute("href", withQuery(a.getAttribute("href"), box.name, raw));
-      });
     });
   });
 
+  // ------------------------------------------------------------------
   // Tabs by the URL's hash (`[data-hash-tabs]`). Every panel is rendered
   // (`[data-tab-panel]`), and WHICH ONE SHOWS IS THE CSS'S: the head writes
   // `data-hash` on <html> before the first paint, and the page's own rules

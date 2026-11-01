@@ -14,7 +14,7 @@ import (
 // HTTP API -- read-only SQL over warehouse tables, a tenant per key, a cache
 // that follows the data -- each judged by the tables it reads.
 templ Endpoints(v EndpointsView) {
-	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "endpoints.title"), Crumb: i18n.T(ctx, "nav.endpoints"), Active: "endpoints"}) {
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "endpoints.title"), Crumb: i18n.T(ctx, "nav.endpoints"), Active: "endpoints", Actions: publishEndpointButton()}) {
 		<p class="-mt-2 mb-3 max-w-3xl text-[13.5px] text-muted">
 			{ i18n.T(ctx, "endpoints.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "endpoints.lead.strong") }</strong>{ i18n.T(ctx, "endpoints.lead.after") }
 		</p>
@@ -43,6 +43,12 @@ templ Endpoints(v EndpointsView) {
 			</div>
 			// THE BOX ANSWERS WHILE SOMEBODY TYPES, as the other lists'.
 			<form method="get" action="/data/endpoints" role="search" data-swap="endpoints-list" data-swap-typing class="mb-3 w-full sm:w-96">
+				if v.Filter.API != "" {
+					<input type="hidden" name="api" value={ v.Filter.API }/>
+				}
+				if v.Filter.State != "" {
+					<input type="hidden" name="state" value={ v.Filter.State }/>
+				}
 				@components.SearchInput("q", v.Filter.Q, i18n.T(ctx, "endpoints.search"), "")
 			</form>
 		}
@@ -50,12 +56,83 @@ templ Endpoints(v EndpointsView) {
 			@EndpointsList(v)
 		</div>
 		@endpointsHow()
+		@publishEndpointDrawer()
 	}
+}
+
+// publishEndpointButton is the header's verb. A link to #publicar, so with no
+// script the drawer is drawn in place (`:target`); ui.js opens it modal.
+templ publishEndpointButton() {
+	<a href="#publicar" data-dialogo="publicar" aria-haspopup="dialog" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
+		@components.Icon("plus", "h-3.5 w-3.5")
+		{ i18n.T(ctx, "endpoints.publish") }
+	</a>
+}
+
+// publishEndpointDrawer says how an endpoint is published; it publishes
+// nothing. An endpoint is declared in its API's file and published from
+// there, so a form here would be a second source of truth the API never
+// reads.
+templ publishEndpointDrawer() {
+	<dialog
+		id="publicar"
+		aria-labelledby="publicar-title"
+		class="run-drawer fixed inset-y-0 right-0 left-auto m-0 h-full max-h-none w-[min(560px,100vw)] border-l border-line bg-surface p-0 text-ink backdrop:bg-ink/40"
+	>
+		<div class="flex h-full flex-col">
+			<div class="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+				<div class="min-w-0">
+					<p id="publicar-title" class="text-[15px] font-semibold text-ink">{ i18n.T(ctx, "endpoints.publish") }</p>
+					<p class="mt-1 text-[12.5px] text-muted">{ i18n.T(ctx, "endpoints.publish.lead") }</p>
+				</div>
+				<form method="dialog">
+					<button type="submit" aria-label={ i18n.T(ctx, "dialog.close") } class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+						@components.Icon("x", "h-4 w-4")
+					</button>
+				</form>
+			</div>
+			<div class="flex-1 space-y-4 overflow-y-auto px-5 py-4 text-[12.5px]">
+				@copyBlock(i18n.T(ctx, "endpoints.publish.declare"), "publicar-yaml", publishEndpointYAML)
+				@copyBlock(i18n.T(ctx, "endpoints.publish.commands"), "publicar-commands", publishEndpointCommands)
+				<p class="text-muted">{ i18n.T(ctx, "endpoints.publish.note") }</p>
+			</div>
+		</div>
+	</dialog>
 }
 
 // EndpointsList is the table and its empty states: the part the search
 // redraws.
 templ EndpointsList(v EndpointsView) {
+	{{ f := v.Filter }}
+	if v.Total > 0 {
+		<div class="mb-3 flex flex-wrap items-center gap-2">
+			if len(v.APINames) > 1 {
+				<div role="group" aria-label={ i18n.T(ctx, "endpoints.col.api") } class="inline-flex h-8 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-card border border-line bg-surface p-0.5">
+					@langOption(f.With("api", ""), f.API == "") {
+						{ i18n.T(ctx, "endpoints.filter.api.all") }
+					}
+					for _, api := range v.APINames {
+						@langOption(f.With("api", api), f.API == api) {
+							<span class="font-mono text-[12px]">{ api }</span>
+						}
+					}
+				</div>
+			}
+			<div role="group" aria-label={ i18n.T(ctx, "endpoints.col.status") } class="inline-flex h-8 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-card border border-line bg-surface p-0.5">
+				@langOption(f.With("state", ""), f.State == "") {
+					{ i18n.T(ctx, "endpoints.filter.state.all") }
+				}
+				@langOption(f.With("state", "fresh"), f.State == "fresh") {
+					@components.FreshnessMark("on_time")
+					{ i18n.T(ctx, "endpoints.filter.state.fresh") }
+				}
+				@langOption(f.With("state", "stale"), f.State == "stale") {
+					@components.FreshnessMark("stale")
+					{ i18n.T(ctx, "endpoints.filter.state.stale") }
+				}
+			</div>
+		</div>
+	}
 	if len(v.Rows) == 0 {
 		<div class="rounded-card border border-dashed border-line px-6 py-12 text-center">
 			if v.Total > 0 {
