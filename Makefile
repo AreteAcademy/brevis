@@ -94,7 +94,7 @@ test-db: ## Creates and migrates the test database (idempotent)
 	@docker compose exec -T postgres psql -U brevis -d postgres -tAc \
 	  "SELECT 1 FROM pg_database WHERE datname='brevis_test'" | grep -q 1 \
 	  || docker compose exec -T postgres createdb -U brevis brevis_test
-	@BREVIS_ENV=local BREVIS_DATABASE_URL="$(TEST_DB_URL)" go run ./cmd/brevis migrate up >/dev/null
+	@BREVIS_DATABASE_URL="$(TEST_DB_URL)" go run ./cmd/brevis migrate up >/dev/null
 
 # --- The real warehouse ----------------------------------------------------
 # BIGQUERY IS LOCAL AND NEVER IN CI, decided 2026-10-08. The repository is

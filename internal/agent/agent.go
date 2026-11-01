@@ -402,9 +402,9 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	// exec.CommandContext kills only cmd.Process on a timeout. A grandchild
 	// (`cd x && python load.py`) would keep the output pipes open, the streams
 	// would never end and no exit line would be written. Kill the group, as the
-	// local executor does, and bound Wait in case an orphan escaped the group.
+	// local executor does. A process that left the group (setsid) and holds the
+	// pipes is not covered: the stream copiers read until EOF.
 	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
-	cmd.WaitDelay = 3 * time.Second
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -612,15 +612,19 @@ func (a *Agent) Cancel(execID string) error {
 		// Not in memory: this agent restarted, and the file is what is left.
 		return a.cancelFromState(execID)
 	}
-	e.stop()
 	a.settle(e)
 	// The command is read under the execution's lock, like `exited`: since
 	// #130 an execution is visible from its reservation, before Start has
 	// spawned anything and while it is writing e.cmd. Nil means not spawned
-	// yet, and the stop above is then all it takes -- Start fails on the
-	// ended context and abandons the step.
+	// yet, and ending the context is then all it takes -- Start fails on it
+	// and abandons the step. Once spawned the context is NOT ended here:
+	// that would fire cmd.Cancel, a SIGKILL of the group, and the SIGTERM
+	// below (a loader flushing a checkpoint) would never get its grace.
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.cmd == nil {
+		e.stop()
+	}
 	if !e.exited && e.cmd != nil && e.cmd.Process != nil {
 		pgid := e.cmd.Process.Pid
 		_ = syscall.Kill(-pgid, syscall.SIGTERM)
@@ -630,6 +634,9 @@ func (a *Agent) Cancel(execID string) error {
 		// else, and a SIGKILL sent to it would hit a stranger (the same reason
 		// `exited` guards the SIGTERM above). So the timer is stopped when the
 		// wait returns, and its callback re-checks `exited` under the lock.
+		if e.killTimer != nil {
+			e.killTimer.Stop()
+		}
 		e.killTimer = time.AfterFunc(killGrace, func() {
 			e.mu.Lock()
 			defer e.mu.Unlock()

@@ -1,0 +1,7 @@
+# Every pull request needs a review from one of these before it can merge.
+# The "master: review before merge" ruleset requires a code owner's approval,
+# and this file is what makes these three the owners. Anyone else with write
+# access can open a pull request, but their approval does not count.
+# An author cannot approve their own pull request, so one owner reviews what
+# another opens.
+* @danisilva02 @AreteAcademy @costajoao

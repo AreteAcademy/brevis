@@ -85,9 +85,19 @@ func boundConnections(next http.Handler, maxAge time.Duration) http.Handler {
 // a dead client never timed out its 202 either. Thirty seconds sits well
 // above a legitimate upload and the archiveTimeout (10 s) that happens on
 // the request path. The only other handler, /metrics, answers in
-// milliseconds. shortcut: constant, not a knob; make it a listen.* setting
-// when a deployment needs slower uploads.
+// milliseconds. It is the floor: a larger listen.max_body stretches it, see
+// bodyTimeoutFor.
 const bodyTimeout = 30 * time.Second
+
+// minUploadRate is the slowest client a max_body upload is still allowed to
+// be, in bytes per second. A max_body of tens of MiB would otherwise be cut
+// mid-body by the fixed floor with nothing to turn.
+const minUploadRate = 100 << 10
+
+// bodyTimeoutFor is max(bodyTimeout, max_body / minUploadRate).
+func bodyTimeoutFor(maxBody Size) time.Duration {
+	return max(bodyTimeout, time.Duration(int64(maxBody)/minUploadRate)*time.Second)
+}
 
 // listener builds an http.Server with this gateway's timeouts on it.
 //
@@ -101,6 +111,7 @@ const bodyTimeout = 30 * time.Second
 // nothing is a server where turning the age on later does nothing and says
 // nothing about why.
 func listener(cfg *Config, addr string, h http.Handler) *http.Server {
+	timeout := bodyTimeoutFor(cfg.Listen.MaxBody)
 	return &http.Server{
 		Addr:    addr,
 		Handler: h,
@@ -114,8 +125,8 @@ func listener(cfg *Config, addr string, h http.Handler) *http.Server {
 		// had no timeout at all. [#44]
 		IdleTimeout: cfg.IdleTimeout(),
 
-		ReadTimeout:  bodyTimeout,
-		WriteTimeout: bodyTimeout,
+		ReadTimeout:  timeout,
+		WriteTimeout: timeout,
 
 		ConnContext: stampAccept,
 	}

@@ -25,6 +25,7 @@ jobs:
       sdk: ${{ steps.diff.outputs.sdk }}
       python: ${{ steps.diff.outputs.python }}
       go: ${{ steps.diff.outputs.go }}
+      sql: ${{ steps.diff.outputs.sql }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -74,7 +75,7 @@ jobs:
           for v in $engine $sdk $gateway $sql $examples; do [ "$v" = true ] && go=true; done
 
           {
-            echo "engine=$engine"; echo "sdk=$sdk"; echo "python=$python"; echo "go=$go"
+            echo "engine=$engine"; echo "sdk=$sdk"; echo "python=$python"; echo "go=$go"; echo "sql=$sql"
           } >> "$GITHUB_OUTPUT"
           echo "engine=$engine sdk=$sdk gateway=$gateway sql=$sql python=$python examples=$examples all=$all"
   test:
@@ -167,12 +168,23 @@ jobs:
       - name: Engine weight
         run: ./.github/scripts/engine-weight.sh
 
-      # The same shape for brevis-sql, and the same reason: its premise is
-      # that it carries no warehouse client. `go get cloud.google.com/go/
-      # bigquery` would make the code simpler, pass every test, and triple
-      # the image -- this is what makes that a conversation.
-      - name: brevis-sql stays light
-        run: ./.github/scripts/sql-weight.sh
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.2
+          args: --timeout=5m
+
+  # THE GATES THAT LOOK AT THE WHOLE REPOSITORY, so no diff may switch them off.
+  # Each reads files across modules (`git ls-files`, deployments/, docs/,
+  # sql/VERSION, every comment) and none needs the engine's Go toolchain: a
+  # Portuguese comment in gateway/ or a stale pin in deployments/ after a
+  # sql/VERSION bump must fail even when the engine job is skipped. Hence no
+  # `needs` and no `if`.
+  gates:
+    name: Repo-wide gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
 
       # AND NO MANIFEST UNLOCKS WRITES ON A WAREHOUSE.
       #
@@ -202,11 +214,26 @@ jobs:
       - name: The images declare the licence they are under
         run: ./.github/scripts/image-labels-check.sh
 
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9
+  sql-weight:
+    name: brevis-sql weight
+    needs: [changes]
+    if: needs.changes.outputs.sql == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
         with:
-          version: v2.13.2
-          args: --timeout=5m
+          go-version-file: sql/go.mod
+          cache: true
+
+      # The same shape for brevis-sql, and the same reason: its premise is
+      # that it carries no warehouse client. `go get cloud.google.com/go/
+      # bigquery` would make the code simpler, pass every test, and triple
+      # the image -- this is what makes that a conversation.
+      - name: brevis-sql stays light
+        run: ./.github/scripts/sql-weight.sh
 
   python:
     name: Python library
@@ -531,9 +558,6 @@ jobs:
       # engine's v0.4.0 shipped with the feature never exercised end to end.
       - name: Engine integration
         env:
-          # `migrate up` loads the console's config too, and an unset
-          # BREVIS_ENV is production.
-          BREVIS_ENV: local
           BREVIS_IT_PG_DSN: postgres://brevis:brevis@localhost:55432/brevis_it
           BREVIS_DATABASE_URL: postgres://brevis:brevis@localhost:55432/brevis_it
           # The queue's own tests read THIS one, and CI never set it: 14 of the

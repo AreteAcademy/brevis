@@ -11,9 +11,9 @@ tmp_dir = "tmp"
     "templ generate",
     "./bin/tailwindcss -i web/assets/app.src.css -o web/assets/app.css",
   ]
-  cmd = "go build -o ./tmp/bravis ./cmd/bravis"
-  bin = "./tmp/bravis"
-  full_bin = "BREVIS_ENV=local BRAVIS_LOG_LEVEL=debug ./tmp/bravis serve"
+  cmd = "go build -o ./tmp/brevis ./cmd/brevis"
+  bin = "./tmp/brevis"
+  full_bin = "BREVIS_ENV=local BREVIS_LOG_LEVEL=debug ./tmp/brevis serve"
 
   include_ext = ["go", "templ", "css", "sql", "yaml"]
 

@@ -322,6 +322,19 @@ func TestListenerBoundsTheBodyInTime(t *testing.T) {
 	}
 }
 
+// A max_body of tens of MiB gets a timeout that lets a 100 KiB/s client
+// finish; a small one keeps the 30 s floor.
+func TestListenerTimeoutGrowsWithMaxBody(t *testing.T) {
+	small := listener(&Config{Listen: Listen{MaxBody: 1 << 20}}, ":0", nil)
+	if small.ReadTimeout != bodyTimeout {
+		t.Errorf("1 MiB: ReadTimeout=%s, want the %s floor", small.ReadTimeout, bodyTimeout)
+	}
+	big := listener(&Config{Listen: Listen{MaxBody: 100 << 20}}, ":0", nil)
+	if want := 1024 * time.Second; big.ReadTimeout != want || big.WriteTimeout != want {
+		t.Errorf("100 MiB: Read=%s Write=%s, want %s", big.ReadTimeout, big.WriteTimeout, want)
+	}
+}
+
 func TestAStalledBodyIsClosed(t *testing.T) {
 	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.Copy(io.Discard, r.Body)
