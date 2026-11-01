@@ -45,6 +45,10 @@ func (r runsFake) CountRunsByState(context.Context, postgres.RunFilter) (map[str
 	return r.counts, r.err
 }
 
+func (r runsFake) CountRunsInFlight(context.Context) (int, error) {
+	return r.counts["running"] + r.counts["queued"] + r.counts["retrying"], r.err
+}
+
 func withRuns(r runsFake) *api.UI {
 	return api.NewUI(r, nil, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler)).WithEndpoints(endpointsFake{})
 }
@@ -153,5 +157,33 @@ func TestTheFailingCountIsKeptForItsTTL(t *testing.T) {
 	_, _ = broken.FailingWorkflows(ctx)
 	if _, err := broken.FailingWorkflows(ctx); err == nil || failing != 2 {
 		t.Errorf("an error was kept: %d reads, err %v", failing, err)
+	}
+}
+
+// THE IN-FLIGHT COUNT IS READ AT MOST ONCE PER TTL, errors not kept: every
+// page and every open tab's poll draws it.
+func TestTheInFlightCountIsKeptForItsTTL(t *testing.T) {
+	reads, now := 0, time.Date(2026, 10, 28, 3, 0, 0, 0, time.UTC)
+	var fail error
+	cached := api.CachedInFlight(func(context.Context) (int, error) { reads++; return reads, fail }, 5*time.Second, func() time.Time { return now })
+	ctx := context.Background()
+
+	a, _ := cached(ctx)
+	now = now.Add(4 * time.Second)
+	b, _ := cached(ctx)
+	if reads != 1 || a != 1 || b != 1 {
+		t.Errorf("within the TTL: %d reads, answers %d and %d; want 1 read", reads, a, b)
+	}
+	now = now.Add(2 * time.Second)
+	if c, _ := cached(ctx); reads != 2 || c != 2 {
+		t.Errorf("after the TTL: %d reads, answer %d; want a second read", reads, c)
+	}
+	now, fail = now.Add(6*time.Second), errors.New("down")
+	if _, err := cached(ctx); err == nil {
+		t.Fatal("the error was swallowed")
+	}
+	fail = nil
+	if c, err := cached(ctx); err != nil || c != 4 {
+		t.Errorf("after an error: %d, %v; want a fresh read (4)", c, err)
 	}
 }
