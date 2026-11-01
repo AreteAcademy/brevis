@@ -494,9 +494,47 @@ func TestCancelKillsAChildThatIgnoresSigterm(t *testing.T) {
 		t.Fatalf("the child never started: %v", err)
 	}
 	pid, _ := strconv.Atoi(strings.TrimSpace(string(b)))
+	// Still alive inside the grace: Cancel is SIGTERM first, not a SIGKILL.
+	time.Sleep(500 * time.Millisecond)
+	if syscall.Kill(pid, 0) != nil {
+		t.Error("the child was killed before the SIGTERM grace was over")
+	}
 	time.Sleep(3 * time.Second)
 	if syscall.Kill(pid, 0) == nil {
 		_ = syscall.Kill(pid, syscall.SIGKILL)
 		t.Error("a child that ignores SIGTERM survived the cancel")
 	}
+}
+
+// Cancel must give a child that handles SIGTERM the chance to finish (flush,
+// write a checkpoint): it is not an immediate SIGKILL.
+func TestCancelLetsAChildHandleSigterm(t *testing.T) {
+	e := pair(t, agent.Options{})
+
+	dir := t.TempDir()
+	ready, marker := filepath.Join(dir, "ready"), filepath.Join(dir, "checkpoint")
+	tk := task("t3", fmt.Sprintf(`sh -c 'trap "touch %q; exit 0" TERM; touch %q; while :; do sleep 0.1; done' & wait`, marker, ready))
+	ch, err := e.Execute(context.Background(), tk)
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	for i := 0; i < 50; i++ {
+		if _, err := os.Stat(ready); err == nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if err := e.Cancel(context.Background(), "t3"); err != nil {
+		t.Fatalf("Cancel: %v", err)
+	}
+	collect(t, ch)
+	// The shell dies on the SIGTERM too, so the step can end while the child's
+	// handler is still running: poll inside the grace.
+	for i := 0; i < 15; i++ {
+		if _, err := os.Stat(marker); err == nil {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Error("the child was killed before its SIGTERM handler could run")
 }

@@ -1373,6 +1373,11 @@ func serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// Only the console needs a credential; migrate, publish, scheduler... load
+	// the same config but serve nothing.
+	if err := cfg.RequireConsoleCredential(); err != nil {
+		return err
+	}
 	log := observability.NewLogger(cfg.Env, cfg.LogLevel)
 
 	// Shuts down on SIGINT/SIGTERM. Without this, a deploy cuts requests in

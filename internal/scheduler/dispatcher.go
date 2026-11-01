@@ -221,6 +221,10 @@ type Dispatcher struct {
 	// BaseURL of the UI, for the link in the alert.
 	BaseURL string
 
+	// WriteBackoff is the first wait between tries of the write that ends a run
+	// (see endRun). Zero is 100ms; a test sets it small.
+	WriteBackoff time.Duration
+
 	// Renew is how the heartbeat renews a claim. Nil uses the queue's, which is
 	// every process; a test replaces it to make the database fail on cue
 	// without breaking the pool every other call shares.
@@ -463,10 +467,13 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 	}
 
 	if err == nil {
-		if err := d.repo.Transicionar(done, it.RunID, dom.StatusSuccess); err != nil {
+		if err := d.endRun(done, it.RunID, dom.StatusSuccess); err != nil {
 			// The item stays claimed: deleting it would leave the run `running`
 			// with nothing in the queue to ever move it. The sweep finds it
-			// instead, after Visibility.
+			// instead, after Visibility -- and fails the run, so it executes
+			// AGAIN although it completed. That is the lesser evil: a duplicate
+			// load can be seen and undone, a run stuck `running` forever is
+			// invisible. endRun retried in place to make this rare.
 			d.log.Error("marking success", "run", it.RunID, "error", err)
 			return
 		}
@@ -766,10 +773,15 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
 		// The attempt is spent already; only the requeue is missing.
 	case dom.StatusFailed:
 		// Marked failed, but the attempt was not spent (its transaction rolled
-		// back, alert included): spend it now. The first error stays the run's.
+		// back, alert included): spend it now. The first error stays the run's,
+		// and so is the alert's cause: `cause` here is the sweep's "orphaned
+		// run" or an invalid transition, not why the run failed.
+		if run.Err != "" {
+			cause = errors.New(run.Err)
+		}
 	default:
 		_ = d.repo.RecordError(ctx, it.RunID, cause.Error())
-		if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusFailed); err != nil {
+		if err := d.endRun(ctx, it.RunID, dom.StatusFailed); err != nil {
 			d.log.Error("marking failed", "run", it.RunID, "error", err)
 			return
 		}
@@ -805,6 +817,35 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
 		return
 	}
 	d.handBack(ctx, it, attempt)
+}
+
+// endRun writes the state that ends an attempt, retrying in place.
+//
+// The run has already executed, so a lost write is costly: the sweep would fail
+// the still-`running` run and execute it again. A few tries 100ms to 2s apart
+// (on the settle context) ride out a database blip. After the last, the error
+// is returned and the item stays claimed for the sweep; a lost write still
+// means a re-run, which beats a run stuck `running` with no item.
+func (d *Dispatcher) endRun(ctx context.Context, id uuid.UUID, to dom.Status) (err error) {
+	wait := d.WriteBackoff
+	if wait <= 0 {
+		wait = 100 * time.Millisecond
+	}
+	for try := 0; try < 4; try++ {
+		if try > 0 {
+			select {
+			case <-ctx.Done():
+				return err
+			case <-time.After(min(wait, 2*time.Second)):
+			}
+			wait *= 2
+		}
+		if err = d.repo.Transicionar(ctx, id, to); err == nil {
+			return nil
+		}
+		d.log.Warn("writing the run's end", "run", id, "to", to, "try", try+1, "error", err)
+	}
+	return err
 }
 
 // handBack returns a requeued run's item to the queue.

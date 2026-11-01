@@ -18,6 +18,26 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [Unreleased]
+
+### Fixed: a retried or paged POST sent no body
+
+- `extract` reads `Source.Body` once and rewinds it before every attempt and
+  every page: a POST retried after a 503, and page 2 of a paged POST, used to go
+  out with an empty body and fetch the wrong window without an error.
+- `Retry-After` is capped at `MaxBackoff` (60 s when it is zero), the wait
+  honours the context, and a non-2xx body is read through a 4 KiB limit: a
+  vendor asking for a day no longer sleeps a step for a day.
+
+### Fixed: MySQL's dedup ignored more than duplicates
+
+- `to/mysql` uses `ON DUPLICATE KEY UPDATE <key> = <key>` instead of
+  `INSERT IGNORE`, so a value too long, a NULL in a NOT NULL column or a bad
+  date fails the load instead of being truncated or zeroed in silence, and the
+  batch is capped at `65535 / columns` rows (a wide table used to exceed MySQL's
+  placeholder limit). Strict `sql_mode`, the default since 5.7, is assumed.
+
+
 ## [0.87.0] — 2026-10-27
 
 ### Added: `from.HTTP.Stream`, a Reading that hands its records over as it reads them (#140)
