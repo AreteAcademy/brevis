@@ -1,67 +1,67 @@
-# Integrações
+# Integrations
 
-> O que conecta com o quê: de onde o dado vem, onde pousa, onde é modelado e onde tudo roda.
+> What connects to what: where data comes from, where it lands, where it is modelled and where it all runs.
 
-*https://brevis.sh/docs/integrations/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/integrations/ · brevis.sh docs (en-US)*
 
 ---
 
-**O que você já usa, e nada que ainda não existe.** Um driver aparece aqui quando ganha código no repositório — nunca antes.
+**What you already use, and nothing that does not exist yet.** A driver appears here when it gets code in the repository — never before.
 
-Cada linha diz por qual peça e por qual pacote ou destino aquilo é alcançado, e para onde ir para ver como.
+Each row says which piece reaches it, through which package or sink, and where to go to see how.
 
-## Busca em
+## Pulls from
 
-|  | como chega | guia |
+|  | how it gets there | guide |
 |---|---|---|
-| **HTTP** | SDK: `from.HTTP` | [SDK em Go](/docs/sdk/#origens-e-destinos) |
-| **Postgres** | SDK: `from/postgres` | [SDK em Go](/docs/sdk/#origens-e-destinos) |
-| **MySQL** | SDK: `from/mysql` | [SDK em Go](/docs/sdk/#origens-e-destinos) |
-| **arquivos** | SDK: `from.Files` — local, S3, GCS | [SDK em Go](/docs/sdk/#origens-e-destinos) |
+| **HTTP** | SDK: `from.HTTP` | [Go SDK](/docs/sdk/#sources-and-destinations) |
+| **Postgres** | SDK: `from/postgres` | [Go SDK](/docs/sdk/#sources-and-destinations) |
+| **MySQL** | SDK: `from/mysql` | [Go SDK](/docs/sdk/#sources-and-destinations) |
+| **files** | SDK: `from.Files` — local, S3, GCS | [Go SDK](/docs/sdk/#sources-and-destinations) |
 
-## Pousa em
+## Lands in
 
-|  | como chega | guia |
+|  | how it gets there | guide |
 |---|---|---|
-| **BigQuery** | SDK: `to/bigquery` · Gateway: `bigquery` | [SDK em Go](/docs/sdk/#origens-e-destinos), [Destinos da ingestão](/docs/ingestion-sinks/index.md) |
-| **Postgres** | SDK: `to/postgres` · Gateway: `postgres` | [SDK em Go](/docs/sdk/#origens-e-destinos), [Destinos da ingestão](/docs/ingestion-sinks/index.md) |
-| **MySQL** | SDK: `to/mysql` · Gateway: `mysql` | [SDK em Go](/docs/sdk/#origens-e-destinos), [Destinos da ingestão](/docs/ingestion-sinks/index.md) |
-| **Redshift** | SDK: `to/redshift` · Gateway: `redshift` | [SDK em Go](/docs/sdk/#origens-e-destinos), [Destinos da ingestão](/docs/ingestion-sinks/index.md) |
-| **Pub/Sub** | SDK: `to/pubsub` · Gateway: `pubsub` | [SDK em Go](/docs/sdk/#origens-e-destinos), [Destinos da ingestão](/docs/ingestion-sinks/index.md) |
+| **BigQuery** | SDK: `to/bigquery` · Gateway: `bigquery` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
+| **Postgres** | SDK: `to/postgres` · Gateway: `postgres` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
+| **MySQL** | SDK: `to/mysql` · Gateway: `mysql` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
+| **Redshift** | SDK: `to/redshift` · Gateway: `redshift` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
+| **Pub/Sub** | SDK: `to/pubsub` · Gateway: `pubsub` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
 
-## Arquivos em
+## Files in
 
-|  | como chega | guia |
+|  | how it gets there | guide |
 |---|---|---|
-| **S3** | SDK: `store/s3` · Gateway: `files` em `s3://` | [SDK em Go](/docs/sdk/#origens-e-destinos), [Destinos da ingestão](/docs/ingestion-sinks/index.md) |
-| **GCS** | SDK: `store/gcs` · Gateway: `files` em `gs://` | [SDK em Go](/docs/sdk/#origens-e-destinos), [Destinos da ingestão](/docs/ingestion-sinks/index.md) |
+| **S3** | SDK: `store/s3` · Gateway: `files` on `s3://` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
+| **GCS** | SDK: `store/gcs` · Gateway: `files` on `gs://` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
 
-## Modela em
+## Models in
 
-|  | como chega | guia |
+|  | how it gets there | guide |
 |---|---|---|
-| **Postgres** | SQL: `--dialect postgres` (o padrão) | [SQL](/docs/sql/index.md) |
+| **Postgres** | SQL: `--dialect postgres` (the default) | [SQL](/docs/sql/index.md) |
 | **BigQuery** | SQL: `--dialect bigquery` | [SQL](/docs/sql/index.md) |
 
-## Roda em
+## Runs on
 
-|  | como chega | guia |
+|  | how it gets there | guide |
 |---|---|---|
-| **Docker** | uma imagem por peça: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Instalação](/docs/installation/#docker) |
-| **Kubernetes** | um pod por passo | [Kubernetes](/docs/kubernetes/index.md), [Pod por passo](/docs/pod-per-step/index.md) |
-| **Helm** | o chart em `deployments/helm/brevis` | [Kubernetes](/docs/kubernetes/#instalando-com-helm) |
+| **Docker** | one image per piece: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Installation](/docs/installation/#docker) |
+| **Kubernetes** | one pod per step | [Kubernetes](/docs/kubernetes/index.md), [Pod per step](/docs/pod-per-step/index.md) |
+| **Helm** | the chart in `deployments/helm/brevis` | [Kubernetes](/docs/kubernetes/#install-it-with-helm) |
 
-## Escrito em
+## Written in
 
-|  | como chega | guia |
+|  | how it gets there | guide |
 |---|---|---|
-| **Go** | Core, SDK, Gateway e SQL | [Ecossistema](/docs/ecosystem/index.md) |
-| **Python** | `pip install brevis`: contexto entre passos numa etapa Python | [Python](/docs/python/index.md) |
-| **SQL** | os modelos do brevis-sql são arquivos `.sql` comuns | [SQL](/docs/sql/index.md) |
+| **Go** | Core, SDK, Gateway and SQL | [Ecosystem](/docs/ecosystem/index.md) |
+| **Python** | `pip install brevis`: context between steps in a Python step | [Python](/docs/python/index.md) |
+| **SQL** | brevis-sql's models are plain `.sql` files | [SQL](/docs/sql/index.md) |
 
-## Nuvens
+## Clouds
 
-|  | como chega | guia |
+|  | how it gets there | guide |
 |---|---|---|
-| **Google Cloud** | BigQuery, Pub/Sub e GCS, acima | — |
-| **AWS** | Redshift e S3, acima | — |
+| **Google Cloud** | BigQuery, Pub/Sub and GCS, above | — |
+| **AWS** | Redshift and S3, above | — |

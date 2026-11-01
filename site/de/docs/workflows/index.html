@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="de" data-docs="/de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Workflows — Dokumentation</title>
+<meta name="description" content="Das vollständige YAML-Format – Steps, Abhängigkeiten, Images, Ressourcen und Zeitplan.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/de/docs/workflows/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/de/docs/workflows/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/workflows/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/workflows/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/workflows/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/workflows/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/workflows/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/workflows/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/workflows/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/workflows/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/workflows/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/workflows/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/workflows/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="de">
+<meta property="og:title" content="Workflows — Dokumentation">
+<meta property="og:description" content="Das vollständige YAML-Format – Steps, Abhängigkeiten, Images, Ressourcen und Zeitplan.">
+<meta property="og:url" content="https://brevis.sh/de/docs/workflows/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Workflows — Dokumentation">
+<meta name="twitter:description" content="Das vollständige YAML-Format – Steps, Abhängigkeiten, Images, Ressourcen und Zeitplan.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Workflows",
+  "description": "Das vollständige YAML-Format – Steps, Abhängigkeiten, Images, Ressourcen und Zeitplan.",
+  "inLanguage": "de",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Zum Inhalt springen</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/de/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Hauptnavigation">
+      <a href="/de/#ecossistema">Ökosystem</a>
+      <a href="/de/docs/">Dokumentation</a>
+      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Deutsch</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/workflows/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/workflows/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/workflows/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/workflows/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/workflows/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/workflows/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/workflows/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/workflows/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/workflows/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Open Source erkunden
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Dokumentationsmenü
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Dokumentation durchsuchen</label>
+        <input type="search" id="q" placeholder="Suchen…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Keine Ergebnisse" hidden></div>
+      <nav class="side-nav" aria-label="Dokumentation">
+        <p class="side-group">Erste Schritte</p><ul class="side-list"><li><a href="/de/docs/ecosystem/">Ökosystem</a></li><li><a href="/de/docs/integrations/">Integrationen</a></li><li><a href="/de/docs/introduction/">Einführung</a></li><li><a href="/de/docs/installation/">Installation</a></li><li><a href="/de/docs/quickstart/">Schnellstart</a></li></ul><p class="side-group">Konzepte</p><ul class="side-list"><li><a href="/de/docs/core/">Core</a></li><li><a href="/de/docs/workflows/" aria-current="page">Workflows</a></li><li><a href="/de/docs/scheduler-and-queue/">Scheduler und Queue</a></li><li><a href="/de/docs/pod-per-step/">Pod pro Step</a></li><li><a href="/de/docs/context/">Kontext zwischen Steps</a></li></ul><p class="side-group">Referenz</p><ul class="side-list"><li><a href="/de/docs/cli/">CLI</a></li><li><a href="/de/docs/parameters/">Parameter</a></li><li><a href="/de/docs/configuration/">Konfiguration</a></li><li><a href="/de/docs/runtime/">Step-Laufzeitumgebung</a></li></ul><p class="side-group">SDK und Bibliotheken</p><ul class="side-list"><li><a href="/de/docs/sdk/">Go-SDK</a></li><li><a href="/de/docs/libraries/">Client-Bibliotheken</a></li><li><a href="/de/docs/python/">Python</a></li></ul><p class="side-group">Betrieb</p><ul class="side-list"><li><a href="/de/docs/console/">Console</a></li><li><a href="/de/docs/kubernetes/">Kubernetes</a></li><li><a href="/de/docs/observability/">Observability</a></li><li><a href="/de/docs/white-label/">White Label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/de/docs/ingestion/">Ingestion</a></li><li><a href="/de/docs/ingestion-sinks/">Ingestion-Sinks</a></li><li><a href="/de/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modellierung in SQL</p><ul class="side-list"><li><a href="/de/docs/sql/">SQL</a></li></ul><p class="side-group">Das Projekt</p><ul class="side-list"><li><a href="/de/docs/philosophy/">Philosophie</a></li><li><a href="/de/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Dokumentation</p>
+      <h1>Workflows</h1>
+      <p class="doc-desc">Das vollständige YAML-Format – Steps, Abhängigkeiten, Images, Ressourcen und Zeitplan.</p>
+      <p>Ein Workflow ist eine YAML-Datei. Sie deklariert, <strong>was</strong> ausgeführt wird, <strong>in welcher Reihenfolge</strong> und <strong>mit welcher Laufzeitumgebung</strong> – und nichts darüber hinaus.</p>
+<h2 id="minimale-struktur">Minimale Struktur<a class="anchor" href="#minimale-struktur" aria-label="link">#</a></h2>
+<div class="code-block" data-code="name: hello
+steps:
+  - id: only
+    run: echo done"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">name</span>: hello
+<span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: only
+    <span class="t-k">run</span>: echo done</code></pre></div>
+<p><code>name</code> identifiziert den Workflow in der Datenbank und in der Oberfläche. <code>steps</code> ist die Liste der Steps, jeder mit einer eindeutigen <code>id</code> und einem <code>run</code>.</p>
+<h3 id="description-wozu-er-dient"><code>description</code> – wozu er dient<a class="anchor" href="#description-wozu-er-dient" aria-label="link">#</a></h3>
+<p>Optional, Freitext, und von nichts in der Engine gelesen:</p>
+<div class="code-block" data-code="name: daily-orders
+description: &gt;
+  Pulls yesterday&#x27;s orders from the vendor and lands them in bronze.
+  Runs at 04:00 because the vendor closes its books at 03:30.
+steps:
+  - id: extract
+    run: python fetch.py"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">name</span>: daily-orders
+<span class="t-k">description</span>: &gt;
+  Pulls yesterday's orders from the vendor and lands them in bronze.
+  Runs at 04:00 because the vendor closes its books at 03:30.
+<span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: python fetch.py</code></pre></div>
+<p>Sie erscheint oben auf der Seite des Workflows, über den Zählern und dem Zeitplan. Der Graph sagt bereits, was ein Flow <strong>tut</strong>; dies ist die einzige Stelle, die sagt, warum er existiert – und genau das braucht, wer ihn um drei Uhr nachts zum ersten Mal öffnet.</p>
+<p>Ein Workflow ohne sie zeigt dort nichts an – keinen leeren Block, der wie etwas wirkt, das nicht geladen werden konnte.</p>
+<h2 id="reihenfolge-chain-oder-dag">Reihenfolge: chain oder dag<a class="anchor" href="#reihenfolge-chain-oder-dag" aria-label="link">#</a></h2>
+<div class="code-block" data-code="type: chain   # order is the file&#x27;s order
+type: dag     # order comes from depends_on"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">type</span>: chain   <span class="t-c"># order is the file's order</span>
+<span class="t-k">type</span>: dag     <span class="t-c"># order comes from depends_on</span></code></pre></div>
+<p><code>chain</code> ist syntaktischer Zucker: Der Parser macht aus der Abfolge Kanten, und <strong>die Engine kennt nur DAGs</strong>. Verwenden Sie <code>dag</code>, wenn die Reihenfolge nicht linear ist:</p>
+<div class="code-block" data-code="type: dag
+
+steps:
+  - id: prepare
+    run: ./prepare.sh
+
+  # Siblings: they depend on the same step, so they run in parallel.
+  - id: extract
+    run: ./extract.sh
+    depends_on: [prepare]
+
+  - id: validate
+    run: ./validate.sh
+    depends_on: [prepare]
+
+  - id: publish
+    run: ./publish.sh
+    depends_on: [extract, validate]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">type</span>: dag
+
+<span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: prepare
+    <span class="t-k">run</span>: ./prepare.sh
+
+  <span class="t-c"># Siblings: they depend on the same step, so they run in parallel.</span>
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: ./extract.sh
+    <span class="t-k">depends_on</span>: [prepare]
+
+  - <span class="t-k">id</span>: validate
+    <span class="t-k">run</span>: ./validate.sh
+    <span class="t-k">depends_on</span>: [prepare]
+
+  - <span class="t-k">id</span>: publish
+    <span class="t-k">run</span>: ./publish.sh
+    <span class="t-k">depends_on</span>: [extract, validate]</code></pre></div>
+<p>Der Runner durchläuft den Graphen <strong>ebenenweise</strong>: Alles innerhalb einer Ebene läuft parallel, und die nächste Ebene startet erst, wenn die vorherige vollständig abgeschlossen ist.</p>
+<aside class="admon admon-warning"><p class="admon-t">Ein Fehler stoppt die ganze Ebene</p><p>Der Runner hält beim <strong>ersten</strong> Fehler in einer Ebene an, ohne die nächste zu starten. Nach einem Fehler weiterzumachen würde ein Teilergebnis liefern, das vollständig aussieht.</p></aside>
+<h2 id="zeitplan">Zeitplan<a class="anchor" href="#zeitplan" aria-label="link">#</a></h2>
+<div class="code-block" data-code="schedule: &quot;0 5 * * *&quot;   # five-field cron
+concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">schedule</span>: "0 5 * * *"   <span class="t-c"># five-field cron</span>
+<span class="t-k">concurrency</span>: 1</code></pre></div>
+<p>Ohne <code>schedule</code> ist der Workflow manuell: Er läuft nur per Auslöser in der Oberfläche, über <code>brevis run</code> oder über <code>backfill</code>.</p>
+<p><code>concurrency: 1</code> begrenzt gleichzeitige Runs desselben Workflows – damit verhindert ein <code>*/15</code>, dass er sich selbst überlappt, wenn ein Run länger als fünfzehn Minuten dauert.</p>
+<p>Zwei <strong>verschiedene</strong> Workflows, die dieselben Tabellen schreiben, brauchen eine <strong>Gruppe</strong>. Ein täglicher und ein <code>*/15</code>, die beide dieselben dbt-Modelle bauen, deklarieren jeweils:</p>
+<div class="code-block" data-code="concurrency:
+  group: jaffle_models   # the shared resource, named the same in both files
+  limit: 1               # optional; a group without one means 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">concurrency</span>:
+  <span class="t-k">group</span>: jaffle_models   <span class="t-c"># the shared resource, named the same in both files</span>
+  <span class="t-k">limit</span>: 1               <span class="t-c"># optional; a group without one means 1</span></code></pre></div>
+<p>Die Runs aller Workflows der Gruppe zählen gegen ein gemeinsames Limit, gleich was sie gestartet hat – der Zeitplan, ein Landing, ein Backfill oder ein Klick. Ein Run, der die Gruppe voll vorfindet, <strong>wartet in der Queue</strong>; er wird nicht übersprungen und schlägt nicht fehl. Ein dritter Workflow, der dieselben Tabellen schreibt, tritt bei, indem er die Gruppe nennt. Während er wartet, sagt die Seite des Runs das: welche Gruppe, ihr Limit und welche Runs die Slots belegen.</p>
+<ul><li>Jedes Mitglied deklariert <strong>dasselbe Limit</strong>. <code>validate</code> und <code>publish</code> verweigern eine Gruppe, die in einer Datei mit 1 und in einer anderen mit 3 deklariert ist, auch gegenüber bereits veröffentlichten Mitgliedern.</li><li>Eine Gruppe serialisiert <strong>Brevis-Runs</strong>. Ein <code>dbt run</code>, das jemand auf dem eigenen Rechner startet, steht nicht in dieser Queue und scheitert auf die gleiche Weise.</li></ul>
+<h2 id="image-und-ressourcen">Image und Ressourcen<a class="anchor" href="#image-und-ressourcen" aria-label="link">#</a></h2>
+<div class="code-block" data-code="image: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
+resources:
+  cpu: 200m
+  memory: 1Gi
+  limits: {memory: 2Gi}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">image</span>: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
+<span class="t-k">resources</span>:
+  <span class="t-k">cpu</span>: 200m
+  <span class="t-k">memory</span>: 1Gi
+  <span class="t-k">limits</span>: {memory: 2Gi}</code></pre></div>
+<p>Oben deklariert, sind sie der <strong>Standard für jeden Step</strong>. Jeder Step kann seine eigenen überschreiben:</p>
+<div class="code-block" data-code="steps:
+  - id: bronze
+    run: dbt build --select bronze+          # inherits the top-level image
+
+  - id: notify
+    image: ghcr.io/example/notify:0.3        # another runtime
+    shell: false                             # distroless has no shell
+    run: /notify --channel data
+    resources: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
+    depends_on: [bronze]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: bronze
+    <span class="t-k">run</span>: dbt build --select bronze+          <span class="t-c"># inherits the top-level image</span>
+
+  - <span class="t-k">id</span>: notify
+    <span class="t-k">image</span>: ghcr.io/example/notify:0.3        <span class="t-c"># another runtime</span>
+    <span class="t-k">shell</span>: <span class="t-n">false</span>                             <span class="t-c"># distroless has no shell</span>
+    <span class="t-k">run</span>: /notify --channel data
+    <span class="t-k">resources</span>: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
+    <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
+<p>Das ist es, was einen Go-Fetcher neben einem 1,9 GB großen <code>dbt build</code> nur 12 MB und 32Mi kosten lässt, statt dass beide die Größe des größeren zahlen. Siehe <a href="/de/docs/pod-per-step/">Pod pro Step</a>.</p>
+<h2 id="felder-eines-steps">Felder eines Steps<a class="anchor" href="#felder-eines-steps" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>Feld</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>erforderlich</strong></td><td>eindeutig im Workflow; der Name, der im Graphen und in den Logs angezeigt wird</td></tr><tr><td><code>run</code></td><td></td><td>der Befehl</td></tr><tr><td><code>image</code></td><td></td><td>das Image des Steps; ohne Angabe wird das oberste übernommen</td></tr><tr><td><code>host</code></td><td></td><td>den Befehl an eine Maschine schicken, die die Engine <strong>nicht</strong> verwaltet – eine Alternative zu <code>image</code>, nie eine Ergänzung. Siehe <a href="https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host" target="_blank" rel="noopener"><code>host:</code> im Kubernetes-Leitfaden</a></td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> führt ohne Shell aus – erforderlich bei distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>Liste der <code>id</code>s, die zuerst abgeschlossen sein müssen; ein Eintrag kann <code>{step, label}</code> sein</td></tr><tr><td><code>marker</code></td><td><code>false</code></td><td>ein Step ohne Befehl, für ein <code>start</code> oder ein <code>end</code></td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> und <code>limits</code> für diesen Step</td></tr><tr><td><code>runtime</code>, <code>tools</code></td><td></td><td>Sprache und Werkzeuge des Steps – siehe <a href="/de/docs/runtime/">Step-Laufzeitumgebung</a></td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>bei welchem Zustand seiner Abhängigkeiten dieser Step läuft – siehe unten</td></tr><tr><td><code>unless_empty</code></td><td></td><td>ein Kontext-Schlüssel, der entscheidet, ob es etwas zu tun gibt – siehe unten</td></tr><tr><td><code>for_each</code></td><td></td><td>ein Kontext-Schlüssel mit einer Liste; der Step läuft einmal pro Element – siehe unten</td></tr><tr><td><code>group</code></td><td></td><td>zeichnet diesen Step in einen benannten, einklappbaren Kasten – siehe unten</td></tr><tr><td><code>uses</code></td><td></td><td>ein anderer Workflow, dessen Steps die Stelle dieses Steps einnehmen – siehe unten</td></tr><tr><td><code>on_error</code></td><td></td><td>meldet die Fehler dieses Steps – siehe unten</td></tr></tbody></table></div>
+<h2 id="einen-step-nur-ausführen-wenn-es-etwas-zu-tun-gibt">Einen Step nur ausführen, wenn es etwas zu tun gibt<a class="anchor" href="#einen-step-nur-ausführen-wenn-es-etwas-zu-tun-gibt" aria-label="link">#</a></h2>
+<div class="code-block" data-code="# in extract
+context.set(has_rows=len(rows) &gt; 0)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-c"># in extract</span>
+context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
+<div class="code-block" data-code="  - id: transform
+    run: ./transform.sh
+    depends_on: [extract]
+    unless_empty: extract.has_rows"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>  - <span class="t-k">id</span>: transform
+    <span class="t-k">run</span>: ./transform.sh
+    <span class="t-k">depends_on</span>: [extract]
+    <span class="t-k">unless_empty</span>: extract.has_rows</code></pre></div>
+<p><code>unless_empty</code> nennt einen <strong>Schlüssel</strong>, keinen Ausdruck. Der Step entscheidet und veröffentlicht die Antwort; die Engine liest einen Schlüssel und fragt, ob er leer ist.</p>
+<div class="table-wrap"><table><thead><tr><th>gilt als leer</th><th>gilt als vorhanden</th></tr></thead><tbody><tr><td><code>false</code>, <code>0</code>, <code>""</code>, <code>null</code>, <code>[]</code>, <code>{}</code></td><td>alles andere</td></tr></tbody></table></div>
+<p><code>"false"</code> als <strong>String</strong> ist vorhanden. Ein Step, der diese fünf Zeichen veröffentlicht hat, hat etwas veröffentlicht, und zu raten, dass ein Boolean gemeint war, ist der Weg, auf dem eine Regel Meinungen bekommt, die ihr Autor nicht sehen kann. Veröffentlichen Sie einen echten Boolean.</p>
+<h3 id="warum-kein-ausdruck">Warum kein Ausdruck<a class="anchor" href="#warum-kein-ausdruck" aria-label="link">#</a></h3>
+<p>Der verlockende Entwurf ist <code>when: "{{ context.extract.rows &gt; 0 }}"</code>. Eine Mini-Ausdruckssprache ist eine große Verpflichtung: ein Parser, ein Typsystem, das festlegt, was <code>&gt;</code> über ein JSON-<code>any</code> hinweg bedeutet, eine Sicherheitsfrage, weil der Ausdruck aus einem YAML stammt, das jemand anderes geschrieben hat, und Fehlermeldungen, die in einen String zeigen. Jeder Orchestrator, der eine hat, hat einen Bugtracker voll davon.</p>
+<p>Hier liegt die Entscheidung in der Sprache, die ihr Autor ohnehin schreibt, wo sein eigenes Test-Framework sie erreicht.</p>
+<h3 id="ein-fehlender-schlüssel-ist-ein-fehler-kein-leerer-wert">Ein fehlender Schlüssel ist ein Fehler, kein leerer Wert<a class="anchor" href="#ein-fehlender-schlüssel-ist-ein-fehler-kein-leerer-wert" aria-label="link">#</a></h3>
+<p>Fehlt der Schlüssel, <strong>schlägt der Step fehl</strong>, und die Meldung nennt ihn zusammen mit dem, was der Veröffentlichende tatsächlich geschrieben hat:</p>
+<div class="code-block" data-code="step &quot;transform&quot; reads `extract.has_row`, and &quot;extract&quot; published &quot;has_rows&quot; but not &quot;has_row&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"</code></pre></div>
+<p>Die Alternative – einen fehlenden Schlüssel als „leer, also überspringen“ zu lesen – macht aus einem Tippfehler einen Step, der still und für immer nicht mehr läuft, ohne dass irgendwo steht, warum. Das ist das schlimmste Ergebnis, das dieses Feature haben kann.</p>
+<p>Der Schlüssel wird immer durch den Step qualifiziert, der ihn veröffentlicht, und dieser Step muss einer sein, von dem dieser abhängt. Beides wird beim <strong>Veröffentlichen</strong> verweigert: Ein Step, der an einen Schlüssel gebunden ist, den er nie sehen kann, würde für immer übersprungen, und das zu entdecken, wenn ein nächtlicher Lauf aufhört, ist zu spät.</p>
+<h2 id="einen-step-einmal-pro-element-ausführen">Einen Step einmal pro Element ausführen<a class="anchor" href="#einen-step-einmal-pro-element-ausführen" aria-label="link">#</a></h2>
+<div class="code-block" data-code="# in extract
+context.set(partitions=[&quot;2026-01&quot;, &quot;2026-02&quot;, &quot;2026-03&quot;])"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-c"># in extract</span>
+context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
+<div class="code-block" data-code="  - id: load
+    run: ./load.sh &quot;$BREVIS_MAP_VALUE&quot;
+    depends_on: [extract]
+    for_each: extract.partitions"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>  - <span class="t-k">id</span>: load
+    <span class="t-k">run</span>: ./load.sh "$BREVIS_MAP_VALUE"
+    <span class="t-k">depends_on</span>: [extract]
+    <span class="t-k">for_each</span>: extract.partitions</code></pre></div>
+<p>Der Step läuft einmal pro Element, jeweils mit eigener Zeile, eigenem Retry und eigenem Exit-Code. Der Graph zeigt <strong>einen Knoten mit <code>[3]</code></strong>, nicht drei Knoten.</p>
+<div class="table-wrap"><table><thead><tr><th>Variable</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_MAP_INDEX</code></td><td><code>0</code>, <code>1</code>, <code>2</code> …</td></tr><tr><td><code>BREVIS_MAP_VALUE</code></td><td>das Element</td></tr></tbody></table></div>
+<p>Ein JSON-String kommt <strong>ohne Anführungszeichen</strong> an: <code>for_each</code> über <code>["2026-01"]</code> gibt einer Shell <code>2026-01</code> und nicht <code>"2026-01"</code>. Alles andere – eine Zahl, ein Objekt, eine Liste – kommt als sein JSON an.</p>
+<p>Keine der beiden Variablen existiert bei einem nicht abgebildeten Step. Eine, die immer da und immer leer ist, bringt jedem, der die Umgebung liest, bei, sie zu ignorieren.</p>
+<h3 id="die-form-des-dag-ändert-sich-nicht">Die Form des DAG ändert sich nicht<a class="anchor" href="#die-form-des-dag-ändert-sich-nicht" aria-label="link">#</a></h3>
+<p>Ein abgebildeter Step ist weiterhin ein Knoten mit einem Satz Kanten. Nur die Zahl der Zeilen darunter variiert, das Layout bleibt also, was es immer war, und das <code>[3]</code> wird beim Lesen aus diesen Zeilen gezählt – nichts wird gespeichert, also muss nichts synchron gehalten werden, und eine falsche Zahl kann eine korrigierte Abfrage nicht überleben.</p>
+<p>Solange Instanzen noch laufen, zeigt die Karte <code>[2/3]</code>.</p>
+<h3 id="eine-fehlgeschlagene-instanz-lässt-den-step-fehlschlagen">Eine fehlgeschlagene Instanz lässt den Step fehlschlagen<a class="anchor" href="#eine-fehlgeschlagene-instanz-lässt-den-step-fehlschlagen" aria-label="link">#</a></h3>
+<p>Drei Partitionen laden und eine nicht: Das ist ein Step, der seine Aufgabe nicht erfüllt hat, und die Steps darunter sehen das. Ein Knoten, der grün wird, weil das meiste funktioniert hat, ist ein Abzeichen, das lügt.</p>
+<p><strong>Ein Retry wiederholt nur die Instanzen, die fehlgeschlagen sind.</strong> Achtzehn Partitionen, die funktioniert haben, werden nicht neu geladen, weil zwei kaputtgingen.</p>
+<h3 id="eine-leere-liste-ist-skipped-kein-erfolg">Eine leere Liste ist <code>skipped</code>, kein Erfolg<a class="anchor" href="#eine-leere-liste-ist-skipped-kein-erfolg" aria-label="link">#</a></h3>
+<p>Ein Step, der nichts getan hat, weil nichts zu tun war, hat darin nicht Erfolg gehabt. Ein grüner Knoten über null Instanzen ist genau das, worauf jemand ein Dashboard baut.</p>
+<p>Ein Wert, der <strong>keine Liste</strong> ist, schlägt fehl, ebenso ein Schlüssel, der nicht da ist – dieselbe Richtlinie wie bei <code>unless_empty:</code>, und aus demselben Grund: Ein Tippfehler, der still null Instanzen erzeugt, würde den Step für immer abschalten.</p>
+<h3 id="der-fan-out-ist-begrenzt-und-die-grenze-wird-geerbt">Der Fan-out ist begrenzt, und die Grenze wird geerbt<a class="anchor" href="#der-fan-out-ist-begrenzt-und-die-grenze-wird-geerbt" aria-label="link">#</a></h3>
+<p>Die Liste reist im Kontext, und der Kontext hat eine Obergrenze von 4096 Byte, die vom kubelet stammt. Ein Workflow kann nicht zehntausend Pods anfordern, ohne vorher einen Weg zu finden, das in vier Kilobyte zu sagen. Das ist eine Grenze, die man behalten sollte, statt sie zu umgehen.</p>
+<h3 id="was-ein-abgebildeter-step-veröffentlicht">Was ein abgebildeter Step veröffentlicht<a class="anchor" href="#was-ein-abgebildeter-step-veröffentlicht" aria-label="link">#</a></h3>
+<p>Seine Ausgabe wird auf der Zeile jeder Instanz festgehalten und ist für die Steps darunter <strong>nicht</strong> sichtbar. Vier Instanzen, die unter dem Namen eines Steps veröffentlichen, sind vier Werte für einen Schlüssel, und es gibt auf <code>context.String("load.bucket")</code> keine Antwort, die nicht geraten wäre. Der Step sagt das in seinem Log, statt es still zu verwerfen.</p>
+<h2 id="steps-im-graphen-gruppieren">Steps im Graphen gruppieren<a class="anchor" href="#steps-im-graphen-gruppieren" aria-label="link">#</a></h2>
+<div class="code-block" data-code="steps:
+  - id: extract_orders
+    group: sales_data_reporting
+    run: ./extract.sh
+  - id: load_orders
+    group: sales_data_reporting
+    depends_on: [extract_orders]
+    run: ./load.sh"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: extract_orders
+    <span class="t-k">group</span>: sales_data_reporting
+    <span class="t-k">run</span>: ./extract.sh
+  - <span class="t-k">id</span>: load_orders
+    <span class="t-k">group</span>: sales_data_reporting
+    <span class="t-k">depends_on</span>: [extract_orders]
+    <span class="t-k">run</span>: ./load.sh</code></pre></div>
+<p>Die Steps werden in einen benannten Kasten gezeichnet, der sich einklappen lässt – Airflows TaskGroup, für den Fall, dass ein DAG so groß wird, dass er nicht mehr lesbar ist.</p>
+<p><strong>Nur visuell.</strong> Airflows TaskGroups stellen den Ids darin auch ein <em>Präfix</em> voran, sodass aus <code>extract</code> <code>sales.extract</code> wird. Das hier nicht: Ein Präfix würde jedes <code>depends_on</code>, jeden Kontext-Schlüssel und jede festgehaltene Zeile in einem bestehenden Workflow verändern, für ein Feature, dessen ganzer Wert darin besteht, dass sich ein großer Graph besser liest. Namensräume lassen sich später ergänzen – das ist eine strikte Erweiterung davon.</p>
+<p>Eine Gruppe ist ein <strong>Label</strong>, kein Container. Steps behalten ihre globalen Ids, eine Gruppe kann über Ebenen hinweggehen, und an der Ausführung ändert sich nichts.</p>
+<p>Ein Klick auf den Namen der Gruppe klappt sie ein: Ihre Steps verschwinden, und die Pfeile, die die Grenze kreuzten, zeigen stattdessen auf den Kasten.</p>
+<h2 id="einen-anderen-workflow-wiederverwenden">Einen anderen Workflow wiederverwenden<a class="anchor" href="#einen-anderen-workflow-wiederverwenden" aria-label="link">#</a></h2>
+<div class="code-block" data-code="# nightly.yaml
+steps:
+  - id: prepare
+    run: ./prepare.sh
+
+  - id: mlops
+    uses: ml_training       # another workflow in the same publish
+    depends_on: [prepare]
+
+  - id: report
+    run: ./report.sh
+    depends_on: [mlops]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-c"># nightly.yaml</span>
+<span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: prepare
+    <span class="t-k">run</span>: ./prepare.sh
+
+  - <span class="t-k">id</span>: mlops
+    <span class="t-k">uses</span>: ml_training       <span class="t-c"># another workflow in the same publish</span>
+    <span class="t-k">depends_on</span>: [prepare]
+
+  - <span class="t-k">id</span>: report
+    <span class="t-k">run</span>: ./report.sh
+    <span class="t-k">depends_on</span>: [mlops]</code></pre></div>
+<p>Beim <strong>Veröffentlichen</strong> nehmen die Steps von <code>ml_training</code> die Stelle dieses Steps ein, mit dessen Id als Präfix, und der <code>uses</code>-Knoten verschwindet:</p>
+<div class="code-block" data-code="prepare → mlops.train → mlops.evaluate → report"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>prepare → mlops.train → mlops.evaluate → report</code></pre></div>
+<p>Sie kommen als eine einklappbare Gruppe an, sodass der Graph zeigt, was die Datei gesagt hat.</p>
+<p><strong>Beim Veröffentlichen expandiert, nicht zur Laufzeit ausgeführt.</strong> Ein Step, der einen Kind-<em>Run</em> auslöst und wartet, ist der Entwurf, der Airflow in einen Deadlock führte, und diese Engine hat dieselbe Zutat: Die Pod-Obergrenze ist ein Semaphor pro Prozess, sodass ein Elternteil, das einen Slot hält und auf ein Kind wartet, das Slots aus demselben Pool braucht, hängt – und nur unter Last, also in Produktion. Ein Run, ein Graph, ein Pool.</p>
+<p>Aufgegeben wird damit ein Kind-Run mit eigener Id und eigener Historie.</p>
+<h3 id="die-regeln">Die Regeln<a class="anchor" href="#die-regeln" aria-label="link">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>das Kind muss im <strong>selben Publish</strong> sein</td><td>nicht bloß bereits veröffentlicht</td></tr><tr><td>Pfeile</td><td>in den Step hinein werden zu Pfeilen in jede <strong>Wurzel</strong> des Kindes; aus ihm heraus zu Pfeilen aus jedem seiner <strong>Blätter</strong></td></tr><tr><td><code>image</code>, <code>env</code>, <code>secrets</code>, <code>resources</code> des Kindes</td><td>werden auf jeden Step materialisiert, sodass er in dem läuft, was seine eigene Datei sagte</td></tr><tr><td>die Schlüssel <code>unless_empty</code> / <code>for_each</code> des Kindes</td><td>wandern mit dem Präfix</td></tr><tr><td>Verschachtelung</td><td>wird abgeflacht, Tiefe zuerst</td></tr><tr><td>ein Zirkel</td><td>wird beim Veröffentlichen verweigert, mit Nennung der Kette</td></tr></tbody></table></div>
+<p><strong>Derselbe Publish und nicht „bereits veröffentlicht“ ist die wichtige Regel.</strong> Eine Expansion, die die Datenbank läse, ließe <code>brevis validate</code> – das mit Absicht keine Datenbank berührt – eine andere Frage beantworten als <code>brevis publish</code>, und die Datei, die die CI bestanden hat, wäre die Datei, die das Deployment scheitern lässt.</p>
+<p>Das Kind ist weiterhin für sich veröffentlichbar: Die Expansion <strong>kopiert</strong>, sie verbraucht nicht. Ein Step kann nicht zugleich <code>uses:</code> und <code>run:</code>, <code>action:</code> oder <code>marker:</code> deklarieren – das wäre eine Datei, die zwei Dinge sagt.</p>
+<h2 id="sagen-was-ein-pfeil-bedeutet">Sagen, was ein Pfeil bedeutet<a class="anchor" href="#sagen-was-ein-pfeil-bedeutet" aria-label="link">#</a></h2>
+<p>Eine Abhängigkeit kann ein Label tragen, das am Pfeil im Graphen angezeigt wird.</p>
+<div class="code-block" data-code="steps:
+  - id: determine_load_type
+    run: ./decide.sh
+
+  - id: load_full
+    run: ./full.sh
+    depends_on:
+      - {step: determine_load_type, label: additional data}
+
+  - id: load_delta
+    run: ./delta.sh
+    depends_on:
+      - step: determine_load_type
+        label: changed existing data"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: determine_load_type
+    <span class="t-k">run</span>: ./decide.sh
+
+  - <span class="t-k">id</span>: load_full
+    <span class="t-k">run</span>: ./full.sh
+    <span class="t-k">depends_on</span>:
+      - {step: determine_load_type, label: additional data}
+
+  - <span class="t-k">id</span>: load_delta
+    <span class="t-k">run</span>: ./delta.sh
+    <span class="t-k">depends_on</span>:
+      - <span class="t-k">step</span>: determine_load_type
+        <span class="t-k">label</span>: changed existing data</code></pre></div>
+<p>Die nackte Form – <code>depends_on: [extract]</code> – funktioniert weiter und bleibt die normale. Die meisten Abhängigkeiten haben nichts zu sagen, und ein Label an jedem Pfeil ist Rauschen.</p>
+<p>Die Labels verdienen ihren Platz bei einer <strong>Verzweigung</strong>: Zwei Pfeile, die denselben Step verlassen und auf denen nichts steht, sind ein Diagramm, für das man den Quelltext öffnen muss – das eine, was ein Graph vermeiden soll.</p>
+<h2 id="ein-step-der-nichts-tut">Ein Step, der nichts tut<a class="anchor" href="#ein-step-der-nichts-tut" aria-label="link">#</a></h2>
+<div class="code-block" data-code="steps:
+  - id: start
+    marker: true
+
+  - id: end
+    marker: true
+    depends_on: [load_full, load_delta, report]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: start
+    <span class="t-k">marker</span>: <span class="t-n">true</span>
+
+  - <span class="t-k">id</span>: end
+    <span class="t-k">marker</span>: <span class="t-n">true</span>
+    <span class="t-k">depends_on</span>: [load_full, load_delta, report]</code></pre></div>
+<p><code>marker: true</code> ist ein Step ohne Befehl. Er führt nichts aus, ist sofort erfolgreich und erscheint im Graphen.</p>
+<p>Er ist keine Dekoration. Ein <code>end</code>, das von jedem Zweig abhängt, macht aus <em>Ist das Ganze fertig?</em> einen Knoten statt sechs Pfeilen, denen man folgen muss – und es verhält sich wie jeder andere Step, sodass ein <code>end</code> unter einem fehlgeschlagenen Zweig <strong>übersprungen</strong> wird, nicht grün.</p>
+<p><strong>Ein Step ohne <code>run:</code> und ohne <code>marker: true</code> wird weiterhin verweigert.</strong> Die beiden Fälle dürfen nicht zu einem verschmelzen: Ein leerer Befehl ist fast immer ein Fehler, und <code>marker: true</code> ist die Art, zu sagen, dass es Absicht war. Ein Marker, der auch <code>run:</code> deklariert, wird ebenfalls verweigert – das wäre eine Datei, die zwei Dinge sagt.</p>
+<h2 id="einen-step-nur-ausführen-wenn-etwas-fehlgeschlagen-ist">Einen Step nur ausführen, wenn etwas fehlgeschlagen ist<a class="anchor" href="#einen-step-nur-ausführen-wenn-etwas-fehlgeschlagen-ist" aria-label="link">#</a></h2>
+<p>Standardmäßig läuft ein Step, wenn alles davor funktioniert hat. <code>when:</code> ändert das.</p>
+<div class="code-block" data-code="steps:
+  - id: extract
+    run: python fetch.py
+
+  - id: notify_failure
+    run: ./notify.sh
+    depends_on: [extract]
+    when: any_failed          # runs precisely when extract did not make it
+
+  - id: cleanup
+    run: ./cleanup.sh
+    depends_on: [extract, transform]
+    when: all_done            # runs either way"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: python fetch.py
+
+  - <span class="t-k">id</span>: notify_failure
+    <span class="t-k">run</span>: ./notify.sh
+    <span class="t-k">depends_on</span>: [extract]
+    <span class="t-k">when</span>: any_failed          <span class="t-c"># runs precisely when extract did not make it</span>
+
+  - <span class="t-k">id</span>: cleanup
+    <span class="t-k">run</span>: ./cleanup.sh
+    <span class="t-k">depends_on</span>: [extract, transform]
+    <span class="t-k">when</span>: all_done            <span class="t-c"># runs either way</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>Regel</th><th></th></tr></thead><tbody><tr><td><code>all_success</code></td><td>der Standard. Alles, wovon dieser Step abhängt, war erfolgreich – seine <strong>eigenen</strong> Abhängigkeiten, wie in Airflow</td></tr><tr><td><code>any_failed</code></td><td>mindestens ein Step, von dem dieser abhängt, ist fehlgeschlagen</td></tr><tr><td><code>all_done</code></td><td>alles, wovon dieser Step abhängt, ist abgeschlossen, gleich wie es endete</td></tr></tbody></table></div>
+<p>Eine unbekannte Regel wird beim Veröffentlichen verweigert, mit Nennung dessen, was gültig ist. Das muss so sein: Ein <code>when: on_failure</code>, das als „der Standard“ gelesen würde, liefe bei <strong>Erfolg</strong> – das Gegenteil dessen, was es sagt, entdeckt in der Nacht, auf die es ankam.</p>
+<h3 id="ein-step-der-nicht-läuft-ist-skipped">Ein Step, der nicht läuft, ist <code>skipped</code><a class="anchor" href="#ein-step-der-nicht-läuft-ist-skipped" aria-label="link">#</a></h3>
+<p>Das ist ein eigener Zustand, in eigener Farbe gezeichnet, und er trägt den Grund: <em><code>extract</code> war failed</em>. Davor hatte ein Step unterhalb eines Fehlers überhaupt keinen Eintrag, und der Bildschirm zeigte ihn für immer als pending.</p>
+<p><code>skipped</code> ist weder ein Fehler noch ein Erfolg. Ein Step, dessen Upstream kaputtging, ist nicht fehlgeschlagen – er hat nie die Chance bekommen –, und ihn Erfolg zu nennen ist eine Lüge, die bis zum Status des Runs selbst reicht.</p>
+<p>Eine Trigger-Regel entscheidet, welche Steps <strong>laufen</strong>. Sie entscheidet nicht über das Ergebnis des Runs: Ein <code>notify_failure</code>, das seine Nachricht zugestellt hat, heißt nicht, dass die Pipeline funktioniert hat, und der Run ist weiterhin failed.</p>
+<h3 id="all-success-ist-lokal-wie-in-airflow"><code>all_success</code> ist lokal, wie in Airflow<a class="anchor" href="#all-success-ist-lokal-wie-in-airflow" aria-label="link">#</a></h3>
+<p>Die Regel fragt nach den <strong>eigenen</strong> Abhängigkeiten eines Steps und sonst nichts. Ein Fehler in einem unabhängigen Zweig hält diesen nicht auf:</p>
+<div class="code-block" data-code="extract_orders ──✕                 (failed)
+extract_users  ──✓── transform_users ──✓     keeps going"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>extract_orders ──✕                 (failed)
+extract_users  ──✓── transform_users ──✓     keeps going</code></pre></div>
+<p>Ein Zweig <strong>unterhalb</strong> des Fehlers stoppt weiterhin – dass <code>all_success</code> lokal ist, heißt nicht, dass es fehlt.</p>
+<p>Diese Engine brach früher den ganzen Graphen beim ersten Fehler ab. Das hatte einen Grund: Nach einem Fehler weiterzumachen lieferte ein Teilergebnis, das vollständig aussah, und eine Pipeline lief 28 Tage zu spät, ohne dass es jemand bemerkte.</p>
+<p><strong>Was diesen Schutz ersetzt</strong>, und es ist nicht nichts:</p>
+<ul><li>der Run <strong>schlägt</strong> weiterhin <strong>fehl</strong>, mit demselben Fehler;</li><li>der Graph zeigt den fehlgeschlagenen Step in Rot und jeden übersprungenen in eigener Farbe, jeweils mit dem Hinweis, welcher Step ihn gestoppt hat;</li><li>der Alarm geht weiterhin hinaus, wenn der Run aufgibt.</li></ul>
+<p>Ein Teilergebnis sieht nicht mehr vollständig aus, weil der Run sagt, dass es das nicht ist.</p>
+<p><strong>Was aufgegeben wird</strong>, offen gesagt: Ein unabhängiger Zweig schreibt nun seine Daten in einem Run, der anderswo fehlgeschlagen ist.</p>
+<h3 id="ein-retry-führt-nur-aus-was-fehlgeschlagen-ist">Ein Retry führt nur aus, was fehlgeschlagen ist<a class="anchor" href="#ein-retry-führt-nur-aus-was-fehlgeschlagen-ist" aria-label="link">#</a></h3>
+<p>Der Retry eines Runs wiederholt nicht den ganzen Graphen. Ein Step, der in einem früheren Versuch <strong>desselben Runs</strong> bereits erfolgreich war, behält sein Ergebnis und läuft nicht erneut – so, wie sich ein geleerter DAG-Run in Airflow verhält.</p>
+<div class="code-block" data-code="attempt 1   extract ✓    load ✕    report (skipped)
+attempt 2   extract –    load ✓    report ✓            extract is not re-run"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>attempt 1   extract ✓    load ✕    report (skipped)
+attempt 2   extract –    load ✓    report ✓            extract is not re-run</code></pre></div>
+<p>Er behält seine ursprüngliche Zeile: Dauer, Log und das, was er veröffentlicht hat, stammen vom ersten Versuch, denn dann hat die Arbeit stattgefunden. <strong>Der Step darunter liest weiterhin, was er veröffentlicht hat</strong> – der Kontext des Runs wird gespeichert, nicht neu aufgebaut.</p>
+<p>Die Unterscheidung, auf die es ankommt: Hier geht es um frühere Versuche <strong>dieses Runs</strong>. Ein Step, der im Run von <em>gestern</em> erfolgreich war, läuft heute normal. (Auch die andere Frage gibt es, und sie sagt dem SDK, ob es das erste Mal eines Steps ist – siehe <code>BREVIS_RUN_FIRST</code>.)</p>
+<p>Ein Step, der <strong>übersprungen</strong> wurde, ist nicht erledigt: Er hat nie gelaufen, und der Retry entscheidet mit den Ergebnissen des neuen Versuchs erneut über ihn.</p>
+<h2 id="die-fehler-eines-steps-melden">Die Fehler eines Steps melden<a class="anchor" href="#die-fehler-eines-steps-melden" aria-label="link">#</a></h2>
+<p>Jeder Fehler wird bereits gemeldet: Ist ein Webhook konfiguriert, sendet ein Run, der aufgibt, eine Nachricht, ohne dass ein Block in irgendeiner Datei wiederholt würde. <code>on_error</code> ist für den Step, der eine eigene braucht.</p>
+<div class="code-block" data-code="steps:
+  - id: fetch_observations
+    run: python fetch.py
+    on_error:
+      type: SLACK"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: fetch_observations
+    <span class="t-k">run</span>: python fetch.py
+    <span class="t-k">on_error</span>:
+      <span class="t-k">type</span>: SLACK</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>Feld</th><th></th><th></th></tr></thead><tbody><tr><td><code>type</code></td><td><strong>erforderlich</strong></td><td><code>SLACK</code>. Ein unbekannter Wert wird beim Veröffentlichen verweigert, mit Nennung dessen, was gültig ist</td></tr><tr><td><code>when</code></td><td><code>give_up</code></td><td><code>attempt</code> meldet jeden fehlgeschlagenen Versuch, nicht nur den letzten</td></tr></tbody></table></div>
+<p>Es kommen zwei Nachrichten statt einer an, und das ist der Punkt: Der Alarm auf Run-Ebene sagt <em><code>id_verification</code> ist fehlgeschlagen</em>, was braucht, wer die Pipeline verantwortet; der auf Step-Ebene sagt <em><code>fetch_observations</code> ist fehlgeschlagen</em>, was braucht, wer diese Integration verantwortet.</p>
+<p><strong>Es gibt kein Feld <code>webhook</code> oder <code>url</code>, und es wird keines geben.</strong> Das Ziel ist eine Zugangsberechtigung – wer sie hält, postet im Kanal, als wäre er die Plattform –, und eine Workflow-Datei schreibt jemand, der nicht unbedingt bestimmen darf, wohin die Alarme des Unternehmens gehen. Die Datei sagt, <strong>ob</strong> und <strong>wie</strong>; die Installation sagt, <strong>wohin</strong>, über <code>BREVIS_SLACK_WEBHOOK</code>.</p>
+<p><strong><code>when: give_up</code> ist der Standard, weil es darum geht, wessen Nacht es ist.</strong> Ein Step, der zweimal fehlschlägt und beim dritten Versuch gelingt, würde beim anderen Standard zwei Nachrichten senden, und die zweite käme an, nachdem das Problem verschwunden war.</p>
+<p><strong>Ein Step, der nicht fehlgeschlagen ist, wird nie gemeldet.</strong> In einem Workflow, in dem ein Zweig kaputtgeht, wird niemand geweckt, der den anderen Zweig verantwortet.</p>
+<p>Die Zustellung ist die Aufgabe von <code>brevis alert</code> – der Alarm wird in derselben Transaktion wie der Fehler festgehalten, sodass ein Slack-Ausfall ihn verzögert, statt ihn zu verlieren.</p>
+<h2 id="tags">Tags<a class="anchor" href="#tags" aria-label="link">#</a></h2>
+<div class="code-block" data-code="tags: [analytics, dbt, daily]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">tags</span>: [analytics, dbt, daily]</code></pre></div>
+<p>Sie filtern in der Oberfläche. Auf die Ausführung wirken sie sich nicht aus.</p>
+<h2 id="validierung">Validierung<a class="anchor" href="#validierung" aria-label="link">#</a></h2>
+<p>Die Validierung braucht keine Datenbank und läuft daher in der CI neben den Tests:</p>
+<div class="code-block" data-code="brevis validate workflows/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">brevis</span> validate workflows/</code></pre></div>
+<div class="code-block" data-code="  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
+  ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
+  ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *</code></pre></div>
+<p>Sie nimmt eine Datei oder ein Verzeichnis. In einem Verzeichnis passt sie auf <code>*.y*ml</code> und sortiert – zwei Läufe erzeugen dasselbe Log, und der Unterschied zwischen zwei Deployments wird nicht zu Rauschen.</p>
+<h2 id="veröffentlichen">Veröffentlichen<a class="anchor" href="#veröffentlichen" aria-label="link">#</a></h2>
+<div class="code-block" data-code="brevis publish workflows/
+brevis publish workflows/ --project acme --prune"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">brevis</span> publish workflows/
+<span class="t-k">brevis</span> publish workflows/ <span class="t-n">--project</span> acme <span class="t-n">--prune</span></code></pre></div>
+<p><code>--prune</code> entfernt aus dem Projekt die Workflows, die in der veröffentlichten Liste fehlen, und bewahrt ihre Historie. Es ist aus einem praktischen Grund <strong>nicht</strong> der Standard: <code>publish one-file.yaml</code> darf die anderen achtundvierzig nicht löschen, nur weil sie auf der Kommandozeile nicht genannt wurden.</p>
+<h2 id="nächste-schritte">Nächste Schritte<a class="anchor" href="#nächste-schritte" aria-label="link">#</a></h2>
+<ul><li><a href="/de/docs/parameters/">Parameter</a> – was sich zwischen zwei Runs ändert</li><li><a href="/de/docs/scheduler-and-queue/">Scheduler und Queue</a> – wie aus einem Workflow Ausführung wird</li><li><a href="/de/docs/context/">Kontext zwischen Steps</a> – was ein Step dem nächsten mitteilt</li></ul>
+
+      <nav class="pagers" aria-label="Seiten">
+        <a class="pager pager-prev" href="/de/docs/core/"><span>Zurück</span><strong>Core</strong></a>
+        <a class="pager pager-next" href="/de/docs/scheduler-and-queue/"><span>Weiter</span><strong>Scheduler und Queue</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/de/docs/workflows.md" target="_blank" rel="noopener">Diese Seite auf GitHub bearbeiten</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="Auf dieser Seite">
+      <p class="toc-t">Auf dieser Seite</p>
+      <ul><li class="toc-2"><a href="#minimale-struktur">Minimale Struktur</a></li><li class="toc-3"><a href="#description-wozu-er-dient">description – wozu er dient</a></li><li class="toc-2"><a href="#reihenfolge-chain-oder-dag">Reihenfolge: chain oder dag</a></li><li class="toc-2"><a href="#zeitplan">Zeitplan</a></li><li class="toc-2"><a href="#image-und-ressourcen">Image und Ressourcen</a></li><li class="toc-2"><a href="#felder-eines-steps">Felder eines Steps</a></li><li class="toc-2"><a href="#einen-step-nur-ausführen-wenn-es-etwas-zu-tun-gibt">Einen Step nur ausführen, wenn es etwas zu tun gibt</a></li><li class="toc-3"><a href="#warum-kein-ausdruck">Warum kein Ausdruck</a></li><li class="toc-3"><a href="#ein-fehlender-schlüssel-ist-ein-fehler-kein-leerer-wert">Ein fehlender Schlüssel ist ein Fehler, kein leerer Wert</a></li><li class="toc-2"><a href="#einen-step-einmal-pro-element-ausführen">Einen Step einmal pro Element ausführen</a></li><li class="toc-3"><a href="#die-form-des-dag-ändert-sich-nicht">Die Form des DAG ändert sich nicht</a></li><li class="toc-3"><a href="#eine-fehlgeschlagene-instanz-lässt-den-step-fehlschlagen">Eine fehlgeschlagene Instanz lässt den Step fehlschlagen</a></li><li class="toc-3"><a href="#eine-leere-liste-ist-skipped-kein-erfolg">Eine leere Liste ist skipped, kein Erfolg</a></li><li class="toc-3"><a href="#der-fan-out-ist-begrenzt-und-die-grenze-wird-geerbt">Der Fan-out ist begrenzt, und die Grenze wird geerbt</a></li><li class="toc-3"><a href="#was-ein-abgebildeter-step-veröffentlicht">Was ein abgebildeter Step veröffentlicht</a></li><li class="toc-2"><a href="#steps-im-graphen-gruppieren">Steps im Graphen gruppieren</a></li><li class="toc-2"><a href="#einen-anderen-workflow-wiederverwenden">Einen anderen Workflow wiederverwenden</a></li><li class="toc-3"><a href="#die-regeln">Die Regeln</a></li><li class="toc-2"><a href="#sagen-was-ein-pfeil-bedeutet">Sagen, was ein Pfeil bedeutet</a></li><li class="toc-2"><a href="#ein-step-der-nichts-tut">Ein Step, der nichts tut</a></li><li class="toc-2"><a href="#einen-step-nur-ausführen-wenn-etwas-fehlgeschlagen-ist">Einen Step nur ausführen, wenn etwas fehlgeschlagen ist</a></li><li class="toc-3"><a href="#ein-step-der-nicht-läuft-ist-skipped">Ein Step, der nicht läuft, ist skipped</a></li><li class="toc-3"><a href="#all-success-ist-lokal-wie-in-airflow">all_success ist lokal, wie in Airflow</a></li><li class="toc-3"><a href="#ein-retry-führt-nur-aus-was-fehlgeschlagen-ist">Ein Retry führt nur aus, was fehlgeschlagen ist</a></li><li class="toc-2"><a href="#die-fehler-eines-steps-melden">Die Fehler eines Steps melden</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validierung">Validierung</a></li><li class="toc-2"><a href="#veröffentlichen">Veröffentlichen</a></li><li class="toc-2"><a href="#nächste-schritte">Nächste Schritte</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/de/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Philosophie, angewandt auf Dateninfrastruktur.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>Projekt</h2>
+        <ul>
+          <li><a href="/de/#ecossistema">Ökosystem</a></li>
+          <li><a href="/de/docs/philosophy/">Prinzipien</a></li>
+          <li><a href="/de/docs/introduction/#offener-code-wählen-sie-wie-sie-mitmachen">Open Source</a></li>
+          <li><a href="/de/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>Code</h2>
+        <ul>
+          <li><a href="/de/docs/">Dokumentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repository</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Ein Open-Source-Projekt von <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · in Go gebaut · Go-Gopher von Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

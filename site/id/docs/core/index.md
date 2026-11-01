@@ -1,0 +1,84 @@
+# Core
+
+> Orkestrator: menjadwalkan run, menyimpan antrean di Postgres, dan memulai satu pod per step — dan tidak pernah menyentuh data.
+
+*https://brevis.sh/id/docs/core/ · brevis.sh docs (id)*
+
+---
+
+Seluruh workflow adalah satu file yang diberi versi: mereview sebuah pipeline berarti mereview sebuah diff. Core menjadwalkan, mengantrekan, dan memulai setiap step dengan image-nya sendiri — dan tidak pernah menyentuh data.
+
+![Alur Core: sebuah scheduler dan sebuah antrean, disimpan di Postgres, memulai satu pod per step dari workflow — prepare, extract, validate, dan publish. Hanya garis kontrol yang keluar dari Core. Data mengalir dari sumber HTTP ke pod extract, yang menjalankan SDK, lalu ke BigQuery; tidak ada data yang melewati Core.](/assets/flow-core.svg)
+
+## Apa yang dilakukannya
+
+- **Menjadwalkan.** Scheduler membaca jadwal setiap workflow dan membuat run. Ia dan antrean adalah dua loop independen: yang satu macet tidak menghentikan yang lain — [Scheduler dan antrean](/id/docs/scheduler-and-queue/index.md).
+- **Mengantrekan.** Antrean berada di Postgres: siapa pun yang mengeksekusi mengklaim sebuah run yang pending, menelusuri graf, dan mencatat state setiap step.
+- **Memulai satu pod per step**, masing-masing dengan image-nya sendiri — [Pod per step](/id/docs/pod-per-step/index.md).
+- **Tidak pernah menyentuh data.** Hanya garis kontrol yang keluar dari Core: yang membaca dan menulis data adalah step, dengan [SDK](/id/docs/sdk/index.md) atau kode apa pun milik Anda.
+
+## Satu workflow, dari ujung ke ujung
+
+Workflow adalah satu file YAML. Dua step yang bergantung pada step yang sama berjalan paralel:
+
+```yaml
+name: hello
+type: dag
+tags: [example]
+
+steps:
+  - id: prepare
+    run: sh -c 'echo preparing; sleep 1'
+
+  # The next two depend on the same step, so they run IN PARALLEL.
+  - id: extract
+    run: sh -c 'sleep 2; echo 42 extracted'
+    depends_on: [prepare]
+
+  - id: validate
+    run: sh -c 'sleep 1; echo validated'
+    depends_on: [prepare]
+
+  - id: publish
+    run: echo published
+    depends_on: [extract, validate]
+```
+
+Untuk menjalankannya secara lokal, tanpa antrean dan tanpa klaster:
+
+```bash
+docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
+  areteacademy/brevis:0.40.0-worker run hello.yaml
+```
+
+Outputnya:
+
+```text
+workflow hello (dag, 4 steps) in .
+  ▶ prepare
+    prepare | preparing
+  ✓ prepare
+  ▶ validate
+  ▶ extract
+    validate | validated
+  ✓ validate
+    extract | 42 extracted
+  ✓ extract
+  ▶ publish
+    publish | published
+  ✓ publish
+
+workflow hello finished
+```
+
+Output nyata, dari image yang dipublikasikan. brevis run mengeksekusi secara lokal, tanpa antrean; pod dimulai oleh scheduler.
+
+## Ke mana selanjutnya
+
+| jika Anda ingin | buka |
+|---|---|
+| seluruh format YAML | [Workflows](/id/docs/workflows/index.md) |
+| siapa yang membuat run dan siapa yang mengeksekusinya | [Scheduler dan antrean](/id/docs/scheduler-and-queue/index.md) |
+| mengapa satu pod per step | [Pod per step](/id/docs/pod-per-step/index.md) |
+| apa yang diteruskan sebuah step ke step berikutnya | [Konteks antar step](/id/docs/context/index.md) |
+| menjalankan semuanya dan melihat graf di antarmuka | [Quickstart](/id/docs/quickstart/index.md) |

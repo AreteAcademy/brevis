@@ -267,7 +267,7 @@ field accepted in silence is a field somebody believes is being stored.
 These eight are **the SDK's**, not this sink's: `sdk.LandingSchema` declares
 them and `sdk.LandingID` mints the identity, so a pipeline can land the same
 table with the same ids. One definition, because two would drift. See
-[the SDK's landing layout](/en/docs/sdk/#the-landing-layout).
+[the SDK's landing layout](/docs/sdk/#the-landing-layout).
 
 **`brevis_` is reserved.** A `data` carrying any key with that prefix is refused
 **per event** — otherwise a producer forges a control field, and a forged

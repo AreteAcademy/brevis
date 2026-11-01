@@ -16,7 +16,7 @@
   };
   var destino = antigas[location.hash.slice(1)];
   if (destino && document.body.classList.contains('page-landing')) {
-    location.replace((document.documentElement.lang === 'en' ? '/en' : '') + '/docs/' + destino);
+    location.replace((document.documentElement.dataset.docs || '') + '/docs/' + destino);
     return;
   }
 

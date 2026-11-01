@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ru" data-docs="/ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Python — Документация</title>
+<meta name="description" content="pip install brevis — контекст между шагами, часы запуска и собственные метрики вашего пайплайна, совсем без зависимостей.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/ru/docs/python/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/ru/docs/python/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/python/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/python/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/python/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/python/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/python/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/python/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/python/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/python/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/python/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/python/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/python/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="ru">
+<meta property="og:title" content="Python — Документация">
+<meta property="og:description" content="pip install brevis — контекст между шагами, часы запуска и собственные метрики вашего пайплайна, совсем без зависимостей.">
+<meta property="og:url" content="https://brevis.sh/ru/docs/python/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Python — Документация">
+<meta name="twitter:description" content="pip install brevis — контекст между шагами, часы запуска и собственные метрики вашего пайплайна, совсем без зависимостей.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Python",
+  "description": "pip install brevis — контекст между шагами, часы запуска и собственные метрики вашего пайплайна, совсем без зависимостей.",
+  "inLanguage": "ru",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Перейти к содержимому</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/ru/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Основная навигация">
+      <a href="/ru/#ecossistema">Экосистема</a>
+      <a href="/ru/docs/">Документация</a>
+      <details class="lang-dd"><summary aria-label="Язык: Русский"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Русский</span></summary><ul><li><a href="/docs/python/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/python/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/python/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/python/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/python/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/python/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/python/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/python/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/python/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/python/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/python/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Open source на GitHub
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Открыть меню" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Меню документации
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Поиск по документации</label>
+        <input type="search" id="q" placeholder="Поиск…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Ничего не найдено" hidden></div>
+      <nav class="side-nav" aria-label="Документация">
+        <p class="side-group">Начало работы</p><ul class="side-list"><li><a href="/ru/docs/ecosystem/">Экосистема</a></li><li><a href="/ru/docs/integrations/">Интеграции</a></li><li><a href="/ru/docs/introduction/">Введение</a></li><li><a href="/ru/docs/installation/">Установка</a></li><li><a href="/ru/docs/quickstart/">Быстрый старт</a></li></ul><p class="side-group">Концепции</p><ul class="side-list"><li><a href="/ru/docs/core/">Core</a></li><li><a href="/ru/docs/workflows/">Workflows</a></li><li><a href="/ru/docs/scheduler-and-queue/">Планировщик и очередь</a></li><li><a href="/ru/docs/pod-per-step/">Pod на шаг</a></li><li><a href="/ru/docs/context/">Контекст между шагами</a></li></ul><p class="side-group">Справочник</p><ul class="side-list"><li><a href="/ru/docs/cli/">CLI</a></li><li><a href="/ru/docs/parameters/">Параметры</a></li><li><a href="/ru/docs/configuration/">Конфигурация</a></li><li><a href="/ru/docs/runtime/">Рантайм шага</a></li></ul><p class="side-group">SDK и библиотеки</p><ul class="side-list"><li><a href="/ru/docs/sdk/">Go SDK</a></li><li><a href="/ru/docs/libraries/">Клиентские библиотеки</a></li><li><a href="/ru/docs/python/" aria-current="page">Python</a></li></ul><p class="side-group">Эксплуатация</p><ul class="side-list"><li><a href="/ru/docs/console/">Console</a></li><li><a href="/ru/docs/kubernetes/">Kubernetes</a></li><li><a href="/ru/docs/observability/">Наблюдаемость</a></li><li><a href="/ru/docs/white-label/">White label</a></li></ul><p class="side-group">Приём данных</p><ul class="side-list"><li><a href="/ru/docs/ingestion/">Приём данных</a></li><li><a href="/ru/docs/ingestion-sinks/">Sinks приёма данных</a></li><li><a href="/ru/docs/benchmarks/">Бенчмарки</a></li></ul><p class="side-group">Моделирование в SQL</p><ul class="side-list"><li><a href="/ru/docs/sql/">SQL</a></li></ul><p class="side-group">О проекте</p><ul class="side-list"><li><a href="/ru/docs/philosophy/">Философия</a></li><li><a href="/ru/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Документация</p>
+      <h1>Python</h1>
+      <p class="doc-desc">pip install brevis — контекст между шагами, часы запуска и собственные метрики вашего пайплайна, совсем без зависимостей.</p>
+      <div class="code-block" data-code="pip install brevis"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>pip install <span class="t-k">brevis</span></code></pre></div>
+<div class="code-block" data-code="from brevis import context, metrics, run
+
+bucket = context.get(&quot;extract.bucket&quot;)
+since, until = run.window()          # the window this run covers
+
+context.set(rows=48213, watermark=&quot;2026-09-07T03:00:00Z&quot;)
+metrics.set(&quot;rows_loaded&quot;, 48213)    # reaches the engine&#x27;s /metrics"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> context, metrics, run
+
+bucket = context.get("extract.bucket")
+since, until = run.window()          <span class="t-c"># the window this run covers</span>
+
+context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
+metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
+<p><strong>Никаких зависимостей, никогда.</strong> Она читает одну переменную окружения, записывает один файл и выводит одну строку в stdout. Требуется Python 3.9+.</p>
+<p>Это не порт Go SDK: нет драйверов, нет пагинации, нет ingestion id. Она существует, чтобы команда могла использовать pandas, Polars или dbt и всё же получать то, для чего нужен оркестратор.</p>
+<h2 id="чтение-контекста">Чтение контекста<a class="anchor" href="#чтение-контекста" aria-label="link">#</a></h2>
+<p>Ключ всегда квалифицирован шагом, который его опубликовал:</p>
+<div class="code-block" data-code="context.get(&quot;extract.bucket&quot;)            # the value
+context.get(&quot;extract.nope&quot;, default=0)   # absent is not an error
+context.of(&quot;extract&quot;)                    # everything that step published
+context.published()                      # what THIS step has published so far"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>context.get("extract.bucket")            <span class="t-c"># the value</span>
+context.get("extract.nope", default=0)   <span class="t-c"># absent is not an error</span>
+context.of("extract")                    <span class="t-c"># everything that step published</span>
+context.published()                      <span class="t-c"># what THIS step has published so far</span></code></pre></div>
+<p><code>context.get("bucket")</code> без шага <strong>отклоняется</strong> с перечислением шагов, опубликовавших такой ключ. Шаги изолированы — <code>extract</code> и <code>transform</code> могут оба опубликовать <code>bucket</code>, и ни один не потеряет его, — а ключ без шага перечёркивает это в тот момент, когда их становится два. Поиск и выбор одного — это приоритет по случайности: работает, пока молча не перестаёт.</p>
+<p>Чтение шага, от которого этот не зависит, — ошибка, и сообщение указывает на исправление.</p>
+<h2 id="запись">Запись<a class="anchor" href="#запись" aria-label="link">#</a></h2>
+<div class="code-block" data-code="context.set(name=&quot;Daniel&quot;)
+context.set(label=&quot;Name&quot;)
+# both survive: {&quot;name&quot;: &quot;Daniel&quot;, &quot;label&quot;: &quot;Name&quot;}"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>context.set(name="Daniel")
+context.set(label="Name")
+<span class="t-c"># both survive: {"name": "Daniel", "label": "Name"}</span></code></pre></div>
+<p>Вызовы <strong>объединяются</strong>. Один и тот же ключ дважды сохраняет последнюю запись; другой ключ не затрагивает первый. <strong>Аргумента шага нет</strong> — единственное пространство имён, в которое процесс может писать, — его собственное, и именно это делает изоляцию структурной, а не правилом.</p>
+<p>Ничто не попадает на диск до завершения процесса, поэтому жёстко упавший шаг ничего не публикует. Это правильно: вывод упавшего шага описывал бы незавершённую работу.</p>
+<h2 id="часы-которые-должен-читать-этот-запуск">Часы, которые должен читать этот запуск<a class="anchor" href="#часы-которые-должен-читать-этот-запуск" aria-label="link">#</a></h2>
+<p>Каждый запуск также несёт <strong>авто-параметры</strong>: значения, которые engine вычисляет сам. Их никто не объявляет, они есть у каждого запуска, и они отвечают на вопрос, на который пайплайн иначе ответил бы с помощью <code>datetime.now()</code>.</p>
+<div class="code-block" data-code="from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f&quot;/data/{run.auto().date}.parquet&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">from</span> datetime <span class="t-k">import</span> timedelta
+<span class="t-k">from</span> brevis <span class="t-k">import</span> run
+
+since, until = run.window() <span class="t-k">or</span> (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
+<aside class="admon admon-warning"><p class="admon-t">Почему не `datetime.now()`</p><p><code>run.now()</code> — это <strong>слот</strong> запуска по расписанию. Загрузчик, который читает <code>datetime.now()</code> и вычитает два часа, прав на запуске, начавшемся вовремя, и неправ на сорок минут на том, который очередь задержала, — а эти сорок минут принадлежат <strong>ни одному запуску</strong>, потому что следующий слот тоже читает собственный <code>now()</code>. Ничего не падает, а пробел обнаруживается спустя недели.</p></aside>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>run.now()</code></td><td>часы: слот или момент старта запуска</td></tr><tr><td><code>run.window()</code></td><td><code>(start, end)</code>, конец исключён — или <code>None</code></td></tr><tr><td><code>run.auto()</code></td><td>авто-параметры, см. ниже</td></tr><tr><td><code>run.context()</code></td><td>id, попытка, триггер, параметры и auto</td></tr><tr><td><code>run.params()</code> · <code>run.param(name)</code></td><td>параметры, объявленные в workflow</td></tr><tr><td><code>run.map_index()</code> · <code>run.map_value()</code></td><td>экземпляр, при <code>for_each:</code></td></tr></tbody></table></div>
+<p><code>window()</code> определяется <strong>cron</strong>, а не историей: backfill слота из марта даёт окно, которое было в марте. Запрос <code>[start, end)</code> никогда не пересекается и не оставляет пробелов, как бы поздно ни шёл запуск и как бы часто он ни повторялся.</p>
+<p>Если у workflow нет расписания, возвращается <code>None</code>, а не пара нулевых значений времени: запрос с начала эпохи выбирает всё, и такой сбой не должен быть тихим. <code>or</code> выше — это весь запасной вариант.</p>
+<h3 id="авто-параметры">Авто-параметры<a class="anchor" href="#авто-параметры" aria-label="link">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th>поле</th><th></th></tr></thead><tbody><tr><td><code>date</code></td><td><code>"2026-09-08"</code> — партиция, папка, <code>WHERE</code></td></tr><tr><td><code>adjusted_at</code></td><td>часы, которые нужно читать вместо <code>now()</code></td></tr><tr><td><code>scheduled_at</code></td><td>слот, который запросил cron; <code>None</code> при ручном запуске</td></tr><tr><td><code>started_at</code></td><td>когда началась <strong>эта попытка</strong>; повторная попытка сдвигает его</td></tr><tr><td><code>delay_seconds</code></td><td>насколько эта попытка опоздала; никогда не отрицательно</td></tr><tr><td><code>interval_start</code> · <code>interval_end</code></td><td>окно, конец исключён</td></tr><tr><td><code>previous_error</code></td><td>предыдущий запуск не завершился успешно</td></tr><tr><td><code>previous_success_at</code></td><td>слот последнего запуска, который <strong>завершился успешно</strong> — то, что делает <code>previous_error</code> применимым на практике</td></tr></tbody></table></div>
+<p>Запустите скрипт вручную, и <code>run.now()</code> — это <strong>настенные</strong> часы, а <code>window()</code> — <code>None</code>, поэтому для локальной разработки не нужно писать никакой ветки.</p>
+<h2 id="один-экземпляр-размноженного-шага">Один экземпляр размноженного шага<a class="anchor" href="#один-экземпляр-размноженного-шага" aria-label="link">#</a></h2>
+<p>При <a href="/ru/docs/workflows/"><code>for_each:</code></a> engine запускает по одному процессу на элемент и сообщает каждому, какой элемент он получил:</p>
+<div class="code-block" data-code="partition = run.map_value()
+if partition is None:
+    raise SystemExit(&quot;this step is meant to run under `for_each:`&quot;)
+
+load(f&quot;/data/{partition}.csv&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>partition = run.map_value()
+<span class="t-k">if</span> partition <span class="t-k">is</span> <span class="t-k">None</span>:
+    <span class="t-k">raise</span> SystemExit("this step <span class="t-k">is</span> meant to run under `for_each:`")
+
+load(f"/data/{partition}.csv")</code></pre></div>
+<p>JSON-строка приходит <strong>без кавычек</strong> — <code>for_each</code> по <code>["2026-01"]</code> передаёт шагу <code>2026-01</code>, а не <code>"2026-01"</code>. Всё остальное — объект, число, список — приходит как свой JSON, поэтому <code>json.loads(run.map_value())</code>.</p>
+<p>Оба значения — <code>None</code> у шага, который не размножен. Именно <code>None</code>, а не <code>-1</code> или <code>""</code>: сентинел — это число, с которым кто-нибудь в конце концов начнёт делать арифметику, а пустая строка неотличима от элемента, который <em>является</em> пустой строкой.</p>
+<p>Размноженный шаг <strong>не публикует контекст</strong> вниз по графу — четыре экземпляра не могут делить один ключ. Шаг, которому нужно что-то передать дальше, пишет файл, либо следующий за ним шаг считает приземлившееся.</p>
+<h2 id="метрики-которые-знает-только-ваш-пайплайн">Метрики, которые знает только ваш пайплайн<a class="anchor" href="#метрики-которые-знает-только-ваш-пайплайн" aria-label="link">#</a></h2>
+<p>Engine уже измеряет то, что видит: длительность, попытки, глубину очереди. Чего он знать не может — сколько строк приземлилось, сколько отклонил вендор или сколько байт было отброшено. Это знает шаг, а библиотека это передаёт.</p>
+<div class="code-block" data-code="from brevis import metrics
+
+metrics.set(&quot;rows_loaded&quot;, 48213)          # a gauge: the last value wins
+metrics.inc(&quot;vendor_rejected_total&quot;)       # a counter: it adds up
+metrics.inc(&quot;bytes_discarded_total&quot;, 4096)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> metrics
+
+metrics.set("rows_loaded", 48213)          <span class="t-c"># a gauge: the last value wins</span>
+metrics.inc("vendor_rejected_total")       <span class="t-c"># a counter: it adds up</span>
+metrics.inc("bytes_discarded_total", 4096)</code></pre></div>
+<p>Они появляются в <code>/metrics</code> <strong>engine</strong>, на порту планировщика, с метками workflow и шага:</p>
+<div class="code-block" data-code="brevis_step_rows_loaded{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 48213
+brevis_step_vendor_rejected_total{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 5"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
+brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>metrics.set(name, value)</code></td><td>gauge. После завершения шага значение остаётся, пока следующий запуск не запишет другое</td></tr><tr><td><code>metrics.inc(name, by=1)</code></td><td>счётчик. Суммируется по шагам и по запускам</td></tr></tbody></table></div>
+<h3 id="почему-это-не-открывает-порт">Почему это не открывает порт<a class="anchor" href="#почему-это-не-открывает-порт" aria-label="link">#</a></h3>
+<p>Потому что <strong>шаг нельзя опросить</strong>. <code>:9090</code> принадлежит планировщику и API — долгоживущим процессам со стабильным адресом, которые опрашивают раз в пятнадцать-шестьдесят секунд. Шаг стартует в своём pod, работает сорок секунд и завершается: открытый им порт был бы опрошен ни разу или один раз по везению.</p>
+<p>Три известных ответа на это — Pushgateway (компонент, который нужно обслуживать, и серии, остающиеся, пока кто-нибудь их не удалит), коллектор OTLP (компонент <strong>и</strong> зависимость в этой библиотеке, у которой их нет и не будет) или поручить передачу <strong>оркестратору</strong>. Brevis уже читает stdout каждого шага в поисках строк <code>@brevis:</code> — так фазы SDK попадают на граф — и у него уже есть измеритель и endpoint Prometheus.</p>
+<p>Поэтому библиотека пишет <strong>одну строку в stdout</strong>, а остальное делает engine. Метрика приходит с метками workflow и шага бесплатно, потому что engine знает, что он запускал; через Pushgateway этой библиотеке пришлось бы размечать себя самой, и она бы ошиблась.</p>
+<p>Запись выполняется через <code>print(flush=True)</code>, потому что engine читает этот канал <strong>вживую</strong>. Буферизованная строка приходит при завершении процесса — для шага, работающего час, это опоздание на час, а для убитого шага — никогда.</p>
+<h3 id="что-метрика-отклоняет">Что метрика отклоняет<a class="anchor" href="#что-метрика-отклоняет" aria-label="link">#</a></h3>
+<p><strong>Недопустимое имя отклоняется громко.</strong> Prometheus принимает буквы, цифры и подчёркивание, и первый символ не может быть цифрой. Отвергнутое им имя не порождает сломанную метрику — оно порождает вывод, который он <strong>отказывается разбирать</strong>, и теряется <strong>весь сбор</strong>, а с ним и все остальные метрики. Поэтому <code>rows-loaded</code> вызывает здесь <code>MetricError</code>, там, где допущена ошибка, а не приходит под именем, которого никто не писал.</p>
+<div class="table-wrap"><table><thead><tr><th>отклоняется</th><th>потому что</th></tr></thead><tbody><tr><td><code>rows-loaded</code>, <code>rows loaded</code>, <code>2rows</code></td><td>Prometheus это не разберёт, и теряется весь сбор</td></tr><tr><td><code>metrics.set("ok", True)</code></td><td><code>bool</code> в Python — это <code>int</code>, а сообщение <code>1</code> — число, смысл которого зависит от знания этого. Сообщайте количество или длительность, а не состояние</td></tr><tr><td><code>metrics.inc("x", -1)</code></td><td>счётчик только растёт. Каждый <code>rate()</code> над ним исходит из этого, и поломка проявляется на графике спустя недели</td></tr></tbody></table></div>
+<p>Запустите скрипт вручную, и строка всё равно уходит в stdout, где читается как то, что она есть. Ничто её не собирает, и ничего не падает — так же, как <code>context.set()</code> на ноутбуке.</p>
+<h2 id="что-она-отклоняет">Что она отклоняет<a class="anchor" href="#что-она-отклоняет" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>потому что</th></tr></thead><tbody><tr><td>больше 4096 байт</td><td>платформа <strong>усекает</strong>, а не отклоняет, поэтому слишком большой объект приходит обрезанным вдвое и ниже по графу читается как «ничего не опубликовано»</td></tr><tr><td>значение не в формате JSON</td><td><code>datetime</code> превращается в <code>"..."</code> или исчезает в зависимости от того, кто сериализует. Ошибка называет ключ и предлагает <code>.isoformat()</code></td></tr><tr><td>нестроковый ключ</td><td><code>{1: "x"}</code> возвращается как <code>{"1": "x"}</code>, и поиск промахивается</td></tr></tbody></table></div>
+<p>Потолок — число платформы, а не наше. Любая функция «контекст между задачами» ломается одинаково: кто-то кладёт <strong>данные</strong> туда, где подходит только <strong>контекст</strong>. В четыре килобайта помещаются водяной знак, счётчик или список партиций. Публикуйте ссылку, а строки оставляйте на месте.</p>
+<aside class="admon admon-danger"><p class="admon-t">Это не хранилище секретов</p><p>Всё опубликованное видно любому, кто видит запуск, — оно находится в статусе pod и в истории запусков. Публикуйте путь, а не подписанный URL.</p></aside>
+<h2 id="запуск-вручную">Запуск вручную<a class="anchor" href="#запуск-вручную" aria-label="link">#</a></h2>
+<p>Вне Brevis нет входа, и никто не читает вывод. <code>get()</code> возвращает значение по умолчанию, <code>set()</code> принимает и отбрасывает, а библиотека один раз сообщает об этом на уровне INFO. Она <strong>не вызывает исключений</strong>: скрипт, который нельзя запустить вручную, нельзя разрабатывать. Валидация всё равно выполняется, поэтому значение, работающее на вашем ноутбуке, работает и в продакшене.</p>
+<h2 id="тестирование-вашего-шага">Тестирование вашего шага<a class="anchor" href="#тестирование-вашего-шага" aria-label="link">#</a></h2>
+<p>Весь контракт — две переменные окружения, поэтому мокать нечего:</p>
+<div class="code-block" data-code="def test_my_step(monkeypatch, tmp_path):
+    monkeypatch.setenv(&quot;BREVIS_INPUT&quot;, &#x27;{&quot;extract&quot;: {&quot;rows&quot;: 42}}&#x27;)
+    monkeypatch.setenv(&quot;BREVIS_OUTPUT&quot;, str(tmp_path / &quot;out&quot;))
+    assert context.get(&quot;extract.rows&quot;) == 42"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">def</span> test_my_step(monkeypatch, tmp_path):
+    monkeypatch.setenv("BREVIS_INPUT", '{"extract": {"rows": 42}}')
+    monkeypatch.setenv("BREVIS_OUTPUT", str(tmp_path / "out"))
+    <span class="t-k">assert</span> context.get("extract.rows") == 42</code></pre></div>
+<h2 id="версии">Версии<a class="anchor" href="#версии" aria-label="link">#</a></h2>
+<p>Библиотека версионируется сама по себе, отдельно от engine и от Go SDK.</p>
+<aside class="admon admon-warning"><p class="admon-t">Не используйте `0.2.0`</p><p>Она вышла на PyPI только в виде wheel. <code>0.2.1</code> — тот же код, но полный.</p></aside>
+<p><code>brevis.run</code> нужен engine версии <strong><code>v0.9.0</code> или новее</strong>, чтобы было что читать; на более старом все поля пусты, а <code>run.now()</code> — это настенные часы, то есть то же, что и вне engine.</p>
+<h2 id="дальнейшие-шаги">Дальнейшие шаги<a class="anchor" href="#дальнейшие-шаги" aria-label="link">#</a></h2>
+<ul><li><a href="/ru/docs/libraries/">Клиентские библиотеки</a> — контракт и другие языки</li><li><a href="/ru/docs/context/">Контекст между шагами</a> — концепция</li><li><a href="/ru/docs/parameters/">Параметры</a> — объявленные</li></ul>
+
+      <nav class="pagers" aria-label="Страницы">
+        <a class="pager pager-prev" href="/ru/docs/libraries/"><span>Назад</span><strong>Клиентские библиотеки</strong></a>
+        <a class="pager pager-next" href="/ru/docs/console/"><span>Далее</span><strong>Console</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/ru/docs/python.md" target="_blank" rel="noopener">Править эту страницу на GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="На этой странице">
+      <p class="toc-t">На этой странице</p>
+      <ul><li class="toc-2"><a href="#чтение-контекста">Чтение контекста</a></li><li class="toc-2"><a href="#запись">Запись</a></li><li class="toc-2"><a href="#часы-которые-должен-читать-этот-запуск">Часы, которые должен читать этот запуск</a></li><li class="toc-3"><a href="#авто-параметры">Авто-параметры</a></li><li class="toc-2"><a href="#один-экземпляр-размноженного-шага">Один экземпляр размноженного шага</a></li><li class="toc-2"><a href="#метрики-которые-знает-только-ваш-пайплайн">Метрики, которые знает только ваш пайплайн</a></li><li class="toc-3"><a href="#почему-это-не-открывает-порт">Почему это не открывает порт</a></li><li class="toc-3"><a href="#что-метрика-отклоняет">Что метрика отклоняет</a></li><li class="toc-2"><a href="#что-она-отклоняет">Что она отклоняет</a></li><li class="toc-2"><a href="#запуск-вручную">Запуск вручную</a></li><li class="toc-2"><a href="#тестирование-вашего-шага">Тестирование вашего шага</a></li><li class="toc-2"><a href="#версии">Версии</a></li><li class="toc-2"><a href="#дальнейшие-шаги">Дальнейшие шаги</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/ru/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Философия в приложении к инфраструктуре данных.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>проект</h2>
+        <ul>
+          <li><a href="/ru/#ecossistema">Экосистема</a></li>
+          <li><a href="/ru/docs/philosophy/">Принципы</a></li>
+          <li><a href="/ru/docs/introduction/#открытый-код-выберите-как-участвовать">Open source</a></li>
+          <li><a href="/ru/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>код</h2>
+        <ul>
+          <li><a href="/ru/docs/">Документация</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Репозиторий</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Open source проект от <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · написано на Go · Go gopher — Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

@@ -1,28 +1,28 @@
-# Instalação
+# Installation
 
-> Como obter o binário, o que ele exige e como confirmar que a instalação está correta.
+> How to get the binary, what it requires, and how to confirm the install is correct.
 
-*https://brevis.sh/docs/installation/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/installation/ · brevis.sh docs (en-US)*
 
 ---
 
-O brevis.sh é distribuído como **binário único** e como **imagem Docker**. Não
-há runtime para instalar ao lado: as migrations, os assets da interface e as
-fontes vão dentro do binário.
+brevis.sh ships as a **single binary** and as a **Docker image**. There is no
+runtime to install alongside it: migrations, interface assets and fonts all live
+inside the binary.
 
-## Requisitos
+## Requirements
 
 | | |
 |---|---|
-| **PostgreSQL** | obrigatório para `serve`, `scheduler`, `migrate`, `publish` e `backfill` |
-| **Go 1.25+** | apenas se você for compilar do código |
-| **Kubernetes** | opcional — sem cluster, os passos rodam como processos locais |
+| **PostgreSQL** | required for `serve`, `scheduler`, `migrate`, `publish` and `backfill` |
+| **Go 1.25+** | only if you build from source |
+| **Kubernetes** | optional — with no cluster, steps run as local processes |
 
-`brevis run`, `validate`, `marca`, `hash` e `version` **não** precisam de banco.
+`brevis run`, `validate`, `marca`, `hash` and `version` need **no** database.
 
-## Compilando do código
+## Building from source
 
-É o caminho que produz um binário com versão e commit carimbados:
+This is the path that produces a binary with version and commit stamped in:
 
 ```bash
 git clone https://github.com/AreteAcademy/brevis.git
@@ -38,74 +38,75 @@ brevis 0.11.2
   go      go1.25.7 darwin/arm64
 ```
 
-:::warning O engine ainda não tem release taggeada
-Todas as tags do repositório são do SDK (`sdk/v*`); o módulo raiz não tem
-nenhuma. Um `go install github.com/AreteAcademy/brevis/cmd/brevis@latest`
-resolve para o último commit do branch e produz um binário que se identifica
-como `brevis dev`, sem commit nem data — os `-ldflags` só entram pelo
-`make build` e pelo `docker build`. Para uma versão rastreável, use a imagem ou
-o `make build`.
+:::warning The engine has no tagged release yet
+Every tag in the repository belongs to the SDK (`sdk/v*`); the root module has
+none. A `go install github.com/AreteAcademy/brevis/cmd/brevis@latest` resolves
+to the latest commit on the branch and produces a binary that identifies itself
+as `brevis dev`, with no commit and no date — the `-ldflags` only come in
+through `make build` and `docker build`. For a traceable version, use the image
+or `make build`.
 :::
 
 ## Docker
 
-Duas imagens do mesmo binário, porque os dois papéis têm exigências opostas:
+Two images of the same binary, because the two roles have opposite needs:
 
-| tag | base | por quê |
+| tag | base | why |
 |---|---|---|
-| `:0.11.2` | distroless | a API só serve HTTP e não executa nada — sem shell, superfície mínima |
-| `:0.11.2-worker` | alpine + tini | os passos `run:` precisam de shell |
+| `:0.11.2` | distroless | the API only serves HTTP and executes nothing — no shell, minimal surface |
+| `:0.11.2-worker` | alpine + tini | `run:` steps need a shell |
 
 ```bash
 docker run --rm areteacademy/brevis:latest version
 ```
 
-As duas imagens ficam em [hub.docker.com/r/areteacademy/brevis](https://hub.docker.com/r/areteacademy/brevis),
-para `amd64` e `arm64`.
+Both images live at [hub.docker.com/r/areteacademy/brevis](https://hub.docker.com/r/areteacademy/brevis),
+for `amd64` and `arm64`.
 
-## Ambiente local completo
+## A full local environment
 
-O repositório traz um `docker-compose.yml` que sobe Postgres, API e scheduler:
+The repository ships a `docker-compose.yml` that brings up Postgres, the API and
+the scheduler:
 
 ```bash
 make up      # Postgres + API + scheduler
-make smoke   # confere /health e /ready
+make smoke   # checks /health and /ready
 make logs
 make down
 ```
 
-A interface fica em `http://localhost:8080`.
+The interface is at `http://localhost:8080`.
 
-## Configuração mínima
+## Minimum configuration
 
-Uma única variável é obrigatória:
+A single variable is required:
 
 ```bash
 export BREVIS_DATABASE_URL='postgres://brevis:brevis@localhost:5432/brevis?sslmode=disable'
 ```
 
-Sem ela, os subcomandos que usam banco falham no boot — de propósito. Um
-processo que sobe sem credencial só descobre o problema no primeiro request, e
-aí o readiness já mentiu para o orquestrador.
+Without it, the subcommands that use the database fail at boot — on purpose. A
+process that comes up without credentials only discovers the problem on the
+first request, and by then readiness has already lied to the orchestrator.
 
 ```
 $ brevis migrate status
 erro: BREVIS_DATABASE_URL e obrigatoria
 ```
 
-A lista completa está em [Configuração](/docs/configuration/index.md).
+The full list is in [Configuration](/docs/configuration/index.md).
 
-## Aplicando o schema
+## Applying the schema
 
-As migrations são embutidas no binário e aplicadas por subcomando próprio —
-**`serve` nunca altera schema**:
+Migrations are embedded in the binary and applied by their own subcommand —
+**`serve` never alters the schema**:
 
 ```bash
 brevis migrate up
 brevis migrate status
 ```
 
-## Confirmando
+## Confirming
 
 ```bash
 brevis version
@@ -118,5 +119,5 @@ brevis validate examples/
   ok    hello                        dag  4 steps, 4 dependencias  (manual)
 ```
 
-Se os dois respondem, a instalação está correta. Siga para o
+If both answer, the install is correct. Move on to the
 [Quickstart](/docs/quickstart/index.md).

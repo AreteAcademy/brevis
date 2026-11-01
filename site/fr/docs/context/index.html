@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr" data-docs="/fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Contexte entre steps — Documentation</title>
+<meta name="description" content="Ce qu&#x27;un step dit au suivant — deux variables d&#x27;environnement et un fichier.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/fr/docs/context/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/fr/docs/context/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/context/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/context/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/context/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/context/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/context/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/context/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/context/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/context/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/context/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/context/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/context/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="fr">
+<meta property="og:title" content="Contexte entre steps — Documentation">
+<meta property="og:description" content="Ce qu&#x27;un step dit au suivant — deux variables d&#x27;environnement et un fichier.">
+<meta property="og:url" content="https://brevis.sh/fr/docs/context/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Contexte entre steps — Documentation">
+<meta name="twitter:description" content="Ce qu&#x27;un step dit au suivant — deux variables d&#x27;environnement et un fichier.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Contexte entre steps",
+  "description": "Ce qu'un step dit au suivant — deux variables d'environnement et un fichier.",
+  "inLanguage": "fr",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Aller au contenu</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/fr/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Navigation principale">
+      <a href="/fr/#ecossistema">Écosystème</a>
+      <a href="/fr/docs/">Documentation</a>
+      <details class="lang-dd"><summary aria-label="Langue: Français"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Français</span></summary><ul><li><a href="/docs/context/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/context/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/context/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/context/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/context/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/context/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/context/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/context/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/context/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/context/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/context/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Explorer l&#x27;open source
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Menu de la documentation
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Rechercher dans la documentation</label>
+        <input type="search" id="q" placeholder="Rechercher…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Aucun résultat" hidden></div>
+      <nav class="side-nav" aria-label="Documentation">
+        <p class="side-group">Prise en main</p><ul class="side-list"><li><a href="/fr/docs/ecosystem/">Écosystème</a></li><li><a href="/fr/docs/integrations/">Intégrations</a></li><li><a href="/fr/docs/introduction/">Introduction</a></li><li><a href="/fr/docs/installation/">Installation</a></li><li><a href="/fr/docs/quickstart/">Démarrage rapide</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/fr/docs/core/">Core</a></li><li><a href="/fr/docs/workflows/">Workflows</a></li><li><a href="/fr/docs/scheduler-and-queue/">Scheduler et file</a></li><li><a href="/fr/docs/pod-per-step/">Un pod par step</a></li><li><a href="/fr/docs/context/" aria-current="page">Contexte entre steps</a></li></ul><p class="side-group">Référence</p><ul class="side-list"><li><a href="/fr/docs/cli/">CLI</a></li><li><a href="/fr/docs/parameters/">Paramètres</a></li><li><a href="/fr/docs/configuration/">Configuration</a></li><li><a href="/fr/docs/runtime/">Runtime d&#x27;un step</a></li></ul><p class="side-group">SDK et bibliothèques</p><ul class="side-list"><li><a href="/fr/docs/sdk/">SDK Go</a></li><li><a href="/fr/docs/libraries/">Bibliothèques clientes</a></li><li><a href="/fr/docs/python/">Python</a></li></ul><p class="side-group">Exploitation</p><ul class="side-list"><li><a href="/fr/docs/console/">Console</a></li><li><a href="/fr/docs/kubernetes/">Kubernetes</a></li><li><a href="/fr/docs/observability/">Observabilité</a></li><li><a href="/fr/docs/white-label/">Marque blanche</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/fr/docs/ingestion/">Ingestion</a></li><li><a href="/fr/docs/ingestion-sinks/">Sinks d&#x27;ingestion</a></li><li><a href="/fr/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modélisation en SQL</p><ul class="side-list"><li><a href="/fr/docs/sql/">SQL</a></li></ul><p class="side-group">Le projet</p><ul class="side-list"><li><a href="/fr/docs/philosophy/">Philosophie</a></li><li><a href="/fr/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Documentation</p>
+      <h1>Contexte entre steps</h1>
+      <p class="doc-desc">Ce qu&#x27;un step dit au suivant — deux variables d&#x27;environnement et un fichier.</p>
+      <p>Un step publie des valeurs ; les steps qui en dépendent les lisent. C'est tout ce que fait cette fonctionnalité.</p>
+<div class="code-block" data-code="steps:
+  - id: extract
+    run: python fetch.py
+
+  - id: transform
+    run: python transform.py
+    depends_on: [extract]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: python fetch.py
+
+  - <span class="t-k">id</span>: transform
+    <span class="t-k">run</span>: python transform.py
+    <span class="t-k">depends_on</span>: [extract]</code></pre></div>
+<div class="code-block" data-code="# extract
+from brevis import context
+context.set(bucket=&quot;s3://landing/2026-09-07&quot;, rows=48213)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-c"># extract</span>
+<span class="t-k">from</span> brevis <span class="t-k">import</span> context
+context.set(bucket="s3://landing/2026-09-07", rows=48213)</code></pre></div>
+<div class="code-block" data-code="# transform
+from brevis import context
+bucket = context.get(&quot;extract.bucket&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-c"># transform</span>
+<span class="t-k">from</span> brevis <span class="t-k">import</span> context
+bucket = context.get("extract.bucket")</code></pre></div>
+<p>La clé est toujours <code>&lt;step id&gt;.&lt;name&gt;</code>. Un step lit ce que <strong>ses propres dépendances</strong> ont publié, et rien d'autre.</p>
+<aside class="admon admon-note"><p class="admon-t">Ce que ce n&#x27;est pas</p><p>Ce n'est ni une file de messages, ni un état entre runs, ni un endroit où mettre des données. C'est la note qu'un step laisse au suivant — un chemin, un watermark, un compteur.</p></aside>
+<h2 id="nimporte-quel-langage-aucune-bibliothèque-requise">N'importe quel langage, aucune bibliothèque requise<a class="anchor" href="#nimporte-quel-langage-aucune-bibliothèque-requise" aria-label="link">#</a></h2>
+<p>Le contrat tient en <strong>deux variables d'environnement et un fichier</strong>, de sorte qu'un step sans aucun SDK peut y participer :</p>
+<div class="code-block" data-code="window=$(jq -r &#x27;.extract.watermark&#x27; &lt;&lt;&lt; &quot;$BREVIS_INPUT&quot;)
+./publish --until &quot;$window&quot;
+jq -n --arg n &quot;$(date -Is)&quot; &#x27;{published_at: $n}&#x27; &gt; &quot;$BREVIS_OUTPUT&quot;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>window=$(jq <span class="t-n">-r</span> '.extract.watermark' &lt;&lt;&lt; "$BREVIS_INPUT")
+./publish <span class="t-n">--until</span> "$window"
+jq <span class="t-n">-n</span> <span class="t-n">--arg</span> n "$(date <span class="t-n">-Is</span>)" '{published_at: $n}' &gt; "$BREVIS_OUTPUT"</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>BREVIS_INPUT</code></td><td><code>{"&lt;step id&gt;": {…}}</code> — ce que les dépendances de ce step ont publié</td></tr><tr><td><code>BREVIS_OUTPUT</code></td><td>un chemin où écrire <strong>un</strong> objet JSON</td></tr></tbody></table></div>
+<p>Sous Kubernetes, ce chemin est <code>/dev/termination-log</code>, que le moteur lit déjà pour obtenir le code de sortie. Il n'y a donc <strong>aucun appel d'API, aucun jeton et aucun port</strong> — et une bibliothèque pour cela se réduit à un parse JSON et une écriture de fichier.</p>
+<div class="table-wrap"><table><thead><tr><th>langage</th><th></th></tr></thead><tbody><tr><td>Python</td><td><a href="/fr/docs/python/"><code>pip install brevis</code></a> — elle apporte aussi <code>brevis.run</code>, avec les <a href="/fr/docs/parameters/">paramètres automatiques</a></td></tr><tr><td>Go</td><td><code>sdk/context</code>, qui fait partie du module du SDK, ne dépend de rien</td></tr><tr><td>tout autre</td><td>les deux variables ci-dessus</td></tr></tbody></table></div>
+<h2 id="isolation">Isolation<a class="anchor" href="#isolation" aria-label="link">#</a></h2>
+<p>Aucun step ne peut écraser ce qu'un autre a publié. Les clés sont préfixées par l'id de celui qui les a écrites, et c'est le moteur — pas le step — qui décide de ce préfixe. Deux steps qui publient <code>bucket</code> produisent <code>extract.bucket</code> et <code>load.bucket</code>, et aucun ne disparaît.</p>
+<h2 id="le-plafond-de-4096-octets">Le plafond de 4096 octets<a class="anchor" href="#le-plafond-de-4096-octets" aria-label="link">#</a></h2>
+<p>Ce qu'un step publie tient dans <strong>4096 octets</strong>. La limite n'est pas arbitraire : sous Kubernetes, le transport est <code>/dev/termination-log</code>, et c'est ce que le kubelet accepte.</p>
+<p>Dépasser est une <strong>erreur du step</strong>, avec un message indiquant combien d'octets ont été écrits. L'alternative serait la troncature — et un JSON tronqué est un JSON invalide, découvert par le step suivant, qui n'a aucun moyen de savoir que la faute n'est pas la sienne.</p>
+<p>Si une valeur ne tient pas, ce n'est pas du contexte : écrivez-la dans un bucket et publiez le chemin.</p>
+<h2 id="nouvelles-tentatives-et-runs-repris">Nouvelles tentatives et runs repris<a class="anchor" href="#nouvelles-tentatives-et-runs-repris" aria-label="link">#</a></h2>
+<p>À une nouvelle tentative, le step publie de nouveau et la valeur précédente est remplacée. Un step qui a déjà réussi ne se relance ni ne republie — ce qu'il a dit reste valable pour ceux qui en dépendent.</p>
+<h2 id="executer-un-step-a-la-main">Exécuter un step à la main<a class="anchor" href="#executer-un-step-a-la-main" aria-label="link">#</a></h2>
+<p>Les deux variables constituent tout le contrat, donc reproduire un run revient à les exporter :</p>
+<div class="code-block" data-code="export BREVIS_INPUT=&#x27;{&quot;extract&quot;:{&quot;bucket&quot;:&quot;s3://landing/2026-09-07&quot;}}&#x27;
+export BREVIS_OUTPUT=/tmp/out.json
+python transform.py
+cat /tmp/out.json"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>export BREVIS_INPUT='{"extract":{"bucket":"s3://landing/2026-09-07"}}'
+export BREVIS_OUTPUT=/tmp/out.json
+python transform.py
+cat /tmp/out.json</code></pre></div>
+<h2 id="etapes-suivantes">Étapes suivantes<a class="anchor" href="#etapes-suivantes" aria-label="link">#</a></h2>
+<ul><li><a href="/fr/docs/parameters/">Paramètres</a> — ce qui change d'un run à l'autre, et les paramètres automatiques</li><li><a href="/fr/docs/runtime/">Runtime d'un step</a> — ce qu'un step déclare sur l'endroit où il s'exécute</li><li><a href="/fr/docs/python/">Python</a> — la bibliothèque cliente, et les autres langages</li></ul>
+
+      <nav class="pagers" aria-label="Pages">
+        <a class="pager pager-prev" href="/fr/docs/pod-per-step/"><span>Précédent</span><strong>Un pod par step</strong></a>
+        <a class="pager pager-next" href="/fr/docs/cli/"><span>Suivant</span><strong>CLI</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/fr/docs/context.md" target="_blank" rel="noopener">Modifier cette page sur GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="Sur cette page">
+      <p class="toc-t">Sur cette page</p>
+      <ul><li class="toc-2"><a href="#nimporte-quel-langage-aucune-bibliothèque-requise">N&#x27;importe quel langage, aucune bibliothèque requise</a></li><li class="toc-2"><a href="#isolation">Isolation</a></li><li class="toc-2"><a href="#le-plafond-de-4096-octets">Le plafond de 4096 octets</a></li><li class="toc-2"><a href="#nouvelles-tentatives-et-runs-repris">Nouvelles tentatives et runs repris</a></li><li class="toc-2"><a href="#executer-un-step-a-la-main">Exécuter un step à la main</a></li><li class="toc-2"><a href="#etapes-suivantes">Étapes suivantes</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/fr/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>La philosophie appliquée à l&#x27;infrastructure de données.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>projet</h2>
+        <ul>
+          <li><a href="/fr/#ecossistema">Écosystème</a></li>
+          <li><a href="/fr/docs/philosophy/">Principes</a></li>
+          <li><a href="/fr/docs/introduction/#code-ouvert-choisissez-comment-participer">Open source</a></li>
+          <li><a href="/fr/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>code</h2>
+        <ul>
+          <li><a href="/fr/docs/">Documentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Dépôt</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Un projet open source de <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · construit en Go · Gopher Go par Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

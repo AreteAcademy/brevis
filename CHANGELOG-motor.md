@@ -28,6 +28,28 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   event-stream packages, `pgx` and OpenTelemetry's SDK are on fixed versions,
   with `google.golang.org/api` and the Google Cloud clients moved to match.
 
+### Changed: the Runs badges, red then blue, and they follow
+
+- **The sidebar's Runs link carries two badges**: workflows failing (red) and
+  runs in flight -- running, queued, retrying -- (blue). Each is gone when its
+  number is zero.
+- **They update without a reload**: every 10 s (a hidden tab asks nothing) the
+  console fetches `GET /nav/runs` and swaps the badges in.
+### Added: eleven languages in the console and on the site
+
+- **The console speaks** English (the default), Spanish, Portuguese (BR),
+  French, German, Simplified Chinese, Japanese, Russian, Korean, Hindi and
+  Indonesian. The sidebar's language menu lists them, each in its own name.
+  Dates and numbers follow the language. Russian has three plural forms and
+  the catalog two: the second reads as a count-first phrase.
+- **The site** (`brevis.sh`) is English at `/` (it was Portuguese);
+  Portuguese moved to `/pt/`, `/en/*` redirects to `/*`, and the other nine
+  languages live at `/es/`, `/fr/`, `/de/`, `/zh/`, `/ja/`, `/ru/`, `/ko/`,
+  `/hi/`, `/id/`. The language button is a dropdown.
+- **The documentation is translated into all eleven languages** (27 pages
+  each, machine-drafted; native review welcome). A language enters the site's
+  docs by having `site/content/<lang>/docs/`.
+
 ### Added: an API's settings are kept when it is published
 
 - **`brevis endpoints publish` keeps the API's own settings** beside its

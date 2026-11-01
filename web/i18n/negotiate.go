@@ -71,20 +71,28 @@ func byLanguage(tag string) string {
 	switch primary {
 	case "pt":
 		return "pt-BR"
-	case "es":
-		return "es"
-	case "en":
-		return "en"
+	case "zh":
+		return "zh-CN"
+	case "in": // Indonesian's legacy tag
+		return "id"
+	case "en", "es", "fr", "de", "ja", "ru", "ko", "hi", "id":
+		return primary
 	}
 	return ""
 }
 
 // Names are each language in itself -- "Português", not "Portuguese" -- so a
 // reader finds their own whatever the page is in.
-var Names = map[string]string{"en": "English", "pt-BR": "Português", "es": "Español"}
+var Names = map[string]string{
+	"en": "English", "es": "Español", "pt-BR": "Português", "fr": "Français", "de": "Deutsch",
+	"zh-CN": "简体中文", "ja": "日本語", "ru": "Русский", "ko": "한국어", "hi": "हिन्दी", "id": "Bahasa Indonesia",
+}
 
 // Codes are the short form the sidebar shows.
-var Codes = map[string]string{"en": "EN", "pt-BR": "PT", "es": "ES"}
+var Codes = map[string]string{
+	"en": "EN", "es": "ES", "pt-BR": "PT", "fr": "FR", "de": "DE",
+	"zh-CN": "ZH", "ja": "JA", "ru": "RU", "ko": "KO", "hi": "HI", "id": "ID",
+}
 
 // Remember writes the reader's choice for a year, and says whether lang is
 // one the console speaks; it writes nothing when it is not.

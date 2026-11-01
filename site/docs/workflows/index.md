@@ -1,177 +1,177 @@
 # Workflows
 
-> O formato YAML completo — passos, dependências, imagens, recursos e agenda.
+> The complete YAML format — steps, dependencies, images, resources and schedule.
 
-*https://brevis.sh/docs/workflows/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/workflows/ · brevis.sh docs (en-US)*
 
 ---
 
-Um workflow é um arquivo YAML. Ele declara **o que executar**, **em que ordem**
-e **com que runtime** — e nada além disso.
+A workflow is a YAML file. It declares **what to run**, **in what order** and
+**with what runtime** — and nothing beyond that.
 
-## Estrutura mínima
+## Minimum structure
 
 ```yaml
 name: hello
 steps:
-  - id: unico
-    run: echo pronto
+  - id: only
+    run: echo done
 ```
 
-`name` é o identificador do workflow no banco e na interface. `steps` é a lista
-de passos, cada um com um `id` único e um `run`.
+`name` identifies the workflow in the database and in the interface. `steps` is
+the list of steps, each with a unique `id` and a `run`.
 
-### `description` — para que ele serve
+### `description` — what it is for
 
-Opcional, texto livre, e nada no motor a lê:
+Optional, free-form, and read by nothing in the engine:
 
 ```yaml
 name: daily-orders
 description: >
-  Puxa os pedidos de ontem do fornecedor e grava no bronze.
-  Roda às 04:00 porque o fornecedor fecha os livros às 03:30.
+  Pulls yesterday's orders from the vendor and lands them in bronze.
+  Runs at 04:00 because the vendor closes its books at 03:30.
 steps:
   - id: extract
     run: python fetch.py
 ```
 
-Ela aparece no topo da tela do workflow, acima das contagens e do agendamento.
-O grafo já diz o que o fluxo **faz**; essa é a única linha que diz por que ele
-existe, que é do que precisa quem o abre pela primeira vez às três da manhã.
+It appears at the top of the workflow's screen, above the counts and the
+schedule. The graph already says what a flow **does**; this is the only place
+that says why it exists, which is what the person opening it for the first time
+at three in the morning actually needs.
 
-Um workflow sem ela não mostra nada ali — e não um bloco vazio, que parece algo
-que falhou ao carregar.
+A workflow without one shows nothing there — not an empty block, which reads as
+something that failed to load.
 
-## Ordem: chain ou dag
+## Order: chain or dag
 
 ```yaml
-type: chain   # a ordem é a do arquivo
-type: dag     # a ordem vem de depends_on
+type: chain   # order is the file's order
+type: dag     # order comes from depends_on
 ```
 
-`chain` é açúcar: o parser converte a sequência em arestas, e **o motor conhece
-apenas DAG**. Use `dag` quando a ordem não for linear:
+`chain` is sugar: the parser turns the sequence into edges, and **the engine
+only knows DAGs**. Use `dag` when the order is not linear:
 
 ```yaml
 type: dag
 
 steps:
-  - id: preparar
-    run: ./preparar.sh
+  - id: prepare
+    run: ./prepare.sh
 
-  # Irmãos: dependem do mesmo passo, então rodam em paralelo.
-  - id: extrair
-    run: ./extrair.sh
-    depends_on: [preparar]
+  # Siblings: they depend on the same step, so they run in parallel.
+  - id: extract
+    run: ./extract.sh
+    depends_on: [prepare]
 
-  - id: validar
-    run: ./validar.sh
-    depends_on: [preparar]
+  - id: validate
+    run: ./validate.sh
+    depends_on: [prepare]
 
-  - id: publicar
-    run: ./publicar.sh
-    depends_on: [extrair, validar]
+  - id: publish
+    run: ./publish.sh
+    depends_on: [extract, validate]
 ```
 
-O runner percorre o grafo **por níveis**: tudo dentro de um nível roda em
-paralelo, e o nível seguinte só começa quando o anterior fecha inteiro.
+The runner walks the graph **by levels**: everything within a level runs in
+parallel, and the next level starts only when the previous one closes entirely.
 
-:::warning Falha para o nível inteiro
-O runner para na **primeira** falha do nível, sem iniciar o próximo. Continuar
-depois de um erro produziria resultado parcial que parece completo.
+:::warning A failure stops the whole level
+The runner stops at the **first** failure in a level, without starting the next
+one. Continuing after an error would produce a partial result that looks
+complete.
 :::
 
-## Agenda
+## Schedule
 
 ```yaml
-schedule: "0 5 * * *"   # cron de cinco campos
+schedule: "0 5 * * *"   # five-field cron
 concurrency: 1
 ```
 
-Sem `schedule`, o workflow é manual: só roda por disparo na interface, por
-`brevis run` ou por `backfill`.
+Without `schedule`, the workflow is manual: it runs only by trigger in the
+interface, by `brevis run`, or by `backfill`.
 
-`concurrency: 1` limita execuções simultâneas do mesmo workflow — é o que
-impede um `*/15` de se sobrepor a si mesmo quando uma execução passa dos quinze
-minutos.
+`concurrency: 1` limits simultaneous runs of the same workflow — it is what
+keeps a `*/15` from overlapping itself when one run goes past fifteen minutes.
 
-Dois workflows **diferentes** que escrevem as mesmas tabelas precisam de um
-**grupo**. Um diário e um `*/15` que constroem os mesmos modelos dbt declaram,
-cada um:
+Two **different** workflows that write the same tables need a **group**. A
+daily and a `*/15` that both build the same dbt models each declare:
 
 ```yaml
 concurrency:
-  group: jaffle_models   # o recurso compartilhado, com o mesmo nome nos dois arquivos
-  limit: 1               # opcional; um grupo sem limite vale 1
+  group: jaffle_models   # the shared resource, named the same in both files
+  limit: 1               # optional; a group without one means 1
 ```
 
-As execuções de todos os workflows do grupo contam contra um limite só, seja
-quem as tenha disparado — o agendamento, um landing, um backfill ou um clique.
-Uma execução que encontra o grupo cheio **espera na fila**: não é pulada e não
-falha. Um terceiro workflow que escreve as mesmas tabelas entra nomeando o grupo.
-Enquanto espera, a página da execução diz isso: qual grupo, o limite e quais
-execuções ocupam as vagas.
+Runs of every workflow in the group count against one limit, whatever started
+them — the schedule, a landing, a backfill or a click. A run that finds the
+group full **waits in the queue**; it is not skipped and does not fail. A third
+workflow that writes the same tables joins by naming the group. While it
+waits, the run's page says so: which group, its limit, and which runs hold the
+slots.
 
-- Todo membro declara o **mesmo limite**. `validate` e `publish` recusam um
-  grupo declarado com 1 num arquivo e 3 em outro, inclusive contra membros já
-  publicados.
-- Um grupo serializa **execuções do Brevis**. Um `dbt run` que alguém dispara na
-  própria máquina não está nessa fila, e falha do mesmo jeito.
+- Every member declares the **same limit**. `validate` and `publish` refuse a
+  group declared with 1 in one file and 3 in another, including against members
+  that are already published.
+- A group serializes **Brevis runs**. A `dbt run` somebody starts on their own
+  machine is not in this queue, and fails the same way.
 
-## Imagem e recursos
+## Image and resources
 
 ```yaml
-image: us-central1-docker.pkg.dev/exemplo/apps/dbt:1.10.3
+image: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
 resources:
   cpu: 200m
   memory: 1Gi
   limits: {memory: 2Gi}
 ```
 
-Declarados no topo, valem como **padrão de todos os passos**. Cada passo pode
-sobrescrever os seus:
+Declared at the top, they are the **default for every step**. Each step can
+override its own:
 
 ```yaml
 steps:
   - id: bronze
-    run: dbt build --select bronze+          # herda a imagem do topo
+    run: dbt build --select bronze+          # inherits the top-level image
 
-  - id: notificar
-    image: ghcr.io/exemplo/notify:0.3        # outro runtime
-    shell: false                             # distroless não tem shell
-    run: /notify --canal dados
+  - id: notify
+    image: ghcr.io/example/notify:0.3        # another runtime
+    shell: false                             # distroless has no shell
+    run: /notify --channel data
     resources: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
     depends_on: [bronze]
 ```
 
-É isto que faz um fetcher em Go custar 12 MB e 32Mi ao lado de um `dbt build` de
-1,9 GB, em vez de os dois pagarem o tamanho do maior. Ver
-[Pod por passo](/docs/pod-per-step/index.md).
+This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
+`dbt build`, instead of both paying the size of the larger one. See
+[Pod per step](/docs/pod-per-step/index.md).
 
-## Campos do passo
+## Step fields
 
-| campo | | |
+| field | | |
 |---|---|---|
-| `id` | **obrigatório** | único no workflow; é o nome que aparece no grafo e nos logs |
-| `run` | | o comando |
-| `image` | | a imagem do passo; sem ela, herda a do topo |
-| `host` | | envia o comando para uma máquina que o motor **não** gerencia — alternativa a `image`, nunca companheira. Veja [`host:` no guia de Kubernetes](https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host) |
-| `shell` | `true` | `false` executa sem shell — necessário em distroless |
-| `depends_on` | | lista de `id` que precisam terminar antes; uma entrada pode ser `{step, label}` |
-| `marker` | `false` | um passo sem comando, para um `start` ou um `end` |
-| `resources` | | `cpu`, `memory` e `limits` daquele passo |
-| `runtime`, `tools` | | a linguagem e as ferramentas do passo — ver [Runtime do passo](/docs/runtime/index.md) |
-| `when` | `all_success` | sob que estado das dependências este passo roda — veja abaixo |
-| `unless_empty` | | uma chave do contexto que decide se há o que fazer — veja abaixo |
-| `for_each` | | uma chave do contexto com uma lista; o passo roda uma vez por elemento — veja abaixo |
-| `group` | | desenha este passo dentro de uma caixa nomeada que colapsa — veja abaixo |
-| `uses` | | outro workflow cujos passos tomam o lugar deste — veja abaixo |
-| `on_error` | | anuncia as falhas deste passo — veja abaixo |
+| `id` | **required** | unique in the workflow; the name shown in the graph and logs |
+| `run` | | the command |
+| `image` | | the step's image; without it, inherits the top-level one |
+| `host` | | send the command to a machine the engine does **not** manage — an alternative to `image`, never a companion. See [`host:` in the Kubernetes guide](https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host) |
+| `shell` | `true` | `false` runs without a shell — required on distroless |
+| `depends_on` | | list of `id`s that must finish first; an entry may be `{step, label}` |
+| `marker` | `false` | a step with no command, for a `start` or an `end` |
+| `resources` | | `cpu`, `memory` and `limits` for that step |
+| `runtime`, `tools` | | the step's language and tools — see [Step runtime](/docs/runtime/index.md) |
+| `when` | `all_success` | under what state of its dependencies this step runs — see below |
+| `unless_empty` | | a context key that decides whether there is anything to do — see below |
+| `for_each` | | a context key holding a list; the step runs once per element — see below |
+| `group` | | draws this step inside a named, collapsible box — see below |
+| `uses` | | another workflow whose steps take this one's place — see below |
+| `on_error` | | announces this step's failures — see below |
 
-## Rodando um passo só quando há o que fazer
+## Running a step only when there is something to do
 
 ```python
-# no extract
+# in extract
 context.set(has_rows=len(rows) > 0)
 ```
 
@@ -182,52 +182,50 @@ context.set(has_rows=len(rows) > 0)
     unless_empty: extract.has_rows
 ```
 
-O `unless_empty` nomeia uma **chave**, não uma expressão. O passo decide e
-publica a resposta; o motor lê uma chave e pergunta se ela está vazia.
+`unless_empty` names a **key**, not an expression. The step decides and
+publishes the answer; the engine reads one key and asks whether it is empty.
 
-| conta como vazio | conta como presente |
+| counts as empty | counts as present |
 |---|---|
-| `false`, `0`, `""`, `null`, `[]`, `{}` | todo o resto |
+| `false`, `0`, `""`, `null`, `[]`, `{}` | everything else |
 
-`"false"` como **string** está presente. Um passo que publicou esses cinco
-caracteres publicou alguma coisa, e adivinhar que ele queria dizer um booleano é
-como uma regra começa a ter opiniões que o autor dela não enxerga. Publique um
-booleano de verdade.
+`"false"` as a **string** is present. A step that published those five
+characters published something, and guessing that it meant a boolean is how a
+rule starts having opinions its author cannot see. Publish a real boolean.
 
-### Por que não uma expressão
+### Why not an expression
 
-O caminho tentador é `when: "{{ context.extract.rows > 0 }}"`. Uma mini
-linguagem de expressão é um compromisso grande: precisa de parser, de um sistema
-de tipos para dizer o que `>` significa sobre um JSON `any`, de uma história de
-segurança porque a expressão vem de um YAML que outra pessoa escreveu, e de
-mensagens de erro que apontam para dentro de uma string. Todo orquestrador que
-tem uma tem um bug tracker cheio disso.
+The tempting design is `when: "{{ context.extract.rows > 0 }}"`. A mini
+expression language is a large commitment: a parser, a type system to say what
+`>` means across a JSON `any`, a security story because the expression comes out
+of a YAML somebody else wrote, and error messages that point into a string.
+Every orchestrator that has one has a bug tracker full of it.
 
-Aqui a decisão fica na linguagem que o autor já escreve, onde o framework de
-teste dele alcança.
+Here the decision lives in the language its author already writes, where their
+own test framework can reach it.
 
-### Uma chave que não existe é falha, não valor vazio
+### A missing key is a failure, not an empty value
 
-Se a chave não está lá, o passo **falha**, e a mensagem a nomeia junto do que o
-publicador de fato escreveu:
+If the key is not there, the step **fails** and the message names it alongside
+what the publisher actually did write:
 
 ```
 step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"
 ```
 
-A alternativa — ler chave ausente como "vazio, então pula" — transforma um erro
-de digitação num passo que para de rodar em silêncio e para sempre, sem nada em
-lugar nenhum dizendo por quê. É o pior resultado que essa feature pode ter.
+The alternative — reading a missing key as "empty, so skip" — turns a typo into
+a step that stops running silently and forever, with nothing anywhere saying
+why. That is the worst outcome this feature can have.
 
-A chave é sempre qualificada pelo passo que a publica, e esse passo precisa ser
-um de que este depende. Os dois são recusados no **publish**: um passo travado
-numa chave que ele nunca vai ver ficaria pulado para sempre, e descobrir isso
-quando um noturno para de rodar é tarde demais.
+The key is always qualified by the step that publishes it, and that step has to
+be one this one depends on. Both are refused at **publish**: a step gated on a
+key it can never see would be skipped forever, and finding that out when a
+nightly stops running is too late.
 
-## Rodando um passo uma vez por elemento
+## Running a step once per element
 
 ```python
-# no extract
+# in extract
 context.set(partitions=["2026-01", "2026-02", "2026-03"])
 ```
 
@@ -238,63 +236,64 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])
     for_each: extract.partitions
 ```
 
-O passo roda uma vez por elemento, cada um com linha, retry e código de saída
-próprios. O grafo mostra **um nó com `[3]`**, não três nós.
+The step runs once per element, each with a row, a retry and an exit code of its
+own. The graph shows **one node with `[3]` on it**, not three nodes.
 
-| variável | |
+| variable | |
 |---|---|
 | `BREVIS_MAP_INDEX` | `0`, `1`, `2` … |
-| `BREVIS_MAP_VALUE` | o elemento |
+| `BREVIS_MAP_VALUE` | the element |
 
-Uma string JSON chega **sem as aspas**, então `for_each` sobre `["2026-01"]`
-entrega ao shell `2026-01` e não `"2026-01"`. Qualquer outra coisa — número,
-objeto, lista — chega como o JSON dela.
+A JSON string arrives **without its quotes**, so `for_each` over `["2026-01"]`
+hands a shell `2026-01` and not `"2026-01"`. Anything else — a number, an
+object, a list — arrives as its JSON.
 
-Nenhuma das duas existe num passo não mapeado. Uma variável que está sempre lá e
-sempre vazia ensina quem lê o ambiente a ignorá-la.
+Neither variable exists on an unmapped step. One that is always there and always
+empty teaches whoever reads the environment to ignore it.
 
-### A forma do DAG não muda
+### The shape of the DAG does not change
 
-Um passo mapeado continua sendo um nó com um conjunto de arestas. Só varia
-quantas linhas existem embaixo dele, então o layout é o que sempre foi e o `[3]`
-é contado dessas linhas na leitura — nada é armazenado, então nada precisa ficar
-sincronizado e uma contagem errada não sobrevive ao conserto da consulta.
+A mapped step is still one node with one set of edges. Only the number of rows
+under it varies, so the layout is what it always was and the `[3]` is counted
+from those rows at read time — nothing is stored, so nothing has to be kept in
+sync and a wrong count cannot outlive a fixed query.
 
-Enquanto instâncias ainda rodam, o card mostra `[2/3]`.
+While instances are still going the card reads `[2/3]`.
 
-### Uma instância que falha derruba o passo
+### One failed instance fails the step
 
-Três partições carregando e uma não é um passo que não fez o trabalho dele, e os
-passos abaixo enxergam isso. Um nó que fica verde porque a maior parte deu certo
-é um selo que mente.
+Three partitions loading and one not is a step that did not do its job, and the
+steps below it see that. A node that goes green because most of it worked is a
+badge that lies.
 
-**Um retry refaz só as instâncias que falharam.** Dezoito partições que deram
-certo não são recarregadas porque duas quebraram.
+**A retry redoes only the instances that failed.** Eighteen partitions that
+worked are not reloaded because two broke.
 
-### Lista vazia é `skipped`, não sucesso
+### An empty list is `skipped`, not success
 
-Um passo que não fez nada porque não havia o que fazer não teve sucesso em
-fazê-lo. Um nó verde sobre zero instâncias é exatamente o tipo de coisa em que
-alguém constrói um dashboard.
+A step that did nothing because there was nothing to do did not succeed at doing
+it. A green node over zero instances is exactly the kind of thing somebody
+builds a dashboard on.
 
-Um valor que **não é lista** falha, e uma chave que não existe também — a mesma
-política do `unless_empty:`, e pelo mesmo motivo: um erro de digitação que
-silenciosamente produzisse zero instâncias desligaria o passo para sempre.
+A value that is **not a list** fails, and so does a key that is not there — the
+same policy `unless_empty:` has, and for the same reason: a typo that silently
+produced zero instances would disable the step forever.
 
-### O fan-out é limitado, e o limite é herdado
+### The fan-out is bounded, and the bound is inherited
 
-A lista viaja no contexto, e o contexto tem um teto de 4096 bytes que vem do
-kubelet. Um workflow não consegue pedir dez mil pods sem antes achar um jeito de
-dizer isso em quatro kilobytes. É um limite que vale manter, não contornar.
+The list travels in the context, and the context has a 4096-byte ceiling that
+comes from the kubelet. A workflow cannot ask for ten thousand pods without
+first finding a way to say so in four kilobytes. That is a limit worth keeping
+rather than working around.
 
-### O que um passo mapeado publica
+### What a mapped step publishes
 
-A saída dele é gravada na linha de cada instância e **não** fica visível para os
-passos abaixo. Quatro instâncias publicando sob o nome de um passo são quatro
-valores para uma chave, e não existe resposta para `context.String("load.bucket")`
-que não seja um chute. O passo diz isso no log dele, em vez de descartar calado.
+Its output is recorded on each instance's row and is **not** visible to the
+steps below. Four instances publishing under one step's name is four values for
+one key, and there is no answer to `context.String("load.bucket")` that is not a
+guess. The step says so in its log rather than dropping it quietly.
 
-## Agrupando passos no grafo
+## Grouping steps on the graph
 
 ```yaml
 steps:
@@ -307,22 +306,22 @@ steps:
     run: ./load.sh
 ```
 
-Os passos são desenhados dentro de uma caixa nomeada que colapsa — o TaskGroup
-do Airflow, para quando um DAG cresce a ponto de deixar de ser legível.
+The steps are drawn inside a named box that collapses — Airflow's TaskGroup,
+for the case where a DAG gets big enough to stop being readable.
 
-**Só visual.** Os TaskGroups do Airflow também *prefixam* os ids dentro deles,
-então `extract` vira `sales.extract`. Aqui não: prefixar mudaria todo
-`depends_on`, toda chave de contexto e toda linha registrada de um workflow que
-já existe, por uma feature cujo valor inteiro é um grafo grande ficar mais
-legível. Namespacing pode vir depois — é uma adição estrita a isto.
+**Visual only.** Airflow's TaskGroups also *prefix* the ids inside them, so
+`extract` becomes `sales.extract`. This does not: prefixing would change every
+`depends_on`, every context key and every recorded row in an existing workflow,
+for a feature whose whole value is that a big graph reads better. Namespacing
+can be added later — it is a strict addition to this.
 
-Um grupo é um **rótulo**, não um contêiner. Os passos mantêm os ids globais, um
-grupo pode atravessar níveis, e nada da execução muda.
+A group is a **label**, not a container. Steps keep their global ids, a group
+may span levels, and nothing about execution changes.
 
-Clicar no nome do grupo o colapsa: os passos somem e as setas que cruzavam a
-fronteira passam a apontar para a caixa.
+Clicking the group's name collapses it: its steps disappear and the arrows that
+crossed the boundary point at the box instead.
 
-## Reaproveitando outro workflow
+## Reusing another workflow
 
 ```yaml
 # nightly.yaml
@@ -331,7 +330,7 @@ steps:
     run: ./prepare.sh
 
   - id: mlops
-    uses: ml_training       # outro workflow no mesmo publish
+    uses: ml_training       # another workflow in the same publish
     depends_on: [prepare]
 
   - id: report
@@ -339,47 +338,46 @@ steps:
     depends_on: [mlops]
 ```
 
-No **publish**, os passos do `ml_training` tomam o lugar desse passo, prefixados
-com o id dele, e o nó `uses` desaparece:
+At **publish**, `ml_training`'s steps take that step's place, prefixed with its
+id, and the `uses` node disappears:
 
 ```
 prepare → mlops.train → mlops.evaluate → report
 ```
 
-Eles chegam como um grupo que colapsa, então o grafo mostra o que o arquivo
-disse.
+They arrive as one collapsible group, so the graph shows what the file said.
 
-**Expandido no publish, não executado em runtime.** Um passo que dispara um
-*run* filho e espera é o desenho que travou o Airflow, e este motor tem o mesmo
-ingrediente: o teto de pods é um semáforo por processo, então um pai segurando
-uma vaga enquanto espera um filho que precisa de vagas do mesmo pool trava — e
-só sob carga, ou seja, em produção. Um run, um grafo, um pool.
+**Expanded at publish, not run at run time.** A step that triggered a child
+*run* and waited is the design that deadlocked Airflow, and this engine has the
+same ingredient: the pod ceiling is a per-process semaphore, so a parent holding
+a slot while waiting for a child that needs slots from the same pool hangs — and
+only under load, which is to say in production. One run, one graph, one pool.
 
-O que se abre mão é um run filho com id e histórico próprios.
+What it gives up is a child run with its own id and its own history.
 
-### As regras
+### The rules
 
 | | |
 |---|---|
-| o filho precisa estar no **mesmo publish** | não basta já estar publicado |
-| setas | que entram no passo viram setas para cada **raiz** do filho; as que saem, de cada **folha** |
-| `image`, `env`, `secrets`, `resources` do filho | materializados em cada passo, então ele roda no que o arquivo dele disse |
-| chaves de `unless_empty` / `for_each` do filho | acompanham o prefixo |
-| aninhamento | achatado, em profundidade |
-| um ciclo | recusado no publish, nomeando a cadeia |
+| the child must be in the **same publish** | not merely already published |
+| arrows | into the step become arrows into each of the child's **roots**; out of it, out of each of its **leaves** |
+| the child's `image`, `env`, `secrets`, `resources` | materialised onto each step, so it runs in what its own file said |
+| the child's `unless_empty` / `for_each` keys | move with the prefix |
+| nesting | flattened, depth first |
+| a circle | refused at publish, naming the chain |
 
-**"Mesmo publish", e não "já publicado", é a regra que importa.** Uma expansão
-que lesse o banco faria o `brevis validate` — que não toca banco, de propósito —
-responder outra pergunta que o `brevis publish`, e o arquivo que passou na CI
-seria o que quebrou no deploy.
+**Same publish, and not "already published", is the important one.** Expansion
+that read the database would make `brevis validate` — which touches no database,
+on purpose — answer a different question from `brevis publish`, and the file
+that passed CI would be the file that failed the deploy.
 
-O filho continua publicável sozinho: a expansão **copia**, não consome. Um passo
-não pode ter `uses:` e também declarar `run:`, `action:` ou `marker:` — isso é um
-arquivo dizendo duas coisas.
+The child is still publishable on its own: expansion **copies**, it does not
+consume. A step cannot both `uses:` and declare `run:`, `action:` or `marker:` —
+that is a file saying two things.
 
-## Dizendo o que uma seta significa
+## Saying what an arrow means
 
-Uma dependência pode carregar um rótulo, mostrado na seta do grafo.
+A dependency can carry a label, shown on the arrow in the graph.
 
 ```yaml
 steps:
@@ -389,24 +387,23 @@ steps:
   - id: load_full
     run: ./full.sh
     depends_on:
-      - {step: determine_load_type, label: dados adicionais}
+      - {step: determine_load_type, label: additional data}
 
   - id: load_delta
     run: ./delta.sh
     depends_on:
       - step: determine_load_type
-        label: dados que mudaram
+        label: changed existing data
 ```
 
-A forma simples — `depends_on: [extract]` — continua funcionando e continua
-sendo a normal. A maioria das dependências não tem nada a dizer, e um rótulo em
-toda seta é ruído.
+The bare form — `depends_on: [extract]` — keeps working and stays the normal
+one. Most dependencies have nothing to say, and a label on every arrow is noise.
 
-Os rótulos ganham o lugar deles numa **bifurcação**: duas setas saindo do mesmo
-passo sem nada escrito é um diagrama que exige abrir o código para ler, que é
-exatamente o que um grafo existe para evitar.
+The labels earn their place on a **branch**: two arrows leaving the same step
+with nothing written on them is a diagram that requires opening the source to
+read, which is the one thing a graph exists to avoid.
 
-## Um passo que não faz nada
+## A step that does nothing
 
 ```yaml
 steps:
@@ -418,22 +415,22 @@ steps:
     depends_on: [load_full, load_delta, report]
 ```
 
-`marker: true` é um passo sem comando. Ele não roda nada, dá certo na hora, e
-aparece no grafo.
+`marker: true` is a step with no command. It runs nothing, succeeds instantly,
+and appears on the graph.
 
-Não é enfeite. Um `end` que depende de todos os ramos transforma *terminou tudo?*
-num nó só, em vez de seis setas para seguir — e ele se comporta como qualquer
-outro passo, então um `end` embaixo de um ramo que falhou fica **skipped**, não
-verde.
+It is not decoration. An `end` that depends on every branch turns *did the whole
+thing finish?* into one node instead of six arrows to follow — and it behaves
+like any other step, so an `end` under a failed branch is **skipped**, not
+green.
 
-**Um passo sem `run:` e sem `marker: true` continua recusado.** Os dois casos não
-podem virar um: um comando vazio é quase sempre um engano, e o `marker: true` é
-como alguém diz que fez de propósito. Um marker que também declara `run:` também
-é recusado — isso é um arquivo dizendo duas coisas.
+**A step with no `run:` and no `marker: true` is still refused.** The two cases
+must not collapse into one: an empty command is almost always a mistake, and
+`marker: true` is how somebody says they meant it. A marker that also declares
+`run:` is refused too — that is a file saying two things.
 
-## Rodando um passo só quando algo falhou
+## Running a step only when something failed
 
-Por padrão um passo roda quando tudo antes dele deu certo. O `when:` muda isso.
+By default a step runs when everything before it worked. `when:` changes that.
 
 ```yaml
 steps:
@@ -443,96 +440,95 @@ steps:
   - id: notify_failure
     run: ./notify.sh
     depends_on: [extract]
-    when: any_failed          # roda exatamente quando o extract não conseguiu
+    when: any_failed          # runs precisely when extract did not make it
 
   - id: cleanup
     run: ./cleanup.sh
     depends_on: [extract, transform]
-    when: all_done            # roda de qualquer jeito
+    when: all_done            # runs either way
 ```
 
-| regra | |
+| rule | |
 |---|---|
-| `all_success` | o padrão. Tudo de que este passo depende deu certo — as dependências **dele**, como no Airflow |
-| `any_failed` | pelo menos um passo de que este depende falhou |
-| `all_done` | tudo de que este passo depende terminou, como quer que tenha terminado |
+| `all_success` | the default. Everything this step depends on succeeded — its **own** dependencies, as in Airflow |
+| `any_failed` | at least one step this one depends on failed |
+| `all_done` | everything this step depends on has finished, however it ended |
 
-Uma regra desconhecida é recusada no publish, dizendo o que é válido. E tem que
-ser: um `when: on_failure` lido como "o padrão" rodaria no **sucesso** — o
-oposto do que ele diz, descoberto na noite em que importava.
+An unknown rule is refused at publish, naming what is valid. It has to be: a
+`when: on_failure` read as "the default" would run on **success** — the opposite
+of what it says, found on the night it mattered.
 
-### Um passo que não roda fica `skipped`
+### A step that does not run is `skipped`
 
-É um estado próprio, desenhado na própria cor, e carrega o motivo: *`extract`
-was failed*. Antes disso, um passo abaixo de uma falha não deixava registro
-nenhum e a tela o mostrava pendente para sempre.
+It is a state of its own, drawn in its own colour, and it carries the reason:
+*`extract` was failed*. Before this, a step below a failure had no record at all
+and the screen showed it pending forever.
 
-`skipped` não é falha e não é sucesso. Um passo cujo anterior quebrou não
-falhou — nunca teve a chance — e dizer que ele deu certo é uma mentira que
-chega ao status da própria run.
+`skipped` is not a failure and not a success. A step whose upstream broke did not
+fail — it was never given the chance — and calling it success is a lie that
+reaches the run's own status.
 
-Uma regra de gatilho decide quais passos **rodam**. Ela não decide o resultado
-da run: um `notify_failure` que entregou a mensagem não quer dizer que o
-pipeline funcionou, e a run continua falha.
+A trigger rule decides which steps **run**. It does not decide the run's
+outcome: a `notify_failure` that delivered its message does not mean the pipeline
+worked, and the run is still failed.
 
-### `all_success` é local, como no Airflow
+### `all_success` is local, as in Airflow
 
-A regra pergunta sobre as dependências **do próprio passo** e nada mais. Uma
-falha num ramo sem relação não para este:
-
-```
-extract_orders ──✕                 (falhou)
-extract_users  ──✓── transform_users ──✓     continua
-```
-
-Um ramo **abaixo** da falha continua parando — `all_success` ser local não quer
-dizer que ele sumiu.
-
-Este motor abortava o grafo inteiro na primeira falha. Isso tinha um motivo:
-seguir depois de um erro produziu um resultado parcial que parecia completo, e
-um pipeline rodou 28 dias atrasado sem ninguém ver.
-
-**O que substitui essa proteção**, e não é nada:
-
-- a run continua **falhando**, com o mesmo erro;
-- o grafo mostra o passo que falhou em vermelho e cada passo pulado na cor
-  dele, dizendo qual passo o parou;
-- o alerta continua saindo quando a run desiste.
-
-Um resultado parcial não parece mais completo, porque a run diz que não está.
-
-**O que se abre mão**, dito na lata: um ramo sem relação agora escreve os dados
-dele numa run que falhou em outro lugar.
-
-### Um retry roda de novo só o que falhou
-
-O retry de uma run não refaz o grafo inteiro. Um passo que já deu certo numa
-tentativa anterior da **mesma run** mantém o resultado e não roda de novo — como
-se comporta uma DAG run limpa no Airflow.
+The rule asks about a step's **own** dependencies and nothing else. A failure in
+an unrelated branch does not stop this one:
 
 ```
-tentativa 1   extract ✓    load ✕    report (pulado)
-tentativa 2   extract –    load ✓    report ✓          o extract não roda de novo
+extract_orders ──✕                 (failed)
+extract_users  ──✓── transform_users ──✓     keeps going
 ```
 
-Ele mantém a linha original: a duração, o log e o que ele publicou são os da
-primeira tentativa, porque foi quando o trabalho aconteceu. **O passo abaixo
-dele continua lendo o que ele publicou** — o contexto da run é guardado, não
-reconstruído.
+A branch **below** the failure still stops — `all_success` being local does not
+mean it is absent.
 
-A distinção que importa: isso é sobre as tentativas anteriores **desta run**. Um
-passo que deu certo na run de *ontem* roda normalmente hoje. (Essa outra
-pergunta também existe, e é o que diz ao SDK se é a primeira vez de um passo —
-veja `BREVIS_RUN_FIRST`.)
+This engine used to abort the whole graph at the first failure. That had a
+reason: carrying on after an error produced a partial result that looked
+complete, and a pipeline ran 28 days late without anyone noticing.
 
-Um passo que ficou **skipped** não está resolvido: ele nunca rodou, e o retry
-decide sobre ele de novo com os resultados da nova tentativa.
+**What replaces that protection**, and it is not nothing:
 
-## Anunciando a falha de um passo
+- the run still **fails**, with the same error;
+- the graph shows the failed step in red and every skipped one in its own
+  colour, each saying which step stopped it;
+- the alert still goes out when the run gives up.
 
-Toda falha já é anunciada: com o webhook configurado, uma run que desiste manda
-uma mensagem, sem bloco repetido em arquivo nenhum. O `on_error` é para o passo
-que precisa do próprio.
+A partial result no longer looks complete, because the run says it is not.
+
+**What is given up**, stated plainly: an unrelated branch now writes its data on
+a run that failed elsewhere.
+
+### A retry re-runs only what failed
+
+A run's retry does not redo the whole graph. A step that already succeeded on an
+earlier attempt of the **same run** keeps its result and is not run again — the
+way a cleared DAG run behaves in Airflow.
+
+```
+attempt 1   extract ✓    load ✕    report (skipped)
+attempt 2   extract –    load ✓    report ✓            extract is not re-run
+```
+
+It keeps its original row: its duration, its log and what it published are the
+first attempt's, because that is when the work happened. **The step below it
+still reads what it published** — the run's context is stored, not rebuilt.
+
+The distinction that matters: this is about **this run's** earlier attempts.
+A step that succeeded in *yesterday's* run runs normally today. (That other
+question exists too, and it is what tells the SDK whether it is a step's first
+time — see `BREVIS_RUN_FIRST`.)
+
+A step that was **skipped** is not settled: it never ran, and the retry decides
+about it again with the new attempt's outcomes.
+
+## Announcing a step's failures
+
+Every failure is already announced: with a webhook configured, a run that gives
+up sends one message, with no block repeated in any file. `on_error` is for the
+step that needs its own.
 
 ```yaml
 steps:
@@ -542,43 +538,43 @@ steps:
       type: SLACK
 ```
 
-| campo | | |
+| field | | |
 |---|---|---|
-| `type` | **obrigatório** | `SLACK`. Um valor desconhecido é recusado no publish, dizendo o que é válido |
-| `when` | `give_up` | `attempt` anuncia toda tentativa que falha, não só a última |
+| `type` | **required** | `SLACK`. An unknown value is refused at publish, naming what is valid |
+| `when` | `give_up` | `attempt` announces every failed attempt, not only the last |
 
-Chegam duas mensagens em vez de uma, e é esse o ponto: o alerta da run diz
-*`id_verification` falhou*, que é o que quem cuida do pipeline precisa; o do
-passo diz *`fetch_observations` falhou*, que é o que quem cuida daquela
-integração precisa.
+Two messages arrive rather than one, and that is the point: the run-level alert
+says *`id_verification` failed*, which is what whoever owns the pipeline needs;
+the step-level one says *`fetch_observations` failed*, which is what whoever
+owns that integration needs.
 
-**Não existe campo `webhook` nem `url`, e não vai existir.** O destino é uma
-credencial — quem tem a URL posta no canal como se fosse a plataforma — e um
-arquivo de workflow é escrito por alguém que não necessariamente pode escolher
-para onde vão os alertas da empresa. O arquivo diz **se** e **como**; a
-instalação diz **onde**, pelo `BREVIS_SLACK_WEBHOOK`.
+**There is no `webhook` or `url` field, and there will not be.** The destination
+is a credential — whoever holds it posts in the channel as if they were the
+platform — and a workflow file is written by somebody who is not necessarily
+allowed to choose where the company's alerts go. The file says **whether** and
+**how**; the installation says **where**, through `BREVIS_SLACK_WEBHOOK`.
 
-**`when: give_up` é o padrão por causa de quem está de plantão.** Um passo que
-falha duas vezes e passa na terceira mandaria duas mensagens no outro padrão, e
-a segunda chegaria depois que o problema já tinha ido embora.
+**`when: give_up` is the default because of whose night it is.** A step that
+fails twice and passes on the third try would send two messages under the other
+default, and the second would arrive after the problem was gone.
 
-**Um passo que não falhou nunca é anunciado.** Num workflow onde um ramo quebra,
-quem cuida do outro ramo não é acordado.
+**A step that did not fail is never announced.** In a workflow where one branch
+breaks, whoever owns the other branch is not woken up.
 
-A entrega é trabalho do `brevis alert` — o alerta é gravado na mesma transação
-da falha, então uma queda do Slack o atrasa em vez de perdê-lo.
+Delivery is `brevis alert`'s job — the alert is recorded in the same transaction
+as the failure, so a Slack outage delays it instead of losing it.
 
 ## Tags
 
 ```yaml
-tags: [analytics, dbt, diario]
+tags: [analytics, dbt, daily]
 ```
 
-Servem para filtrar na interface. Não afetam a execução.
+They filter in the interface. They do not affect execution.
 
-## Validação
+## Validation
 
-A validação não precisa de banco, então roda na CI junto com os testes:
+Validation needs no database, so it runs in CI alongside the tests:
 
 ```bash
 brevis validate workflows/
@@ -589,23 +585,24 @@ brevis validate workflows/
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *
 ```
 
-Aceita arquivo ou diretório. Num diretório, casa `*.y*ml` e ordena — dois runs
-produzem o mesmo log, e a diferença entre dois deploys não vira ruído.
+It takes a file or a directory. In a directory it matches `*.y*ml` and sorts —
+two runs produce the same log, and the difference between two deploys does not
+become noise.
 
-## Publicando
+## Publishing
 
 ```bash
 brevis publish workflows/
 brevis publish workflows/ --project acme --prune
 ```
 
-`--prune` remove do projeto os workflows ausentes da lista publicada,
-preservando o histórico. **Não é o padrão**, e a razão é prática: `publish
-um-arquivo.yaml` não pode apagar os outros quarenta e oito só porque não foram
-citados na linha de comando.
+`--prune` removes from the project the workflows absent from the published list,
+preserving their history. It is **not** the default, for a practical reason:
+`publish one-file.yaml` must not delete the other forty-eight just because they
+were not named on the command line.
 
-## Próximos passos
+## Next steps
 
-- [Parâmetros](/docs/parameters/index.md) — o que muda entre dois disparos
-- [Scheduler e fila](/docs/scheduler-and-queue/index.md) — como o workflow vira execução
-- [Contexto entre passos](/docs/context/index.md) — o que um passo diz ao seguinte
+- [Parameters](/docs/parameters/index.md) — what changes between two runs
+- [Scheduler and queue](/docs/scheduler-and-queue/index.md) — how a workflow becomes execution
+- [Context between steps](/docs/context/index.md) — what one step tells the next

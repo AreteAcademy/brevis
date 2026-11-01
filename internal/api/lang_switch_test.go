@@ -50,7 +50,7 @@ func TestTheWayBackNeverLeavesTheConsole(t *testing.T) {
 
 // A LANGUAGE THE CONSOLE DOES NOT SPEAK IS REFUSED, and nothing is written.
 func TestAnUnknownLanguageIsRefused(t *testing.T) {
-	res := switchLang(t, "fr", "/runs")
+	res := switchLang(t, "it", "/runs")
 	if res.StatusCode != http.StatusBadRequest {
 		t.Errorf("status %d", res.StatusCode)
 	}
