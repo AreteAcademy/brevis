@@ -16,6 +16,16 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Added: an API's settings are kept when it is published
+
+- **`brevis endpoints publish` keeps the API's own settings** beside its
+  endpoints -- the connection, the dialect and the cache: its type, its
+  `ttl`, its `max_entry` and the NAME of the variable its address is read
+  from -- in the same transaction, replaced by the next publish and removed
+  by `unpublish`. Never a credential: the manifest names variables. New
+  table `api_manifests` (migration 00031). An API published before this
+  has no settings on record until it is published again.
+
 ### Changed: Real time, one row per stream
 
 - **`/ingest/streams` is one row per stream**, by gateway and path, instead
