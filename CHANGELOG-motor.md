@@ -36,7 +36,7 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   turns the check off; a development build never checks.
 - **The dark theme follows GitHub's dark palette**; the light theme and the
   lime accent are unchanged. Dialogs blur what is behind them.
-- **Runs' Live switch is green and its dot pulses** while it is on.
+- **Runs' Live switch is green** while it is on, and its dot has a halo that spreads and fades behind it.
 - **Every page has the same header height**: the title sits on the same line
   whatever the page has beside it (actions, an eyebrow, an intro line), and the
   content begins the same distance below.
