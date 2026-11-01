@@ -674,6 +674,8 @@
   "runs.state": "状态",
   "runs.title": "运行",
   "shell.account": "账户",
+  "shell.collapse": "收起菜单",
+  "shell.expand": "展开菜单",
   "shell.breadcrumb": "面包屑导航",
   "shell.docs": "文档",
   "shell.nav_close": "关闭导航",

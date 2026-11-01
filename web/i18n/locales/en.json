@@ -575,6 +575,8 @@
   "runs.state": "State",
   "runs.title": "Runs",
   "shell.account": "Account",
+  "shell.collapse": "Collapse menu",
+  "shell.expand": "Expand menu",
   "shell.breadcrumb": "Breadcrumb",
   "shell.docs": "Documentation",
   "shell.nav_close": "Close navigation",

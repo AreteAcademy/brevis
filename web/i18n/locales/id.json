@@ -674,6 +674,8 @@
   "runs.state": "Status",
   "runs.title": "Run",
   "shell.account": "Akun",
+  "shell.collapse": "Ciutkan menu",
+  "shell.expand": "Perluas menu",
   "shell.breadcrumb": "Breadcrumb",
   "shell.docs": "Dokumentasi",
   "shell.nav_close": "Tutup navigasi",

@@ -674,6 +674,8 @@
   "runs.state": "Zustand",
   "runs.title": "Runs",
   "shell.account": "Konto",
+  "shell.collapse": "Menü einklappen",
+  "shell.expand": "Menü ausklappen",
   "shell.breadcrumb": "Brotkrumenpfad",
   "shell.docs": "Dokumentation",
   "shell.nav_close": "Navigation schließen",

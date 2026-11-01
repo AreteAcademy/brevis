@@ -674,6 +674,8 @@
   "runs.state": "État",
   "runs.title": "Runs",
   "shell.account": "Compte",
+  "shell.collapse": "Réduire le menu",
+  "shell.expand": "Développer le menu",
   "shell.breadcrumb": "Fil d'Ariane",
   "shell.docs": "Documentation",
   "shell.nav_close": "Fermer la navigation",

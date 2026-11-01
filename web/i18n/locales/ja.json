@@ -674,6 +674,8 @@
   "runs.state": "状態",
   "runs.title": "実行",
   "shell.account": "アカウント",
+  "shell.collapse": "メニューを折りたたむ",
+  "shell.expand": "メニューを展開",
   "shell.breadcrumb": "パンくずリスト",
   "shell.docs": "ドキュメント",
   "shell.nav_close": "ナビゲーションを閉じる",

@@ -674,6 +674,8 @@
   "runs.state": "상태",
   "runs.title": "실행",
   "shell.account": "계정",
+  "shell.collapse": "메뉴 접기",
+  "shell.expand": "메뉴 펼치기",
   "shell.breadcrumb": "경로",
   "shell.docs": "문서",
   "shell.nav_close": "내비게이션 닫기",

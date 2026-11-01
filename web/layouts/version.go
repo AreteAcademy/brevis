@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
+
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 type versionKey struct{}
@@ -51,6 +53,15 @@ func latestRelease(ctx context.Context) (release, bool) {
 func newerRelease(ctx context.Context) (release, bool) {
 	r, ok := latestRelease(ctx)
 	return r, ok && r.newer
+}
+
+// accountName is what the account button is called when the sidebar is folded
+// and only its icon is left to read.
+func accountName(ctx context.Context, operator string) string {
+	if operator != "" {
+		return operator
+	}
+	return i18n.T(ctx, "shell.account")
 }
 
 // notesHTML is the release notes the updates package already sanitised.

@@ -120,7 +120,7 @@ templ Base(p Page) {
 			// the server draws from, so when localStorage and the cookie
 			// disagree the cookie is mended and the page asked for again --
 			// once per session, so a browser that refuses cookies cannot loop.
-			@templ.Raw(`<script>(function(){var d=document.documentElement,p="auto",l,m;try{p=localStorage.getItem("brevis_theme")||"auto";l=localStorage.getItem("brevis_lang")}catch(e){}if(p!=="light"&&p!=="dark")p="auto";d.dataset.themePref=p;d.dataset.theme=p==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):p;m=document.cookie.match(/(?:^|; )brevis_lang=([^;]*)/);if(l&&/^[a-z]{2}(-[A-Z]{2})?$/.test(l)){if(!m||m[1]!==l){try{if(sessionStorage.getItem("brevis_lang_sync"))return;sessionStorage.setItem("brevis_lang_sync","1")}catch(e){return}document.cookie="brevis_lang="+l+"; Path=/; Max-Age=31536000; SameSite=Lax";location.reload()}}else if(m){try{localStorage.setItem("brevis_lang",m[1])}catch(e){}}})()</script>`)
+			@templ.Raw(`<script>(function(){var d=document.documentElement,p="auto",l,m;try{p=localStorage.getItem("brevis_theme")||"auto";l=localStorage.getItem("brevis_lang")}catch(e){}if(p!=="light"&&p!=="dark")p="auto";d.dataset.themePref=p;try{d.dataset.navMode=localStorage.getItem("brevis_sidebar")==="short"?"short":"full"}catch(e){d.dataset.navMode="full"}d.dataset.theme=p==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):p;m=document.cookie.match(/(?:^|; )brevis_lang=([^;]*)/);if(l&&/^[a-z]{2}(-[A-Z]{2})?$/.test(l)){if(!m||m[1]!==l){try{if(sessionStorage.getItem("brevis_lang_sync"))return;sessionStorage.setItem("brevis_lang_sync","1")}catch(e){return}document.cookie="brevis_lang="+l+"; Path=/; Max-Age=31536000; SameSite=Lax";location.reload()}}else if(m){try{localStorage.setItem("brevis_lang",m[1])}catch(e){}}})()</script>`)
 			@templ.Raw(`<script>document.documentElement.classList.add("js");document.documentElement.dataset.hash=location.hash.slice(1)</script>`)
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -244,7 +244,8 @@ templ Base(p Page) {
 templ accountMenu(operator string, brand branding.Brand) {
 	<details class="account-menu relative">
 		<summary
-			class="flex cursor-pointer list-none items-center justify-between gap-1.5 rounded-card px-2 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			data-name={ accountName(ctx, operator) }
+			class="sb-item flex cursor-pointer list-none items-center justify-between gap-1.5 rounded-card px-2 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
 			<span class="flex min-w-0 items-center gap-2">
 				<svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
@@ -252,20 +253,20 @@ templ accountMenu(operator string, brand branding.Brand) {
 					<path d="M2.5 14c0-2.6 2.5-4.2 5.5-4.2s5.5 1.6 5.5 4.2"></path>
 				</svg>
 				if operator != "" {
-					<span class="truncate" title={ operator }>{ operator }</span>
+					<span data-collapse class="truncate" title={ operator }>{ operator }</span>
 				} else {
-					<span class="truncate">{ i18n.T(ctx, "shell.account") }</span>
+					<span data-collapse class="truncate">{ i18n.T(ctx, "shell.account") }</span>
 				}
 			</span>
 			<span class="flex shrink-0 items-center gap-1.5">
 			if r, ok := newerRelease(ctx); ok {
-				<span class="text-state-running" title={ i18n.T(ctx, "update.available", "version", r.tag) } data-update-icon>
+				<span class="text-state-running" data-sb-badge data-tip={ i18n.T(ctx, "update.available", "version", r.tag) } data-update-icon>
 					@components.Icon("arrow-up-circle", "h-4 w-4")
 				</span>
 			}
 			// Rotates when the menu opens, which is the only thing that says
 			// the button is a menu before it is clicked.
-			<svg class="account-menu-arrow h-3.5 w-3.5 shrink-0 transition-transform" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+			<svg data-collapse class="account-menu-arrow h-3.5 w-3.5 shrink-0 transition-transform" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
 				<path d="M4 10l4-4 4 4"></path>
 			</svg>
 			</span>
@@ -274,7 +275,6 @@ templ accountMenu(operator string, brand branding.Brand) {
 		// dropdown from there would be drawn past the bottom of the window.
 		// It dropped down for the while it lived in a top bar.
 		<div class="absolute right-0 bottom-full left-0 z-20 mb-1 rounded-card border border-line bg-surface shadow-warm">
-			@versionRow()
 			<div class="py-1">
 			@langChoice()
 			@themeChoice()
@@ -323,6 +323,7 @@ templ accountMenu(operator string, brand branding.Brand) {
 				</button>
 			</span>
 			</div>
+			@versionRow()
 		</div>
 	</details>
 }
@@ -338,7 +339,7 @@ templ accountMenu(operator string, brand branding.Brand) {
 templ sidebar(active string, brand branding.Brand) {
 	<aside id="app-sidebar" class="app-sidebar flex h-full w-[236px] shrink-0 flex-col border-r border-line-soft bg-canvas-subtle">
 		<div class="flex h-13 shrink-0 items-center border-b border-line-soft pr-2">
-		<a href="/" class="flex min-w-0 flex-1 items-center gap-2.5 px-4">
+		<a href="/" data-name={ brand.Title } class="sb-item flex min-w-0 flex-1 items-center gap-2.5 px-4">
 			if brand.Logo == branding.DefaultLogo {
 				// Inline, so the symbol inherits the theme's colour.
 				<span class="block h-6 w-6 shrink-0 text-accent">
@@ -347,7 +348,7 @@ templ sidebar(active string, brand branding.Brand) {
 			} else if brand.Logo != "" {
 				<img src={ brand.Logo } alt={ brand.Title } class="h-6 w-6 shrink-0 rounded-card object-contain"/>
 			}
-			<span class="display block truncate text-[1.05rem] leading-none text-ink">{ brand.Title }</span>
+			<span data-collapse class="display block truncate text-[1.05rem] leading-none text-ink">{ brand.Title }</span>
 		</a>
 		// Closes the drawer; only there when the sidebar is one. A link to
 		// `#` so that, with no script, it clears the `:target` that opened it.
@@ -366,15 +367,16 @@ templ sidebar(active string, brand branding.Brand) {
 			<a
 				href={ templ.SafeURL(projectsPlace(ctx).Href) }
 				data-project-switcher
+				data-name={ projectsPlace(ctx).Name }
 				data-tip={ projectsPlace(ctx).Tip }
 				if active == projectsPlace(ctx).Key {
 					aria-current="page"
 				}
-				class="flex h-8 w-full items-center gap-2 rounded-card border border-line px-2.5 text-[0.8rem] text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
+				class="sb-item flex h-8 w-full items-center gap-2 rounded-card border border-line px-2.5 text-[0.8rem] text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
 			>
 				@components.Icon(projectsPlace(ctx).Icon, "h-3.5 w-3.5")
-				<span class="flex-1 truncate">{ projectsPlace(ctx).Name }</span>
-				@components.Icon("chevron-right", "h-3.5 w-3.5")
+				<span data-collapse class="flex-1 truncate">{ projectsPlace(ctx).Name }</span>
+				<span data-collapse>@components.Icon("chevron-right", "h-3.5 w-3.5")</span>
 			</a>
 		</div>
 		// THE PALETTE'S OPENER, only where a script will drive it (data-js):
@@ -383,13 +385,14 @@ templ sidebar(active string, brand branding.Brand) {
 			<button
 				type="button"
 				data-palette-open
+				data-name={ i18n.T(ctx, "shell.search_open") }
 				aria-haspopup="dialog"
 				aria-controls="palette"
-				class="flex h-8 w-full items-center gap-2 rounded-card border border-line bg-surface px-2.5 text-[0.8rem] text-muted transition-colors hover:border-line-strong hover:text-ink"
+				class="sb-item flex h-8 w-full items-center gap-2 rounded-card border border-line bg-surface px-2.5 text-[0.8rem] text-muted transition-colors hover:border-line-strong hover:text-ink"
 			>
 				@components.Icon("search", "h-3.5 w-3.5")
-				<span class="flex-1 truncate text-left">{ i18n.T(ctx, "shell.search_open") }</span>
-				@components.Kbd("⌘K")
+				<span data-collapse class="flex-1 truncate text-left">{ i18n.T(ctx, "shell.search_open") }</span>
+				<span data-collapse>@components.Kbd("⌘K")</span>
 			</button>
 		</span>
 		<nav aria-label={ i18n.T(ctx, "shell.sections") } class="flex-1 overflow-y-auto px-2.5 py-3">
@@ -398,8 +401,8 @@ templ sidebar(active string, brand branding.Brand) {
 			// the visible copy is hidden from a screen reader rather than read
 			// twice.
 			for _, g := range groups(ctx) {
-				<div role="group" aria-label={ g.Name } class="mb-4 flex flex-col gap-0.5">
-					<p aria-hidden="true" class="px-2.5 pb-1 text-[0.68rem] font-medium tracking-[0.08em] text-faint uppercase">{ g.Name }</p>
+				<div role="group" aria-label={ g.Name } class="sb-group mb-4 flex flex-col gap-0.5">
+					<p data-collapse aria-hidden="true" class="px-2.5 pb-1 text-[0.68rem] font-medium tracking-[0.08em] text-faint uppercase">{ g.Name }</p>
 					for _, s := range g.Sections {
 						@navLink(s, active)
 					}
@@ -409,6 +412,7 @@ templ sidebar(active string, brand branding.Brand) {
 		// WHO YOU ARE, AT THE FOOT, which is where a console keeps "who am I
 		// and how do I leave". The menu opens upwards from here.
 		<div class="shrink-0 border-t border-line-soft p-2">
+			@sidebarToggle()
 			@accountMenu(auth.De(ctx), brand)
 		</div>
 	</aside>
@@ -462,38 +466,27 @@ templ versionRow() {
 					type="button"
 					data-dialogo="version"
 					title={ i18n.T(ctx, "update.notes") }
-					class="flex w-full items-center gap-3 border-b border-line px-3 py-3 text-left transition-colors hover:bg-surface-2"
+					class="flex w-full items-center gap-3 border-t border-line px-3 py-3 text-left transition-colors hover:bg-surface-2"
 				>
 					@versionIdentity(v)
 					if r.newer {
-						<span class="inline-flex shrink-0 items-center gap-1 rounded-full border border-state-running/40 bg-state-running/10 py-0.5 pr-2 pl-1.5 font-mono text-[0.7rem] font-medium text-state-running" title={ i18n.T(ctx, "update.available", "version", r.tag) }>
-							@components.Icon("arrow-up", "h-3 w-3")
+						<span class="shrink-0 rounded-full border border-state-running/40 bg-state-running/10 px-2 py-0.5 font-mono text-[0.7rem] font-medium text-state-running" title={ i18n.T(ctx, "update.available", "version", r.tag) }>
 							{ r.tag }
 						</span>
-					} else {
-						<span class="shrink-0 text-faint">@components.Icon("chevron-right", "h-3.5 w-3.5")</span>
 					}
 				</button>
 			</span>
 		} else {
-			<div class="flex items-center gap-3 border-b border-line px-3 py-3">
+			<div class="flex items-center gap-3 border-t border-line px-3 py-3">
 				@versionIdentity(v)
 			</div>
 		}
 	}
 }
 
-// versionIdentity is the mark on a quiet tile, "Brevis" and the version under
-// it. Brevis's own mark, whatever the installation's brand: the version is the
-// engine's.
+// versionIdentity is "Brevis" and the version under it, in mono. Brevis's own
+// name, whatever the installation's brand: the version is the engine's.
 templ versionIdentity(v string) {
-	<span
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-card border border-line bg-canvas text-accent"
-	>
-		<span class="block h-[55%] w-[55%]">
-			@templ.Raw(assets.LogoSVG)
-		</span>
-	</span>
 	<span class="min-w-0 flex-1">
 		<span class="block text-[0.82rem] leading-tight font-semibold text-ink">Brevis</span>
 		<span class="mt-1 block font-mono text-[0.72rem] leading-none text-muted">{ v }</span>
@@ -508,11 +501,6 @@ templ versionModal() {
 	if r, ok := latestRelease(ctx); ok {
 		@components.Modal("version", i18n.T(ctx, "update.notes"), downloadFoot(r.url)) {
 			<div class="flex items-center gap-4">
-				<span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-card border border-line bg-canvas text-accent">
-					<span class="block h-6 w-6">
-						@templ.Raw(assets.LogoSVG)
-					</span>
-				</span>
 				<div class="min-w-0 flex-1">
 					<div class="flex flex-wrap items-center gap-2.5">
 						<span class="font-mono text-[1.4rem] leading-none font-semibold tracking-tight text-ink">{ r.tag }</span>
@@ -617,16 +605,39 @@ templ langChoice() {
 templ sectionBadge(s section) {
 	if n := failing(ctx); s.Key == "runs" && n > 0 {
 		<span class="sr-only">{ i18n.N(ctx, "nav.runs.failing", n) }</span>
-		<span aria-hidden="true" class="ml-auto inline-flex">
+		<span aria-hidden="true" data-sb-badge class="ml-auto inline-flex">
 			@components.NavBadge("fail", i18n.Number(ctx, int64(n)))
 		</span>
 	}
 	if n := attention(ctx); s.Key == "catalog" && n > 0 {
 		<span class="sr-only">{ i18n.N(ctx, "nav.catalog.attention", n) }</span>
-		<span aria-hidden="true" class="ml-auto inline-flex">
+		<span aria-hidden="true" data-sb-badge class="ml-auto inline-flex">
 			@components.NavBadge("fail", i18n.Number(ctx, int64(n)))
 		</span>
 	}
+}
+
+// sidebarToggle folds the sidebar to its icons and back (full / short). The
+// choice is localStorage's (ui.js writes it; the head script reads it before
+// the first paint). Only where a script will drive it, and not in the drawer a
+// phone gets, which is always full.
+templ sidebarToggle() {
+	<span class="mb-1 hidden min-[860px]:block" data-js>
+		<button
+			type="button"
+			data-nav-fold
+			data-label-collapse={ i18n.T(ctx, "shell.collapse") }
+			data-label-expand={ i18n.T(ctx, "shell.expand") }
+			data-name={ i18n.T(ctx, "shell.expand") }
+			aria-label={ i18n.T(ctx, "shell.collapse") }
+			aria-expanded="true"
+			class="sb-item flex h-8 w-full items-center gap-2.5 rounded-card px-2.5 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+		>
+			<span class="sb-when-full">@components.Icon("panel-left-close", "h-4 w-4")</span>
+			<span class="sb-when-short">@components.Icon("panel-left-open", "h-4 w-4")</span>
+			<span data-collapse>{ i18n.T(ctx, "shell.collapse") }</span>
+		</button>
+	</span>
 }
 
 templ navLink(s section, active string) {
@@ -637,26 +648,28 @@ templ navLink(s section, active string) {
 			href={ templ.SafeURL(s.Href) }
 			aria-current="page"
 			data-tip={ s.Tip }
+			data-name={ s.Name }
 			if s.GoKey != "" {
 				data-go-key={ s.GoKey }
 			}
-			class="flex h-8 items-center gap-2.5 rounded-card border border-line bg-surface-2 px-2.5 text-[0.85rem] font-medium text-ink shadow-[inset_2px_0_0_var(--color-accent-strong)]"
+			class="sb-item flex h-8 items-center gap-2.5 rounded-card border border-line bg-surface-2 px-2.5 text-[0.85rem] font-medium text-ink shadow-[inset_2px_0_0_var(--color-accent-strong)]"
 		>
 			@components.Icon(s.Icon, "h-4 w-4")
-			{ s.Name }
+			<span data-collapse>{ s.Name }</span>
 			@sectionBadge(s)
 		</a>
 	} else {
 		<a
 			href={ templ.SafeURL(s.Href) }
 			data-tip={ s.Tip }
+			data-name={ s.Name }
 			if s.GoKey != "" {
 				data-go-key={ s.GoKey }
 			}
-			class="flex h-8 items-center gap-2.5 rounded-card border border-transparent px-2.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			class="sb-item flex h-8 items-center gap-2.5 rounded-card border border-transparent px-2.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
 			@components.Icon(s.Icon, "h-4 w-4")
-			{ s.Name }
+			<span data-collapse>{ s.Name }</span>
 			@sectionBadge(s)
 		</a>
 	}

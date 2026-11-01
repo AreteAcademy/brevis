@@ -674,6 +674,8 @@
   "runs.state": "Состояние",
   "runs.title": "Запуски",
   "shell.account": "Аккаунт",
+  "shell.collapse": "Свернуть меню",
+  "shell.expand": "Развернуть меню",
   "shell.breadcrumb": "Навигационная цепочка",
   "shell.docs": "Документация",
   "shell.nav_close": "Закрыть навигацию",

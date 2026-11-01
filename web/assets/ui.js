@@ -124,6 +124,32 @@
     dismiss(t);
   };
 
+  // --- The sidebar, full or short -------------------------------------------
+  //
+  // Short is the icon rail. The choice is the visitor's, kept in localStorage
+  // and applied by the head script before the first paint; this flips it in
+  // place. Below 860px the sidebar is a drawer and always full (the CSS only
+  // folds it above that).
+  function drawSidebar() {
+    var short = folded();
+    document.querySelectorAll("[data-nav-fold]").forEach(function (b) {
+      var label = short ? b.dataset.labelExpand : b.dataset.labelCollapse;
+      b.setAttribute("aria-expanded", short ? "false" : "true");
+      b.setAttribute("aria-label", label);
+      b.dataset.name = b.dataset.labelExpand;
+    });
+  }
+  drawSidebar();
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-nav-fold]");
+    if (!b) return;
+    var next = folded() ? "full" : "short";
+    document.documentElement.dataset.navMode = next;
+    remember("brevis_sidebar", next);
+    hideHint();
+    drawSidebar();
+  });
+
   // --- A new Brevis ----------------------------------------------------------
   //
   // The page draws [data-update-notice] when a release newer than this one is
@@ -251,7 +277,7 @@
       document.body.appendChild(hint);
     }
     hideHint();
-    hint.textContent = target.getAttribute("data-tip");
+    hint.textContent = hintText(target);
     hint.style.display = "block";
     var r = target.getBoundingClientRect();
     var left = r.right + 8;
@@ -268,8 +294,19 @@
     hinted = null;
   }
 
+  // Folded to its icons, the sidebar names each one: the NAME, where an open
+  // sidebar's hint is the sentence about what the section is for.
+  function folded() { return document.documentElement.dataset.navMode === "short"; }
+  function hintText(el) {
+    if (folded() && el.dataset.name && el.closest(".app-sidebar")) return el.dataset.name;
+    return el.getAttribute("data-tip");
+  }
   function hintTarget(e) {
-    return e.target && typeof e.target.closest === "function" ? e.target.closest("[data-tip]") : null;
+    if (!e.target || typeof e.target.closest !== "function") return null;
+    var el = e.target.closest("[data-tip], [data-name]");
+    if (!el) return null;
+    if (el.hasAttribute("data-tip")) return el;
+    return folded() && el.closest(".app-sidebar") ? el : null;
   }
 
   document.addEventListener("mouseover", function (e) {

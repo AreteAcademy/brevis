@@ -674,6 +674,8 @@
   "runs.state": "स्थिति",
   "runs.title": "Run",
   "shell.account": "खाता",
+  "shell.collapse": "मेनू छोटा करें",
+  "shell.expand": "मेनू बड़ा करें",
   "shell.breadcrumb": "ब्रेडक्रंब",
   "shell.docs": "दस्तावेज़",
   "shell.nav_close": "नेविगेशन बंद करें",

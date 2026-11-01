@@ -576,6 +576,8 @@
   "runs.state": "Estado",
   "runs.title": "Ejecuciones",
   "shell.account": "Cuenta",
+  "shell.collapse": "Contraer menú",
+  "shell.expand": "Expandir menú",
   "shell.breadcrumb": "Dónde estás",
   "shell.docs": "Documentación",
   "shell.nav_close": "Cerrar la navegación",

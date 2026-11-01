@@ -1764,3 +1764,62 @@ tr[data-paused] > td[data-fade] {
   background: var(--color-canvas-subtle);
   color: var(--color-ink);
 }
+
+/* THE SIDEBAR, FULL OR SHORT.
+
+   Short is the icon rail, from 860px up (below it the sidebar is a drawer and
+   stays full). `html[data-nav-mode]` is written by the head script before the
+   first paint and flipped by ui.js; whatever is a LABEL carries `data-collapse`
+   and goes, and each item (`sb-item`) centres its icon. The name of an item
+   comes back as a hint (ui.js, `data-name`). A badge shrinks to the icon's
+   corner so a failing workflow is still seen. */
+.sb-item {
+  position: relative;
+}
+.sb-when-short {
+  display: none;
+}
+@media (min-width: 860px) {
+  .app-sidebar {
+    transition: width 150ms var(--ease-snappy);
+  }
+  html[data-nav-mode="short"] .app-sidebar {
+    width: 56px;
+  }
+  html[data-nav-mode="short"] .app-sidebar [data-collapse] {
+    display: none;
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-item {
+    justify-content: center;
+    gap: 0;
+    padding-inline: 0;
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-group {
+    margin-bottom: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-line-soft);
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-group:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+  html[data-nav-mode="short"] .app-sidebar [data-sb-badge] {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    margin: 0;
+    transform: scale(0.8);
+    transform-origin: top right;
+  }
+  html[data-nav-mode="short"] .sb-when-full {
+    display: none;
+  }
+  html[data-nav-mode="short"] .sb-when-short {
+    display: block;
+  }
+  /* The account menu opens past the rail: it is a menu, not a label. */
+  html[data-nav-mode="short"] .app-sidebar .account-menu > div {
+    right: auto;
+    width: 15rem;
+  }
+}
