@@ -17,7 +17,7 @@ templ StreamPage(v StreamView) {
 		Title: "POST " + v.Path, Crumb: "POST " + v.Path, Active: "streams", Mono: true,
 		Eyebrow: streamEyebrow(v), Actions: streamActions(v),
 	}) {
-		<p class="-mt-1 mb-4 max-w-3xl text-[13.5px] text-muted">{ v.Lede(ctx) }</p>
+		<p class="mb-4 max-w-3xl text-[13.5px] text-muted">{ v.Lede(ctx) }</p>
 		@streamStrip(v)
 		@testEventDrawer(v)
 		@templ.Raw("<style>" + hashTabsCSS("stream-tabs", "overview", "config", "deadletter") + "</style>")

@@ -131,13 +131,13 @@
      each other sharing one colour -- the site's background WAS the
      console's ink -- so somebody arriving from the page that sells this
      found what looked like another product. */
-  --color-parchment: #141711;
-  --color-parchment-soft: #1f2419;
-  --color-surface: #1a1e15;
-  --color-ink: #ecefe4;
-  --color-muted: #a3ad97;
-  --color-line: #38412b;
-  --color-line-soft: #262b1e;
+  --color-parchment: #0d1117;
+  --color-parchment-soft: #1c2128;
+  --color-surface: #161b22;
+  --color-ink: #e6edf3;
+  --color-muted: #a3abb5;
+  --color-line: #30363d;
+  --color-line-soft: #21262d;
   --color-gold: #7d8e50;
   --color-gold-strong: #c7d66d;
   --color-gold-wash: #c7d66d1f;
@@ -147,7 +147,7 @@
   --color-accent: var(--color-gold);
   --color-accent-strong: var(--color-gold-strong);
   --color-accent-wash: var(--color-gold-wash);
-  --color-line-strong: #4a553a;
+  --color-line-strong: #484f58;
 
   /* THE ROLES THE REDESIGN ADDS, AND NOT ONE OF THEM IS A COLOUR.
 
@@ -210,14 +210,14 @@
      the large-text and graphic threshold, not the body-text one -- and
      nothing said so, because nothing had ever measured one. The test beside
      this file does now, and it is what chose these. */
-  --color-state-success: #8fd49e;
-  --color-state-failed: #ff9c92;
-  --color-state-running: #93c5f0;
-  --color-state-queued: #e8c56b;
-  --color-state-retrying: #f0ab73;
-  --color-state-canceled: #a8b0a2;
-  --color-state-pending: #a3aa9c;
-  --color-state-skipped: #d0b0e4;
+  --color-state-success: #3fb950;
+  --color-state-failed: #f85149;
+  --color-state-running: #58a6ff;
+  --color-state-queued: #d29922;
+  --color-state-retrying: #db6d28;
+  --color-state-canceled: #8b949e;
+  --color-state-pending: #8b949e;
+  --color-state-skipped: #a371f7;
 
   /* What a step runs in. Each is the language's own convention, because the
      colour is what makes the chip readable before anybody reads the label.
@@ -325,17 +325,6 @@
   --color-state-canceled: #5f6559;
   --color-state-pending: #626858;
   --color-state-skipped: #74518a;
-}
-
-/* The theme switch shows where a click leads: the sun on the dark theme, the
-   moon on the light one. Both are in the markup, so flipping the attribute is
-   all the script does. */
-.theme-to-dark,
-:root[data-theme="light"] .theme-to-light {
-  display: none;
-}
-:root[data-theme="light"] .theme-to-dark {
-  display: block;
 }
 
 body {
@@ -976,6 +965,7 @@ li.CodeMirror-hint-active {
 }
 .palette::backdrop {
   background: rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(4px);
 }
 
 /* A WRITER'S FLOW, on a dot grid like the graph's ground. The connectors are
@@ -1293,6 +1283,32 @@ table.ct > tbody > tr > td {
 .st-pulse::before {
   animation: st-pulse 2s ease-out infinite;
 }
+/* The Runs list's Live dot: a ring that spreads from it while Live is on. */
+.live-dot-on {
+  position: relative;
+  color: var(--color-state-success);
+}
+/* A halo behind the dot: it spreads and fades, and the dot holds still. */
+.live-dot-on::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+  animation: live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes live-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  75%,
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
 @keyframes st-spin {
   to {
     transform: rotate(360deg);
@@ -1311,6 +1327,7 @@ table.ct > tbody > tr > td {
 @media (prefers-reduced-motion: reduce) {
   .st-spin::before,
   .st-spin-dashed::before,
+  .live-dot-on::before,
   .st-pulse::before {
     animation: none;
   }
@@ -1341,6 +1358,8 @@ dialog.modal[open] {
 dialog.drawer::backdrop,
 dialog.modal::backdrop {
   background: rgb(0 0 0 / 0.5);
+  /* What is behind a dialog is out of reach, so it is out of focus too. */
+  backdrop-filter: blur(4px);
 }
 /* FIXED, MODAL OR NOT. A drawer the server draws open (the Catalog's and a
    load's, for a link with no script) is a non-modal <dialog>, which the
@@ -1650,5 +1669,300 @@ tr[data-paused] > td[data-fade] {
     animation: none;
     outline: 2px solid var(--color-state-failed);
     outline-offset: -2px;
+  }
+}
+
+/* THE RELEASE NOTES in the version dialog: GitHub's own HTML, sanitised on the
+   way in (internal/updates), set in the console's type. A section's heading is
+   a label with a dot; a list is a column of short lines. */
+.release-notes {
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--color-ink-2);
+}
+.release-notes h1,
+.release-notes h2,
+.release-notes h3,
+.release-notes h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 1.5rem 0 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--color-ink);
+}
+.release-notes h1::before,
+.release-notes h2::before,
+.release-notes h3::before,
+.release-notes h4::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-state-running);
+}
+.release-notes > :first-child {
+  margin-top: 0;
+}
+.release-notes p,
+.release-notes ul,
+.release-notes ol,
+.release-notes blockquote,
+.release-notes pre,
+.release-notes table {
+  margin: 0 0 0.75rem;
+}
+.release-notes ul,
+.release-notes ol {
+  padding-left: 1.2rem;
+}
+.release-notes ul {
+  list-style: disc;
+}
+.release-notes ol {
+  list-style: decimal;
+}
+.release-notes li {
+  margin: 0.35rem 0;
+  padding-left: 0.15rem;
+}
+.release-notes li::marker {
+  color: var(--color-line-strong);
+}
+.release-notes strong {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.release-notes code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  padding: 0.12em 0.4em;
+  border: 1px solid var(--color-line-soft);
+  border-radius: 4px;
+  background: var(--color-surface-3);
+  color: var(--color-ink);
+}
+.release-notes pre {
+  overflow-x: auto;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  background: var(--color-canvas-subtle);
+}
+.release-notes pre code {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.release-notes a {
+  color: var(--color-state-running);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-state-running) 40%, transparent);
+  text-underline-offset: 3px;
+}
+.release-notes a:hover {
+  text-decoration-color: currentColor;
+}
+.release-notes blockquote {
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--color-line-strong);
+  color: var(--color-muted);
+}
+.release-notes hr {
+  margin: 1.2rem 0;
+  border: 0;
+  border-top: 1px solid var(--color-line-soft);
+}
+.release-notes table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.release-notes th,
+.release-notes td {
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--color-line);
+  text-align: left;
+}
+.release-notes th {
+  background: var(--color-canvas-subtle);
+  color: var(--color-ink);
+}
+
+/* THE SIDEBAR, FULL OR SHORT.
+
+   Short is the icon rail, from 860px up (below it the sidebar is a drawer and
+   stays full). `html[data-nav-mode]` is written by the head script before the
+   first paint and flipped by ui.js.
+
+   IT IS A CURTAIN, NOT A REARRANGEMENT. Every icon keeps its place in both
+   states -- the 56px rail is the icon column of the 236px sidebar -- so
+   folding only draws the width in, clipping the labels as it goes while they
+   fade (`data-collapse`). Nothing is centred, switched off or re-flowed, which
+   is what made the old fold jump. Group titles fold their height away, and
+   the groups pick up a hairline between them as they do. The curve is an
+   ease-out that lands softly. A badge moves to the icon's corner; the account
+   menu opens past the rail, because it is a menu and not a label. */
+.sb-item {
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.sb-when-short {
+  display: none;
+}
+@media (min-width: 860px) {
+  .app-sidebar {
+    --ease-cine: cubic-bezier(0.22, 1, 0.36, 1);
+    transition: width 360ms var(--ease-cine);
+    will-change: width;
+  }
+  .app-sidebar [data-collapse] {
+    transition: opacity 200ms ease 90ms;
+    white-space: nowrap;
+  }
+  .app-sidebar .sb-head {
+    position: relative;
+  }
+  .app-sidebar .sb-group {
+    padding-top: 0;
+    border-top: 1px solid transparent;
+    transition:
+      padding-top 360ms var(--ease-cine),
+      margin-bottom 360ms var(--ease-cine),
+      border-color 360ms var(--ease-cine);
+  }
+  .app-sidebar p[data-collapse] {
+    max-height: 1.6rem;
+    overflow: hidden;
+    transition:
+      max-height 360ms var(--ease-cine),
+      padding 360ms var(--ease-cine),
+      opacity 160ms ease;
+  }
+  .app-sidebar [data-project-switcher],
+  .app-sidebar [data-palette-open] {
+    transition:
+      border-color 360ms var(--ease-cine),
+      background-color 360ms var(--ease-cine),
+      color 150ms ease;
+  }
+
+  html[data-nav-mode="short"] .app-sidebar {
+    /* 56px of room and the 1px border on its edge. */
+    width: 57px;
+  }
+  /* SQUARE ITEMS. The rail's 56px less 12px a side leaves 32px, and every item
+     is 32px tall: a square, with its icon in the middle. The icon's left
+     padding is what centres it in the square, so an item never changes how it
+     is laid out -- only how much room it has. */
+  .sb-pad {
+    transition: padding-inline 360ms var(--ease-cine);
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-pad {
+    padding-inline: 12px;
+  }
+  .app-sidebar .sb-item {
+    transition: padding 360ms var(--ease-cine);
+  }
+  html[data-nav-mode="short"] .app-sidebar nav a.sb-item {
+    padding-left: 7px;
+    border-color: transparent;
+  }
+  html[data-nav-mode="short"] .app-sidebar [data-project-switcher],
+  html[data-nav-mode="short"] .app-sidebar [data-palette-open] {
+    padding-left: 8px;
+    padding-right: 0;
+  }
+  html[data-nav-mode="short"] .app-sidebar .account-menu > summary {
+    height: 32px;
+    padding: 0 0 0 8px;
+  }
+  html[data-nav-mode="short"] .app-sidebar [data-collapse] {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 110ms ease;
+  }
+  html[data-nav-mode="short"] .app-sidebar p[data-collapse] {
+    max-height: 0;
+    padding-block: 0;
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-group {
+    margin-bottom: 0.5rem;
+    padding-top: 0.5rem;
+    border-top-color: var(--color-line-soft);
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-group:first-child {
+    padding-top: 0;
+    border-top-color: transparent;
+  }
+  /* The project and the search are boxed when open; folded they are icons like
+     the rest, with no frame. */
+  html[data-nav-mode="short"] .app-sidebar [data-project-switcher],
+  html[data-nav-mode="short"] .app-sidebar [data-palette-open] {
+    border-color: transparent;
+    background: transparent;
+  }
+  html[data-nav-mode="short"] .app-sidebar [data-project-switcher]:hover,
+  html[data-nav-mode="short"] .app-sidebar [data-palette-open]:hover {
+    background: var(--color-surface-2);
+  }
+  /* The open section: the bar at its left edge has no room on the rail, so the
+     accent becomes the item's ground. */
+  html[data-nav-mode="short"] .app-sidebar a.sb-item[aria-current="page"] {
+    border-color: transparent;
+    background: var(--color-accent-strong);
+    color: var(--color-on-accent);
+    box-shadow: none;
+  }
+  html[data-nav-mode="short"] .app-sidebar [data-sb-badge] {
+    position: absolute;
+    top: 1px;
+    right: 3px;
+    margin: 0;
+    transform: scale(0.8);
+    transform-origin: top right;
+  }
+  /* Folded, the fold button takes the logo's place while the pointer is on
+     the header (or the keyboard is on the button). */
+  html[data-nav-mode="short"] .app-sidebar .sb-head .sb-fold {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 140ms ease;
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-head:hover .sb-fold,
+  html[data-nav-mode="short"] .app-sidebar .sb-head:focus-within .sb-fold {
+    opacity: 1;
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-head .sb-logo {
+    transition: opacity 140ms ease;
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-head:hover .sb-logo,
+  html[data-nav-mode="short"] .app-sidebar .sb-head:focus-within .sb-logo {
+    opacity: 0;
+  }
+  html[data-nav-mode="short"] .sb-when-full {
+    display: none;
+  }
+  html[data-nav-mode="short"] .sb-when-short {
+    display: block;
+  }
+  /* The account menu opens past the rail: it is a menu, not a label. */
+  html[data-nav-mode="short"] .app-sidebar .account-menu > div {
+    right: auto;
+    width: 15rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar,
+  .app-sidebar * {
+    transition: none !important;
   }
 }

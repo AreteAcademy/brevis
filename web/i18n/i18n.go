@@ -190,7 +190,6 @@ func fill(text string, args []any) string {
 // in its own language (Script), so the file holds no sentence of its own; a
 // key the script needs is added here and to the three catalogs.
 var ScriptKeys = []string{
-	"theme.to_light", "theme.to_dark",
 	"copy.done",
 	"palette.empty", "palette.loading", "palette.failed", "palette.open_run",
 	"palette.group.runs",

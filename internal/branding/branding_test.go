@@ -269,3 +269,18 @@ func TestAnInvalidLightColourIsRefused(t *testing.T) {
 		t.Error("an injected light colour was accepted")
 	}
 }
+
+// THE DOCUMENTATION IS READ IN THE READER'S LANGUAGE: English at the root,
+// every other under its own prefix.
+func TestDocsInFollowsTheLanguage(t *testing.T) {
+	for lang, want := range map[string]string{
+		"en":    "https://brevis.sh/docs/workflows/",
+		"pt-BR": "https://brevis.sh/pt/docs/workflows/",
+		"zh-CN": "https://brevis.sh/zh/docs/workflows/",
+		"fr":    "https://brevis.sh/fr/docs/workflows/",
+	} {
+		if got := branding.DocsIn(lang, "workflows/"); got != want {
+			t.Errorf("DocsIn(%q) = %q, want %q", lang, got, want)
+		}
+	}
+}

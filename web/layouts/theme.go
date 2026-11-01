@@ -36,15 +36,6 @@ func Theme(ctx context.Context) string {
 	return "dark"
 }
 
-// themeSwitchLabel says which way the switch goes, since "toggle theme" does
-// not.
-func themeSwitchLabel(ctx context.Context) string {
-	if Theme(ctx) == "light" {
-		return i18n.T(ctx, "theme.to_dark")
-	}
-	return i18n.T(ctx, "theme.to_light")
-}
-
 type uriKey struct{}
 
 // WithRequestURI carries the page's own address, so a control that posts and
