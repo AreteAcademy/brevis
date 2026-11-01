@@ -1846,7 +1846,34 @@ tr[data-paused] > td[data-fade] {
   }
 
   html[data-nav-mode="short"] .app-sidebar {
-    width: 56px;
+    /* 56px of room and the 1px border on its edge. */
+    width: 57px;
+  }
+  /* SQUARE ITEMS. The rail's 56px less 12px a side leaves 32px, and every item
+     is 32px tall: a square, with its icon in the middle. The icon's left
+     padding is what centres it in the square, so an item never changes how it
+     is laid out -- only how much room it has. */
+  .sb-pad {
+    transition: padding-inline 360ms var(--ease-cine);
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-pad {
+    padding-inline: 12px;
+  }
+  .app-sidebar .sb-item {
+    transition: padding 360ms var(--ease-cine);
+  }
+  html[data-nav-mode="short"] .app-sidebar nav a.sb-item {
+    padding-left: 7px;
+    border-color: transparent;
+  }
+  html[data-nav-mode="short"] .app-sidebar [data-project-switcher],
+  html[data-nav-mode="short"] .app-sidebar [data-palette-open] {
+    padding-left: 8px;
+    padding-right: 0;
+  }
+  html[data-nav-mode="short"] .app-sidebar .account-menu > summary {
+    height: 32px;
+    padding: 0 0 0 8px;
   }
   html[data-nav-mode="short"] .app-sidebar [data-collapse] {
     opacity: 0;

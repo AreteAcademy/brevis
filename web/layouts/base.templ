@@ -371,7 +371,7 @@ templ sidebar(active string, brand branding.Brand) {
 		</div>
 		// THE PROJECT SWITCHER: the scope a reader works in, above the places
 		// to go. It opens the list of projects, which is still a page.
-		<div class="px-2.5 pt-3">
+		<div class="sb-pad px-2.5 pt-3">
 			<a
 				href={ templ.SafeURL(projectsPlace(ctx).Href) }
 				data-project-switcher
@@ -389,7 +389,7 @@ templ sidebar(active string, brand branding.Brand) {
 		</div>
 		// THE PALETTE'S OPENER, only where a script will drive it (data-js):
 		// without one it would be a button that opens nothing.
-		<span class="block px-2.5 pt-3" data-js>
+		<span class="sb-pad block px-2.5 pt-3" data-js>
 			<button
 				type="button"
 				data-palette-open
@@ -403,7 +403,7 @@ templ sidebar(active string, brand branding.Brand) {
 				<span data-collapse>@components.Kbd("⌘K")</span>
 			</button>
 		</span>
-		<nav aria-label={ i18n.T(ctx, "shell.sections") } class="flex-1 overflow-y-auto px-2.5 py-3">
+		<nav aria-label={ i18n.T(ctx, "shell.sections") } class="sb-pad flex-1 overflow-y-auto px-2.5 py-3">
 			// A GROUP IS ANNOUNCED AS ONE -- `role="group"` with its name -- so
 			// the label a sighted reader sees in small caps is heard too, and
 			// the visible copy is hidden from a screen reader rather than read
@@ -419,7 +419,7 @@ templ sidebar(active string, brand branding.Brand) {
 		</nav>
 		// WHO YOU ARE, AT THE FOOT, which is where a console keeps "who am I
 		// and how do I leave". The menu opens upwards from here.
-		<div class="shrink-0 border-t border-line-soft p-2">
+		<div class="sb-pad shrink-0 border-t border-line-soft p-2">
 			@accountMenu(auth.De(ctx), brand)
 		</div>
 	</aside>
