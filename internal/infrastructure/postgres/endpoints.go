@@ -26,6 +26,18 @@ type PublishedEndpoint struct {
 	Reads       []string
 	Endpoint    catalog.Endpoint
 	PublishedAt time.Time
+
+	// Manifest is the endpoint's API as its file declares it: the
+	// connection, the dialect and the cache. Zero for an API published
+	// before the manifest was kept, until it is published again.
+	Manifest APIManifest
+}
+
+// APIManifest is an API's own settings, kept beside its endpoints by the
+// same publish (screen-endpoints). Cache is nil for an API with none.
+type APIManifest struct {
+	Connection, Dialect string
+	Cache               *catalog.EndpointsCache
 }
 
 // Publish replaces one API's endpoints with the manifest's, in one
@@ -74,6 +86,23 @@ func (r *EndpointRepo) Publish(ctx context.Context, m catalog.Endpoints, at time
 			m.Name, e.Name, e.Path, e.Tenant, config, reads, at); err != nil {
 			return err
 		}
+	}
+	// THE API'S OWN SETTINGS, in the same transaction: a cache's ttl that
+	// says one thing while the endpoints say another is the drift this
+	// avoids.
+	var cache []byte
+	if m.Cache != nil {
+		if cache, err = json.Marshal(m.Cache); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO api_manifests (api, connection, dialect, cache, published_at)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (api) DO UPDATE SET connection = EXCLUDED.connection, dialect = EXCLUDED.dialect,
+			cache = EXCLUDED.cache, published_at = EXCLUDED.published_at`,
+		m.Name, m.Connection, m.Dialect, cache, at); err != nil {
+		return err
 	}
 	// What is left in before is what this publish removed.
 	if changed += len(before); changed > 0 {
@@ -136,6 +165,9 @@ func (r *EndpointRepo) Unpublish(ctx context.Context, api, actor string) (int64,
 	if err != nil {
 		return 0, err
 	}
+	if _, err := tx.Exec(ctx, `DELETE FROM api_manifests WHERE api = $1`, api); err != nil {
+		return 0, err
+	}
 	if n := tag.RowsAffected(); n > 0 {
 		if err := recordEvent(ctx, tx, events.EndpointsUnpublished, api, actor, map[string]any{"endpoints": n}); err != nil {
 			return 0, err
@@ -144,22 +176,26 @@ func (r *EndpointRepo) Unpublish(ctx context.Context, api, actor string) (int64,
 	return tag.RowsAffected(), tx.Commit(ctx)
 }
 
-const endpointColumns = `api, name, path, tenant, config, reads, published_at`
+// endpointRows is every endpoint with its API's manifest beside it; an API
+// with no manifest row -- published before it was kept -- reads zeroed.
+const endpointRows = `SELECT e.api, e.name, e.path, e.tenant, e.config, e.reads, e.published_at,
+		COALESCE(m.connection, ''), COALESCE(m.dialect, ''), m.cache
+	FROM api_endpoints e LEFT JOIN api_manifests m ON m.api = e.api`
 
 // List is every published endpoint, by API and path.
 func (r *EndpointRepo) List(ctx context.Context) ([]PublishedEndpoint, error) {
-	return r.query(ctx, `SELECT `+endpointColumns+` FROM api_endpoints ORDER BY api, path`)
+	return r.query(ctx, endpointRows+` ORDER BY e.api, e.path`)
 }
 
 // Reading is the endpoints whose SQL reads a target -- a model page's
 // consumers beside its writers.
 func (r *EndpointRepo) Reading(ctx context.Context, target string) ([]PublishedEndpoint, error) {
-	return r.query(ctx, `SELECT `+endpointColumns+` FROM api_endpoints WHERE reads @> ARRAY[$1]::text[] ORDER BY api, path`, target)
+	return r.query(ctx, endpointRows+` WHERE e.reads @> ARRAY[$1]::text[] ORDER BY e.api, e.path`, target)
 }
 
 // Get is one endpoint, and whether it is published.
 func (r *EndpointRepo) Get(ctx context.Context, api, name string) (PublishedEndpoint, bool, error) {
-	got, err := r.query(ctx, `SELECT `+endpointColumns+` FROM api_endpoints WHERE api = $1 AND name = $2`, api, name)
+	got, err := r.query(ctx, endpointRows+` WHERE e.api = $1 AND e.name = $2`, api, name)
 	if err != nil || len(got) == 0 {
 		return PublishedEndpoint{}, false, err
 	}
@@ -175,12 +211,19 @@ func (r *EndpointRepo) query(ctx context.Context, sql string, args ...any) ([]Pu
 	var out []PublishedEndpoint
 	for rows.Next() {
 		var e PublishedEndpoint
-		var config []byte
-		if err := rows.Scan(&e.API, &e.Name, &e.Path, &e.Tenant, &config, &e.Reads, &e.PublishedAt); err != nil {
+		var config, cache []byte
+		if err := rows.Scan(&e.API, &e.Name, &e.Path, &e.Tenant, &config, &e.Reads, &e.PublishedAt,
+			&e.Manifest.Connection, &e.Manifest.Dialect, &cache); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal(config, &e.Endpoint); err != nil {
 			return nil, err
+		}
+		if cache != nil {
+			e.Manifest.Cache = &catalog.EndpointsCache{}
+			if err := json.Unmarshal(cache, e.Manifest.Cache); err != nil {
+				return nil, err
+			}
 		}
 		out = append(out, e)
 	}

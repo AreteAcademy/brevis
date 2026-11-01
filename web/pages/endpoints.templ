@@ -2,106 +2,274 @@ package pages
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/AreteAcademy/brevis/web/layouts"
 )
 
+// Endpoints is Data → Endpoints (screen-endpoints): metrics published as an
+// HTTP API -- read-only SQL over warehouse tables, a tenant per key, a cache
+// that follows the data -- each judged by the tables it reads.
 templ Endpoints(v EndpointsView) {
-	@layouts.Base(layouts.Page{Title: "Endpoints", Kicker: "Data", Active: "endpoints"}) {
-		<p class="mb-3 max-w-3xl text-sm text-ink-2">
-			What each published brevis-sql-api serves: declared, read-only SQL over HTTP, cached until a model it reads is rebuilt. Traffic is on each API's /metrics.
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "endpoints.title"), Crumb: i18n.T(ctx, "nav.endpoints"), Active: "endpoints", Actions: publishEndpointButton()}) {
+		<p class="-mt-2 mb-3 max-w-3xl text-[13.5px] text-muted">
+			{ i18n.T(ctx, "endpoints.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "endpoints.lead.strong") }</strong>{ i18n.T(ctx, "endpoints.lead.after") }
 		</p>
-		if len(v.Rows) == 0 {
-			@components.Empty("No endpoint published yet.",
-				"Run brevis-sql-api describe --out manifest.json, then brevis endpoints publish manifest.json. See docs/ENDPOINTS.md.")
-		} else {
-			<form method="get" action="/data/endpoints" role="search" class="mb-3 w-full sm:w-80">
-				@components.SearchInput("q", v.Q, "Search paths, APIs or models", "endpoint-rows")
-			</form>
-			<div data-filter-scope class="overflow-hidden rounded-card border border-line bg-surface">
-				<div data-filter-empty class="px-6 py-10 text-center text-sm text-muted" hidden?={ v.Shown() > 0 }>
-					Nothing matches this search.
-					<a href="/data/endpoints" class="ml-1 text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">Show every endpoint</a>
-				</div>
-				<div class="overflow-x-auto">
-					<table class="ct w-full text-[0.82rem]">
-						<thead>
-							<tr class="border-b border-line bg-canvas-subtle text-left">
-								@th("Endpoint", "pl-4")
-								@th("API", "")
-								@th("Parameters", "")
-								@th("Reads", "")
-								@th("Published", "pr-4")
-							</tr>
-						</thead>
-						<tbody id="endpoint-rows" class="divide-y divide-line-soft">
-							for _, r := range v.Rows {
-								@endpointRow(r)
-							}
-						</tbody>
-					</table>
-				</div>
-				@components.TableFoot(v.Shown(), len(v.Rows), "endpoints")
+		if v.Total > 0 {
+			<div data-endpoints-summary class="mb-4 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-[13px] text-muted">
+				<span>{ i18n.N(ctx, "endpoints.summary.endpoints", v.Total) }</span>
+				<span>{ i18n.N(ctx, "endpoints.summary.apis", v.APIs) }</span>
+				if v.Fresh > 0 {
+					<span class="inline-flex items-baseline gap-1.5">
+						@components.FreshnessMark("on_time")
+						{ i18n.N(ctx, "endpoints.summary.fresh", v.Fresh) }
+					</span>
+				}
+				if v.Stale > 0 {
+					<span class="inline-flex items-baseline gap-1.5">
+						@components.FreshnessMark("stale")
+						{ i18n.N(ctx, "endpoints.summary.stale", v.Stale) }
+					</span>
+				}
+				for _, c := range v.Caches {
+					<span class="text-faint">{ i18n.T(ctx, "endpoints.summary.cache", "type", c) }</span>
+				}
+				for _, c := range v.Connections {
+					<span class="text-faint">{ i18n.T(ctx, "endpoints.summary.connection", "name", c) }</span>
+				}
 			</div>
+			// THE BOX ANSWERS WHILE SOMEBODY TYPES, as the other lists'.
+			<form method="get" action="/data/endpoints" role="search" data-swap="endpoints-list" data-swap-typing class="mb-3 w-full sm:w-96">
+				if v.Filter.API != "" {
+					<input type="hidden" name="api" value={ v.Filter.API }/>
+				}
+				if v.Filter.State != "" {
+					<input type="hidden" name="state" value={ v.Filter.State }/>
+				}
+				@components.SearchInput("q", v.Filter.Q, i18n.T(ctx, "endpoints.search"), "")
+			</form>
 		}
+		<div id="endpoints-list">
+			@EndpointsList(v)
+		</div>
+		@endpointsHow()
+		@publishEndpointDrawer()
 	}
 }
 
-// endpointRow is one endpoint in the index. The whole row goes to its page;
-// the path is a real link too, for the keyboard and for no script. A
-// required parameter is drawn in ink and an optional one muted, which is the
-// difference a caller needs before opening the page.
-templ endpointRow(r EndpointRow) {
-	<tr
-		data-filter-row
-		data-filter-text={ r.SearchText() }
-		data-href={ r.Href() }
-		hidden?={ r.Hidden }
-		class="cursor-pointer align-top transition-colors hover:bg-surface-2"
+// publishEndpointButton is the header's verb. A link to #publicar, so with no
+// script the drawer is drawn in place (`:target`); ui.js opens it modal.
+templ publishEndpointButton() {
+	<a href="#publicar" data-dialogo="publicar" aria-haspopup="dialog" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
+		@components.Icon("plus", "h-3.5 w-3.5")
+		{ i18n.T(ctx, "endpoints.publish") }
+	</a>
+}
+
+// publishEndpointDrawer says how an endpoint is published; it publishes
+// nothing. An endpoint is declared in its API's file and published from
+// there, so a form here would be a second source of truth the API never
+// reads.
+templ publishEndpointDrawer() {
+	<dialog
+		id="publicar"
+		aria-labelledby="publicar-title"
+		class="run-drawer fixed inset-y-0 right-0 left-auto m-0 h-full max-h-none w-[min(560px,100vw)] border-l border-line bg-surface p-0 text-ink backdrop:bg-ink/40"
 	>
-		<td class="min-w-[14rem] px-3 py-2.5 pl-4">
-			<div class="flex items-center gap-2">
-				@components.MethodPill("GET")
-				<a href={ templ.SafeURL(r.Href()) } class="font-mono text-[0.8rem] text-ink hover:underline">{ r.Path }</a>
+		<div class="flex h-full flex-col">
+			<div class="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+				<div class="min-w-0">
+					<p id="publicar-title" class="text-[15px] font-semibold text-ink">{ i18n.T(ctx, "endpoints.publish") }</p>
+					<p class="mt-1 text-[12.5px] text-muted">{ i18n.T(ctx, "endpoints.publish.lead") }</p>
+				</div>
+				<form method="dialog">
+					<button type="submit" aria-label={ i18n.T(ctx, "dialog.close") } class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+						@components.Icon("x", "h-4 w-4")
+					</button>
+				</form>
 			</div>
-			if !r.Keyed {
-				<span class="mt-1 block text-[0.72rem] text-muted">the same rows for every key</span>
+			<div class="flex-1 space-y-4 overflow-y-auto px-5 py-4 text-[12.5px]">
+				@copyBlock(i18n.T(ctx, "endpoints.publish.declare"), "publicar-yaml", publishEndpointYAML)
+				@copyBlock(i18n.T(ctx, "endpoints.publish.commands"), "publicar-commands", publishEndpointCommands)
+				<p class="text-muted">{ i18n.T(ctx, "endpoints.publish.note") }</p>
+			</div>
+		</div>
+	</dialog>
+}
+
+// EndpointsList is the table and its empty states: the part the search
+// redraws.
+templ EndpointsList(v EndpointsView) {
+	{{ f := v.Filter }}
+	if v.Total > 0 {
+		<div class="mb-3 flex flex-wrap items-center gap-2">
+			if len(v.APINames) > 1 {
+				<div role="group" aria-label={ i18n.T(ctx, "endpoints.col.api") } class="inline-flex h-8 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-card border border-line bg-surface p-0.5">
+					@langOption(f.With("api", ""), f.API == "") {
+						{ i18n.T(ctx, "endpoints.filter.api.all") }
+					}
+					for _, api := range v.APINames {
+						@langOption(f.With("api", api), f.API == api) {
+							<span class="font-mono text-[12px]">{ api }</span>
+						}
+					}
+				</div>
+			}
+			<div role="group" aria-label={ i18n.T(ctx, "endpoints.col.status") } class="inline-flex h-8 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-card border border-line bg-surface p-0.5">
+				@langOption(f.With("state", ""), f.State == "") {
+					{ i18n.T(ctx, "endpoints.filter.state.all") }
+				}
+				@langOption(f.With("state", "fresh"), f.State == "fresh") {
+					@components.FreshnessMark("on_time")
+					{ i18n.T(ctx, "endpoints.filter.state.fresh") }
+				}
+				@langOption(f.With("state", "stale"), f.State == "stale") {
+					@components.FreshnessMark("stale")
+					{ i18n.T(ctx, "endpoints.filter.state.stale") }
+				}
+			</div>
+		</div>
+	}
+	if len(v.Rows) == 0 {
+		<div class="rounded-card border border-dashed border-line px-6 py-12 text-center">
+			if v.Total > 0 {
+				<p class="text-sm text-muted">{ i18n.T(ctx, "endpoints.empty.filtered") }</p>
+				<a href="/data/endpoints" class="mt-2 inline-block text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.clear") }</a>
+			} else {
+				<p class="text-sm text-muted">{ i18n.T(ctx, "endpoints.empty") }</p>
+				<p class="mt-1 font-mono text-xs text-faint">brevis endpoints publish manifest.json</p>
+			}
+		</div>
+	} else {
+		<div class="overflow-hidden rounded-card border border-line bg-surface">
+			<div class="overflow-x-auto">
+				<table id="endpoint-rows" class="ct w-full text-[13px]">
+					<thead>
+						<tr class="border-b border-line text-left text-[11.5px] font-medium text-muted">
+							<th class="px-2.5 py-2 pl-4 font-medium">{ i18n.T(ctx, "endpoints.col.endpoint") }</th>
+							<th class="px-2.5 py-2 font-medium max-[1280px]:hidden">{ i18n.T(ctx, "endpoints.col.api") }</th>
+							<th class="px-2.5 py-2 font-medium max-[960px]:hidden">{ i18n.T(ctx, "endpoints.col.reads") }</th>
+							<th class="px-2.5 py-2 font-medium max-[1180px]:hidden">{ i18n.T(ctx, "endpoints.col.cache") }</th>
+							<th class="px-2.5 py-2 font-medium max-[1180px]:hidden">{ i18n.T(ctx, "endpoints.col.params") }</th>
+							<th class="px-2.5 py-2 font-medium">{ i18n.T(ctx, "endpoints.col.status") }</th>
+							<th class="px-2.5 py-2 font-medium max-[1280px]:hidden">{ i18n.T(ctx, "endpoints.col.published") }</th>
+							<th class="w-8 px-2.5 py-2 pr-4"></th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-line-soft">
+						for _, r := range v.Rows {
+							@endpointRow(v, r)
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	}
+}
+
+// endpointRow is one endpoint: what it is, the table it reads and when that
+// was rebuilt, how long an answer is cached, its parameters, how its data
+// stands and when it was published. The whole row opens its page; the path
+// is a real link for the keyboard and no script.
+templ endpointRow(v EndpointsView, r EndpointRow) {
+	<tr data-href={ r.Href() } class="cursor-pointer align-top transition-colors hover:bg-hover">
+		<td class="px-2.5 py-3 pl-4">
+			<a href={ templ.SafeURL(r.Href()) } class="inline-flex items-center gap-2 font-mono text-[13px]">
+				@components.MethodPill("GET")
+				<span class="font-medium text-ink">{ r.Path }</span>
+			</a>
+			if r.About != "" {
+				<p class="mt-1 max-w-[22rem] truncate text-[12px] text-muted" title={ r.About }>{ r.About }</p>
 			}
 		</td>
-		<td class="px-3 py-2.5 font-mono text-[0.78rem] whitespace-nowrap text-ink-2">{ r.API }</td>
-		<td class="px-3 py-2.5 font-mono text-[0.75rem]">
-			if len(r.Params) == 0 {
-				<span class="text-faint">none</span>
-			}
-			for i, p := range r.Params {
-				if i > 0 {
-					<span class="text-faint">, </span>
-				}
-				if r.Required[p] {
-					<span class="text-ink" title="required">{ p }</span>
-				} else {
-					<span class="text-muted">{ p }</span>
-				}
-			}
+		<td class="px-2.5 py-3 max-[1280px]:hidden">
+			<span class="rounded-card border border-line px-1.5 py-px font-mono text-[11.5px] text-ink-2">{ r.API }</span>
 		</td>
-		<td class="px-3 py-2.5">
+		<td class="px-2.5 py-3 max-[960px]:hidden">
 			if len(r.Reads) > 0 {
-				<a href={ templ.SafeURL(TargetHref(r.Reads[0])) } class="font-mono text-[0.75rem] break-all text-ink hover:underline">{ r.Reads[0] }</a>
-				if len(r.Reads) > 1 {
-					<span class="ml-1 text-[0.72rem] text-muted" title={ strings.Join(r.Reads[1:], "\n") }>{ fmt.Sprintf("+%d", len(r.Reads)-1) }</span>
-				}
+				{{ where, what := splitDestination(r.Reads[0]) }}
+				<div class="min-w-0 max-w-[18rem]">
+					<p class="flex min-w-0 items-center gap-1.5 font-mono text-[12px]" title={ r.Reads[0] }>
+						@components.Logo(kindLogo(kindOf(r.Reads[0])), 16)
+						<span class="truncate text-faint">{ where }</span><span class="shrink-0 text-ink">{ what }</span>
+						if len(r.Reads) > 1 {
+							<span class="shrink-0 font-sans text-[11.5px] text-muted" title={ strings.Join(r.Reads[1:], "\n") }>{ fmt.Sprintf("+%d", len(r.Reads)-1) }</span>
+						}
+					</p>
+					if said := rebuiltSaid(ctx, v.Now, r.Read); said != "" {
+						<p class="mt-0.5 truncate text-[11.5px] text-muted">{ said }</p>
+					}
+				</div>
 			}
 		</td>
-		<td class="px-3 py-2.5 pr-4 text-[0.78rem] whitespace-nowrap text-muted">{ components.When(&r.PublishedAt) }</td>
+		<td class="px-2.5 py-3 text-[12.5px] whitespace-nowrap text-ink-2 max-[1180px]:hidden">
+			if r.TTL != "" {
+				{ i18n.T(ctx, "endpoints.ttl", "ttl", durationWords(ctx, r.TTL)) }
+			} else {
+				<span class="text-faint">—</span>
+			}
+		</td>
+		<td class="px-2.5 py-3 text-[12.5px] whitespace-nowrap text-ink-2 max-[1180px]:hidden">{ paramsSaid(ctx, r) }</td>
+		<td class="px-2.5 py-3 whitespace-nowrap">
+			@endpointFreshness(r.Freshness)
+		</td>
+		<td class="px-2.5 py-3 text-xs whitespace-nowrap text-muted max-[1280px]:hidden">{ i18n.Since(ctx, v.Now, r.PublishedAt) }</td>
+		<td class="px-2.5 py-3 pr-4 text-right text-faint">
+			@components.Icon("chevron-right", "h-4 w-4")
+		</td>
 	</tr>
 }
 
+// endpointFreshness is how an endpoint's data stands, by the tables it
+// reads: fresh, stale, or not known to the catalog.
+templ endpointFreshness(f string) {
+	switch f {
+		case "stale":
+			<span class="inline-flex items-center gap-1.5 text-[12.5px] text-state-queued">
+				@components.FreshnessMark("stale")
+				{ i18n.T(ctx, "endpoints.state.stale") }
+			</span>
+		case "fresh":
+			<span class="inline-flex items-center gap-1.5 text-[12.5px] text-state-success">
+				@components.FreshnessMark("on_time")
+				{ i18n.T(ctx, "endpoints.state.fresh") }
+			</span>
+		default:
+			<span class="text-[12.5px] text-faint" title={ i18n.T(ctx, "endpoints.state.unknown.tip") }>{ i18n.T(ctx, "endpoints.state.unknown") }</span>
+	}
+}
+
+// endpointsHow is the footer: an endpoint in three steps.
+templ endpointsHow() {
+	<ol data-how-it-works class="mt-4 grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface min-[860px]:grid-cols-3">
+		<li class="px-4 py-3.5">
+			<p class="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{ i18n.T(ctx, "endpoints.how.1") }</p>
+			<p class="mt-1 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "endpoints.how.declare") }</p>
+			<p class="mt-1 text-[12.5px] text-muted">{ i18n.T(ctx, "endpoints.how.declare.text") }</p>
+		</li>
+		<li class="border-t border-line-soft px-4 py-3.5 min-[860px]:border-t-0 min-[860px]:border-l">
+			<p class="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{ i18n.T(ctx, "endpoints.how.2") }</p>
+			<p class="mt-1 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "endpoints.how.publish") }</p>
+			<p class="mt-1 text-[12.5px] text-muted"><code class="font-mono">brevis endpoints publish</code> { i18n.T(ctx, "endpoints.how.publish.text") }</p>
+		</li>
+		<li class="border-t border-line-soft px-4 py-3.5 min-[860px]:border-t-0 min-[860px]:border-l">
+			<p class="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{ i18n.T(ctx, "endpoints.how.3") }</p>
+			<p class="mt-1 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "endpoints.how.serve") }</p>
+			<p class="mt-1 text-[12.5px] text-muted">{ i18n.T(ctx, "endpoints.how.serve.text") }</p>
+		</li>
+	</ol>
+}
+
+// Endpoint is one endpoint's page (screen-endpoints T4): what it is, whether
+// the data it serves is stale and why, where that data comes from, how its
+// answers are cached and how to clear them, and its contract.
 templ Endpoint(v EndpointView) {
 	@layouts.Base(layouts.Page{
-		Title: v.Row.Path, Kicker: "Data", Active: "endpoints", Mono: true,
+		Title: v.Row.Path, Crumb: v.Row.Path, Active: "endpoints", Mono: true,
 		Eyebrow: endpointEyebrow(v),
 	}) {
 		// THE CONTRACT IS THE PAGE, and Try it sits beside it -- after it in
@@ -114,44 +282,47 @@ templ Endpoint(v EndpointView) {
 		// can only answer "not here" is a question nobody can act on.
 		<div
 			if v.CanRun {
-				class="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_380px]"
+				class="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]"
 			} else {
 				class="grid grid-cols-1 gap-3"
 			}
 		>
 			<div class="flex min-w-0 flex-col gap-3">
-				<div class="flex flex-col gap-3">
-					if v.About != "" {
-						<p class="max-w-3xl text-sm whitespace-pre-line text-ink-2">{ v.About }</p>
+				if v.About != "" {
+					<p class="-mt-1 max-w-3xl text-[13.5px] whitespace-pre-line text-ink-2">{ v.About }</p>
+				}
+				if l := v.StaleLine(); l != nil {
+					@endpointStale(*l)
+				}
+				// WHOSE ROWS A REQUEST READS, said before anything else about
+				// it: the one fact a caller cannot change.
+				<div class="flex max-w-3xl items-start gap-2.5 rounded-card border border-line bg-surface px-3.5 py-3 text-[0.82rem] text-ink-2">
+					if v.Row.Keyed {
+						<span class="mt-0.5 text-ink">
+							@components.Icon("key-round", "h-4 w-4")
+						</span>
+						<span>{ i18n.T(ctx, "endpoint.tenant.key") }</span>
+					} else {
+						<span class="mt-0.5 text-state-running">
+							@components.Icon("info", "h-4 w-4")
+						</span>
+						<span>{ i18n.T(ctx, "endpoint.tenant.none") }</span>
 					}
-					// WHOSE ROWS A REQUEST READS, said before anything else
-					// about it: the one fact a caller cannot change.
-					<div class="flex max-w-3xl items-start gap-2.5 rounded-card border border-line bg-surface px-3.5 py-3 text-[0.82rem] text-ink-2">
-						if v.Row.Keyed {
-							<span class="mt-0.5 text-ink">
-								@components.Icon("key-round", "h-4 w-4")
-							</span>
-							<span>Each request reads as each key's tenant; a caller cannot send one.</span>
-						} else {
-							<span class="mt-0.5 text-state-running">
-								@components.Icon("info", "h-4 w-4")
-							</span>
-							<span>The same rows for every key: its file says the data is not per tenant.</span>
-						}
-					</div>
 				</div>
-				@components.Panel("Parameters", paramsCount(v.Params)) {
+				@endpointLineage(v)
+				@endpointCache(v)
+				@components.Panel(i18n.T(ctx, "endpoints.col.params"), paramsSaid(ctx, v.Row)) {
 					if len(v.Params) == 0 {
-						<p class="px-4 py-3 text-sm text-muted">None. Every request reads the same.</p>
+						<p class="px-4 py-3 text-sm text-muted">{ i18n.T(ctx, "endpoint.params.none") }</p>
 					} else {
 						<div class="overflow-x-auto">
 							<table class="ct w-full text-[0.82rem]">
 								<thead>
 									<tr class="border-b border-line bg-canvas-subtle text-left">
-										@th("Name", "pl-4")
-										@th("Type", "")
-										@th("Accepts", "")
-										@th("Default", "pr-4")
+										@th(i18n.T(ctx, "endpoint.params.name"), "pl-4")
+										@th(i18n.T(ctx, "endpoint.params.type"), "")
+										@th(i18n.T(ctx, "endpoint.params.accepts"), "")
+										@th(i18n.T(ctx, "endpoint.params.default"), "pr-4")
 									</tr>
 								</thead>
 								<tbody class="divide-y divide-line-soft">
@@ -160,14 +331,14 @@ templ Endpoint(v EndpointView) {
 											<td class="px-3 py-2.5 pl-4">
 												<span class="font-mono text-[0.8rem] text-ink">{ p.Name }</span>
 												if p.Required {
-													<span class="ml-1.5 rounded-card bg-state-queued/13 px-1.5 py-px text-[0.68rem] font-medium text-state-queued">required</span>
+													<span class="ml-1.5 rounded-card bg-state-queued/13 px-1.5 py-px text-[0.68rem] font-medium tracking-[0.04em] text-state-queued uppercase">{ i18n.T(ctx, "endpoint.params.required") }</span>
 												}
 												if p.Note != "" {
 													<p class="mt-1 max-w-md text-[0.75rem] whitespace-pre-line text-muted">{ p.Note }</p>
 												}
 											</td>
 											<td class="px-3 py-2.5 font-mono text-[0.75rem] text-muted">{ p.Type }</td>
-											<td class="px-3 py-2.5 text-[0.78rem] text-ink-2">{ p.Accepts }</td>
+											<td class="px-3 py-2.5 text-[0.78rem] text-ink-2">{ acceptsSaid(ctx, p) }</td>
 											<td class="px-3 py-2.5 pr-4 font-mono text-[0.75rem] text-ink">
 												if p.Default == "" {
 													<span class="text-faint">—</span>
@@ -183,94 +354,208 @@ templ Endpoint(v EndpointView) {
 					}
 				}
 				<section>
-					<h2 class="mb-2 text-[0.875rem] font-semibold text-ink">Limits</h2>
+					<h2 class="mb-2 text-[0.875rem] font-semibold text-ink">{ i18n.T(ctx, "endpoint.limits") }</h2>
 					@components.Stats([]components.Stat{
-						{Label: "Timeout", Value: v.Limits.Timeout, Icon: "clock"},
-						{Label: "Rows", Value: thousands(v.Limits.MaxRows), Icon: "rows-3"},
-						{Label: "Bytes billed", Value: v.BytesBilled(), Icon: "hard-drive"},
+						{Label: i18n.T(ctx, "endpoint.limits.timeout"), Value: durationWords(ctx, v.Limits.Timeout), Icon: "clock"},
+						{Label: i18n.T(ctx, "endpoint.limits.rows"), Value: i18n.Number(ctx, int64(v.Limits.MaxRows)), Icon: "rows-3"},
+						{Label: i18n.T(ctx, "endpoint.limits.bytes"), Value: bytesBilled(ctx, v), Icon: "hard-drive"},
 					})
 				</section>
-				@components.Panel("Reads", fmt.Sprint(len(v.Row.Reads))) {
-					<ul class="divide-y divide-line-soft">
-						for _, t := range v.Row.Reads {
-							<li class="flex flex-wrap items-center gap-2.5 px-4 py-2.5">
-								@components.Icon("database", "h-3.5 w-3.5 text-muted")
-								{{ where, what := SplitTarget(t) }}
-								<a href={ templ.SafeURL(TargetHref(t)) } class="min-w-0 flex-1 font-mono text-[0.78rem] break-all hover:underline"><span class="text-faint">{ where }</span><span class="text-ink">{ what }</span></a>
-								if layouts.HasSQL(ctx) {
-									@components.ButtonLink(components.ButtonSecondary, components.SizeSmall, "/sql?target="+url.QueryEscape(t)) {
-										Open in SQL
-									}
-								}
-							</li>
-						}
-					</ul>
-				}
-				@components.Panel("Call it", "") {
-					<div class="p-4">
-						@components.CodeBlock("endpoint-curl", v.Curl(), curlAttrs(v))
-					</div>
+				if !v.CanRun {
+					@endpointCall(v)
 				}
 			</div>
+			// TRY IT, then the call from outside: the run as a command, so
+			// what was tried here is what a caller sends.
 			if v.CanRun {
-				<div data-side class="flex min-w-0 flex-col gap-3 min-[1180px]:sticky min-[1180px]:top-4 min-[1180px]:self-start">
-					@components.Panel("Try it", "") {
+				<div data-side class="flex min-w-0 flex-col gap-3 min-[1180px]:sticky min-[1180px]:top-4 min-[1180px]:max-h-[calc(100vh-2rem)] min-[1180px]:self-start min-[1180px]:overflow-y-auto">
+					@components.Panel(i18n.T(ctx, "endpoint.try"), "") {
 						<div class="p-4">
 							@tryIt(v)
 						</div>
 					}
+					@endpointCall(v)
 				</div>
 			}
 		</div>
 	}
 }
 
-// endpointEyebrow is what the endpoint is, above its path: the method, the
-// API that serves it, when it was published.
+// endpointEyebrow is the line above the path: back to every endpoint, then
+// what it is -- the method, its API, when it was published, how its data
+// stands.
 templ endpointEyebrow(v EndpointView) {
+	<a href="/data/endpoints" class="text-[0.75rem] text-muted hover:text-ink">&larr; { i18n.T(ctx, "endpoint.back") }</a>
+	<span class="text-faint">·</span>
 	@components.MethodPill("GET")
 	<span class="font-mono text-[0.75rem] text-ink-2">{ v.Row.API }</span>
-	<span class="text-[0.72rem] text-muted">published { components.When(&v.Row.PublishedAt) }</span>
-}
-
-templ readBy(refs []EndpointRef) {
-	if len(refs) > 0 {
-		@components.Panel("Read by", fmt.Sprint(len(refs))) {
-			<ul class="divide-y divide-line-soft">
-				for _, e := range refs {
-					<li class="flex flex-wrap items-center gap-1.5 px-4 py-2.5">
-						@components.MethodPill("GET")
-						<a href={ templ.SafeURL(e.Href) } class="font-mono text-[0.78rem] text-ink hover:underline">{ e.Path }</a>
-						<span class="text-[0.72rem] text-muted">· { e.API }</span>
-					</li>
-				}
-			</ul>
-		}
+	<span class="text-[0.72rem] text-muted">{ i18n.T(ctx, "endpoint.published", "when", i18n.Since(ctx, v.Now, v.Row.PublishedAt)) }</span>
+	if v.Row.Freshness != "" {
+		@endpointFreshness(v.Row.Freshness)
 	}
 }
 
+// endpointStale is the warning on an endpoint serving stale data: why the
+// table is behind, in its writer's words, that the endpoint answers with the
+// last good data meanwhile, and the table in the Catalog.
+templ endpointStale(l LineageRow) {
+	<section data-stale-warning role="note" class="max-w-3xl rounded-card border border-state-queued/40 bg-state-queued/8 px-4 py-3 text-[13px]">
+		<p class="flex items-center gap-2 font-semibold text-state-queued">
+			@components.FreshnessMark("stale")
+			{ i18n.T(ctx, "endpoint.stale.title") }
+		</p>
+		if l.Writer != nil {
+			if why := l.Writer.Reason(ctx); why != "" {
+				<p class="mt-1.5 text-ink-2">{ why }</p>
+			}
+		}
+		<p class="mt-1 text-muted">{ i18n.T(ctx, "endpoint.stale.serves") }</p>
+		<a href={ templ.SafeURL(TargetHref(l.Target)) } class="mt-2 inline-block text-[12.5px] text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "endpoint.stale.catalog") } &rarr;</a>
+	</section>
+}
+
+// endpointLineage is where the data comes from: per table read, the
+// writer's declared origin, the writer, the table and this endpoint, in four
+// columns that stack on a narrow screen. A step nothing is known of is a
+// dash, so the columns line up; a table the catalog does not know says so.
+templ endpointLineage(v EndpointView) {
+	@components.Panel(i18n.T(ctx, "endpoint.lineage"), fmt.Sprint(len(v.Lineage))) {
+		<ul id="lineage" class="divide-y divide-line-soft">
+			for _, l := range v.Lineage {
+				<li class="grid grid-cols-1 gap-3 px-4 py-3 text-[12.5px] min-[1100px]:grid-cols-[minmax(0,1fr)_1rem_minmax(0,1fr)_1rem_minmax(0,1.3fr)_1rem_minmax(0,1fr)] min-[1100px]:gap-2">
+					@lineageStep(i18n.T(ctx, "endpoint.lineage.origin")) {
+						if l.Writer != nil && l.Writer.Gateway != nil {
+							<p class="truncate font-mono text-ink-2">POST { l.Writer.Gateway.Stream }</p>
+							<p class="text-[11.5px] text-muted">{ i18n.T(ctx, "loads.source.http") }</p>
+						} else if l.Source.Kind != "" {
+							<p class="truncate text-ink-2">{ originLabel(ctx, l.Source) }</p>
+							if l.Source.Where != "" {
+								<p class="truncate font-mono text-[11.5px] text-muted" title={ l.Source.Where }>{ l.Source.Where }</p>
+							}
+						} else {
+							<p class="text-faint">—</p>
+						}
+					}
+					@lineageArrow()
+					@lineageStep(i18n.T(ctx, "endpoint.lineage.writer")) {
+						if l.Writer != nil {
+							<a href={ templ.SafeURL(l.WriterHref()) } class="block truncate font-mono text-ink hover:underline" title={ writerName(l.Writer.CatalogWriter) }>{ writerName(l.Writer.CatalogWriter) }</a>
+						} else {
+							<p class="text-faint">—</p>
+						}
+					}
+					@lineageArrow()
+					@lineageStep(i18n.T(ctx, "endpoint.lineage.table")) {
+						{{ where, what := splitDestination(l.Target) }}
+						<a href={ templ.SafeURL(TargetHref(l.Target)) } class="flex min-w-0 items-center gap-1.5 font-mono hover:underline" title={ l.Target }>
+							@components.Logo(kindLogo(kindOf(l.Target)), 16)
+							<span class="truncate text-faint">{ where }</span><span class="shrink-0 text-ink">{ what }</span>
+						</a>
+						if l.Known {
+							<p class="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-muted">
+								@components.Freshness(string(l.Status))
+								if l.LastWhen != nil {
+									<span>· { i18n.T(ctx, "endpoint.lineage.rebuilt", "when", i18n.Since(ctx, v.Now, *l.LastWhen)) }</span>
+								}
+							</p>
+						} else {
+							<p class="mt-0.5 text-[11.5px] text-faint">{ i18n.T(ctx, "endpoint.lineage.unknown") }</p>
+						}
+						if layouts.HasSQL(ctx) {
+							<a href={ templ.SafeURL("/sql?target=" + url.QueryEscape(l.Target)) } class="mt-0.5 inline-block text-[11.5px] text-muted underline decoration-line-strong underline-offset-2 hover:text-ink">{ i18n.T(ctx, "endpoint.lineage.sql") }</a>
+						}
+					}
+					@lineageArrow()
+					@lineageStep(i18n.T(ctx, "endpoint.lineage.endpoint")) {
+						<p class="truncate font-mono text-ink">GET { v.Row.Path }</p>
+						if c := v.Manifest.Cache; c != nil {
+							<p class="text-[11.5px] text-muted">{ i18n.T(ctx, "endpoint.lineage.cache", "ttl", durationWords(ctx, c.TTL)) }</p>
+						}
+					}
+				</li>
+			}
+		</ul>
+	}
+}
+
+// lineageStep is one step of a lineage line: a small label over its lines.
+templ lineageStep(label string) {
+	<div class="min-w-0">
+		<p class="mb-0.5 text-[10.5px] font-medium tracking-[0.08em] text-faint uppercase">{ label }</p>
+		{ children... }
+	</div>
+}
+
+// lineageArrow joins two steps; on a narrow screen the steps stack and the
+// order says it.
+templ lineageArrow() {
+	<span aria-hidden="true" class="hidden pt-4 text-center text-faint min-[1100px]:block">&rarr;</span>
+}
+
+// endpointCache is the cache card: how long an answer is kept, what clears
+// it, what holds it, and Clear cache -- a command to copy, since the console
+// never touches the cache itself. With no cache on record it says why.
+templ endpointCache(v EndpointView) {
+	<section id="cache" class="overflow-hidden rounded-card border border-line bg-surface">
+		<header class="flex h-[38px] items-center gap-2 border-b border-line-soft pr-3 pl-3.5">
+			<h2 class="text-[13px] font-semibold text-ink">{ i18n.T(ctx, "endpoints.col.cache") }</h2>
+		</header>
+		if c := v.Manifest.Cache; c != nil {
+			<dl class="grid grid-cols-1 gap-px bg-line-soft min-[720px]:grid-cols-3">
+				<div class="bg-surface px-4 py-3">
+					<dt class="text-[11.5px] text-muted">{ i18n.T(ctx, "endpoint.cache.ttl") }</dt>
+					<dd class="mt-0.5 text-[15px] font-semibold text-ink">{ durationWords(ctx, c.TTL) }</dd>
+					<dd class="text-[11.5px] text-faint">{ i18n.T(ctx, "endpoint.cache.ttl.hint") }</dd>
+				</div>
+				<div class="bg-surface px-4 py-3">
+					<dt class="text-[11.5px] text-muted">{ i18n.T(ctx, "endpoint.cache.cleared") }</dt>
+					<dd class="mt-0.5 text-[15px] font-semibold text-ink">{ i18n.T(ctx, "endpoint.cache.cleared.value") }</dd>
+					<dd class="truncate font-mono text-[11.5px] text-faint" title={ strings.Join(v.Row.Reads, "\n") }>{ strings.Join(v.Row.Reads, " · ") }</dd>
+				</div>
+				<div class="bg-surface px-4 py-3">
+					<dt class="text-[11.5px] text-muted">{ i18n.T(ctx, "endpoint.cache.type") }</dt>
+					<dd class="mt-0.5 text-[15px] font-semibold text-ink">{ cacheTypeTitle(c.Type) }</dd>
+					<dd class="font-mono text-[11.5px] text-faint">{ c.AddrFrom }</dd>
+				</div>
+			</dl>
+			<div class="space-y-3 border-t border-line-soft px-4 py-3 text-[12.5px]">
+				<p class="text-muted">{ i18n.T(ctx, "endpoint.cache.explain") }</p>
+				if cmd := v.BumpCommand(); cmd != "" {
+					<div>
+						<p class="mb-1.5 font-medium text-ink">{ i18n.T(ctx, "endpoint.cache.clear") }</p>
+						@components.CodeBlock("endpoint-bump", cmd, nil)
+						<p class="mt-1.5 text-muted">{ i18n.T(ctx, "endpoint.cache.clear.when") }</p>
+					</div>
+				}
+			</div>
+		} else if v.Manifest.Connection == "" {
+			<p class="px-4 py-3 text-[12.5px] text-muted">{ i18n.T(ctx, "endpoint.cache.unknown") }</p>
+		} else {
+			<p class="px-4 py-3 text-[12.5px] text-muted">{ i18n.T(ctx, "endpoint.cache.none") }</p>
+		}
+	</section>
+}
+
 templ tryIt(v EndpointView) {
-	<p class="mb-3 text-[0.75rem] text-muted">
-		Runs through this console's key, as that key's tenant, for every login. An empty field is the parameter's default.
-	</p>
+	<p class="mb-3 text-[0.75rem] text-muted">{ i18n.T(ctx, "endpoint.try.lead") }</p>
 	// A GET, so a run is a link somebody can send -- these are an endpoint's
 	// parameters, not SQL. `data-swap` names the pane the answer goes into:
 	// ui.js fetches the answer alone and swaps it, and with no script the
 	// form draws the whole page with the answer in it.
 	<form id="try-it" method="get" action={ templ.SafeURL(v.Row.Href()) } data-swap="endpoint-answer" class="flex flex-col gap-3">
 		<input type="hidden" name="run" value="1"/>
-		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1180px]:grid-cols-1">
 			for _, f := range v.Form {
 				<label class="flex min-w-0 flex-col gap-1">
 					<span class="flex items-center gap-1.5 font-mono text-[0.75rem] text-ink-2">
 						{ f.Name }
 						if f.Required {
-							<span class="rounded-card bg-state-queued/13 px-1 py-px font-sans text-[0.65rem] font-medium text-state-queued">required</span>
+							<span class="rounded-card bg-state-queued/13 px-1 py-px font-sans text-[0.65rem] font-medium tracking-[0.04em] text-state-queued uppercase">{ i18n.T(ctx, "endpoint.params.required") }</span>
 						}
 					</span>
 					if f.Kind == "select" {
 						<select name={ f.Name } class={ fieldClass }>
-							<option value="">default</option>
+							<option value="">{ i18n.T(ctx, "endpoint.try.default") }</option>
 							for _, o := range f.Options {
 								if o == f.Value {
 									<option value={ o } selected>{ o }</option>
@@ -289,7 +574,7 @@ templ tryIt(v EndpointView) {
 		</div>
 		@components.Button(components.ButtonPrimary, components.SizeRegular, templ.Attributes{"type": "submit"}) {
 			@components.Icon("play", "h-3.5 w-3.5")
-			Run request
+			{ i18n.T(ctx, "endpoint.try.run") }
 			<span class="ml-1 font-mono text-[0.7rem] opacity-60">⌘↵</span>
 		}
 	</form>
@@ -300,43 +585,58 @@ templ tryIt(v EndpointView) {
 	</div>
 }
 
+// endpointCall is the call from outside: the curl, with the key a
+// placeholder, following Try it's form as somebody types. It wraps rather
+// than scrolls: in Try it's narrow column a scrolled command hides its end,
+// which is the part a run changes.
+templ endpointCall(v EndpointView) {
+	@components.Panel(i18n.T(ctx, "endpoint.call"), "") {
+		<div class="p-4 [&_pre]:break-all [&_pre]:whitespace-pre-wrap">
+			@components.CodeBlock("endpoint-curl", v.Curl(), curlAttrs(v))
+		</div>
+	}
+}
+
 // EndpointAnswer is what a run brought back -- the status, the cache, the
 // time and the rows -- or why there is nothing. ONE DEFINITION FOR BOTH
 // SHAPES: the page draws it in its pane, and a run that asks for the answer
 // alone (X-Brevis-Fragment: answer) gets exactly this.
 templ EndpointAnswer(v EndpointView) {
-	if v.RunErr != "" {
-		<p class="rounded-card border border-line bg-canvas-subtle px-3 py-2.5 text-[0.82rem] text-ink">{ v.RunErr }</p>
+	if v.RunErr != nil {
+		<p class="rounded-card border border-line bg-canvas-subtle px-3 py-2.5 text-[0.82rem] text-ink">{ runErrSaid(ctx, v.RunErr) }</p>
 	} else if a := v.Answer; a != nil {
 		<div class="mb-2 flex flex-wrap items-center gap-2 text-[0.75rem] text-muted">
+			// The status as HTTP writes it: "200 OK" -- the reason phrase is
+			// the protocol's, the same in every language.
 			if a.Status < 300 {
-				<span class="rounded-card bg-state-success/13 px-1.5 py-px font-mono font-semibold text-state-success">{ fmt.Sprint(a.Status) }</span>
+				<span class="rounded-card bg-state-success/13 px-1.5 py-px font-mono font-semibold text-state-success">{ fmt.Sprint(a.Status) } { http.StatusText(a.Status) }</span>
 			} else {
-				<span class="rounded-card bg-state-failed/13 px-1.5 py-px font-mono font-semibold text-state-failed">{ fmt.Sprint(a.Status) }</span>
+				<span class="rounded-card bg-state-failed/13 px-1.5 py-px font-mono font-semibold text-state-failed">{ fmt.Sprint(a.Status) } { http.StatusText(a.Status) }</span>
+			}
+			if a.Cache != "" {
+				<span class="rounded-card border border-line px-1.5 py-px font-mono text-[0.7rem] font-semibold text-ink">{ strings.ToUpper(a.Cache) }</span>
 			}
 			<span class="tabular-nums">{ fmt.Sprint(a.Millis) } ms</span>
 			if a.Status == 200 {
-				<span class="tabular-nums">{ Total(a.Received, a.Truncated) } rows</span>
-			}
-			if a.Cache != "" {
-				<span>cache <span class="font-mono text-ink">{ a.Cache }</span></span>
+				<span class="tabular-nums">{ i18n.T(ctx, "endpoint.try.rows", "n", Total(a.Received, a.Truncated)) }</span>
 			}
 		</div>
+		if said := cacheSaid(ctx, a.Cache); said != "" {
+			<p class="mb-2 text-[0.72rem] text-muted">{ said }</p>
+		}
 		if a.Received > len(a.Rows) {
-			<p class="mb-2 text-[0.72rem] text-muted">
-				Showing the first { fmt.Sprint(len(a.Rows)) } of { fmt.Sprint(a.Received) } rows; call the API for the rest.
-			</p>
+			<p class="mb-2 text-[0.72rem] text-muted">{ i18n.T(ctx, "endpoint.try.part", "shown", fmt.Sprint(len(a.Rows)), "n", fmt.Sprint(a.Received)) }</p>
 		}
 		if a.Error != "" {
 			<p class="rounded-card border border-line bg-canvas-subtle px-3 py-2.5 text-[0.82rem] text-ink">{ a.Error }</p>
 		} else if len(a.Rows) == 0 {
-			<p class="text-[0.82rem] text-muted">No rows.</p>
+			<p class="text-[0.82rem] text-muted">{ i18n.T(ctx, "endpoint.try.no_rows") }</p>
 		} else {
 			<div class="max-h-[28rem] overflow-auto rounded-card border border-line-soft">
 				@grid(a.Columns, a.Rows)
 			</div>
 		}
 	} else {
-		<p class="text-[0.78rem] text-faint">The answer appears here.</p>
+		<p class="text-[0.78rem] text-faint">{ i18n.T(ctx, "endpoint.try.empty") }</p>
 	}
 }

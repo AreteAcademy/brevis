@@ -61,8 +61,8 @@ func TestTheEndpointsPageListsWhatWasPublished(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("%d", code)
 	}
-	for _, want := range []string{"/v1/clicks", "metrics-api", "period", "order",
-		"postgres://analytics/marts/clicks_daily", "/data/endpoints/metrics-api/clicks"} {
+	for _, want := range []string{"/v1/clicks", "metrics-api", "Clicks per day, for the dashboard.",
+		"postgres://analytics/marts/", "clicks_daily", "/data/endpoints/metrics-api/clicks"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the list lacks %q", want)
 		}
@@ -78,9 +78,9 @@ func TestAnEndpointsPageIsItsContract(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("%d", code)
 	}
-	for _, want := range []string{"last_7_days", "asc, desc", "500", "1.0 GB", "10s",
+	for _, want := range []string{"last_7_days", "asc, desc", "500", "1.0 GB", "10 seconds",
 		"Clicks per day, for the dashboard.", "Newest first by default.", "Bearer &lt;key&gt;",
-		"/data/target?u=postgres%3A%2F%2Fanalytics%2Fmarts%2Fclicks_daily", "each key's tenant"} {
+		"/data/target?u=postgres%3A%2F%2Fanalytics%2Fmarts%2Fclicks_daily", "a caller cannot send one"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page lacks %q", want)
 		}
@@ -133,7 +133,7 @@ func TestAnEndpointsPageOffersAFormAndAsksNothingUntilRun(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { asked = true }))
 	defer srv.Close()
 	_, body := get(t, tryUI(t, srv.URL, loggedIn), "/data/endpoints/metrics-api/clicks")
-	for _, want := range []string{"Try it", `name="run"`, `name="period"`, `<select`, `<option value="desc"`, "console's key"} {
+	for _, want := range []string{"Try it", `name="run"`, `name="period"`, `<select`, `<option value="desc"`, "console&#39;s key"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the form lacks %q", want)
 		}
@@ -163,7 +163,7 @@ func TestRunCallsTheAPIAndDrawsWhatItAnswered(t *testing.T) {
 		got.Header.Get("Authorization") != "Bearer console-key" {
 		t.Fatalf("the API was asked %v", got)
 	}
-	for _, want := range []string{">day<", ">clicks<", ">412<", "200", "miss"} {
+	for _, want := range []string{">day<", ">clicks<", ">412<", "200 OK", ">MISS<", "kept in the cache"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the answer lacks %q", want)
 		}
@@ -230,39 +230,63 @@ func twoAPIs() endpointsFake {
 	return f
 }
 
-// THE LIST IS AN INDEX: method and path, the API, the parameters (the
-// required ones said so), what it reads and when it was published -- and the
+// THE LIST IS AN INDEX: method and path, the API, how many parameters (and
+// how many required), what it reads and when it was published -- and the
 // whole row goes to the endpoint's page.
 func TestTheEndpointsListIsAnIndex(t *testing.T) {
 	_, body := get(t, dataUI(catalogFake{}).WithEndpoints(twoAPIs()), "/data/endpoints")
 	for _, want := range []string{">GET<", ">/v1/orders<", "sales-api", `data-href="/data/endpoints/sales-api/orders"`,
-		"postgres://warehouse/sales/orders", "+1", "2 endpoints"} {
+		"postgres://warehouse/sales/", ">orders<", "+1", "1 · 1 required", "2 endpoints", "2 APIs"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the list lacks %s", want)
 		}
 	}
-	day := strings.Index(body, ">day<")
-	if day < 0 {
-		t.Fatal("the list does not name the orders endpoint's parameter")
+}
+
+// THE LIST JUDGES AN ENDPOINT BY THE CATALOG (screen-endpoints T2): one
+// reading a stale table says so, with when that table was rebuilt and by
+// whom; one reading a table the catalog does not know says nothing.
+func TestTheEndpointsListReadsTheCatalog(t *testing.T) {
+	f := published()
+	stale := catalog.Endpoint{Name: "vendors", Path: "/v1/vendors", Tenant: "key", Reads: []string{"bigquery://acme/bronze/old"}}
+	f.all = append(f.all, postgres.PublishedEndpoint{API: "metrics-api", Name: "vendors", Path: "/v1/vendors",
+		Tenant: "key", Reads: stale.Reads, Endpoint: stale, PublishedAt: time.Now().Add(-time.Hour)})
+	_, body := get(t, dataUI(catalogFake{entries: catalogEntries()}).WithEndpoints(f), "/data/endpoints")
+	if !strings.Contains(body, "1 serving stale data") {
+		t.Error("the summary does not count the endpoint serving stale data")
 	}
-	if tag := body[strings.LastIndex(body[:day], "<span"):day]; !strings.Contains(tag, "text-ink") {
-		t.Errorf("a required parameter is not set apart from the optional ones: %s", tag)
+	row := body[strings.Index(body, `data-href="/data/endpoints/metrics-api/vendors"`):]
+	row = row[:strings.Index(row, "</tr>")]
+	for _, want := range []string{"stale data", "rebuilt 5h ago by vendors"} {
+		if !strings.Contains(row, want) {
+			t.Errorf("the stale endpoint's row lacks %q", want)
+		}
+	}
+	if strings.Index(body, "/v1/vendors") > strings.Index(body, ">/v1/clicks<") {
+		t.Error("the stale endpoint is not first")
 	}
 }
 
 // THE LIST SEARCHES PATH, API, PARAMETERS AND READS, on the server and while
-// somebody types -- the same contract as the catalog's.
+// somebody types -- the same contract as the catalog's: the box swaps the
+// list for the answer fragment.
 func TestTheEndpointsListSearches(t *testing.T) {
 	ui := dataUI(catalogFake{}).WithEndpoints(twoAPIs())
 	_, body := get(t, ui, "/data/endpoints?q=CUSTOMERS")
-	if rowHidden(t, body, "/v1/orders") || !rowHidden(t, body, "/v1/clicks") {
+	if !strings.Contains(body, ">/v1/orders<") || strings.Contains(body, ">/v1/clicks<") {
 		t.Error("?q=CUSTOMERS did not narrow to the endpoint that reads customers")
 	}
-	for _, want := range []string{"Showing 1 of 2 endpoints", `value="CUSTOMERS"`,
-		`data-filter-for="endpoint-rows"`, `id="endpoint-rows"`, `data-foot-noun="endpoints"`, "data-filter-empty"} {
+	for _, want := range []string{`value="CUSTOMERS"`, `data-swap="endpoints-list"`, `id="endpoints-list"`, `id="endpoint-rows"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the searched list lacks %s", want)
 		}
+	}
+	_, answer := fragmentGet(t, ui, "/data/endpoints?q=nothing-like-it")
+	if strings.Contains(answer, "<html") || strings.Contains(answer, `role="search"`) {
+		t.Error("the answer is the whole page, not the list")
+	}
+	if !strings.Contains(answer, "Nothing matches this filter.") {
+		t.Errorf("a search that finds nothing does not say so: %s", answer)
 	}
 }
 
@@ -287,7 +311,7 @@ func TestAnEndpointIsTitledByItsPath(t *testing.T) {
 // the key as a placeholder, never the console's own.
 func TestAnEndpointsLimitsAreNumbersAndItsCurlIsCopyable(t *testing.T) {
 	_, body := get(t, tryUI(t, "http://api.invalid", loggedIn), "/data/endpoints/metrics-api/clicks")
-	limits := body[strings.Index(body, ">Limits<"):]
+	limits := body[strings.Index(body, ">Limits per request<"):]
 	if !strings.Contains(limits[:strings.Index(limits, "</dl>")], "<dt") {
 		t.Error("the limits are not a strip of labelled numbers")
 	}
@@ -349,7 +373,7 @@ func TestTryItCanAnswerAlone(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("%d", code)
 	}
-	for _, want := range []string{">412<", ">200<"} {
+	for _, want := range []string{">412<", ">200 OK<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the answer lacks %s", want)
 		}
@@ -426,25 +450,65 @@ func TestTheCurlFollowsTheForm(t *testing.T) {
 	}
 }
 
-// rowHidden finds the row whose search text holds needle and says whether it
-// is drawn hidden. A search on the server HIDES rows rather than dropping
-// them: hidden, they are invisible with no script, and the filter in ui.js can
-// bring them back as somebody deletes a letter.
-func rowHidden(t *testing.T, body, needle string) bool {
-	t.Helper()
-	at := strings.Index(body, `data-filter-text="`)
-	for at >= 0 {
-		start := strings.LastIndex(body[:at], "<tr")
-		tag := body[start : at+strings.Index(body[at:], ">")]
-		if strings.Contains(tag, strings.ToLower(needle)) {
-			return strings.Contains(tag, " hidden")
-		}
-		next := strings.Index(body[at+1:], `data-filter-text="`)
-		if next < 0 {
-			break
-		}
-		at += 1 + next
+// THE LIST FILTERS BY API AND STATE IN THE URL (screen-endpoints T3), on the
+// page and in the answer the search box swaps in.
+func TestTheEndpointsListFiltersByAPIAndState(t *testing.T) {
+	ui := dataUI(catalogFake{}).WithEndpoints(twoAPIs())
+	_, body := get(t, ui, "/data/endpoints?api=sales-api")
+	if !strings.Contains(body, ">/v1/orders<") || strings.Contains(body, ">/v1/clicks<") {
+		t.Error("?api=sales-api did not keep sales-api's endpoint alone")
 	}
-	t.Fatalf("no row's search text holds %q", needle)
-	return false
+	if !strings.Contains(body, `<input type="hidden" name="api" value="sales-api"`) {
+		t.Error("the search box forgets the API chosen")
+	}
+	_, answer := fragmentGet(t, ui, "/data/endpoints?api=metrics-api&q=clicks")
+	if !strings.Contains(answer, ">/v1/clicks<") || strings.Contains(answer, ">/v1/orders<") {
+		t.Error("the answer does not keep the API filter")
+	}
+	_, stale := get(t, ui, "/data/endpoints?state=stale")
+	if strings.Contains(stale, ">/v1/clicks<") || !strings.Contains(stale, "Nothing matches this filter.") {
+		t.Error("?state=stale drew an endpoint whose data nobody knows to be stale")
+	}
+}
+
+// AN ENDPOINT'S PAGE READS THE CATALOG (screen-endpoints T4): one over a
+// stale table warns and says where its data comes from, writer and all; an
+// API published before its settings were kept says to publish it again.
+func TestAnEndpointsPageReadsTheCatalog(t *testing.T) {
+	f := published()
+	stale := catalog.Endpoint{Name: "vendors", Path: "/v1/vendors", Tenant: "key", Reads: []string{"bigquery://acme/bronze/old"}}
+	f.all = append(f.all, postgres.PublishedEndpoint{API: "metrics-api", Name: "vendors", Path: "/v1/vendors",
+		Tenant: "key", Reads: stale.Reads, Endpoint: stale, PublishedAt: time.Now().Add(-time.Hour),
+		Manifest: postgres.APIManifest{Connection: "warehouse", Dialect: "bigquery",
+			Cache: &catalog.EndpointsCache{Type: "redis", AddrFrom: "CACHE_ADDR", TTL: "6h"}}})
+	ui := dataUI(catalogFake{entries: catalogEntries()}).WithEndpoints(f)
+	_, body := get(t, ui, "/data/endpoints/metrics-api/vendors")
+	for _, want := range []string{"data-stale-warning", "This endpoint is serving stale data", `href="/ingest/loads/vendors/fetch"`,
+		"6 hours", "brevis-sql generation bump --generations-from CACHE_ADDR --dialect bigquery bronze.old"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the stale endpoint's page lacks %q", want)
+		}
+	}
+	_, legacy := get(t, ui, "/data/endpoints/metrics-api/clicks")
+	if strings.Contains(legacy, "data-stale-warning") || !strings.Contains(legacy, "publish the API again") {
+		t.Error("an endpoint over a table the catalog does not know, from an API with no settings on record")
+	}
+}
+
+// TRY IT SPEAKS THE READER'S LANGUAGE (screen-endpoints T5), its failures
+// too: an API that cannot be reached is said in Portuguese, and the
+// console's own words never carry the address.
+func TestTryItSpeaksTheReadersLanguage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	addr := srv.URL
+	srv.Close()
+	body := pageIn(t, tryUI(t, addr, loggedIn), "/data/endpoints/metrics-api/clicks?run=1", "pt-BR", "", false)
+	for _, want := range []string{">Testar<", "Executar requisição", "Chamar de fora", "A API não respondeu"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the Portuguese page lacks %q", want)
+		}
+	}
+	if strings.Contains(body, strings.TrimPrefix(addr, "http://")) {
+		t.Error("the page repeats the API's address")
+	}
 }

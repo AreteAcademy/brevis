@@ -13,7 +13,7 @@ import (
 // tells the reader does not exist.
 func TestAPeriodsContractAndItsSelectAreTheSameList(t *testing.T) {
 	params := []catalog.EndpointParam{{Name: "period", Type: "period"}}
-	v := BuildEndpoint(postgres.PublishedEndpoint{Endpoint: catalog.Endpoint{Params: params}})
+	v := BuildEndpoint(postgres.PublishedEndpoint{Endpoint: catalog.Endpoint{Params: params}}, nil, catalogNow)
 	options := TryForm(params, nil)[0].Options
 	if v.Params[0].Accepts != strings.Join(options, ", ") {
 		t.Errorf("the contract says %q and the select offers %v", v.Params[0].Accepts, options)

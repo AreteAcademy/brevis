@@ -368,7 +368,11 @@ brevis endpoints unpublish metrics-api
 The manifest carries each endpoint's parameters resolved through their refs,
 its effective limits, the catalog targets its SQL reads, and the `#:` notes
 its author marked — never the SQL, never a variable's value, never an
-ordinary comment. The engine refuses the whole manifest when anything in it
+ordinary comment. Beside the endpoints the console keeps the API's own
+settings: the connection's name, the dialect and the cache -- its type, its
+`ttl` and the NAME of the variable its address is read from -- so a page can
+say how long an answer is cached and print the command that clears it.
+The engine refuses the whole manifest when anything in it
 is shaped like a credential. On Kubernetes the act is a Job:
 [`deployments/kubernetes/endpoints-publish-job.yaml`](../deployments/kubernetes/endpoints-publish-job.yaml).
 

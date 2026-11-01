@@ -16,6 +16,58 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Added: an API's settings are kept when it is published
+
+- **`brevis endpoints publish` keeps the API's own settings** beside its
+  endpoints -- the connection, the dialect and the cache: its type, its
+  `ttl`, its `max_entry` and the NAME of the variable its address is read
+  from -- in the same transaction, replaced by the next publish and removed
+  by `unpublish`. Never a credential: the manifest names variables. New
+  table `api_manifests` (migration 00031). An API published before this
+  has no settings on record until it is published again.
+
+### Changed: Endpoints, judged by the data they read
+
+- **`/data/endpoints` is one row per endpoint, worst data first**: `GET` and
+  the path with the first line of its description; the API; the table it
+  reads, with when it was rebuilt and by whom (+N for more); the cache's
+  `ttl`, or "—"; how many parameters and how many required; the state --
+  "stale data" when a table it reads is late or stale in the Catalog, "fresh
+  data", or nothing when the Catalog knows none of them -- and when it was
+  published. The whole row opens the endpoint.
+- **A summary** of endpoints, APIs, how many serve fresh and stale data, and
+  the caches and connections the APIs published; a footer on how an
+  endpoint works.
+- **Filters**: the API, only the ones present, and the state -- all, fresh
+  data, stale data -- in the URL; and a search over the path, the API, the
+  parameters and the tables read, on the server, answering as you type. With
+  no script the filters are links and the search a form. The list's old
+  search in the browser, and its English "Showing N of M", are gone.
+- **Publish endpoint** says how an endpoint is published rather than asking
+  for one: an API's file with a cache, and the two commands that describe
+  and publish it, to copy. `#publicar` opens it with no script.
+- **An endpoint's page** opens with back to every endpoint, then `GET`, its
+  API, when it was published and how its data stands, above the path and
+  its description. One serving stale data says so first: why the table is
+  behind, in its writer's words, that it answers with the last good data
+  meanwhile, and the table in the Catalog. **Where the data comes from** is
+  one line per table read: the writer's declared origin, the writer (a link
+  to its load or stream), the table with its state and when it was rebuilt,
+  and the endpoint with its cache. A table the Catalog does not know says
+  so. **Cache**: how long an answer is kept, that it is cleared when a table
+  read is rebuilt, and what holds it -- and **Clear cache**, the
+  `brevis-sql generation bump` command built from what the API published,
+  to copy: the console never touches the cache. An API published before
+  its settings were kept says to publish it again. The tenant note, the
+  parameters (what each accepts in words) and the limits per request.
+- **Try it** is a 360px column beside the page that stays as it scrolls,
+  in the reader's language: the form, Run request (⌘↵), and the answer --
+  the status as HTTP writes it ("200 OK"), HIT or MISS with what it meant
+  for the warehouse, the time and the rows. **Call from outside**, the curl
+  following the form, sits under it. Why a run brought nothing back is said
+  in the reader's words too; a refusal stays in the API's.
+- Everything is in English, Portuguese and Spanish.
+
 ### Changed: Real time, one row per stream
 
 - **`/ingest/streams` is one row per stream**, by gateway and path, instead
