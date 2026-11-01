@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ko" data-docs="/ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Go SDK — 문서</title>
+<meta name="description" content="fetcher를 작성하는 방법으로, 소스에서 추출하고 변환한 뒤 목적지에 적재합니다.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/ko/docs/sdk/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/ko/docs/sdk/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/sdk/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/sdk/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/sdk/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/sdk/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/sdk/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/sdk/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/sdk/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/sdk/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/sdk/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/sdk/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/sdk/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="ko">
+<meta property="og:title" content="Go SDK — 문서">
+<meta property="og:description" content="fetcher를 작성하는 방법으로, 소스에서 추출하고 변환한 뒤 목적지에 적재합니다.">
+<meta property="og:url" content="https://brevis.sh/ko/docs/sdk/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Go SDK — 문서">
+<meta name="twitter:description" content="fetcher를 작성하는 방법으로, 소스에서 추출하고 변환한 뒤 목적지에 적재합니다.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Go SDK",
+  "description": "fetcher를 작성하는 방법으로, 소스에서 추출하고 변환한 뒤 목적지에 적재합니다.",
+  "inLanguage": "ko",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/ko/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="주 내비게이션">
+      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/docs/">문서</a>
+      <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/sdk/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/sdk/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/sdk/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/sdk/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/sdk/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/sdk/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/sdk/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/sdk/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/sdk/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/sdk/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/sdk/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        오픈 소스 둘러보기
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    문서 메뉴
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">문서 검색</label>
+        <input type="search" id="q" placeholder="검색…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="결과 없음" hidden></div>
+      <nav class="side-nav" aria-label="문서">
+        <p class="side-group">시작하기</p><ul class="side-list"><li><a href="/ko/docs/ecosystem/">에코시스템</a></li><li><a href="/ko/docs/integrations/">통합</a></li><li><a href="/ko/docs/introduction/">소개</a></li><li><a href="/ko/docs/installation/">설치</a></li><li><a href="/ko/docs/quickstart/">빠른 시작</a></li></ul><p class="side-group">개념</p><ul class="side-list"><li><a href="/ko/docs/core/">Core</a></li><li><a href="/ko/docs/workflows/">Workflows</a></li><li><a href="/ko/docs/scheduler-and-queue/">스케줄러와 큐</a></li><li><a href="/ko/docs/pod-per-step/">step당 pod 하나</a></li><li><a href="/ko/docs/context/">step 간 컨텍스트</a></li></ul><p class="side-group">레퍼런스</p><ul class="side-list"><li><a href="/ko/docs/cli/">CLI</a></li><li><a href="/ko/docs/parameters/">매개변수</a></li><li><a href="/ko/docs/configuration/">구성</a></li><li><a href="/ko/docs/runtime/">step 런타임</a></li></ul><p class="side-group">SDK와 라이브러리</p><ul class="side-list"><li><a href="/ko/docs/sdk/" aria-current="page">Go SDK</a></li><li><a href="/ko/docs/libraries/">클라이언트 라이브러리</a></li><li><a href="/ko/docs/python/">Python</a></li></ul><p class="side-group">운영</p><ul class="side-list"><li><a href="/ko/docs/console/">Console</a></li><li><a href="/ko/docs/kubernetes/">Kubernetes</a></li><li><a href="/ko/docs/observability/">관측성</a></li><li><a href="/ko/docs/white-label/">화이트 라벨</a></li></ul><p class="side-group">수집</p><ul class="side-list"><li><a href="/ko/docs/ingestion/">수집</a></li><li><a href="/ko/docs/ingestion-sinks/">수집 sink</a></li><li><a href="/ko/docs/benchmarks/">벤치마크</a></li></ul><p class="side-group">SQL 모델링</p><ul class="side-list"><li><a href="/ko/docs/sql/">SQL</a></li></ul><p class="side-group">프로젝트</p><ul class="side-list"><li><a href="/ko/docs/philosophy/">철학</a></li><li><a href="/ko/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">문서</p>
+      <h1>Go SDK</h1>
+      <p class="doc-desc">fetcher를 작성하는 방법으로, 소스에서 추출하고 변환한 뒤 목적지에 적재합니다.</p>
+      <p>step의 역할이 <strong>데이터를 가져와 어딘가에 적재하는 것</strong>이라면, Go SDK로 fetcher 전체를 몇 줄에 작성할 수 있습니다. 엔진과는 별개의 모듈이며 버전도 독립적입니다.</p>
+<div class="code-block" data-code="go get github.com/AreteAcademy/brevis/sdk@latest"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">go</span> get github.com/AreteAcademy/<span class="t-k">brevis</span>/sdk@latest</code></pre></div>
+<p>Go 1.23 이상이 필요합니다. SDK가 행을 <code>iter.Seq2</code>로 스트리밍하기 때문입니다.</p>
+<aside class="admon admon-warning"><p class="admon-t">`v0.1.0`은 사용하지 마세요</p><p>존재하지 않는 리비전을 고정한 <code>go.mod</code>가 포함된 채 배포되었고, Go 모듈 프록시는 불변입니다. <code>v0.1.1</code>부터 시작하세요.</p></aside>
+<h2 id="세-단계">세 단계<a class="anchor" href="#세-단계" aria-label="link">#</a></h2>
+<div class="code-block" data-code="import (
+	&quot;github.com/AreteAcademy/brevis/sdk&quot;
+	&quot;github.com/AreteAcademy/brevis/sdk/from&quot;
+	&quot;github.com/AreteAcademy/brevis/sdk/to/bigquery&quot;
+)
+
+rows, err := sdk.Extract(ctx, sdk.Source{
+	From: from.HTTP{URL: &quot;https://api.example.com/v1/events&quot;},
+})
+
+rows = sdk.Transform(rows, sdk.Accept(&quot;id&quot;, &quot;created_at&quot;, &quot;amount&quot;))
+
+res, err := sdk.Load(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: &quot;bronze&quot;, Name: &quot;events&quot;},
+	Columns: []string{&quot;id&quot;, &quot;created_at&quot;, &quot;amount&quot;},
+})"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">import</span> (
+	"github.com/AreteAcademy/brevis/sdk"
+	"github.com/AreteAcademy/brevis/sdk/from"
+	"github.com/AreteAcademy/brevis/sdk/to/bigquery"
+)
+
+rows, <span class="t-k">err</span> := sdk.Extract(ctx, sdk.Source{
+	From: from.HTTP{URL: "https:<span class="t-c">//api.example.com/v1/events"},</span>
+})
+
+rows = sdk.Transform(rows, sdk.Accept("id", "created_at", "amount"))
+
+res, <span class="t-k">err</span> := sdk.Load(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: "bronze", Name: "events"},
+	Columns: []string{"id", "created_at", "amount"},
+})</code></pre></div>
+<p><code>Extract</code>는 읽고, <code>Transform</code>은 형태를 바꾸고, <code>Load</code>는 기록합니다. 각각 시퀀스를 받아 시퀀스를 반환하므로 메모리에 한꺼번에 구체화되는 것은 없습니다.</p>
+<figure class="doc-figure"><img src="/assets/flow-sdk.svg" width="360" height="514" alt="The SDK flow: sdk.Extract reads from an HTTP API with from.HTTP, sdk.Transform keeps the accepted fields and sdk.Load writes the rows to a BigQuery table. The three calls run inside your own step." loading="lazy"></figure>
+<h2 id="드라이버는-설정이-아니라-값입니다">드라이버는 설정이 아니라 값입니다<a class="anchor" href="#드라이버는-설정이-아니라-값입니다" aria-label="link">#</a></h2>
+<p><code>from.HTTP</code>는 HTTP 소스에 필요한 모든 것, 즉 URL, 헤더, 재시도, 페이지네이션, 응답이 의미하는 바를 담고 있습니다. <code>from.Files</code>는 경로와 형식을 담고 있습니다. 어느 쪽도 상대 필드를 위한 자리를 마련할 필요가 없으므로, 드라이버마다 여섯 개만 읽는 옵션 마흔 개를 모아 둔 소스 구조체가 없습니다.</p>
+<p>또한 <strong>무엇을 컴파일할지</strong>도 이것이 결정합니다. Go는 사용한 필드가 아니라 가져온 패키지 기준으로 의존성을 정리합니다.</p>
+<div class="table-wrap"><table><thead><tr><th>가져오는 것</th><th>패키지 수</th><th>AWS</th><th>Google</th></tr></thead><tbody><tr><td><code>sdk</code></td><td>190</td><td>아니오</td><td>아니오</td></tr><tr><td><code>sdk</code> + <code>from</code></td><td>194</td><td>아니오</td><td>아니오</td></tr><tr><td><code>sdk</code> + <code>from</code> + <code>to</code> (files)</td><td>195</td><td>아니오</td><td>아니오</td></tr><tr><td><code>sdk</code> + <code>to/bigquery</code></td><td>456</td><td>아니오</td><td><strong>예</strong></td></tr><tr><td><code>sdk</code> + <code>from</code> + <code>store/s3</code></td><td>265</td><td><strong>예</strong></td><td>아니오</td></tr></tbody></table></div>
+<p>읽기와 쓰기를 모두 하는 파일 파이프라인 전체가 패키지 195개이며 클라우드 SDK는 전혀 필요 없습니다. <strong>벤더 SDK를 뒤에 둔 드라이버는 자기만의 패키지에 있으며</strong>, BigQuery가 <code>to/bigquery</code>이고 오브젝트 스토어가 <code>store/s3</code>와 <code>store/gcs</code>인 이유가 이것입니다.</p>
+<h2 id="소스와-목적지">소스와 목적지<a class="anchor" href="#소스와-목적지" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>소스</th><th>패키지</th></tr></thead><tbody><tr><td>HTTP</td><td><code>from.HTTP</code></td></tr><tr><td>files (로컬, S3, GCS)</td><td><code>from.Files</code></td></tr><tr><td>Postgres</td><td><code>from/postgres</code></td></tr><tr><td>MySQL</td><td><code>from/mysql</code></td></tr><tr><td>여러 소스</td><td><code>from.Many</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>목적지</th><th>패키지</th></tr></thead><tbody><tr><td>files</td><td><code>to.Files</code></td></tr><tr><td>BigQuery</td><td><code>to/bigquery</code></td></tr><tr><td>Postgres</td><td><code>to/postgres</code></td></tr><tr><td>MySQL</td><td><code>to/mysql</code></td></tr><tr><td>Redshift</td><td><code>to/redshift</code></td></tr><tr><td>Pub/Sub</td><td><code>to/pubsub</code></td></tr></tbody></table></div>
+<p>경로의 스킴이 백엔드를 결정하며, <code>Store</code>는 드라이버 안에서 고르지 않고 <strong>외부에서 전달</strong>합니다.</p>
+<div class="code-block" data-code="from.Files{Path: &quot;s3://bucket/day=1/*.ndjson&quot;, Store: s3.New(client)}
+to.Files{Path: &quot;gs://bucket/landing/&quot;, Store: gcs.New(client)}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>from.Files{Path: "s3:<span class="t-c">//bucket/day=1/*.ndjson", Store: s3.New(client)}</span>
+to.Files{Path: "gs:<span class="t-c">//bucket/landing/", Store: gcs.New(client)}</span></code></pre></div>
+<p>이 방식 덕분에 로컬 파일만 쓰는 프로그램은 AWS나 Google 코드를 한 줄도 컴파일하지 않습니다.</p>
+<h3 id="토픽에-게시하기">토픽에 게시하기<a class="anchor" href="#토픽에-게시하기" aria-label="link">#</a></h3>
+<p><code>to/pubsub</code>은 테이블이 아닌 유일한 목적지이며, 사용하기 전에 알아 둘 만한 방식으로 다르게 동작합니다. <strong>전송하는 내용에 아무것도 추가하지 않습니다.</strong></p>
+<div class="code-block" data-code="Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: &quot;acme-prod&quot;,
+        Name:    &quot;orders&quot;,
+
+        // Nil is the default, and it means NO attributes at all.
+        Attributes: func(e sdk.Envelope) map[string]string {
+            row, ok := e.Payload.(map[string]any)
+            if !ok {
+                return nil
+            }
+            return map[string]string{&quot;orderId&quot;: fmt.Sprint(row[&quot;order_id&quot;])}
+        },
+    },
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: "acme-prod",
+        Name:    "orders",
+
+        <span class="t-c">// Nil is the default, and it means NO attributes at all.</span>
+        Attributes: <span class="t-k">func</span>(e sdk.Envelope) <span class="t-k">map</span>[string]string {
+            row, ok := e.Payload.(<span class="t-k">map</span>[string]any)
+            <span class="t-k">if</span> !ok {
+                <span class="t-k">return</span> <span class="t-k">nil</span>
+            }
+            <span class="t-k">return</span> <span class="t-k">map</span>[string]string{"orderId": fmt.Sprint(row["order_id"])}
+        },
+    },
+},</code></pre></div>
+<p>구독자는 페이로드를 바이트 단위로 그대로, 그리고 지정한 속성만 정확히 받습니다. 그 외에는 <code>ingestion_id</code>도, <code>provider</code>도, 어떤 종류의 envelope도 없습니다.</p>
+<p>이것은 미니멀리즘이 아니라 규칙입니다. 테이블은 그것을 기록하는 파이프라인이 만들므로 SDK가 컬럼을 정해도 됩니다. <strong>토픽은 그렇지 않습니다.</strong> 토픽은 파이프라인보다 먼저 존재하고, 구독자와 필터도 먼저 작성되었습니다. 임의로 추가된 속성은 Brevis가 다른 사람의 계약을 수정하는 것이 되고, 구독자는 새벽 세 시에 그 사실을 알게 됩니다.</p>
+<p>여기서 세 가지가 따라 나옵니다.</p>
+<ul><li><strong>토픽을 절대 만들지 않습니다.</strong> 토픽을 만들 수 있는 파이프라인은 잘못된 토픽도 만들 수 있고, 잘못 입력한 테이블과 달리 아무도 알아채지 못합니다. 메시지는 어딘가로 가고, 받았어야 할 구독자는 조용합니다.</li><li><strong><code>Schema</code>, <code>Dedup</code>, <code>PartitionBy</code>는 옵션 이름을 명시하며 거부됩니다.</strong> 이들은 테이블을 위한 것입니다. <code>Schema</code>는 목적지가 테이블을 만드는 방법이고, 중복 제거에는 교체할 행이 필요하며, 파티션은 테이블의 개념입니다. 여기서 가장 가까운 것은 <code>OrderingKey</code>인데, 이것은 <em>도착</em> 순서가 중요한 메시지를 묶는 다른 개념입니다.</li><li><strong>실패는 부분적입니다.</strong> 게시는 트랜잭션이 아니므로, 31,000건에서 실패한 48,000건의 메시지는 31,000건이 <em>전달된</em> 것입니다. 결과는 실제로 나간 것을 보고하고, 오류는 재실행이 재전달임을 알려 줍니다. 구독자는 멱등해야 하며, 어차피 Pub/Sub은 at-least-once입니다.</li></ul>
+<p>에뮬레이터를 대상으로 실행 가능한 예제는 <a href="https://github.com/AreteAcademy/brevis/tree/master/examples/13-pubsub" target="_blank" rel="noopener"><code>examples/13-pubsub</code></a>입니다.</p>
+<h2 id="완전한-fetcher">완전한 fetcher<a class="anchor" href="#완전한-fetcher" aria-label="link">#</a></h2>
+<p><code>sdk.Run</code>은 플래그, <code>-dry-run</code>, 로깅, 재시도, 페이지네이션, 출처 정보, 테이블 생성, 종료 코드를 처리합니다. 파일에 남는 것은 해당 소스에만 해당하는 내용뿐입니다.</p>
+<div class="code-block" data-code="package main
+
+import (
+	&quot;time&quot;
+
+	&quot;github.com/AreteAcademy/brevis/sdk&quot;
+	&quot;github.com/AreteAcademy/brevis/sdk/from&quot;
+)
+
+func main() {
+	sdk.Run(sdk.Pipeline{
+		Source: sdk.Source{
+			From: from.HTTP{
+				URL:     &quot;https://api.example.com/v1/events&quot;,
+				Timeout: 15 * time.Second,
+			},
+			Guard:  sdk.RejectIf(&quot;error&quot;),
+			Expand: sdk.ArrayAt(&quot;results&quot;),
+		},
+		Target: sdk.Target{
+			Provider: &quot;example&quot;,
+			Entity:   &quot;events&quot;,
+			Key:      sdk.Key(&quot;id&quot;),
+			When:     sdk.Field(&quot;created_at&quot;),
+		},
+	})
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">package</span> main
+
+<span class="t-k">import</span> (
+	"time"
+
+	"github.com/AreteAcademy/brevis/sdk"
+	"github.com/AreteAcademy/brevis/sdk/from"
+)
+
+<span class="t-k">func</span> main() {
+	sdk.Run(sdk.Pipeline{
+		Source: sdk.Source{
+			From: from.HTTP{
+				URL:     "https:<span class="t-c">//api.example.com/v1/events",</span>
+				Timeout: 15 * time.Second,
+			},
+			Guard:  sdk.RejectIf("error"),
+			Expand: sdk.ArrayAt("results"),
+		},
+		Target: sdk.Target{
+			Provider: "example",
+			Entity:   "events",
+			Key:      sdk.Key("id"),
+			When:     sdk.Field("created_at"),
+		},
+	})
+}</code></pre></div>
+<div class="code-block" data-code="go run ./fetcher -dry-run   # extracts, counts rows and errors, writes nothing
+go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">go</span> run ./fetcher <span class="t-n">-dry-run</span>   <span class="t-c"># extracts, counts rows and errors, writes nothing</span>
+<span class="t-k">go</span> run ./fetcher</code></pre></div>
+<h2 id="run-컨텍스트">run 컨텍스트<a class="anchor" href="#run-컨텍스트" aria-label="link">#</a></h2>
+<p>fetcher가 <strong>workflow step으로</strong> 실행될 때, 엔진은 다른 방법으로는 알 수 없는 정보를 환경에 주입합니다. 첫 번째 run인지, 어떤 매개변수로 디스패치되었는지, 어떤 run인지 같은 것입니다. SDK는 이를 <code>Pipeline.Run</code>에서 읽습니다.</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	if p.Run.Params[&quot;load_full&quot;] == &quot;true&quot; {
+		p.Source.From = from.HTTP{URL: base + &quot;?full=1&quot;}
+	}
+	return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+	<span class="t-k">if</span> p.Run.Params["load_full"] == "true" {
+		p.Source.From = from.HTTP{URL: base + "?full=1"}
+	}
+	<span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p>손으로 실행하면 <code>Run</code>은 0으로 초기화된 채 돌아옵니다. 읽는 것은 선택 사항이며 무시해도 비용이 없습니다.</p>
+<p>이력이 없으면 "첫 번째 run인가?"에 대한 답은 항상 <strong>아니오</strong>입니다. 확신 없이 테이블을 만드는 것은 만들지 않는 것보다 나쁘기 때문입니다.</p>
+<h3 id="시계">시계<a class="anchor" href="#시계" aria-label="link">#</a></h3>
+<p><code>p.Run.Auto</code>는 엔진이 이 run에 대해 계산한 것으로, <a href="/ko/docs/parameters/#자동-매개변수">자동 매개변수</a>입니다. <code>Auto.Now()</code>는 <code>time.Now()</code> 대신 읽어야 하는 시계입니다. 스케줄된 run에서는 slot이므로, run이 늦어도 움직이지 않고 세 시간 뒤에 재시도해도 움직이지 않습니다.</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	if !ok { // no schedule: fall back to a fixed window
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		&quot;?from=&quot; + start.Format(time.RFC3339) +
+		&quot;&amp;to=&quot; + end.Format(time.RFC3339)}
+	return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	<span class="t-k">if</span> !ok { <span class="t-c">// no schedule: fall back to a fixed window</span>
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		"?from=" + start.Format(time.RFC3339) +
+		"&amp;to=" + end.Format(time.RFC3339)}
+	<span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p>손으로 실행하면 <code>Auto.Now()</code>는 <em>실제</em> 벽시계이고 <code>Window()</code>는 <code>false</code>를 반환하므로, 로컬 개발에 특별한 처리가 필요 없습니다.</p>
+<h2 id="클라이언트-라이브러리와-혼동하지-마세요">클라이언트 라이브러리와 혼동하지 마세요<a class="anchor" href="#클라이언트-라이브러리와-혼동하지-마세요" aria-label="link">#</a></h2>
+<p>이 SDK는 Go로 된 ETL 기능으로, 드라이버, 페이지네이션, 출처 정보, 테이블 생성을 담당합니다. <a href="/ko/docs/libraries/">클라이언트 라이브러리</a>는 다른 것입니다. step에 run 컨텍스트와 시계를 건네주는 얇은 클라이언트이며, 현재는 Python이고 이후에 Node.js와 Rust가 추가될 예정입니다. pandas나 dbt를 쓰는 step에 필요한 것은 이 SDK가 아니라 클라이언트 라이브러리입니다.</p>
+<h2 id="파이프라인을-만드는-매개변수">파이프라인을 만드는 매개변수<a class="anchor" href="#파이프라인을-만드는-매개변수" aria-label="link">#</a></h2>
+<p><code>p.Run.Params</code>는 파이프라인 안에서 읽을 수 있는데, 파이프라인이 <strong>무엇인지</strong>를 결정하는 값에는 너무 늦습니다. 상태마다 소스 하나, 테넌트마다 테이블 하나 같은 경우입니다. <code>Pipeline.Flags</code>는 <code>Run</code> 안에서 파싱되므로 같은 이유로 너무 늦습니다.</p>
+<div class="code-block" data-code="func main() {
+	sdk.Run(pipeline(sdk.ParamList(&quot;ufs&quot;)))
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">func</span> main() {
+	sdk.Run(pipeline(sdk.ParamList("ufs")))
+}</code></pre></div>
+<p><code>sdk.Param</code>과 <code>sdk.ParamList</code>는 엔진의 환경을 먼저 읽고 <code>-param name=value</code>를 그다음에 읽습니다.</p>
+<div class="code-block" data-code="./fetch-stations -param ufs=SP,RJ"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>./fetch-stations <span class="t-n">-param</span> ufs=SP,RJ</code></pre></div>
+<p>환경이 우선합니다. 엔진 아래에서는 환경이 곧 값이며, manifest에 남아 있는 플래그가 운영자가 입력한 값을 덮어써서는 안 됩니다. 엔진이 없을 때는 플래그가 유일한 값이며, 매 실행마다 <code>BREVIS_RUN_PARAMS</code>를 JSON으로 쓰는 것보다 낫습니다.</p>
+<h2 id="랜딩-레이아웃">랜딩 레이아웃<a class="anchor" href="#랜딩-레이아웃" aria-label="link">#</a></h2>
+<p>파이프라인은 <strong>게이트웨이가 적재하는 것과 같은 테이블</strong>, 즉 같은 컬럼과 같은 <code>brevis_ingestion_id</code>를 적재할 수 있습니다. 그래서 둘 중 무엇을 쓸지는 스키마가 아니라 배포의 결정입니다. 팀은 둘을 함께 읽을 수 있고, 마이그레이션 없이 한쪽에서 다른 쪽으로 옮길 수 있습니다.</p>
+<div class="code-block" data-code="const table = &quot;landing.orders&quot;
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey(&quot;id&quot;))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">const</span> table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})</code></pre></div>
+<p><code>sdk.LandingSchema</code>는 아홉 개의 컬럼입니다. 레이아웃이 소유하는 여덟 개와 프로듀서가 소유하는 하나입니다. <code>sdk.Landing</code>이 이를 채우고 레코드를 통째로 <code>data</code>에 넣습니다. 원하면 스키마에 자신의 컬럼을 덧붙이거나, <code>sdk.LandingControlColumns</code>를 가져와 레코드의 필드에 각각 컬럼을 부여하세요.</p>
+<h3 id="두-가지-형태-레코드-통째로-또는-필드당-컬럼-하나">두 가지 형태: 레코드 통째로, 또는 필드당 컬럼 하나<a class="anchor" href="#두-가지-형태-레코드-통째로-또는-필드당-컬럼-하나" aria-label="link">#</a></h3>
+<p>위의 것은 <strong>document</strong> 형태입니다. 레코드가 JSON으로 <code>data</code>에 들어가며, 레코드의 내용과 무관하게 테이블은 같습니다. <code>sdk.LandingColumns()</code>를 추가하면 레코드의 각 필드가 자기만의 컬럼을 갖습니다.</p>
+<div class="code-block" data-code="sdk.Landing(table, sdk.LandingKey(&quot;source_key&quot;), sdk.LandingColumns())"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())</code></pre></div>
+<p>이때 테이블은 <code>sdk.LandingControlColumns</code>에 자신의 컬럼을 더한 것이며, <code>data</code>를 포함하는 <code>sdk.LandingSchema</code>가 <strong>아닙니다</strong>.</p>
+<div class="code-block" data-code="Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: &quot;source_key&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;series&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;data&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;valor&quot;, Type: sdk.TypeString},
+    ),
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: "source_key", Type: sdk.TypeString},
+        sdk.Column{Name: "series", Type: sdk.TypeString},
+        sdk.Column{Name: "data", Type: sdk.TypeString},
+        sdk.Column{Name: "valor", Type: sdk.TypeString},
+    ),
+}</code></pre></div>
+<p><strong>컬럼은 직접 선언합니다.</strong> SDK는 스키마를 절대 추론하지 않으며, 이 옵션도 그것을 바꾸지 않습니다. 이 옵션은 *행*을 만드는 방식을 결정할 뿐 테이블이 무엇인지는 결정하지 않습니다. 게이트웨이가 추론하는 것은 프로듀서가 가진 것을 무엇이든 게시하는 낯선 사람이기 때문입니다. 여기서는 파이프라인 작성자가 형태를 알고 있고, 누군가 리뷰하는 diff에 그것을 적어 둡니다.</p>
+<p>게이트웨이가 <a href="/ko/docs/ingestion-sinks/#두-가지-형태-하나의-계약"><code>shape: columns</code></a>로 적재하는 것과 같은 형태이며, 같은 코드를 통하므로 컬럼도, 값도, <code>brevis_ingestion_id</code>도 같습니다.</p>
+<p><strong>필드 이름은 컬럼 이름이 될 수 있어야 합니다.</strong> 문자 또는 밑줄로 시작하고 그 뒤에 문자, 숫자, 밑줄이 옵니다. 네 가지 목적지 중 가장 좁은 BigQuery의 규칙이므로, 여기서 통과하는 이름은 어디서나 동작합니다. <code>my-field</code>를 가진 레코드는 아무것도 쓰기 전에 이름과 함께 거부됩니다. document 형태에는 그런 규칙이 없습니다. 하이픈은 JSON 키로 아무 문제가 없습니다.</p>
+<p><strong>기본적으로 평탄화하지 않습니다.</strong> 중첩된 객체는 그것을 담고 있던 키 아래의 <code>JSON</code> 컬럼 <strong>하나</strong>가 됩니다. <code>customer</code>는 <code>customer_id</code>와 <code>customer_uf</code>가 아니라 <code>{"id": 7, "uf": "SP"}</code>를 담습니다. 배열도 <code>JSON</code>입니다. 배열 요소마다 행 하나를 원하는 레코드는 소스의 <code>Expand</code>에 <code>sdk.ArrayAt</code>을 써야 합니다. 이것은 <code>Landing</code>보다 먼저 실행되며 이름도 다른 별개의 연산입니다. <a href="#중첩-필드당-컬럼-하나"><code>BREVIS_NORMALIZE_DATA</code></a>는 배포 전체에 대해 앞부분을 바꾸며, 배열은 어느 쪽이든 <code>JSON</code>으로 남습니다.</p>
+<div class="code-block" data-code="Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt(&quot;results&quot;)},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},</code></pre></div>
+<p><strong><code>null</code>은 <code>NULL</code>로 남으며</strong> <code>""</code>가 되지 않습니다. null로 보낸 필드와 비어 있게 보낸 필드는 서로 다른 사실이며, 컬럼은 나중에 이 둘을 구별할 수 없습니다.</p>
+<p><strong><code>data</code>는 사용자의 것이 됩니다.</strong> 이 형태에서 레이아웃은 그 이름의 컬럼을 갖지 않으므로, <code>data</code>라는 필드를 가진 프로듀서(Bacen 시리즈가 정확히 그렇습니다)는 자기 값이 들어 있는 자기만의 컬럼을 얻습니다. <code>document</code>에서는 그 필드가 레이아웃의 JSON 안의 키 하나일 뿐입니다.</p>
+<h3 id="brevis-접두사는-바꿀-수-있습니다"><code>brevis_</code> 접두사는 바꿀 수 있습니다<a class="anchor" href="#brevis-접두사는-바꿀-수-있습니다" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_LANDING_PREFIX=acme"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>BREVIS_LANDING_PREFIX=acme</code></pre></div>
+<p>그러면 레이아웃의 컬럼 여덟 개는 <code>acme_ingestion_id</code>, <code>acme_record_key</code> 등이 됩니다. 설정하지 않으면 지금까지와 같습니다.</p>
+<p><strong>테이블을 만들 때 선택하세요. 나중에 바꾸는 것은 이름 변경이 아니기 때문입니다.</strong> 이 SDK는 어떤 컬럼도 삭제하지 않으므로, 접두사를 바꾼 stream은 여덟 개의 이름을 바꾸는 것이 아니라 여덟 개를 추가하고 여덟 개를 버립니다. 그 이후의 모든 행은 이전 집합에 NULL을 갖게 되며,</p>
+<div class="code-block" data-code="qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1</code></pre></div>
+<p>는 더 이상 아무것도 쓰지 않는 컬럼으로 파티션을 나눕니다. 행은 도착하는데 대시보드는 평평해지고, 아무것도 로그에 남기지 않습니다.</p>
+<p>그래서 한 접두사로 레이아웃을 이미 가진 테이블은 다른 접두사를 선언한 적재를 추출 전에, 두 접두사를 명시하며 <strong>거부합니다</strong>. 새 테이블을 지정하거나 먼저 여덟 개 컬럼의 이름을 직접 바꾸세요.</p>
+<p><strong>입력한 값은 정규화되므로</strong> 틀릴 수 있는 표기가 네 가지가 아니라 하나가 됩니다.</p>
+<div class="table-wrap"><table><thead><tr><th>설정한 값</th><th>결과</th></tr></thead><tbody><tr><td>없음 또는 공백</td><td><code>brevis_</code></td></tr><tr><td><code>_NAME</code></td><td><code>name_</code></td></tr><tr><td><code>_NAME_</code></td><td><code>name_</code></td></tr><tr><td><code>NAME</code></td><td><code>name_</code></td></tr></tbody></table></div>
+<p>양쪽 끝의 <code>_</code>를 제거하고, 소문자로 바꾸고, 정확히 하나를 붙입니다. 두 가지 값은 추측하지 않고 거부합니다. 밑줄만 있는 값은 <code>ingestion_id</code>가 남는데, 이는 모든 일반 파이프라인에서 <code>sdk.IngestionID()</code>가 쓰는 바로 그 컬럼이기 때문입니다. 또 컬럼 이름의 시작이 될 수 없는 값도 거부합니다. <strong>사용할 수 없는 값을 가진 프로세스는 시작하지 않으며</strong>, 이것이 유일하게 정직한 결과입니다. 대안은 교체하려던 접두사 이름의 테이블이 생기는 것입니다.</p>
+<p><strong>프로세스 단위이며, 한계가 아니라 의도입니다.</strong> 한 게이트웨이의 모든 stream이 이를 공유하므로 두 sink가 서로 다를 수 없으며, 테이블을 선언하는 스키마와 그것을 채우는 변환기도 서로 다를 수 없습니다.</p>
+<p><strong>예약 규칙도 함께 이동합니다.</strong> <code>acme_</code> 아래에서는 <code>acme_region</code>을 보내는 프로듀서가 거부됩니다. 제어 컬럼을 위조할 수 있는 사람은 진짜처럼 보이는 것을 위조하기 때문입니다. 그리고 <code>brevis_region</code>은 평범한 필드가 됩니다.</p>
+<p><code>data</code>에는 접두사가 절대 붙지 않습니다. 레이아웃의 컬럼이 아니라 프로듀서의 컬럼이기 때문입니다.</p>
+<h3 id="중첩-필드당-컬럼-하나">중첩 필드당 컬럼 하나<a class="anchor" href="#중첩-필드당-컬럼-하나" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_NORMALIZE_DATA=true"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>BREVIS_NORMALIZE_DATA=true</code></pre></div>
+<p>이렇게 하면 중첩 객체의 필드가 pandas의 <code>json_normalize</code>처럼 자기만의 컬럼을 얻습니다. 한 단계까지입니다.</p>
+<div class="code-block" data-code="data = [
+    {&quot;id&quot;: 1, &quot;name&quot;: {&quot;first&quot;: &quot;Coleen&quot;, &quot;last&quot;: &quot;Volk&quot;}},
+    {&quot;name&quot;: {&quot;given&quot;: &quot;Mark&quot;, &quot;family&quot;: &quot;Regner&quot;}},
+    {&quot;id&quot;: 2, &quot;name&quot;: &quot;Faye Raker&quot;},
+]"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>data = [
+    {"id": 1, "name": {"first": "Coleen", "last": "Volk"}},
+    {"name": {"given": "Mark", "family": "Regner"}},
+    {"id": 2, "name": "Faye Raker"},
+]</code></pre></div>
+<div class="code-block" data-code="id  name_first  name_last  name_given  name_family  name"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>id  name_first  name_last  name_given  name_family  name</code></pre></div>
+<p><strong>첫 번째 테이블 전에 선택하세요. 컬럼을 추가하기만 하는 것이 아니기 때문입니다.</strong> 이름도 바꾸는데 이 SDK는 컬럼을 삭제하지 않으므로, 이전 이름은 이미 들어 있는 행들과 함께 남고 이후의 모든 것은 새 이름에 적재됩니다. 누군가 이전 이름에 대해 작성한 쿼리는 계속 실행되지만 새 행을 더 이상 보지 못합니다. 이름 변경은 두 가지가 일어납니다.</p>
+<ul><li><code>userName</code>은 중첩 여부와 관계없이 <code>username</code>이 됩니다.</li><li>객체를 담고 있던 <code>name</code>은 <code>name_first</code>와 <code>name_last</code>로 대체됩니다.</li></ul>
+<p>두 형태 중 하나라도 이미 가진 테이블은 이 옵션이 켜진 적재를 추출 전에 두 컬럼을 명시하며 <strong>거부합니다</strong>. 새 테이블을 지정하거나 먼저 컬럼 이름을 직접 바꾸세요.</p>
+<p><strong><code>name</code>은 평탄화된 형태와 통째의 형태로 모두 나타날 수 있으며</strong>, 위 예제가 보여 줍니다. 세 번째 레코드는 <code>name</code>을 문자열로 가지므로 테이블에는 <code>name_first</code>, <code>name_last</code>, 그리고 <code>name</code>이 모두 있습니다. 한 레코드에서는 객체이고 다른 레코드에서는 스칼라인 필드는 둘 다 만듭니다.</p>
+<p><strong>한 단계까지이며, 배열은 값입니다.</strong> <code>{"a": {"b": {"c": 1}}}</code>은 <code>a_b</code>가 <code>{"c": 1}</code>을 담는 <code>JSON</code> 컬럼이지 <code>a_b_c</code>가 아닙니다. <code>{"a": [1, 2]}</code>는 <code>a</code>이며 역시 <code>JSON</code>입니다. 배열 요소마다 행 하나를 원하는 레코드는 여전히 <code>sdk.ArrayAt</code>이 필요합니다.</p>
+<p><strong>연결하고 소문자로 바꾸며, camelCase에서 나누지 않습니다.</strong> <code>userName</code>은 <code>user_name</code>이 아니라 <code>username</code>이 됩니다. 다른 해석은 <code>HTTPStatus</code>, <code>userID</code> 같은 약어에 대해 합의된 답이 없고 라이브러리마다 서로 다르기 때문입니다.</p>
+<p><strong>충돌은 해결하지 않고 거부합니다.</strong> <code>{"name_first": 1, "name": {"first": 2}}</code>는 필드 두 개로 컬럼 하나를 만들게 되는데 Go의 맵 순회는 무작위이므로, 한쪽이 이기게 두면 같은 배치가 실행마다 다른 테이블을 만들게 됩니다. 거부 메시지는 둘 다 명시합니다.</p>
+<p><strong>예약된 접두사는 필드가 아니라 컬럼에서 검사합니다.</strong> <code>{"brevis": {"stream": "x"}}</code>를 보내는 프로듀서는 그렇지 않으면 필드 검사가 지키지 않는 문을 통해 <code>brevis_stream</code>을 만들게 됩니다. 필드를 찾을 수 있도록 <code>brevis.stream</code>을 명시하며 거부됩니다.</p>
+<p><strong>접두사와 마찬가지로 프로세스 단위이며</strong>, 이유도 같습니다. 한 게이트웨이의 모든 stream이 이를 공유하므로 둘이 함께 쓸 수 있는 테이블에 대해 두 sink가 서로 다를 수 없습니다. <code>columns</code> 형태에만 적용됩니다. <code>document</code>에서는 레코드가 통째로 <code>JSON</code> 컬럼 하나에 들어가므로 평탄화할 대상이 없습니다.</p>
+<h3 id="이미-json인-텍스트">이미 JSON인 텍스트<a class="anchor" href="#이미-json인-텍스트" aria-label="link">#</a></h3>
+<p><code>sdk.TypeJSON</code>으로 선언된 컬럼은 JSON <strong>값</strong>, 즉 객체, 배열, 숫자를 받습니다. BigQuery에서는 행 전체가 인코딩되므로 Go <code>string</code>이 JSON 문자열 리터럴이 되고, 컬럼은 객체가 아니라 객체의 텍스트를 담게 됩니다.</p>
+<div class="code-block" data-code="SELECT JSON_TYPE(payload) ...;            -- &quot;string&quot;, not &quot;object&quot;
+SELECT JSON_VALUE(payload, &#x27;$.a&#x27;) ...;    -- NULL"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">SELECT</span> JSON_TYPE(payload) ...;            <span class="t-c">-- "string", not "object"</span>
+<span class="t-k">SELECT</span> JSON_VALUE(payload, '$.a') ...;    <span class="t-c">-- NULL</span></code></pre></div>
+<p>컬럼의 타입은 맞지만 그 안의 데이터에는 접근할 수 없으며, 아무것도 실패하지 않으므로 세 가지 결과 중 최악입니다. <strong>BigQuery 목적지는 <code>v0.74.0</code>부터 이를 거부하며</strong> 컬럼을 명시합니다.</p>
+<p>객체가 있으면 객체 자체를 전달하세요. 이미 JSON 텍스트를 가지고 있다면, 예를 들어 다른 데이터베이스에서 읽은 컬럼이나 다시 파싱하고 싶지 않은 응답 본문이라면 그렇다고 알려 주세요.</p>
+<div class="code-block" data-code="row[&quot;payload&quot;] = sdk.JSONText(body)"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>row["payload"] = sdk.JSONText(body)</code></pre></div>
+<p><code>encoding/json</code>의 <code>json.RawMessage</code>도 같은 이유로 동작합니다. 둘 다 따옴표로 감싼 문자열이 아니라 가지고 있는 JSON을 그대로 씁니다.</p>
+<p><strong>Postgres와 MySQL은 영향을 받지 않으며 거부되지도 않습니다.</strong> 두 서버는 문자열을 JSON 컬럼으로 파싱하며, 예전부터 그랬습니다.</p>
+<h3 id="테이블에-없는-필드가-나타났을-때">테이블에 없는 필드가 나타났을 때<a class="anchor" href="#테이블에-없는-필드가-나타났을-때" aria-label="link">#</a></h3>
+<p>프로듀서가 필드를 추가하면 적재가 해당 필드를 명시하며 멈춥니다. 행이 어떤 선언에도 없는 컬럼을 담고 있고, 그것을 언급한 적 없는 목적지에 쓰면 조용히 버려지기 때문입니다. 이 거부는 기본값으로는 옳지만, 랜딩 테이블에서는 독자를 깨뜨릴 수 없는 유일한 변경이므로 목적지가 이를 허용할 수 있습니다.</p>
+<div class="code-block" data-code="postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}</code></pre></div>
+<p>그러면 배치가 선언을 <strong>완성합니다</strong>. 배치가 가지고 있지만 선언에 없는 필드는 컬럼이 되며, 필드가 객체나 배열이 아니면 <code>STRING</code>이고 그렇다면 <code>JSON</code>입니다. 게이트웨이가 <code>shape: columns</code>를 적재할 때와 같은 규칙, 같은 코드이므로 둘은 같은 테이블을 만듭니다.</p>
+<p>다른 값이 두 가지 더 있으며, 이들의 차이는 컬럼이 어디에서 오는가입니다.</p>
+<div class="table-wrap"><table><thead><tr><th><code>Evolve</code></th><th>추가하는 것</th></tr></thead><tbody><tr><td><code>sdk.EvolveNone</code> (기본값)</td><td>없음. 모든 차이를 양쪽을 명시하며 거부합니다</td></tr><tr><td><code>sdk.EvolveAdditive</code></td><td><strong>선언</strong>에는 있고 테이블에는 없는 컬럼</td></tr><tr><td><code>sdk.EvolveAdditiveFromPayload</code></td><td>위의 것에 더해 <strong>배치</strong>가 가진 컬럼</td></tr></tbody></table></div>
+<p><strong><code>ADD COLUMN</code>만 합니다.</strong> 소스에서 사라진 컬럼은 쓰기가 멈추지만 테이블에는 남습니다. 이름 변경도, 삭제도 없고, 타입이 좁혀지는 일도 없습니다. 이것은 빈틈이 아닙니다. 랜딩 테이블은 이력이며, 읽는 사람을 깨뜨릴 수 없는 유일한 변경은 null을 허용하는 새 컬럼입니다.</p>
+<p><strong>선언을 완성할 뿐 대체하지 않습니다.</strong> 선언된 것이 없으면 추출 전에 테이블을 명시하며 거부됩니다. 페이로드로 테이블 전체를 만드는 것은 다른 결정이며 SDK는 내리지 않습니다. 랜딩 레이아웃에서는 해악이 구체적입니다. <code>brevis_received_at</code>이 타임스탬프가 아닌 텍스트로 나오고, <code>brevis_loaded_at</code>은 행에 실려 이동하지 않으므로 종단 간 지연 시간 측정이 그냥 사라집니다.</p>
+<p><strong>SDK는 여전히 추론하지 않습니다.</strong> 타입은 필드의 값이 아니라 <strong>형태</strong>에서 나옵니다. <code>21129</code>와 <code>8.89</code>는 둘 다 <code>STRING</code>을 선언하므로, 시리즈가 정수를 게시하는 날에도 아무것도 바뀌지 않습니다. 첫 번째 배치에서 읽은 타입은 이 규칙이 막으려는 바로 그 실패입니다.</p>
+<p><strong>그리고 <code>null</code>은 아무것도 결정하지 않지만 행에는 남습니다.</strong> 이는 서로 다른 두 질문이며, 하나의 답으로 처리하려다 v0.77.0이 대가를 치렀습니다.</p>
+<p>null에는 형태가 없으므로 <strong>스키마</strong>가 읽을 것이 없습니다. <code>null</code>로 도착한 필드는 컬럼을 선언하지 않으며, 컬럼은 값을 가진 첫 번째 레코드에서 그 값의 형태로 나타납니다. 반대로 하면 null이 답이 없다는 이유로 <code>STRING</code>이 되고, 그다음에 오는 첫 번째 배열 때문에 목적지가 배치 전체를 거부하게 되며, 이를 되돌릴 <code>STRING</code>에서 <code>JSON</code>으로의 마이그레이션도 없습니다.</p>
+<p><strong>행</strong>은 프로듀서가 보낸 것을 null까지 포함해 담습니다. 그래야 합니다. <code>Target.Schema</code>에 <em>선언한</em> 컬럼이 빈 채로 도착했다면 행에 있어야 하는데, 그렇지 않으면 선언과 행을 비교하는 검사가 더 이상 그것을 만들지 않는 체인을 읽고 적재를 거부합니다. v0.77.0이 그렇게 동작했고 0.78.0이 되돌렸습니다.</p>
+<p>나머지는 목적지가 정리합니다. 배치의 모든 레코드에서 null이고 테이블에 컬럼이 없는 필드는 어디에도 쓰이지 않으며 아무것도 거부하지 않습니다. null과 없는 필드는 똑같이 <code>NULL</code>로 적재되므로 잃는 것은 없습니다.</p>
+<p><strong>형태가 바뀌는 필드는 흡수되지 않고 거부됩니다.</strong> <code>valor</code>가 스칼라로 도착해 텍스트 컬럼을 만들었다면, 이후에 도착하는 객체는 종류의 변경이며 배치가 멈춥니다. 메시지에는 컬럼 자신의 주석이 포함되어, 아무도 선언하지 않았음을 확인할 수 있습니다. 컬럼 이름을 바꾸거나 직접 마이그레이션하세요.</p>
+<p><strong>BigQuery에서는 한 이름의 두 표기가 컬럼 하나입니다.</strong> BigQuery는 컬럼 대소문자를 접습니다. 한 레코드에 <code>nationalID</code>, 다른 레코드에 <code>nationalId</code>가 있는 배치는 컬럼을 둘이 아니라 <strong>하나</strong> 선언하며, 이기는 표기는 정렬 순서상 첫 번째인 <code>nationalID</code>입니다. <code>D</code>가 <code>d</code>보다 앞에 정렬되기 때문입니다. 먼저 도착한 것이 아닙니다. 같은 배치를 재생해도 표기가 다른 컬럼이 만들어지면 안 되기 때문입니다. 컬럼이 <code>createdAt</code>인 테이블에 대해 <code>createdat</code>을 선언하는 것도 같은 컬럼이므로, 아무것도 추가되지 않고 아무것도 거부되지 않습니다.</p>
+<p><strong>한 레코드에 두 표기가 모두 있으면 둘을 명시하며 거부됩니다.</strong> 목적지에는 컬럼이 하나인데 두 값 중 하나가 조용히 이기게 되므로 적재가 멈춥니다. <code>Transform</code>에서 하나의 이름을 바꾸거나 둘을 하나의 필드로 매핑하세요. 각각 한 표기를 가진 *두 레코드*는 문제없습니다. 일반적인 CDC 트래픽이며, 이 규칙이 적재하려는 대상이 바로 그것입니다.</p>
+<p><strong>마이그레이션되는 것은 없습니다.</strong> 대소문자만 다른 컬럼 두 개를 이미 가진 테이블은 둘 다 유지하며, 이름이 바뀌거나 삭제되는 컬럼은 없습니다.</p>
+<p><strong>Postgres와 MySQL은 접지 않습니다.</strong> 따옴표로 감싼 식별자는 거기서 구별되므로 두 표기는 컬럼 두 개입니다. 의도된 동작이며, 같은 fetcher를 BigQuery로 향하게 하면 하나로 적재됩니다.</p>
+<p><strong>배치가 만든 모든 컬럼은 테이블 안에 그 사실이 적힙니다.</strong> Postgres와 MySQL에서는 주석, BigQuery에서는 필드 설명이며 날짜를 담습니다.</p>
+<div class="code-block" data-code="brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision</code></pre></div>
+<p>여섯 달 뒤에는 "이 컬럼이 언제 나타났고 누가 결정했는가"에 답해 주는 유일한 것이 이것입니다. 로그 라인은 그때쯤 로테이션되어 사라집니다.</p>
+<p><strong>모드가 아닙니다.</strong> <code>Target.Schema</code>는 여전히 테이블이 무엇인지 여러분이 선언하는 것입니다. 이 기능은 이미 존재하는 레이아웃을 직접 입력하는 대신 건네줄 뿐입니다. 이를 사용했다고 해서 SDK의 어떤 것도 다르게 동작하지 않으며, 자기만의 스키마를 선언하는 파이프라인은 영향을 받지 않습니다.</p>
+<p><strong>테이블 이름은 한 번만 쓰세요.</strong> 이름은 <code>Landing</code>에 전달되는데 id의 두 번째 슬롯이기 때문이고, 목적지에도 전달되는데 행이 가는 곳이기 때문입니다. <strong>둘이 일치하는지는 아무것도 검사하지 않습니다.</strong> <code>Writer</code>는 자기 테이블을 알지만 로그와 오류용 이름인 <code>Describe</code>를 통해서만 노출하며, 그것으로 id를 만들면 이미 기록된 모든 id가 로그 문자열에 묶이게 됩니다. 둘이 어긋나면 행은 올바르게 적재되지만 id는 아무도 쓰지 않은 테이블 기준으로 만들어집니다. 멀쩡해 보이겠지만 게이트웨이의 것과는 일치하지 않습니다.</p>
+<p><strong>세 컬럼은 <code>NULL</code>이며, 그것이 정직한 답입니다.</strong> <code>brevis_stream</code>과 <code>brevis_gateway</code>는 파이프라인에는 없는 것을 가리킵니다. <code>brevis_gateway IS NULL</code>이 파이프라인의 행과 게이트웨이의 행을 구별하는 방법입니다. <code>brevis_received_bytes</code>도 <code>NULL</code>입니다. 게이트웨이의 값은 envelope를 포함해 와이어로 도착한 양이고, 레코드 자체의 JSON은 약 30% 작습니다. 두 가지 의미를 가진 컬럼 하나는 두 경로의 행에 걸친 합계를 어느 쪽에서 얼마가 왔는지에 따라 틀리게 만들 것입니다. <code>length(data)</code>가 파이프라인 쪽 값을 정확히 답합니다.</p>
+<p><strong>병합에는 <code>DedupKey</code>가 필요하며, 없으면 병합이 전혀 일어나지 않습니다.</strong> 별도로 지정하지 않으면 모든 드라이버는 <code>ingestion_id</code>로 매칭하는데, 이 레이아웃의 식별 컬럼은 <code>brevis_ingestion_id</code>입니다.</p>
+<div class="code-block" data-code="Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}</code></pre></div>
+<p><code>UniqueID</code>가 id에 UNIQUE 제약을 거는 것이며, Postgres와 MySQL은 제약 없이는 병합을 거부합니다. <code>ON CONFLICT</code>가 매칭할 대상이 없기 때문입니다. <code>Schema</code>가 선언하지 않은 <code>DedupKey</code>는 아무것도 실행되기 전에 거부됩니다. 테이블에 없는 컬럼에 대한 병합은 아무것도 매칭하지 않으며, 아무것도 매칭하지 않는 병합은 매칭해야 할 것을 모두 매칭하는 병합과 똑같아 보이기 때문입니다.</p>
+<p><strong>목적지마다 다르며, 현재 MySQL은 할 수 없습니다.</strong> BigQuery에는 고유 제약이 없으므로 선언 자체를 거부합니다. MySQL의 <code>string</code>은 <code>LONGTEXT</code>이고, MySQL은 길이 없이는 <code>LONGTEXT</code>를 키로 지정할 수 없으므로 병합하는 랜딩 테이블은 거기서 아예 *생성*할 수 없습니다.</p>
+<div class="code-block" data-code="Error 1170 (42000): BLOB/TEXT column &#x27;brevis_ingestion_id&#x27; used in key
+specification without a key length"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length</code></pre></div>
+<p>Postgres는 <code>string</code>이 <code>TEXT</code>이므로 동작합니다. MySQL에서는 <code>DedupNone</code>으로 적재하고 현재 버전은 다운스트림에서 결정하거나, <code>CreateSQL</code>로 크기를 지정한 id 컬럼과 함께 테이블을 직접 만드세요.</p>
+<p><strong>id는 콘텐츠 기반 주소 지정입니다.</strong> 같은 레코드는 어느 경로에서든 같은 id를 만들고, 변경된 레코드는 새 id를 만듭니다. 그래서 재실행이 중복이 아닌 no-op이 될 수 있습니다.</p>
+<h2 id="참고">참고<a class="anchor" href="#참고" aria-label="link">#</a></h2>
+<ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> — 전체 API</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> — 실행 가능한 예제 열두 개</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> — 버전별 변경 이력</li></ul>
+
+      <nav class="pagers" aria-label="페이지">
+        <a class="pager pager-prev" href="/ko/docs/runtime/"><span>이전</span><strong>step 런타임</strong></a>
+        <a class="pager pager-next" href="/ko/docs/libraries/"><span>다음</span><strong>클라이언트 라이브러리</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/ko/docs/sdk.md" target="_blank" rel="noopener">GitHub에서 이 페이지 편집</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="이 페이지에서">
+      <p class="toc-t">이 페이지에서</p>
+      <ul><li class="toc-2"><a href="#세-단계">세 단계</a></li><li class="toc-2"><a href="#드라이버는-설정이-아니라-값입니다">드라이버는 설정이 아니라 값입니다</a></li><li class="toc-2"><a href="#소스와-목적지">소스와 목적지</a></li><li class="toc-3"><a href="#토픽에-게시하기">토픽에 게시하기</a></li><li class="toc-2"><a href="#완전한-fetcher">완전한 fetcher</a></li><li class="toc-2"><a href="#run-컨텍스트">run 컨텍스트</a></li><li class="toc-3"><a href="#시계">시계</a></li><li class="toc-2"><a href="#클라이언트-라이브러리와-혼동하지-마세요">클라이언트 라이브러리와 혼동하지 마세요</a></li><li class="toc-2"><a href="#파이프라인을-만드는-매개변수">파이프라인을 만드는 매개변수</a></li><li class="toc-2"><a href="#랜딩-레이아웃">랜딩 레이아웃</a></li><li class="toc-3"><a href="#두-가지-형태-레코드-통째로-또는-필드당-컬럼-하나">두 가지 형태: 레코드 통째로, 또는 필드당 컬럼 하나</a></li><li class="toc-3"><a href="#brevis-접두사는-바꿀-수-있습니다">brevis_ 접두사는 바꿀 수 있습니다</a></li><li class="toc-3"><a href="#중첩-필드당-컬럼-하나">중첩 필드당 컬럼 하나</a></li><li class="toc-3"><a href="#이미-json인-텍스트">이미 JSON인 텍스트</a></li><li class="toc-3"><a href="#테이블에-없는-필드가-나타났을-때">테이블에 없는 필드가 나타났을 때</a></li><li class="toc-2"><a href="#참고">참고</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/ko/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>데이터 인프라에 적용한 철학.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>프로젝트</h2>
+        <ul>
+          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/docs/philosophy/">원칙</a></li>
+          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>코드</h2>
+        <ul>
+          <li><a href="/ko/docs/">문서</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">저장소</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>오픈 소스 프로젝트 제작: <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · Go로 제작 · Go 고퍼: Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

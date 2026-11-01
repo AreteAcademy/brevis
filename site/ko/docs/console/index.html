@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko" data-docs="/ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Console — 문서</title>
+<meta name="description" content="Core의 웹 인터페이스입니다. 무엇이 실행 중이고, 무엇이 실행될 예정이며, 각 run에 어떤 일이 있었는지 보여 줍니다.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/ko/docs/console/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/ko/docs/console/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/console/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/console/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/console/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/console/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/console/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/console/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/console/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/console/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/console/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/console/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/console/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="ko">
+<meta property="og:title" content="Console — 문서">
+<meta property="og:description" content="Core의 웹 인터페이스입니다. 무엇이 실행 중이고, 무엇이 실행될 예정이며, 각 run에 어떤 일이 있었는지 보여 줍니다.">
+<meta property="og:url" content="https://brevis.sh/ko/docs/console/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Console — 문서">
+<meta name="twitter:description" content="Core의 웹 인터페이스입니다. 무엇이 실행 중이고, 무엇이 실행될 예정이며, 각 run에 어떤 일이 있었는지 보여 줍니다.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Console",
+  "description": "Core의 웹 인터페이스입니다. 무엇이 실행 중이고, 무엇이 실행될 예정이며, 각 run에 어떤 일이 있었는지 보여 줍니다.",
+  "inLanguage": "ko",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/ko/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="주 내비게이션">
+      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/docs/">문서</a>
+      <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/console/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/console/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/console/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/console/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/console/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/console/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/console/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/console/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/console/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/console/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/console/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        오픈 소스 둘러보기
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    문서 메뉴
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">문서 검색</label>
+        <input type="search" id="q" placeholder="검색…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="결과 없음" hidden></div>
+      <nav class="side-nav" aria-label="문서">
+        <p class="side-group">시작하기</p><ul class="side-list"><li><a href="/ko/docs/ecosystem/">에코시스템</a></li><li><a href="/ko/docs/integrations/">통합</a></li><li><a href="/ko/docs/introduction/">소개</a></li><li><a href="/ko/docs/installation/">설치</a></li><li><a href="/ko/docs/quickstart/">빠른 시작</a></li></ul><p class="side-group">개념</p><ul class="side-list"><li><a href="/ko/docs/core/">Core</a></li><li><a href="/ko/docs/workflows/">Workflows</a></li><li><a href="/ko/docs/scheduler-and-queue/">스케줄러와 큐</a></li><li><a href="/ko/docs/pod-per-step/">step당 pod 하나</a></li><li><a href="/ko/docs/context/">step 간 컨텍스트</a></li></ul><p class="side-group">레퍼런스</p><ul class="side-list"><li><a href="/ko/docs/cli/">CLI</a></li><li><a href="/ko/docs/parameters/">매개변수</a></li><li><a href="/ko/docs/configuration/">구성</a></li><li><a href="/ko/docs/runtime/">step 런타임</a></li></ul><p class="side-group">SDK와 라이브러리</p><ul class="side-list"><li><a href="/ko/docs/sdk/">Go SDK</a></li><li><a href="/ko/docs/libraries/">클라이언트 라이브러리</a></li><li><a href="/ko/docs/python/">Python</a></li></ul><p class="side-group">운영</p><ul class="side-list"><li><a href="/ko/docs/console/" aria-current="page">Console</a></li><li><a href="/ko/docs/kubernetes/">Kubernetes</a></li><li><a href="/ko/docs/observability/">관측성</a></li><li><a href="/ko/docs/white-label/">화이트 라벨</a></li></ul><p class="side-group">수집</p><ul class="side-list"><li><a href="/ko/docs/ingestion/">수집</a></li><li><a href="/ko/docs/ingestion-sinks/">수집 sink</a></li><li><a href="/ko/docs/benchmarks/">벤치마크</a></li></ul><p class="side-group">SQL 모델링</p><ul class="side-list"><li><a href="/ko/docs/sql/">SQL</a></li></ul><p class="side-group">프로젝트</p><ul class="side-list"><li><a href="/ko/docs/philosophy/">철학</a></li><li><a href="/ko/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">문서</p>
+      <h1>Console</h1>
+      <p class="doc-desc">Core의 웹 인터페이스입니다. 무엇이 실행 중이고, 무엇이 실행될 예정이며, 각 run에 어떤 일이 있었는지 보여 줍니다.</p>
+      <p>인터페이스는 바이너리에 포함되어 있습니다. 따로 설치하고 유지해야 하는 별도의 서비스가 아닙니다. 성공률, 평균 소요 시간, 큐, 시도 이력, 다음에 실행될 스케줄을 보여 줍니다.</p>
+<p>Console은 <code>brevis serve</code>와 함께 HTTP API와 같은 포트(<code>BREVIS_HTTP_ADDR</code>, 기본값 <code>:8080</code>)에서 올라옵니다. <a href="/ko/docs/quickstart/">빠른 시작</a>에서는 <code>localhost:8080</code>에서 열립니다.</p>
+<p>아래 화면은 샘플 데이터로 Console을 SVG로 다시 그린 것이며 스크린샷이 아닙니다. 실제 Console은 운영 환경에서 고객 데이터를 다루기 때문입니다.</p>
+<h2 id="개요">개요<a class="anchor" href="#개요" aria-label="link">#</a></h2>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/console.svg" width="1000" height="600" alt="The Brevis console on the overview screen: a 94.2 per cent success rate over 344 runs, a bar chart of runs per hour with average duration, a distribution ring, what is in progress, and the next scheduled runs." loading="lazy"></figure>
+<p>지표와 차트가 있는 개요입니다. 성공률, 평균 소요 시간, 진행 중인 항목, 다음에 예정된 run을 한 화면에서 볼 수 있습니다.</p>
+<h2 id="workflows">Workflows<a class="anchor" href="#workflows" aria-label="link">#</a></h2>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflows.svg" width="1000" height="600" alt="The workflow list: search, filters by state and by tag, and twelve workflows with a pause toggle, the cron expression, the next and last run, tags, and a button to run each one now." loading="lazy"></figure>
+<p>검색, 필터, 일시중지, 실행 기능이 있는 workflow 목록입니다. 각 행에는 cron, 다음 run과 마지막 run, 태그가 표시됩니다.</p>
+<h2 id="workflow-하나">workflow 하나<a class="anchor" href="#workflow-하나" aria-label="link">#</a></h2>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflow.svg" width="1000" height="600" alt="One workflow&#x27;s page: its four steps, three dependencies, cron and tags; a form to run it with parameters; a 96.1 per cent success rate over 176 runs; the DAG with each step&#x27;s state; and a calendar of a year where each square is a day, coloured by that day&#x27;s worst outcome." loading="lazy"></figure>
+<p>step과 의존성, 매개변수와 함께 실행하는 폼, 각 step의 상태가 표시된 DAG, 그리고 각 날짜가 그날 가장 나쁜 결과의 색을 띠는 1년 달력입니다.</p>
+<h2 id="실행">실행<a class="anchor" href="#실행" aria-label="link">#</a></h2>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/console-runs.svg" width="1000" height="600" alt="The run history: 1,284 runs with their state, workflow, trigger, the slot they belong to, how long each took and when it was created. Some show which attempt succeeded." loading="lazy"></figure>
+<p>각 run의 시도가 표시된 실행 이력입니다. 상태, workflow, 트리거, run이 속한 slot, 소요 시간, 생성 시각이 표시됩니다.</p>
+<h2 id="run-하나">run 하나<a class="anchor" href="#run-하나" aria-label="link">#</a></h2>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/console-run.svg" width="1000" height="600" alt="A finished run: its state, trigger and slot; the graph with each step&#x27;s command, image and duration; the nine auto params the engine works out for every run — the clock to read instead of now(), the partition date, how late the attempt started and the window it covers; and each step&#x27;s output." loading="lazy"></figure>
+<p>실시간으로 표시되는 run의 DAG와 엔진이 그 run에 대해 계산한 자동 매개변수입니다. 각 step의 명령, 이미지, 소요 시간이 표시된 그래프와 각 step의 출력을 볼 수 있습니다.</p>
+<h2 id="프로젝트">프로젝트<a class="anchor" href="#프로젝트" aria-label="link">#</a></h2>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/console-projects.svg" width="1000" height="600" alt="Two projects, analytics and platform, each namespacing its own workflows — both can have a daily_ingest without colliding." loading="lazy"></figure>
+<p>두 팀이 하나의 이름에서 충돌하지 않도록 프로젝트를 둡니다. 각 프로젝트는 자기 workflow의 네임스페이스이므로, 두 프로젝트가 각각 <code>daily_ingest</code>를 가질 수 있습니다.</p>
+<h2 id="바이너리에-포함됩니다">바이너리에 포함됩니다<a class="anchor" href="#바이너리에-포함됩니다" aria-label="link">#</a></h2>
+<p>폰트와 번들이 바이너리에서 제공되므로 인터넷 없이도 동작합니다.</p>
+
+      <nav class="pagers" aria-label="페이지">
+        <a class="pager pager-prev" href="/ko/docs/python/"><span>이전</span><strong>Python</strong></a>
+        <a class="pager pager-next" href="/ko/docs/kubernetes/"><span>다음</span><strong>Kubernetes</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/ko/docs/console.md" target="_blank" rel="noopener">GitHub에서 이 페이지 편집</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="이 페이지에서">
+      <p class="toc-t">이 페이지에서</p>
+      <ul><li class="toc-2"><a href="#개요">개요</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#workflow-하나">workflow 하나</a></li><li class="toc-2"><a href="#실행">실행</a></li><li class="toc-2"><a href="#run-하나">run 하나</a></li><li class="toc-2"><a href="#프로젝트">프로젝트</a></li><li class="toc-2"><a href="#바이너리에-포함됩니다">바이너리에 포함됩니다</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/ko/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>데이터 인프라에 적용한 철학.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>프로젝트</h2>
+        <ul>
+          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/docs/philosophy/">원칙</a></li>
+          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>코드</h2>
+        <ul>
+          <li><a href="/ko/docs/">문서</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">저장소</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>오픈 소스 프로젝트 제작: <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · Go로 제작 · Go 고퍼: Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

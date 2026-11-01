@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="hi" data-docs="/hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Ingestion — दस्तावेज़</title>
+<meta name="description" content="एक HTTP endpoint जो डेटा उतारता है — validate, पहचान, batch, डिलीवरी। अपनी image, अपना संस्करण।">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/hi/docs/ingestion/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/hi/docs/ingestion/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/ingestion/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/ingestion/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/ingestion/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/ingestion/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/ingestion/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/ingestion/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/ingestion/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/ingestion/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/ingestion/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/ingestion/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/ingestion/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="hi">
+<meta property="og:title" content="Ingestion — दस्तावेज़">
+<meta property="og:description" content="एक HTTP endpoint जो डेटा उतारता है — validate, पहचान, batch, डिलीवरी। अपनी image, अपना संस्करण।">
+<meta property="og:url" content="https://brevis.sh/hi/docs/ingestion/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Ingestion — दस्तावेज़">
+<meta name="twitter:description" content="एक HTTP endpoint जो डेटा उतारता है — validate, पहचान, batch, डिलीवरी। अपनी image, अपना संस्करण।">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Ingestion",
+  "description": "एक HTTP endpoint जो डेटा उतारता है — validate, पहचान, batch, डिलीवरी। अपनी image, अपना संस्करण।",
+  "inLanguage": "hi",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/hi/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
+      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/docs/">दस्तावेज़</a>
+      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/ingestion/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ingestion/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ingestion/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ingestion/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ingestion/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ingestion/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/ingestion/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        ओपन सोर्स देखें
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="मेन्यू खोलें" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    दस्तावेज़ मेन्यू
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">दस्तावेज़ में खोजें</label>
+        <input type="search" id="q" placeholder="खोजें…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="कोई नतीजा नहीं" hidden></div>
+      <nav class="side-nav" aria-label="दस्तावेज़">
+        <p class="side-group">शुरुआत करें</p><ul class="side-list"><li><a href="/hi/docs/ecosystem/">इकोसिस्टम</a></li><li><a href="/hi/docs/integrations/">इंटीग्रेशन</a></li><li><a href="/hi/docs/introduction/">परिचय</a></li><li><a href="/hi/docs/installation/">इंस्टॉलेशन</a></li><li><a href="/hi/docs/quickstart/">क्विकस्टार्ट</a></li></ul><p class="side-group">अवधारणाएँ</p><ul class="side-list"><li><a href="/hi/docs/core/">Core</a></li><li><a href="/hi/docs/workflows/">Workflows</a></li><li><a href="/hi/docs/scheduler-and-queue/">शेड्यूलर और कतार</a></li><li><a href="/hi/docs/pod-per-step/">हर step के लिए एक pod</a></li><li><a href="/hi/docs/context/">steps के बीच संदर्भ</a></li></ul><p class="side-group">संदर्भ</p><ul class="side-list"><li><a href="/hi/docs/cli/">CLI</a></li><li><a href="/hi/docs/parameters/">पैरामीटर</a></li><li><a href="/hi/docs/configuration/">कॉन्फ़िगरेशन</a></li><li><a href="/hi/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK और लाइब्रेरी</p><ul class="side-list"><li><a href="/hi/docs/sdk/">Go SDK</a></li><li><a href="/hi/docs/libraries/">क्लाइंट लाइब्रेरी</a></li><li><a href="/hi/docs/python/">Python</a></li></ul><p class="side-group">संचालन</p><ul class="side-list"><li><a href="/hi/docs/console/">Console</a></li><li><a href="/hi/docs/kubernetes/">Kubernetes</a></li><li><a href="/hi/docs/observability/">ऑब्ज़र्वेबिलिटी</a></li><li><a href="/hi/docs/white-label/">White label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/hi/docs/ingestion/" aria-current="page">Ingestion</a></li><li><a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></li><li><a href="/hi/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">SQL में मॉडलिंग</p><ul class="side-list"><li><a href="/hi/docs/sql/">SQL</a></li></ul><p class="side-group">प्रोजेक्ट</p><ul class="side-list"><li><a href="/hi/docs/philosophy/">दर्शन</a></li><li><a href="/hi/docs/faq/">अक्सर पूछे जाने वाले सवाल</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">दस्तावेज़</p>
+      <h1>Ingestion</h1>
+      <p class="doc-desc">एक HTTP endpoint जो डेटा उतारता है — validate, पहचान, batch, डिलीवरी। अपनी image, अपना संस्करण।</p>
+      <p>Ingestion gateway एक <strong>HTTP endpoint है जो डेटा उतारता है</strong>। क्लाइंट <code>POST</code> करता है, <code>202</code> पाता है, और जो आया वह topic पर, तालिका में या bucket में रिकॉर्ड बन जाता है।</p>
+<figure class="doc-figure"><img src="/assets/flow-gateway.svg" width="360" height="514" alt="Gateway का प्रवाह: /v1/clicks पर POST decode होता है, उसे ingestion_id मिलती है, तुरंत 202 से जवाब दिया जाता है और वह batch में जुड़ता है; worker batch को sink तक डिलीवर करता है, यहाँ files। Gateway का कोई डेटाबेस नहीं है।" loading="lazy"></figure>
+<p>यह <strong>अलग बाइनरी, अलग Go module, अलग संस्करण और अलग image</strong> है। Engine ऑर्केस्ट्रेट करता है और ग्राहक के डेटा को कभी नहीं छूता; gateway और कुछ नहीं करता। नंबरिंग जानबूझकर स्वतंत्र है: engine 0.17 पर है और gateway 0.27 पर, जो सच्चा कथन है।</p>
+<p>नीचे के खंड के <code>gateway.yaml</code> और <code>keys_from</code> में माँगी गई key के साथ:</p>
+<div class="code-block" data-code="docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
+  -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
+  areteacademy/brevis-gateway:0.32.0"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">-p</span> 8080:8080 <span class="t-n">-e</span> BREVIS_INGEST_KEYS=dev-key \
+  <span class="t-n">-v</span> ./gateway.yaml:/etc/<span class="t-k">brevis</span>/gateway.yaml:ro \
+  areteacademy/<span class="t-k">brevis</span>-gateway:0.32.0</code></pre></div>
+<div class="code-block" data-code="2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds &gt;= 40
+2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
+2026/10/09 01:03:01 listening on :8080
+2026/10/09 01:03:01 metrics on :9090/metrics"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds &gt;= 40
+2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
+2026/10/09 01:03:01 listening on :8080
+2026/10/09 01:03:01 metrics on :9090/metrics</code></pre></div>
+<p><code>POST</code> तुरंत <code>202</code> लौटाता है:</p>
+<div class="code-block" data-code="curl -X POST localhost:8080/v1/clicks -H &#x27;Authorization: Bearer dev-key&#x27; \
+  -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/clicks <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
+  <span class="t-n">-d</span> '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'</code></pre></div>
+<div class="code-block" data-code="{&quot;accepted&quot;:1,&quot;rejected&quot;:null}"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>{"accepted":1,"rejected":null}</code></pre></div>
+<p>Google Cloud क्रेडेंशियल के बिना, batch का retry होता है और वह dead letter में जाता है — देखें <a href="#जब-sink-मन-कर">जब sink मना करे</a>।</p>
+<p><code>-slim</code> image सिर्फ़ <code>auto_table</code>, <code>files</code> और <code>postgres</code> sinks ढोती है; इस उदाहरण का <code>pubsub</code> और बाकी पूरी image में हैं। जो slim image ऐसा sink माँगे जो वह नहीं ढोती, वह शुरू होते समय कारण के साथ मना कर दी जाती है।</p>
+<h2 id="फइल-ह-अनबध-ह">फ़ाइल ही अनुबंध है<a class="anchor" href="#फइल-ह-अनबध-ह" aria-label="link">#</a></h2>
+<p>Hooks के सिवा लिखने को कोई कोड नहीं है। Streams, paths, फ़ॉर्मेट, पहचान, retry, गंतव्य और dead letter — सब YAML में, और जो फ़ील्ड निभाया न जा सके वह मना कर दिया जाता है।</p>
+<div class="code-block" data-code="name: events_gateway
+
+listen:
+  addr: :8080
+  max_body: 1MiB
+  idle_timeout: 90s                  # the default; it cannot be turned off
+  max_conn_age: 60s                  # off unless set — see below
+  auth:
+    type: bearer
+    keys_from: BREVIS_INGEST_KEYS   # the NAME of the variable, never the keys
+
+metrics:
+  addr: :9090                        # its own port, never the ingest one
+
+streams:
+  - name: clicks
+    path: /v1/clicks
+    format: json                     # json | array | ndjson — declared, never sniffed
+
+    identity:
+      provider: web
+      entity: click
+      source_key: event_id
+      record_ts: occurred_at
+
+    buffer:
+      flush: {every: 1s, records: 500}
+
+    sink:
+      type: pubsub
+      project: acme-prod
+      topic: clicks
+
+    dead_letter:
+      type: files
+      path: /var/dead-letter/"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">name</span>: events_gateway
+
+<span class="t-k">listen</span>:
+  <span class="t-k">addr</span>: :8080
+  <span class="t-k">max_body</span>: 1MiB
+  <span class="t-k">idle_timeout</span>: 90s                  <span class="t-c"># the default; it cannot be turned off</span>
+  <span class="t-k">max_conn_age</span>: 60s                  <span class="t-c"># off unless set — see below</span>
+  <span class="t-k">auth</span>:
+    <span class="t-k">type</span>: bearer
+    <span class="t-k">keys_from</span>: BREVIS_INGEST_KEYS   <span class="t-c"># the NAME of the variable, never the keys</span>
+
+<span class="t-k">metrics</span>:
+  <span class="t-k">addr</span>: :9090                        <span class="t-c"># its own port, never the ingest one</span>
+
+<span class="t-k">streams</span>:
+  - <span class="t-k">name</span>: clicks
+    <span class="t-k">path</span>: /v1/clicks
+    <span class="t-k">format</span>: json                     <span class="t-c"># json | array | ndjson — declared, never sniffed</span>
+
+    <span class="t-k">identity</span>:
+      <span class="t-k">provider</span>: web
+      <span class="t-k">entity</span>: click
+      <span class="t-k">source_key</span>: event_id
+      <span class="t-k">record_ts</span>: occurred_at
+
+    <span class="t-k">buffer</span>:
+      <span class="t-k">flush</span>: {every: 1s, records: 500}
+
+    <span class="t-k">sink</span>:
+      <span class="t-k">type</span>: pubsub
+      <span class="t-k">project</span>: acme-prod
+      <span class="t-k">topic</span>: clicks
+
+    <span class="t-k">dead_letter</span>:
+      <span class="t-k">type</span>: files
+      <span class="t-k">path</span>: /var/dead-letter/</code></pre></div>
+<p><code>format</code> घोषित किया जाता है, अनुमानित नहीं: अनुमान लगाने से ही हज़ार का batch एक सूची वाली एक पंक्ति बन जाता है।</p>
+<h2 id="ingestion-id-ज-असल-बत-ह"><code>ingestion_id</code>, जो असली बात है<a class="anchor" href="#ingestion-id-ज-असल-बत-ह" aria-label="link">#</a></h2>
+<p>हर रिकॉर्ड एक <code>ingestion_id</code> के साथ निकलता है: <code>provider|entity|source_key|record_ts</code> पर <strong>स्थिर UUID v5</strong>।</p>
+<p>यह वही <strong>id</strong> है जो batch fetcher उसी रिकॉर्ड के लिए निकालता है। जो पंक्ति gateway उतारता है और जो पंक्ति <a href="/hi/docs/sdk/">SDK</a> pipeline उतारती है, वे <em>एक ही पंक्ति</em> हैं, उनके बीच कोई मिलान नहीं।</p>
+<p>दो व्यावहारिक नतीजे:</p>
+<ul><li><strong>दोबारा भेजा गया <code>POST</code> वही रिकॉर्ड है।</strong> क्लाइंट बिना डरे फिर भेज सकता है; <code>merge</code> वाला गंतव्य दूसरी पंक्ति लिखने के बजाय retry को सोख लेता है।</li><li><strong>सूत्र स्थिर है।</strong> चारों फ़ील्ड ज़रूरी हैं, और एक छोड़ देने से कमज़ोर नहीं बल्कि <em>अलग</em> id बनती है। फ़ाइल अधूरे कॉन्फ़िगरेशन को स्वीकार करने के बजाय मना करती है।</li></ul>
+<p>Ingestion के टूल बाइट बहुत अच्छे से ले जाते हैं और इस पर कोई राय नहीं रखते कि रिकॉर्ड <em>क्या है</em>। वह राय ही है जो gateway जोड़ता है।</p>
+<h2 id="अनरध-कभ-sink-क-इतजर-नह-करत">अनुरोध कभी sink का इंतज़ार नहीं करता<a class="anchor" href="#अनरध-कभ-sink-क-इतजर-नह-करत" aria-label="link">#</a></h2>
+<p>यह decode करता है, hook चलाता है, पहचान निकालता है, बफ़र में जोड़ता है और लौट आता है। <strong>बस इतना।</strong> भरा हुआ batch worker pool के पास जाता है, और publish, <code>COPY</code>, retries और dead letter सब वहीं होते हैं।</p>
+<p>यह दिखावटी नहीं है। इसके होने से पहले, जो अनुरोध संयोग से batch भरता था वह डिलीवरी inline चलाता था — इसलिए हर <code>flush.records</code> में से एक caller पूरा round trip चुकाता था, और sink बंद हो तो पूरी retry विंडो। ऐसा p99 जिसका आकार इससे तय हो कि कौन-सा caller बदकिस्मत था, कोई नहीं सुधार सकता।</p>
+<div class="code-block" data-code="buffer:
+  flush:
+    every: 1s         # age
+    records: 500      # count
+    size: 8MiB        # bytes — whichever is crossed FIRST sends the batch
+    max_age: 30s      # and this one sends it REGARDLESS
+  workers: 4          # batches delivered at once
+  queue: 64           # full batches that may wait for a worker
+  max_records: 10000  # events held in memory before the gateway says no
+  max_bytes: 256MiB   # the same ceiling in bytes"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">buffer</span>:
+  <span class="t-k">flush</span>:
+    <span class="t-k">every</span>: 1s         <span class="t-c"># age</span>
+    <span class="t-k">records</span>: 500      <span class="t-c"># count</span>
+    <span class="t-k">size</span>: 8MiB        <span class="t-c"># bytes — whichever is crossed FIRST sends the batch</span>
+    <span class="t-k">max_age</span>: 30s      <span class="t-c"># and this one sends it REGARDLESS</span>
+  <span class="t-k">workers</span>: 4          <span class="t-c"># batches delivered at once</span>
+  <span class="t-k">queue</span>: 64           <span class="t-c"># full batches that may wait for a worker</span>
+  <span class="t-k">max_records</span>: 10000  <span class="t-c"># events held in memory before the gateway says no</span>
+  <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># the same ceiling in bytes</span></code></pre></div>
+<h3 id="flush-क-घड-deployment-क-ह">Flush की घड़ी deployment की है<a class="anchor" href="#flush-क-घड-deployment-क-ह" aria-label="link">#</a></h3>
+<p><code>buffer.flush.every</code> <strong>हर replica</strong> में एक <code>time.AfterFunc</code> है। इसलिए तालिका को मिलने वाले load jobs replica की संख्या का फ़ंक्शन हैं, ट्रैफ़िक का नहीं:</p>
+<div class="code-block" data-code="jobs / day / table  =  replicas × 86400 / every"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>jobs / day / table  =  replicas × 86400 / every</code></pre></div>
+<p>BigQuery पर, प्रति तालिका प्रति दिन 1,500 के विरुद्ध, <strong>60s पर दो replicas पहले ही उस quota का 192% हैं जिसे बढ़ाया नहीं जा सकता</strong> — HPA कुछ करे उससे पहले। और दिशा अंतर्ज्ञान से उलटी है: gateway HTTP concurrency के लिए बाहर की ओर फैलता है जबकि sink संकेंद्रण चाहता है।</p>
+<div class="code-block" data-code="buffer:
+  flush:
+    every: 60s
+    max_age: 300s
+    claim: true"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">buffer</span>:
+  <span class="t-k">flush</span>:
+    <span class="t-k">every</span>: 60s
+    <span class="t-k">max_age</span>: 300s
+    <span class="t-k">claim</span>: <span class="t-n">true</span></code></pre></div>
+<p><code>claim</code> के साथ, replica timer पर flush करने से पहले stream और विंडो के लिए set-if-absent लेता है — और timer <strong>विंडो की सीमा</strong> पर जागता है, इसलिए हर replica एक ही key माँगता है। विंडो के हिसाब से एक flush, चाहे replicas कितने भी हों। और यह खुद को ठीक करता है: replica तभी इंतज़ार करता है जब सचमुच कोई दूसरा होड़ में है, इसलिए घटाने पर कम देरी लौट आती है, किसी को कॉन्फ़िग संपादित किए बिना।</p>
+<p>दो replicas और एक Redis के साथ, 5s विंडो पर मापा: <strong>8 load jobs 6 हो गए, हर विंडो के लिए एक, 3/3 बारी-बारी</strong> — किसी विंडो में दो नहीं।</p>
+<p><strong>इसे साझा backend चाहिए।</strong> <code>memory</code> के साथ हर replica अपना claim खुद जीतता है और कुछ समन्वय नहीं करता। और यह <strong><code>max_age</code> माँगता है</strong>, जिसके बिना कॉन्फ़िग मना करता है: claim <code>every</code> को लक्ष्य बना देता है, और बिना सीमा का लक्ष्य वह देरी है जिसे कुछ नहीं बाँधता।</p>
+<p><strong>पहुँच से बाहर metastore फिर भी flush करता है।</strong> समन्वय खोना load jobs की कीमत लेता है; flush से मना करना डेटा रोकता है। Run के बीच में Redis मारकर सत्यापित: 40 में से 40 events उतरे, कुछ नहीं रुका।</p>
+<p><strong><code>outcome="unreachable"</code> वह है जिस पर अलर्ट बनता है।</strong> Backend से पूछा नहीं जा सका, इसलिए claim खुला विफल हुआ: समन्वय बंद है और load jobs फिर replica की संख्या से गुणा हो रहे हैं — चुपचाप, क्योंकि हर flush अब भी flush जैसा दिखता है।</p>
+<p>और claim <strong>विशिष्टता</strong> देता है, निष्पक्षता नहीं: जो पहले माँगे वह जीतता है। असली दो-replica run में 4/1 मापा गया, बराबर बँटवारा नहीं। <code>max_age</code> वही है जो बदकिस्मत को भूखा मरने से रोकता है।</p>
+<p><code>claim: true</code> और <code>metastore: memory</code> के साथ gateway <strong>boot पर एक बार</strong> चेतावनी देता है: हर replica अपना claim जीतता है, इसलिए सब कुछ सही दिखता है और कुछ समन्वय नहीं करता।</p>
+<h3 id="every-लकषय-ह-max-age-वद-ह"><code>every</code> लक्ष्य है; <code>max_age</code> वादा है<a class="anchor" href="#every-लकषय-ह-max-age-वद-ह" aria-label="link">#</a></h3>
+<p>ऊपर के तीन triggers तय करते हैं कि batch कब निकलने की <strong>कोशिश</strong> करता है। <code>max_age</code> तय करता है कि वह कब <strong>हर हाल में</strong> निकलता है।</p>
+<p>आज यह फ़र्क निष्क्रिय है, क्योंकि कुछ लक्ष्य को टालता नहीं। यह तब मायने रखने लगता है जब flush की घड़ी प्रति-प्रोसेस नहीं रहती: <code>buffer.flush.every</code> हर replica में एक <code>time.AfterFunc</code> है, इसलिए तालिका को मिलने वाले load jobs की संख्या <strong>replica की संख्या</strong> का फ़ंक्शन है, ट्रैफ़िक का नहीं — <code>replicas × 86400 / every</code>। BigQuery पर, प्रति तालिका प्रति दिन 1,500 के विरुद्ध, <strong>60s पर दो replicas पहले ही quota का 192% हैं</strong>।</p>
+<p>एक बार जब replica विंडो दूसरे को दे सकता है, वह भरता रहता है, और <code>max_age</code> वही है जो किसी को अपनी बारी की प्रतीक्षा में डेटा अनिश्चित काल तक थामे रखने से रोकता है।</p>
+<p>यह drain को भी तय करता है: <code>SIGTERM</code> पर बफ़र जो <strong>थामे</strong> हो सकता है वह इससे बँध जाता है, और gateway boot पर जो <code>terminationGracePeriodSeconds</code> छापता है वह इसी से निकला है।</p>
+<p>लक्ष्य से <strong>नीचे</strong> की सीमा लोड पर मना की जाती है — उसका मतलब होता कि लक्ष्य कभी लागू नहीं होता।</p>
+<h3 id="size-trigger-कय-ह">Size trigger क्यों है<a class="anchor" href="#size-trigger-कय-ह" aria-label="link">#</a></h3>
+<p>बाकी दो <strong>गिनती</strong> हैं, और गिनती 2 KB के 500 events को 2 MB के 500 से अलग नहीं बता सकती — 1 MB बनाम 1 GB, फ़ाइल में वही संख्या। <code>max_records: 10000</code> का भी वही अंधा बिंदु है: 20 MB या 20 GB, और YAML में कुछ नहीं कह सकता कि कौन-सा।</p>
+<p>जो producer id की जगह पूरा दस्तावेज़ भेजना शुरू कर दे, वह pod गिरा देता है, और इसके होने तक <strong>कोई फ़ील्ड सीमा को व्यक्त नहीं कर सकता था</strong>।</p>
+<p>Size उस पर मापा जाता है जो <strong>आया</strong> — उस पर नहीं जो event मेमोरी में तौलता है (<code>map[string]any</code> अपने JSON से कई गुना होता है) और न उस hook के बाद जो उसे फुला दे। अनुमान है, और सही वाला: decode पर मुफ़्त है, payload के साथ चलता है, और जिससे बचाता है वह दस गुना बढ़ा रिकॉर्ड है।</p>
+<p><strong>BigQuery पर <code>size</code> सीमा है, लक्ष्य नहीं।</strong> वह गंतव्य प्रति तालिका प्रति दिन 1,500 load jobs की अनुमति देता है, इसीलिए <code>every</code> की निचली सीमा 60 सेकंड है। लेकिन वह सीमा <strong>timer</strong> पर लागू होती है: हर कुछ सेकंड में चलने वाला size सीधे उसके पार निकल जाता है और वही quota खर्च करता है। लोड पर कुछ इसे मना नहीं करता, क्योंकि आगमन दर वहाँ जानी नहीं जा सकती। इसके बदले जो है वह दृश्यता है:</p>
+<div class="code-block" data-code="brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size</code></pre></div>
+<p>BigQuery stream पर <code>trigger="size"</code> का चढ़ना आपको बता रहा है कि batching विंडो नहीं कर रही।</p>
+<p>वह counter प्रति stream है, और quota प्रति <strong>तालिका</strong> है: <code>auto_table</code> के साथ एक route कई तालिकाएँ बन जाता है, और उनमें से 94 का एक संख्या रिपोर्ट करना उनमें से किसी के बारे में कुछ नहीं कहता। <code>BREVIS_INGESTION_METRICS</code> के पीछे एक है जो उसका नाम लेता है:</p>
+<div class="code-block" data-code="brevis_gateway_table_flushes_total{stream,table,trigger}"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>brevis_gateway_table_flushes_total{stream,table,trigger}</code></pre></div>
+<p>तालिका का एक flush उसके लिए एक load job है, इसलिए यही वह series है जिस पर BigQuery की अनुमत 1,500 में से 1,200 पर अलर्ट बनाना है। बिना शर्त वाला आधा boot पर एक पंक्ति है, जो event आने से पहले बताती है कि <code>flush.every</code> प्रति तालिका प्रति दिन कितना पड़ता है।</p>
+<p><strong>यह सीमित है, fire-and-forget नहीं।</strong> हर batch के लिए goroutine sink की गड़बड़ी को असीमित मेमोरी में बदल देता। जब कतार और बफ़र दोनों भरे हों, तो जवाब <strong><code>Retry-After</code> के साथ <code>503</code></strong> है, ऐसे event के लिए <code>202</code> नहीं जिसके पास जाने की जगह नहीं। स्वीकार किया गया event जो कभी डिलीवर न हो, वही नतीजा है जिसे न होने देने के लिए यह service है।</p>
+<p>और वह <code>503</code> <strong>दोबारा कोशिश के लिए सुरक्षित</strong> है, ऐसे तरीके से जैसा लगभग कोई service नहीं कह सकती: <code>ingestion_id</code> event का ही स्थिर फ़ंक्शन है, इसलिए वही body दोबारा भेजना <em>वही रिकॉर्ड</em> है।</p>
+<h2 id="कनकशन-तय-करत-ह-क-भर-कस-replica-क-मल">कनेक्शन तय करता है कि भार किस replica को मिले<a class="anchor" href="#कनकशन-तय-करत-ह-क-भर-कस-replica-क-मल" aria-label="link">#</a></h2>
+<p>Kubernetes <code>ClusterIP</code> Service के पीछे, kube-proxy backend <strong>हर TCP कनेक्शन पर एक बार</strong> चुनता है, हर अनुरोध पर नहीं। ज़्यादातर क्लाइंट कनेक्शन जीवित रखते और दोबारा इस्तेमाल करते हैं, इसलिए मुट्ठी भर कनेक्शन वाला producer सब कुछ एक-दो replicas को भेजता है चाहे कितने चल रहे हों — और HPA जो replica जोड़ता है उसे कुछ नहीं मिलता, क्योंकि कोई उसे dial नहीं करता।</p>
+<div class="code-block" data-code="listen:
+  idle_timeout: 90s     # closes a connection nobody came back to
+  max_conn_age: 60s     # after this, the next response asks the client to redial"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">listen</span>:
+  <span class="t-k">idle_timeout</span>: 90s     <span class="t-c"># closes a connection nobody came back to</span>
+  <span class="t-k">max_conn_age</span>: 60s     <span class="t-c"># after this, the next response asks the client to redial</span></code></pre></div>
+<p><strong><code>max_conn_age</code> डिफ़ॉल्ट रूप से बंद है</strong>, और यह जानबूझकर है: क्लाइंट एक कनेक्शन कितनी देर रख सकता है यह नीति है, और यह प्रति उम्र प्रति कनेक्शन एक in-cluster handshake के बदले भार का फैलाव देता है। अनुरोध खुद हमेशा परोसा जाता है — header response पर लगता है, कुछ दोबारा नहीं आज़माया जाता और कोई batch नहीं खोता।</p>
+<p><strong><code>idle_timeout</code> का डिफ़ॉल्ट है और उसे बंद नहीं किया जा सकता।</strong> उसके बिना परोसना प्रोसेस के रीस्टार्ट तक हर छोड़े गए क्लाइंट के लिए एक file descriptor है। लंबा सेट करें अगर वही चाहिए; तब वह ऐसी संख्या है जिसे किसी ने चुना।</p>
+<p>दोनों स्वतंत्र हैं: कनेक्शन उस सीमा से मिलता है जो पहले आए, और कनेक्शन उम्र तक सिर्फ़ इस्तेमाल होकर पहुँचता है — ठीक वही लंबे समय तक जीने वाला producer जिसे उम्र संतुलित करने के लिए है।</p>
+<h2 id="जब-sink-मन-कर">जब sink मना करे<a class="anchor" href="#जब-sink-मन-कर" aria-label="link">#</a></h2>
+<p>Batch का retry होता है — डिफ़ॉल्ट रूप से करीब सात सेकंड में चार प्रयास, jitter के साथ दोगुने — और फिर वह <strong>dead letter</strong> में जाता है, हर रिकॉर्ड पर कारण के साथ:</p>
+<div class="code-block" data-code="{
+  &quot;event_id&quot;: &quot;dl-9&quot;,
+  &quot;ingestion_id&quot;: &quot;84aaee4b-66af-5cc0-b97b-6856dec95b25&quot;,
+  &quot;_dead_letter_reason&quot;: &quot;rpc error: code = NotFound desc = Topic not found&quot;,
+  &quot;_dead_letter_sink&quot;: &quot;pubsub:acme-prod/clicks&quot;,
+  &quot;_dead_letter_at&quot;: &quot;2026-09-25T02:02:32Z&quot;
+}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>{
+  "event_id": "dl-<span class="t-n">9</span>",
+  "ingestion_id": "84aaee4b-66af-5cc0-b97b-6856dec95b25",
+  "_dead_letter_reason": "rpc error: code = NotFound desc = Topic not found",
+  "_dead_letter_sink": "pubsub:acme-prod/clicks",
+  "_dead_letter_at": "<span class="t-n">2026</span>-<span class="t-n">09</span>-25T02:<span class="t-n">02</span>:32Z"
+}</code></pre></div>
+<p>कारण <strong>रिकॉर्ड पर</strong> चलता है, सिर्फ़ लॉग में नहीं, क्योंकि जिसे वह फ़ाइल बाद में मिलती है उसके पास events होते हैं, लॉग नहीं — और <em>यह यहाँ क्यों है</em> उसका पहला सवाल होता है।</p>
+<p><strong>बिना <code>dead_letter</code> वाला stream लोड पर मना है।</strong> इसे चुप्पी पर डिफ़ॉल्ट करना फ़ैसले को वहाँ रख देता जहाँ कोई उसे नहीं लेता, और जो मना किया गया batch सिर्फ़ लॉग पंक्ति है वह डेटा चुपचाप खो रहा है।</p>
+<h2 id="hook-go-ह-compile-हकर-भतर">Hook Go है, compile होकर भीतर<a class="anchor" href="#hook-go-ह-compile-हकर-भतर" aria-label="link">#</a></h2>
+<div class="code-block" data-code="hooks := gateway.NewHooks()
+hooks.MustRegister(&quot;enrich_clicks&quot;, enrichClicks)
+gateway.Main(hooks, gateway.WithSinks(sinks))
+
+func enrichClicks(e map[string]any) (map[string]any, error) {
+    host, _ := e[&quot;host&quot;].(string)
+    e[&quot;tenant&quot;] = strings.Split(host, &quot;.&quot;)[0]
+    return e, nil     // returning nil DROPS the event, on purpose
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>hooks := gateway.NewHooks()
+hooks.MustRegister("enrich_clicks", enrichClicks)
+gateway.Main(hooks, gateway.WithSinks(sinks))
+
+<span class="t-k">func</span> enrichClicks(e <span class="t-k">map</span>[string]any) (<span class="t-k">map</span>[string]any, error) {
+    host, _ := e["host"].(string)
+    e["tenant"] = strings.Split(host, ".")[0]
+    <span class="t-k">return</span> e, <span class="t-k">nil</span>     <span class="t-c">// returning nil DROPS the event, on purpose</span>
+}</code></pre></div>
+<p>YAML hook का नाम लेती है; उसे ढोती नहीं। चुनने से पहले मापा: Go फ़ंक्शन <strong>93 ns/op</strong> पड़ता है जबकि Starlark का 959 और yaegi का 1,281, बाइनरी में कुछ जुड़े बिना — और <code>plugin.Open</code> विकल्प ही नहीं है, क्योंकि <code>CGO_ENABLED=0</code> के तहत, जैसे यहाँ हर आर्टिफ़ैक्ट बनता है, वह <code>plugin: not implemented</code> लौटाता है।</p>
+<p>इसकी कीमत, वहाँ कही गई जहाँ कोई पढ़ेगा: <strong>hook जोड़ना rebuild और deploy है, कॉन्फ़िग बदलाव नहीं।</strong> जब तक hooks वे लोग लिखते हैं जो बाइनरी शिप करते हैं, यह सही सौदा है, और उस दिन गलत जब ग्राहक को release के बिना एक बदलना हो।</p>
+<p>Hook में त्रुटि <em>उस</em> event को dead-letter के रास्ते पर भेजती है और बगल के batch को कभी विफल नहीं करती। panic भी: वह प्रति event recover होता है, क्योंकि एक विकृत रिकॉर्ड उस प्रोसेस को नहीं गिराना चाहिए जो हर दूसरे stream को परोस रही है।</p>
+<h2 id="जब-event-बहत-बड-ह">जब event बहुत बड़ा हो<a class="anchor" href="#जब-event-बहत-बड-ह" aria-label="link">#</a></h2>
+<div class="code-block" data-code="oversize:
+  larger_than: 256KiB
+  archive: {type: files, path: gs://acme-oversize/clicks/}
+  hook: strip_heavy_clicks"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">oversize</span>:
+  <span class="t-k">larger_than</span>: 256KiB
+  <span class="t-k">archive</span>: {type: files, path: gs://acme-oversize/clicks/}
+  <span class="t-k">hook</span>: strip_heavy_clicks</code></pre></div>
+<p>Event <strong>पूरा</strong> <code>archive</code> में लिखा जाता है, और घटाया हुआ संस्करण वापस इशारा करने वाले pointer के साथ stream में आगे जाता है:</p>
+<div class="code-block" data-code="{
+  &quot;event_id&quot;: &quot;big-1&quot;,
+  &quot;ingestion_id&quot;: &quot;bd8ac083-9796-50f5-bab6-77a4e2e57ad0&quot;,
+  &quot;_oversize&quot;: true,
+  &quot;_oversize_archive&quot;: &quot;files:gs://acme-oversize/clicks/&quot;,
+  &quot;_oversize_bytes&quot;: 2149
+}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>{
+  "event_id": "big-<span class="t-n">1</span>",
+  "ingestion_id": "bd8ac083-<span class="t-n">9796</span>-50f5-bab6-77a4e2e57ad0",
+  "_oversize": <span class="t-n">true</span>,
+  "_oversize_archive": "files:gs://acme-oversize/clicks/",
+  "_oversize_bytes": <span class="t-n">2149</span>
+}</code></pre></div>
+<p>यह <strong>Claim Check</strong> पैटर्न है, और यह सपाट <code>413</code> से बेहतर है क्योंकि <code>413</code> event खो देता है — और बहुत बड़ा payload आम तौर पर किसी के पास सबसे दिलचस्प होता है: वह अनुरोध जिसमें पूरा दस्तावेज़ जुड़ा है, जो debug करने लायक मामला है।</p>
+<p><code>larger_than</code> एक <strong>event</strong> को मापता है, hook के बाद। <code>listen.max_body</code> अलग चीज़ है: वह पूरे <strong>अनुरोध</strong> को सीमित करता है और एक भी बाइट parse होने से पहले <code>413</code> से मना करता है।</p>
+<h2 id="यह-कय-गनत-ह">यह क्या गिनता है<a class="anchor" href="#यह-कय-गनत-ह" aria-label="link">#</a></h2>
+<p>ग्यारह Prometheus series, <strong>अपने port</strong> पर — ingest वाले पर कभी नहीं, और यह नियम यहाँ engine से ज़्यादा मायने रखता है: ingest port निर्माण से ही सार्वजनिक है, वहीं क्लाइंट <code>POST</code> करते हैं, इसलिए उस पर <code>/metrics</code> हर stream का नाम, path और गंतव्य उसे प्रकाशित करता जिसे path मिल जाए। दोनों के लिए वही पता देना लोड पर मना है।</p>
+<div class="code-block" data-code="brevis_gateway_events_received_total{stream,format}     counter
+brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
+brevis_gateway_requests_refused_total{stream,reason}    counter  per request: unauthorized|body_too_large|malformed|empty|saturated
+brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_reconciled_total{stream,sink}            counter  landed after the send window; also delivered
+brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
+brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
+brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger} counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
+brevis_gateway_saturated_total{stream}                  counter  the 503s
+brevis_gateway_delivery_seconds{stream,sink}            histogram
+brevis_gateway_buffer_records{stream}                   gauge
+brevis_gateway_queue_batches{stream}                    gauge"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>brevis_gateway_events_received_total{stream,format}     counter
+brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
+brevis_gateway_requests_refused_total{stream,reason}    counter  per request: unauthorized|body_too_large|malformed|empty|saturated
+brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_reconciled_total{stream,sink}            counter  landed after the send window; also delivered
+brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
+brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
+brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger} counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
+brevis_gateway_saturated_total{stream}                  counter  the 503s
+brevis_gateway_delivery_seconds{stream,sink}            histogram
+brevis_gateway_buffer_records{stream}                   gauge
+brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
+<p><code>process_start_time_seconds</code> पर <code>brevis_</code> उपसर्ग <strong>नहीं</strong> है, और यह जानबूझकर है: collectors ठीक यही नाम खोजते हैं। यह बताता है कि प्रोसेस कब शुरू हुई, और इसके बिना start-time adjustment करने वाला collector — OpenTelemetry Prometheus receiver, जिस पर Google Managed Prometheus बना है — हर cumulative series को उसके <strong>पहले scrape</strong> पर टिकाता है और उस scrape का मान आधार के रूप में खर्च कर देता है। नतीजा: हर counter कम पढ़ता है, deltas सही और कुल गलत।</p>
+<p>आखिरी तीन वे हैं जिन्हें कोई पहली घटना के बाद तक नहीं माँगता। <code>saturated_total</code> अकेली संख्या है जो कहती है कि क्लाइंट को पीछे हटने को कहा गया; <code>buffer.max_records</code> के विरुद्ध <code>buffer_records</code> अकेली है जो उसकी <strong>भविष्यवाणी</strong> करती है।</p>
+<p><code>reason</code> बंद सेट है, त्रुटि का टेक्स्ट कभी नहीं: त्रुटि string तालिका का नाम, कॉलम, कभी-कभी पंक्ति ढोती है, और एक विकृत क्लाइंट हर अनुरोध पर नई series बना देता। टेक्स्ट dead letter में, रिकॉर्ड पर रहता है।</p>
+<h2 id="202-200-नह"><code>202</code>, <code>200</code> नहीं<a class="anchor" href="#202-200-नह" aria-label="link">#</a></h2>
+<p>Gateway ने events <strong>स्वीकार</strong> किए हैं। <code>durability: memory</code> के साथ — इकलौता लागू स्तर — वह जितना ईमानदारी से दावा कर सकता है वह बस इतना ही है। जो स्तर <code>200</code> कमाता है वह वह है जिसने उन्हें पहले ही लिख लिया हो, और वह मौजूद नहीं है।</p>
+<p><code>disk</code> <strong>नाम लेकर</strong> मना है, स्वीकार करके memory की तरह बरता नहीं जाता: <code>disk</code> लिखने वाला मानता है कि उसके events crash से बचेंगे, और बिना निभाए सहमत हो जाना ठीक वही विफलता है जिसे रोकने के लिए वह फ़ील्ड है।</p>
+<p>Shutdown पर बफ़र में जो है वह डिलीवर होता है, गिराया नहीं जाता — उसी रास्ते से जो भरा batch लेता है, retry होकर और दफ़नाया जाकर।</p>
+<h2 id="यह-कय-नह-करत">यह क्या नहीं करता<a class="anchor" href="#यह-कय-नह-करत" aria-label="link">#</a></h2>
+<ul><li><strong>यह console में नहीं दिखता।</strong> यह engine के इंटरफ़ेस के साथ कोई डेटाबेस साझा नहीं करता, इसलिए कोई <code>/ingestion</code> पेज नहीं है — और <code>auto_table</code> जो स्कीमा विकास करता है वह भी वहाँ नहीं दिखता। यह अगला कदम है और अभी लिखा नहीं गया।</li><li><strong><code>table</code> वाला stream स्कीमा विकसित नहीं करता।</strong> जब आप तालिका का नाम लेते हैं, अनुबंध तालिका का होता है: जो फ़ील्ड उसके पास नहीं है वह उस संदेश के साथ मना किया जाता है जो उसे ठीक करता है, ऐसी तालिका बदलने के बजाय जिसकी किसी ने समीक्षा की थी। अपने आप कॉलम बढ़ाना वह है जो <code>auto_table</code> करता है, और दोनों में फ़र्क यही है।</li><li><strong><code>table</code> वाला stream कोई तालिका और कोई index नहीं बनाता।</strong> जो service तालिकाएँ बनाती है वह टाइपो को दूसरी तालिका में बदल देती है जिसे कोई पढ़ नहीं रहा — इसीलिए निर्माण सिर्फ़ <code>auto_table</code> के तहत होता है, जहाँ <code>naming</code> बाँधता है कि कौन-से नाम मौजूद हो सकते हैं और <code>listen.auth</code> अनिवार्य है।</li><li><strong>प्रकाशित image में कोई hooks नहीं हैं</strong>, जो compile किए गए hook के डिज़ाइन के लिए ईमानदार आर्टिफ़ैक्ट है: वह उन streams को परोसती है जो <code>hook:</code> घोषित नहीं करते।</li></ul>
+<h2 id="एक-route-n-तलकए">एक route, N तालिकाएँ<a class="anchor" href="#एक-route-n-तलकए" aria-label="link">#</a></h2>
+<p><code>auto_table</code> हर event को उस तालिका पर route करता है जिसका नाम <strong>envelope</strong> लेता है, वह तालिका न हो तो बनाता है, और नया फ़ील्ड आने पर कॉलम बढ़ाता है:</p>
+<div class="code-block" data-code="{&quot;table_name&quot;: &quot;app_orders&quot;, &quot;operation&quot;: &quot;INSERT&quot;, &quot;unique_key&quot;: &quot;id&quot;,
+ &quot;data&quot;: {&quot;id&quot;: &quot;A-1&quot;, &quot;total&quot;: 150, &quot;customer&quot;: {&quot;id&quot;: 7, &quot;uf&quot;: &quot;SP&quot;}}}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>{"table_name": "app_orders", "operation": "INSERT", "unique_key": "id",
+ "data": {"id": "A-<span class="t-n">1</span>", "total": <span class="t-n">150</span>, "customer": {"id": <span class="t-n">7</span>, "uf": "SP"}}}</code></pre></div>
+<p>ऊपर नियंत्रण फ़ील्ड, रिकॉर्ड <code>data</code> के भीतर, और हर तालिका पर सात <code>brevis_*</code> ट्रैकिंग कॉलम। एक route, N तालिकाएँ, कुछ घोषित नहीं।</p>
+<p>यह <a href="/hi/docs/ingestion-sinks/#एक-route-n-तलकए-कछ-घषत-नह">Ingestion sinks</a> में है।</p>
+<h2 id="आग-कह-जए">आगे कहाँ जाएँ<a class="anchor" href="#आग-कह-जए" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>अगर आप चाहते हैं</th><th>यहाँ जाएँ</th></tr></thead><tbody><tr><td>गंतव्य और हर एक कैसे लिखता है</td><td><a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr><tr><td>दूसरी ओर से <code>ingestion_id</code></td><td><a href="/hi/docs/sdk/">Go SDK</a></td></tr><tr><td>डैशबोर्ड और अलर्ट</td><td><a href="/hi/docs/observability/">ऑब्ज़र्वेबिलिटी</a></td></tr></tbody></table></div>
+
+      <nav class="pagers" aria-label="पेज">
+        <a class="pager pager-prev" href="/hi/docs/white-label/"><span>पिछला</span><strong>White label</strong></a>
+        <a class="pager pager-next" href="/hi/docs/ingestion-sinks/"><span>अगला</span><strong>Ingestion sinks</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/hi/docs/ingestion.md" target="_blank" rel="noopener">GitHub पर यह पेज संपादित करें</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="इस पेज पर">
+      <p class="toc-t">इस पेज पर</p>
+      <ul><li class="toc-2"><a href="#फइल-ह-अनबध-ह">फ़ाइल ही अनुबंध है</a></li><li class="toc-2"><a href="#ingestion-id-ज-असल-बत-ह">ingestion_id, जो असली बात है</a></li><li class="toc-2"><a href="#अनरध-कभ-sink-क-इतजर-नह-करत">अनुरोध कभी sink का इंतज़ार नहीं करता</a></li><li class="toc-3"><a href="#flush-क-घड-deployment-क-ह">Flush की घड़ी deployment की है</a></li><li class="toc-3"><a href="#every-लकषय-ह-max-age-वद-ह">every लक्ष्य है; max_age वादा है</a></li><li class="toc-3"><a href="#size-trigger-कय-ह">Size trigger क्यों है</a></li><li class="toc-2"><a href="#कनकशन-तय-करत-ह-क-भर-कस-replica-क-मल">कनेक्शन तय करता है कि भार किस replica को मिले</a></li><li class="toc-2"><a href="#जब-sink-मन-कर">जब sink मना करे</a></li><li class="toc-2"><a href="#hook-go-ह-compile-हकर-भतर">Hook Go है, compile होकर भीतर</a></li><li class="toc-2"><a href="#जब-event-बहत-बड-ह">जब event बहुत बड़ा हो</a></li><li class="toc-2"><a href="#यह-कय-गनत-ह">यह क्या गिनता है</a></li><li class="toc-2"><a href="#202-200-नह">202, 200 नहीं</a></li><li class="toc-2"><a href="#यह-कय-नह-करत">यह क्या नहीं करता</a></li><li class="toc-2"><a href="#एक-route-n-तलकए">एक route, N तालिकाएँ</a></li><li class="toc-2"><a href="#आग-कह-जए">आगे कहाँ जाएँ</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/hi/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>डेटा इन्फ्रास्ट्रक्चर पर लागू दर्शन।</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>प्रोजेक्ट</h2>
+        <ul>
+          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
+          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>कोड</h2>
+        <ul>
+          <li><a href="/hi/docs/">दस्तावेज़</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">रिपॉज़िटरी</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>एक ओपन सोर्स प्रोजेक्ट, निर्माता <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · Go में बना · Go gopher: Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

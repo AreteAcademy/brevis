@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-docs="/zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>摄取 — 文档</title>
+<meta name="description" content="一个落地数据的 HTTP 端点：校验、标识、分批、投递。有自己的镜像，有自己的版本。">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/zh/docs/ingestion/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/zh/docs/ingestion/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/ingestion/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/ingestion/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/ingestion/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/ingestion/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/ingestion/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/ingestion/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/ingestion/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/ingestion/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/ingestion/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/ingestion/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/ingestion/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:title" content="摄取 — 文档">
+<meta property="og:description" content="一个落地数据的 HTTP 端点：校验、标识、分批、投递。有自己的镜像，有自己的版本。">
+<meta property="og:url" content="https://brevis.sh/zh/docs/ingestion/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="摄取 — 文档">
+<meta name="twitter:description" content="一个落地数据的 HTTP 端点：校验、标识、分批、投递。有自己的镜像，有自己的版本。">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "摄取",
+  "description": "一个落地数据的 HTTP 端点：校验、标识、分批、投递。有自己的镜像，有自己的版本。",
+  "inLanguage": "zh-CN",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">跳到正文</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/zh/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="主导航">
+      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/docs/">文档</a>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/ingestion/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ingestion/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ingestion/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/ingestion/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ingestion/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ingestion/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ingestion/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        探索开源项目
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="打开菜单" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    文档菜单
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">搜索文档</label>
+        <input type="search" id="q" placeholder="搜索…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="无结果" hidden></div>
+      <nav class="side-nav" aria-label="文档">
+        <p class="side-group">入门</p><ul class="side-list"><li><a href="/zh/docs/ecosystem/">生态</a></li><li><a href="/zh/docs/integrations/">集成</a></li><li><a href="/zh/docs/introduction/">简介</a></li><li><a href="/zh/docs/installation/">安装</a></li><li><a href="/zh/docs/quickstart/">快速开始</a></li></ul><p class="side-group">概念</p><ul class="side-list"><li><a href="/zh/docs/core/">Core</a></li><li><a href="/zh/docs/workflows/">Workflows</a></li><li><a href="/zh/docs/scheduler-and-queue/">调度器与队列</a></li><li><a href="/zh/docs/pod-per-step/">每个 step 一个 pod</a></li><li><a href="/zh/docs/context/">step 之间的上下文</a></li></ul><p class="side-group">参考</p><ul class="side-list"><li><a href="/zh/docs/cli/">CLI</a></li><li><a href="/zh/docs/parameters/">参数</a></li><li><a href="/zh/docs/configuration/">配置</a></li><li><a href="/zh/docs/runtime/">step 运行时</a></li></ul><p class="side-group">SDK 与库</p><ul class="side-list"><li><a href="/zh/docs/sdk/">Go SDK</a></li><li><a href="/zh/docs/libraries/">客户端库</a></li><li><a href="/zh/docs/python/">Python</a></li></ul><p class="side-group">运维</p><ul class="side-list"><li><a href="/zh/docs/console/">Console</a></li><li><a href="/zh/docs/kubernetes/">Kubernetes</a></li><li><a href="/zh/docs/observability/">可观测性</a></li><li><a href="/zh/docs/white-label/">白标</a></li></ul><p class="side-group">摄取</p><ul class="side-list"><li><a href="/zh/docs/ingestion/" aria-current="page">摄取</a></li><li><a href="/zh/docs/ingestion-sinks/">摄取 sink</a></li><li><a href="/zh/docs/benchmarks/">基准测试</a></li></ul><p class="side-group">用 SQL 建模</p><ul class="side-list"><li><a href="/zh/docs/sql/">SQL</a></li></ul><p class="side-group">项目</p><ul class="side-list"><li><a href="/zh/docs/philosophy/">理念</a></li><li><a href="/zh/docs/faq/">常见问题</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">文档</p>
+      <h1>摄取</h1>
+      <p class="doc-desc">一个落地数据的 HTTP 端点：校验、标识、分批、投递。有自己的镜像，有自己的版本。</p>
+      <p>摄取 gateway 是一个<strong>落地数据的 HTTP 端点</strong>。客户端 <code>POST</code>，得到 <code>202</code>，到达的内容就变成 topic 上的一条记录、表中的一行，或 bucket 中的一个文件。</p>
+<figure class="doc-figure"><img src="/assets/flow-gateway.svg" width="360" height="514" alt="Gateway 的流程：对 /v1/clicks 的 POST 被解码，获得其 ingestion_id，立即返回 202 并追加到一个批次；worker 把批次投递给 sink，这里是 files。Gateway 没有数据库。" loading="lazy"></figure>
+<p>它是<strong>另一个二进制文件、另一个 Go 模块、另一个版本和另一个镜像</strong>。引擎负责编排，从不接触客户数据；gateway 则只做这一件事。版本编号刻意保持独立：引擎在 0.17，gateway 在 0.27，这才是真实的说法。</p>
+<p>使用下一节中的 <code>gateway.yaml</code>，以及它在 <code>keys_from</code> 中要求的密钥：</p>
+<div class="code-block" data-code="docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
+  -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
+  areteacademy/brevis-gateway:0.32.0"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">-p</span> 8080:8080 <span class="t-n">-e</span> BREVIS_INGEST_KEYS=dev-key \
+  <span class="t-n">-v</span> ./gateway.yaml:/etc/<span class="t-k">brevis</span>/gateway.yaml:ro \
+  areteacademy/<span class="t-k">brevis</span>-gateway:0.32.0</code></pre></div>
+<div class="code-block" data-code="2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds &gt;= 40
+2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
+2026/10/09 01:03:01 listening on :8080
+2026/10/09 01:03:01 metrics on :9090/metrics"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds &gt;= 40
+2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
+2026/10/09 01:03:01 listening on :8080
+2026/10/09 01:03:01 metrics on :9090/metrics</code></pre></div>
+<p><code>POST</code> 会立即返回 <code>202</code>：</p>
+<div class="code-block" data-code="curl -X POST localhost:8080/v1/clicks -H &#x27;Authorization: Bearer dev-key&#x27; \
+  -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/clicks <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
+  <span class="t-n">-d</span> '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'</code></pre></div>
+<div class="code-block" data-code="{&quot;accepted&quot;:1,&quot;rejected&quot;:null}"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>{"accepted":1,"rejected":null}</code></pre></div>
+<p>没有 Google Cloud 凭据时，批次会被重试，并进入 dead letter，见<a href="#当-sink-拒绝时">当 sink 拒绝时</a>。</p>
+<p><code>-slim</code> 镜像只包含 <code>auto_table</code>、<code>files</code> 和 <code>postgres</code> 这几个 sink；这个示例中的 <code>pubsub</code> 和其他 sink 都在完整镜像里。带有它所不包含的 sink 的精简镜像，会在启动时被拒绝，并给出原因。</p>
+<h2 id="文件就是契约">文件就是契约<a class="anchor" href="#文件就是契约" aria-label="link">#</a></h2>
+<p>除了 hook 之外，不需要编写任何代码。stream、路径、格式、标识、重试、目的地和 dead letter，全部都在 YAML 中，而每个无法兑现的字段都会被拒绝。</p>
+<div class="code-block" data-code="name: events_gateway
+
+listen:
+  addr: :8080
+  max_body: 1MiB
+  idle_timeout: 90s                  # the default; it cannot be turned off
+  max_conn_age: 60s                  # off unless set — see below
+  auth:
+    type: bearer
+    keys_from: BREVIS_INGEST_KEYS   # the NAME of the variable, never the keys
+
+metrics:
+  addr: :9090                        # its own port, never the ingest one
+
+streams:
+  - name: clicks
+    path: /v1/clicks
+    format: json                     # json | array | ndjson — declared, never sniffed
+
+    identity:
+      provider: web
+      entity: click
+      source_key: event_id
+      record_ts: occurred_at
+
+    buffer:
+      flush: {every: 1s, records: 500}
+
+    sink:
+      type: pubsub
+      project: acme-prod
+      topic: clicks
+
+    dead_letter:
+      type: files
+      path: /var/dead-letter/"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">name</span>: events_gateway
+
+<span class="t-k">listen</span>:
+  <span class="t-k">addr</span>: :8080
+  <span class="t-k">max_body</span>: 1MiB
+  <span class="t-k">idle_timeout</span>: 90s                  <span class="t-c"># the default; it cannot be turned off</span>
+  <span class="t-k">max_conn_age</span>: 60s                  <span class="t-c"># off unless set — see below</span>
+  <span class="t-k">auth</span>:
+    <span class="t-k">type</span>: bearer
+    <span class="t-k">keys_from</span>: BREVIS_INGEST_KEYS   <span class="t-c"># the NAME of the variable, never the keys</span>
+
+<span class="t-k">metrics</span>:
+  <span class="t-k">addr</span>: :9090                        <span class="t-c"># its own port, never the ingest one</span>
+
+<span class="t-k">streams</span>:
+  - <span class="t-k">name</span>: clicks
+    <span class="t-k">path</span>: /v1/clicks
+    <span class="t-k">format</span>: json                     <span class="t-c"># json | array | ndjson — declared, never sniffed</span>
+
+    <span class="t-k">identity</span>:
+      <span class="t-k">provider</span>: web
+      <span class="t-k">entity</span>: click
+      <span class="t-k">source_key</span>: event_id
+      <span class="t-k">record_ts</span>: occurred_at
+
+    <span class="t-k">buffer</span>:
+      <span class="t-k">flush</span>: {every: 1s, records: 500}
+
+    <span class="t-k">sink</span>:
+      <span class="t-k">type</span>: pubsub
+      <span class="t-k">project</span>: acme-prod
+      <span class="t-k">topic</span>: clicks
+
+    <span class="t-k">dead_letter</span>:
+      <span class="t-k">type</span>: files
+      <span class="t-k">path</span>: /var/dead-letter/</code></pre></div>
+<p><code>format</code> 是声明出来的，绝不靠猜测：靠猜测，就会让一千条的批次变成包含一个数组的一行。</p>
+<h2 id="ingestion-id这才是重点"><code>ingestion_id</code>，这才是重点<a class="anchor" href="#ingestion-id这才是重点" aria-label="link">#</a></h2>
+<p>每条记录离开时都带有一个 <code>ingestion_id</code>：对 <code>provider|entity|source_key|record_ts</code> 计算的<strong>固定 UUID v5</strong>。</p>
+<p>它与批量抓取器为同一条记录计算出的是<strong>同一个 id</strong>。gateway 落地的行与 <a href="/zh/docs/sdk/">SDK</a> pipeline 落地的行是*同一行*，两者之间无需对账。</p>
+<p>两个实际的后果：</p>
+<ul><li><strong>重试的 <code>POST</code> 是同一条记录。</strong> 客户端可以放心地再次发送；带有 <code>merge</code> 的目的地会吸收这次重试，而不是写入第二行。</li><li><strong>公式是固定的。</strong> 四个字段全部必填，漏掉一个会产生一个*不同*的 id，而不是一个更弱的 id。文件会拒绝不完整的配置，而不是接受它。</li></ul>
+<p>摄取工具搬运字节的能力很强，但对记录*是什么*没有任何看法。这种看法正是 gateway 增加的东西。</p>
+<h2 id="请求从不等待-sink">请求从不等待 sink<a class="anchor" href="#请求从不等待-sink" aria-label="link">#</a></h2>
+<p>它解码，运行 hook，计算标识，追加到缓冲区，然后返回。<strong>仅此而已。</strong> 已满的批次交给 worker 池，发布、<code>COPY</code>、重试和 dead letter 都在那里完成。</p>
+<p>这不是表面功夫。在此之前，恰好填满批次的那个请求会在原地执行投递，于是每 <code>flush.records</code> 个调用者中就有一个承担完整的往返开销，而当 sink 宕机时，还要承担完整的重试窗口。由哪个调用者倒霉所决定的 p99，不是任何人能据以行动的 p99。</p>
+<div class="code-block" data-code="buffer:
+  flush:
+    every: 1s         # age
+    records: 500      # count
+    size: 8MiB        # bytes — whichever is crossed FIRST sends the batch
+    max_age: 30s      # and this one sends it REGARDLESS
+  workers: 4          # batches delivered at once
+  queue: 64           # full batches that may wait for a worker
+  max_records: 10000  # events held in memory before the gateway says no
+  max_bytes: 256MiB   # the same ceiling in bytes"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">buffer</span>:
+  <span class="t-k">flush</span>:
+    <span class="t-k">every</span>: 1s         <span class="t-c"># age</span>
+    <span class="t-k">records</span>: 500      <span class="t-c"># count</span>
+    <span class="t-k">size</span>: 8MiB        <span class="t-c"># bytes — whichever is crossed FIRST sends the batch</span>
+    <span class="t-k">max_age</span>: 30s      <span class="t-c"># and this one sends it REGARDLESS</span>
+  <span class="t-k">workers</span>: 4          <span class="t-c"># batches delivered at once</span>
+  <span class="t-k">queue</span>: 64           <span class="t-c"># full batches that may wait for a worker</span>
+  <span class="t-k">max_records</span>: 10000  <span class="t-c"># events held in memory before the gateway says no</span>
+  <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># the same ceiling in bytes</span></code></pre></div>
+<h3 id="flush-时钟属于部署">flush 时钟属于部署<a class="anchor" href="#flush-时钟属于部署" aria-label="link">#</a></h3>
+<p><code>buffer.flush.every</code> 是<strong>每个副本</strong>中的一个 <code>time.AfterFunc</code>。因此，一张表收到的加载作业数量取决于副本数，而不是流量：</p>
+<div class="code-block" data-code="jobs / day / table  =  replicas × 86400 / every"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>jobs / day / table  =  replicas × 86400 / every</code></pre></div>
+<p>在 BigQuery 上，面对每张表每天 1,500 次的配额，<strong>两个副本在 60 秒的间隔下就已经达到了无法提高的配额的 192%</strong>，这还是在 HPA 做出任何动作之前。而且方向与直觉相反：gateway 为了 HTTP 并发而横向扩展，sink 却希望集中。</p>
+<div class="code-block" data-code="buffer:
+  flush:
+    every: 60s
+    max_age: 300s
+    claim: true"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">buffer</span>:
+  <span class="t-k">flush</span>:
+    <span class="t-k">every</span>: 60s
+    <span class="t-k">max_age</span>: 300s
+    <span class="t-k">claim</span>: <span class="t-n">true</span></code></pre></div>
+<p>启用 <code>claim</code> 后，副本在按计时器 flush 之前，会对该 stream 和该窗口做一次“不存在则设置”；计时器在<strong>窗口边界</strong>唤醒，所以每个副本请求的是同一个键。无论副本数量多少，每个窗口只 flush 一次。它还能自我调节：只有在确实有另一个副本竞争时，副本才会等待，所以缩容后无需任何人编辑配置，较低的延迟就会恢复。</p>
+<p>用两个副本和一个 Redis、5 秒窗口实测：<strong>8 个加载作业变成了 6 个，每个窗口一个，以 3/3 交替</strong>，没有任何窗口出现两个。</p>
+<p><strong>它需要共享后端。</strong> 使用 <code>memory</code> 时，每个副本都会赢得自己的 claim，没有任何东西进行协调。并且它<strong>要求 <code>max_age</code></strong>，没有它配置会被拒绝：claim 把 <code>every</code> 变成了一个目标，而没有上限的目标，就是没有任何东西约束的延迟。</p>
+<p><strong>无法访问的 metastore 也会照常 flush。</strong> 失去协调的代价是加载作业变多；拒绝 flush 则会扣住数据。已通过在运行中途杀掉 Redis 验证：40 个事件全部落地，没有任何事件被扣住。</p>
+<p><strong><code>outcome="unreachable"</code> 是值得告警的那一个。</strong> 无法向后端发出请求，所以 claim 以失败放行的方式运行：协调已关闭，加载作业再次随副本数成倍增加，而且是悄无声息地，因为每次 flush 看起来仍然像一次 flush。</p>
+<p>而且 claim 提供的是<strong>互斥，而不是公平</strong>：谁先请求谁赢。真实的双副本运行中测得的是 4/1，而不是平均分配。<code>max_age</code> 能防止倒霉的那个副本被饿死。</p>
+<p>当 <code>claim: true</code> 且 <code>metastore: memory</code> 时，gateway 会在启动时<strong>警告一次</strong>：每个副本都会赢得自己的 claim，所以一切看起来都正常，却没有任何东西在协调。</p>
+<h3 id="every-是目标max-age-是承诺"><code>every</code> 是目标；<code>max_age</code> 是承诺<a class="anchor" href="#every-是目标max-age-是承诺" aria-label="link">#</a></h3>
+<p>上面的三个触发条件决定批次何时<strong>尝试</strong>离开。<code>max_age</code> 决定它何时<strong>无论如何</strong>都要离开。</p>
+<p>目前这个区别是无效的，因为没有任何东西推迟目标。一旦 flush 时钟不再是按进程的，它就开始重要了：<code>buffer.flush.every</code> 是每个副本中的一个 <code>time.AfterFunc</code>，所以一张表收到的加载作业数量取决于<strong>副本数</strong>，而不是流量，即 <code>replicas × 86400 / every</code>。在 BigQuery 上，面对每张表每天 1,500 次，<strong>两个副本在 60 秒的间隔下就已经是配额的 192%</strong>。</p>
+<p>一旦副本可以把窗口让给另一个副本，它就会继续填充，而 <code>max_age</code> 能防止任何一方为了等待轮到自己而无限期地持有数据。</p>
+<p>它还决定了排空：缓冲区在 <code>SIGTERM</code> 时可能<strong>持有</strong>的数据量由它限定，gateway 在启动时打印的 <code>terminationGracePeriodSeconds</code> 也是由它推导出来的。</p>
+<p><strong>低于</strong>目标的上限在加载时会被拒绝，因为那意味着目标永远不会生效。</p>
+<h3 id="为什么有-size-触发条件">为什么有 size 触发条件<a class="anchor" href="#为什么有-size-触发条件" aria-label="link">#</a></h3>
+<p>另外两个是<strong>计数</strong>，而计数无法区分 500 个 2 KB 的事件与 500 个 2 MB 的事件：1 MB 与 1 GB，在文件里是同一个数字。<code>max_records: 10000</code> 有同样的盲点：是 20 MB 还是 20 GB，YAML 中没有任何东西能说明。</p>
+<p>开始发送整份文档而不是它的 id 的生产者，会把 pod 拖垮，而在这个触发条件出现之前，<strong>没有任何字段能表达这个限制</strong>。</p>
+<p>大小是按<strong>到达</strong>的内容来度量的，而不是按事件在内存中的占用（<code>map[string]any</code> 是其 JSON 的数倍），也不是在膨胀它的 hook 之后度量。这是一个近似值，而且是正确的近似：解码时它是免费的，它随载荷变化，而它所防范的，是一条增大了十倍的记录。</p>
+<p><strong>在 BigQuery 上，<code>size</code> 是上限，不是目标。</strong> 该目的地允许每张表每天 1,500 次加载作业，这就是 <code>every</code> 有 60 秒下限的原因。但下限约束的是<strong>计时器</strong>：每隔几秒就触发一次的 size 会直接越过它，消耗同样的配额。没有任何东西会在加载时拒绝这一点，因为到达速率在那时是无法得知的。取而代之的是可见性：</p>
+<div class="code-block" data-code="brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size</code></pre></div>
+<p>BigQuery stream 上的 <code>trigger="size"</code> 不断攀升，是在告诉你，进行分批的并不是窗口。</p>
+<p>这个计数器是按 stream 的，而配额是按<strong>表</strong>的：使用 <code>auto_table</code> 时，一条路由会变成多张表，94 张表共同报告一个数字，无法说明其中任何一张的情况。在 <code>BREVIS_INGESTION_METRICS</code> 之后有一个会指出表名的计数器：</p>
+<div class="code-block" data-code="brevis_gateway_table_flushes_total{stream,table,trigger}"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>brevis_gateway_table_flushes_total{stream,table,trigger}</code></pre></div>
+<p>对一张表的一次 flush 就是对它的一次加载作业，所以这是在达到 BigQuery 允许的 1,500 次中的 1,200 次时应当告警的序列。无条件提供的另一半，是启动时的一行输出，它会在任何事件到达之前，说明 <code>flush.every</code> 对每张表每天意味着多少次。</p>
+<p><strong>它是有界的，而不是发后即忘。</strong> 每个批次一个 goroutine，会把 sink 的故障变成无限增长的内存。当队列和缓冲区都满了，回应是带 <code>Retry-After</code> 的 <strong><code>503</code></strong>，而不是对一个无处可去的事件返回 <code>202</code>。已被接受却从未投递的事件，正是这个服务存在的意义所要避免的结果。</p>
+<p>而且这个 <code>503</code> <strong>可以安全重试</strong>，几乎没有哪个服务能做到这一点：<code>ingestion_id</code> 是事件本身的固定函数，所以再次发送同样的请求体就是*同一条记录*。</p>
+<h2 id="连接决定哪个副本得到负载">连接决定哪个副本得到负载<a class="anchor" href="#连接决定哪个副本得到负载" aria-label="link">#</a></h2>
+<p>在 Kubernetes 的 <code>ClusterIP</code> Service 之后，kube-proxy 是<strong>每个 TCP 连接</strong>选择一次后端，而不是每个请求。大多数客户端会保持连接并复用，所以只有少数几个连接的生产者，无论运行多少个副本，都会把所有流量发到同样的一两个副本上，而 HPA 新增的副本什么都收不到，因为没有人去连它。</p>
+<div class="code-block" data-code="listen:
+  idle_timeout: 90s     # closes a connection nobody came back to
+  max_conn_age: 60s     # after this, the next response asks the client to redial"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">listen</span>:
+  <span class="t-k">idle_timeout</span>: 90s     <span class="t-c"># closes a connection nobody came back to</span>
+  <span class="t-k">max_conn_age</span>: 60s     <span class="t-c"># after this, the next response asks the client to redial</span></code></pre></div>
+<p><strong><code>max_conn_age</code> 默认关闭</strong>，这是有意为之：客户端可以保持一个连接多久是一项策略，它用每个连接每个存续周期一次集群内握手的代价，换来均匀分布的负载。请求本身总是会得到处理：header 加在响应上，不会重试任何东西，也不会丢失任何批次。</p>
+<p><strong><code>idle_timeout</code> 有默认值，且不能关闭。</strong> 没有它，每个被遗弃的客户端都会占用一个文件描述符，直到进程重启。如果你想要，可以设置得很长；那时它就是某人选定的数字。</p>
+<p>这两者相互独立：连接遇到先达到的那个限制，而连接只有被使用才能达到存续时间，这恰恰是存续时间要重新平衡的长连接生产者。</p>
+<h2 id="当-sink-拒绝时">当 sink 拒绝时<a class="anchor" href="#当-sink-拒绝时" aria-label="link">#</a></h2>
+<p>批次会被重试，默认在大约七秒内尝试四次，带抖动地翻倍，然后进入 <strong>dead letter</strong>，每条记录上都带有原因：</p>
+<div class="code-block" data-code="{
+  &quot;event_id&quot;: &quot;dl-9&quot;,
+  &quot;ingestion_id&quot;: &quot;84aaee4b-66af-5cc0-b97b-6856dec95b25&quot;,
+  &quot;_dead_letter_reason&quot;: &quot;rpc error: code = NotFound desc = Topic not found&quot;,
+  &quot;_dead_letter_sink&quot;: &quot;pubsub:acme-prod/clicks&quot;,
+  &quot;_dead_letter_at&quot;: &quot;2026-09-25T02:02:32Z&quot;
+}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>{
+  "event_id": "dl-<span class="t-n">9</span>",
+  "ingestion_id": "84aaee4b-66af-5cc0-b97b-6856dec95b25",
+  "_dead_letter_reason": "rpc error: code = NotFound desc = Topic not found",
+  "_dead_letter_sink": "pubsub:acme-prod/clicks",
+  "_dead_letter_at": "<span class="t-n">2026</span>-<span class="t-n">09</span>-25T02:<span class="t-n">02</span>:32Z"
+}</code></pre></div>
+<p>原因<strong>随记录一起传递</strong>，而不只是写在日志里，因为之后找到那个文件的人拿到的是事件而不是日志，而*为什么这个在这里*是他们的第一个问题。</p>
+<p><strong>没有 <code>dead_letter</code> 的 stream 在加载时会被拒绝。</strong> 默认静默，等于把决定放在了没有人做决定的地方，而只留一行日志的被拒绝批次，就是在悄悄丢失数据。</p>
+<h2 id="hook-是-go编译进去">hook 是 Go，编译进去<a class="anchor" href="#hook-是-go编译进去" aria-label="link">#</a></h2>
+<div class="code-block" data-code="hooks := gateway.NewHooks()
+hooks.MustRegister(&quot;enrich_clicks&quot;, enrichClicks)
+gateway.Main(hooks, gateway.WithSinks(sinks))
+
+func enrichClicks(e map[string]any) (map[string]any, error) {
+    host, _ := e[&quot;host&quot;].(string)
+    e[&quot;tenant&quot;] = strings.Split(host, &quot;.&quot;)[0]
+    return e, nil     // returning nil DROPS the event, on purpose
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>hooks := gateway.NewHooks()
+hooks.MustRegister("enrich_clicks", enrichClicks)
+gateway.Main(hooks, gateway.WithSinks(sinks))
+
+<span class="t-k">func</span> enrichClicks(e <span class="t-k">map</span>[string]any) (<span class="t-k">map</span>[string]any, error) {
+    host, _ := e["host"].(string)
+    e["tenant"] = strings.Split(host, ".")[0]
+    <span class="t-k">return</span> e, <span class="t-k">nil</span>     <span class="t-c">// returning nil DROPS the event, on purpose</span>
+}</code></pre></div>
+<p>YAML 指定一个 hook 的名称，但并不携带它。选择之前做过测量：一个 Go 函数的开销是 <strong>93 ns/op</strong>，而 Starlark 是 959，yaegi 是 1,281，且不会给二进制文件增加任何东西；<code>plugin.Open</code> 则根本不是选项，因为在 <code>CGO_ENABLED=0</code> 下（这里所有制品都是这样构建的），它会返回 <code>plugin: not implemented</code>。</p>
+<p>代价是什么，写在会有人读到的地方：<strong>增加一个 hook 需要重新构建和部署，而不是修改配置。</strong> 当 hook 由发布二进制文件的人来写时，这是正确的取舍；而在某天客户需要不经过发布就修改一个 hook 时，这就是错误的取舍。</p>
+<p>hook 中的错误会让*那个*事件走 dead letter 的路径，绝不会让旁边的批次失败。panic 也一样：它按事件被恢复，因为一条格式错误的记录不能拖垮一个为所有其他 stream 提供服务的进程。</p>
+<h2 id="当事件过大时">当事件过大时<a class="anchor" href="#当事件过大时" aria-label="link">#</a></h2>
+<div class="code-block" data-code="oversize:
+  larger_than: 256KiB
+  archive: {type: files, path: gs://acme-oversize/clicks/}
+  hook: strip_heavy_clicks"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">oversize</span>:
+  <span class="t-k">larger_than</span>: 256KiB
+  <span class="t-k">archive</span>: {type: files, path: gs://acme-oversize/clicks/}
+  <span class="t-k">hook</span>: strip_heavy_clicks</code></pre></div>
+<p>事件会被<strong>完整</strong>写入 <code>archive</code>，而一个精简版本带着指回它的指针继续进入 stream：</p>
+<div class="code-block" data-code="{
+  &quot;event_id&quot;: &quot;big-1&quot;,
+  &quot;ingestion_id&quot;: &quot;bd8ac083-9796-50f5-bab6-77a4e2e57ad0&quot;,
+  &quot;_oversize&quot;: true,
+  &quot;_oversize_archive&quot;: &quot;files:gs://acme-oversize/clicks/&quot;,
+  &quot;_oversize_bytes&quot;: 2149
+}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>{
+  "event_id": "big-<span class="t-n">1</span>",
+  "ingestion_id": "bd8ac083-<span class="t-n">9796</span>-50f5-bab6-77a4e2e57ad0",
+  "_oversize": <span class="t-n">true</span>,
+  "_oversize_archive": "files:gs://acme-oversize/clicks/",
+  "_oversize_bytes": <span class="t-n">2149</span>
+}</code></pre></div>
+<p>这是 <strong>Claim Check</strong> 模式，它胜过简单的 <code>413</code>，因为 <code>413</code> 会丢失事件，而过大的载荷通常是某人手里最有价值的那个：它是附带了整份文档的请求，正是值得调试的情形。</p>
+<p><code>larger_than</code> 度量的是 hook 之后的一个<strong>事件</strong>。<code>listen.max_body</code> 则是另一回事：它限制整个<strong>请求</strong>，并在解析任何一个字节之前就以 <code>413</code> 拒绝。</p>
+<h2 id="它统计什么">它统计什么<a class="anchor" href="#它统计什么" aria-label="link">#</a></h2>
+<p>十一个 Prometheus 序列，在<strong>它自己的端口</strong>上，绝不是摄取端口。这条规则在这里比在引擎中更重要：摄取端口按其构造就是公开的，客户端就是向它 <code>POST</code>，所以在上面放一个 <code>/metrics</code>，会把每个 stream 的名称、路径和目的地都公布给任何找到这个路径的人。为两者指定同一个地址，在加载时会被拒绝。</p>
+<div class="code-block" data-code="brevis_gateway_events_received_total{stream,format}     counter
+brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
+brevis_gateway_requests_refused_total{stream,reason}    counter  per request: unauthorized|body_too_large|malformed|empty|saturated
+brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_reconciled_total{stream,sink}            counter  landed after the send window; also delivered
+brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
+brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
+brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger} counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
+brevis_gateway_saturated_total{stream}                  counter  the 503s
+brevis_gateway_delivery_seconds{stream,sink}            histogram
+brevis_gateway_buffer_records{stream}                   gauge
+brevis_gateway_queue_batches{stream}                    gauge"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>brevis_gateway_events_received_total{stream,format}     counter
+brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
+brevis_gateway_requests_refused_total{stream,reason}    counter  per request: unauthorized|body_too_large|malformed|empty|saturated
+brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_reconciled_total{stream,sink}            counter  landed after the send window; also delivered
+brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
+brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
+brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger} counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
+brevis_gateway_saturated_total{stream}                  counter  the 503s
+brevis_gateway_delivery_seconds{stream,sink}            histogram
+brevis_gateway_buffer_records{stream}                   gauge
+brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
+<p><code>process_start_time_seconds</code> <strong>没有</strong>加 <code>brevis_</code> 前缀，这是有意为之：采集器查找的就是这个名称。它说明进程何时启动；没有它，执行起始时间调整的采集器（比如 OpenTelemetry Prometheus receiver，Google Managed Prometheus 就建立在它之上）会把每个累计序列锚定在它的<strong>第一次抓取</strong>，并把那次抓取的值当作基线。结果是每个计数器读数偏低，增量是对的，总量却是错的。</p>
+<p>最后三个是在第一次事故之后才会有人想要的。<code>saturated_total</code> 是唯一能说明客户端曾被告知退避的数字；<code>buffer_records</code> 与 <code>buffer.max_records</code> 的比值，则是唯一能<strong>预测</strong>它的数字。</p>
+<p><code>reason</code> 是封闭集合，绝不是错误文本：错误字符串带有表名、列名，有时还带有一行数据，一个格式错误的客户端会让每个请求都生成一个新的序列。文本留在 dead letter 中，保存在记录上。</p>
+<h2 id="202而不是-200"><code>202</code>，而不是 <code>200</code><a class="anchor" href="#202而不是-200" aria-label="link">#</a></h2>
+<p>gateway 已经<strong>接受</strong>了这些事件。在 <code>durability: memory</code>（唯一已实现的级别）下，这就是它能够如实声称的全部。配得上 <code>200</code> 的级别是已经把它们写下来的级别，而它并不存在。</p>
+<p><code>disk</code> 会<strong>按名称</strong>被拒绝，而不是被接受后当作 memory 处理：写下 <code>disk</code> 的人相信自己的事件能在崩溃后幸存，而答应了却不兑现，恰恰是这个字段要防止的失败。</p>
+<p>缓冲区中在关闭时持有的内容会被投递，而不是被丢弃，走的是与已满批次相同的路径，同样会重试和被埋入 dead letter。</p>
+<h2 id="它不做什么">它不做什么<a class="anchor" href="#它不做什么" aria-label="link">#</a></h2>
+<ul><li><strong>它不会出现在 Console 中。</strong> 它与引擎的界面不共用任何数据库，所以没有 <code>/ingestion</code> 页面，<code>auto_table</code> 执行的 schema 演进也不会在那里显示。这是下一步，尚未编写。</li><li><strong>带 <code>table</code> 的 stream 不会演进 schema。</strong> 当你指定了表名，契约就是表的契约：它没有的字段会被拒绝，并附上修复它的信息，而不是修改一张有人评审过的表。自行增加列是 <code>auto_table</code> 做的事，这正是两者的区别。</li><li><strong>带 <code>table</code> 的 stream 不会创建表，也不会创建索引。</strong> 会创建表的服务，会把一个拼写错误变成没有人在读的第二张表，这就是为什么创建只发生在 <code>auto_table</code> 下，在那里 <code>naming</code> 限定了哪些名称可以存在，并且 <code>listen.auth</code> 是强制的。</li><li><strong>已发布的镜像没有 hook</strong>，这对于编译式 hook 的设计来说是诚实的制品：它为没有声明 <code>hook:</code> 的 stream 提供服务。</li></ul>
+<h2 id="一条路由n-张表">一条路由，N 张表<a class="anchor" href="#一条路由n-张表" aria-label="link">#</a></h2>
+<p><code>auto_table</code> 把每个事件路由到<strong>信封</strong>所指定的表，如果该表不存在就创建它，当出现新字段时就增加一列：</p>
+<div class="code-block" data-code="{&quot;table_name&quot;: &quot;app_orders&quot;, &quot;operation&quot;: &quot;INSERT&quot;, &quot;unique_key&quot;: &quot;id&quot;,
+ &quot;data&quot;: {&quot;id&quot;: &quot;A-1&quot;, &quot;total&quot;: 150, &quot;customer&quot;: {&quot;id&quot;: 7, &quot;uf&quot;: &quot;SP&quot;}}}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>{"table_name": "app_orders", "operation": "INSERT", "unique_key": "id",
+ "data": {"id": "A-<span class="t-n">1</span>", "total": <span class="t-n">150</span>, "customer": {"id": <span class="t-n">7</span>, "uf": "SP"}}}</code></pre></div>
+<p>控制字段在顶层，记录在 <code>data</code> 内部，每张表都有七个 <code>brevis_*</code> 跟踪列。一条路由，N 张表，无需声明任何东西。</p>
+<p>它位于<a href="/zh/docs/ingestion-sinks/#一条路由n-张表无需声明任何东西">摄取 sink</a> 中。</p>
+<h2 id="接下来去哪里">接下来去哪里<a class="anchor" href="#接下来去哪里" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>如果你想</th><th>前往</th></tr></thead><tbody><tr><td>各个目的地以及它们各自如何写入</td><td><a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr><tr><td>从另一侧看 <code>ingestion_id</code></td><td><a href="/zh/docs/sdk/">Go SDK</a></td></tr><tr><td>仪表盘和告警</td><td><a href="/zh/docs/observability/">可观测性</a></td></tr></tbody></table></div>
+
+      <nav class="pagers" aria-label="页面">
+        <a class="pager pager-prev" href="/zh/docs/white-label/"><span>上一页</span><strong>白标</strong></a>
+        <a class="pager pager-next" href="/zh/docs/ingestion-sinks/"><span>下一页</span><strong>摄取 sink</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/zh/docs/ingestion.md" target="_blank" rel="noopener">在 GitHub 上编辑此页</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="本页内容">
+      <p class="toc-t">本页内容</p>
+      <ul><li class="toc-2"><a href="#文件就是契约">文件就是契约</a></li><li class="toc-2"><a href="#ingestion-id这才是重点">ingestion_id，这才是重点</a></li><li class="toc-2"><a href="#请求从不等待-sink">请求从不等待 sink</a></li><li class="toc-3"><a href="#flush-时钟属于部署">flush 时钟属于部署</a></li><li class="toc-3"><a href="#every-是目标max-age-是承诺">every 是目标；max_age 是承诺</a></li><li class="toc-3"><a href="#为什么有-size-触发条件">为什么有 size 触发条件</a></li><li class="toc-2"><a href="#连接决定哪个副本得到负载">连接决定哪个副本得到负载</a></li><li class="toc-2"><a href="#当-sink-拒绝时">当 sink 拒绝时</a></li><li class="toc-2"><a href="#hook-是-go编译进去">hook 是 Go，编译进去</a></li><li class="toc-2"><a href="#当事件过大时">当事件过大时</a></li><li class="toc-2"><a href="#它统计什么">它统计什么</a></li><li class="toc-2"><a href="#202而不是-200">202，而不是 200</a></li><li class="toc-2"><a href="#它不做什么">它不做什么</a></li><li class="toc-2"><a href="#一条路由n-张表">一条路由，N 张表</a></li><li class="toc-2"><a href="#接下来去哪里">接下来去哪里</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/zh/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>哲学，应用于数据基础设施。</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>项目</h2>
+        <ul>
+          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/docs/philosophy/">原则</a></li>
+          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>代码</h2>
+        <ul>
+          <li><a href="/zh/docs/">文档</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">仓库</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>一个开源项目，作者： <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · 使用 Go 构建 · Go gopher 由 Renée French 绘制, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

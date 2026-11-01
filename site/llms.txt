@@ -31,7 +31,25 @@ The fourth piece, also versioned on its own, is **SQL**
 built into tables and views in the order their references imply, on Postgres
 or BigQuery — `brevis-sql compile`, `graph`, `build` and `test`. No templating.
 
+The same documentation in Spanish: https://brevis.sh/es/docs/ (append `index.md` likewise).
+
 The same documentation in Portuguese: https://brevis.sh/pt/docs/ (append `index.md` likewise).
+
+The same documentation in French: https://brevis.sh/fr/docs/ (append `index.md` likewise).
+
+The same documentation in German: https://brevis.sh/de/docs/ (append `index.md` likewise).
+
+The same documentation in Simplified Chinese: https://brevis.sh/zh/docs/ (append `index.md` likewise).
+
+The same documentation in Japanese: https://brevis.sh/ja/docs/ (append `index.md` likewise).
+
+The same documentation in Russian: https://brevis.sh/ru/docs/ (append `index.md` likewise).
+
+The same documentation in Korean: https://brevis.sh/ko/docs/ (append `index.md` likewise).
+
+The same documentation in Hindi: https://brevis.sh/hi/docs/ (append `index.md` likewise).
+
+The same documentation in Indonesian: https://brevis.sh/id/docs/ (append `index.md` likewise).
 
 ## Start here
 

@@ -36,10 +36,9 @@ Cada página declara `hreflang` para os idiomas que a têm, mais `x-default`. O
 seletor no topo é um dropdown (`<details>`, funciona sem script) e leva ao
 **mesmo lugar** no outro idioma, não à home.
 
-**A documentação só está traduzida em `en` e `pt`** (`content/<lang>/docs`).
-Os outros idiomas têm a landing e o índice de `/docs/` traduzidos, e os links
-para uma página da documentação seguem para o inglês — `DOCS` no `build.py` é
-a lista de quem tem tradução; criar `content/fr/docs/` basta para `fr` entrar.
+**A documentação está traduzida nos onze idiomas** (`content/<lang>/docs`).
+`DOCS` no `build.py` é a lista de quem tem tradução; um idioma sem a pasta
+ainda ganha a landing e o índice de `/docs/`, com links para o inglês.
 
 **Os slugs são iguais em todos os idiomas** (`/docs/installation/` e
 `/pt/docs/installation/`). Só os títulos são traduzidos. Isso é o que permite o

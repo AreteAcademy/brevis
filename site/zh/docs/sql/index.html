@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-docs="/zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>SQL — 文档</title>
+<meta name="description" content="普通的 .sql 文件按依赖顺序变成表和视图，既可作为 workflow 的 step，也可独立使用。">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/zh/docs/sql/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/zh/docs/sql/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/sql/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/sql/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/sql/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/sql/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/sql/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/sql/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/sql/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/sql/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/sql/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/sql/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/sql/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:title" content="SQL — 文档">
+<meta property="og:description" content="普通的 .sql 文件按依赖顺序变成表和视图，既可作为 workflow 的 step，也可独立使用。">
+<meta property="og:url" content="https://brevis.sh/zh/docs/sql/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SQL — 文档">
+<meta name="twitter:description" content="普通的 .sql 文件按依赖顺序变成表和视图，既可作为 workflow 的 step，也可独立使用。">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "SQL",
+  "description": "普通的 .sql 文件按依赖顺序变成表和视图，既可作为 workflow 的 step，也可独立使用。",
+  "inLanguage": "zh-CN",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">跳到正文</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/zh/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="主导航">
+      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/docs/">文档</a>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/sql/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/sql/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/sql/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/sql/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/sql/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/sql/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/sql/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/sql/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/sql/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/sql/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/sql/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        探索开源项目
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="打开菜单" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    文档菜单
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">搜索文档</label>
+        <input type="search" id="q" placeholder="搜索…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="无结果" hidden></div>
+      <nav class="side-nav" aria-label="文档">
+        <p class="side-group">入门</p><ul class="side-list"><li><a href="/zh/docs/ecosystem/">生态</a></li><li><a href="/zh/docs/integrations/">集成</a></li><li><a href="/zh/docs/introduction/">简介</a></li><li><a href="/zh/docs/installation/">安装</a></li><li><a href="/zh/docs/quickstart/">快速开始</a></li></ul><p class="side-group">概念</p><ul class="side-list"><li><a href="/zh/docs/core/">Core</a></li><li><a href="/zh/docs/workflows/">Workflows</a></li><li><a href="/zh/docs/scheduler-and-queue/">调度器与队列</a></li><li><a href="/zh/docs/pod-per-step/">每个 step 一个 pod</a></li><li><a href="/zh/docs/context/">step 之间的上下文</a></li></ul><p class="side-group">参考</p><ul class="side-list"><li><a href="/zh/docs/cli/">CLI</a></li><li><a href="/zh/docs/parameters/">参数</a></li><li><a href="/zh/docs/configuration/">配置</a></li><li><a href="/zh/docs/runtime/">step 运行时</a></li></ul><p class="side-group">SDK 与库</p><ul class="side-list"><li><a href="/zh/docs/sdk/">Go SDK</a></li><li><a href="/zh/docs/libraries/">客户端库</a></li><li><a href="/zh/docs/python/">Python</a></li></ul><p class="side-group">运维</p><ul class="side-list"><li><a href="/zh/docs/console/">Console</a></li><li><a href="/zh/docs/kubernetes/">Kubernetes</a></li><li><a href="/zh/docs/observability/">可观测性</a></li><li><a href="/zh/docs/white-label/">白标</a></li></ul><p class="side-group">摄取</p><ul class="side-list"><li><a href="/zh/docs/ingestion/">摄取</a></li><li><a href="/zh/docs/ingestion-sinks/">摄取 sink</a></li><li><a href="/zh/docs/benchmarks/">基准测试</a></li></ul><p class="side-group">用 SQL 建模</p><ul class="side-list"><li><a href="/zh/docs/sql/" aria-current="page">SQL</a></li></ul><p class="side-group">项目</p><ul class="side-list"><li><a href="/zh/docs/philosophy/">理念</a></li><li><a href="/zh/docs/faq/">常见问题</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">文档</p>
+      <h1>SQL</h1>
+      <p class="doc-desc">普通的 .sql 文件按依赖顺序变成表和视图，既可作为 workflow 的 step，也可独立使用。</p>
+      <p>没有模板：模型就是一个始终保持为合法 SQL 的文件，顺序来自对 SQL 本身的解析。Postgres 和 BigQuery，通过同一套一致性测试。</p>
+<figure class="doc-figure"><img src="/assets/flow-sql.svg" width="360" height="410" alt="SQL 的流程：brevis-sql 读取 raw.orders，这是由 SDK 或 Gateway 落地的表。模型 staging.stg_orders 成为它之上的视图，marts.orders 则是该视图之上的表；顺序来自对 SQL 的解析。同样的模型可以在 Postgres 或 BigQuery 上构建。" loading="lazy"></figure>
+<h2 id="六条命令">六条命令<a class="anchor" href="#六条命令" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>命令</th><th>作用</th></tr></thead><tbody><tr><td><code>brevis-sql compile</code></td><td>解析每个模型并解析每条边，<strong>不连接任何东西</strong></td></tr><tr><td><code>brevis-sql graph</code></td><td>打印推断出的边，这样错误的边能被看到，而不是被事后发现</td></tr><tr><td><code>brevis-sql build</code></td><td>按依赖顺序创建或替换每个模型</td></tr><tr><td><code>brevis-sql test</code></td><td>运行每个模型的测试；每个测试都是一条必须找不到任何行的 SELECT</td></tr><tr><td><code>brevis-sql serve</code></td><td>通过 HTTP 回答只读的预览和查询，这样 Console 就不需要数据仓库的凭据</td></tr><tr><td><code>brevis-sql generation bump</code></td><td>记录某张表已被重建，使 <code>brevis-sql-api</code> 针对它缓存的答案过期，<code>build --generations-from</code> 会为它构建的每个模型这样做</td></tr></tbody></table></div>
+<p><code>--select orders+</code> 会把其中任何一条命令缩小到一个模型及其所有下游。</p>
+<h2 id="brevis-sql-serve无需凭据即可读取数据仓库"><code>brevis-sql serve</code>：无需凭据即可读取数据仓库<a class="anchor" href="#brevis-sql-serve无需凭据即可读取数据仓库" aria-label="link">#</a></h2>
+<p>Console 的数据和 SQL 界面显示落地了什么，以及其中有什么。两者都不直接访问数据仓库：它们询问这个与之并排运行的服务，由它持有引擎刻意不持有的凭据。</p>
+<div class="code-block" data-code="brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span>-sql serve <span class="t-n">--connections</span> <span class="t-k">brevis</span>.yaml <span class="t-n">--addr</span> 127.0.0.1:8088</code></pre></div>
+<p>上限不是预算：<code>--max-bytes</code> 限制一次查询，而 <code>--budget</code> 限制每个连接每小时的总和，并按报价检查，所以拒绝发生在花钱之前。它只限制会报告字节数的数据仓库，即 BigQuery 而不是 Postgres；启动横幅会说明当前生效的是哪种姿态，包括没有任何限制。</p>
+<p><strong>只有文件中声明的内容才可访问</strong>，并且默认情况下它所做的任何事都不是写入：每条语句在运行前都会被分类，会扫描超过 <code>--max-bytes</code> 的读取会在产生任何成本之前被报价并拒绝，数据仓库本身也会被要求拒绝写入。审计行带有语句的哈希，绝不带有语句本身。</p>
+<p><strong>它不再需要自己的 service account。</strong> <code>brevis-sql build</code> 会创建表，所以它的角色可以写入，而拒绝任何此类角色的服务，意味着要多创建、保管和轮换一个账号。角色不再是守住防线的唯一手段：Postgres 在以 <code>READ ONLY</code> 打开的事务中运行每条语句，<code>SELECT nextval('s')</code> 这种任何分类器都看不到内部的写入，会被 Postgres 自己拒绝；BigQuery 则在为其报价的 dry run 中报告语句的类型，所以 <code>CREATE TABLE</code> 或 <code>EXPORT DATA</code> 会依据数据仓库自己的判定被拒绝。两者都无法提供的数据仓库，仍然会拒绝可以写入的凭据。</p>
+<p>在 <code>BREVIS_ENV=local</code> 之外需要 token，没有它服务不会启动。</p>
+<h3 id="有人可能会修改的开发数据仓库">有人可能会修改的开发数据仓库<a class="anchor" href="#有人可能会修改的开发数据仓库" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_SQL_SERVE_WRITES=warehouse_dev"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>BREVIS_SQL_SERVE_WRITES=warehouse_dev</code></pre></div>
+<p>它<strong>指定连接的名称</strong>。一个服务可以访问多个数据仓库，解锁你正在开发的那个，不能解锁它旁边的那个。在被指定名称的连接上，所有层都会让开，这个服务的能力恰好等于它的凭据：行数上限限制的是一个界面，字节上限限制的是金钱，而两者都不限制一条语句会改变什么。</p>
+<p>无论在哪里设置它都需要 token，<code>BREVIS_ENV=local</code> 也不例外。启动横幅会列出每个已解锁的连接，Console 会在编辑器上方显示一条横幅，指标中还会出现 <code>brevis_sql_writable_connection</code>。<strong>在生产环境中请不要设置它</strong>；这个仓库中没有任何 manifest 设置它。</p>
+<p>token 可以<strong>命名</strong>：<code>BREVIS_SQL_SERVE_TOKEN_CONSOLE=…</code> 声明了一个名为 <code>console</code> 的调用方，该持有者产生的每条审计行都带有 <code>"caller":"console"</code>。身份就是凭据本身，而不是调用方自己填写的 header，所以日志不可能说出该 token 持有者没有持有的东西。被拒绝的 token 也会留下一行，而且绝不会记录出示的内容。</p>
+<h2 id="模型是一个始终保持为合法-sql-的文件">模型是一个始终保持为合法 SQL 的文件<a class="anchor" href="#模型是一个始终保持为合法-sql-的文件" aria-label="link">#</a></h2>
+<p>配置是文件开头的块注释，所以这个文件可以在编辑器中带高亮地打开，可以在控制台中手动运行，也可以用 <code>psql -f</code> 执行。</p>
+<div class="code-block" data-code="/* brevis
+materialized: table
+tests:
+  - not_null: [order_id]
+  - unique: [order_id]
+  - relationships: {column: customer_id, to: staging.stg_customers, field: customer_id}
+*/
+select * from staging.stg_orders"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>/* brevis
+materialized: table
+tests:
+  - not_null: [order_id]
+  - unique: [order_id]
+  - relationships: {column: customer_id, to: staging.stg_customers, field: customer_id}
+*/
+select * from staging.stg_orders</code></pre></div>
+<p><strong>没有模板。</strong> <code>models/&lt;schema&gt;/&lt;name&gt;.sql</code> 就是 <code>&lt;schema&gt;.&lt;name&gt;</code>，依赖来自对 SQL 的解析，而不是你必须编写的函数调用。<code>brevis-sql graph</code> 会打印推断出的内容；头部的 <code>depends_on:</code> 是针对罕见遗漏的显式覆盖。</p>
+<h2 id="从-compile-到-test">从 compile 到 test<a class="anchor" href="#从-compile-到-test" aria-label="link">#</a></h2>
+<p>两个模型：一个清洗 <code>raw.orders</code> 的视图，和一个依赖它的表。</p>
+<p><code>models/staging/stg_orders.sql</code>：</p>
+<div class="code-block" data-code="/* brevis
+materialized: view
+*/
+select order_id, customer_id, amount, ordered_at
+from raw.orders
+where amount is not null"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>/* brevis
+materialized: view
+*/
+select order_id, customer_id, amount, ordered_at
+from raw.orders
+where amount is not null</code></pre></div>
+<p><code>models/marts/orders.sql</code>：</p>
+<div class="code-block" data-code="/* brevis
+materialized: table
+tests:
+  - not_null: [customer_id]
+  - unique: [customer_id]
+*/
+select customer_id, count(*) as orders, sum(amount) as revenue
+from staging.stg_orders
+group by customer_id"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>/* brevis
+materialized: table
+tests:
+  - not_null: [customer_id]
+  - unique: [customer_id]
+*/
+select customer_id, count(*) as orders, sum(amount) as revenue
+from staging.stg_orders
+group by customer_id</code></pre></div>
+<p><code>compile</code> 和 <code>graph</code> 不连接任何东西：</p>
+<div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.6.0 \
+  compile --project /project"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro areteacademy/<span class="t-k">brevis</span>-sql:0.6.0 \
+  compile <span class="t-n">--project</span> /project</code></pre></div>
+<div class="code-block" data-code="2 models, 2 to build, 0 function(s)
+  staging.stg_orders                 view  0 test(s)
+  marts.orders                       table 2 test(s)"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>2 models, 2 to build, 0 function(s)
+  staging.stg_orders                 view  0 test(s)
+  marts.orders                       table 2 test(s)</code></pre></div>
+<div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.6.0 \
+  graph --project /project"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro areteacademy/<span class="t-k">brevis</span>-sql:0.6.0 \
+  graph <span class="t-n">--project</span> /project</code></pre></div>
+<div class="code-block" data-code="staging.stg_orders
+  └─ raw.orders (source)
+marts.orders
+  ├─ staging.stg_orders"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>staging.stg_orders
+  └─ raw.orders (source)
+marts.orders
+  ├─ staging.stg_orders</code></pre></div>
+<p>针对 Postgres 的 <code>build</code> 和 <code>test</code>：</p>
+<div class="code-block" data-code="docker run --rm -v ./project:/project:ro \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.6.0 \
+  build --project /project --dsn-from BREVIS_SQL_DSN"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro \
+  <span class="t-n">-e</span> BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/<span class="t-k">brevis</span>-sql:0.6.0 \
+  build <span class="t-n">--project</span> /project <span class="t-n">--dsn-from</span> BREVIS_SQL_DSN</code></pre></div>
+<div class="code-block" data-code="  staging.stg_orders                 view  new   4ms
+@brevis:{&quot;type&quot;:&quot;landed&quot;,&quot;target&quot;:&quot;postgres://postgres/staging/stg_orders&quot;}
+  marts.orders                       table new   4ms
+@brevis:{&quot;type&quot;:&quot;landed&quot;,&quot;target&quot;:&quot;postgres://postgres/marts/orders&quot;,&quot;rows&quot;:2}
+2 models built on postgres"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>  staging.stg_orders                 view  new   4ms
+@brevis:{"type":"landed","target":"postgres://postgres/staging/stg_orders"}
+  marts.orders                       table new   4ms
+@brevis:{"type":"landed","target":"postgres://postgres/marts/orders","rows":2}
+2 models built on postgres</code></pre></div>
+<div class="code-block" data-code="docker run --rm -v ./project:/project:ro \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.6.0 \
+  test --project /project --dsn-from BREVIS_SQL_DSN"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro \
+  <span class="t-n">-e</span> BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/<span class="t-k">brevis</span>-sql:0.6.0 \
+  test <span class="t-n">--project</span> /project <span class="t-n">--dsn-from</span> BREVIS_SQL_DSN</code></pre></div>
+<div class="code-block" data-code="2 tests passed on postgres"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>2 tests passed on postgres</code></pre></div>
+<p>这是来自已发布镜像的真实输出：compile 和 graph 不连接任何东西。针对 Postgres 时，build 和 test 分别以“2 models built”和“2 tests passed”结束。</p>
+<h3 id="当测试失败时">当测试失败时<a class="anchor" href="#当测试失败时" aria-label="link">#</a></h3>
+<p>如果 <code>raw.orders</code> 中有一个订单没有客户，<code>build</code> 会通过，而 <code>not_null</code> 测试不会。失败信息会指出模型、列、行数以及<strong>查询语句</strong>，你可以把它粘贴到控制台中不断缩小范围：</p>
+<div class="code-block" data-code="FAIL  marts.orders                   not_null         customer_id          1 row(s)
+      SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
+brevis-sql: 1 of 2 tests failed"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>FAIL  marts.orders                   not_null         customer_id          1 row(s)
+      SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
+brevis-sql: 1 of 2 tests failed</code></pre></div>
+<p>进程以退出码 1 结束，workflow 的 step 也随之失败。</p>
+<h2 id="测试是返回违规行的-select">测试是返回违规行的 SELECT<a class="anchor" href="#测试是返回违规行的-select" aria-label="link">#</a></h2>
+<p><code>not_null</code>、<code>unique</code>、<code>accepted_values</code>、<code>relationships</code>。零行就是通过，没有其他需要解读的东西。</p>
+<h2 id="它会说明自己写了什么">它会说明自己写了什么<a class="anchor" href="#它会说明自己写了什么" aria-label="link">#</a></h2>
+<p>每个物化的模型都会打印 Brevis 引擎本来就会读取的 <code>@brevis:</code> 行，所以它会与其他所有内容一起出现在 <code>/data</code> 中（见上面 <code>build</code> 的输出）。视图报告的是没有行数，而不是零：它不保存任何行，而那里的零与一张真正为空的表无法区分。</p>
+<h2 id="两个数据仓库一套测试">两个数据仓库，一套测试<a class="anchor" href="#两个数据仓库一套测试" aria-label="link">#</a></h2>
+<p>PostgreSQL 和 BigQuery（<code>--dialect bigquery</code>），两者运行同一套测试，这套测试是在只有一种实现时编写的，所以第二种实现不会悄悄偏离。</p>
+<p>BigQuery 使用 Application Default Credentials 进行认证：在 workload identity 上，那就是 pod 自己的身份，而 <code>--dsn-from</code> 指定保存项目 id 的变量。</p>
+<h2 id="13-mb">13 MB<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
+<p>Distroless，nonroot，没有 shell。官方的 BigQuery 客户端在一个空二进制文件中就有 31 MB 和 526 个包，所以这里改为通过 REST 端点与 BigQuery 通信，大约 200 行，并为每一种可能悄悄出错的情形各写了一个测试。仓库中有一道关卡会按名称拒绝那个客户端，所以这个决定能经受常规依赖升级的考验。</p>
+<h2 id="已对照-dbt-验证">已对照 dbt 验证<a class="anchor" href="#已对照-dbt-验证" aria-label="link">#</a></h2>
+<p>jaffle-shop，由这个镜像在 dbt 所用的同一份种子数据上构建：</p>
+<div class="table-wrap"><table><thead><tr><th></th><th>结果</th></tr></thead><tbody><tr><td>每个模型的行数和每行的 md5</td><td><strong>完全一致，13 个中的 13 个</strong></td></tr><tr><td>每个模型的列和类型</td><td><strong>完全一致，13 个中的 13 个</strong></td></tr><tr><td>13 个模型，首次构建</td><td>1.56 秒</td></tr></tbody></table></div>
+<h2 id="它不做什么">它不做什么<a class="anchor" href="#它不做什么" aria-label="link">#</a></h2>
+<p><strong>不兼容 dbt</strong>，这是一项决定，而不是缺陷。真实 dbt 项目中大约三分之一的模型只用到 <code>ref</code>、<code>source</code> 和 <code>config</code>；其余的用到宏，而包本质上就是模板。没有人能预测的半吊子兼容，比没有兼容更糟。</p>
+<h2 id="接下来去哪里">接下来去哪里<a class="anchor" href="#接下来去哪里" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>如果你想</th><th>前往</th></tr></thead><tbody><tr><td>看 SQL 在四个组成部分中的位置</td><td><a href="/zh/docs/ecosystem/">生态</a></td></tr><tr><td>把 brevis-sql 作为定时 step 运行</td><td><a href="/zh/docs/core/">Core</a></td></tr><tr><td>落地它将要建模的数据</td><td><a href="/zh/docs/sdk/">Go SDK</a> 或<a href="/zh/docs/ingestion/">摄取</a></td></tr></tbody></table></div>
+
+      <nav class="pagers" aria-label="页面">
+        <a class="pager pager-prev" href="/zh/docs/benchmarks/"><span>上一页</span><strong>基准测试</strong></a>
+        <a class="pager pager-next" href="/zh/docs/philosophy/"><span>下一页</span><strong>理念</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/zh/docs/sql.md" target="_blank" rel="noopener">在 GitHub 上编辑此页</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="本页内容">
+      <p class="toc-t">本页内容</p>
+      <ul><li class="toc-2"><a href="#六条命令">六条命令</a></li><li class="toc-2"><a href="#brevis-sql-serve无需凭据即可读取数据仓库">brevis-sql serve：无需凭据即可读取数据仓库</a></li><li class="toc-3"><a href="#有人可能会修改的开发数据仓库">有人可能会修改的开发数据仓库</a></li><li class="toc-2"><a href="#模型是一个始终保持为合法-sql-的文件">模型是一个始终保持为合法 SQL 的文件</a></li><li class="toc-2"><a href="#从-compile-到-test">从 compile 到 test</a></li><li class="toc-3"><a href="#当测试失败时">当测试失败时</a></li><li class="toc-2"><a href="#测试是返回违规行的-select">测试是返回违规行的 SELECT</a></li><li class="toc-2"><a href="#它会说明自己写了什么">它会说明自己写了什么</a></li><li class="toc-2"><a href="#两个数据仓库一套测试">两个数据仓库，一套测试</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#已对照-dbt-验证">已对照 dbt 验证</a></li><li class="toc-2"><a href="#它不做什么">它不做什么</a></li><li class="toc-2"><a href="#接下来去哪里">接下来去哪里</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/zh/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>哲学，应用于数据基础设施。</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>项目</h2>
+        <ul>
+          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/docs/philosophy/">原则</a></li>
+          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>代码</h2>
+        <ul>
+          <li><a href="/zh/docs/">文档</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">仓库</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>一个开源项目，作者： <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · 使用 Go 构建 · Go gopher 由 Renée French 绘制, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

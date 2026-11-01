@@ -1,0 +1,84 @@
+# Core
+
+> ऑर्केस्ट्रेटर: run शेड्यूल करता है, कतार Postgres में रखता है और हर step के लिए एक pod शुरू करता है — और डेटा को कभी नहीं छूता।
+
+*https://brevis.sh/hi/docs/core/ · brevis.sh docs (hi)*
+
+---
+
+पूरा workflow एक versioned फ़ाइल है: pipeline की समीक्षा करना diff की समीक्षा करना बन जाता है। Core शेड्यूल करता है, कतार में रखता है और हर step को उसकी अपनी image के साथ शुरू करता है — और डेटा को कभी नहीं छूता।
+
+![Core का प्रवाह: Postgres में रखे गए एक शेड्यूलर और एक कतार workflow के हर step के लिए एक pod शुरू करते हैं — prepare, extract, validate और publish। Core से सिर्फ़ नियंत्रण की रेखाएँ निकलती हैं। डेटा HTTP स्रोत से extract pod में जाता है, जो SDK चलाता है, और वहाँ से BigQuery में; कोई डेटा Core से होकर नहीं गुज़रता।](/assets/flow-core.svg)
+
+## यह क्या करता है
+
+- **शेड्यूल करता है।** शेड्यूलर हर workflow का शेड्यूल पढ़कर run बनाता है। वह और कतार दो स्वतंत्र लूप हैं: एक अटक जाए तो दूसरा नहीं रुकता — [शेड्यूलर और कतार](/hi/docs/scheduler-and-queue/index.md)।
+- **कतार में रखता है।** कतार Postgres में रहती है: जो चलाता है वह एक लंबित run को दावा करता है, ग्राफ़ पर चलता है और हर step की स्थिति दर्ज करता है।
+- **हर step के लिए एक pod शुरू करता है**, हर एक अपनी image के साथ — [हर step के लिए एक pod](/hi/docs/pod-per-step/index.md)।
+- **डेटा को कभी नहीं छूता।** Core से सिर्फ़ नियंत्रण की रेखाएँ निकलती हैं: डेटा को पढ़ने-लिखने का काम step करता है, [SDK](/hi/docs/sdk/index.md) से या आपके अपने किसी भी कोड से।
+
+## एक workflow, शुरू से अंत तक
+
+Workflow एक YAML फ़ाइल है। जो दो steps एक ही step पर निर्भर हैं, वे समानांतर चलते हैं:
+
+```yaml
+name: hello
+type: dag
+tags: [example]
+
+steps:
+  - id: prepare
+    run: sh -c 'echo preparing; sleep 1'
+
+  # The next two depend on the same step, so they run IN PARALLEL.
+  - id: extract
+    run: sh -c 'sleep 2; echo 42 extracted'
+    depends_on: [prepare]
+
+  - id: validate
+    run: sh -c 'sleep 1; echo validated'
+    depends_on: [prepare]
+
+  - id: publish
+    run: echo published
+    depends_on: [extract, validate]
+```
+
+इसे स्थानीय रूप से चलाने के लिए, बिना कतार और बिना cluster के:
+
+```bash
+docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
+  areteacademy/brevis:0.40.0-worker run hello.yaml
+```
+
+आउटपुट:
+
+```text
+workflow hello (dag, 4 steps) in .
+  ▶ prepare
+    prepare | preparing
+  ✓ prepare
+  ▶ validate
+  ▶ extract
+    validate | validated
+  ✓ validate
+    extract | 42 extracted
+  ✓ extract
+  ▶ publish
+    publish | published
+  ✓ publish
+
+workflow hello finished
+```
+
+प्रकाशित image से लिया गया असली आउटपुट। brevis run स्थानीय रूप से, कतार के बिना चलता है; pods शेड्यूलर शुरू करता है।
+
+## आगे कहाँ जाएँ
+
+| अगर आप चाहते हैं | यहाँ जाएँ |
+|---|---|
+| पूरा YAML फ़ॉर्मेट | [Workflows](/hi/docs/workflows/index.md) |
+| run कौन बनाता है और कौन चलाता है | [शेड्यूलर और कतार](/hi/docs/scheduler-and-queue/index.md) |
+| हर step के लिए एक pod क्यों | [हर step के लिए एक pod](/hi/docs/pod-per-step/index.md) |
+| एक step अगले को क्या देता है | [steps के बीच संदर्भ](/hi/docs/context/index.md) |
+| सब कुछ खड़ा करना और इंटरफ़ेस में ग्राफ़ देखना | [क्विकस्टार्ट](/hi/docs/quickstart/index.md) |

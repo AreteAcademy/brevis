@@ -1,0 +1,54 @@
+# Console
+
+> Core의 웹 인터페이스입니다. 무엇이 실행 중이고, 무엇이 실행될 예정이며, 각 run에 어떤 일이 있었는지 보여 줍니다.
+
+*https://brevis.sh/ko/docs/console/ · brevis.sh docs (ko)*
+
+---
+
+인터페이스는 바이너리에 포함되어 있습니다. 따로 설치하고 유지해야 하는 별도의 서비스가 아닙니다. 성공률, 평균 소요 시간, 큐, 시도 이력, 다음에 실행될 스케줄을 보여 줍니다.
+
+Console은 `brevis serve`와 함께 HTTP API와 같은 포트(`BREVIS_HTTP_ADDR`, 기본값 `:8080`)에서 올라옵니다. [빠른 시작](/ko/docs/quickstart/index.md)에서는 `localhost:8080`에서 열립니다.
+
+아래 화면은 샘플 데이터로 Console을 SVG로 다시 그린 것이며 스크린샷이 아닙니다. 실제
+Console은 운영 환경에서 고객 데이터를 다루기 때문입니다.
+
+## 개요
+
+![The Brevis console on the overview screen: a 94.2 per cent success rate over 344 runs, a bar chart of runs per hour with average duration, a distribution ring, what is in progress, and the next scheduled runs.](/assets/console.svg)
+
+지표와 차트가 있는 개요입니다. 성공률, 평균 소요 시간, 진행 중인 항목, 다음에 예정된 run을 한 화면에서 볼 수 있습니다.
+
+## Workflows
+
+![The workflow list: search, filters by state and by tag, and twelve workflows with a pause toggle, the cron expression, the next and last run, tags, and a button to run each one now.](/assets/console-workflows.svg)
+
+검색, 필터, 일시중지, 실행 기능이 있는 workflow 목록입니다. 각 행에는 cron, 다음 run과 마지막 run, 태그가 표시됩니다.
+
+## workflow 하나
+
+![One workflow's page: its four steps, three dependencies, cron and tags; a form to run it with parameters; a 96.1 per cent success rate over 176 runs; the DAG with each step's state; and a calendar of a year where each square is a day, coloured by that day's worst outcome.](/assets/console-workflow.svg)
+
+step과 의존성, 매개변수와 함께 실행하는 폼, 각 step의 상태가 표시된 DAG, 그리고 각 날짜가 그날 가장 나쁜 결과의 색을 띠는 1년 달력입니다.
+
+## 실행
+
+![The run history: 1,284 runs with their state, workflow, trigger, the slot they belong to, how long each took and when it was created. Some show which attempt succeeded.](/assets/console-runs.svg)
+
+각 run의 시도가 표시된 실행 이력입니다. 상태, workflow, 트리거, run이 속한 slot, 소요 시간, 생성 시각이 표시됩니다.
+
+## run 하나
+
+![A finished run: its state, trigger and slot; the graph with each step's command, image and duration; the nine auto params the engine works out for every run — the clock to read instead of now(), the partition date, how late the attempt started and the window it covers; and each step's output.](/assets/console-run.svg)
+
+실시간으로 표시되는 run의 DAG와 엔진이 그 run에 대해 계산한 자동 매개변수입니다. 각 step의 명령, 이미지, 소요 시간이 표시된 그래프와 각 step의 출력을 볼 수 있습니다.
+
+## 프로젝트
+
+![Two projects, analytics and platform, each namespacing its own workflows — both can have a daily_ingest without colliding.](/assets/console-projects.svg)
+
+두 팀이 하나의 이름에서 충돌하지 않도록 프로젝트를 둡니다. 각 프로젝트는 자기 workflow의 네임스페이스이므로, 두 프로젝트가 각각 `daily_ingest`를 가질 수 있습니다.
+
+## 바이너리에 포함됩니다
+
+폰트와 번들이 바이너리에서 제공되므로 인터넷 없이도 동작합니다.

@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-docs="/zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>参数 — 文档</title>
+<meta name="description" content="同一个 workflow 的两次 run 之间可以变化的内容，无需编辑文件。">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/zh/docs/parameters/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/zh/docs/parameters/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/parameters/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/parameters/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/parameters/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/parameters/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/parameters/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/parameters/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/parameters/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/parameters/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/parameters/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/parameters/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/parameters/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:title" content="参数 — 文档">
+<meta property="og:description" content="同一个 workflow 的两次 run 之间可以变化的内容，无需编辑文件。">
+<meta property="og:url" content="https://brevis.sh/zh/docs/parameters/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="参数 — 文档">
+<meta name="twitter:description" content="同一个 workflow 的两次 run 之间可以变化的内容，无需编辑文件。">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "参数",
+  "description": "同一个 workflow 的两次 run 之间可以变化的内容，无需编辑文件。",
+  "inLanguage": "zh-CN",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">跳到正文</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/zh/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="主导航">
+      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/docs/">文档</a>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/parameters/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/parameters/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/parameters/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/parameters/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/parameters/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/parameters/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/parameters/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/parameters/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/parameters/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/parameters/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/parameters/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        探索开源项目
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="打开菜单" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    文档菜单
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">搜索文档</label>
+        <input type="search" id="q" placeholder="搜索…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="无结果" hidden></div>
+      <nav class="side-nav" aria-label="文档">
+        <p class="side-group">入门</p><ul class="side-list"><li><a href="/zh/docs/ecosystem/">生态</a></li><li><a href="/zh/docs/integrations/">集成</a></li><li><a href="/zh/docs/introduction/">简介</a></li><li><a href="/zh/docs/installation/">安装</a></li><li><a href="/zh/docs/quickstart/">快速开始</a></li></ul><p class="side-group">概念</p><ul class="side-list"><li><a href="/zh/docs/core/">Core</a></li><li><a href="/zh/docs/workflows/">Workflows</a></li><li><a href="/zh/docs/scheduler-and-queue/">调度器与队列</a></li><li><a href="/zh/docs/pod-per-step/">每个 step 一个 pod</a></li><li><a href="/zh/docs/context/">step 之间的上下文</a></li></ul><p class="side-group">参考</p><ul class="side-list"><li><a href="/zh/docs/cli/">CLI</a></li><li><a href="/zh/docs/parameters/" aria-current="page">参数</a></li><li><a href="/zh/docs/configuration/">配置</a></li><li><a href="/zh/docs/runtime/">step 运行时</a></li></ul><p class="side-group">SDK 与库</p><ul class="side-list"><li><a href="/zh/docs/sdk/">Go SDK</a></li><li><a href="/zh/docs/libraries/">客户端库</a></li><li><a href="/zh/docs/python/">Python</a></li></ul><p class="side-group">运维</p><ul class="side-list"><li><a href="/zh/docs/console/">Console</a></li><li><a href="/zh/docs/kubernetes/">Kubernetes</a></li><li><a href="/zh/docs/observability/">可观测性</a></li><li><a href="/zh/docs/white-label/">白标</a></li></ul><p class="side-group">摄取</p><ul class="side-list"><li><a href="/zh/docs/ingestion/">摄取</a></li><li><a href="/zh/docs/ingestion-sinks/">摄取 sink</a></li><li><a href="/zh/docs/benchmarks/">基准测试</a></li></ul><p class="side-group">用 SQL 建模</p><ul class="side-list"><li><a href="/zh/docs/sql/">SQL</a></li></ul><p class="side-group">项目</p><ul class="side-list"><li><a href="/zh/docs/philosophy/">理念</a></li><li><a href="/zh/docs/faq/">常见问题</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">文档</p>
+      <h1>参数</h1>
+      <p class="doc-desc">同一个 workflow 的两次 run 之间可以变化的内容，无需编辑文件。</p>
+      <p>workflow 可以声明 <strong>run 参数</strong>：在两次触发之间变化、而文件本身不变的值。</p>
+<h2 id="声明">声明<a class="anchor" href="#声明" aria-label="link">#</a></h2>
+<div class="code-block" data-code="params:
+  - name: load_full
+    type: boolean
+    default: &quot;false&quot;
+
+  - name: start_date
+    type: string
+    pattern: &#x27;^\d{4}-\d{2}-\d{2}$&#x27;
+
+steps:
+  - id: run
+    run: dbt build --vars &#x27;{&quot;load_full&quot;:&quot;{{ .load_full }}&quot;}&#x27; --select bronze+"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">params</span>:
+  - <span class="t-k">name</span>: load_full
+    <span class="t-k">type</span>: boolean
+    <span class="t-k">default</span>: "<span class="t-n">false</span>"
+
+  - <span class="t-k">name</span>: start_date
+    <span class="t-k">type</span>: string
+    <span class="t-k">pattern</span>: '^\d{4}-\d{2}-\d{2}$'
+
+<span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: run
+    <span class="t-k">run</span>: dbt build --vars '{"load_full":"{{ .load_full }}"}' --select bronze+</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>字段</th><th></th><th></th></tr></thead><tbody><tr><td><code>name</code></td><td><strong>必填</strong></td><td>在模板和 <code>--param</code> 中使用的名称</td></tr><tr><td><code>type</code></td><td></td><td><code>string</code>、<code>boolean</code>、<code>integer</code>，或用于多个值的 `list</td><td>&lt;type&gt;`</td></tr><tr><td><code>default</code></td><td></td><td>触发时未提供值时使用</td></tr><tr><td><code>pattern</code></td><td></td><td>值必须匹配的正则表达式</td></tr><tr><td><code>title</code></td><td></td><td>表单中显示的标签，最多 60 个字符；省略时使用名称</td></tr><tr><td><code>group</code></td><td></td><td>在表单中把参数归为一组，最多 60 个字符</td></tr><tr><td><code>warn</code></td><td></td><td>取默认值以外的值会带来什么代价，显示在字段下方，最多 200 个字符</td></tr><tr><td><code>uses</code></td><td></td><td>该参数所涉及的连接器的键（<code>bigquery</code>、<code>postgres</code>），用于显示其 logo</td></tr></tbody></table></div>
+<p><strong>没有 <code>default</code></strong> 的参数是必填的：省略它的触发会在执行任何 step 之前失败。</p>
+<p><code>title</code>、<code>group</code>、<code>warn</code> 和 <code>uses</code> 决定表单如何呈现该参数，<strong>其中任何一个都不会改变值的取值范围</strong>。每个都只能是一行；<code>uses</code> 只能是小写字母、数字和 <code>-</code>。其余内容会被 publish 拒绝，并指出是哪个参数。</p>
+<div class="code-block" data-code="params:
+  - name: load_full
+    type: boolean
+    default: &quot;false&quot;
+    title: Full load
+    group: Load
+    warn: reprocesses the whole table; it costs
+    uses: bigquery"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">params</span>:
+  - <span class="t-k">name</span>: load_full
+    <span class="t-k">type</span>: boolean
+    <span class="t-k">default</span>: "<span class="t-n">false</span>"
+    <span class="t-k">title</span>: Full load
+    <span class="t-k">group</span>: Load
+    <span class="t-k">warn</span>: reprocesses the whole table; it costs
+    <span class="t-k">uses</span>: bigquery</code></pre></div>
+<h2 id="值列表">值列表<a class="anchor" href="#值列表" aria-label="link">#</a></h2>
+<p><code>list|&lt;type&gt;</code> 声明一个携带多个值的参数，比如要加载的表、要重建的层、要 backfill 的窗口：</p>
+<div class="code-block" data-code="params:
+  - name: tables
+    type: list|string
+    default: &quot;users,orders&quot;
+
+  - name: layers
+    type: list|string
+    enum: [bronze, silver, gold]     # an enum restricts each ITEM
+    default: &quot;bronze&quot;
+
+  - name: days
+    type: list|integer
+    default: &quot;1,7,30&quot;"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">params</span>:
+  - <span class="t-k">name</span>: tables
+    <span class="t-k">type</span>: list|string
+    <span class="t-k">default</span>: "users,orders"
+
+  - <span class="t-k">name</span>: layers
+    <span class="t-k">type</span>: list|string
+    <span class="t-k">enum</span>: [bronze, silver, gold]     <span class="t-c"># an enum restricts each ITEM</span>
+    <span class="t-k">default</span>: "bronze"
+
+  - <span class="t-k">name</span>: days
+    <span class="t-k">type</span>: list|integer
+    <span class="t-k">default</span>: "1,7,30"</code></pre></div>
+<p>元素类型可以是 <code>string</code>、<code>integer</code> 或 <code>boolean</code>。每一项单独校验，因此给 <code>list|integer</code> 传入 <code>1,x,30</code> 时，失败信息会指出<strong>第 2 项</strong>，而不是整个值。</p>
+<p>它在所有地方都是<strong>一个以逗号分隔的字符串</strong>：在数据库中、在 <code>BREVIS_RUN_PARAMS</code> 中、在命令中。正因如此，它在 step 中无需任何特殊处理就能工作：</p>
+<div class="code-block" data-code="run: dbt build --select {{ .tables }}      # dbt build --select users,orders"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">run</span>: dbt build --select {{ .tables }}      <span class="t-c"># dbt build --select users,orders</span></code></pre></div>
+<p>这也是逗号不能出现在某一项内部的原因。空项和重复项同样会被拒绝：重复项会悄悄地让 step 对每一项所做的事翻倍。</p>
+<h3 id="在-step-中作为数组">在 step 中作为数组<a class="anchor" href="#在-step-中作为数组" aria-label="link">#</a></h3>
+<div class="code-block" data-code="for _, table := range p.Run.ParamList(&quot;tables&quot;) {
+    load(table)
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">for</span> _, table := <span class="t-k">range</span> p.Run.ParamList("tables") {
+    load(table)
+}</code></pre></div>
+<div class="code-block" data-code="from brevis import run
+
+for table in run.param_list(&quot;tables&quot;):
+    load(table)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> run
+
+<span class="t-k">for</span> table <span class="t-k">in</span> run.param_list("tables"):
+    load(table)</code></pre></div>
+<p>对于没人填写的参数，两者都返回 <code>[]</code>，而不是包含一个空字符串的列表：遍历“无事可做”应该什么都不做。各项以字符串形式返回，<code>list|integer</code> 也不例外，因为 step 比库更清楚该如何处理数字。</p>
+<h3 id="在界面中">在界面中<a class="anchor" href="#在界面中" aria-label="link">#</a></h3>
+<p>带 <code>enum</code> 的列表渲染为复选框，不需要 JavaScript，浏览器会为每个勾选的框提交一个值。没有 <code>enum</code> 时，它是一个文本字段，各项变成可移除的标签；关闭 JavaScript 时，它仍是一个内容为 <code>users,orders</code> 的字段，这正是服务器所期望的。</p>
+<h3 id="在命令行中">在命令行中<a class="anchor" href="#在命令行中" aria-label="link">#</a></h3>
+<div class="code-block" data-code="brevis run wf.yaml --param tables=events,sessions --param days=1,30"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> tables=events,sessions <span class="t-n">--param</span> days=1,30</code></pre></div>
+<aside class="admon admon-note"><p class="admon-t">旧版引擎无法读取它</p><p>该类型与 workflow 一起保存，而在这个功能出现之前的引擎，会在 publish 时把 <code>list|string</code> 当作未知类型而拒绝。使用它的 workflow 发布之前，请先升级引擎。</p></aside>
+<h2 id="在命令中使用">在命令中使用<a class="anchor" href="#在命令中使用" aria-label="link">#</a></h2>
+<p>值通过模板进入 <code>run</code>，写法是双大括号加一个点：</p>
+<div class="code-block" data-code="run: ./load.sh --since {{ .start_date }}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">run</span>: ./load.sh --since {{ .start_date }}</code></pre></div>
+<h2 id="在命令行中传递">在命令行中传递<a class="anchor" href="#在命令行中传递" aria-label="link">#</a></h2>
+<div class="code-block" data-code="brevis run wf.yaml --param load_full=true
+brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true
+<span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true <span class="t-n">--param</span> start_date=2026-01-01</code></pre></div>
+<p><code>--param</code> 可以重复。不带 <code>=</code> 的输入是<strong>错误</strong>：</p>
+<div class="code-block" data-code="erro: --param &quot;load_full&quot;: use chave=valor"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>erro: --param "load_full": use chave=valor</code></pre></div>
+<p>这是有意为之。<code>--param load_full</code> 忘了写值，就会以默认值运行，而操作者还以为 backfill 用的是他们想要的参数。</p>
+<h2 id="在-backfill-中">在 backfill 中<a class="anchor" href="#在-backfill-中" aria-label="link">#</a></h2>
+<p>这些值适用于范围内的<strong>每一个</strong> slot。这是核心用例：“用 <code>load_full=true</code> 重新处理整个一月份”。</p>
+<div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
+<h2 id="在界面中">在界面中<a class="anchor" href="#在界面中" aria-label="link">#</a></h2>
+<p>带有 <code>params</code> 的 workflow 会得到一个<strong>表单</strong>，取代简单的触发按钮。字段来自声明，<code>pattern</code> 在提交前校验。</p>
+<h2 id="在-step-的环境中">在 step 的环境中<a class="anchor" href="#在-step-的环境中" aria-label="link">#</a></h2>
+<p>run 参数也会带着前缀进入每个 step 的<strong>环境</strong>。这样，用 <a href="/zh/docs/sdk/">SDK</a> 编写的抓取器无需以参数形式接收任何东西，就能看到它们：</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+    if p.Run.Params[&quot;load_full&quot;] == &quot;true&quot; {
+        p.Source.URL += &quot;&amp;full=1&quot;
+    }
+    return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+    <span class="t-k">if</span> p.Run.Params["load_full"] == "true" {
+        p.Source.URL += "&amp;full=1"
+    }
+    <span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<h2 id="自动参数">自动参数<a class="anchor" href="#自动参数" aria-label="link">#</a></h2>
+<p>每个 run 还带有<strong>自动参数</strong>：引擎自己算出的值。没有人声明它们，每个 run 都有，并且显示在 run 的页面上。</p>
+<p>其中最重要的是 <code>adjusted_at</code>，值得说明它消除的那个 bug。抓取器读取 <code>now()</code>，减去自己的窗口，向供应商请求最近两个小时的数据。对于按时启动的 run，这是对的。对于被队列延迟了四十分钟的 run，就错了四十分钟，而这四十分钟<strong>不属于任何 run</strong>，因为下一个 slot 读取的也是它自己的 <code>now()</code>。没有任何东西失败；数据就是缺了，而且几周后才会被发现。</p>
+<p>所以引擎改为提供一个时钟。在你原本会读取 <code>now()</code> 的地方，读取 <code>adjusted_at</code>：</p>
+<div class="table-wrap"><table><thead><tr><th>参数</th><th></th><th></th></tr></thead><tbody><tr><td><code>adjusted_at</code></td><td>始终</td><td>这个 run 应该读取的时钟：有 slot 时是 slot，否则是开始时间</td></tr><tr><td><code>date</code></td><td>始终</td><td><code>adjusted_at</code> 的 <code>YYYY-MM-DD</code> 形式，UTC：分区、文件夹、<code>WHERE</code></td></tr><tr><td><code>delay_seconds</code></td><td>始终</td><td>这次尝试相对其 slot 晚了多久；没有 slot 的手动 run 为 <code>0</code></td></tr><tr><td><code>previous_error</code></td><td>始终</td><td>在这个 run 之前的那个 run 没有成功</td></tr><tr><td><code>scheduled_at</code></td><td>有 slot 时</td><td>cron 所要求的 slot</td></tr><tr><td><code>started_at</code></td><td></td><td>这次尝试开始的时间；重试会改变它</td></tr><tr><td><code>interval_start</code></td><td>有 slot 时</td><td><strong>上一个</strong> slot</td></tr><tr><td><code>interval_end</code></td><td>有 slot 时</td><td>这个 slot，<strong>不含</strong></td></tr><tr><td><code>previous_success_at</code></td><td></td><td>最近一次成功的 run 的 slot</td></tr></tbody></table></div>
+<p>当 run 由调度产生、由 backfill 产生，或者由手动触发<strong>针对某个过去的 slot</strong> 时，它就有 slot：触发请求中的 <code>slot</code> 字段（<code>2026-10-27T04:00:00Z</code>）会用该 slot 的参数再次运行该 slot。cron 从不触发的 slot 会被拒绝，并指出在它之前最近的一个。</p>
+<p><strong>这里的每个时间戳都是 UTC</strong>，写成带 <code>Z</code> 的 RFC 3339 格式，run 的页面也以 UTC 显示，因此页面与 <code>$BREVIS_AUTO_ADJUSTED_AT</code> 永远一致。<code>date</code> 是 <strong>UTC 日期</strong>，对于 slot 跨越 UTC 午夜的 workflow 来说，它不是本地日期：<code>America/Sao_Paulo</code> 时区中的 <code>0 22 * * *</code>，其 <code>date</code> 是第二天。Airflow 的 <code>ds</code> 行为相同，原因也相同：slot 是一个时刻，只有选定时区之后，一个时刻才属于某一天。</p>
+<p><code>interval_start</code> 和 <code>interval_end</code> 来自 <strong>cron</strong>，而不是历史：对三月的某个 slot 做 backfill，得到的是三月当时的窗口，而不是这个 workflow 的 run 今天恰好描述出的窗口。请求 <code>[start, end)</code> 的 pipeline，无论运行得多晚、重试得多频繁，都不会重叠，也不会出现空缺。</p>
+<p>它们是一份<strong>快照</strong>，在 run 开始时计算并存储在 run 上。<code>previous_error</code> 是关于这个 run 开始那一刻的事实；明天重新计算它，在前一个 run 被重试并通过之后，会用同一个名称回答另一个问题。</p>
+<h3 id="读取它们">读取它们<a class="anchor" href="#读取它们" aria-label="link">#</a></h3>
+<p>在 shell step 中，每个值对应一个变量，因此无需解析任何东西：</p>
+<div class="code-block" data-code="steps:
+  - id: extract
+    run: |
+      curl &quot;https://api.example.com/events?since=$BREVIS_AUTO_INTERVAL_START&amp;until=$BREVIS_AUTO_INTERVAL_END&quot; \
+        &gt; &quot;/data/$BREVIS_AUTO_DATE.json&quot;"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: |
+      curl "https://api.example.com/events?since=$BREVIS_AUTO_INTERVAL_START&amp;until=$BREVIS_AUTO_INTERVAL_END" \
+        &gt; "/data/$BREVIS_AUTO_DATE.json"</code></pre></div>
+<p>整套参数也以一个 JSON 对象的形式放在 <code>$BREVIS_AUTO_PARAMS</code> 中，适合想一次性解析的 step。</p>
+<p>在 Go 中，<a href="/zh/docs/sdk/">SDK</a> 会替你读取：</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+    start, end, ok := p.Run.Auto.Window()
+    if !ok { // no schedule: fall back to a fixed window
+        start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+    }
+    p.Source.URL += &quot;&amp;from=&quot; + start.Format(time.RFC3339) +
+        &quot;&amp;to=&quot; + end.Format(time.RFC3339)
+    return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+    start, end, ok := p.Run.Auto.Window()
+    <span class="t-k">if</span> !ok { <span class="t-c">// no schedule: fall back to a fixed window</span>
+        start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+    }
+    p.Source.URL += "&amp;from=" + start.Format(time.RFC3339) +
+        "&amp;to=" + end.Format(time.RFC3339)
+    <span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p><code>Auto.Now()</code> 是用来取代 <code>time.Now()</code> 的时钟。在引擎之外，比如有人手动运行的抓取器，它*就是*挂钟时间，因此本地开发无需做任何特殊处理。</p>
+<p>在 Python 中，<code>pip install brevis</code> 读取同样的值：</p>
+<div class="code-block" data-code="from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f&quot;/data/{run.auto().date}.parquet&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">from</span> datetime <span class="t-k">import</span> timedelta
+<span class="t-k">from</span> brevis <span class="t-k">import</span> run
+
+since, until = run.window() <span class="t-k">or</span> (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
+<p>当 workflow 没有调度时，<code>window()</code> 返回 <code>None</code>，而不是一对零值时间：从纪元开始的查询会选中所有数据，这种失败不该是无声的。上面的 <code>or</code> 就是全部的回退逻辑。</p>
+<h3 id="在-dlt-中什么都不用读取">在 dlt 中，什么都不用读取<a class="anchor" href="#在-dlt-中什么都不用读取" aria-label="link">#</a></h3>
+<p><a href="https://dlthub.com" target="_blank" rel="noopener">dlt</a> 在自己的游标上保存状态，写入目的地。这个状态只会<strong>向前</strong>移动，这在重新运行旧 slot 之前都没问题：游标仍然指向今天，于是 backfill 读取的是今天的窗口，而 dlt 对此的处理方式是丢弃状态。</p>
+<p>Brevis 提供的窗口来自 cron，所以三月的 run 无论重试多少次，得到的都是三月的窗口。dlt 会接受它：这些名称是 dlt 自己的，它会在去找 Airflow 之前先读取它们，而引擎会在每个调度的 run 上设置它们：</p>
+<div class="code-block" data-code="@dlt.resource(primary_key=&quot;id&quot;)
+def events(
+    updated_at=dlt.sources.incremental(
+        &quot;updated_at&quot;,
+        initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        allow_external_schedulers=True,   # this line is the whole integration
+    )
+):
+    yield from api.events(since=updated_at.start_value, until=updated_at.end_value)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>@dlt.resource(primary_key="id")
+<span class="t-k">def</span> events(
+    updated_at=dlt.sources.incremental(
+        "updated_at",
+        initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        allow_external_schedulers=<span class="t-k">True</span>,   <span class="t-c"># this line is the whole integration</span>
+    )
+):
+    <span class="t-k">yield</span> <span class="t-k">from</span> api.events(since=updated_at.start_value, until=updated_at.end_value)</code></pre></div>
+<p><code>allow_external_schedulers=True</code> 就是全部。<code>$DLT_INTERVAL_START</code> 和 <code>$DLT_INTERVAL_END</code> 成为 dlt 的 <code>initial_value</code> 和 <code>end_value</code>，两端都是半开区间：恰好落在起点上的行包含在内，恰好落在终点上的行不包含，这正是连续的 slot 既不留空缺也不重叠的原因。</p>
+<p>带有 <code>end_value</code> 的增量<strong>不会触及持久化的状态</strong>。这是关键所在：重新运行某一个 slot 是幂等的，对三月做 backfill 也不会移动夜间 run 所依赖的游标。</p>
+<p>在它生效之前，有两件事需要知道：</p>
+<ul><li><strong>游标必须是 datetime，而不是字符串。</strong> dlt 不会为比较而强制转换 <code>text</code> 类型的游标，并且会彻底拒绝加入调度器，抛出一个不太容易看出原因的 <code>JoinSchedulerError</code>。请在 resource 上转换它（<code>add_map</code>），或像上面那样为 <code>initial_value</code> 指定类型。</li><li><strong>没有调度的 workflow 不会提供任何东西</strong>，这时 dlt 会抛出 <code>ExternalSchedulerNotAvailable</code>，而不是悄悄回退到它自己的游标。如果一条 pipeline 需要两种方式都能工作，请不要开启 <code>allow_external_schedulers</code>，而是自己通过 <code>run.window()</code> 传入窗口。</li></ul>
+<p>在 step 上声明 <code>tools: [dlt]</code> 是另一回事，它只会在图上画出标签，无论是否声明，窗口都会被传入。</p>
+<h2 id="快照">快照<a class="anchor" href="#快照" aria-label="link">#</a></h2>
+<p>参数存储在 <strong>run 中</strong>，而不是在执行时从 workflow 读取。run 携带触发它时的输入，因此一月份某次执行的日志，即使默认值之后发生变化，仍会显示一月份的值。</p>
+<h2 id="下一步">下一步<a class="anchor" href="#下一步" aria-label="link">#</a></h2>
+<ul><li><a href="/zh/docs/configuration/">配置</a>：进程的环境变量</li><li><a href="/zh/docs/sdk/">SDK</a>：抓取器如何读取 run 的上下文</li><li><a href="/zh/docs/context/">step 之间的上下文</a>：step 为下一个 step 发布什么</li></ul>
+
+      <nav class="pagers" aria-label="页面">
+        <a class="pager pager-prev" href="/zh/docs/cli/"><span>上一页</span><strong>CLI</strong></a>
+        <a class="pager pager-next" href="/zh/docs/configuration/"><span>下一页</span><strong>配置</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/zh/docs/parameters.md" target="_blank" rel="noopener">在 GitHub 上编辑此页</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="本页内容">
+      <p class="toc-t">本页内容</p>
+      <ul><li class="toc-2"><a href="#声明">声明</a></li><li class="toc-2"><a href="#值列表">值列表</a></li><li class="toc-3"><a href="#在-step-中作为数组">在 step 中作为数组</a></li><li class="toc-3"><a href="#在界面中">在界面中</a></li><li class="toc-3"><a href="#在命令行中">在命令行中</a></li><li class="toc-2"><a href="#在命令中使用">在命令中使用</a></li><li class="toc-2"><a href="#在命令行中传递">在命令行中传递</a></li><li class="toc-2"><a href="#在-backfill-中">在 backfill 中</a></li><li class="toc-2"><a href="#在界面中">在界面中</a></li><li class="toc-2"><a href="#在-step-的环境中">在 step 的环境中</a></li><li class="toc-2"><a href="#自动参数">自动参数</a></li><li class="toc-3"><a href="#读取它们">读取它们</a></li><li class="toc-3"><a href="#在-dlt-中什么都不用读取">在 dlt 中，什么都不用读取</a></li><li class="toc-2"><a href="#快照">快照</a></li><li class="toc-2"><a href="#下一步">下一步</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/zh/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>哲学，应用于数据基础设施。</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>项目</h2>
+        <ul>
+          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/docs/philosophy/">原则</a></li>
+          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>代码</h2>
+        <ul>
+          <li><a href="/zh/docs/">文档</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">仓库</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>一个开源项目，作者： <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · 使用 Go 构建 · Go gopher 由 Renée French 绘制, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>
