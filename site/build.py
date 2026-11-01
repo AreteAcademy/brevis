@@ -595,10 +595,17 @@ def gerar(destino):
         # ---- páginas ----
         for idx, p in enumerate(paginas if tem_docs else []):
             ids = None if lang == PADRAO else ids_en.get(p["slug"])
+            if ids is not None:
+                # A page that has a section its English original lacks (or the
+                # other way round) cannot be matched heading by heading: every
+                # id after the difference would point at its neighbour. It keeps
+                # its own ids until the translation catches up.
+                _, previo = markdown(p["corpo"], s["ui"])
+                if len(previo) != len(ids):
+                    print("aviso: %s/%s tem %d títulos h2/h3 e o inglês %d; fica com ids próprios até a tradução alcançar"
+                          % (lang, p["slug"], len(previo), len(ids)), file=sys.stderr)
+                    ids = None
             corpo_html, sumario = markdown(p["corpo"], s["ui"], ids)
-            if ids is not None and len(sumario) != len(ids):
-                print("aviso: %s/%s tem %d títulos h2/h3 e o inglês %d; os ids sobrantes saem do título"
-                      % (lang, p["slug"], len(sumario), len(ids)), file=sys.stderr)
             # O autor escreve sempre "/docs/x/"; o idioma que não fica na raiz
             # recebe o prefixo aqui, para que a mesma frase sirva aos dois.
             if pfx:
