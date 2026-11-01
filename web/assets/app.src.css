@@ -131,13 +131,13 @@
      each other sharing one colour -- the site's background WAS the
      console's ink -- so somebody arriving from the page that sells this
      found what looked like another product. */
-  --color-parchment: #141711;
-  --color-parchment-soft: #1f2419;
-  --color-surface: #1a1e15;
-  --color-ink: #ecefe4;
-  --color-muted: #a3ad97;
-  --color-line: #38412b;
-  --color-line-soft: #262b1e;
+  --color-parchment: #0d1117;
+  --color-parchment-soft: #1c2128;
+  --color-surface: #161b22;
+  --color-ink: #e6edf3;
+  --color-muted: #a3abb5;
+  --color-line: #30363d;
+  --color-line-soft: #21262d;
   --color-gold: #7d8e50;
   --color-gold-strong: #c7d66d;
   --color-gold-wash: #c7d66d1f;
@@ -147,7 +147,7 @@
   --color-accent: var(--color-gold);
   --color-accent-strong: var(--color-gold-strong);
   --color-accent-wash: var(--color-gold-wash);
-  --color-line-strong: #4a553a;
+  --color-line-strong: #484f58;
 
   /* THE ROLES THE REDESIGN ADDS, AND NOT ONE OF THEM IS A COLOUR.
 
@@ -210,14 +210,14 @@
      the large-text and graphic threshold, not the body-text one -- and
      nothing said so, because nothing had ever measured one. The test beside
      this file does now, and it is what chose these. */
-  --color-state-success: #8fd49e;
-  --color-state-failed: #ff9c92;
-  --color-state-running: #93c5f0;
-  --color-state-queued: #e8c56b;
-  --color-state-retrying: #f0ab73;
-  --color-state-canceled: #a8b0a2;
-  --color-state-pending: #a3aa9c;
-  --color-state-skipped: #d0b0e4;
+  --color-state-success: #3fb950;
+  --color-state-failed: #f85149;
+  --color-state-running: #58a6ff;
+  --color-state-queued: #d29922;
+  --color-state-retrying: #db6d28;
+  --color-state-canceled: #8b949e;
+  --color-state-pending: #8b949e;
+  --color-state-skipped: #a371f7;
 
   /* What a step runs in. Each is the language's own convention, because the
      colour is what makes the chip readable before anybody reads the label.
