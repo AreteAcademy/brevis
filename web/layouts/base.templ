@@ -164,11 +164,18 @@ templ Base(p Page) {
 					// A FILL PAGE DRAWS NO PAGE HEADER: its panes take the height,
 					// and the breadcrumb already says where it is.
 					if !p.Fill {
-					<header data-page-header class="px-3 pt-4 pb-3 min-[860px]:px-6 min-[860px]:pt-5">
-						<div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+					// ONE HEADER, ONE HEIGHT. The title sits at the same place on every
+					// page: the row is always at least a button tall and centres what
+					// is in it, so a page with actions and one without put the title on
+					// the same line; the eyebrow lives in the top padding, so having
+					// one does not push the title down; and the content always begins
+					// the same distance below. A page's intro line is the content's
+					// first block, not a negative margin that reaches back up.
+					<header data-page-header class="relative px-3 pt-5 pb-2 min-[860px]:px-6 min-[860px]:pt-6">
+						<div class="flex min-h-8 flex-wrap items-center justify-between gap-x-6 gap-y-3">
 							<div class="min-w-0">
 								if p.Eyebrow != nil {
-									<div class="mb-1.5 flex flex-wrap items-center gap-2">
+									<div class="absolute top-1 left-3 flex flex-wrap items-center gap-2 min-[860px]:top-1.5 min-[860px]:left-6">
 										@p.Eyebrow
 									</div>
 								}

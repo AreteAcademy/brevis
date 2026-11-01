@@ -21,7 +21,7 @@ import (
 templ Workflows(v WorkflowsScreen) {
 	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "nav.workflows"), Active: "workflows", Actions: workflowsActions()}) {
 		@howToCreate()
-		<p class="-mt-2 mb-4 max-w-3xl text-[13.5px] text-muted">
+		<p class="mb-4 max-w-3xl text-[13.5px] text-muted">
 			// One line: a line break between two pieces is a space, and the
 			// sentence's colon would stand apart from its words.
 			{ i18n.T(ctx, "workflows.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "workflows.lead.strong") }</strong>{ i18n.T(ctx, "workflows.lead.after") } <a href="/runs" class="text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.lead.run") }</a>.
@@ -526,7 +526,7 @@ type WorkflowStats struct {
 // line below it said between them.
 templ workflowMeta(p WorkflowPage) {
 	{{ w, sum := p.Def, p.Sum }}
-	<p data-workflow-meta class="mb-3 -mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
+	<p data-workflow-meta class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
 		if sum != nil && sum.HasSchedule {
 			if sum.Active {
 				<span class="inline-flex items-center gap-1.5 text-state-success"><span class="h-[7px] w-[7px] rounded-full bg-state-success"></span>{ i18n.T(ctx, "workflow.active") }</span>

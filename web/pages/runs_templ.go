@@ -138,7 +138,7 @@ func Runs(s RunsScreen) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div data-runs-screen class=\"-mx-3 -mb-10 flex min-h-0 flex-1 flex-col min-[860px]:-mx-6 min-[1001px]:flex-row\"><aside data-runs-list class=\"flex max-h-[300px] shrink-0 flex-col border-b border-line min-[1001px]:max-h-none min-[1001px]:w-[340px] min-[1001px]:border-r min-[1001px]:border-b-0\"><div class=\"flex items-center justify-between gap-3 px-4 pt-4 pb-2\"><h1 class=\"text-[20px] leading-tight font-semibold tracking-[-0.018em] text-ink\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div data-runs-screen class=\"-mx-3 -mb-10 flex min-h-0 flex-1 flex-col min-[860px]:-mx-6 min-[1001px]:flex-row\"><aside data-runs-list class=\"flex max-h-[300px] shrink-0 flex-col border-b border-line min-[1001px]:max-h-none min-[1001px]:w-[340px] min-[1001px]:border-r min-[1001px]:border-b-0\"><div class=\"flex min-h-16 items-center justify-between gap-3 px-4 pt-6 pb-2\"><h1 class=\"text-[20px] leading-tight font-semibold tracking-[-0.018em] text-ink\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -180,7 +180,7 @@ func Runs(s RunsScreen) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></aside><section id=\"run-pane\" class=\"@container min-h-0 min-w-0 flex-1 overflow-y-auto px-3 pt-4 pb-10 min-[860px]:px-6\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></aside><section id=\"run-pane\" class=\"@container min-h-0 min-w-0 flex-1 overflow-y-auto px-3 pt-6 pb-10 min-[860px]:px-6\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

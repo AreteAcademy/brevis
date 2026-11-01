@@ -677,7 +677,7 @@ templ RunDetail(p RunPage) {
 		// It exists because a page that refreshes silently is a page nobody
 		// trusts: an operator who does not know it is live presses F5 anyway,
 		// which is the behaviour this whole change is meant to remove.
-		<p id="live-indicator" class="mb-3 -mt-3 hidden items-center gap-1.5 text-[0.7rem] text-muted">
+		<p id="live-indicator" class="mb-3 hidden items-center gap-1.5 text-[0.7rem] text-muted">
 			<span class="h-1.5 w-1.5 rounded-full bg-state-running"></span>
 			<span data-live-label>{ i18n.T(ctx, "run.live.following") }</span>
 		</p>
@@ -1494,7 +1494,7 @@ func openNote(i postgres.Indicators) string {
 // key are ahead of it. Drawn only when WaitingOn proved it -- a run waiting on
 // a dispatcher slot, --max-pods or a retry's backoff gets no line at all.
 templ waitLine(w *postgres.Wait) {
-	<p class="mb-3 -mt-2 text-xs text-muted" data-wait>
+	<p class="mb-3 text-xs text-muted" data-wait>
 		<span class="text-state-queued">{ i18n.T(ctx, "run.wait.for") }</span>
 		if w.Group != "" {
 			{ i18n.T(ctx, "run.wait.group") } <code class="font-mono text-ink">{ w.Group }</code>

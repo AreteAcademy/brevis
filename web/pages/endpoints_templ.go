@@ -55,7 +55,7 @@ func Endpoints(v EndpointsView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"-mt-2 mb-3 max-w-3xl text-[13.5px] text-muted\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"mb-3 max-w-3xl text-[13.5px] text-muted\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1489,14 +1489,14 @@ func Endpoint(v EndpointView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if v.About != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "<p class=\"-mt-1 max-w-3xl text-[13.5px] whitespace-pre-line text-ink-2\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "<p class=\"max-w-3xl text-[13.5px] whitespace-pre-line text-ink-2\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var79 string
 				templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(v.About)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/endpoints.templ`, Line: 292, Col: 86}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/endpoints.templ`, Line: 292, Col: 80}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
 				if templ_7745c5c3_Err != nil {
