@@ -402,9 +402,12 @@ type Limiter interface {
 
 // Source describes where and how to extract.
 type Source struct {
-	URL          string    // required
-	Method       string    // default: GET
-	Body         io.Reader // for POST/PUT
+	URL    string // required
+	Method string // default: GET
+	// Body is for POST/PUT. A *bytes.Reader or *strings.Reader is read (and
+	// Seek-rewound between attempts) once: do not share one between extractions
+	// that run concurrently, the Seek would race.
+	Body         io.Reader
 	Header       map[string][]string
 	Timeout      time.Duration // per attempt; default: 30s
 	TotalTimeout time.Duration // total; default: 5 minutes

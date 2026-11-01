@@ -142,21 +142,28 @@ func Build(ctx context.Context, d dialect.Dialect, conn dialect.Conn,
 		if err != nil {
 			return res, err
 		}
-		// A DROP AND ITS CREATE ARE ONE UNIT where the warehouse can make
-		// them one (dialect.Atomic): otherwise a CREATE that fails or runs
-		// long leaves the old table gone for whatever reads it.
+		// WHAT MUST COMMIT TOGETHER RUNS AS ONE UNIT where the warehouse can
+		// make it one (dialect.Atomic): otherwise a failure between a DROP
+		// and its replacement leaves the old table gone for whatever reads
+		// it. A dialect that builds the new table aside says how many
+		// trailing statements are the swap (dialect.Swapper); the build
+		// before it runs outside the transaction, so the lock the swap takes
+		// is held for the rename and not for the whole CREATE TABLE AS.
 		if at, ok := conn.(dialect.Atomic); ok && len(stmts) > 1 {
-			if failed, err := at.ExecAtomic(ctx, stmts); err != nil {
-				return res, fmt.Errorf("%s: the warehouse refused this:\n%s\n\n%w", ref, stmts[failed], err)
+			tail := len(stmts)
+			if sw, ok := d.(dialect.Swapper); ok {
+				tail = sw.SwapTail(stmts)
 			}
-			stmts = nil
-		}
-		// A DROP AND ITS CREATE ARE ONE UNIT where the warehouse can make
-		// them one (dialect.Atomic): otherwise a CREATE that fails or runs
-		// long leaves the old table gone for whatever reads it.
-		if at, ok := conn.(dialect.Atomic); ok && len(stmts) > 1 {
-			if failed, err := at.ExecAtomic(ctx, stmts); err != nil {
-				return res, fmt.Errorf("%s: the warehouse refused this:\n%s\n\n%w", ref, stmts[failed], err)
+			pre := stmts[:len(stmts)-tail]
+			for _, s := range pre {
+				if err := conn.Exec(ctx, s); err != nil {
+					abandon(ctx, conn, pre)
+					return res, fmt.Errorf("%s: the warehouse refused this:\n%s\n\n%w", ref, s, err)
+				}
+			}
+			if failed, err := at.ExecAtomic(ctx, stmts[len(pre):]); err != nil {
+				abandon(ctx, conn, pre)
+				return res, fmt.Errorf("%s: the warehouse refused this:\n%s\n\n%w", ref, stmts[len(pre)+failed], err)
 			}
 			stmts = nil
 		}
@@ -247,4 +254,15 @@ func asInt(v any) int64 {
 		return out
 	}
 	return 0
+}
+
+// abandon removes what a failed build left aside. The first statement of the
+// part built before the swap is the one that clears the scratch table, so it
+// is also the cleanup; it runs detached from ctx because a cancelled or
+// timed-out build is exactly when the scratch table has to go. Best effort:
+// the next build begins with the same statement.
+func abandon(ctx context.Context, conn dialect.Conn, pre []string) {
+	if len(pre) > 0 {
+		_ = conn.Exec(context.WithoutCancel(ctx), pre[0])
+	}
 }

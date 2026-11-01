@@ -64,30 +64,40 @@ func TestAViewOverATableDropsTheTableFirst(t *testing.T) {
 	}
 }
 
-// A table is rebuilt from its query every time: dropped, then CREATE TABLE AS.
-func TestATableIsDroppedAndRecreated(t *testing.T) {
+// A table is rebuilt from its query every time, BUILT ASIDE: a leftover
+// scratch table is cleared, CREATE TABLE AS fills ref__new, then the old is
+// dropped and the new renamed -- the last two being the swap (SwapTail).
+func TestATableIsBuiltAsideAndSwapped(t *testing.T) {
 	got, err := Dialect{}.Build(tableModel(), dialect.State{Current: dialect.Table})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("%d statements, wanted two:\n%s", len(got), joined(got))
+	want := []string{
+		"DROP TABLE IF EXISTS marts.orders__new",
+		"CREATE TABLE marts.orders__new AS",
+		"DROP TABLE IF EXISTS marts.orders",
+		"ALTER TABLE marts.orders__new RENAME TO orders",
 	}
-	if !strings.HasPrefix(got[0], "DROP TABLE IF EXISTS marts.orders") {
-		t.Errorf("first statement:\n%s", got[0])
+	if len(got) != len(want) {
+		t.Fatalf("%d statements, wanted four:\n%s", len(got), joined(got))
 	}
-	if !strings.HasPrefix(got[1], "CREATE TABLE marts.orders AS") {
-		t.Errorf("second statement:\n%s", got[1])
+	for i := range want {
+		if !strings.HasPrefix(got[i], want[i]) {
+			t.Errorf("statement %d:\n%s\nwanted it to start with %s", i, got[i], want[i])
+		}
+	}
+	if n := (Dialect{}).SwapTail(got); n != 2 {
+		t.Errorf("the swap is the last 2 statements, SwapTail says %d", n)
 	}
 }
 
-func TestATableOverAViewDropsTheViewFirst(t *testing.T) {
+func TestATableOverAViewDropsTheViewInTheSwap(t *testing.T) {
 	got, err := Dialect{}.Build(tableModel(), dialect.State{Current: dialect.View})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 || !strings.HasPrefix(got[0], "DROP VIEW IF EXISTS marts.orders") {
-		t.Fatalf("wanted the view dropped first:\n%s", joined(got))
+	if len(got) != 4 || !strings.HasPrefix(got[2], "DROP VIEW IF EXISTS marts.orders") {
+		t.Fatalf("wanted the view dropped in the swap:\n%s", joined(got))
 	}
 }
 

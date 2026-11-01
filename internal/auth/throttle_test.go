@@ -190,3 +190,27 @@ func TestLimiterAllowsOneHashPerSource(t *testing.T) {
 	}
 	close(release)
 }
+
+func TestSharedKeyLockoutIsCappedAndTheDefaultIsNot(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		cap  time.Duration
+		want time.Duration
+	}{
+		{"shared key", SharedKeyMaxLock, SharedKeyMaxLock},
+		{"header set (default)", 0, maxLock},
+	} {
+		now := time.Unix(1000, 0)
+		l := NewLimiter()
+		l.MaxLock = c.cap
+		l.now = func() time.Time { return now }
+		for i := 0; i < freeFailures+30; i++ { // far past the doubling ceiling
+			l.Do(ctx, "a", func() bool { return false })
+			now = now.Add(maxLock) // lock over, failures not yet forgotten
+		}
+		now = now.Add(-maxLock) // back to the last failure
+		if got := l.fails["a"].until.Sub(now); got != c.want {
+			t.Errorf("%s: lock %v, want %v", c.name, got, c.want)
+		}
+	}
+}
