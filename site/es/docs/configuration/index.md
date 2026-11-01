@@ -20,10 +20,15 @@ a mitad de ejecución es un proceso cuyo comportamiento nadie puede reproducir.
 
 | variable | valor por defecto | |
 |---|---|---|
-| `BREVIS_ENV` | `local` | `local` registra logs en texto y deja la interfaz abierta; cualquier otro valor exige credenciales y registra JSON |
+| `BREVIS_ENV` | `production` | `local` registra logs en texto y deja la interfaz abierta; cualquier otro valor, incluso si no está definida, exige credenciales y registra JSON. Define `BREVIS_ENV=local` para desarrollo |
 | `BREVIS_HTTP_ADDR` | `:8080` | dirección de escucha |
 | `BREVIS_LOG_LEVEL` | `info` | |
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | entero; un valor no numérico es un error de arranque |
+| `BREVIS_DB_MAX_CONNS` | driver_dd | límite del pool de Postgres de cada proceso; un valor no numérico o negativo es un error de arranque |
+| `BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS` | `0` (desactivado) | solo la consola (`brevis serve`): Postgres aborta cualquiera de sus sentencias que dure más, para que una consulta de listado desbocada no retenga una conexión. `30` es el valor recomendado donde el pool acepta parámetros de inicio; está desactivado por defecto porque un PgBouncer en modo transaction rechaza la conexión en caso contrario. Se envía como parámetro de inicio de la conexión, así que un PgBouncer en modo transaction necesita `ignore_startup_parameters = statement_timeout` |
+| `BREVIS_RETENTION_TRIM_DAYS` | `0` (desactivado) | limpieza programada opcional, ejecutada por `brevis scheduler`: vacía el log, las fases y la salida de los runs más antiguos que este valor. Mismo efecto que `brevis prune --trim-after`. `0` = el scheduler nunca limpia |
+| `BREVIS_RETENTION_PURGE_DAYS` | `0` (nunca) | junto con el anterior, también elimina los runs más antiguos que este valor. Debe ser como mínimo el valor de trim |
+| `BREVIS_RETENTION_INTERVAL_HOURS` | `24` | con qué frecuencia se ejecuta la limpieza programada (una vez al arrancar, y después cada N horas) |
 | `BREVIS_BRAND_FILE` | `brand.yaml` | branding; ausente = valor por defecto |
 | `BREVIS_UI_URL` | — | base del enlace al run en las alertas |
 | `BREVIS_METRICS_ADDR` | — | puerto de métricas de Prometheus; vacío = no se expone. Ver [Observabilidad](/es/docs/observability/index.md) |
@@ -38,6 +43,12 @@ a mitad de ejecución es un proceso cuyo comportamiento nadie puede reproducir.
 | `BREVIS_AUTH_SECRET` | 32+ bytes para firmar la sesión (`openssl rand -base64 48`) |
 
 Las tres van juntas, o ninguna.
+
+| variable | valor por defecto | |
+|---|---|---|
+| `BREVIS_AUTH_CLIENT_IP_HEADER` | — | cabecera que tu proxy rellena con la dirección del cliente, p. ej. `X-Forwarded-For`. Se usa la **última** entrada (la que añadió tu proxy). Vacío = la dirección de la conexión |
+
+El inicio de sesión se limita por dirección de cliente (IPv6 por su /64): tras tres fallos la dirección se bloquea 2 segundos, y el tiempo se duplica hasta 15 minutos. **Detrás de un ingress o balanceador, define la variable** (el chart de Helm lo hace cuando `api.ingress.enabled` está activo; se sobrescribe con `auth.clientIPHeader`): sin ella todos los clientes comparten la dirección del proxy, así que una persona que adivine contraseñas bloquearía a todos. En ese caso, fuera de `BREVIS_ENV=local`, el bloqueo se limita a 30 segundos y se registra una advertencia al arrancar. Define la variable solo si la cabecera la escribe un proxy de confianza y el cliente no puede falsificarla. Solo se ejecuta una comprobación de contraseña por dirección a la vez, así que dos personas detrás de un mismo NAT que inicien sesión en el mismo segundo pueden ver un 429 por un instante.
 
 :::danger A medio configurar es un error de arranque
 Quien rellenó el nombre de usuario cree que la puerta está cerrada. La interfaz

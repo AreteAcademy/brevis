@@ -20,10 +20,15 @@ slug: configuration
 
 | 변수 | 기본값 | |
 |---|---|---|
-| `BREVIS_ENV` | `local` | `local`은 텍스트로 로그를 남기고 인터페이스를 열어 둡니다. 그 외의 값은 자격 증명이 필요하며 JSON으로 로그를 남깁니다 |
+| `BREVIS_ENV` | `production` | `local`은 텍스트로 로그를 남기고 인터페이스를 열어 둡니다. 그 외의 값(설정하지 않은 경우 포함)은 자격 증명이 필요하며 JSON으로 로그를 남깁니다. 개발 시에는 `BREVIS_ENV=local`을 설정하세요 |
 | `BREVIS_HTTP_ADDR` | `:8080` | 수신 주소 |
 | `BREVIS_LOG_LEVEL` | `info` | |
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | 정수. 숫자가 아닌 값은 부팅 오류입니다 |
+| `BREVIS_DB_MAX_CONNS` | 드라이버 기본값, `max(4, CPUs)` | 각 프로세스의 Postgres 풀 상한. 숫자가 아니거나 음수인 값은 부팅 오류입니다 |
+| `BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS` | `0` (꺼짐) | 콘솔(`brevis serve`) 전용입니다. 실행 시간이 더 길어지는 구문은 Postgres가 중단시켜, 폭주한 목록 쿼리가 연결을 붙잡지 못하게 합니다. 풀이 시작 매개변수를 받는 환경에서는 `30`을 권장합니다. 트랜잭션 모드의 PgBouncer는 그렇지 않으면 연결을 거부하므로 기본값은 꺼짐입니다. 연결 시작 매개변수로 전달되므로, 트랜잭션 모드의 PgBouncer에는 `ignore_startup_parameters = statement_timeout`이 필요합니다 |
+| `BREVIS_RETENTION_TRIM_DAYS` | `0` (꺼짐) | 선택적으로 켜는 예약 prune으로, `brevis scheduler`가 실행합니다. 이 값보다 오래된 run의 로그, 단계, 출력을 비웁니다. `brevis prune --trim-after`와 효과가 같습니다. `0` = scheduler는 prune하지 않습니다 |
+| `BREVIS_RETENTION_PURGE_DAYS` | `0` (안 함) | 위 변수와 함께 쓰면 이 값보다 오래된 run도 삭제합니다. trim 값 이상이어야 합니다 |
+| `BREVIS_RETENTION_INTERVAL_HOURS` | `24` | 예약 prune을 실행하는 주기(시작할 때 한 번, 이후 N시간마다) |
 | `BREVIS_BRAND_FILE` | `brand.yaml` | 브랜딩. 없으면 기본값을 사용합니다 |
 | `BREVIS_UI_URL` | — | 알림에 들어가는 run 링크의 기준 주소 |
 | `BREVIS_METRICS_ADDR` | — | Prometheus 메트릭 포트. 비어 있으면 노출하지 않습니다. [관측성](/docs/observability/)을 참고하세요 |
@@ -38,6 +43,12 @@ slug: configuration
 | `BREVIS_AUTH_SECRET` | 세션 서명용 32바이트 이상(`openssl rand -base64 48`) |
 
 세 변수는 함께 설정하거나 모두 설정하지 않아야 합니다.
+
+| 변수 | 기본값 | |
+|---|---|---|
+| `BREVIS_AUTH_CLIENT_IP_HEADER` | — | 프록시가 클라이언트 주소를 담아 설정하는 헤더. 예: `X-Forwarded-For`. **마지막** 항목(프록시가 덧붙인 항목)을 사용합니다. 비어 있으면 = 연결의 주소 |
+
+로그인은 클라이언트 주소별로(IPv6는 /64 기준) 제한됩니다. 세 번 실패하면 해당 주소가 2초 동안 잠기고, 잠금 시간은 최대 15분까지 두 배씩 늘어납니다. **ingress나 로드 밸런서 뒤에서는 이 변수를 설정하세요**(`api.ingress.enabled`가 켜져 있으면 Helm chart가 설정하며, `auth.clientIPHeader`로 덮어쓸 수 있습니다). 설정하지 않으면 모든 클라이언트가 프록시의 주소를 공유하므로, 한 사람이 비밀번호를 추측하는 것만으로 모두가 잠깁니다. 이 경우 `BREVIS_ENV=local`이 아니면 잠금은 30초로 제한되고 부팅 시 경고가 로그에 남습니다. 헤더를 신뢰할 수 있는 프록시가 기록하고 클라이언트가 위조할 수 없는 경우에만 이 변수를 설정하세요. 주소당 비밀번호 확인은 한 번에 하나만 실행되므로, 같은 NAT 뒤의 두 사람이 같은 초에 로그인하면 잠시 429가 보일 수 있습니다.
 
 :::danger 일부만 구성하면 부팅 오류입니다
 사용자 이름을 채운 사람은 문이 잠겼다고 믿습니다. 인터페이스는 파이프라인을
