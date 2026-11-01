@@ -148,11 +148,15 @@ templ RunsList(s RunsScreen) {
 		}
 	</div>
 	if len(s.Runs) == 0 {
-		if f.Active() {
-			@components.Empty(i18n.T(ctx, "runs.none"), "")
-		} else {
-			@components.Empty(i18n.T(ctx, "runs.empty"), "brevis scheduler")
-		}
+		// The same empty box every screen draws, held in the column's own
+		// margins: it was flush against the column's edges.
+		<div class="px-4 pt-2 pb-4">
+			if f.Active() {
+				@components.Empty(i18n.T(ctx, "runs.none"), "")
+			} else {
+				@components.Empty(i18n.T(ctx, "runs.empty"), "brevis scheduler")
+			}
+		</div>
 	} else {
 		<nav aria-label={ i18n.T(ctx, "runs.title") } class="border-t border-line-soft">
 			for _, r := range s.Runs {
