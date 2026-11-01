@@ -440,7 +440,8 @@ func (u *UI) stream(w http.ResponseWriter, r *http.Request) {
 	u.render(w, r, pages.StreamPage(v))
 }
 
-// dataEndpoints is Data → Endpoints.
+// dataEndpoints is Data → Endpoints: every published endpoint, judged by the
+// catalog's read of the tables it reads.
 func (u *UI) dataEndpoints(w http.ResponseWriter, r *http.Request) {
 	var all []postgres.PublishedEndpoint
 	if u.endpoints != nil {
@@ -450,7 +451,20 @@ func (u *UI) dataEndpoints(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	u.render(w, r, pages.Endpoints(pages.BuildEndpoints(all).Search(r.URL.Query().Get("q"))))
+	var entries []postgres.CatalogEntry
+	if u.catalog != nil && len(all) > 0 {
+		var err error
+		if entries, err = u.catalog.Catalog(r.Context()); err != nil {
+			u.failure(w, r, err)
+			return
+		}
+	}
+	v := pages.BuildEndpoints(all, entries, pages.EndpointFilter{Q: r.URL.Query().Get("q")}, time.Now())
+	if fragment(r) == "answer" {
+		u.render(w, r, pages.EndpointsList(v))
+		return
+	}
+	u.render(w, r, pages.Endpoints(v))
 }
 
 // dataEndpoint is one endpoint's page.
@@ -903,7 +917,7 @@ func (u *UI) palette(w http.ResponseWriter, r *http.Request) {
 			u.failure(w, r, err)
 			return
 		}
-		for _, row := range pages.BuildEndpoints(all).Rows {
+		for _, row := range pages.BuildEndpoints(all, nil, pages.EndpointFilter{}, time.Now()).Rows {
 			items = append(items, paletteEntry("Endpoints", row.Path, row.API, row.Href(), "plug"))
 		}
 	}

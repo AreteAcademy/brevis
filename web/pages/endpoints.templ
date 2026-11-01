@@ -6,97 +6,184 @@ import (
 	"strings"
 
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/AreteAcademy/brevis/web/layouts"
 )
 
+// Endpoints is Data → Endpoints (screen-endpoints): metrics published as an
+// HTTP API -- read-only SQL over warehouse tables, a tenant per key, a cache
+// that follows the data -- each judged by the tables it reads.
 templ Endpoints(v EndpointsView) {
-	@layouts.Base(layouts.Page{Title: "Endpoints", Kicker: "Data", Active: "endpoints"}) {
-		<p class="mb-3 max-w-3xl text-sm text-ink-2">
-			What each published brevis-sql-api serves: declared, read-only SQL over HTTP, cached until a model it reads is rebuilt. Traffic is on each API's /metrics.
+	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "endpoints.title"), Crumb: i18n.T(ctx, "nav.endpoints"), Active: "endpoints"}) {
+		<p class="-mt-2 mb-3 max-w-3xl text-[13.5px] text-muted">
+			{ i18n.T(ctx, "endpoints.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "endpoints.lead.strong") }</strong>{ i18n.T(ctx, "endpoints.lead.after") }
 		</p>
-		if len(v.Rows) == 0 {
-			@components.Empty("No endpoint published yet.",
-				"Run brevis-sql-api describe --out manifest.json, then brevis endpoints publish manifest.json. See docs/ENDPOINTS.md.")
-		} else {
-			<form method="get" action="/data/endpoints" role="search" class="mb-3 w-full sm:w-80">
-				@components.SearchInput("q", v.Q, "Search paths, APIs or models", "endpoint-rows")
-			</form>
-			<div data-filter-scope class="overflow-hidden rounded-card border border-line bg-surface">
-				<div data-filter-empty class="px-6 py-10 text-center text-sm text-muted" hidden?={ v.Shown() > 0 }>
-					Nothing matches this search.
-					<a href="/data/endpoints" class="ml-1 text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">Show every endpoint</a>
-				</div>
-				<div class="overflow-x-auto">
-					<table class="ct w-full text-[0.82rem]">
-						<thead>
-							<tr class="border-b border-line bg-canvas-subtle text-left">
-								@th("Endpoint", "pl-4")
-								@th("API", "")
-								@th("Parameters", "")
-								@th("Reads", "")
-								@th("Published", "pr-4")
-							</tr>
-						</thead>
-						<tbody id="endpoint-rows" class="divide-y divide-line-soft">
-							for _, r := range v.Rows {
-								@endpointRow(r)
-							}
-						</tbody>
-					</table>
-				</div>
-				@components.TableFoot(v.Shown(), len(v.Rows), "endpoints")
+		if v.Total > 0 {
+			<div data-endpoints-summary class="mb-4 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-[13px] text-muted">
+				<span>{ i18n.N(ctx, "endpoints.summary.endpoints", v.Total) }</span>
+				<span>{ i18n.N(ctx, "endpoints.summary.apis", v.APIs) }</span>
+				if v.Fresh > 0 {
+					<span class="inline-flex items-baseline gap-1.5">
+						@components.FreshnessMark("on_time")
+						{ i18n.N(ctx, "endpoints.summary.fresh", v.Fresh) }
+					</span>
+				}
+				if v.Stale > 0 {
+					<span class="inline-flex items-baseline gap-1.5">
+						@components.FreshnessMark("stale")
+						{ i18n.N(ctx, "endpoints.summary.stale", v.Stale) }
+					</span>
+				}
+				for _, c := range v.Caches {
+					<span class="text-faint">{ i18n.T(ctx, "endpoints.summary.cache", "type", c) }</span>
+				}
+				for _, c := range v.Connections {
+					<span class="text-faint">{ i18n.T(ctx, "endpoints.summary.connection", "name", c) }</span>
+				}
 			</div>
+			// THE BOX ANSWERS WHILE SOMEBODY TYPES, as the other lists'.
+			<form method="get" action="/data/endpoints" role="search" data-swap="endpoints-list" data-swap-typing class="mb-3 w-full sm:w-96">
+				@components.SearchInput("q", v.Filter.Q, i18n.T(ctx, "endpoints.search"), "")
+			</form>
 		}
+		<div id="endpoints-list">
+			@EndpointsList(v)
+		</div>
+		@endpointsHow()
 	}
 }
 
-// endpointRow is one endpoint in the index. The whole row goes to its page;
-// the path is a real link too, for the keyboard and for no script. A
-// required parameter is drawn in ink and an optional one muted, which is the
-// difference a caller needs before opening the page.
-templ endpointRow(r EndpointRow) {
-	<tr
-		data-filter-row
-		data-filter-text={ r.SearchText() }
-		data-href={ r.Href() }
-		hidden?={ r.Hidden }
-		class="cursor-pointer align-top transition-colors hover:bg-surface-2"
-	>
-		<td class="min-w-[14rem] px-3 py-2.5 pl-4">
-			<div class="flex items-center gap-2">
-				@components.MethodPill("GET")
-				<a href={ templ.SafeURL(r.Href()) } class="font-mono text-[0.8rem] text-ink hover:underline">{ r.Path }</a>
+// EndpointsList is the table and its empty states: the part the search
+// redraws.
+templ EndpointsList(v EndpointsView) {
+	if len(v.Rows) == 0 {
+		<div class="rounded-card border border-dashed border-line px-6 py-12 text-center">
+			if v.Total > 0 {
+				<p class="text-sm text-muted">{ i18n.T(ctx, "endpoints.empty.filtered") }</p>
+				<a href="/data/endpoints" class="mt-2 inline-block text-xs text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "workflows.clear") }</a>
+			} else {
+				<p class="text-sm text-muted">{ i18n.T(ctx, "endpoints.empty") }</p>
+				<p class="mt-1 font-mono text-xs text-faint">brevis endpoints publish manifest.json</p>
+			}
+		</div>
+	} else {
+		<div class="overflow-hidden rounded-card border border-line bg-surface">
+			<div class="overflow-x-auto">
+				<table id="endpoint-rows" class="ct w-full text-[13px]">
+					<thead>
+						<tr class="border-b border-line text-left text-[11.5px] font-medium text-muted">
+							<th class="px-2.5 py-2 pl-4 font-medium">{ i18n.T(ctx, "endpoints.col.endpoint") }</th>
+							<th class="px-2.5 py-2 font-medium max-[1280px]:hidden">{ i18n.T(ctx, "endpoints.col.api") }</th>
+							<th class="px-2.5 py-2 font-medium max-[960px]:hidden">{ i18n.T(ctx, "endpoints.col.reads") }</th>
+							<th class="px-2.5 py-2 font-medium max-[1180px]:hidden">{ i18n.T(ctx, "endpoints.col.cache") }</th>
+							<th class="px-2.5 py-2 font-medium max-[1180px]:hidden">{ i18n.T(ctx, "endpoints.col.params") }</th>
+							<th class="px-2.5 py-2 font-medium">{ i18n.T(ctx, "endpoints.col.status") }</th>
+							<th class="px-2.5 py-2 font-medium max-[1280px]:hidden">{ i18n.T(ctx, "endpoints.col.published") }</th>
+							<th class="w-8 px-2.5 py-2 pr-4"></th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-line-soft">
+						for _, r := range v.Rows {
+							@endpointRow(v, r)
+						}
+					</tbody>
+				</table>
 			</div>
-			if !r.Keyed {
-				<span class="mt-1 block text-[0.72rem] text-muted">the same rows for every key</span>
+		</div>
+	}
+}
+
+// endpointRow is one endpoint: what it is, the table it reads and when that
+// was rebuilt, how long an answer is cached, its parameters, how its data
+// stands and when it was published. The whole row opens its page; the path
+// is a real link for the keyboard and no script.
+templ endpointRow(v EndpointsView, r EndpointRow) {
+	<tr data-href={ r.Href() } class="cursor-pointer align-top transition-colors hover:bg-hover">
+		<td class="px-2.5 py-3 pl-4">
+			<a href={ templ.SafeURL(r.Href()) } class="inline-flex items-center gap-2 font-mono text-[13px]">
+				@components.MethodPill("GET")
+				<span class="font-medium text-ink">{ r.Path }</span>
+			</a>
+			if r.About != "" {
+				<p class="mt-1 max-w-[22rem] truncate text-[12px] text-muted" title={ r.About }>{ r.About }</p>
 			}
 		</td>
-		<td class="px-3 py-2.5 font-mono text-[0.78rem] whitespace-nowrap text-ink-2">{ r.API }</td>
-		<td class="px-3 py-2.5 font-mono text-[0.75rem]">
-			if len(r.Params) == 0 {
-				<span class="text-faint">none</span>
-			}
-			for i, p := range r.Params {
-				if i > 0 {
-					<span class="text-faint">, </span>
-				}
-				if r.Required[p] {
-					<span class="text-ink" title="required">{ p }</span>
-				} else {
-					<span class="text-muted">{ p }</span>
-				}
-			}
+		<td class="px-2.5 py-3 max-[1280px]:hidden">
+			<span class="rounded-card border border-line px-1.5 py-px font-mono text-[11.5px] text-ink-2">{ r.API }</span>
 		</td>
-		<td class="px-3 py-2.5">
+		<td class="px-2.5 py-3 max-[960px]:hidden">
 			if len(r.Reads) > 0 {
-				<a href={ templ.SafeURL(TargetHref(r.Reads[0])) } class="font-mono text-[0.75rem] break-all text-ink hover:underline">{ r.Reads[0] }</a>
-				if len(r.Reads) > 1 {
-					<span class="ml-1 text-[0.72rem] text-muted" title={ strings.Join(r.Reads[1:], "\n") }>{ fmt.Sprintf("+%d", len(r.Reads)-1) }</span>
-				}
+				{{ where, what := splitDestination(r.Reads[0]) }}
+				<div class="min-w-0 max-w-[18rem]">
+					<p class="flex min-w-0 items-center gap-1.5 font-mono text-[12px]" title={ r.Reads[0] }>
+						@components.Logo(kindLogo(kindOf(r.Reads[0])), 16)
+						<span class="truncate text-faint">{ where }</span><span class="shrink-0 text-ink">{ what }</span>
+						if len(r.Reads) > 1 {
+							<span class="shrink-0 font-sans text-[11.5px] text-muted" title={ strings.Join(r.Reads[1:], "\n") }>{ fmt.Sprintf("+%d", len(r.Reads)-1) }</span>
+						}
+					</p>
+					if said := rebuiltSaid(ctx, v.Now, r.Read); said != "" {
+						<p class="mt-0.5 truncate text-[11.5px] text-muted">{ said }</p>
+					}
+				</div>
 			}
 		</td>
-		<td class="px-3 py-2.5 pr-4 text-[0.78rem] whitespace-nowrap text-muted">{ components.When(&r.PublishedAt) }</td>
+		<td class="px-2.5 py-3 text-[12.5px] whitespace-nowrap text-ink-2 max-[1180px]:hidden">
+			if r.TTL != "" {
+				{ i18n.T(ctx, "endpoints.ttl", "ttl", durationWords(ctx, r.TTL)) }
+			} else {
+				<span class="text-faint">—</span>
+			}
+		</td>
+		<td class="px-2.5 py-3 text-[12.5px] whitespace-nowrap text-ink-2 max-[1180px]:hidden">{ paramsSaid(ctx, r) }</td>
+		<td class="px-2.5 py-3 whitespace-nowrap">
+			@endpointFreshness(r.Freshness)
+		</td>
+		<td class="px-2.5 py-3 text-xs whitespace-nowrap text-muted max-[1280px]:hidden">{ i18n.Since(ctx, v.Now, r.PublishedAt) }</td>
+		<td class="px-2.5 py-3 pr-4 text-right text-faint">
+			@components.Icon("chevron-right", "h-4 w-4")
+		</td>
 	</tr>
+}
+
+// endpointFreshness is how an endpoint's data stands, by the tables it
+// reads: fresh, stale, or not known to the catalog.
+templ endpointFreshness(f string) {
+	switch f {
+		case "stale":
+			<span class="inline-flex items-center gap-1.5 text-[12.5px] text-state-queued">
+				@components.FreshnessMark("stale")
+				{ i18n.T(ctx, "endpoints.state.stale") }
+			</span>
+		case "fresh":
+			<span class="inline-flex items-center gap-1.5 text-[12.5px] text-state-success">
+				@components.FreshnessMark("on_time")
+				{ i18n.T(ctx, "endpoints.state.fresh") }
+			</span>
+		default:
+			<span class="text-[12.5px] text-faint" title={ i18n.T(ctx, "endpoints.state.unknown.tip") }>{ i18n.T(ctx, "endpoints.state.unknown") }</span>
+	}
+}
+
+// endpointsHow is the footer: an endpoint in three steps.
+templ endpointsHow() {
+	<ol data-how-it-works class="mt-4 grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface min-[860px]:grid-cols-3">
+		<li class="px-4 py-3.5">
+			<p class="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{ i18n.T(ctx, "endpoints.how.1") }</p>
+			<p class="mt-1 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "endpoints.how.declare") }</p>
+			<p class="mt-1 text-[12.5px] text-muted">{ i18n.T(ctx, "endpoints.how.declare.text") }</p>
+		</li>
+		<li class="border-t border-line-soft px-4 py-3.5 min-[860px]:border-t-0 min-[860px]:border-l">
+			<p class="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{ i18n.T(ctx, "endpoints.how.2") }</p>
+			<p class="mt-1 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "endpoints.how.publish") }</p>
+			<p class="mt-1 text-[12.5px] text-muted"><code class="font-mono">brevis endpoints publish</code> { i18n.T(ctx, "endpoints.how.publish.text") }</p>
+		</li>
+		<li class="border-t border-line-soft px-4 py-3.5 min-[860px]:border-t-0 min-[860px]:border-l">
+			<p class="text-[11px] font-medium tracking-[0.08em] text-muted uppercase">{ i18n.T(ctx, "endpoints.how.3") }</p>
+			<p class="mt-1 text-[13px] font-semibold text-ink">{ i18n.T(ctx, "endpoints.how.serve") }</p>
+			<p class="mt-1 text-[12.5px] text-muted">{ i18n.T(ctx, "endpoints.how.serve.text") }</p>
+		</li>
+	</ol>
 }
 
 templ Endpoint(v EndpointView) {

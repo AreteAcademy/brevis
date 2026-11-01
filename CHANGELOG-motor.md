@@ -26,6 +26,22 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   table `api_manifests` (migration 00031). An API published before this
   has no settings on record until it is published again.
 
+### Changed: Endpoints, judged by the data they read
+
+- **`/data/endpoints` is one row per endpoint, worst data first**: `GET` and
+  the path with the first line of its description; the API; the table it
+  reads, with when it was rebuilt and by whom (+N for more); the cache's
+  `ttl`, or "—"; how many parameters and how many required; the state --
+  "stale data" when a table it reads is late or stale in the Catalog, "fresh
+  data", or nothing when the Catalog knows none of them -- and when it was
+  published. The whole row opens the endpoint.
+- **A summary** of endpoints, APIs, how many serve fresh and stale data, and
+  the caches and connections the APIs published; a footer on how an
+  endpoint works.
+- **The search is the server's**, over the path, the API, the parameters and
+  the tables read, answering as you type; with no script it is a form.
+- Everything is in English, Portuguese and Spanish.
+
 ### Changed: Real time, one row per stream
 
 - **`/ingest/streams` is one row per stream**, by gateway and path, instead

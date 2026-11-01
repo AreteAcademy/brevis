@@ -1,7 +1,9 @@
 package pages
 
 import (
+	"context"
 	"fmt"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/a-h/templ"
 	"net/url"
 	"sort"
@@ -13,10 +15,25 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
-// EndpointsView is Data → Endpoints: every published brevis-sql-api path.
+// EndpointsView is Data → Endpoints (screen-endpoints): every published
+// brevis-sql-api path the filter keeps, worst first by the data it reads,
+// and the counts of every endpoint whatever is shown.
 type EndpointsView struct {
 	Rows []EndpointRow
-	// Q is the search, as typed; empty is none.
+
+	// Total, APIs, Fresh and Stale count every endpoint; Caches and
+	// Connections are what the APIs published -- "redis", "warehouse
+	// (bigquery)" -- for the summary.
+	Total, APIs, Fresh, Stale int
+	Caches, Connections       []string
+
+	Filter EndpointFilter
+	Now    time.Time
+}
+
+// EndpointFilter narrows the list: Q searches the path, the API, the tables
+// read and the parameters.
+type EndpointFilter struct {
 	Q string
 }
 
@@ -30,14 +47,25 @@ type EndpointRow struct {
 	PublishedAt time.Time
 	// Required names the parameters a request must carry.
 	Required map[string]bool
-	// Hidden is a row the search does not match: drawn, hidden, so the list
-	// filter can bring it back as somebody deletes a letter.
-	Hidden bool
+
+	// About is the first line of the note above the endpoint in its file.
+	About string
+
+	// Freshness is the worst of the tables it reads, by the catalog: "stale"
+	// (late or stale), "fresh", or "" when the catalog knows none of them.
+	Freshness string
+
+	// Read is the catalog's row of the first table it reads, when the
+	// catalog knows it: when it was rebuilt, and by whom.
+	Read *DataRow
+
+	// TTL is how long an answer is cached, from the API's manifest; "" with
+	// no cache on record.
+	TTL string
 }
 
 // SearchText is what a search looks in, lower-cased: the path, the API, the
-// parameters and the models it reads -- the same text on the server and in
-// the row's data-filter-text.
+// parameters and the tables it reads.
 func (r EndpointRow) SearchText() string {
 	parts := append([]string{r.Path, r.API, r.Name}, r.Params...)
 	parts = append(parts, r.Reads...)
@@ -55,7 +83,10 @@ func TargetHref(target string) string { return "/data/target?u=" + url.QueryEsca
 
 func rowOf(e postgres.PublishedEndpoint) EndpointRow {
 	r := EndpointRow{API: e.API, Name: e.Name, Path: e.Path, Keyed: e.Tenant == "key",
-		Reads: e.Reads, PublishedAt: e.PublishedAt}
+		Reads: e.Reads, PublishedAt: e.PublishedAt, About: NoteHead(e.Endpoint.Notes[""])}
+	if c := e.Manifest.Cache; c != nil {
+		r.TTL = c.TTL
+	}
 	for _, p := range e.Endpoint.Params {
 		r.Params = append(r.Params, p.Name)
 		if p.Required {
@@ -68,45 +99,73 @@ func rowOf(e postgres.PublishedEndpoint) EndpointRow {
 	return r
 }
 
-// Search hides the rows q does not match, case-insensitively. Bounded like the
-// catalog's: nobody's path is longer than searchCeiling.
-func (v EndpointsView) Search(q string) EndpointsView {
-	q = strings.TrimSpace(q)
+// freshnessRank orders the list: stale first, then fresh, then unknown.
+var freshnessRank = map[string]int{"stale": 0, "fresh": 1, "": 2}
+
+// BuildEndpoints is every endpoint under the filter (screen-endpoints T2),
+// judged by the catalog's view of the tables it reads -- the worst of them
+// -- worst first, then by API and path. The search drops what it does not
+// match, on the server, so a searched list is a link.
+func BuildEndpoints(all []postgres.PublishedEndpoint, entries []postgres.CatalogEntry, f EndpointFilter, now time.Time) EndpointsView {
+	v := EndpointsView{Filter: f, Now: now}
+	byTarget := map[string]DataRow{}
+	for _, row := range BuildData(entries, now).Rows {
+		byTarget[row.Target] = row
+	}
+	apis := map[string]bool{}
+	q := strings.ToLower(strings.TrimSpace(f.Q))
 	if r := []rune(q); len(r) > searchCeiling {
 		q = string(r[:searchCeiling])
 	}
-	v.Q = q
-	rows := make([]EndpointRow, len(v.Rows))
-	for i, r := range v.Rows {
-		r.Hidden = q != "" && !strings.Contains(r.SearchText(), strings.ToLower(q))
-		rows[i] = r
-	}
-	v.Rows = rows
-	return v
-}
-
-// Shown is how many rows are drawn visible.
-func (v EndpointsView) Shown() int {
-	n := 0
-	for _, r := range v.Rows {
-		if !r.Hidden {
-			n++
-		}
-	}
-	return n
-}
-
-// BuildEndpoints is the list, by API and path.
-func BuildEndpoints(all []postgres.PublishedEndpoint) EndpointsView {
-	v := EndpointsView{}
 	for _, e := range all {
-		v.Rows = append(v.Rows, rowOf(e))
-	}
-	sort.SliceStable(v.Rows, func(i, j int) bool {
-		if v.Rows[i].API != v.Rows[j].API {
-			return v.Rows[i].API < v.Rows[j].API
+		r := rowOf(e)
+		for i, target := range e.Reads {
+			row, known := byTarget[target]
+			if !known {
+				continue
+			}
+			if i == 0 {
+				read := row
+				r.Read = &read
+			}
+			switch {
+			case row.Status == catalog.Late || row.Status == catalog.Stale:
+				r.Freshness = "stale"
+			case r.Freshness == "":
+				r.Freshness = "fresh"
+			}
 		}
-		return v.Rows[i].Path < v.Rows[j].Path
+		v.Total++
+		apis[e.API] = true
+		switch r.Freshness {
+		case "stale":
+			v.Stale++
+		case "fresh":
+			v.Fresh++
+		}
+		if c := e.Manifest.Cache; c != nil && !containsString(v.Caches, c.Type) {
+			v.Caches = append(v.Caches, c.Type)
+		}
+		if m := e.Manifest; m.Connection != "" {
+			if conn := m.Connection + " (" + m.Dialect + ")"; !containsString(v.Connections, conn) {
+				v.Connections = append(v.Connections, conn)
+			}
+		}
+		if q != "" && !strings.Contains(r.SearchText(), q) {
+			continue
+		}
+		v.Rows = append(v.Rows, r)
+	}
+	v.APIs = len(apis)
+	sort.SliceStable(v.Rows, func(i, j int) bool {
+		a, b := v.Rows[i], v.Rows[j]
+		if freshnessRank[a.Freshness] != freshnessRank[b.Freshness] {
+			return freshnessRank[a.Freshness] < freshnessRank[b.Freshness]
+		}
+		if a.API != b.API {
+			return a.API < b.API
+		}
+		return a.Path < b.Path
 	})
 	return v
 }
@@ -322,4 +381,33 @@ func curlAttrs(v EndpointView) templ.Attributes {
 		return nil
 	}
 	return templ.Attributes{"data-curl-from": "try-it", "data-curl-base": v.CurlBase(), "data-curl-head": CurlHead}
+}
+
+// paramsSaid is an endpoint's parameters as a row says them: "8 · 2
+// required", or how many when none is required.
+func paramsSaid(ctx context.Context, r EndpointRow) string {
+	if len(r.Params) == 0 {
+		return i18n.T(ctx, "endpoints.params.none")
+	}
+	if n := len(r.Required); n > 0 {
+		return i18n.T(ctx, "endpoints.params.required", "n", fmt.Sprint(len(r.Params)), "required", fmt.Sprint(n))
+	}
+	return fmt.Sprint(len(r.Params))
+}
+
+// rebuiltSaid is when the table a row reads was rebuilt, and by whom.
+func rebuiltSaid(ctx context.Context, now time.Time, d *DataRow) string {
+	if d == nil || d.LastWhen == nil {
+		return ""
+	}
+	return i18n.T(ctx, "endpoints.rebuilt", "when", i18n.Since(ctx, now, *d.LastWhen), "by", WriterLine(*d))
+}
+
+// kindOf is the kind of a table an endpoint reads: its URI's scheme.
+func kindOf(target string) string {
+	scheme, _, ok := strings.Cut(target, "://")
+	if !ok {
+		return ""
+	}
+	return scheme
 }
