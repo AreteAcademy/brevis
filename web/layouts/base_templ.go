@@ -298,12 +298,12 @@ func Base(p Page) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if !p.Fill {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "       <header data-page-header class=\"relative px-3 pt-4 pb-1.5 min-[860px]:px-6 min-[860px]:pt-5\"><div class=\"flex min-h-8 flex-wrap items-center justify-between gap-x-6 gap-y-3\"><div class=\"min-w-0\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "       <header data-page-header class=\"relative px-3 pt-3 pb-1 min-[860px]:px-6\"><div class=\"flex min-h-8 flex-wrap items-center justify-between gap-x-6 gap-y-3\"><div class=\"min-w-0\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if p.Eyebrow != nil {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"absolute top-0.5 left-3 flex flex-wrap items-center gap-2 min-[860px]:top-1 min-[860px]:left-6\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"absolute top-0.5 left-3 flex flex-wrap items-center gap-2 leading-none min-[860px]:left-6\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
