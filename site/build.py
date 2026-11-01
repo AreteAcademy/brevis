@@ -522,9 +522,6 @@ def gerar(destino):
                              % (href, LOCALE[l], LOCALE[l], atual, html.escape(IDIOMA_NATIVO[l])))
             rotulo = html.escape(s["ui"]["idioma"])
             return ('<details class="lang-dd"><summary aria-label="%s: %s">'
-                    '<svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" '
-                    'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" '
-                    'd="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>'
                     '<span>%s</span></summary><ul>%s</ul></details>'
                     % (rotulo, html.escape(IDIOMA_NATIVO[lang]), html.escape(IDIOMA_NATIVO[lang]),
                        "".join(itens)))
