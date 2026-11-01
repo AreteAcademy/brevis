@@ -1,26 +1,26 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en-US" data-docs="">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#141711">
 
-<title>Console — Documentação</title>
-<meta name="description" content="A interface web do Core: o que está rodando, o que vai rodar, e o que aconteceu com cada execução.">
+<title>Console — Documentation</title>
+<meta name="description" content="The Core&#x27;s web interface: what is running, what will run, and what happened to each run.">
 <meta name="author" content="Aretê Academy">
 <link rel="canonical" href="https://brevis.sh/docs/console/">
 <link rel="alternate" type="text/markdown" href="https://brevis.sh/docs/console/index.md">
-<link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/docs/console/"><link rel="alternate" hreflang="en" href="https://brevis.sh/en/docs/console/">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/console/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/console/">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="brevis.sh">
-<meta property="og:locale" content="pt-BR">
-<meta property="og:title" content="Console — Documentação">
-<meta property="og:description" content="A interface web do Core: o que está rodando, o que vai rodar, e o que aconteceu com cada execução.">
+<meta property="og:locale" content="en-US">
+<meta property="og:title" content="Console — Documentation">
+<meta property="og:description" content="The Core&#x27;s web interface: what is running, what will run, and what happened to each run.">
 <meta property="og:url" content="https://brevis.sh/docs/console/">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Console — Documentação">
-<meta name="twitter:description" content="A interface web do Core: o que está rodando, o que vai rodar, e o que aconteceu com cada execução.">
+<meta name="twitter:title" content="Console — Documentation">
+<meta name="twitter:description" content="The Core&#x27;s web interface: what is running, what will run, and what happened to each run.">
 
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,8 +35,8 @@
   "@context": "https://schema.org",
   "@type": "TechArticle",
   "headline": "Console",
-  "description": "A interface web do Core: o que está rodando, o que vai rodar, e o que aconteceu com cada execução.",
-  "inLanguage": "pt-BR",
+  "description": "The Core's web interface: what is running, what will run, and what happened to each run.",
+  "inLanguage": "en-US",
   "isPartOf": {
     "@type": "WebSite",
     "@id": "https://brevis.sh/#site"
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+<a class="skip-link" href="#conteudo">Skip to content</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -83,17 +83,17 @@
       <span>brevis<span class="tld">.sh</span></span>
     </a>
 
-    <nav class="main-nav" id="nav" aria-label="Navegação principal">
-      <a href="/#ecossistema">Ecossistema</a>
-      <a href="/docs/">Documentação</a>
-      <div class="lang-switch" role="group" aria-label="Idioma"><a href="/docs/console/" hreflang="pt-BR" aria-current="true">PT</a><a href="/en/docs/console/" hreflang="en">EN</a></div>
+    <nav class="main-nav" id="nav" aria-label="Main navigation">
+      <a href="/#ecossistema">Ecosystem</a>
+      <a href="/docs/">Documentation</a>
+      <details class="lang-dd"><summary aria-label="Language: English"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>English</span></summary><ul><li><a href="/docs/console/" lang="en-US" hreflang="en-US" aria-current="true">English</a></li><li><a href="/es/docs/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/console/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
-        Explorar open source
+        Explore open source
       </a>
     </nav>
 
-    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="nav">
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
       <svg aria-hidden="true"><use href="#i-menu"></use></svg>
     </button>
   </div>
@@ -102,65 +102,65 @@
 <div class="doc-shell">
   <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
     <svg aria-hidden="true"><use href="#i-menu"></use></svg>
-    Menu da documentação
+    Documentation menu
   </button>
 
   <aside class="side" id="side">
     <div class="side-inner">
       <form class="search" role="search" onsubmit="return false">
         <svg aria-hidden="true"><use href="#i-search"></use></svg>
-        <label class="sr-only" for="q">Buscar na documentação</label>
-        <input type="search" id="q" placeholder="Buscar…" autocomplete="off" spellcheck="false">
+        <label class="sr-only" for="q">Search the documentation</label>
+        <input type="search" id="q" placeholder="Search…" autocomplete="off" spellcheck="false">
       </form>
-      <div class="search-out" id="search-out" data-none="Nada encontrado" hidden></div>
-      <nav class="side-nav" aria-label="Documentação">
-        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/ecosystem/">Ecossistema</a></li><li><a href="/docs/integrations/">Integrações</a></li><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/core/">Core</a></li><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/">Pod por passo</a></li><li><a href="/docs/context/">Contexto entre passos</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li><li><a href="/docs/runtime/">Runtime do passo</a></li></ul><p class="side-group">SDK e bibliotecas</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li><li><a href="/docs/libraries/">Bibliotecas cliente</a></li><li><a href="/docs/python/">Python</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/console/" aria-current="page">Console</a></li><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observabilidade</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul><p class="side-group">Ingestão</p><ul class="side-list"><li><a href="/docs/ingestion/">Ingestão</a></li><li><a href="/docs/ingestion-sinks/">Destinos da ingestão</a></li><li><a href="/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modelagem em SQL</p><ul class="side-list"><li><a href="/docs/sql/">SQL</a></li></ul><p class="side-group">O projeto</p><ul class="side-list"><li><a href="/docs/philosophy/">Filosofia</a></li><li><a href="/docs/faq/">FAQ</a></li></ul>
+      <div class="search-out" id="search-out" data-none="No results" hidden></div>
+      <nav class="side-nav" aria-label="Documentation">
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/docs/ecosystem/">Ecosystem</a></li><li><a href="/docs/integrations/">Integrations</a></li><li><a href="/docs/introduction/">Introduction</a></li><li><a href="/docs/installation/">Installation</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/docs/core/">Core</a></li><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/docs/pod-per-step/">Pod per step</a></li><li><a href="/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parameters</a></li><li><a href="/docs/configuration/">Configuration</a></li><li><a href="/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK and libraries</p><ul class="side-list"><li><a href="/docs/sdk/">Go SDK</a></li><li><a href="/docs/libraries/">Client libraries</a></li><li><a href="/docs/python/">Python</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/docs/console/" aria-current="page">Console</a></li><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observability</a></li><li><a href="/docs/white-label/">White label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/docs/ingestion/">Ingestion</a></li><li><a href="/docs/ingestion-sinks/">Ingestion sinks</a></li><li><a href="/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modelling in SQL</p><ul class="side-list"><li><a href="/docs/sql/">SQL</a></li></ul><p class="side-group">The project</p><ul class="side-list"><li><a href="/docs/philosophy/">Philosophy</a></li><li><a href="/docs/faq/">FAQ</a></li></ul>
       </nav>
     </div>
   </aside>
 
   <main class="doc" id="conteudo">
     <article class="doc-body">
-      <p class="doc-kicker">Documentação</p>
+      <p class="doc-kicker">Documentation</p>
       <h1>Console</h1>
-      <p class="doc-desc">A interface web do Core: o que está rodando, o que vai rodar, e o que aconteceu com cada execução.</p>
-      <p>A interface vem no binário — não é um serviço à parte para instalar e manter. Taxa de sucesso, duração média, a fila, o histórico de tentativas e a agenda das próximas execuções.</p>
-<p>O console sobe com <code>brevis serve</code>, na mesma porta da API HTTP (<code>BREVIS_HTTP_ADDR</code>, <code>:8080</code> por padrão). No <a href="/docs/quickstart/">Quickstart</a> ele abre em <code>localhost:8080</code>.</p>
-<p>As telas abaixo são recriadas em SVG a partir do console, com dados de exemplo — nunca capturas: o console de verdade opera dados de clientes em produção.</p>
-<h2 id="visao-geral">Visão geral<a class="anchor" href="#visao-geral" aria-label="link">#</a></h2>
-<figure class="doc-figure doc-figure-wide"><img src="/assets/console.svg" width="1000" height="600" alt="O painel do Brevis na tela de visão geral: taxa de sucesso de 94,2% em 344 execuções, gráfico de execuções por hora com a duração média, anel de distribuição, o que está em progresso e as próximas execuções agendadas." loading="lazy"></figure>
-<p>Visão geral com métricas e gráficos. Taxa de sucesso, duração média, o que está em progresso e as próximas execuções agendadas, numa tela.</p>
+      <p class="doc-desc">The Core&#x27;s web interface: what is running, what will run, and what happened to each run.</p>
+      <p>The interface ships in the binary — not a separate service to install and keep alive. Success rate, average duration, the queue, the attempt history and the schedule of what comes next.</p>
+<p>The console comes up with <code>brevis serve</code>, on the same port as the HTTP API (<code>BREVIS_HTTP_ADDR</code>, <code>:8080</code> by default). In the <a href="/docs/quickstart/">Quickstart</a> it opens at <code>localhost:8080</code>.</p>
+<p>The screens below are recreated in SVG from the console, with sample data — never screenshots: the real console operates customer data in production.</p>
+<h2 id="overview">Overview<a class="anchor" href="#overview" aria-label="link">#</a></h2>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/console.svg" width="1000" height="600" alt="The Brevis console on the overview screen: a 94.2 per cent success rate over 344 runs, a bar chart of runs per hour with average duration, a distribution ring, what is in progress, and the next scheduled runs." loading="lazy"></figure>
+<p>An overview with metrics and charts. Success rate, average duration, what is in progress and the next scheduled runs, on one screen.</p>
 <h2 id="workflows">Workflows<a class="anchor" href="#workflows" aria-label="link">#</a></h2>
-<figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflows.svg" width="1000" height="600" alt="A lista de workflows: busca, filtros por estado e por tag, e doze workflows com o botão de pausa, a expressão cron, a próxima e a última execução, tags e um botão para disparar cada um." loading="lazy"></figure>
-<p>Lista de workflows com busca, filtros, pausa e disparo. Cada linha traz o cron, a próxima e a última execução e as tags.</p>
-<h2 id="um-workflow">Um workflow<a class="anchor" href="#um-workflow" aria-label="link">#</a></h2>
-<figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflow.svg" width="1000" height="600" alt="A página de um workflow: os quatro passos, as três dependências, o cron e as tags; um formulário para executar com parâmetros; 96,1% de sucesso em 176 execuções; o DAG com o estado de cada passo; e um calendário de um ano em que cada quadrado é um dia, com a cor do pior resultado daquele dia." loading="lazy"></figure>
-<p>Os passos e as dependências, um formulário para executar com parâmetros, o DAG com o estado de cada passo e um calendário de um ano, em que cada dia tem a cor do pior resultado dele.</p>
-<h2 id="execucoes">Execuções<a class="anchor" href="#execucoes" aria-label="link">#</a></h2>
-<figure class="doc-figure doc-figure-wide"><img src="/assets/console-runs.svg" width="1000" height="600" alt="O histórico de execuções: 1.284 runs com o estado, o workflow, o disparo, o slot a que pertencem, a duração e quando foram criados. Alguns mostram em que tentativa tiveram sucesso." loading="lazy"></figure>
-<p>Histórico de execuções, com a tentativa de cada uma. Estado, workflow, disparo, o slot a que a execução pertence, duração e quando foi criada.</p>
-<h2 id="uma-execucao">Uma execução<a class="anchor" href="#uma-execucao" aria-label="link">#</a></h2>
-<figure class="doc-figure doc-figure-wide"><img src="/assets/console-run.svg" width="1000" height="600" alt="Uma execução concluída: o estado, o disparo e o slot; o grafo com o comando, a imagem e a duração de cada passo; os nove auto params que o engine calcula para toda execução — o relógio a ler em vez de now(), a data da partição, o atraso da tentativa e a janela que ela cobre; e a saída de cada passo." loading="lazy"></figure>
-<p>A DAG de um run ao vivo, e os auto params que o engine calculou para ele. O grafo com o comando, a imagem e a duração de cada passo, e a saída de cada um.</p>
-<h2 id="projetos">Projetos<a class="anchor" href="#projetos" aria-label="link">#</a></h2>
-<figure class="doc-figure doc-figure-wide"><img src="/assets/console-projects.svg" width="1000" height="600" alt="Dois projetos, analytics e platform, cada um dando namespace aos seus workflows — os dois podem ter um daily_ingest sem colidir." loading="lazy"></figure>
-<p>Projetos, para dois times não colidirem no mesmo nome. Cada projeto dá namespace aos seus workflows: dois podem ter um <code>daily_ingest</code>.</p>
-<h2 id="vem-no-binario">Vem no binário<a class="anchor" href="#vem-no-binario" aria-label="link">#</a></h2>
-<p>Fontes e bundles servidos do binário — funciona sem internet.</p>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflows.svg" width="1000" height="600" alt="The workflow list: search, filters by state and by tag, and twelve workflows with a pause toggle, the cron expression, the next and last run, tags, and a button to run each one now." loading="lazy"></figure>
+<p>A workflow list with search, filters, pause and run. Each row carries the cron, the next and the last run, and the tags.</p>
+<h2 id="one-workflow">One workflow<a class="anchor" href="#one-workflow" aria-label="link">#</a></h2>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflow.svg" width="1000" height="600" alt="One workflow&#x27;s page: its four steps, three dependencies, cron and tags; a form to run it with parameters; a 96.1 per cent success rate over 176 runs; the DAG with each step&#x27;s state; and a calendar of a year where each square is a day, coloured by that day&#x27;s worst outcome." loading="lazy"></figure>
+<p>The steps and dependencies, a form to run with parameters, the DAG with each step's state, and a year calendar where each day takes the colour of its worst result.</p>
+<h2 id="runs">Runs<a class="anchor" href="#runs" aria-label="link">#</a></h2>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/console-runs.svg" width="1000" height="600" alt="The run history: 1,284 runs with their state, workflow, trigger, the slot they belong to, how long each took and when it was created. Some show which attempt succeeded." loading="lazy"></figure>
+<p>Run history, with each one's attempt. State, workflow, trigger, the slot the run belongs to, duration and when it was created.</p>
+<h2 id="one-run">One run<a class="anchor" href="#one-run" aria-label="link">#</a></h2>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/console-run.svg" width="1000" height="600" alt="A finished run: its state, trigger and slot; the graph with each step&#x27;s command, image and duration; the nine auto params the engine works out for every run — the clock to read instead of now(), the partition date, how late the attempt started and the window it covers; and each step&#x27;s output." loading="lazy"></figure>
+<p>A run's DAG live, and the auto params the engine worked out for it. The graph with each step's command, image and duration, and each step's output.</p>
+<h2 id="projects">Projects<a class="anchor" href="#projects" aria-label="link">#</a></h2>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/console-projects.svg" width="1000" height="600" alt="Two projects, analytics and platform, each namespacing its own workflows — both can have a daily_ingest without colliding." loading="lazy"></figure>
+<p>Projects, so two teams do not collide on one name. Each project namespaces its workflows: two can each have a <code>daily_ingest</code>.</p>
+<h2 id="it-ships-in-the-binary">It ships in the binary<a class="anchor" href="#it-ships-in-the-binary" aria-label="link">#</a></h2>
+<p>Fonts and bundles served from the binary — works with no internet.</p>
 
-      <nav class="pagers" aria-label="Páginas">
-        <a class="pager pager-prev" href="/docs/python/"><span>Anterior</span><strong>Python</strong></a>
-        <a class="pager pager-next" href="/docs/kubernetes/"><span>Próximo</span><strong>Kubernetes</strong></a>
+      <nav class="pagers" aria-label="Pages">
+        <a class="pager pager-prev" href="/docs/python/"><span>Previous</span><strong>Python</strong></a>
+        <a class="pager pager-next" href="/docs/kubernetes/"><span>Next</span><strong>Kubernetes</strong></a>
       </nav>
 
       <p class="doc-edit">
-        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/pt/docs/console.md" target="_blank" rel="noopener">Editar esta página no GitHub</a>
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/en/docs/console.md" target="_blank" rel="noopener">Edit this page on GitHub</a>
       </p>
     </article>
 
-    <aside class="toc" aria-label="Nesta página">
-      <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#visao-geral">Visão geral</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#um-workflow">Um workflow</a></li><li class="toc-2"><a href="#execucoes">Execuções</a></li><li class="toc-2"><a href="#uma-execucao">Uma execução</a></li><li class="toc-2"><a href="#projetos">Projetos</a></li><li class="toc-2"><a href="#vem-no-binario">Vem no binário</a></li></ul>
+    <aside class="toc" aria-label="On this page">
+      <p class="toc-t">On this page</p>
+      <ul><li class="toc-2"><a href="#overview">Overview</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#one-workflow">One workflow</a></li><li class="toc-2"><a href="#runs">Runs</a></li><li class="toc-2"><a href="#one-run">One run</a></li><li class="toc-2"><a href="#projects">Projects</a></li><li class="toc-2"><a href="#it-ships-in-the-binary">It ships in the binary</a></li></ul>
     </aside>
   </main>
 </div>
@@ -174,24 +174,24 @@
           <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
           <span>brevis<span class="tld">.sh</span></span>
         </a>
-        <p>Filosofia aplicada à infraestrutura de dados.</p>
+        <p>Philosophy applied to data infrastructure.</p>
       </div>
 
       <div class="footer-col">
-        <h2>projeto</h2>
+        <h2>project</h2>
         <ul>
-          <li><a href="/#ecossistema">Ecossistema</a></li>
-          <li><a href="/docs/philosophy/">Princípios</a></li>
-          <li><a href="/docs/introduction/#codigo-aberto-escolha-como-participar">Open source</a></li>
+          <li><a href="/#ecossistema">Ecosystem</a></li>
+          <li><a href="/docs/philosophy/">Principles</a></li>
+          <li><a href="/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/docs/faq/">FAQ</a></li>
         </ul>
       </div>
 
       <div class="footer-col">
-        <h2>código</h2>
+        <h2>code</h2>
         <ul>
-          <li><a href="/docs/">Documentação</a></li>
-          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repositório</a></li>
+          <li><a href="/docs/">Documentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repository</a></li>
           <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
           <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
         </ul>
@@ -199,12 +199,13 @@
     </div>
 
     <div class="footer-bottom">
-      <p>Um projeto open source da <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
-      <p>MIT · construído em Go · Go gopher por Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+      <p>An open source project by <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · built in Go · Go gopher by Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
     </div>
   </div>
 </footer>
 
 <script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
 </body>
 </html>

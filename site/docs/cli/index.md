@@ -1,162 +1,165 @@
 # CLI
 
-> Os doze subcomandos do engine, com flags, argumentos e o que cada um exige.
+> The engine's twelve subcommands, with flags, arguments and what each one requires.
 
-*https://brevis.sh/docs/cli/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/cli/ · brevis.sh docs (en-US)*
 
 ---
 
-O engine é um binário com subcomandos, não vários binários: API, scheduler e
-workers são papéis do mesmo sistema, e um binário só mantém uma versão, uma
-imagem e um caminho de build.
+The engine is one binary with subcommands, not several binaries: API, scheduler
+and workers are roles of the same system, and one binary keeps one version, one
+image and one build path.
 
 ```
-brevis [comando] [flags]
+brevis [command] [flags]
 ```
 
-| comando | banco | credencial fora de `local` | papel |
+| command | database | credentials outside `local` | role |
 |---|---|---|---|
-| [`serve`](#serve) | **sim** | **exigida** | API + interface |
-| [`scheduler`](#scheduler) | **sim** | **exigida** | os dois laços |
-| [`migrate`](#migrate) | **sim** | **exigida** | schema |
-| [`publish`](#publish) | **sim** | **exigida** | grava workflow e agenda |
-| [`backfill`](#backfill) | **sim** | **exigida** | reprocessa um intervalo |
-| [`cancel`](#cancel) | **sim** | **exigida** | para uma execução |
-| [`run`](#run) | não | — | executa agora, na própria instância |
-| [`validate`](#validate) | não | — | valida YAML de workflow |
-| [`brand`](#brand) | não | — | valida YAML de marca |
-| [`hash`](#hash) | não | — | gera o hash da senha |
-| [`version`](#version) | não | — | versão, commit, build |
+| [`serve`](#serve) | **yes** | **required** | API + interface |
+| [`scheduler`](#scheduler) | **yes** | **required** | both loops |
+| [`migrate`](#migrate) | **yes** | **required** | schema |
+| [`publish`](#publish) | **yes** | **required** | stores workflow and schedule |
+| [`backfill`](#backfill) | **yes** | **required** | reprocesses a range |
+| [`cancel`](#cancel) | **yes** | **required** | stops a run |
+| [`run`](#run) | no | — | runs now, on the instance itself |
+| [`validate`](#validate) | no | — | validates workflow YAML |
+| [`brand`](#brand) | no | — | validates branding YAML |
+| [`hash`](#hash) | no | — | generates the password hash |
+| [`version`](#version) | no | — | version, commit, build |
 
-Os seis primeiros chamam a carga de configuração, que **falha no boot** sem
-`BREVIS_DATABASE_URL`. Os outros cinco não a chamam — e é por isso que
-`validate` serve na CI, onde não há Postgres.
+The first six load configuration, which **fails at boot** without
+`BREVIS_DATABASE_URL`. The other five do not — which is why `validate` works in
+CI, where there is no Postgres.
 
-Os mesmos seis herdam a regra de credencial: com `BREVIS_ENV` diferente de
-`local`, subir sem as três variáveis de autenticação é **erro de boot**.
+Those same six inherit the credentials rule: with `BREVIS_ENV` other than
+`local`, coming up without the three authentication variables is a **boot
+error**.
 
 ---
 
 ## serve
 
-Sobe a API HTTP e a interface. Sem flags — tudo vem do ambiente.
+Brings up the HTTP API and the interface. No flags — everything comes from the
+environment.
 
 ```bash
 brevis serve
 ```
 
-Encerra em `SIGINT`/`SIGTERM` com shutdown graceful, para que um deploy não
-corte requisições em voo. Este processo **não materializa agendas**: para isso é
-preciso um `brevis scheduler` ao lado.
+Shuts down on `SIGINT`/`SIGTERM` gracefully, so a deploy does not cut requests
+in flight. This process **does not materialise schedules**: that needs a
+`brevis scheduler` alongside.
 
-`CMD` da imagem `api` (distroless, sem shell).
+`CMD` of the `api` image (distroless, no shell).
 
 ---
 
 ## scheduler
 
-Os dois laços: o scheduler materializa agendas em runs, o dispatcher tira da
-fila e executa.
+Both loops: the scheduler materialises schedules into runs, the dispatcher pulls
+from the queue and executes.
 
 ```bash
 brevis scheduler --interval 5s --concurrency 4 --max-pods 10
 ```
 
-| flag | tipo | padrão | |
+| flag | type | default | |
 |---|---|---|---|
-| `--interval` | duration | `10s` | intervalo entre ciclos |
-| `--concurrency` | int | `5` | **runs** simultâneos |
-| `--max-pods` | int | `5` | **passos** simultâneos no total |
+| `--interval` | duration | `10s` | interval between cycles |
+| `--concurrency` | int | `5` | simultaneous **runs** |
+| `--max-pods` | int | `5` | simultaneous **steps** in total |
 
-`CMD` da imagem `worker` (alpine com shell, porque os passos `run:` precisam).
+`CMD` of the `worker` image (alpine with a shell, because `run:` steps need
+one).
 
 ---
 
 ## alert
 
-Entrega os alertas que o scheduler registrou. Um terceiro processo, ao lado de
-`serve` e `scheduler`.
+Delivers the alerts the scheduler recorded. A third process beside `serve` and
+`scheduler`.
 
 ```bash
 brevis alert --interval 1s --max-attempts 6
 ```
 
-| flag | tipo | padrão | |
+| flag | type | default | |
 |---|---|---|---|
-| `--interval` | duration | `1s` | intervalo entre ciclos de entrega |
-| `--max-attempts` | int | `6` | tentativas antes de o alerta virar "não entregue" |
+| `--interval` | duration | `1s` | interval between delivery cycles |
+| `--max-attempts` | int | `6` | tries before an alert is recorded as undelivered |
 
-**Ele existe por causa de onde o alerta é escrito, não porque a entrega mereça
-um processo.** O scheduler grava o alerta na mesma transação da falha que o
-justifica — ou a run está sem tentativas e o alerta existe, ou nenhum dos dois
-aconteceu. Alguém então precisa drenar essa tabela, e precisa sobreviver tanto a
-uma queda do Slack quanto ao próprio restart. Antes disso, um webhook fora do ar
-virava uma linha de log e um alerta que simplesmente sumia.
+**It exists because of where an alert is written, not because delivery deserves
+a process.** The scheduler records the alert in the same transaction as the
+failure that justifies it — either the run is out of attempts and the alert
+exists, or neither happened. Something then has to drain that table, and it has
+to survive both a Slack outage and its own restart. Before this, a failing
+webhook meant a log line and an alert that was simply gone.
 
-Ele se recusa a subir sem canal configurado (`BREVIS_SLACK_WEBHOOK`). Um
-processo de entrega sem destino drena a caixa para "não entregue" na mesma
-velocidade em que ela enche, e essas linhas ficam idênticas ao Slack recusando.
+It refuses to start with no channel configured (`BREVIS_SLACK_WEBHOOK`). A
+delivery process with nowhere to deliver drains the outbox into "undelivered"
+as fast as it fills, and those rows look exactly like Slack rejecting them.
 
-Um alerta do qual ele desiste é **mantido**: "levantado, não entregue, 4
-tentativas, 403 do Slack" é a linha que importa, porque é o caso em que alguém
-está esperando uma mensagem que não vem.
+An alert it gives up on is **kept**: "raised, not delivered, 4 attempts, 403
+from Slack" is the row that matters, because it is the case where somebody is
+waiting for a message that is not coming.
 
-`CMD` da imagem `worker`.
+`CMD` of the `worker` image.
 
 ---
 
 ## report
 
-Manda o resumo periódico do que rodou.
+Sends the periodic summary of what ran.
 
 ```bash
-brevis report --window 168h              # envia
-brevis report --window 168h --dry-run    # imprime, não envia
+brevis report --window 168h              # sends it
+brevis report --window 168h --dry-run    # prints it, sends nothing
 ```
 
-| flag | tipo | padrão | |
+| flag | type | default | |
 |---|---|---|---|
-| `--window` | duration | `168h` | quanto tempo para trás olhar |
-| `--dry-run` | bool | `false` | imprime em vez de enviar |
+| `--window` | duration | `168h` | how far back to look |
+| `--dry-run` | bool | `false` | print instead of sending |
 
-Um **comando**, não um loop, e é essa a diferença entre um report e um alerta:
-ele roda de um CronJob, então não há loop novo, estado novo nem eleição de
-líder — o cluster já tem um scheduler. O `--dry-run` é como alguém passa a
-confiar numa mensagem semanal, lendo o que ela teria dito.
+A **command**, not a loop, and that is the difference between a report and an
+alert: it runs from a CronJob, so there is no new loop, no new state and no
+leader election — the cluster already has a scheduler. `--dry-run` is how
+somebody comes to trust a weekly message, by reading what it would have said.
 
-Ele **não** passa pela caixa de saída de alertas. Os dois compartilham um canal
-de entrega e nada mais: perder um alerta é uma falha que ninguém escuta, e
-perder o resumo de uma semana é o resumo da semana seguinte.
+It does **not** go through the alerts outbox. The two share a delivery channel
+and nothing else: losing an alert is an outage nobody hears about, and missing
+one week's summary is next week's summary.
 
-A mensagem leva runs, sucessos, falhas, os pipelines que mais falharam, os que
-demoraram mais, e as linhas e bytes que o SDK reportou. Ela **não** leva CPU nem
-memória, e também não imprime zero para elas — o motor não coleta esses números,
-e a mensagem diz onde eles ficam.
+The message carries runs, successes, failures, the pipelines that failed most,
+the ones that took longest, and the rows and bytes the SDK reported. It does
+**not** carry CPU or memory, and does not print zero for them either — the
+engine does not collect those, and the message says where they do live.
 
-Uma janela vazia diz isso, em vez de reportar 100%. Uma taxa de sucesso sobre
-nada é o número mais tranquilizador que um report pode imprimir e o menos
-verdadeiro: uma semana vazia normalmente quer dizer que o scheduler estava fora.
+An empty window says so rather than reporting 100%. A success rate out of
+nothing is the most reassuring number a report can print and the least true one:
+an empty week usually means the scheduler was down.
 
-O `deployments/kubernetes/report.yaml` roda isso toda semana.
+`deployments/kubernetes/report.yaml` runs it weekly.
 
 ---
 
 ## migrate
 
 ```bash
-brevis migrate up      # aplica o que falta
-brevis migrate down    # desfaz a última
-brevis migrate status  # mostra o estado
+brevis migrate up      # applies what is missing
+brevis migrate down    # reverts the last one
+brevis migrate status  # shows the state
 ```
 
-Aceita exatamente um argumento. As migrations estão embutidas no binário e são
-aplicadas por subcomando próprio — **`serve` nunca altera schema**.
+Takes exactly one argument. Migrations are embedded in the binary and applied by
+their own subcommand — **`serve` never alters the schema**.
 
 ---
 
 ## validate
 
-Valida um ou mais arquivos de workflow. Aceita arquivo **ou diretório**.
+Validates one or more workflow files. Takes a file **or a directory**.
 
 ```bash
 brevis validate examples/
@@ -167,14 +170,14 @@ brevis validate examples/
   ok    hello                        dag  4 steps, 4 dependencias  (manual)
 ```
 
-Não toca no banco e não sobe servidor, então roda no editor e na CI. Sai com
-código diferente de zero e conta as falhas.
+It touches no database and starts no server, so it runs in the editor and in CI.
+It exits non-zero and counts the failures.
 
 ---
 
 ## run
 
-Executa um workflow **agora, na própria instância**: sem fila, sem banco, sem
+Runs a workflow **now, on the instance itself**: no queue, no database, no
 scheduler.
 
 ```bash
@@ -182,138 +185,141 @@ brevis run examples/hello.yaml
 brevis run wf.yaml --param load_full=true --retries 3 --timeout 5m
 ```
 
-| flag | tipo | padrão | |
+| flag | type | default | |
 |---|---|---|---|
-| `--param` | repetível | — | `chave=valor` de um parâmetro declarado |
-| `--workdir` | string | o diretório do arquivo | diretório de trabalho dos passos |
-| `--retries` | int | `1` | tentativas por passo (`1` = sem retry) |
-| `--timeout` | duration | `0` | timeout por passo (`0` = sem limite) |
+| `--param` | repeatable | — | `key=value` for a declared parameter |
+| `--workdir` | string | the file's directory | working directory for steps |
+| `--retries` | int | `1` | attempts per step (`1` = no retry) |
+| `--timeout` | duration | `0` | timeout per step (`0` = no limit) |
 
-`--param` sem `=` é **erro**, não aviso: `--param load_full` rodaria com o padrão
-e o operador acharia que o valor foi aplicado.
+`--param` without `=` is an **error**, not a warning: `--param load_full`,
+forgetting the value, would run with the default — and the operator would
+believe the value was applied.
 
-:::warning Quatro limites
-`run` só opera com `BREVIS_ENV=local`; um passo com `image:` executa na própria
-instância e avisa; não há registry de tasks Go, então um `action:` de task não
-registrada falha citando as disponíveis; e `run` não lê `BREVIS_HOSTS`, então um
-passo com `host:` não roda aqui de jeito nenhum — falha citando o host, mesmo
-com a variável definida.
+:::warning Four limits
+`run` only operates with `BREVIS_ENV=local`; a step with `image:` runs on the
+instance itself and says so; there is no Go task registry, so an `action:` for
+an unregistered task fails naming the ones available; and `run` does not read
+`BREVIS_HOSTS`, so a step with `host:` cannot run here at all — it fails naming
+the host, even with the variable set.
 :::
 
 ---
 
 ## publish
 
-Grava os workflows e as agendas no banco. Aceita arquivo ou diretório.
+Stores workflows and their schedules in the database. Takes a file or a
+directory.
 
 ```bash
 brevis publish examples/hello.yaml
 brevis publish workflows/ --project acme --prune
 ```
 
-| flag | tipo | padrão | |
+| flag | type | default | |
 |---|---|---|---|
-| `--project` | string | `default` | slug do projeto |
-| `--prune` | bool | `false` | remove do projeto os workflows ausentes da lista |
+| `--project` | string | `default` | project slug |
+| `--prune` | bool | `false` | removes from the project the workflows absent from the list |
 
-Com `--prune`, o histórico dos removidos é preservado.
+With `--prune`, the history of removed workflows is preserved.
 
 ---
 
 ## backfill
 
-Materializa slots passados de um workflow já publicado. **Enfileira, não
-executa.**
+Materialises past slots of a workflow already published. It **enqueues, it does
+not execute.**
 
 ```bash
-brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true
+brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true
 ```
 
 | flag | | |
 |---|---|---|
-| `--from` | **obrigatória** | data inicial, `AAAA-MM-DD` |
-| `--to` | **obrigatória** | data final, `AAAA-MM-DD` |
-| `--param` | | vale para **todos** os slots do intervalo |
+| `--from` | **required** | start date, `YYYY-MM-DD` |
+| `--to` | **required** | end date, `YYYY-MM-DD` |
+| `--param` | | applies to **every** slot in the range |
 
-`--to` inclui o dia inteiro: internamente o fim vira `23:59:59` daquela data.
+`--to` includes the whole day: internally the end becomes `23:59:59` of that
+date.
 
 ---
 
 ## cancel
 
-Cancela uma execução que ainda espera ou que está rodando. No feed, quem
-cancelou aparece como `cli`.
+Cancels a run that is still waiting or is running. The events feed shows `cli`
+as who canceled it.
 
 ```bash
 brevis cancel 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13
 ```
 
-| resposta | o que aconteceu |
+| answer | what happened |
 |---|---|
-| `canceled` | a execução esperava na fila; saiu dela e não vai rodar |
-| `cancel requested` | a execução está rodando; o dispatcher para os passos em até `--cancel-poll` (2 s) |
-| `already ended: <status>` | a execução já tinha terminado; nada muda |
+| `canceled` | the run was waiting in the queue; it left it and will not run |
+| `cancel requested` | the run is running; its dispatcher stops the steps within `--cancel-poll` (2s) |
+| `already ended: <status>` | the run had already ended; nothing changes |
 
-Uma execução cancelada não é retentada. Um id que não existe é erro.
+A canceled run is not retried. An id that does not exist is an error.
 
 ---
 
 ## gateway
 
-Como um gateway aparece no `/data`: a configuração dele, publicada como ato
-deliberado — nunca o tráfego, e nunca em tempo de execução.
+How a gateway appears on `/data`: its configuration, published as a deliberate
+act — never its traffic, and never at runtime.
 
 ```bash
-gateway describe gateway.yaml > manifest.json   # o binário do próprio gateway
+gateway describe gateway.yaml > manifest.json   # the gateway's own binary
 brevis gateway publish manifest.json
 brevis gateway unpublish events_gateway
 ```
 
-O `publish` confere o manifesto inteiro antes de escrever qualquer coisa,
-citando o stream e o papel do primeiro problema, e substitui os destinos
-daquele gateway numa transação só. O `unpublish` remove um gateway
-descomissionado, e é erro quando nenhum gateway com aquele nome foi publicado.
+`publish` checks the manifest whole before writing anything, naming the stream
+and role of the first problem, and replaces that gateway's destinations in one
+transaction. `unpublish` removes a decommissioned gateway, and is an error when
+no gateway of that name was published.
 
-Como um `brevis-sql-api` aparece em Data → Endpoints: o que cada endpoint
-recebe e lê, publicado como ato deliberado — nunca o tráfego.
+How a `brevis-sql-api` appears on Data → Endpoints: what each endpoint takes
+and reads, published as a deliberate act — never its traffic.
 
 ```bash
-brevis-sql-api describe --config api.yaml --out manifest.json   # o binário da própria API
+brevis-sql-api describe --config api.yaml --out manifest.json   # the API's own binary
 brevis endpoints publish manifest.json
 brevis endpoints unpublish metrics-api
 ```
 
-O `publish` confere o manifesto inteiro antes de escrever qualquer coisa e
-substitui os endpoints daquela API numa transação só; um nome, default ou nota
-com cara de credencial recusa tudo.
+`publish` checks the manifest whole before writing anything and replaces that
+API's endpoints in one transaction; a name, default or note shaped like a
+credential refuses all of it.
 
-Um comando próprio, e não um modo do `brevis publish`, porque workflows e
-gateways têm semânticas de conjunto diferentes: o `publish --prune` não pode
-alcançar as linhas de um gateway.
+A command of its own rather than a mode of `brevis publish`, because workflows
+and gateways have different set semantics: `publish --prune` must never reach a
+gateway's rows.
 
 ---
 
 ## prune
 
-Aplica a política de retenção. É a **única** coisa no Brevis que apaga alguma
-coisa, e não roda sozinha — quem agenda é o operador.
+Applies the retention policy. It is the **only** thing in Brevis that deletes
+anything, and it never runs on its own — an operator schedules it.
 
 ```bash
-brevis prune --dry-run          # o que sairia, sem mudar nada
+brevis prune --dry-run          # what would go, changing nothing
 brevis prune
-brevis prune --purge-after 0    # só enxuga, nunca apaga um run
+brevis prune --purge-after 0    # trim only, never delete a run
 ```
 
-| flag | padrão | |
+| flag | default | |
 |---|---|---|
-| `--trim-after` | `720h` | esvazia o log, as fases e a saída publicada |
-| `--purge-after` | `8760h` | apaga o run inteiro; `0` nunca apaga |
+| `--trim-after` | `720h` | empties the log, the phases and the published output |
+| `--purge-after` | `8760h` | deletes the run entirely; `0` never deletes |
 
 ---
 
 ## brand
 
-Valida um arquivo de identidade visual sem subir o servidor.
+Validates a branding file without starting the server.
 
 ```bash
 brevis brand brand.yaml
@@ -326,26 +332,26 @@ brevis brand brand.yaml
         Powered by Brevis
 ```
 
-Diferença em relação ao boot: **arquivo ausente é erro**. No `serve`, ausência
-significa "usa a identidade padrão"; quem pediu para validar um caminho espera
-saber que ele não existe.
+One behavioural difference from boot: **a missing file is an error**. In
+`serve`, absence means "use the default identity"; someone who asked to validate
+a path expects to be told it does not exist.
 
 ---
 
 ## hash
 
-Gera o hash de `BREVIS_AUTH_PASSWORD_HASH`.
+Generates the `BREVIS_AUTH_PASSWORD_HASH` value.
 
 ```bash
 brevis hash
 ```
 
-A senha é lida do terminal **sem eco**, nunca de argumento: argumento aparece no
-`ps` de qualquer processo da máquina e fica no histórico do shell. Recusa senha
-com menos de 12 caracteres.
+The password is read from the terminal **without echo**, never from an argument:
+an argument shows up in any process's `ps` and stays in shell history. It
+refuses passwords shorter than 12 characters.
 
-O hash vai sozinho para **stdout** e os rótulos para **stderr**, então
-`brevis hash > hash.txt` grava só o que interessa.
+The hash goes alone to **stdout** and the labels to **stderr**, so
+`brevis hash > hash.txt` stores only what matters.
 
 ---
 
@@ -362,6 +368,6 @@ brevis 0.11.2
   go      go1.25.7 darwin/arm64
 ```
 
-Compilado direto com `go build`, sai `brevis dev` sem commit nem data — e
-distinguir isso de um artefato de release importa quando alguém reporta
-comportamento estranho.
+Built directly with `go build`, it prints `brevis dev` with no commit and no
+date — and telling that apart from a release artefact matters when someone
+reports odd behaviour.

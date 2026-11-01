@@ -27,15 +27,22 @@ O padrão fica na raiz; os demais ganham prefixo. Trocar `PADRAO` no `build.py`
 troca quem fica em `/` — e nada mais precisa mudar.
 
 ```
-brevis.sh/            → pt-BR      brevis.sh/en/           → inglês
-brevis.sh/docs/       → pt-BR      brevis.sh/en/docs/      → inglês
+brevis.sh/            → inglês (en-US)    brevis.sh/pt/       → pt-BR
+brevis.sh/docs/       → inglês            brevis.sh/pt/docs/  → pt-BR
+brevis.sh/fr/         → francês           (es, de, zh, ja, ru, ko, hi, id: idem)
 ```
 
-Cada página declara `hreflang` para os dois idiomas mais `x-default`. O seletor
-no topo leva ao **mesmo lugar** no outro idioma, não à home.
+Cada página declara `hreflang` para os idiomas que a têm, mais `x-default`. O
+seletor no topo é um dropdown (`<details>`, funciona sem script) e leva ao
+**mesmo lugar** no outro idioma, não à home.
 
-**Os slugs são iguais nos dois idiomas** (`/docs/installation/` e
-`/en/docs/installation/`). Só os títulos são traduzidos. Isso é o que permite o
+**A documentação só está traduzida em `en` e `pt`** (`content/<lang>/docs`).
+Os outros idiomas têm a landing e o índice de `/docs/` traduzidos, e os links
+para uma página da documentação seguem para o inglês — `DOCS` no `build.py` é
+a lista de quem tem tradução; criar `content/fr/docs/` basta para `fr` entrar.
+
+**Os slugs são iguais em todos os idiomas** (`/docs/installation/` e
+`/pt/docs/installation/`). Só os títulos são traduzidos. Isso é o que permite o
 `hreflang` apontar de uma página para a sua correspondente sem uma tabela de
 tradução de URLs.
 
@@ -105,8 +112,8 @@ declara o seu par com `<link rel="alternate" type="text/markdown">`, para que
 um agente descubra o arquivo sem conhecer a convenção do sufixo.
 
 **O `llms.txt` é um só, em inglês**, e não um por idioma. A raiz do site é
-português para quem lê; o `llms.txt` é para quem processa, e inglês é o que um
-agente espera e o idioma que o repositório adotou. Ele aponta para `/en/docs/`
+inglês para quem lê; o `llms.txt` é para quem processa, e inglês é o que um
+agente espera e o idioma que o repositório adotou. Ele aponta para `/docs/`
 e diz onde está a tradução. Trocar isso é a constante `LLMS` no `build.py`.
 
 As seções agrupam por **pergunta**, não pela barra lateral: "Building a

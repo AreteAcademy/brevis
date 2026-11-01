@@ -1,114 +1,112 @@
 # Benchmarks
 
-> Como medimos o gateway, o que os números dizem e as três testemunhas que precisam concordar.
+> How we measure the gateway, what the numbers say, and the three witnesses that have to agree.
 
-*https://brevis.sh/docs/benchmarks/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/benchmarks/ · brevis.sh docs (en-US)*
 
 ---
 
-Um comando, e ele mede o gateway inteiro:
+One command, and it measures the whole gateway:
 
 ```bash
 BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
 ```
 
-Ele sobe um Postgres, sobe o gateway, carrega com [k6], **espera o buffer
-drenar**, raspa o `/metrics` do próprio gateway e escreve
+It brings up a Postgres, starts the gateway, loads it with [k6], **waits for
+the buffer to drain**, scrapes the gateway's own `/metrics` and writes
 `bench/results/REPORT.md`.
 
-## Três testemunhas, e a terceira é a que importa
+## Three witnesses, and the third is the one that matters
 
-O k6 sabe o que o produtor viu. O gateway sabe o que fez. Um teste de carga que
-só tem o primeiro número não distingue um gateway rápido de um que responde
-`202` e perde o que aceitou.
+k6 knows what a producer saw. The gateway knows what it did. A load test
+carrying only the first cannot tell a fast gateway from one that answers `202`
+and drops what it accepted.
 
-Então o relatório põe os dois lado a lado — e conta as linhas no Postgres:
+So the report puts the two side by side — and counts the rows in Postgres:
 
-| testemunha | eventos |
+| witness | events |
 |---|---:|
-| o k6 foi informado `accepted` | 5.431.000 |
-| o gateway contou recebidos | 5.431.000 |
-| linhas no Postgres | 5.431.000 |
-| registros na fila de descarte | 0 |
+| k6 was told `accepted` | 5,431,000 |
+| the gateway counted received | 5,431,000 |
+| rows in Postgres | 5,431,000 |
+| records in the dead letter | 0 |
 
-As duas primeiras são aritmética do próprio gateway — uma da resposta que ele
-escreveu, outra do contador que ele incrementou — e um bug que perdesse eventos
-poderia mantê-las coerentes **entre si**. O banco é a única que não aceitou a
-nossa palavra.
+The first two are both the gateway's own arithmetic — one from the response it
+wrote, one from the counter it incremented — and a bug that lost events could
+keep them consistent **with each other**. The database is the only one that did
+not take our word for it.
 
-**Uma execução em que as três discordam falhou**, por melhores que sejam os
-percentis.
+**A run where the three disagree failed**, however good the percentiles are.
 
-## A corrida acima
+## The run above
 
-A corrida de 2026-09-26 em `bench/results/REPORT.md`:
-`areteacademy/brevis-gateway:0.11.0`, Darwin arm64, 11 CPUs, Postgres 17 em
-container no mesmo kernel, `auto_table[columns]` com `write: append`:
+The 2026-09-26 run in `bench/results/REPORT.md`:
+`areteacademy/brevis-gateway:0.11.0`, Darwin arm64, 11 CPUs, Postgres 17 in a
+container on the same kernel, `auto_table[columns]` with `write: append`:
 
 | | |
 |---|---:|
-| eventos aceitos | **5.431.000** (135.768/s) |
-| corpo enviado | 1.156,7 MiB em 40s |
-| `503` (contrapressão) | 0 |
-| p50 / p95 / p99 | 5,9 ms / 16,0 ms / 22,7 ms |
-| lotes entregues | 1.087, nenhum enterrado |
+| events accepted | **5,431,000** (135,768/s) |
+| body sent | 1,156.7 MiB in 40s |
+| `503` (backpressure) | 0 |
+| p50 / p95 / p99 | 5.9 ms / 16.0 ms / 22.7 ms |
+| batches delivered | 1,087, none buried |
 
-## Os thresholds são o ponto
+## The thresholds are the point
 
-O k6 sai com código diferente de zero quando um falha, então isso é **portão** e
-não gráfico:
+k6 exits non-zero when one fails, so this is a **gate** and not a chart:
 
-| threshold | por quê |
+| threshold | why |
 |---|---|
-| `p95 < 500ms` | o caminho de aceitação tem que ficar fora da latência do destino. Uma requisição esperando um `COPY` é o defeito contra o qual a esteira assíncrona existe. |
-| `http_req_failed < 1%` | um `503` é aceitável; um timeout ou um 5xx não. |
-| `eventos aceitos > 1000` | uma suíte de thresholds passa contra um gateway que não respondeu nada. |
+| `p95 < 500ms` | the accept path must stay off the sink's latency. A request waiting for a `COPY` is the defect the async pipe exists against. |
+| `http_req_failed < 1%` | a `503` is fine; a timeout or a 5xx is not. |
+| `events accepted > 1000` | a threshold suite passes against a gateway that answered nothing. |
 
-São deliberadamente frouxos: isso roda na máquina que o CI deu. Pegam **uma
-ordem de grandeza**, que é a cara de uma regressão, não um por cento.
+They are deliberately loose: this runs on whatever machine CI gave it. They
+catch **an order of magnitude**, which is what a regression looks like, not a
+percent.
 
-**Um `503` não é falha.** É o gateway recusando um evento que não tem onde pôr,
-e é seguro repetir — o `ingestion_id` é função congelada do evento, então o
-mesmo corpo reenviado é o mesmo registro. Contá-lo como erro faria contrapressão
-parecer bug.
+**A `503` is not a failure.** It is the gateway refusing an event it has
+nowhere to put, and it is safe to retry — the `ingestion_id` is a frozen
+function of the event, so the same body sent again is the same record. Counting
+it as an error would make backpressure look like a bug.
 
-## O que ele não mede
+## What it does not measure
 
-- **Não é BigQuery.** O destino é um Postgres em container. Cota de load job,
-  latência de commit e concorrência de DDL de um warehouse não estão nesses
-  números e não têm como estar.
-- **Não é durabilidade.** `durability: memory` é a única camada, então um `202`
-  significa *aceito na RAM*. Isso mede a velocidade disso, nunca o que sobrevive
-  a um `SIGKILL`.
-- **Não é o seu hardware.** Leia como forma e proporção.
+- **Not BigQuery.** The destination is a Postgres in a container. A warehouse's
+  load-job quota, commit latency and DDL concurrency are not in these numbers
+  and cannot be.
+- **Not durability.** `durability: memory` is the only tier, so a `202` means
+  *accepted into RAM*. This measures how fast that happens, never what survives
+  a `SIGKILL`.
+- **Not your hardware.** Read it as a shape and a ratio.
 
-## A nuvem local, por profile
+## The local cloud, by profile
 
 ```bash
 docker compose -f docker-compose.drivers.yml --profile gcp up -d
 docker compose -f docker-compose.drivers.yml --profile all up -d
 ```
 
-Um arquivo com profiles, e não um por nuvem: dois arquivos são dois nomes de
-projeto, e `postgres` nos dois já substituiu o banco de desenvolvimento do motor
-uma vez.
+One file with profiles, not one per cloud: two files are two project names, and
+`postgres` in both already replaced the engine's development database once.
 
-### O floci cobre menos do BigQuery do que parece
+### floci covers less of BigQuery than it looks
 
-Medido, não suposto:
+Measured, not assumed:
 
 | | |
 |---|---|
-| criar dataset e tabela | ✅ |
-| `timePartitioning` e `clustering` preservados | ✅ — a forma do bug da `0.9.1` |
-| `PATCH` de coluna | ✅ — a evolução do `auto_table` |
+| create a dataset and a table | ✅ |
+| `timePartitioning` and `clustering` preserved | ✅ — the shape of the `0.9.1` bug |
+| `PATCH` a column | ✅ — `auto_table`'s evolution |
 | `insertAll` | ✅ |
-| queries | ✅, só com `/var/run/docker.sock` montado |
+| queries | ✅, only with `/var/run/docker.sock` mounted |
 | **load jobs** | ❌ `Only QUERY jobs are supported by the floci BigQuery emulator` |
 
-O SDK escreve no BigQuery **só** por load job. Então o floci exercita cada linha
-do `auto_table` que transforma payload em DDL — e **nenhuma escrita do Brevis**.
-Ainda é a metade que hoje não tem teste local nenhum, e vale ter. Mas uma suíte
-verde contra o floci não significa que o BigQuery funciona.
+The SDK writes to BigQuery **only** through load jobs. So floci exercises every
+line of `auto_table` that turns a payload into DDL — and **not one Brevis
+write**. That is still the half with no local test today, and it is worth
+having. But a green suite against floci does not mean BigQuery works.
 
 [k6]: https://k6.io

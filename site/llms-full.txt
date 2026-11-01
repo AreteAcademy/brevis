@@ -5,7 +5,7 @@
 > as its own Kubernetes pod.
 
 This file is every documentation page concatenated, in reading order, generated
-from the same sources as https://brevis.sh/en/docs/. For the index alone, see https://brevis.sh/llms.txt.
+from the same sources as https://brevis.sh/docs/. For the index alone, see https://brevis.sh/llms.txt.
 
 
 ---
@@ -20,10 +20,10 @@ The Core schedules, queues and watches — and never touches the data. What touc
 
 | piece | what it does | how you get it | guide |
 |---|---|---|---|
-| **Core** | Schedules, queues and starts one pod per step. Never touches the data. | `areteacademy/brevis` | [Core](/en/docs/core/index.md) |
-| **SDK** | A Go library that extracts, shapes and loads, inside your step. | `go get github.com/AreteAcademy/brevis/sdk` | [Go SDK](/en/docs/sdk/index.md) |
-| **Gateway** | Takes HTTP POST, answers 202 and writes in batches. No database of its own. | `areteacademy/brevis-gateway` | [Ingestion](/en/docs/ingestion/index.md) |
-| **SQL** | Plain .sql files become tables and views, in dependency order. | `areteacademy/brevis-sql` | [SQL](/en/docs/sql/index.md) |
+| **Core** | Schedules, queues and starts one pod per step. Never touches the data. | `areteacademy/brevis` | [Core](/docs/core/index.md) |
+| **SDK** | A Go library that extracts, shapes and loads, inside your step. | `go get github.com/AreteAcademy/brevis/sdk` | [Go SDK](/docs/sdk/index.md) |
+| **Gateway** | Takes HTTP POST, answers 202 and writes in batches. No database of its own. | `areteacademy/brevis-gateway` | [Ingestion](/docs/ingestion/index.md) |
+| **SQL** | Plain .sql files become tables and views, in dependency order. | `areteacademy/brevis-sql` | [SQL](/docs/sql/index.md) |
 
 ## Control plane, data plane
 
@@ -42,9 +42,9 @@ the database it landed in.
 
 Three supporting pieces:
 
-- **[Console](/en/docs/console/index.md)** — the web interface over the Core
-- **[agent](/en/docs/pod-per-step/#where-each-step-runs)** — runs a step in a cluster you already have
-- **[`brevis` for Python](/en/docs/python/index.md)** — run context for Python steps
+- **[Console](/docs/console/index.md)** — the web interface over the Core
+- **[agent](/docs/pod-per-step/#where-each-step-runs)** — runs a step in a cluster you already have
+- **[`brevis` for Python](/docs/python/index.md)** — run context for Python steps
 
 ## Using only one piece
 
@@ -54,7 +54,7 @@ Yes. Each piece has its own module, version and image: the SDK is a Go library t
 
 An order the SDK fetches and an order that arrives at the Gateway land in the same table, with the same brevis_ingestion_id. Choosing between the two becomes a deployment decision, not a schema one.
 
-Through the SDK, with `sdk.Landing` (details in [The landing layout](/en/docs/sdk/#the-landing-layout)):
+Through the SDK, with `sdk.Landing` (details in [The landing layout](/docs/sdk/#the-landing-layout)):
 
 ```go
 sdk.Execute(ctx, &sdk.Pipeline{
@@ -67,7 +67,7 @@ sdk.Execute(ctx, &sdk.Pipeline{
 }, nil)
 ```
 
-Through the Gateway, a POST to `/v1/tables` (details in [One route, N tables](/en/docs/ingestion/#one-route-n-tables)):
+Through the Gateway, a POST to `/v1/tables` (details in [One route, N tables](/docs/ingestion/#one-route-n-tables)):
 
 ```bash
 curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \
@@ -107,50 +107,50 @@ Each row says which piece reaches it, through which package or sink, and where t
 
 |  | how it gets there | guide |
 |---|---|---|
-| **HTTP** | SDK: `from.HTTP` | [Go SDK](/en/docs/sdk/#sources-and-destinations) |
-| **Postgres** | SDK: `from/postgres` | [Go SDK](/en/docs/sdk/#sources-and-destinations) |
-| **MySQL** | SDK: `from/mysql` | [Go SDK](/en/docs/sdk/#sources-and-destinations) |
-| **files** | SDK: `from.Files` — local, S3, GCS | [Go SDK](/en/docs/sdk/#sources-and-destinations) |
+| **HTTP** | SDK: `from.HTTP` | [Go SDK](/docs/sdk/#sources-and-destinations) |
+| **Postgres** | SDK: `from/postgres` | [Go SDK](/docs/sdk/#sources-and-destinations) |
+| **MySQL** | SDK: `from/mysql` | [Go SDK](/docs/sdk/#sources-and-destinations) |
+| **files** | SDK: `from.Files` — local, S3, GCS | [Go SDK](/docs/sdk/#sources-and-destinations) |
 
 ## Lands in
 
 |  | how it gets there | guide |
 |---|---|---|
-| **BigQuery** | SDK: `to/bigquery` · Gateway: `bigquery` | [Go SDK](/en/docs/sdk/#sources-and-destinations), [Ingestion sinks](/en/docs/ingestion-sinks/index.md) |
-| **Postgres** | SDK: `to/postgres` · Gateway: `postgres` | [Go SDK](/en/docs/sdk/#sources-and-destinations), [Ingestion sinks](/en/docs/ingestion-sinks/index.md) |
-| **MySQL** | SDK: `to/mysql` · Gateway: `mysql` | [Go SDK](/en/docs/sdk/#sources-and-destinations), [Ingestion sinks](/en/docs/ingestion-sinks/index.md) |
-| **Redshift** | SDK: `to/redshift` · Gateway: `redshift` | [Go SDK](/en/docs/sdk/#sources-and-destinations), [Ingestion sinks](/en/docs/ingestion-sinks/index.md) |
-| **Pub/Sub** | SDK: `to/pubsub` · Gateway: `pubsub` | [Go SDK](/en/docs/sdk/#sources-and-destinations), [Ingestion sinks](/en/docs/ingestion-sinks/index.md) |
+| **BigQuery** | SDK: `to/bigquery` · Gateway: `bigquery` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
+| **Postgres** | SDK: `to/postgres` · Gateway: `postgres` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
+| **MySQL** | SDK: `to/mysql` · Gateway: `mysql` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
+| **Redshift** | SDK: `to/redshift` · Gateway: `redshift` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
+| **Pub/Sub** | SDK: `to/pubsub` · Gateway: `pubsub` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
 
 ## Files in
 
 |  | how it gets there | guide |
 |---|---|---|
-| **S3** | SDK: `store/s3` · Gateway: `files` on `s3://` | [Go SDK](/en/docs/sdk/#sources-and-destinations), [Ingestion sinks](/en/docs/ingestion-sinks/index.md) |
-| **GCS** | SDK: `store/gcs` · Gateway: `files` on `gs://` | [Go SDK](/en/docs/sdk/#sources-and-destinations), [Ingestion sinks](/en/docs/ingestion-sinks/index.md) |
+| **S3** | SDK: `store/s3` · Gateway: `files` on `s3://` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
+| **GCS** | SDK: `store/gcs` · Gateway: `files` on `gs://` | [Go SDK](/docs/sdk/#sources-and-destinations), [Ingestion sinks](/docs/ingestion-sinks/index.md) |
 
 ## Models in
 
 |  | how it gets there | guide |
 |---|---|---|
-| **Postgres** | SQL: `--dialect postgres` (the default) | [SQL](/en/docs/sql/index.md) |
-| **BigQuery** | SQL: `--dialect bigquery` | [SQL](/en/docs/sql/index.md) |
+| **Postgres** | SQL: `--dialect postgres` (the default) | [SQL](/docs/sql/index.md) |
+| **BigQuery** | SQL: `--dialect bigquery` | [SQL](/docs/sql/index.md) |
 
 ## Runs on
 
 |  | how it gets there | guide |
 |---|---|---|
-| **Docker** | one image per piece: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Installation](/en/docs/installation/#docker) |
-| **Kubernetes** | one pod per step | [Kubernetes](/en/docs/kubernetes/index.md), [Pod per step](/en/docs/pod-per-step/index.md) |
-| **Helm** | the chart in `deployments/helm/brevis` | [Kubernetes](/en/docs/kubernetes/#install-it-with-helm) |
+| **Docker** | one image per piece: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Installation](/docs/installation/#docker) |
+| **Kubernetes** | one pod per step | [Kubernetes](/docs/kubernetes/index.md), [Pod per step](/docs/pod-per-step/index.md) |
+| **Helm** | the chart in `deployments/helm/brevis` | [Kubernetes](/docs/kubernetes/#install-it-with-helm) |
 
 ## Written in
 
 |  | how it gets there | guide |
 |---|---|---|
-| **Go** | Core, SDK, Gateway and SQL | [Ecosystem](/en/docs/ecosystem/index.md) |
-| **Python** | `pip install brevis`: context between steps in a Python step | [Python](/en/docs/python/index.md) |
-| **SQL** | brevis-sql's models are plain `.sql` files | [SQL](/en/docs/sql/index.md) |
+| **Go** | Core, SDK, Gateway and SQL | [Ecosystem](/docs/ecosystem/index.md) |
+| **Python** | `pip install brevis`: context between steps in a Python step | [Python](/docs/python/index.md) |
+| **SQL** | brevis-sql's models are plain `.sql` files | [SQL](/docs/sql/index.md) |
 
 ## Clouds
 
@@ -240,7 +240,7 @@ and a version cannot be un-published.
 
 What stitches the three together is a number: the `ingestion_id`, a frozen UUID
 v5 over `provider|entity|source_key|record_ts`. A row the
-[gateway](/en/docs/ingestion/index.md) lands and a row an [SDK](/en/docs/sdk/index.md) fetcher
+[gateway](/docs/ingestion/index.md) lands and a row an [SDK](/docs/sdk/index.md) fetcher
 lands for the same record are *one row*, with no reconciliation between them.
 
 ## When brevis.sh is not the choice
@@ -290,15 +290,15 @@ Meet the school that connects philosophical thinking and software engineering. O
 
 | if you want | go to |
 |---|---|
-| install and see it running | [Installation](/en/docs/installation/index.md) and [Quickstart](/en/docs/quickstart/index.md) |
-| understand the workflow format | [Workflows](/en/docs/workflows/index.md) |
-| understand the architecture | [Scheduler and queue](/en/docs/scheduler-and-queue/index.md) |
-| the list of commands and flags | [CLI](/en/docs/cli/index.md) |
-| write a fetcher in Go | [SDK](/en/docs/sdk/index.md) |
-| pass a value from one step to the next | [Context between steps](/en/docs/context/index.md) |
-| write a step in Python | [Client libraries](/en/docs/libraries/index.md) |
-| receive data over HTTP instead of fetching it | [Ingestion](/en/docs/ingestion/index.md) |
-| build dashboards and alerts | [Observability](/en/docs/observability/index.md) |
+| install and see it running | [Installation](/docs/installation/index.md) and [Quickstart](/docs/quickstart/index.md) |
+| understand the workflow format | [Workflows](/docs/workflows/index.md) |
+| understand the architecture | [Scheduler and queue](/docs/scheduler-and-queue/index.md) |
+| the list of commands and flags | [CLI](/docs/cli/index.md) |
+| write a fetcher in Go | [SDK](/docs/sdk/index.md) |
+| pass a value from one step to the next | [Context between steps](/docs/context/index.md) |
+| write a step in Python | [Client libraries](/docs/libraries/index.md) |
+| receive data over HTTP instead of fetching it | [Ingestion](/docs/ingestion/index.md) |
+| build dashboards and alerts | [Observability](/docs/observability/index.md) |
 
 :::note About the name
 *Brevis* is Latin for "short, brief" — the root of *brevity*. It comes from
@@ -400,7 +400,7 @@ $ brevis migrate status
 erro: BREVIS_DATABASE_URL e obrigatoria
 ```
 
-The full list is in [Configuration](/en/docs/configuration/index.md).
+The full list is in [Configuration](/docs/configuration/index.md).
 
 ## Applying the schema
 
@@ -426,7 +426,7 @@ brevis validate examples/
 ```
 
 If both answer, the install is correct. Move on to the
-[Quickstart](/en/docs/quickstart/index.md).
+[Quickstart](/docs/quickstart/index.md).
 
 ---
 
@@ -558,9 +558,9 @@ graph shows every step changing state live.
 
 ## Next steps
 
-- [Workflows](/en/docs/workflows/index.md) — the full YAML format
-- [Parameters](/en/docs/parameters/index.md) — what changes between two runs
-- [Pod per step](/en/docs/pod-per-step/index.md) — how this becomes Kubernetes
+- [Workflows](/docs/workflows/index.md) — the full YAML format
+- [Parameters](/docs/parameters/index.md) — what changes between two runs
+- [Pod per step](/docs/pod-per-step/index.md) — how this becomes Kubernetes
 
 ---
 
@@ -574,10 +574,10 @@ The whole workflow is one versioned file: reviewing a pipeline becomes reviewing
 
 ## What it does
 
-- **Schedules.** The scheduler reads each workflow's schedule and creates the runs. It and the queue are two independent loops: one jammed does not stop the other — [Scheduler and queue](/en/docs/scheduler-and-queue/index.md).
+- **Schedules.** The scheduler reads each workflow's schedule and creates the runs. It and the queue are two independent loops: one jammed does not stop the other — [Scheduler and queue](/docs/scheduler-and-queue/index.md).
 - **Queues.** The queue lives in Postgres: whoever executes claims a pending run, walks the graph and records each step's state.
-- **Starts one pod per step**, each with its own image — [Pod per step](/en/docs/pod-per-step/index.md).
-- **Never touches the data.** Only control lines leave the Core: what reads and writes data is the step, with the [SDK](/en/docs/sdk/index.md) or whatever code is yours.
+- **Starts one pod per step**, each with its own image — [Pod per step](/docs/pod-per-step/index.md).
+- **Never touches the data.** Only control lines leave the Core: what reads and writes data is the step, with the [SDK](/docs/sdk/index.md) or whatever code is yours.
 
 ## One workflow, end to end
 
@@ -639,11 +639,11 @@ The real output, from the published image. brevis run executes locally, with no 
 
 | if you want | go to |
 |---|---|
-| the whole YAML format | [Workflows](/en/docs/workflows/index.md) |
-| who creates runs and who executes them | [Scheduler and queue](/en/docs/scheduler-and-queue/index.md) |
-| why one pod per step | [Pod per step](/en/docs/pod-per-step/index.md) |
-| what a step passes to the next | [Context between steps](/en/docs/context/index.md) |
-| bring it all up and see the graph in the interface | [Quickstart](/en/docs/quickstart/index.md) |
+| the whole YAML format | [Workflows](/docs/workflows/index.md) |
+| who creates runs and who executes them | [Scheduler and queue](/docs/scheduler-and-queue/index.md) |
+| why one pod per step | [Pod per step](/docs/pod-per-step/index.md) |
+| what a step passes to the next | [Context between steps](/docs/context/index.md) |
+| bring it all up and see the graph in the interface | [Quickstart](/docs/quickstart/index.md) |
 
 ---
 
@@ -791,7 +791,7 @@ steps:
 
 This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 `dbt build`, instead of both paying the size of the larger one. See
-[Pod per step](/en/docs/pod-per-step/index.md).
+[Pod per step](/docs/pod-per-step/index.md).
 
 ## Step fields
 
@@ -805,7 +805,7 @@ This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 | `depends_on` | | list of `id`s that must finish first; an entry may be `{step, label}` |
 | `marker` | `false` | a step with no command, for a `start` or an `end` |
 | `resources` | | `cpu`, `memory` and `limits` for that step |
-| `runtime`, `tools` | | the step's language and tools — see [Step runtime](/en/docs/runtime/index.md) |
+| `runtime`, `tools` | | the step's language and tools — see [Step runtime](/docs/runtime/index.md) |
 | `when` | `all_success` | under what state of its dependencies this step runs — see below |
 | `unless_empty` | | a context key that decides whether there is anything to do — see below |
 | `for_each` | | a context key holding a list; the step runs once per element — see below |
@@ -1248,9 +1248,9 @@ were not named on the command line.
 
 ## Next steps
 
-- [Parameters](/en/docs/parameters/index.md) — what changes between two runs
-- [Scheduler and queue](/en/docs/scheduler-and-queue/index.md) — how a workflow becomes execution
-- [Context between steps](/en/docs/context/index.md) — what one step tells the next
+- [Parameters](/docs/parameters/index.md) — what changes between two runs
+- [Scheduler and queue](/docs/scheduler-and-queue/index.md) — how a workflow becomes execution
+- [Context between steps](/docs/context/index.md) — what one step tells the next
 
 ---
 
@@ -1452,8 +1452,8 @@ says what failed but makes the reader hunt for the run by hand.
 
 ## Next steps
 
-- [Pod per step](/en/docs/pod-per-step/index.md) — where each step actually runs
-- [CLI](/en/docs/cli/index.md) — every flag of `scheduler` and `backfill`
+- [Pod per step](/docs/pod-per-step/index.md) — where each step actually runs
+- [CLI](/docs/cli/index.md) — every flag of `scheduler` and `backfill`
 
 ---
 
@@ -1585,9 +1585,9 @@ off in production: stopped pods consume cluster quota.
 
 ## Next steps
 
-- [Kubernetes](/en/docs/kubernetes/index.md) — the full deployment
-- [Configuration](/en/docs/configuration/index.md) — every `BREVIS_POD_*` variable
-- [Observability](/en/docs/observability/index.md) — metrics from both processes
+- [Kubernetes](/docs/kubernetes/index.md) — the full deployment
+- [Configuration](/docs/configuration/index.md) — every `BREVIS_POD_*` variable
+- [Observability](/docs/observability/index.md) — metrics from both processes
 
 ---
 
@@ -1650,7 +1650,7 @@ and a library for it is a JSON parse and a file write.
 
 | language | |
 |---|---|
-| Python | [`pip install brevis`](/en/docs/python/index.md) — it also carries `brevis.run`, with the [auto parameters](/en/docs/parameters/index.md) |
+| Python | [`pip install brevis`](/docs/python/index.md) — it also carries `brevis.run`, with the [auto parameters](/docs/parameters/index.md) |
 | Go | `sdk/context`, part of the SDK module, depends on nothing |
 | anything else | the two variables above |
 
@@ -1695,9 +1695,9 @@ cat /tmp/out.json
 
 ## Next steps
 
-- [Parameters](/en/docs/parameters/index.md) — what changes between runs, and the automatic ones
-- [Step runtime](/en/docs/runtime/index.md) — what a step declares about where it runs
-- [Python](/en/docs/python/index.md) — the client library, and the other languages
+- [Parameters](/docs/parameters/index.md) — what changes between runs, and the automatic ones
+- [Step runtime](/docs/runtime/index.md) — what a step declares about where it runs
+- [Python](/docs/python/index.md) — the client library, and the other languages
 
 ---
 
@@ -2245,7 +2245,7 @@ Fields come from the declaration, and `pattern` is validated before submission.
 ## In the step environment
 
 Run parameters also enter each step's **environment**, prefixed. This exists so
-that a fetcher written with the [SDK](/en/docs/sdk/index.md) can see them without receiving
+that a fetcher written with the [SDK](/docs/sdk/index.md) can see them without receiving
 anything as an argument:
 
 ```go
@@ -2323,7 +2323,7 @@ steps:
 The whole set is also in `$BREVIS_AUTO_PARAMS` as one JSON object, for a step
 that would rather parse once.
 
-In Go, the [SDK](/en/docs/sdk/index.md) reads them for you:
+In Go, the [SDK](/docs/sdk/index.md) reads them for you:
 
 ```go
 Before: func(ctx context.Context, p *sdk.Pipeline) error {
@@ -2413,9 +2413,9 @@ execution keeps showing January's values even after the default changes.
 
 ## Next steps
 
-- [Configuration](/en/docs/configuration/index.md) — process environment variables
-- [SDK](/en/docs/sdk/index.md) — how a fetcher reads the run context
-- [Context between steps](/en/docs/context/index.md) — what a step publishes for the next
+- [Configuration](/docs/configuration/index.md) — process environment variables
+- [SDK](/docs/sdk/index.md) — how a fetcher reads the run context
+- [Context between steps](/docs/context/index.md) — what a step publishes for the next
 
 ---
 
@@ -2443,7 +2443,7 @@ mid-run is a process whose behaviour nobody can reproduce.
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | integer; a non-numeric value is a boot error |
 | `BREVIS_BRAND_FILE` | `brand.yaml` | branding; absent = default |
 | `BREVIS_UI_URL` | — | base of the run link in alerts |
-| `BREVIS_METRICS_ADDR` | — | Prometheus metrics port; empty = not exposed. See [Observability](/en/docs/observability/index.md) |
+| `BREVIS_METRICS_ADDR` | — | Prometheus metrics port; empty = not exposed. See [Observability](/docs/observability/index.md) |
 | `BREVIS_SLACK_WEBHOOK` | — | destination for failure alerts. Empty = nobody is told |
 
 ## Authentication
@@ -2639,9 +2639,9 @@ which is what tells "broke today" apart from "broke since Tuesday's bump".
 
 ## Next steps
 
-- [Workflows](/en/docs/workflows/index.md) — every step field
-- [Pod per step](/en/docs/pod-per-step/index.md) — where a step actually runs
-- [Observability](/en/docs/observability/index.md) — the metrics that go with it
+- [Workflows](/docs/workflows/index.md) — every step field
+- [Pod per step](/docs/pod-per-step/index.md) — where a step actually runs
+- [Observability](/docs/observability/index.md) — the metrics that go with it
 
 ---
 
@@ -2862,7 +2862,7 @@ creating a table without certainty is worse than not creating it.
 ### The clock
 
 `p.Run.Auto` is what the engine worked out about this run — the
-[auto params](/en/docs/parameters/#auto-params). `Auto.Now()` is the clock to read
+[auto params](/docs/parameters/#auto-params). `Auto.Now()` is the clock to read
 instead of `time.Now()`: on a scheduled run it is the slot, so it does not move
 when the run is late and does not move when the run is retried three hours
 later.
@@ -2886,7 +2886,7 @@ local development needs no special case.
 ## Not to be confused with the client libraries
 
 This SDK is ETL machinery in Go: drivers, pagination, provenance, table
-creation. The [client libraries](/en/docs/libraries/index.md) are a different thing —
+creation. The [client libraries](/docs/libraries/index.md) are a different thing —
 thin clients that hand a step the run context and clock, in Python today
 and in Node.js and Rust later. A step using pandas or dbt wants the
 second, not this.
@@ -2973,7 +2973,7 @@ they have; here the pipeline's author knows the shape and writes it down, in
 a diff somebody reviews.
 
 It is the same shape a gateway lands as
-[`shape: columns`](/en/docs/ingestion-sinks/#two-shapes-one-contract), through the
+[`shape: columns`](/docs/ingestion-sinks/#two-shapes-one-contract), through the
 same code — same columns, same values, same `brevis_ingestion_id`.
 
 **A field name has to be able to be a column name**: a letter or underscore,
@@ -3356,7 +3356,7 @@ absent-value handling and the error messages that are worth not rewriting.
 
 | language | | |
 |---|---|---|
-| **Python** | `pip install brevis` | [available](/en/docs/python/index.md) — `0.2.1` on PyPI |
+| **Python** | `pip install brevis` | [available](/docs/python/index.md) — `0.2.1` on PyPI |
 | **Go** | `brevis/sdk/context` | available, inside the SDK module |
 | **Node.js** | — | planned |
 | **Rust** | — | planned |
@@ -3396,7 +3396,7 @@ metrics.inc("vendor_rejected_total")   # a counter: it adds up
 ```
 
 They come out of the **engine's** `/metrics`, on the scheduler's port, labelled
-with the workflow and the step — see [Observability](/en/docs/observability/index.md).
+with the workflow and the step — see [Observability](/docs/observability/index.md).
 
 **This does not open a port, and it could not.** A step runs in its own pod for
 forty seconds and exits; a port it opened would be scraped never, or once by
@@ -3405,7 +3405,7 @@ draw a pipeline's phases — and the engine records it. Nothing to install,
 nothing to operate, and the labels are the engine's because a step cannot know
 its own workflow slug.
 
-The API details are in [Python](/en/docs/python/#metrics-only-your-pipeline-knows).
+The API details are in [Python](/docs/python/#metrics-only-your-pipeline-knows).
 
 ## Writing a client for another language
 
@@ -3428,9 +3428,9 @@ right — and what the Python implementation already learned the hard way:
 
 ## Next steps
 
-- [Python](/en/docs/python/index.md) — the complete API
-- [Context between steps](/en/docs/context/index.md) — the concept and the 4096-byte ceiling
-- [Parameters](/en/docs/parameters/index.md) — the declared ones and the automatic ones
+- [Python](/docs/python/index.md) — the complete API
+- [Context between steps](/docs/context/index.md) — the concept and the 4096-byte ceiling
+- [Parameters](/docs/parameters/index.md) — the declared ones and the automatic ones
 
 ---
 
@@ -3554,7 +3554,7 @@ Run the script by hand and `run.now()` **is** the wall clock and `window()` is
 
 ## One instance of a mapped step
 
-Under [`for_each:`](/en/docs/workflows/index.md), the engine runs one process per element
+Under [`for_each:`](/docs/workflows/index.md), the engine runs one process per element
 and tells each one which it got:
 
 ```python
@@ -3698,9 +3698,9 @@ same thing it does outside the engine.
 
 ## Next steps
 
-- [Client libraries](/en/docs/libraries/index.md) — the contract and the other languages
-- [Context between steps](/en/docs/context/index.md) — the concept
-- [Parameters](/en/docs/parameters/index.md) — the declared ones
+- [Client libraries](/docs/libraries/index.md) — the contract and the other languages
+- [Context between steps](/docs/context/index.md) — the concept
+- [Parameters](/docs/parameters/index.md) — the declared ones
 
 ---
 
@@ -3711,7 +3711,7 @@ same thing it does outside the engine.
 The interface ships in the binary — not a separate service to install and keep alive. Success rate, average duration, the queue, the attempt history and the schedule of what comes next.
 
 The console comes up with `brevis serve`, on the same port as the HTTP API
-(`BREVIS_HTTP_ADDR`, `:8080` by default). In the [Quickstart](/en/docs/quickstart/index.md) it opens at `localhost:8080`.
+(`BREVIS_HTTP_ADDR`, `:8080` by default). In the [Quickstart](/docs/quickstart/index.md) it opens at `localhost:8080`.
 
 The screens below are recreated in SVG from the console, with sample data —
 never screenshots: the real console operates customer data in production.
@@ -4012,9 +4012,9 @@ Leave it off in production — stopped pods consume quota.
 
 ## Next steps
 
-- [Pod per step](/en/docs/pod-per-step/index.md) — the execution model
-- [Configuration](/en/docs/configuration/index.md) — every `BREVIS_POD_*` variable
-- [Observability](/en/docs/observability/index.md) — what to scrape, and from which process
+- [Pod per step](/docs/pod-per-step/index.md) — the execution model
+- [Configuration](/docs/configuration/index.md) — every `BREVIS_POD_*` variable
+- [Observability](/docs/observability/index.md) — what to scrape, and from which process
 
 ---
 
@@ -4064,7 +4064,7 @@ brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
 ```
 
 The step opens no port: it writes a line to stdout and the engine records it — a
-pod that lives forty seconds is not scrapeable. See [Python](/en/docs/python/index.md).
+pod that lives forty seconds is not scrapeable. See [Python](/docs/python/index.md).
 
 ## What to watch
 
@@ -4107,8 +4107,8 @@ what it costs.
 
 ## Next steps
 
-- [Kubernetes](/en/docs/kubernetes/index.md) — deploying both processes
-- [Configuration](/en/docs/configuration/index.md) — `BREVIS_METRICS_ADDR` and the rest
+- [Kubernetes](/docs/kubernetes/index.md) — deploying both processes
+- [Configuration](/docs/configuration/index.md) — `BREVIS_METRICS_ADDR` and the rest
 
 ---
 
@@ -4322,7 +4322,7 @@ Every record leaves with an `ingestion_id`: a **frozen UUID v5** over
 `provider|entity|source_key|record_ts`.
 
 It is the **same id** a batch fetcher computes for the same record. A row the
-gateway lands and a row an [SDK](/en/docs/sdk/index.md) pipeline lands are *one row*,
+gateway lands and a row an [SDK](/docs/sdk/index.md) pipeline lands are *one row*,
 with no reconciliation between them.
 
 Two practical consequences:
@@ -4687,15 +4687,15 @@ table if it is absent, and grows a column when a new field turns up:
 Control fields at the top, the record inside `data`, and seven `brevis_*`
 tracking columns on every table. One route, N tables, nothing declared.
 
-It is in [Ingestion sinks](/en/docs/ingestion-sinks/#one-route-n-tables-nothing-declared).
+It is in [Ingestion sinks](/docs/ingestion-sinks/#one-route-n-tables-nothing-declared).
 
 ## Where to go next
 
 | if you want | go to |
 |---|---|
-| the destinations and how each one writes | [Ingestion sinks](/en/docs/ingestion-sinks/index.md) |
-| the `ingestion_id` from the other side | [Go SDK](/en/docs/sdk/index.md) |
-| dashboards and alerts | [Observability](/en/docs/observability/index.md) |
+| the destinations and how each one writes | [Ingestion sinks](/docs/ingestion-sinks/index.md) |
+| the `ingestion_id` from the other side | [Go SDK](/docs/sdk/index.md) |
+| dashboards and alerts | [Observability](/docs/observability/index.md) |
 
 ---
 
@@ -5110,13 +5110,13 @@ there and it breaks the day somebody points a stream at BigQuery.
 
 Both shapes have an SDK equivalent, and it is the same code rather than a
 matching one: `sdk.Landing(table, sdk.LandingKey("id"))` lands `document`, and
-adding [`sdk.LandingColumns()`](/en/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field)
+adding [`sdk.LandingColumns()`](/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field)
 lands `columns`. Same columns, same values, same `brevis_ingestion_id` — so a
 stream can move between a gateway and a pipeline without a migration, and the
 two can be read as one table.
 
 The pipeline can grow the same column the same way: set
-[`Evolve: sdk.EvolveAdditiveFromPayload`](/en/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)
 on the destination and a field the batch carries becomes a column, by this
 rule, through this code.
 
@@ -5131,14 +5131,14 @@ field.
 **Pick it before the first table is created.** Changing it later adds eight
 columns and abandons eight — nothing drops a column — so a table already
 carrying the layout under one prefix refuses a load declaring another. See
-[the SDK page](/en/docs/sdk/#the-brevis-prefix-is-yours-to-change) for the
+[the SDK page](/docs/sdk/#the-brevis-prefix-is-yours-to-change) for the
 normalisation and the way out.
 
 **A nested object's fields can get columns of their own.**
 `BREVIS_NORMALIZE_DATA=true` on the gateway's process flattens one level —
 `{"name": {"first": "x"}}` lands as `name_first` — and every stream shares it,
 so two sinks cannot disagree about a table they might both write to. See
-[the SDK page](/en/docs/sdk/#one-column-per-nested-field) for what it renames,
+[the SDK page](/docs/sdk/#one-column-per-nested-field) for what it renames,
 which is the half to read before turning it on.
 
 **On BigQuery, `nationalID` and `nationalId` are one column.** BigQuery folds
@@ -5146,7 +5146,7 @@ column case, so a flush carrying one spelling in a `DELETE` and the other in
 an `INSERT` creates **one** column — the first in sorted order — rather than
 failing the `CREATE`. A single event carrying both is refused, naming both
 fields. Postgres and MySQL keep them as two columns, which is correct for
-them. See [the SDK page](/en/docs/sdk/index.md) for which spelling wins and what is not
+them. See [the SDK page](/docs/sdk/index.md) for which spelling wins and what is not
 migrated.
 
 ### `UPDATE` and `DELETE` are recorded, not applied
@@ -5671,9 +5671,9 @@ compatibility nobody can predict is worse than none.
 
 | if you want | go to |
 |---|---|
-| see where SQL sits among the four pieces | [Ecosystem](/en/docs/ecosystem/index.md) |
-| run brevis-sql as a scheduled step | [Core](/en/docs/core/index.md) |
-| land the data it will model | [Go SDK](/en/docs/sdk/index.md) or [Ingestion](/en/docs/ingestion/index.md) |
+| see where SQL sits among the four pieces | [Ecosystem](/docs/ecosystem/index.md) |
+| run brevis-sql as a scheduled step | [Core](/docs/core/index.md) |
+| land the data it will model | [Go SDK](/docs/sdk/index.md) or [Ingestion](/docs/ingestion/index.md) |
 
 ---
 
@@ -5720,13 +5720,13 @@ Yes. The complete runtime is open to read, use, adapt and contribute to.
 
 De Brevitate Vitae inspires more intentional engineering: reduce the complexity that consumes time, and preserve room for work with purpose.
 
-More in [Philosophy](/en/docs/philosophy/index.md).
+More in [Philosophy](/docs/philosophy/index.md).
 
 ## How does pod isolation work?
 
 Each workflow step runs as its own pod with its own image, keeping dependencies and execution context separate.
 
-More in [Pod per step](/en/docs/pod-per-step/index.md).
+More in [Pod per step](/docs/pod-per-step/index.md).
 
 ## What is the relationship with Aretê Academy?
 
@@ -5736,4 +5736,4 @@ brevis.sh is a project of Aretê Academy, which brings great ideas from philosop
 
 Yes. Each piece has its own module, version and image: the SDK is a Go library that runs in any program, the Gateway starts on its own with a YAML file and no database, and brevis-sql runs as a container. The Core orchestrates the others when you want it to — it is a prerequisite for none of them.
 
-More in [Ecosystem](/en/docs/ecosystem/index.md).
+More in [Ecosystem](/docs/ecosystem/index.md).

@@ -620,31 +620,68 @@ a.chip:focus-visible .ico {
    e enquanto a regra morava na folha da documentacao os dois links saiam
    colados na landing — "PTEN". */
 
-.lang-switch {
-  display: inline-flex;
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  overflow: hidden;
+.lang-dd {
+  position: relative;
 }
 
-.lang-switch a {
-  padding: 0.28rem 0.55rem;
+.lang-dd summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.28rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--text-dim);
+  cursor: pointer;
+  list-style: none;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.lang-switch a + a {
-  border-left: 1px solid var(--line);
+.lang-dd summary::-webkit-details-marker {
+  display: none;
 }
 
-.lang-switch a:hover {
+.lang-dd summary svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.lang-dd summary:hover,
+.lang-dd[open] summary {
   color: var(--text);
   background: var(--surface);
 }
 
-.lang-switch a[aria-current="true"] {
+.lang-dd ul {
+  position: absolute;
+  right: 0;
+  z-index: 30;
+  min-width: 11rem;
+  max-height: min(22rem, 70vh);
+  margin: 0.35rem 0 0;
+  padding: 0.25rem 0;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg);
+}
+
+.lang-dd li a {
+  display: block;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.lang-dd li a:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.lang-dd li a[aria-current="true"] {
   color: var(--bg);
   background: var(--lime);
 }
@@ -1437,6 +1474,11 @@ a.chip:focus-visible .ico {
     padding: 0.85rem 0;
     font-size: 1rem;
     border-bottom: 1px solid var(--line-soft);
+  }
+
+  .lang-dd ul {
+    position: static;
+    max-height: 14rem;
   }
 
   .header-cta {

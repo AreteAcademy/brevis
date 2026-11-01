@@ -1,15 +1,15 @@
-# Parâmetros
+# Parameters
 
-> O que muda entre dois disparos do mesmo workflow, sem editar o arquivo.
+> What changes between two runs of the same workflow, without editing the file.
 
-*https://brevis.sh/docs/parameters/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/parameters/ · brevis.sh docs (en-US)*
 
 ---
 
-Um workflow pode declarar **parâmetros de execução**: valores que mudam entre
-dois disparos sem que o arquivo mude.
+A workflow can declare **run parameters**: values that change between two
+triggers without the file changing.
 
-## Declarando
+## Declaring
 
 ```yaml
 params:
@@ -26,40 +26,40 @@ steps:
     run: dbt build --vars '{"load_full":"{{ .load_full }}"}' --select bronze+
 ```
 
-| campo | | |
+| field | | |
 |---|---|---|
-| `name` | **obrigatório** | o nome usado no template e no `--param` |
-| `type` | | `string`, `boolean`, `integer`, ou `list|<tipo>` para vários valores |
-| `default` | | usado quando o disparo não informa valor |
-| `pattern` | | expressão regular que o valor precisa casar |
-| `title` | | o rótulo que o formulário mostra, até 60 caracteres; senão, o nome |
-| `group` | | agrupa os parâmetros no formulário, até 60 caracteres |
-| `warn` | | o que custa um valor diferente do default, mostrado sob o campo, até 200 caracteres |
-| `uses` | | a chave do conector de que o parâmetro trata (`bigquery`, `postgres`), para o logo |
+| `name` | **required** | the name used in the template and in `--param` |
+| `type` | | `string`, `boolean`, `integer`, or `list|<type>` for many values |
+| `default` | | used when the trigger provides no value |
+| `pattern` | | regular expression the value must match |
+| `title` | | the label the form shows, up to 60 characters; the name otherwise |
+| `group` | | gathers parameters in the form, up to 60 characters |
+| `warn` | | what a value other than the default costs, shown under the field, up to 200 characters |
+| `uses` | | the key of the connector the parameter is about (`bigquery`, `postgres`), for its logo |
 
-Um parâmetro **sem `default`** é obrigatório: o disparo que não o informar
-falha antes de executar qualquer passo.
+A parameter **without a `default`** is required: a trigger that omits it fails
+before executing any step.
 
-`title`, `group`, `warn` e `uses` são como o formulário apresenta o parâmetro,
-e **nenhum deles muda o que um valor pode ser**. Cada um é uma linha só; `uses`
-usa letras minúsculas, dígitos e `-`. O publish recusa o que fugir disso,
-nomeando o parâmetro.
+`title`, `group`, `warn` and `uses` are how the form presents the parameter,
+and **none of them changes what a value may be**. Each is one line; `uses` is
+lowercase letters, digits and `-`. The publish refuses anything else, naming
+the parameter.
 
 ```yaml
 params:
   - name: load_full
     type: boolean
     default: "false"
-    title: Carga completa
-    group: Carga
-    warn: reprocessa a tabela inteira; custa caro
+    title: Full load
+    group: Load
+    warn: reprocesses the whole table; it costs
     uses: bigquery
 ```
 
-## Uma lista de valores
+## A list of values
 
-`list|<tipo>` declara um parâmetro que carrega vários valores — as tabelas a
-carregar, as camadas a reconstruir, as janelas a reprocessar:
+`list|<type>` declares a parameter that carries many values — the tables to
+load, the layers to rebuild, the windows to backfill:
 
 ```yaml
 params:
@@ -69,7 +69,7 @@ params:
 
   - name: layers
     type: list|string
-    enum: [bronze, silver, gold]     # o enum restringe cada ITEM
+    enum: [bronze, silver, gold]     # an enum restricts each ITEM
     default: "bronze"
 
   - name: days
@@ -77,23 +77,23 @@ params:
     default: "1,7,30"
 ```
 
-O elemento pode ser `string`, `integer` ou `boolean`. Cada item é validado por
-si, então `list|integer` recebendo `1,x,30` falha nomeando o **item 2** em vez
-do valor inteiro.
+The element can be `string`, `integer` or `boolean`. Each item is validated on
+its own, so `list|integer` given `1,x,30` fails naming **item 2** rather than
+the whole value.
 
-É **uma string separada por vírgula** em todo lugar: no banco, no
-`BREVIS_RUN_PARAMS` e no comando. É isso que a faz funcionar num passo sem caso
-especial nenhum —
+It is **one comma-separated string** everywhere: in the database, in
+`BREVIS_RUN_PARAMS`, and in the command. That is what makes it work in a step
+with no special case at all —
 
 ```yaml
 run: dbt build --select {{ .tables }}      # dbt build --select users,orders
 ```
 
-— e é por isso que uma vírgula não pode aparecer dentro de um item. Item vazio e
-item repetido também são recusados: o repetido dobra em silêncio o que o passo
-faz por item.
+— and it is why a comma cannot appear inside an item. An empty item and a
+repeated one are refused too: a repeat silently doubles whatever the step does
+per item.
 
-### Como array, dentro de um passo
+### As an array, in a step
 
 ```go
 for _, table := range p.Run.ParamList("tables") {
@@ -108,73 +108,74 @@ for table in run.param_list("tables"):
     load(table)
 ```
 
-Os dois devolvem `[]` para um parâmetro que ninguém preencheu, e não uma lista
-com uma string vazia: iterar sobre "nada a fazer" tem que não fazer nada. Os
-itens voltam como string — `list|integer` inclusive — porque o passo sabe
-melhor que a biblioteca o que fazer com um número.
+Both return `[]` for a parameter nobody filled in, rather than a list holding
+one empty string: iterating over "nothing to do" should do nothing. The items
+come back as strings — `list|integer` included — because the step knows better
+than the library what to do with a number.
 
-### Na interface
+### In the interface
 
-Uma lista com `enum` vira checkboxes, que não precisam de JavaScript e que o
-navegador envia um valor por caixa marcada. Sem `enum` é um campo de texto cujos
-itens viram chips removíveis, e com o JavaScript desligado continua sendo um
-campo com `users,orders` — que é exatamente o que o servidor espera.
+A list with an `enum` renders as checkboxes, which need no JavaScript and which
+the browser submits one value per box ticked. Without an `enum` it is a text
+field whose items become removable chips, and with JavaScript off it stays a
+field holding `users,orders` — which is exactly what the server expects.
 
-### Na linha de comando
+### On the command line
 
 ```bash
 brevis run wf.yaml --param tables=events,sessions --param days=1,30
 ```
 
-:::note Um engine antigo não lê isso
-O tipo é gravado junto com o workflow, e um engine anterior a esta feature
-recusa `list|string` no publish como tipo desconhecido. Atualize o engine antes
-de publicar um workflow que use uma lista.
+:::note An older engine will not read it
+The type is stored with the workflow, and an engine from before this feature
+refuses `list|string` at publish time as an unknown type. Upgrade the engine
+before publishing a workflow that uses one.
 :::
 
-## Usando no comando
+## Using it in the command
 
-O valor entra no `run` por template, entre chaves duplas e com ponto:
+The value enters `run` through a template, in double braces with a dot:
 
 ```yaml
-run: ./carregar.sh --desde {{ .start_date }}
+run: ./load.sh --since {{ .start_date }}
 ```
 
-## Passando na linha de comando
+## Passing it on the command line
 
 ```bash
 brevis run wf.yaml --param load_full=true
 brevis run wf.yaml --param load_full=true --param start_date=2026-01-01
 ```
 
-`--param` é repetível. Entrada sem `=` é **erro**:
+`--param` is repeatable. Input without `=` is an **error**:
 
 ```
 erro: --param "load_full": use chave=valor
 ```
 
-Isso é deliberado. `--param load_full`, esquecendo o valor, rodaria com o padrão
-— e o operador acharia que o backfill aconteceu com o parâmetro que ele quis.
+That is deliberate. `--param load_full`, forgetting the value, would run with
+the default — and the operator would believe the backfill happened with the
+parameter they intended.
 
-## No backfill
+## In a backfill
 
-Os valores valem para **todos** os slots do intervalo. É o caso de uso central:
-"reprocessa janeiro inteiro com `load_full=true`".
+The values apply to **every** slot in the range. This is the central use case:
+"reprocess all of January with `load_full=true`".
 
 ```bash
-brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true
+brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true
 ```
 
-## Na interface
+## In the interface
 
-Um workflow com `params` ganha **formulário** no lugar do botão simples de
-disparo. Os campos vêm da declaração, e o `pattern` é validado antes do envio.
+A workflow with `params` gets a **form** in place of the simple trigger button.
+Fields come from the declaration, and `pattern` is validated before submission.
 
-## No ambiente do passo
+## In the step environment
 
-Os parâmetros do run também entram no **ambiente** de cada passo, prefixados.
-Isso existe para que um fetcher escrito com o [SDK](/docs/sdk/index.md) os enxergue sem
-receber nada por argumento:
+Run parameters also enter each step's **environment**, prefixed. This exists so
+that a fetcher written with the [SDK](/docs/sdk/index.md) can see them without receiving
+anything as an argument:
 
 ```go
 Before: func(ctx context.Context, p *sdk.Pipeline) error {
@@ -187,58 +188,58 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 
 ## Auto params
 
-Todo run carrega também os **auto params**: valores que o motor calcula
-sozinho. Ninguém declara, todo run tem, e eles aparecem na tela do run.
+Every run also carries **auto params**: values the engine works out on its own.
+Nobody declares them, every run has them, and they are on the run's screen.
 
-O que importa é o `adjusted_at`, e o bug que ele elimina merece ser nomeado. Um
-fetcher lê `now()`, subtrai a sua janela e pede ao fornecedor as últimas duas
-horas. Num run que começa na hora, está certo. Num run que a fila atrasou em
-quarenta minutos, está quarenta minutos errado — e esses quarenta minutos não
-pertencem a **run nenhum**, porque o próximo slot também lê o seu próprio
-`now()`. Nada falha; o dado simplesmente não existe, e isso se descobre semanas
-depois.
+The one that matters is `adjusted_at`, and the bug it removes is worth naming.
+A fetcher reads `now()`, subtracts its window and asks the vendor for the last
+two hours. On a run that starts on time that is right. On a run the queue
+delayed by forty minutes it is forty minutes wrong — and those forty minutes
+belong to **no run at all**, because the next slot reads its own `now()` too.
+Nothing fails; the data is simply missing, and it is found weeks later.
 
-Então o motor entrega um relógio no lugar. Leia `adjusted_at` onde você leria
-`now()`:
+So the engine hands over a clock instead. Read `adjusted_at` where you would
+have read `now()`:
 
 | param | | |
 |---|---|---|
-| `adjusted_at` | sempre | o relógio que este run deve ler: o slot quando existe, o início caso contrário |
-| `date` | sempre | o `adjusted_at` como `YYYY-MM-DD`, em UTC — a partição, a pasta, o `WHERE` |
-| `delay_seconds` | sempre | o atraso desta tentativa em relação ao slot; `0` num run manual sem slot |
-| `previous_error` | sempre | o run anterior a este não teve sucesso |
-| `scheduled_at` | com slot | o slot que o cron pediu |
-| `started_at` | | quando esta tentativa começou; um retry move |
-| `interval_start` | com slot | o slot **anterior** |
-| `interval_end` | com slot | este slot, **excluído** |
-| `previous_success_at` | | o slot do último run que teve sucesso |
+| `adjusted_at` | always | the clock this run should read: the slot when there is one, the start otherwise |
+| `date` | always | `adjusted_at` as `YYYY-MM-DD`, UTC — the partition, the folder, the `WHERE` |
+| `delay_seconds` | always | how late this attempt was against its slot; `0` on a manual run with no slot |
+| `previous_error` | always | the run before this one did not succeed |
+| `scheduled_at` | with a slot | the slot the cron asked for |
+| `started_at` | | when this attempt began; a retry moves it |
+| `interval_start` | with a slot | the **previous** slot |
+| `interval_end` | with a slot | this slot, **excluded** |
+| `previous_success_at` | | the slot of the last run that did succeed |
 
-Um run tem slot quando a agenda o criou, quando um backfill o criou, ou quando
-foi disparado à mão **para um slot passado**: o campo `slot` do disparo
-(`2026-10-27T04:00:00Z`) roda aquele slot de novo, com os params dele. Um slot
-que o cron nunca dispara é recusado, com o mais próximo antes dele.
+A run has a slot when the schedule made it, when a backfill did, or when it
+was triggered by hand **for a past slot**: the trigger's `slot` field
+(`2026-10-27T04:00:00Z`) runs that slot again, with that slot's params. A slot
+the cron never fires is refused, saying the nearest one before it.
 
-**Todo timestamp aqui é UTC**, escrito em RFC 3339 com `Z`, e a tela do run
-também os mostra em UTC — então a página e o `$BREVIS_AUTO_ADJUSTED_AT` nunca
-divergem. O `date` é o **dia em UTC**, que para um workflow cujo slot cruza a
-meia-noite UTC não é o dia local: um `0 22 * * *` em `America/Sao_Paulo` tem
-`date` do dia seguinte. O `ds` do Airflow se comporta igual, pelo mesmo motivo —
-o slot é um instante, e um instante só tem um dia depois de escolhido um fuso.
+**Every timestamp here is UTC**, written as RFC 3339 with a `Z`, and the run's
+screen shows them in UTC too — so the page and `$BREVIS_AUTO_ADJUSTED_AT` never
+disagree. `date` is the **UTC day**, which for a workflow whose slot crosses
+midnight UTC is not the local day: a `0 22 * * *` in `America/Sao_Paulo` has a
+`date` of the following day. Airflow's `ds` behaves the same way, for the same
+reason — the slot is an instant, and an instant has one day only once a
+timezone is chosen.
 
-`interval_start` e `interval_end` vêm do **cron**, não do histórico: um backfill
-de um slot de março produz a janela que março teve, não a janela que os runs
-deste workflow por acaso descrevem hoje. Um pipeline que pede `[start, end)`
-nunca sobrepõe e nunca deixa buraco, por mais atrasado que rode e por mais que
-seja retentado.
+`interval_start` and `interval_end` come from the **cron**, not from the
+history: a backfill of a slot from March produces the window March had, not the
+window this workflow's runs happen to describe today. A pipeline that asks for
+`[start, end)` never overlaps and never gaps, however late it runs and however
+often it retries.
 
-Eles são um **snapshot**, calculado quando o run começa e gravado nele. O
-`previous_error` é um fato sobre o instante em que este run começou;
-recalculá-lo amanhã — depois de o run anterior ter sido retentado e passado —
-responderia outra pergunta com o mesmo nome.
+They are a **snapshot**, computed when the run starts and stored on it.
+`previous_error` is a fact about the instant this run began; recomputing it
+tomorrow — after the previous run was retried and passed — would answer a
+different question with the same name.
 
-### Como ler
+### Reading them
 
-Num passo de shell, uma variável por valor, para não precisar parsear nada:
+In a shell step, one variable per value, so nothing has to be parsed:
 
 ```yaml
 steps:
@@ -248,15 +249,15 @@ steps:
         > "/data/$BREVIS_AUTO_DATE.json"
 ```
 
-O conjunto inteiro também está em `$BREVIS_AUTO_PARAMS` como um único objeto
-JSON, para um passo que prefira parsear uma vez só.
+The whole set is also in `$BREVIS_AUTO_PARAMS` as one JSON object, for a step
+that would rather parse once.
 
-Em Go, o [SDK](/docs/sdk/index.md) lê por você:
+In Go, the [SDK](/docs/sdk/index.md) reads them for you:
 
 ```go
 Before: func(ctx context.Context, p *sdk.Pipeline) error {
     start, end, ok := p.Run.Auto.Window()
-    if !ok { // sem agendamento: cai para uma janela fixa
+    if !ok { // no schedule: fall back to a fixed window
         start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
     }
     p.Source.URL += "&from=" + start.Format(time.RFC3339) +
@@ -265,11 +266,11 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 },
 ```
 
-`Auto.Now()` é o relógio a ler no lugar de `time.Now()`. Fora do motor — um
-fetcher que alguém roda na mão — ele *é* o relógio de parede, então nada precisa
-de tratamento especial no desenvolvimento local.
+`Auto.Now()` is the clock to read instead of `time.Now()`. Outside the engine —
+a fetcher someone runs by hand — it *is* the wall clock, so nothing has to be
+special-cased for local development.
 
-Em Python, o `pip install brevis` lê os mesmos valores:
+In Python, `pip install brevis` reads the same values:
 
 ```python
 from datetime import timedelta
@@ -280,21 +281,21 @@ df = fetch(since, until)
 df.to_parquet(f"/data/{run.auto().date}.parquet")
 ```
 
-O `window()` devolve `None` quando o workflow não tem agendamento, em vez de um
-par de tempos zerados — uma consulta desde a época seleciona tudo, e essa falha
-não pode ser silenciosa. O `or` acima é a queda inteira.
+`window()` returns `None` when the workflow has no schedule, rather than a pair
+of zero times — a query from the epoch selects everything, and that failure
+should not be silent. The `or` above is the whole fallback.
 
-### No dlt, nada a ler
+### In dlt, nothing to read at all
 
-O [dlt](https://dlthub.com) guarda o cursor dele, num estado que grava no
-destino. Esse estado só anda para **frente**, o que funciona até você reexecutar
-um slot antigo: o cursor continua dizendo hoje, então o backfill lê a janela de
-hoje — e a resposta do próprio dlt para isso é descartar o estado.
+[dlt](https://dlthub.com) keeps its own cursor, in state it writes to the
+destination. That state only moves **forward**, which is fine until you re-run
+an old slot: the cursor still says today, so the backfill reads today's window,
+and dlt's own answer for that is to drop the state.
 
-A janela que o Brevis entrega vem do cron, então o run de março produz a janela
-de março por mais vezes que seja repetido. O dlt aceita essa janela — os nomes
-são dele, lidos antes de procurar pelo Airflow, e o motor os define em todo run
-agendado:
+The window Brevis hands over comes from the cron, so the March run produces
+March's window however often it is retried. dlt will take it — the names are
+its own, read before it goes looking for Airflow, and the engine sets them on
+every scheduled run:
 
 ```python
 @dlt.resource(primary_key="id")
@@ -302,46 +303,45 @@ def events(
     updated_at=dlt.sources.incremental(
         "updated_at",
         initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
-        allow_external_schedulers=True,   # esta linha é a integração inteira
+        allow_external_schedulers=True,   # this line is the whole integration
     )
 ):
     yield from api.events(since=updated_at.start_value, until=updated_at.end_value)
 ```
 
-O `allow_external_schedulers=True` é tudo. O `$DLT_INTERVAL_START` e o
-`$DLT_INTERVAL_END` viram o `initial_value` e o `end_value` do dlt, meio-abertos
-dos dois lados — a linha que cai exatamente no início entra, a que cai
-exatamente no fim não, que é o que faz slots consecutivos não deixarem buraco
-nem contarem duas vezes.
+`allow_external_schedulers=True` is all of it. `$DLT_INTERVAL_START` and
+`$DLT_INTERVAL_END` become dlt's `initial_value` and `end_value`, half-open on
+both sides — the row sitting exactly on the start is in, the one sitting exactly
+on the end is not, which is what makes consecutive slots neither gap nor
+overlap.
 
-Um incremental com `end_value` **não toca no estado gravado**. Essa é a parte
-que importa: reexecutar um slot é idempotente, e um backfill de março não mexe
-no cursor de que a execução noturna depende.
+An incremental with an `end_value` **does not touch the persisted state**. That
+is the part that matters: re-running one slot is idempotent, and a backfill of
+March does not move the cursor that the nightly run depends on.
 
-Duas coisas antes de funcionar:
+Two things to know before it works:
 
-- **O cursor precisa ser um datetime, não uma string.** O dlt não converte um
-  cursor `text` para comparar e recusa entrar no scheduler, com um
-  `JoinSchedulerError` que não diz isso com todas as letras. Converta no
-  resource — `add_map` — ou tipe o `initial_value` como acima.
-- **Um workflow sem agendamento não entrega nada**, e aí o dlt levanta
-  `ExternalSchedulerNotAvailable` em vez de voltar em silêncio para o cursor
-  dele. Se o pipeline precisa funcionar dos dois jeitos, deixe o
-  `allow_external_schedulers` desligado e passe a janela você mesmo, a partir do
+- **The cursor must be a datetime, not a string.** dlt will not coerce a `text`
+  cursor for comparison and refuses to join the scheduler at all, with a
+  `JoinSchedulerError` that does not obviously say so. Convert it on the
+  resource — `add_map` — or type the `initial_value` as above.
+- **A workflow with no schedule hands over nothing**, and dlt then raises
+  `ExternalSchedulerNotAvailable` rather than quietly falling back to its
+  cursor. If a pipeline should work both ways, leave
+  `allow_external_schedulers` off and pass the window yourself from
   `run.window()`.
 
-Declarar `tools: [dlt]` no passo é outra coisa, e só desenha o chip no grafo — a
-janela é entregue de qualquer forma.
+Declaring `tools: [dlt]` on the step is separate, and only draws the chip on the
+graph — the window is handed over either way.
 
-## O snapshot
+## The snapshot
 
-Os parâmetros são gravados **no run**, não lidos do workflow na hora de
-executar. O run carrega a entrada com que foi disparado, e o log de uma execução
-de janeiro continua mostrando os valores de janeiro mesmo depois de o padrão
-mudar.
+Parameters are stored **in the run**, not read from the workflow at execution
+time. The run carries the input it was triggered with, and the log of a January
+execution keeps showing January's values even after the default changes.
 
-## Próximos passos
+## Next steps
 
-- [Configuração](/docs/configuration/index.md) — variáveis de ambiente do processo
-- [SDK](/docs/sdk/index.md) — como um fetcher lê o contexto do run
-- [Contexto entre passos](/docs/context/index.md) — o que um passo publica para o seguinte
+- [Configuration](/docs/configuration/index.md) — process environment variables
+- [SDK](/docs/sdk/index.md) — how a fetcher reads the run context
+- [Context between steps](/docs/context/index.md) — what a step publishes for the next

@@ -1,18 +1,18 @@
 # Kubernetes
 
-> Como implantar o engine, com que permissões, e o que verificar depois.
+> How to deploy the engine, with what permissions, and what to check afterwards.
 
-*https://brevis.sh/docs/kubernetes/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/kubernetes/ · brevis.sh docs (en-US)*
 
 ---
 
-Uma instalação típica tem **dois Deployments** do mesmo binário — a API e o
-scheduler — e um Postgres.
+A typical installation has **two Deployments** of the same binary — the API and
+the scheduler — plus a Postgres.
 
-## Instalando com Helm
+## Install it with Helm
 
-O chart está no repositório, em `deployments/helm/brevis`. Quatro valores são
-obrigatórios e todo o resto tem default que funciona:
+The chart is in the repository, at `deployments/helm/brevis`. Four values are
+required and everything else has a working default:
 
 ```bash
 helm install brevis ./deployments/helm/brevis \
@@ -23,12 +23,11 @@ helm install brevis ./deployments/helm/brevis \
   --set auth.secret="$(openssl rand -base64 48)"
 ```
 
-É a instalação inteira: as migrations rodam antes, como hook, os dois
-Deployments sobem cada um com a sua imagem, e o scheduler recebe uma
-ServiceAccount que pode criar pods enquanto os pods de task recebem uma que não
-pode nada.
+That is the whole install: the migrations run first as a hook, both Deployments
+come up with the right image each, and the scheduler gets a ServiceAccount that
+may create pods while the task pods get one that may do nothing.
 
-Para chegar na interface:
+To reach the interface:
 
 ```bash
 helm upgrade brevis ./deployments/helm/brevis --reuse-values \
@@ -38,37 +37,36 @@ helm upgrade brevis ./deployments/helm/brevis --reuse-values \
   --set api.ingress.tls.secretName=brevis-tls
 ```
 
-Em produção, mantenha a string de conexão fora do release: coloque num Secret e
-passe `--set database.existingSecret=brevis-db`. Passada inline, ela vai para o
-manifesto guardado do release, que qualquer um com permissão de ler Secrets
-naquele namespace lê.
+In production, keep the connection string out of the release: put it in a
+Secret and pass `--set database.existingSecret=brevis-db`. Passed inline, it
+lands in the release's stored manifest, which anybody who can read Secrets in
+that namespace can read.
 
-`helm show values ./deployments/helm/brevis` lista cada valor com o motivo ao
-lado.
+`helm show values ./deployments/helm/brevis` lists every value with the reason
+next to it.
 
-### O que o chart recusa
+### What the chart refuses
 
-O que ele não consegue tornar seguro falha na renderização, com uma mensagem
-dizendo o que quebraria — e não às 3 da manhã, num run que gerou linhas
-duplicadas:
+Anything it cannot make safe fails at render time, with a message that says what
+would break — not at 3am, in a run that produced duplicate rows:
 
-| recusado | porque |
+| refused | because |
 |---|---|
-| `scheduler.replicas`, em qualquer valor | dois materializariam os mesmos slots. O `FOR UPDATE SKIP LOCKED` impede que peguem o mesmo item da fila; nada impede que criem o mesmo run agendado, e um `dbt build` rodaria duas vezes sobre a mesma janela sem nada falhar |
-| credencial ausente fora de `local` | o engine recusa subir sem ela, então o chart estaria te entregando um CrashLoopBackOff |
-| `auth.secret` com menos de 32 bytes | ele assina o cookie de sessão, e o engine exige o mesmo mínimo |
-| Ingress sem `host` | casaria com toda requisição que chega ao controller — num cluster compartilhado, respondendo pelo hostname de outro |
-| `alerts.enabled` sem webhook | o pod drenaria a outbox e entregaria em lugar nenhum, o que é pior que não rodar: a falha passa a parecer anunciada |
-| um valor que o chart não define | um typo no `--set` de outra forma não faz nada, em silêncio |
+| `scheduler.replicas` at all | two would materialise the same slots. `FOR UPDATE SKIP LOCKED` stops them claiming the same queue item; nothing stops them creating the same scheduled run, and a `dbt build` would run twice over one window with nothing failing |
+| a missing credential outside `local` | the engine refuses to boot without one, so the chart would be handing you a CrashLoopBackOff |
+| `auth.secret` under 32 bytes | it signs the session cookie, and the engine enforces the same minimum |
+| an Ingress with no `host` | it would match every request reaching the controller — in a shared cluster, answering for somebody else's hostname |
+| `alerts.enabled` with no webhook | the pod would drain the outbox and deliver nowhere, which is worse than not running: the failure then looks announced |
+| a value the chart does not define | a typo in `--set` otherwise does nothing, silently |
 
-O `.github/scripts/helm-check.sh` verifica tudo isso na saída renderizada, mais
-os invariantes acima — um scheduler só, `pods/log` presente, migrations
-primeiro, a porta de métricas fora do Service.
+`.github/scripts/helm-check.sh` asserts all of that on the rendered output, plus
+the invariants above — one scheduler, `pods/log` present, migrations first, the
+metrics port off the Service.
 
-## Sem Helm
+## Without Helm
 
-São sete manifests em `deployments/kubernetes/`, prontos para `kubectl apply -f`
-depois de ajustar o namespace e a tag da imagem:
+Seven manifests are in `deployments/kubernetes/`, ready for `kubectl apply -f`
+after you edit the namespace and the image tag:
 
 ```bash
 kubectl apply -f deployments/kubernetes/rbac.yaml
@@ -76,28 +74,28 @@ kubectl apply -f deployments/kubernetes/api.yaml
 kubectl apply -f deployments/kubernetes/scheduler.yaml
 ```
 
-Eles carregam as mesmas decisões do chart, com o raciocínio nos comentários, e
-ainda `alert.yaml`, `report.yaml` e `publish-job.yaml`. As seções abaixo
-percorrem o conteúdo de cada um.
+They carry the same decisions as the chart, with the reasoning in comments, and
+`alert.yaml`, `report.yaml` and `publish-job.yaml` besides. The sections below
+walk through what each one contains.
 
-## Os dois papéis
+## The two roles
 
-| papel | comando | imagem | réplicas |
+| role | command | image | replicas |
 |---|---|---|---|
-| API + interface | `serve` | `:0.11.2` (distroless) | quantas quiser |
-| scheduler + fila | `scheduler` | `:0.11.2-worker` (alpine) | **uma** |
+| API + interface | `serve` | `:0.11.2` (distroless) | as many as you like |
+| scheduler + queue | `scheduler` | `:0.11.2-worker` (alpine) | **one** |
 
-A API é distroless porque só serve HTTP: não executa nada, então não precisa de
-shell. O worker é alpine porque os passos `run:` precisam de um.
+The API is distroless because it only serves HTTP: it executes nothing, so it
+needs no shell. The worker is alpine because `run:` steps need one.
 
-:::warning Uma réplica de scheduler
-Dois processos materializando a mesma agenda criam runs duplicados. Se precisar
-de disponibilidade, use `replicas: 1` com `strategy: Recreate`.
+:::warning One scheduler replica
+Two processes materialising the same schedule create duplicate runs. If you need
+availability, use `replicas: 1` with `strategy: Recreate`.
 :::
 
 ## Migrations
 
-Rode como Job antes do deploy, nunca no boot do `serve`:
+Run them as a Job before the deploy, never at `serve` boot:
 
 ```yaml
 apiVersion: batch/v1
@@ -116,7 +114,7 @@ spec:
             - secretRef: {name: brevis-db}
 ```
 
-## Deployment da API
+## API Deployment
 
 ```yaml
 apiVersion: apps/v1
@@ -152,15 +150,15 @@ spec:
             limits: {memory: 256Mi}
 ```
 
-:::note Por que as duas probes diferem
-`/health` **não** consulta o banco; `/ready` consulta e nomeia a dependência que
-falhou. Se a liveness dependesse do Postgres, uma oscilação do banco faria o
-Kubernetes **matar** os pods da API em vez de apenas tirá-los do balanceador — e
-a recuperação ficaria mais lenta justamente quando o sistema já está sob
-estresse.
+:::note Why the two probes differ
+`/health` does **not** query the database; `/ready` does, and names the
+dependency that failed. If liveness depended on Postgres, a database wobble
+would make Kubernetes **kill** the API pods instead of merely removing them from
+the load balancer — and recovery would get slower exactly when the system is
+already under stress.
 :::
 
-## Deployment do scheduler
+## Scheduler Deployment
 
 ```yaml
 apiVersion: apps/v1
@@ -190,27 +188,27 @@ spec:
             - name: BREVIS_PODS
               value: "on"
             - name: BREVIS_POD_NAMESPACE
-              value: dados
+              value: data
             - name: BREVIS_POD_SERVICE_ACCOUNT
               value: brevis-runner
             - name: BREVIS_POD_ENV_FROM_SECRETS
               value: bigquery-cred
 ```
 
-`BREVIS_PODS=on` **exige** cluster: sem service account montada, o boot falha em
-vez de cair silenciosamente para execução local.
+`BREVIS_PODS=on` **requires** a cluster: with no service account mounted, boot
+fails instead of silently falling back to local execution.
 
-## Permissões
+## Permissions
 
-O scheduler cria, observa e apaga pods no namespace de execução. Nada além
-disso:
+The scheduler creates, watches and deletes pods in the execution namespace.
+Nothing beyond that:
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: brevis-runner
-  namespace: dados
+  namespace: data
 rules:
   - apiGroups: [""]
     resources: ["pods"]
@@ -220,44 +218,44 @@ rules:
     verbs: ["get"]
 ```
 
-`pods/log` é o que permite seguir a saída do passo até a interface. Sem ele, o
-run funciona e o log fica vazio.
+`pods/log` is what allows following a step's output into the interface. Without
+it, the run works and the log stays empty.
 
-## Depois do deploy
-
-```bash
-kubectl -n dados get pods -l app=brevis-api
-kubectl -n dados exec deploy/brevis-api -- brevis version
-curl -fsS https://brevis.exemplo.com/ready
-```
-
-Dispare um workflow simples pela interface e confirme que o pod do passo aparece
-e desaparece:
+## After the deploy
 
 ```bash
-kubectl -n dados get pods -w
+kubectl -n data get pods -l app=brevis-api
+kubectl -n data exec deploy/brevis-api -- brevis version
+curl -fsS https://brevis.example.com/ready
 ```
 
-## Quando um passo fica Pending
+Trigger a simple workflow from the interface and confirm that the step's pod
+appears and disappears:
 
-Quase sempre é uma destas três:
+```bash
+kubectl -n data get pods -w
+```
 
-| causa | como confirmar |
+## When a step stays Pending
+
+It is almost always one of these three:
+
+| cause | how to confirm |
 |---|---|
-| taint sem toleração | `kubectl describe pod` mostra `node(s) had untolerated taint` |
-| `nodeSelector` sem nó | `describe` mostra `didn't match Pod's node affinity` |
-| recurso indisponível | `describe` mostra `Insufficient cpu` ou `memory` |
+| taint without toleration | `kubectl describe pod` shows `node(s) had untolerated taint` |
+| `nodeSelector` with no node | `describe` shows `didn't match Pod's node affinity` |
+| resource unavailable | `describe` shows `Insufficient cpu` or `memory` |
 
-Para inspecionar o pod de um passo que falhou, em vez de vê-lo desaparecer:
+To inspect a failed step's pod rather than watch it disappear:
 
 ```bash
 BREVIS_POD_KEEP_ON_FAILURE=true
 ```
 
-Deixe desligado em produção — pods parados consomem cota.
+Leave it off in production — stopped pods consume quota.
 
-## Próximos passos
+## Next steps
 
-- [Pod por passo](/docs/pod-per-step/index.md) — o modelo de execução
-- [Configuração](/docs/configuration/index.md) — todas as variáveis `BREVIS_POD_*`
-- [Observabilidade](/docs/observability/index.md) — o que raspar, e de qual processo
+- [Pod per step](/docs/pod-per-step/index.md) — the execution model
+- [Configuration](/docs/configuration/index.md) — every `BREVIS_POD_*` variable
+- [Observability](/docs/observability/index.md) — what to scrape, and from which process

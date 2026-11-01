@@ -10,5 +10,9 @@
 /arete         https://areteacademy.com.br/                      302
 
 # The old flat paths, from before /docs existed.
-/documentacao  /docs/       301
-/documentation /en/docs/    301
+/documentacao  /pt/docs/    301
+/documentation /docs/       301
+
+# English moved from /en to the root when it became the default language.
+/en            /            301
+/en/*          /:splat      301

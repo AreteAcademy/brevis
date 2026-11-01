@@ -1,26 +1,26 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en-US" data-docs="">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#141711">
 
-<title>Benchmarks — Documentação</title>
-<meta name="description" content="Como medimos o gateway, o que os números dizem e as três testemunhas que precisam concordar.">
+<title>Benchmarks — Documentation</title>
+<meta name="description" content="How we measure the gateway, what the numbers say, and the three witnesses that have to agree.">
 <meta name="author" content="Aretê Academy">
 <link rel="canonical" href="https://brevis.sh/docs/benchmarks/">
 <link rel="alternate" type="text/markdown" href="https://brevis.sh/docs/benchmarks/index.md">
-<link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/docs/benchmarks/"><link rel="alternate" hreflang="en" href="https://brevis.sh/en/docs/benchmarks/">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/benchmarks/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/benchmarks/">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="brevis.sh">
-<meta property="og:locale" content="pt-BR">
-<meta property="og:title" content="Benchmarks — Documentação">
-<meta property="og:description" content="Como medimos o gateway, o que os números dizem e as três testemunhas que precisam concordar.">
+<meta property="og:locale" content="en-US">
+<meta property="og:title" content="Benchmarks — Documentation">
+<meta property="og:description" content="How we measure the gateway, what the numbers say, and the three witnesses that have to agree.">
 <meta property="og:url" content="https://brevis.sh/docs/benchmarks/">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Benchmarks — Documentação">
-<meta name="twitter:description" content="Como medimos o gateway, o que os números dizem e as três testemunhas que precisam concordar.">
+<meta name="twitter:title" content="Benchmarks — Documentation">
+<meta name="twitter:description" content="How we measure the gateway, what the numbers say, and the three witnesses that have to agree.">
 
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,8 +35,8 @@
   "@context": "https://schema.org",
   "@type": "TechArticle",
   "headline": "Benchmarks",
-  "description": "Como medimos o gateway, o que os números dizem e as três testemunhas que precisam concordar.",
-  "inLanguage": "pt-BR",
+  "description": "How we measure the gateway, what the numbers say, and the three witnesses that have to agree.",
+  "inLanguage": "en-US",
   "isPartOf": {
     "@type": "WebSite",
     "@id": "https://brevis.sh/#site"
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+<a class="skip-link" href="#conteudo">Skip to content</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -83,17 +83,17 @@
       <span>brevis<span class="tld">.sh</span></span>
     </a>
 
-    <nav class="main-nav" id="nav" aria-label="Navegação principal">
-      <a href="/#ecossistema">Ecossistema</a>
-      <a href="/docs/">Documentação</a>
-      <div class="lang-switch" role="group" aria-label="Idioma"><a href="/docs/benchmarks/" hreflang="pt-BR" aria-current="true">PT</a><a href="/en/docs/benchmarks/" hreflang="en">EN</a></div>
+    <nav class="main-nav" id="nav" aria-label="Main navigation">
+      <a href="/#ecossistema">Ecosystem</a>
+      <a href="/docs/">Documentation</a>
+      <details class="lang-dd"><summary aria-label="Language: English"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>English</span></summary><ul><li><a href="/docs/benchmarks/" lang="en-US" hreflang="en-US" aria-current="true">English</a></li><li><a href="/es/docs/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/benchmarks/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
-        Explorar open source
+        Explore open source
       </a>
     </nav>
 
-    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="nav">
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
       <svg aria-hidden="true"><use href="#i-menu"></use></svg>
     </button>
   </div>
@@ -102,71 +102,71 @@
 <div class="doc-shell">
   <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
     <svg aria-hidden="true"><use href="#i-menu"></use></svg>
-    Menu da documentação
+    Documentation menu
   </button>
 
   <aside class="side" id="side">
     <div class="side-inner">
       <form class="search" role="search" onsubmit="return false">
         <svg aria-hidden="true"><use href="#i-search"></use></svg>
-        <label class="sr-only" for="q">Buscar na documentação</label>
-        <input type="search" id="q" placeholder="Buscar…" autocomplete="off" spellcheck="false">
+        <label class="sr-only" for="q">Search the documentation</label>
+        <input type="search" id="q" placeholder="Search…" autocomplete="off" spellcheck="false">
       </form>
-      <div class="search-out" id="search-out" data-none="Nada encontrado" hidden></div>
-      <nav class="side-nav" aria-label="Documentação">
-        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/ecosystem/">Ecossistema</a></li><li><a href="/docs/integrations/">Integrações</a></li><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/core/">Core</a></li><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/">Pod por passo</a></li><li><a href="/docs/context/">Contexto entre passos</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li><li><a href="/docs/runtime/">Runtime do passo</a></li></ul><p class="side-group">SDK e bibliotecas</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li><li><a href="/docs/libraries/">Bibliotecas cliente</a></li><li><a href="/docs/python/">Python</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/console/">Console</a></li><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observabilidade</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul><p class="side-group">Ingestão</p><ul class="side-list"><li><a href="/docs/ingestion/">Ingestão</a></li><li><a href="/docs/ingestion-sinks/">Destinos da ingestão</a></li><li><a href="/docs/benchmarks/" aria-current="page">Benchmarks</a></li></ul><p class="side-group">Modelagem em SQL</p><ul class="side-list"><li><a href="/docs/sql/">SQL</a></li></ul><p class="side-group">O projeto</p><ul class="side-list"><li><a href="/docs/philosophy/">Filosofia</a></li><li><a href="/docs/faq/">FAQ</a></li></ul>
+      <div class="search-out" id="search-out" data-none="No results" hidden></div>
+      <nav class="side-nav" aria-label="Documentation">
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/docs/ecosystem/">Ecosystem</a></li><li><a href="/docs/integrations/">Integrations</a></li><li><a href="/docs/introduction/">Introduction</a></li><li><a href="/docs/installation/">Installation</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/docs/core/">Core</a></li><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/docs/pod-per-step/">Pod per step</a></li><li><a href="/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parameters</a></li><li><a href="/docs/configuration/">Configuration</a></li><li><a href="/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK and libraries</p><ul class="side-list"><li><a href="/docs/sdk/">Go SDK</a></li><li><a href="/docs/libraries/">Client libraries</a></li><li><a href="/docs/python/">Python</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/docs/console/">Console</a></li><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observability</a></li><li><a href="/docs/white-label/">White label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/docs/ingestion/">Ingestion</a></li><li><a href="/docs/ingestion-sinks/">Ingestion sinks</a></li><li><a href="/docs/benchmarks/" aria-current="page">Benchmarks</a></li></ul><p class="side-group">Modelling in SQL</p><ul class="side-list"><li><a href="/docs/sql/">SQL</a></li></ul><p class="side-group">The project</p><ul class="side-list"><li><a href="/docs/philosophy/">Philosophy</a></li><li><a href="/docs/faq/">FAQ</a></li></ul>
       </nav>
     </div>
   </aside>
 
   <main class="doc" id="conteudo">
     <article class="doc-body">
-      <p class="doc-kicker">Documentação</p>
+      <p class="doc-kicker">Documentation</p>
       <h1>Benchmarks</h1>
-      <p class="doc-desc">Como medimos o gateway, o que os números dizem e as três testemunhas que precisam concordar.</p>
-      <p>Um comando, e ele mede o gateway inteiro:</p>
-<div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
-<p>Ele sobe um Postgres, sobe o gateway, carrega com [k6], <strong>espera o buffer drenar</strong>, raspa o <code>/metrics</code> do próprio gateway e escreve <code>bench/results/REPORT.md</code>.</p>
-<h2 id="tres-testemunhas-e-a-terceira-e-a-que-importa">Três testemunhas, e a terceira é a que importa<a class="anchor" href="#tres-testemunhas-e-a-terceira-e-a-que-importa" aria-label="link">#</a></h2>
-<p>O k6 sabe o que o produtor viu. O gateway sabe o que fez. Um teste de carga que só tem o primeiro número não distingue um gateway rápido de um que responde <code>202</code> e perde o que aceitou.</p>
-<p>Então o relatório põe os dois lado a lado — e conta as linhas no Postgres:</p>
-<div class="table-wrap"><table><thead><tr><th>testemunha</th><th>eventos</th></tr></thead><tbody><tr><td>o k6 foi informado <code>accepted</code></td><td>5.431.000</td></tr><tr><td>o gateway contou recebidos</td><td>5.431.000</td></tr><tr><td>linhas no Postgres</td><td>5.431.000</td></tr><tr><td>registros na fila de descarte</td><td>0</td></tr></tbody></table></div>
-<p>As duas primeiras são aritmética do próprio gateway — uma da resposta que ele escreveu, outra do contador que ele incrementou — e um bug que perdesse eventos poderia mantê-las coerentes <strong>entre si</strong>. O banco é a única que não aceitou a nossa palavra.</p>
-<p><strong>Uma execução em que as três discordam falhou</strong>, por melhores que sejam os percentis.</p>
-<h2 id="a-corrida-acima">A corrida acima<a class="anchor" href="#a-corrida-acima" aria-label="link">#</a></h2>
-<p>A corrida de 2026-09-26 em <code>bench/results/REPORT.md</code>: <code>areteacademy/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPUs, Postgres 17 em container no mesmo kernel, <code>auto_table[columns]</code> com <code>write: append</code>:</p>
-<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>eventos aceitos</td><td><strong>5.431.000</strong> (135.768/s)</td></tr><tr><td>corpo enviado</td><td>1.156,7 MiB em 40s</td></tr><tr><td><code>503</code> (contrapressão)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5,9 ms / 16,0 ms / 22,7 ms</td></tr><tr><td>lotes entregues</td><td>1.087, nenhum enterrado</td></tr></tbody></table></div>
-<h2 id="os-thresholds-sao-o-ponto">Os thresholds são o ponto<a class="anchor" href="#os-thresholds-sao-o-ponto" aria-label="link">#</a></h2>
-<p>O k6 sai com código diferente de zero quando um falha, então isso é <strong>portão</strong> e não gráfico:</p>
-<div class="table-wrap"><table><thead><tr><th>threshold</th><th>por quê</th></tr></thead><tbody><tr><td><code>p95 &lt; 500ms</code></td><td>o caminho de aceitação tem que ficar fora da latência do destino. Uma requisição esperando um <code>COPY</code> é o defeito contra o qual a esteira assíncrona existe.</td></tr><tr><td><code>http_req_failed &lt; 1%</code></td><td>um <code>503</code> é aceitável; um timeout ou um 5xx não.</td></tr><tr><td><code>eventos aceitos &gt; 1000</code></td><td>uma suíte de thresholds passa contra um gateway que não respondeu nada.</td></tr></tbody></table></div>
-<p>São deliberadamente frouxos: isso roda na máquina que o CI deu. Pegam <strong>uma ordem de grandeza</strong>, que é a cara de uma regressão, não um por cento.</p>
-<p><strong>Um <code>503</code> não é falha.</strong> É o gateway recusando um evento que não tem onde pôr, e é seguro repetir — o <code>ingestion_id</code> é função congelada do evento, então o mesmo corpo reenviado é o mesmo registro. Contá-lo como erro faria contrapressão parecer bug.</p>
-<h2 id="o-que-ele-nao-mede">O que ele não mede<a class="anchor" href="#o-que-ele-nao-mede" aria-label="link">#</a></h2>
-<ul><li><strong>Não é BigQuery.</strong> O destino é um Postgres em container. Cota de load job, latência de commit e concorrência de DDL de um warehouse não estão nesses números e não têm como estar.</li><li><strong>Não é durabilidade.</strong> <code>durability: memory</code> é a única camada, então um <code>202</code> significa <em>aceito na RAM</em>. Isso mede a velocidade disso, nunca o que sobrevive a um <code>SIGKILL</code>.</li><li><strong>Não é o seu hardware.</strong> Leia como forma e proporção.</li></ul>
-<h2 id="a-nuvem-local-por-profile">A nuvem local, por profile<a class="anchor" href="#a-nuvem-local-por-profile" aria-label="link">#</a></h2>
+      <p class="doc-desc">How we measure the gateway, what the numbers say, and the three witnesses that have to agree.</p>
+      <p>One command, and it measures the whole gateway:</p>
+<div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
+<p>It brings up a Postgres, starts the gateway, loads it with [k6], <strong>waits for the buffer to drain</strong>, scrapes the gateway's own <code>/metrics</code> and writes <code>bench/results/REPORT.md</code>.</p>
+<h2 id="three-witnesses-and-the-third-is-the-one-that-matters">Three witnesses, and the third is the one that matters<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
+<p>k6 knows what a producer saw. The gateway knows what it did. A load test carrying only the first cannot tell a fast gateway from one that answers <code>202</code> and drops what it accepted.</p>
+<p>So the report puts the two side by side — and counts the rows in Postgres:</p>
+<div class="table-wrap"><table><thead><tr><th>witness</th><th>events</th></tr></thead><tbody><tr><td>k6 was told <code>accepted</code></td><td>5,431,000</td></tr><tr><td>the gateway counted received</td><td>5,431,000</td></tr><tr><td>rows in Postgres</td><td>5,431,000</td></tr><tr><td>records in the dead letter</td><td>0</td></tr></tbody></table></div>
+<p>The first two are both the gateway's own arithmetic — one from the response it wrote, one from the counter it incremented — and a bug that lost events could keep them consistent <strong>with each other</strong>. The database is the only one that did not take our word for it.</p>
+<p><strong>A run where the three disagree failed</strong>, however good the percentiles are.</p>
+<h2 id="the-run-above">The run above<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
+<p>The 2026-09-26 run in <code>bench/results/REPORT.md</code>: <code>areteacademy/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPUs, Postgres 17 in a container on the same kernel, <code>auto_table[columns]</code> with <code>write: append</code>:</p>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>events accepted</td><td><strong>5,431,000</strong> (135,768/s)</td></tr><tr><td>body sent</td><td>1,156.7 MiB in 40s</td></tr><tr><td><code>503</code> (backpressure)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5.9 ms / 16.0 ms / 22.7 ms</td></tr><tr><td>batches delivered</td><td>1,087, none buried</td></tr></tbody></table></div>
+<h2 id="the-thresholds-are-the-point">The thresholds are the point<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
+<p>k6 exits non-zero when one fails, so this is a <strong>gate</strong> and not a chart:</p>
+<div class="table-wrap"><table><thead><tr><th>threshold</th><th>why</th></tr></thead><tbody><tr><td><code>p95 &lt; 500ms</code></td><td>the accept path must stay off the sink's latency. A request waiting for a <code>COPY</code> is the defect the async pipe exists against.</td></tr><tr><td><code>http_req_failed &lt; 1%</code></td><td>a <code>503</code> is fine; a timeout or a 5xx is not.</td></tr><tr><td><code>events accepted &gt; 1000</code></td><td>a threshold suite passes against a gateway that answered nothing.</td></tr></tbody></table></div>
+<p>They are deliberately loose: this runs on whatever machine CI gave it. They catch <strong>an order of magnitude</strong>, which is what a regression looks like, not a percent.</p>
+<p><strong>A <code>503</code> is not a failure.</strong> It is the gateway refusing an event it has nowhere to put, and it is safe to retry — the <code>ingestion_id</code> is a frozen function of the event, so the same body sent again is the same record. Counting it as an error would make backpressure look like a bug.</p>
+<h2 id="what-it-does-not-measure">What it does not measure<a class="anchor" href="#what-it-does-not-measure" aria-label="link">#</a></h2>
+<ul><li><strong>Not BigQuery.</strong> The destination is a Postgres in a container. A warehouse's load-job quota, commit latency and DDL concurrency are not in these numbers and cannot be.</li><li><strong>Not durability.</strong> <code>durability: memory</code> is the only tier, so a <code>202</code> means <em>accepted into RAM</em>. This measures how fast that happens, never what survives a <code>SIGKILL</code>.</li><li><strong>Not your hardware.</strong> Read it as a shape and a ratio.</li></ul>
+<h2 id="the-local-cloud-by-profile">The local cloud, by profile<a class="anchor" href="#the-local-cloud-by-profile" aria-label="link">#</a></h2>
 <div class="code-block" data-code="docker compose -f docker-compose.drivers.yml --profile gcp up -d
-docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">docker</span> compose <span class="t-n">-f</span> <span class="t-k">docker</span>-compose.drivers.yml <span class="t-n">--profile</span> gcp up <span class="t-n">-d</span>
+docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> compose <span class="t-n">-f</span> <span class="t-k">docker</span>-compose.drivers.yml <span class="t-n">--profile</span> gcp up <span class="t-n">-d</span>
 <span class="t-k">docker</span> compose <span class="t-n">-f</span> <span class="t-k">docker</span>-compose.drivers.yml <span class="t-n">--profile</span> all up <span class="t-n">-d</span></code></pre></div>
-<p>Um arquivo com profiles, e não um por nuvem: dois arquivos são dois nomes de projeto, e <code>postgres</code> nos dois já substituiu o banco de desenvolvimento do motor uma vez.</p>
-<h3 id="o-floci-cobre-menos-do-bigquery-do-que-parece">O floci cobre menos do BigQuery do que parece<a class="anchor" href="#o-floci-cobre-menos-do-bigquery-do-que-parece" aria-label="link">#</a></h3>
-<p>Medido, não suposto:</p>
-<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>criar dataset e tabela</td><td>✅</td></tr><tr><td><code>timePartitioning</code> e <code>clustering</code> preservados</td><td>✅ — a forma do bug da <code>0.9.1</code></td></tr><tr><td><code>PATCH</code> de coluna</td><td>✅ — a evolução do <code>auto_table</code></td></tr><tr><td><code>insertAll</code></td><td>✅</td></tr><tr><td>queries</td><td>✅, só com <code>/var/run/docker.sock</code> montado</td></tr><tr><td><strong>load jobs</strong></td><td>❌ <code>Only QUERY jobs are supported by the floci BigQuery emulator</code></td></tr></tbody></table></div>
-<p>O SDK escreve no BigQuery <strong>só</strong> por load job. Então o floci exercita cada linha do <code>auto_table</code> que transforma payload em DDL — e <strong>nenhuma escrita do Brevis</strong>. Ainda é a metade que hoje não tem teste local nenhum, e vale ter. Mas uma suíte verde contra o floci não significa que o BigQuery funciona.</p>
+<p>One file with profiles, not one per cloud: two files are two project names, and <code>postgres</code> in both already replaced the engine's development database once.</p>
+<h3 id="floci-covers-less-of-bigquery-than-it-looks">floci covers less of BigQuery than it looks<a class="anchor" href="#floci-covers-less-of-bigquery-than-it-looks" aria-label="link">#</a></h3>
+<p>Measured, not assumed:</p>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>create a dataset and a table</td><td>✅</td></tr><tr><td><code>timePartitioning</code> and <code>clustering</code> preserved</td><td>✅ — the shape of the <code>0.9.1</code> bug</td></tr><tr><td><code>PATCH</code> a column</td><td>✅ — <code>auto_table</code>'s evolution</td></tr><tr><td><code>insertAll</code></td><td>✅</td></tr><tr><td>queries</td><td>✅, only with <code>/var/run/docker.sock</code> mounted</td></tr><tr><td><strong>load jobs</strong></td><td>❌ <code>Only QUERY jobs are supported by the floci BigQuery emulator</code></td></tr></tbody></table></div>
+<p>The SDK writes to BigQuery <strong>only</strong> through load jobs. So floci exercises every line of <code>auto_table</code> that turns a payload into DDL — and <strong>not one Brevis write</strong>. That is still the half with no local test today, and it is worth having. But a green suite against floci does not mean BigQuery works.</p>
 <p>[k6]: https://k6.io</p>
 
-      <nav class="pagers" aria-label="Páginas">
-        <a class="pager pager-prev" href="/docs/ingestion-sinks/"><span>Anterior</span><strong>Destinos da ingestão</strong></a>
-        <a class="pager pager-next" href="/docs/sql/"><span>Próximo</span><strong>SQL</strong></a>
+      <nav class="pagers" aria-label="Pages">
+        <a class="pager pager-prev" href="/docs/ingestion-sinks/"><span>Previous</span><strong>Ingestion sinks</strong></a>
+        <a class="pager pager-next" href="/docs/sql/"><span>Next</span><strong>SQL</strong></a>
       </nav>
 
       <p class="doc-edit">
-        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/pt/docs/benchmarks.md" target="_blank" rel="noopener">Editar esta página no GitHub</a>
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/en/docs/benchmarks.md" target="_blank" rel="noopener">Edit this page on GitHub</a>
       </p>
     </article>
 
-    <aside class="toc" aria-label="Nesta página">
-      <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#tres-testemunhas-e-a-terceira-e-a-que-importa">Três testemunhas, e a terceira é a que importa</a></li><li class="toc-2"><a href="#a-corrida-acima">A corrida acima</a></li><li class="toc-2"><a href="#os-thresholds-sao-o-ponto">Os thresholds são o ponto</a></li><li class="toc-2"><a href="#o-que-ele-nao-mede">O que ele não mede</a></li><li class="toc-2"><a href="#a-nuvem-local-por-profile">A nuvem local, por profile</a></li><li class="toc-3"><a href="#o-floci-cobre-menos-do-bigquery-do-que-parece">O floci cobre menos do BigQuery do que parece</a></li></ul>
+    <aside class="toc" aria-label="On this page">
+      <p class="toc-t">On this page</p>
+      <ul><li class="toc-2"><a href="#three-witnesses-and-the-third-is-the-one-that-matters">Three witnesses, and the third is the one that matters</a></li><li class="toc-2"><a href="#the-run-above">The run above</a></li><li class="toc-2"><a href="#the-thresholds-are-the-point">The thresholds are the point</a></li><li class="toc-2"><a href="#what-it-does-not-measure">What it does not measure</a></li><li class="toc-2"><a href="#the-local-cloud-by-profile">The local cloud, by profile</a></li><li class="toc-3"><a href="#floci-covers-less-of-bigquery-than-it-looks">floci covers less of BigQuery than it looks</a></li></ul>
     </aside>
   </main>
 </div>
@@ -180,24 +180,24 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
           <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
           <span>brevis<span class="tld">.sh</span></span>
         </a>
-        <p>Filosofia aplicada à infraestrutura de dados.</p>
+        <p>Philosophy applied to data infrastructure.</p>
       </div>
 
       <div class="footer-col">
-        <h2>projeto</h2>
+        <h2>project</h2>
         <ul>
-          <li><a href="/#ecossistema">Ecossistema</a></li>
-          <li><a href="/docs/philosophy/">Princípios</a></li>
-          <li><a href="/docs/introduction/#codigo-aberto-escolha-como-participar">Open source</a></li>
+          <li><a href="/#ecossistema">Ecosystem</a></li>
+          <li><a href="/docs/philosophy/">Principles</a></li>
+          <li><a href="/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/docs/faq/">FAQ</a></li>
         </ul>
       </div>
 
       <div class="footer-col">
-        <h2>código</h2>
+        <h2>code</h2>
         <ul>
-          <li><a href="/docs/">Documentação</a></li>
-          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repositório</a></li>
+          <li><a href="/docs/">Documentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repository</a></li>
           <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
           <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
         </ul>
@@ -205,12 +205,13 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
     </div>
 
     <div class="footer-bottom">
-      <p>Um projeto open source da <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
-      <p>MIT · construído em Go · Go gopher por Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+      <p>An open source project by <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · built in Go · Go gopher by Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
     </div>
   </div>
 </footer>
 
 <script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
 </body>
 </html>

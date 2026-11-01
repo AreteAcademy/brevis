@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-docs="/pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>CLI — Documentação</title>
+<meta name="description" content="Os doze subcomandos do engine, com flags, argumentos e o que cada um exige.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/pt/docs/cli/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/pt/docs/cli/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/cli/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/cli/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="pt-BR">
+<meta property="og:title" content="CLI — Documentação">
+<meta property="og:description" content="Os doze subcomandos do engine, com flags, argumentos e o que cada um exige.">
+<meta property="og:url" content="https://brevis.sh/pt/docs/cli/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CLI — Documentação">
+<meta name="twitter:description" content="Os doze subcomandos do engine, com flags, argumentos e o que cada um exige.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "CLI",
+  "description": "Os doze subcomandos do engine, com flags, argumentos e o que cada um exige.",
+  "inLanguage": "pt-BR",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/pt/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Navegação principal">
+      <a href="/pt/#ecossistema">Ecossistema</a>
+      <a href="/pt/docs/">Documentação</a>
+      <details class="lang-dd"><summary aria-label="Idioma: Português"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Português</span></summary><ul><li><a href="/docs/cli/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/cli/" lang="pt-BR" hreflang="pt-BR" aria-current="true">Português</a></li><li><a href="/fr/docs/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Explorar open source
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Menu da documentação
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Buscar na documentação</label>
+        <input type="search" id="q" placeholder="Buscar…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Nada encontrado" hidden></div>
+      <nav class="side-nav" aria-label="Documentação">
+        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/pt/docs/ecosystem/">Ecossistema</a></li><li><a href="/pt/docs/integrations/">Integrações</a></li><li><a href="/pt/docs/introduction/">Introdução</a></li><li><a href="/pt/docs/installation/">Instalação</a></li><li><a href="/pt/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/pt/docs/core/">Core</a></li><li><a href="/pt/docs/workflows/">Workflows</a></li><li><a href="/pt/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/pt/docs/pod-per-step/">Pod por passo</a></li><li><a href="/pt/docs/context/">Contexto entre passos</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/pt/docs/cli/" aria-current="page">CLI</a></li><li><a href="/pt/docs/parameters/">Parâmetros</a></li><li><a href="/pt/docs/configuration/">Configuração</a></li><li><a href="/pt/docs/runtime/">Runtime do passo</a></li></ul><p class="side-group">SDK e bibliotecas</p><ul class="side-list"><li><a href="/pt/docs/sdk/">SDK em Go</a></li><li><a href="/pt/docs/libraries/">Bibliotecas cliente</a></li><li><a href="/pt/docs/python/">Python</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/pt/docs/console/">Console</a></li><li><a href="/pt/docs/kubernetes/">Kubernetes</a></li><li><a href="/pt/docs/observability/">Observabilidade</a></li><li><a href="/pt/docs/white-label/">Marca branca</a></li></ul><p class="side-group">Ingestão</p><ul class="side-list"><li><a href="/pt/docs/ingestion/">Ingestão</a></li><li><a href="/pt/docs/ingestion-sinks/">Destinos da ingestão</a></li><li><a href="/pt/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modelagem em SQL</p><ul class="side-list"><li><a href="/pt/docs/sql/">SQL</a></li></ul><p class="side-group">O projeto</p><ul class="side-list"><li><a href="/pt/docs/philosophy/">Filosofia</a></li><li><a href="/pt/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Documentação</p>
+      <h1>CLI</h1>
+      <p class="doc-desc">Os doze subcomandos do engine, com flags, argumentos e o que cada um exige.</p>
+      <p>O engine é um binário com subcomandos, não vários binários: API, scheduler e workers são papéis do mesmo sistema, e um binário só mantém uma versão, uma imagem e um caminho de build.</p>
+<div class="code-block" data-code="brevis [comando] [flags]"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis [comando] [flags]</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>comando</th><th>banco</th><th>credencial fora de <code>local</code></th><th>papel</th></tr></thead><tbody><tr><td><a href="#serve"><code>serve</code></a></td><td><strong>sim</strong></td><td><strong>exigida</strong></td><td>API + interface</td></tr><tr><td><a href="#scheduler"><code>scheduler</code></a></td><td><strong>sim</strong></td><td><strong>exigida</strong></td><td>os dois laços</td></tr><tr><td><a href="#migrate"><code>migrate</code></a></td><td><strong>sim</strong></td><td><strong>exigida</strong></td><td>schema</td></tr><tr><td><a href="#publish"><code>publish</code></a></td><td><strong>sim</strong></td><td><strong>exigida</strong></td><td>grava workflow e agenda</td></tr><tr><td><a href="#backfill"><code>backfill</code></a></td><td><strong>sim</strong></td><td><strong>exigida</strong></td><td>reprocessa um intervalo</td></tr><tr><td><a href="#cancel"><code>cancel</code></a></td><td><strong>sim</strong></td><td><strong>exigida</strong></td><td>para uma execução</td></tr><tr><td><a href="#run"><code>run</code></a></td><td>não</td><td>—</td><td>executa agora, na própria instância</td></tr><tr><td><a href="#validate"><code>validate</code></a></td><td>não</td><td>—</td><td>valida YAML de workflow</td></tr><tr><td><a href="#brand"><code>brand</code></a></td><td>não</td><td>—</td><td>valida YAML de marca</td></tr><tr><td><a href="#hash"><code>hash</code></a></td><td>não</td><td>—</td><td>gera o hash da senha</td></tr><tr><td><a href="#version"><code>version</code></a></td><td>não</td><td>—</td><td>versão, commit, build</td></tr></tbody></table></div>
+<p>Os seis primeiros chamam a carga de configuração, que <strong>falha no boot</strong> sem <code>BREVIS_DATABASE_URL</code>. Os outros cinco não a chamam — e é por isso que <code>validate</code> serve na CI, onde não há Postgres.</p>
+<p>Os mesmos seis herdam a regra de credencial: com <code>BREVIS_ENV</code> diferente de <code>local</code>, subir sem as três variáveis de autenticação é <strong>erro de boot</strong>.</p>
+<hr>
+<h2 id="serve">serve<a class="anchor" href="#serve" aria-label="link">#</a></h2>
+<p>Sobe a API HTTP e a interface. Sem flags — tudo vem do ambiente.</p>
+<div class="code-block" data-code="brevis serve"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> serve</code></pre></div>
+<p>Encerra em <code>SIGINT</code>/<code>SIGTERM</code> com shutdown graceful, para que um deploy não corte requisições em voo. Este processo <strong>não materializa agendas</strong>: para isso é preciso um <code>brevis scheduler</code> ao lado.</p>
+<p><code>CMD</code> da imagem <code>api</code> (distroless, sem shell).</p>
+<hr>
+<h2 id="scheduler">scheduler<a class="anchor" href="#scheduler" aria-label="link">#</a></h2>
+<p>Os dois laços: o scheduler materializa agendas em runs, o dispatcher tira da fila e executa.</p>
+<div class="code-block" data-code="brevis scheduler --interval 5s --concurrency 4 --max-pods 10"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--interval</span> 5s <span class="t-n">--concurrency</span> 4 <span class="t-n">--max-pods</span> 10</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>tipo</th><th>padrão</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td>duration</td><td><code>10s</code></td><td>intervalo entre ciclos</td></tr><tr><td><code>--concurrency</code></td><td>int</td><td><code>5</code></td><td><strong>runs</strong> simultâneos</td></tr><tr><td><code>--max-pods</code></td><td>int</td><td><code>5</code></td><td><strong>passos</strong> simultâneos no total</td></tr></tbody></table></div>
+<p><code>CMD</code> da imagem <code>worker</code> (alpine com shell, porque os passos <code>run:</code> precisam).</p>
+<hr>
+<h2 id="alert">alert<a class="anchor" href="#alert" aria-label="link">#</a></h2>
+<p>Entrega os alertas que o scheduler registrou. Um terceiro processo, ao lado de <code>serve</code> e <code>scheduler</code>.</p>
+<div class="code-block" data-code="brevis alert --interval 1s --max-attempts 6"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> alert <span class="t-n">--interval</span> 1s <span class="t-n">--max-attempts</span> 6</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>tipo</th><th>padrão</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td>duration</td><td><code>1s</code></td><td>intervalo entre ciclos de entrega</td></tr><tr><td><code>--max-attempts</code></td><td>int</td><td><code>6</code></td><td>tentativas antes de o alerta virar "não entregue"</td></tr></tbody></table></div>
+<p><strong>Ele existe por causa de onde o alerta é escrito, não porque a entrega mereça um processo.</strong> O scheduler grava o alerta na mesma transação da falha que o justifica — ou a run está sem tentativas e o alerta existe, ou nenhum dos dois aconteceu. Alguém então precisa drenar essa tabela, e precisa sobreviver tanto a uma queda do Slack quanto ao próprio restart. Antes disso, um webhook fora do ar virava uma linha de log e um alerta que simplesmente sumia.</p>
+<p>Ele se recusa a subir sem canal configurado (<code>BREVIS_SLACK_WEBHOOK</code>). Um processo de entrega sem destino drena a caixa para "não entregue" na mesma velocidade em que ela enche, e essas linhas ficam idênticas ao Slack recusando.</p>
+<p>Um alerta do qual ele desiste é <strong>mantido</strong>: "levantado, não entregue, 4 tentativas, 403 do Slack" é a linha que importa, porque é o caso em que alguém está esperando uma mensagem que não vem.</p>
+<p><code>CMD</code> da imagem <code>worker</code>.</p>
+<hr>
+<h2 id="report">report<a class="anchor" href="#report" aria-label="link">#</a></h2>
+<p>Manda o resumo periódico do que rodou.</p>
+<div class="code-block" data-code="brevis report --window 168h              # envia
+brevis report --window 168h --dry-run    # imprime, não envia"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> report <span class="t-n">--window</span> 168h              <span class="t-c"># envia</span>
+<span class="t-k">brevis</span> report <span class="t-n">--window</span> 168h <span class="t-n">--dry-run</span>    <span class="t-c"># imprime, não envia</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>tipo</th><th>padrão</th><th></th></tr></thead><tbody><tr><td><code>--window</code></td><td>duration</td><td><code>168h</code></td><td>quanto tempo para trás olhar</td></tr><tr><td><code>--dry-run</code></td><td>bool</td><td><code>false</code></td><td>imprime em vez de enviar</td></tr></tbody></table></div>
+<p>Um <strong>comando</strong>, não um loop, e é essa a diferença entre um report e um alerta: ele roda de um CronJob, então não há loop novo, estado novo nem eleição de líder — o cluster já tem um scheduler. O <code>--dry-run</code> é como alguém passa a confiar numa mensagem semanal, lendo o que ela teria dito.</p>
+<p>Ele <strong>não</strong> passa pela caixa de saída de alertas. Os dois compartilham um canal de entrega e nada mais: perder um alerta é uma falha que ninguém escuta, e perder o resumo de uma semana é o resumo da semana seguinte.</p>
+<p>A mensagem leva runs, sucessos, falhas, os pipelines que mais falharam, os que demoraram mais, e as linhas e bytes que o SDK reportou. Ela <strong>não</strong> leva CPU nem memória, e também não imprime zero para elas — o motor não coleta esses números, e a mensagem diz onde eles ficam.</p>
+<p>Uma janela vazia diz isso, em vez de reportar 100%. Uma taxa de sucesso sobre nada é o número mais tranquilizador que um report pode imprimir e o menos verdadeiro: uma semana vazia normalmente quer dizer que o scheduler estava fora.</p>
+<p>O <code>deployments/kubernetes/report.yaml</code> roda isso toda semana.</p>
+<hr>
+<h2 id="migrate">migrate<a class="anchor" href="#migrate" aria-label="link">#</a></h2>
+<div class="code-block" data-code="brevis migrate up      # aplica o que falta
+brevis migrate down    # desfaz a última
+brevis migrate status  # mostra o estado"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> migrate up      <span class="t-c"># aplica o que falta</span>
+<span class="t-k">brevis</span> migrate down    <span class="t-c"># desfaz a última</span>
+<span class="t-k">brevis</span> migrate status  <span class="t-c"># mostra o estado</span></code></pre></div>
+<p>Aceita exatamente um argumento. As migrations estão embutidas no binário e são aplicadas por subcomando próprio — <strong><code>serve</code> nunca altera schema</strong>.</p>
+<hr>
+<h2 id="validate">validate<a class="anchor" href="#validate" aria-label="link">#</a></h2>
+<p>Valida um ou mais arquivos de workflow. Aceita arquivo <strong>ou diretório</strong>.</p>
+<div class="code-block" data-code="brevis validate examples/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> validate examples/</code></pre></div>
+<div class="code-block" data-code="  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
+  ok    hello                        dag  4 steps, 4 dependencias  (manual)"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
+  ok    hello                        dag  4 steps, 4 dependencias  (manual)</code></pre></div>
+<p>Não toca no banco e não sobe servidor, então roda no editor e na CI. Sai com código diferente de zero e conta as falhas.</p>
+<hr>
+<h2 id="run">run<a class="anchor" href="#run" aria-label="link">#</a></h2>
+<p>Executa um workflow <strong>agora, na própria instância</strong>: sem fila, sem banco, sem scheduler.</p>
+<div class="code-block" data-code="brevis run examples/hello.yaml
+brevis run wf.yaml --param load_full=true --retries 3 --timeout 5m"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> run examples/hello.yaml
+<span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true <span class="t-n">--retries</span> 3 <span class="t-n">--timeout</span> 5m</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>tipo</th><th>padrão</th><th></th></tr></thead><tbody><tr><td><code>--param</code></td><td>repetível</td><td>—</td><td><code>chave=valor</code> de um parâmetro declarado</td></tr><tr><td><code>--workdir</code></td><td>string</td><td>o diretório do arquivo</td><td>diretório de trabalho dos passos</td></tr><tr><td><code>--retries</code></td><td>int</td><td><code>1</code></td><td>tentativas por passo (<code>1</code> = sem retry)</td></tr><tr><td><code>--timeout</code></td><td>duration</td><td><code>0</code></td><td>timeout por passo (<code>0</code> = sem limite)</td></tr></tbody></table></div>
+<p><code>--param</code> sem <code>=</code> é <strong>erro</strong>, não aviso: <code>--param load_full</code> rodaria com o padrão e o operador acharia que o valor foi aplicado.</p>
+<aside class="admon admon-warning"><p class="admon-t">Quatro limites</p><p><code>run</code> só opera com <code>BREVIS_ENV=local</code>; um passo com <code>image:</code> executa na própria instância e avisa; não há registry de tasks Go, então um <code>action:</code> de task não registrada falha citando as disponíveis; e <code>run</code> não lê <code>BREVIS_HOSTS</code>, então um passo com <code>host:</code> não roda aqui de jeito nenhum — falha citando o host, mesmo com a variável definida.</p></aside>
+<hr>
+<h2 id="publish">publish<a class="anchor" href="#publish" aria-label="link">#</a></h2>
+<p>Grava os workflows e as agendas no banco. Aceita arquivo ou diretório.</p>
+<div class="code-block" data-code="brevis publish examples/hello.yaml
+brevis publish workflows/ --project acme --prune"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> publish examples/hello.yaml
+<span class="t-k">brevis</span> publish workflows/ <span class="t-n">--project</span> acme <span class="t-n">--prune</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>tipo</th><th>padrão</th><th></th></tr></thead><tbody><tr><td><code>--project</code></td><td>string</td><td><code>default</code></td><td>slug do projeto</td></tr><tr><td><code>--prune</code></td><td>bool</td><td><code>false</code></td><td>remove do projeto os workflows ausentes da lista</td></tr></tbody></table></div>
+<p>Com <code>--prune</code>, o histórico dos removidos é preservado.</p>
+<hr>
+<h2 id="backfill">backfill<a class="anchor" href="#backfill" aria-label="link">#</a></h2>
+<p>Materializa slots passados de um workflow já publicado. <strong>Enfileira, não executa.</strong></p>
+<div class="code-block" data-code="brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> backfill diario <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th></th><th></th></tr></thead><tbody><tr><td><code>--from</code></td><td><strong>obrigatória</strong></td><td>data inicial, <code>AAAA-MM-DD</code></td></tr><tr><td><code>--to</code></td><td><strong>obrigatória</strong></td><td>data final, <code>AAAA-MM-DD</code></td></tr><tr><td><code>--param</code></td><td></td><td>vale para <strong>todos</strong> os slots do intervalo</td></tr></tbody></table></div>
+<p><code>--to</code> inclui o dia inteiro: internamente o fim vira <code>23:59:59</code> daquela data.</p>
+<hr>
+<h2 id="cancel">cancel<a class="anchor" href="#cancel" aria-label="link">#</a></h2>
+<p>Cancela uma execução que ainda espera ou que está rodando. No feed, quem cancelou aparece como <code>cli</code>.</p>
+<div class="code-block" data-code="brevis cancel 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> cancel 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>resposta</th><th>o que aconteceu</th></tr></thead><tbody><tr><td><code>canceled</code></td><td>a execução esperava na fila; saiu dela e não vai rodar</td></tr><tr><td><code>cancel requested</code></td><td>a execução está rodando; o dispatcher para os passos em até <code>--cancel-poll</code> (2 s)</td></tr><tr><td><code>already ended: &lt;status&gt;</code></td><td>a execução já tinha terminado; nada muda</td></tr></tbody></table></div>
+<p>Uma execução cancelada não é retentada. Um id que não existe é erro.</p>
+<hr>
+<h2 id="gateway">gateway<a class="anchor" href="#gateway" aria-label="link">#</a></h2>
+<p>Como um gateway aparece no <code>/data</code>: a configuração dele, publicada como ato deliberado — nunca o tráfego, e nunca em tempo de execução.</p>
+<div class="code-block" data-code="gateway describe gateway.yaml &gt; manifest.json   # o binário do próprio gateway
+brevis gateway publish manifest.json
+brevis gateway unpublish events_gateway"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>gateway describe gateway.yaml &gt; manifest.json   <span class="t-c"># o binário do próprio gateway</span>
+<span class="t-k">brevis</span> gateway publish manifest.json
+<span class="t-k">brevis</span> gateway unpublish events_gateway</code></pre></div>
+<p>O <code>publish</code> confere o manifesto inteiro antes de escrever qualquer coisa, citando o stream e o papel do primeiro problema, e substitui os destinos daquele gateway numa transação só. O <code>unpublish</code> remove um gateway descomissionado, e é erro quando nenhum gateway com aquele nome foi publicado.</p>
+<p>Como um <code>brevis-sql-api</code> aparece em Data → Endpoints: o que cada endpoint recebe e lê, publicado como ato deliberado — nunca o tráfego.</p>
+<div class="code-block" data-code="brevis-sql-api describe --config api.yaml --out manifest.json   # o binário da própria API
+brevis endpoints publish manifest.json
+brevis endpoints unpublish metrics-api"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span>-sql-api describe <span class="t-n">--config</span> api.yaml <span class="t-n">--out</span> manifest.json   <span class="t-c"># o binário da própria API</span>
+<span class="t-k">brevis</span> endpoints publish manifest.json
+<span class="t-k">brevis</span> endpoints unpublish metrics-api</code></pre></div>
+<p>O <code>publish</code> confere o manifesto inteiro antes de escrever qualquer coisa e substitui os endpoints daquela API numa transação só; um nome, default ou nota com cara de credencial recusa tudo.</p>
+<p>Um comando próprio, e não um modo do <code>brevis publish</code>, porque workflows e gateways têm semânticas de conjunto diferentes: o <code>publish --prune</code> não pode alcançar as linhas de um gateway.</p>
+<hr>
+<h2 id="prune">prune<a class="anchor" href="#prune" aria-label="link">#</a></h2>
+<p>Aplica a política de retenção. É a <strong>única</strong> coisa no Brevis que apaga alguma coisa, e não roda sozinha — quem agenda é o operador.</p>
+<div class="code-block" data-code="brevis prune --dry-run          # o que sairia, sem mudar nada
+brevis prune
+brevis prune --purge-after 0    # só enxuga, nunca apaga um run"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> prune <span class="t-n">--dry-run</span>          <span class="t-c"># o que sairia, sem mudar nada</span>
+<span class="t-k">brevis</span> prune
+<span class="t-k">brevis</span> prune <span class="t-n">--purge-after</span> 0    <span class="t-c"># só enxuga, nunca apaga um run</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>padrão</th><th></th></tr></thead><tbody><tr><td><code>--trim-after</code></td><td><code>720h</code></td><td>esvazia o log, as fases e a saída publicada</td></tr><tr><td><code>--purge-after</code></td><td><code>8760h</code></td><td>apaga o run inteiro; <code>0</code> nunca apaga</td></tr></tbody></table></div>
+<hr>
+<h2 id="brand">brand<a class="anchor" href="#brand" aria-label="link">#</a></h2>
+<p>Valida um arquivo de identidade visual sem subir o servidor.</p>
+<div class="code-block" data-code="brevis brand brand.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> brand brand.yaml</code></pre></div>
+<div class="code-block" data-code="  ok    Brevis · Orquestração
+        logo      /assets/logo.svg  (simbolo embutido)
+        destaque  #aa8450
+        Powered by Brevis"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>  ok    Brevis · Orquestração
+        logo      /assets/logo.svg  (simbolo embutido)
+        destaque  #aa8450
+        Powered by Brevis</code></pre></div>
+<p>Diferença em relação ao boot: <strong>arquivo ausente é erro</strong>. No <code>serve</code>, ausência significa "usa a identidade padrão"; quem pediu para validar um caminho espera saber que ele não existe.</p>
+<hr>
+<h2 id="hash">hash<a class="anchor" href="#hash" aria-label="link">#</a></h2>
+<p>Gera o hash de <code>BREVIS_AUTH_PASSWORD_HASH</code>.</p>
+<div class="code-block" data-code="brevis hash"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> hash</code></pre></div>
+<p>A senha é lida do terminal <strong>sem eco</strong>, nunca de argumento: argumento aparece no <code>ps</code> de qualquer processo da máquina e fica no histórico do shell. Recusa senha com menos de 12 caracteres.</p>
+<p>O hash vai sozinho para <strong>stdout</strong> e os rótulos para <strong>stderr</strong>, então <code>brevis hash &gt; hash.txt</code> grava só o que interessa.</p>
+<hr>
+<h2 id="version">version<a class="anchor" href="#version" aria-label="link">#</a></h2>
+<div class="code-block" data-code="brevis version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> version</code></pre></div>
+<div class="code-block" data-code="brevis 0.11.2
+  commit  bb832ff
+  build   2026-09-05T12:00:00Z
+  go      go1.25.7 darwin/arm64"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis 0.11.2
+  commit  bb832ff
+  build   2026-09-05T12:00:00Z
+  go      go1.25.7 darwin/arm64</code></pre></div>
+<p>Compilado direto com <code>go build</code>, sai <code>brevis dev</code> sem commit nem data — e distinguir isso de um artefato de release importa quando alguém reporta comportamento estranho.</p>
+
+      <nav class="pagers" aria-label="Páginas">
+        <a class="pager pager-prev" href="/pt/docs/context/"><span>Anterior</span><strong>Contexto entre passos</strong></a>
+        <a class="pager pager-next" href="/pt/docs/parameters/"><span>Próximo</span><strong>Parâmetros</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/pt/docs/cli.md" target="_blank" rel="noopener">Editar esta página no GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="Nesta página">
+      <p class="toc-t">Nesta página</p>
+      <ul><li class="toc-2"><a href="#serve">serve</a></li><li class="toc-2"><a href="#scheduler">scheduler</a></li><li class="toc-2"><a href="#alert">alert</a></li><li class="toc-2"><a href="#report">report</a></li><li class="toc-2"><a href="#migrate">migrate</a></li><li class="toc-2"><a href="#validate">validate</a></li><li class="toc-2"><a href="#run">run</a></li><li class="toc-2"><a href="#publish">publish</a></li><li class="toc-2"><a href="#backfill">backfill</a></li><li class="toc-2"><a href="#cancel">cancel</a></li><li class="toc-2"><a href="#gateway">gateway</a></li><li class="toc-2"><a href="#prune">prune</a></li><li class="toc-2"><a href="#brand">brand</a></li><li class="toc-2"><a href="#hash">hash</a></li><li class="toc-2"><a href="#version">version</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/pt/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Filosofia aplicada à infraestrutura de dados.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>projeto</h2>
+        <ul>
+          <li><a href="/pt/#ecossistema">Ecossistema</a></li>
+          <li><a href="/pt/docs/philosophy/">Princípios</a></li>
+          <li><a href="/pt/docs/introduction/#codigo-aberto-escolha-como-participar">Open source</a></li>
+          <li><a href="/pt/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>código</h2>
+        <ul>
+          <li><a href="/pt/docs/">Documentação</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repositório</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Um projeto open source da <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · construído em Go · Go gopher por Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

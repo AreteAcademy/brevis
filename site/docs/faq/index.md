@@ -1,33 +1,33 @@
 # FAQ
 
-> As perguntas que chegam primeiro, com respostas curtas e para onde ir depois.
+> The questions that come first, with short answers and where to go next.
 
-*https://brevis.sh/docs/faq/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/faq/ · brevis.sh docs (en-US)*
 
 ---
 
-## O brevis.sh é realmente 100% open source?
+## Is brevis.sh really 100% open source?
 
-Sim. O runtime completo é aberto para leitura, uso, adaptação e contribuição da comunidade.
+Yes. The complete runtime is open to read, use, adapt and contribute to.
 
-## O que a referência a Sêneca significa para o projeto?
+## What does the reference to Seneca mean for the project?
 
-De Brevitate Vitae inspira uma engenharia mais intencional: reduzir a complexidade que consome tempo e preservar espaço para trabalho com propósito.
+De Brevitate Vitae inspires more intentional engineering: reduce the complexity that consumes time, and preserve room for work with purpose.
 
-Mais em [Filosofia](/docs/philosophy/index.md).
+More in [Philosophy](/docs/philosophy/index.md).
 
-## Como funciona o isolamento dos pods?
+## How does pod isolation work?
 
-Cada etapa do workflow executa como um pod próprio com sua imagem, mantendo dependências e contexto de execução separados.
+Each workflow step runs as its own pod with its own image, keeping dependencies and execution context separate.
 
-Mais em [Pod por passo](/docs/pod-per-step/index.md).
+More in [Pod per step](/docs/pod-per-step/index.md).
 
-## Qual é a relação com a Aretê Academy?
+## What is the relationship with Aretê Academy?
 
-O brevis.sh é um projeto do grupo Aretê Academy, que aproxima grandes ideias da filosofia dos desafios reais da construção de software.
+brevis.sh is a project of Aretê Academy, which brings great ideas from philosophy closer to the real challenges of building software.
 
-## Posso usar só uma das peças?
+## Can I use only one of the pieces?
 
-Pode. Cada peça tem módulo, versão e imagem próprios: o SDK é uma biblioteca Go que roda em qualquer programa, o Gateway sobe sozinho com um YAML e sem banco, e o brevis-sql roda como um container. O Core orquestra as outras quando você quer — não é pré-requisito de nenhuma.
+Yes. Each piece has its own module, version and image: the SDK is a Go library that runs in any program, the Gateway starts on its own with a YAML file and no database, and brevis-sql runs as a container. The Core orchestrates the others when you want it to — it is a prerequisite for none of them.
 
-Mais em [Ecossistema](/docs/ecosystem/index.md).
+More in [Ecosystem](/docs/ecosystem/index.md).

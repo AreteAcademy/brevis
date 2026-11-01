@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ lang }}">
+<html lang="{{ lang }}" data-docs="{{ prefixo_docs }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -102,9 +102,9 @@
         <h2>{{ i18n.footer_projeto }}</h2>
         <ul>
           <li><a href="{{ prefixo }}/#ecossistema">{{ i18n.nav_ecossistema }}</a></li>
-          <li><a href="{{ prefixo }}/docs/philosophy/">{{ i18n.nav_principios }}</a></li>
-          <li><a href="{{ prefixo }}/docs/introduction/#{{ i18n.nav_open_source_ancora }}">{{ i18n.nav_open_source }}</a></li>
-          <li><a href="{{ prefixo }}/docs/faq/">{{ i18n.nav_faq }}</a></li>
+          <li><a href="{{ prefixo_docs }}/docs/philosophy/">{{ i18n.nav_principios }}</a></li>
+          <li><a href="{{ prefixo_docs }}/docs/introduction/#{{ i18n.nav_open_source_ancora }}">{{ i18n.nav_open_source }}</a></li>
+          <li><a href="{{ prefixo_docs }}/docs/faq/">{{ i18n.nav_faq }}</a></li>
         </ul>
       </div>
 
@@ -127,5 +127,6 @@
 </footer>
 
 {{ extra_js }}
+<script src="/js/lang.js" defer></script>
 </body>
 </html>

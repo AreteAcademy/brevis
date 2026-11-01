@@ -1,13 +1,12 @@
-# Runtime do passo
+# Step runtime
 
-> O que o passo declara sobre a linguagem e as ferramentas que dirige — e por que quase nunca é preciso declarar.
+> What a step declares about the language and tools it drives — and why you rarely need to.
 
-*https://brevis.sh/docs/runtime/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/runtime/ · brevis.sh docs (en-US)*
 
 ---
 
-O grafo desenha um selo em cada passo dizendo a linguagem e as ferramentas que
-ele dirige:
+The graph draws a chip on each step saying its language and the tools it drives:
 
 ```
 ┌──────────────────────────────────────┐
@@ -18,54 +17,53 @@ ele dirige:
 └──────────────────────────────────────┘
 ```
 
-**Na maior parte dos casos você não escreve nada.** O engine lê `run:` e
-`image:` e deduz.
+**Most of the time you write nothing.** The engine reads `run:` and `image:` and
+works it out.
 
-## Quando declarar
+## When to declare it
 
-Dois campos, ambos opcionais, ambos por passo:
+Two fields, both optional, both per step:
 
 ```yaml
 steps:
   - id: fetch
     run: /opt/brevis/bin/fetch-weather
-    runtime: go            # um binário compilado; o caminho não diz nada
+    runtime: go            # a compiled binary; the path says nothing
 
   - id: transform
     run: dbt build --select gold+
-    tools: [dbt]           # o que ele dirige, não o que ele é
+    tools: [dbt]           # what it drives, not what it is
 ```
 
-| campo | |
+| field | |
 |---|---|
-| `runtime` | a linguagem do passo: `go`, `python`, `node`, `shell`… |
-| `tools` | as ferramentas que o comando dirige: `dbt`, `dlt`, `spark`… |
+| `runtime` | the step's language: `go`, `python`, `node`, `shell`… |
+| `tools` | the tools the command drives: `dbt`, `dlt`, `spark`… |
 
-A regra prática: **declare quando a inferência erra.** Um `run:` que aponta para
-um binário compilado não tem como dizer que é Go; um wrapper que chama `dbt`
-por dentro não tem como dizer que dirige dbt.
+The rule of thumb: **declare it when inference gets it wrong.** A `run:` that
+points at a compiled binary has no way of saying it is Go; a wrapper that calls
+`dbt` internally has no way of saying it drives dbt.
 
-## Por que um vocabulário fechado
+## Why a closed vocabulary
 
-Um id fora do vocabulário é **recusado no publish**, nomeando o que é válido.
-A alternativa seria um selo que renderiza em branco numa tela três dias depois,
-sem nada para rastrear.
+An id outside the vocabulary is **refused at publish**, naming what is valid.
+The alternative is a chip that renders blank on a screen three days later, with
+nothing to trace it to.
 
 ```
 workflow "daily": step "transform": `runtime: pyton` is not valid
   (valid: go, python, node, shell, …)
 ```
 
-## O que o selo serve para
+## What the chip is for
 
-Não é decoração. Quando um run falha às 3h da manhã, a primeira pergunta é "o
-que esse passo executa?", e a resposta costuma estar em outro repositório. O
-selo põe a resposta no próprio grafo — junto com a versão do SDK que o passo
-usou, que é o que distingue "quebrou hoje" de "quebrou desde a atualização de
-terça".
+It is not decoration. When a run fails at 3 a.m., the first question is "what
+does this step execute?", and the answer usually lives in another repository.
+The chip puts it on the graph itself — alongside the SDK version the step used,
+which is what tells "broke today" apart from "broke since Tuesday's bump".
 
-## Próximos passos
+## Next steps
 
-- [Workflows](/docs/workflows/index.md) — todos os campos do passo
-- [Pod por passo](/docs/pod-per-step/index.md) — onde o passo realmente executa
-- [Observabilidade](/docs/observability/index.md) — as métricas que acompanham
+- [Workflows](/docs/workflows/index.md) — every step field
+- [Pod per step](/docs/pod-per-step/index.md) — where a step actually runs
+- [Observability](/docs/observability/index.md) — the metrics that go with it

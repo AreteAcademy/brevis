@@ -1,26 +1,26 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en-US" data-docs="">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#141711">
 
-<title>Pod por passo — Documentação</title>
-<meta name="description" content="Por que cada etapa executa em seu próprio pod, e o que isso muda em custo e isolamento.">
+<title>Pod per step — Documentation</title>
+<meta name="description" content="Why each step runs in its own pod, and what that changes in cost and isolation.">
 <meta name="author" content="Aretê Academy">
 <link rel="canonical" href="https://brevis.sh/docs/pod-per-step/">
 <link rel="alternate" type="text/markdown" href="https://brevis.sh/docs/pod-per-step/index.md">
-<link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/docs/pod-per-step/"><link rel="alternate" hreflang="en" href="https://brevis.sh/en/docs/pod-per-step/">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/pod-per-step/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/pod-per-step/">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="brevis.sh">
-<meta property="og:locale" content="pt-BR">
-<meta property="og:title" content="Pod por passo — Documentação">
-<meta property="og:description" content="Por que cada etapa executa em seu próprio pod, e o que isso muda em custo e isolamento.">
+<meta property="og:locale" content="en-US">
+<meta property="og:title" content="Pod per step — Documentation">
+<meta property="og:description" content="Why each step runs in its own pod, and what that changes in cost and isolation.">
 <meta property="og:url" content="https://brevis.sh/docs/pod-per-step/">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Pod por passo — Documentação">
-<meta name="twitter:description" content="Por que cada etapa executa em seu próprio pod, e o que isso muda em custo e isolamento.">
+<meta name="twitter:title" content="Pod per step — Documentation">
+<meta name="twitter:description" content="Why each step runs in its own pod, and what that changes in cost and isolation.">
 
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,9 +34,9 @@
 {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  "headline": "Pod por passo",
-  "description": "Por que cada etapa executa em seu próprio pod, e o que isso muda em custo e isolamento.",
-  "inLanguage": "pt-BR",
+  "headline": "Pod per step",
+  "description": "Why each step runs in its own pod, and what that changes in cost and isolation.",
+  "inLanguage": "en-US",
   "isPartOf": {
     "@type": "WebSite",
     "@id": "https://brevis.sh/#site"
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+<a class="skip-link" href="#conteudo">Skip to content</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -83,17 +83,17 @@
       <span>brevis<span class="tld">.sh</span></span>
     </a>
 
-    <nav class="main-nav" id="nav" aria-label="Navegação principal">
-      <a href="/#ecossistema">Ecossistema</a>
-      <a href="/docs/">Documentação</a>
-      <div class="lang-switch" role="group" aria-label="Idioma"><a href="/docs/pod-per-step/" hreflang="pt-BR" aria-current="true">PT</a><a href="/en/docs/pod-per-step/" hreflang="en">EN</a></div>
+    <nav class="main-nav" id="nav" aria-label="Main navigation">
+      <a href="/#ecossistema">Ecosystem</a>
+      <a href="/docs/">Documentation</a>
+      <details class="lang-dd"><summary aria-label="Language: English"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>English</span></summary><ul><li><a href="/docs/pod-per-step/" lang="en-US" hreflang="en-US" aria-current="true">English</a></li><li><a href="/es/docs/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/pod-per-step/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
-        Explorar open source
+        Explore open source
       </a>
     </nav>
 
-    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="nav">
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
       <svg aria-hidden="true"><use href="#i-menu"></use></svg>
     </button>
   </div>
@@ -102,98 +102,98 @@
 <div class="doc-shell">
   <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
     <svg aria-hidden="true"><use href="#i-menu"></use></svg>
-    Menu da documentação
+    Documentation menu
   </button>
 
   <aside class="side" id="side">
     <div class="side-inner">
       <form class="search" role="search" onsubmit="return false">
         <svg aria-hidden="true"><use href="#i-search"></use></svg>
-        <label class="sr-only" for="q">Buscar na documentação</label>
-        <input type="search" id="q" placeholder="Buscar…" autocomplete="off" spellcheck="false">
+        <label class="sr-only" for="q">Search the documentation</label>
+        <input type="search" id="q" placeholder="Search…" autocomplete="off" spellcheck="false">
       </form>
-      <div class="search-out" id="search-out" data-none="Nada encontrado" hidden></div>
-      <nav class="side-nav" aria-label="Documentação">
-        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/ecosystem/">Ecossistema</a></li><li><a href="/docs/integrations/">Integrações</a></li><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/core/">Core</a></li><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/" aria-current="page">Pod por passo</a></li><li><a href="/docs/context/">Contexto entre passos</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li><li><a href="/docs/runtime/">Runtime do passo</a></li></ul><p class="side-group">SDK e bibliotecas</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li><li><a href="/docs/libraries/">Bibliotecas cliente</a></li><li><a href="/docs/python/">Python</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/console/">Console</a></li><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observabilidade</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul><p class="side-group">Ingestão</p><ul class="side-list"><li><a href="/docs/ingestion/">Ingestão</a></li><li><a href="/docs/ingestion-sinks/">Destinos da ingestão</a></li><li><a href="/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modelagem em SQL</p><ul class="side-list"><li><a href="/docs/sql/">SQL</a></li></ul><p class="side-group">O projeto</p><ul class="side-list"><li><a href="/docs/philosophy/">Filosofia</a></li><li><a href="/docs/faq/">FAQ</a></li></ul>
+      <div class="search-out" id="search-out" data-none="No results" hidden></div>
+      <nav class="side-nav" aria-label="Documentation">
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/docs/ecosystem/">Ecosystem</a></li><li><a href="/docs/integrations/">Integrations</a></li><li><a href="/docs/introduction/">Introduction</a></li><li><a href="/docs/installation/">Installation</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/docs/core/">Core</a></li><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/docs/pod-per-step/" aria-current="page">Pod per step</a></li><li><a href="/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parameters</a></li><li><a href="/docs/configuration/">Configuration</a></li><li><a href="/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK and libraries</p><ul class="side-list"><li><a href="/docs/sdk/">Go SDK</a></li><li><a href="/docs/libraries/">Client libraries</a></li><li><a href="/docs/python/">Python</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/docs/console/">Console</a></li><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observability</a></li><li><a href="/docs/white-label/">White label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/docs/ingestion/">Ingestion</a></li><li><a href="/docs/ingestion-sinks/">Ingestion sinks</a></li><li><a href="/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modelling in SQL</p><ul class="side-list"><li><a href="/docs/sql/">SQL</a></li></ul><p class="side-group">The project</p><ul class="side-list"><li><a href="/docs/philosophy/">Philosophy</a></li><li><a href="/docs/faq/">FAQ</a></li></ul>
       </nav>
     </div>
   </aside>
 
   <main class="doc" id="conteudo">
     <article class="doc-body">
-      <p class="doc-kicker">Documentação</p>
-      <h1>Pod por passo</h1>
-      <p class="doc-desc">Por que cada etapa executa em seu próprio pod, e o que isso muda em custo e isolamento.</p>
-      <p>Em Kubernetes, <strong>cada passo de um workflow vira um pod</strong> com a imagem declarada naquele passo. Não há worker genérico esperando trabalho: é o trabalho que traz o seu runtime.</p>
-<figure class="doc-figure doc-figure-wide"><img src="/assets/execution.svg" width="880" height="370" alt="Diagrama: o Core do brevis.sh sobe um pod por passo — extract em Go, prepare em Python, load em Go e transform em dbt. Os passos trocam contexto entre si, e o SDK é quem lê e escreve esse contexto." loading="lazy"></figure>
+      <p class="doc-kicker">Documentation</p>
+      <h1>Pod per step</h1>
+      <p class="doc-desc">Why each step runs in its own pod, and what that changes in cost and isolation.</p>
+      <p>On Kubernetes, <strong>each workflow step becomes a pod</strong> with the image declared in that step. There is no generic worker waiting for work: the work brings its own runtime.</p>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/execution.svg" width="880" height="370" alt="Diagram: the Core starts one pod per step — extract on Go, prepare on Python, load on Go and transform on dbt. Steps pass context to one another, and the SDK is what reads and writes it." loading="lazy"></figure>
 <div class="code-block" data-code="scheduler                          cluster
 ─────────                          ───────
-percorre o grafo
-  para cada passo pronto:
-    monta o Pod  ──────────────►  Pod: imagem do passo, comando do passo
-    acompanha o status  ◄───────  Pending → Running → Succeeded/Failed
-    segue o log         ◄───────  stdout do container
-    lê o exit code      ◄───────  containerStatuses[0].terminated
-    apaga o pod  ──────────────►  (some)"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>scheduler                          cluster
+walks the graph
+  for each ready step:
+    builds the Pod  ───────────►  Pod: the step&#x27;s image, the step&#x27;s command
+    follows status      ◄───────  Pending → Running → Succeeded/Failed
+    follows the log     ◄───────  container stdout
+    reads the exit code ◄───────  containerStatuses[0].terminated
+    deletes the pod ───────────►  (gone)"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>scheduler                          cluster
 ─────────                          ───────
-percorre o grafo
-  para cada passo pronto:
-    monta o Pod  ──────────────►  Pod: imagem do passo, comando do passo
-    acompanha o status  ◄───────  Pending → Running → Succeeded/Failed
-    segue o log         ◄───────  stdout do container
-    lê o exit code      ◄───────  containerStatuses[0].terminated
-    apaga o pod  ──────────────►  (some)</code></pre></div>
-<h2 id="o-que-isso-muda">O que isso muda<a class="anchor" href="#o-que-isso-muda" aria-label="link">#</a></h2>
-<p>Um worker monolítico obriga a imagem a conter tudo que qualquer passo possa precisar. Na prática:</p>
-<div class="table-wrap"><table><thead><tr><th></th><th>imagem única</th><th>pod por passo</th></tr></thead><tbody><tr><td>passo de dbt</td><td>1,9 GB · 1Gi de RAM</td><td>1,9 GB · 1Gi de RAM</td></tr><tr><td>fetcher em Go ao lado</td><td><strong>1,9 GB · 1Gi</strong></td><td><strong>12 MB · 32Mi</strong></td></tr><tr><td>trocar a versão do dbt</td><td>rebuild de tudo</td><td>uma linha no YAML daquele workflow</td></tr><tr><td>um passo que vaza memória</td><td>derruba o worker e os vizinhos</td><td>morre sozinho</td></tr></tbody></table></div>
-<p>O terceiro item é o menos óbvio e o mais caro no dia a dia: com imagem única, subir o dbt de 1.10 para 1.11 num pipeline obriga a subir em todos.</p>
-<h2 id="imagens-por-papel">Imagens por papel<a class="anchor" href="#imagens-por-papel" aria-label="link">#</a></h2>
-<p>As imagens são por <strong>papel</strong>, não por projeto. Tudo que sobra numa imagem é baixado por todo nó que rodar aquele passo:</p>
-<div class="table-wrap"><table><thead><tr><th>papel</th><th>tamanho</th><th>partida a frio</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td><strong>5,8 MB</strong></td><td>0,18 s</td></tr><tr><td><strong>Python</strong></td><td><strong>118 MB</strong></td><td>0,54 s</td></tr><tr><td><strong>dbt</strong></td><td><strong>620 MB</strong></td><td>3,3 s</td></tr></tbody></table></div>
-<p>Antes: uma imagem única de <strong>1,87 GB</strong> para tudo.</p>
-<p>No caso do dbt, o <code>dbt parse</code> roda no build e o <code>target/partial_parse.msgpack</code> viaja na imagem — <strong>2,68 s a menos por pod</strong>, em toda invocação.</p>
-<h2 id="onde-cada-passo-roda">Onde cada passo roda<a class="anchor" href="#onde-cada-passo-roda" aria-label="link">#</a></h2>
-<p>A decisão é tomada uma vez, no boot, e depende de <code>BREVIS_PODS</code> e de haver cluster:</p>
-<div class="table-wrap"><table><thead><tr><th><code>BREVIS_PODS</code></th><th>com cluster</th><th>sem cluster</th></tr></thead><tbody><tr><td><code>auto</code> (padrão)</td><td>passo com <code>image:</code> vira pod</td><td>tudo em processo local, com aviso no log</td></tr><tr><td><code>on</code></td><td>passo com <code>image:</code> vira pod</td><td><strong>erro de boot</strong></td></tr><tr><td><code>off</code></td><td>tudo em processo local</td><td>tudo em processo local</td></tr></tbody></table></div>
-<p><strong>Um passo com <code>host:</code> não passa por nada disso.</strong> Ele é checado antes do pod e antes do processo, e vai para uma máquina que já está de pé — <code>BREVIS_PODS</code> não se aplica a ele, e ele nunca cai para processo local. Isso é deliberado: <code>image:</code> degrada para execução local com aviso porque container e processo são o mesmo comando em dois invólucros, e um host não é. É onde está a licença, ou a GPU, ou o dado.</p>
-<p><code>auto</code> é o padrão porque o mesmo binário roda nos dois lugares: no laptop não há service account montada e ele cai para processo local; no cluster há, e ele passa a criar pods.</p>
-<p><code>on</code> existe para o deploy que <strong>não pode</strong> silenciosamente virar execução local. Ali, ficar sem cluster tem de ser erro de boot.</p>
-<aside class="admon admon-warning"><p class="admon-t">`brevis run` não cria pods</p><p>O comando <code>run</code> monta apenas o executor de processo. Um passo com <code>image:</code> executa na própria instância — e avisa. Silenciar faria parecer que o passo rodou na imagem declarada, que é o tipo de engano que só aparece quando o resultado já está errado.</p></aside>
-<h2 id="identidade-e-credenciais">Identidade e credenciais<a class="anchor" href="#identidade-e-credenciais" aria-label="link">#</a></h2>
-<p>Com que identidade os pods sobem é decisão da <strong>instalação</strong>, não do workflow — um pipeline não deve poder escolher a service account com que roda. Por isso vem do ambiente:</p>
-<div class="code-block" data-code="BREVIS_POD_NAMESPACE=dados
+walks the graph
+  for each ready step:
+    builds the Pod  ───────────►  Pod: the step's image, the step's command
+    follows status      ◄───────  Pending → Running → Succeeded/Failed
+    follows the log     ◄───────  container stdout
+    reads the exit code ◄───────  containerStatuses[0].terminated
+    deletes the pod ───────────►  (gone)</code></pre></div>
+<h2 id="what-this-changes">What this changes<a class="anchor" href="#what-this-changes" aria-label="link">#</a></h2>
+<p>A monolithic worker forces the image to contain everything any step might need. In practice:</p>
+<div class="table-wrap"><table><thead><tr><th></th><th>single image</th><th>pod per step</th></tr></thead><tbody><tr><td>dbt step</td><td>1.9 GB · 1Gi RAM</td><td>1.9 GB · 1Gi RAM</td></tr><tr><td>Go fetcher next to it</td><td><strong>1.9 GB · 1Gi</strong></td><td><strong>12 MB · 32Mi</strong></td></tr><tr><td>bumping the dbt version</td><td>rebuild everything</td><td>one line in that workflow's YAML</td></tr><tr><td>a step that leaks memory</td><td>takes the worker and its neighbours down</td><td>dies alone</td></tr></tbody></table></div>
+<p>The third row is the least obvious and the most expensive day to day: with a single image, moving dbt from 1.10 to 1.11 in one pipeline forces the move in all of them.</p>
+<h2 id="images-by-role">Images by role<a class="anchor" href="#images-by-role" aria-label="link">#</a></h2>
+<p>Images are per <strong>role</strong>, not per project. Everything left over in an image is pulled by every node that runs that step:</p>
+<div class="table-wrap"><table><thead><tr><th>role</th><th>size</th><th>cold start</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td><strong>5.8 MB</strong></td><td>0.18 s</td></tr><tr><td><strong>Python</strong></td><td><strong>118 MB</strong></td><td>0.54 s</td></tr><tr><td><strong>dbt</strong></td><td><strong>620 MB</strong></td><td>3.3 s</td></tr></tbody></table></div>
+<p>Before: a single 1.87 GB image for everything.</p>
+<p>For dbt, <code>dbt parse</code> runs at build time and <code>target/partial_parse.msgpack</code> travels in the image — <strong>2.68 s less per pod</strong>, on every invocation.</p>
+<h2 id="where-each-step-runs">Where each step runs<a class="anchor" href="#where-each-step-runs" aria-label="link">#</a></h2>
+<p>The decision is made once, at boot, and depends on <code>BREVIS_PODS</code> and on whether there is a cluster:</p>
+<div class="table-wrap"><table><thead><tr><th><code>BREVIS_PODS</code></th><th>with cluster</th><th>without cluster</th></tr></thead><tbody><tr><td><code>auto</code> (default)</td><td>a step with <code>image:</code> becomes a pod</td><td>everything as local processes, with a log warning</td></tr><tr><td><code>on</code></td><td>a step with <code>image:</code> becomes a pod</td><td><strong>boot error</strong></td></tr><tr><td><code>off</code></td><td>everything as local processes</td><td>everything as local processes</td></tr></tbody></table></div>
+<p><strong>A step with <code>host:</code> passes through none of this.</strong> It is checked before the pod and before the process, and goes to a machine that is already running — <code>BREVIS_PODS</code> does not apply to it, and it never falls back to a local process. That is deliberate: <code>image:</code> degrades to local execution with a warning because a container and a process are the same command in two wrappers, and a host is not. It is where the licence lives, or the GPU, or the data.</p>
+<p><code>auto</code> is the default because the same binary runs in both places: on a laptop there is no service account mounted and it falls back to local processes; in a cluster there is, and it starts creating pods.</p>
+<p><code>on</code> exists for the deployment that <strong>must not</strong> silently become local execution. There, having no cluster has to be a boot error.</p>
+<aside class="admon admon-warning"><p class="admon-t">`brevis run` creates no pods</p><p>The <code>run</code> command builds only the process executor. A step with <code>image:</code> runs on the instance itself — and says so. Staying silent would make it look like the step ran on the declared image, which is the kind of mistake that only surfaces once the result is already wrong.</p></aside>
+<h2 id="identity-and-credentials">Identity and credentials<a class="anchor" href="#identity-and-credentials" aria-label="link">#</a></h2>
+<p>Which identity pods come up with is an <strong>installation</strong> decision, not a workflow one — a pipeline must not be able to choose the service account it runs as. So it comes from the environment:</p>
+<div class="code-block" data-code="BREVIS_POD_NAMESPACE=data
 BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
 BREVIS_POD_PULL_SECRETS=registry-cred
-BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred,api-tokens"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_POD_NAMESPACE=dados
+BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred,api-tokens"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>BREVIS_POD_NAMESPACE=data
 BREVIS_POD_SERVICE_ACCOUNT=<span class="t-k">brevis</span>-runner
 BREVIS_POD_PULL_SECRETS=registry-cred
 BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred,api-tokens</code></pre></div>
-<p>Em modo pod, o ambiente da task vem dos Secrets do cluster — não de <code>BREVIS_TASK_ENV</code>.</p>
-<h2 id="node-selector-e-toleracoes">Node selector e tolerações<a class="anchor" href="#node-selector-e-toleracoes" aria-label="link">#</a></h2>
+<p>In pod mode the task environment comes from cluster Secrets — not from <code>BREVIS_TASK_ENV</code>.</p>
+<h2 id="node-selector-and-tolerations">Node selector and tolerations<a class="anchor" href="#node-selector-and-tolerations" aria-label="link">#</a></h2>
 <div class="code-block" data-code="BREVIS_POD_NODE_SELECTOR=&#x27;kubernetes.io/arch=arm64&#x27;
-BREVIS_POD_TOLERATIONS=&#x27;dedicated=dados:NoSchedule&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_POD_NODE_SELECTOR='kubernetes.io/arch=arm64'
-BREVIS_POD_TOLERATIONS='dedicated=dados:NoSchedule'</code></pre></div>
-<p>Só o operador <code>Equal</code> é aceito nas tolerações: <code>Exists</code> toleraria <strong>qualquer</strong> taint com aquela chave, amplo demais para uma decisão vinda de variável de ambiente.</p>
-<p>Uma toleração malformada é <strong>ignorada</strong> em vez de virar erro de boot — ela deixa o pod <code>Pending</code>, que é visível, enquanto recusar o boot pararia também os workflows que não precisam daquele pool.</p>
-<h2 id="depurando-uma-falha">Depurando uma falha<a class="anchor" href="#depurando-uma-falha" aria-label="link">#</a></h2>
-<div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
-<p>Mantém o pod que falhou para inspeção com <code>kubectl logs</code> e <code>kubectl describe</code>. Deixe desligado em produção: pods parados consomem cota do cluster.</p>
-<h2 id="proximos-passos">Próximos passos<a class="anchor" href="#proximos-passos" aria-label="link">#</a></h2>
-<ul><li><a href="/docs/kubernetes/">Kubernetes</a> — o deploy completo</li><li><a href="/docs/configuration/">Configuração</a> — todas as variáveis <code>BREVIS_POD_*</code></li><li><a href="/docs/observability/">Observabilidade</a> — as métricas dos dois processos</li></ul>
+BREVIS_POD_TOLERATIONS=&#x27;dedicated=data:NoSchedule&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>BREVIS_POD_NODE_SELECTOR='kubernetes.io/arch=arm64'
+BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
+<p>Only the <code>Equal</code> operator is accepted in tolerations: <code>Exists</code> would tolerate <strong>any</strong> taint with that key, too broad for a decision coming from an environment variable.</p>
+<p>A malformed toleration is <strong>ignored</strong> rather than made a boot error — it leaves the pod <code>Pending</code>, which is visible, whereas refusing to boot would also stop the workflows that do not need that pool.</p>
+<h2 id="debugging-a-failure">Debugging a failure<a class="anchor" href="#debugging-a-failure" aria-label="link">#</a></h2>
+<div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
+<p>Keeps the failed pod around for <code>kubectl logs</code> and <code>kubectl describe</code>. Leave it off in production: stopped pods consume cluster quota.</p>
+<h2 id="next-steps">Next steps<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
+<ul><li><a href="/docs/kubernetes/">Kubernetes</a> — the full deployment</li><li><a href="/docs/configuration/">Configuration</a> — every <code>BREVIS_POD_*</code> variable</li><li><a href="/docs/observability/">Observability</a> — metrics from both processes</li></ul>
 
-      <nav class="pagers" aria-label="Páginas">
-        <a class="pager pager-prev" href="/docs/scheduler-and-queue/"><span>Anterior</span><strong>Scheduler e fila</strong></a>
-        <a class="pager pager-next" href="/docs/context/"><span>Próximo</span><strong>Contexto entre passos</strong></a>
+      <nav class="pagers" aria-label="Pages">
+        <a class="pager pager-prev" href="/docs/scheduler-and-queue/"><span>Previous</span><strong>Scheduler and queue</strong></a>
+        <a class="pager pager-next" href="/docs/context/"><span>Next</span><strong>Context between steps</strong></a>
       </nav>
 
       <p class="doc-edit">
-        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/pt/docs/pod-per-step.md" target="_blank" rel="noopener">Editar esta página no GitHub</a>
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/en/docs/pod-per-step.md" target="_blank" rel="noopener">Edit this page on GitHub</a>
       </p>
     </article>
 
-    <aside class="toc" aria-label="Nesta página">
-      <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#o-que-isso-muda">O que isso muda</a></li><li class="toc-2"><a href="#imagens-por-papel">Imagens por papel</a></li><li class="toc-2"><a href="#onde-cada-passo-roda">Onde cada passo roda</a></li><li class="toc-2"><a href="#identidade-e-credenciais">Identidade e credenciais</a></li><li class="toc-2"><a href="#node-selector-e-toleracoes">Node selector e tolerações</a></li><li class="toc-2"><a href="#depurando-uma-falha">Depurando uma falha</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
+    <aside class="toc" aria-label="On this page">
+      <p class="toc-t">On this page</p>
+      <ul><li class="toc-2"><a href="#what-this-changes">What this changes</a></li><li class="toc-2"><a href="#images-by-role">Images by role</a></li><li class="toc-2"><a href="#where-each-step-runs">Where each step runs</a></li><li class="toc-2"><a href="#identity-and-credentials">Identity and credentials</a></li><li class="toc-2"><a href="#node-selector-and-tolerations">Node selector and tolerations</a></li><li class="toc-2"><a href="#debugging-a-failure">Debugging a failure</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
     </aside>
   </main>
 </div>
@@ -207,24 +207,24 @@ BREVIS_POD_TOLERATIONS='dedicated=dados:NoSchedule'</code></pre></div>
           <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
           <span>brevis<span class="tld">.sh</span></span>
         </a>
-        <p>Filosofia aplicada à infraestrutura de dados.</p>
+        <p>Philosophy applied to data infrastructure.</p>
       </div>
 
       <div class="footer-col">
-        <h2>projeto</h2>
+        <h2>project</h2>
         <ul>
-          <li><a href="/#ecossistema">Ecossistema</a></li>
-          <li><a href="/docs/philosophy/">Princípios</a></li>
-          <li><a href="/docs/introduction/#codigo-aberto-escolha-como-participar">Open source</a></li>
+          <li><a href="/#ecossistema">Ecosystem</a></li>
+          <li><a href="/docs/philosophy/">Principles</a></li>
+          <li><a href="/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/docs/faq/">FAQ</a></li>
         </ul>
       </div>
 
       <div class="footer-col">
-        <h2>código</h2>
+        <h2>code</h2>
         <ul>
-          <li><a href="/docs/">Documentação</a></li>
-          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repositório</a></li>
+          <li><a href="/docs/">Documentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repository</a></li>
           <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
           <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
         </ul>
@@ -232,12 +232,13 @@ BREVIS_POD_TOLERATIONS='dedicated=dados:NoSchedule'</code></pre></div>
     </div>
 
     <div class="footer-bottom">
-      <p>Um projeto open source da <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
-      <p>MIT · construído em Go · Go gopher por Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+      <p>An open source project by <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · built in Go · Go gopher by Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
     </div>
   </div>
 </footer>
 
 <script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
 </body>
 </html>

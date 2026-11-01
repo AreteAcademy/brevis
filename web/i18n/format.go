@@ -9,7 +9,7 @@ import (
 )
 
 // style is how a language writes numbers and dates. A small table rather than
-// CLDR: three languages, and the console prints a handful of shapes.
+// CLDR: eleven languages, and the console prints a handful of shapes.
 type style struct {
 	thousands, decimal string
 	months, days       [12]string // days uses its first seven, Sunday first
@@ -32,6 +32,46 @@ var styles = map[string]style{
 		thousands: ".", decimal: ",",
 		months: [12]string{"ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"},
 		days:   [12]string{"dom", "lun", "mar", "mié", "jue", "vie", "sáb"},
+	},
+	"fr": {
+		thousands: " ", decimal: ",",
+		months: [12]string{"janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."},
+		days:   [12]string{"dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."},
+	},
+	"de": {
+		thousands: ".", decimal: ",",
+		months: [12]string{"Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"},
+		days:   [12]string{"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"},
+	},
+	"zh-CN": {
+		thousands: ",", decimal: ".", monthFirst: true, dayComma: true,
+		months: [12]string{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"},
+		days:   [12]string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"},
+	},
+	"ja": {
+		thousands: ",", decimal: ".", monthFirst: true, dayComma: true,
+		months: [12]string{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"},
+		days:   [12]string{"日", "月", "火", "水", "木", "金", "土"},
+	},
+	"ru": {
+		thousands: " ", decimal: ",",
+		months: [12]string{"янв.", "февр.", "март", "апр.", "май", "июнь", "июль", "авг.", "сент.", "окт.", "нояб.", "дек."},
+		days:   [12]string{"вс", "пн", "вт", "ср", "чт", "пт", "сб"},
+	},
+	"ko": {
+		thousands: ",", decimal: ".", monthFirst: true, dayComma: true,
+		months: [12]string{"1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"},
+		days:   [12]string{"일", "월", "화", "수", "목", "금", "토"},
+	},
+	"hi": {
+		thousands: ",", decimal: ".",
+		months: [12]string{"जन॰", "फ़र॰", "मार्च", "अप्रै॰", "मई", "जून", "जुल॰", "अग॰", "सित॰", "अक्टू॰", "नव॰", "दिस॰"},
+		days:   [12]string{"रवि", "सोम", "मंगल", "बुध", "गुरु", "शुक्र", "शनि"},
+	},
+	"id": {
+		thousands: ".", decimal: ",",
+		months: [12]string{"Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"},
+		days:   [12]string{"Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"},
 	},
 }
 

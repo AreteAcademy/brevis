@@ -1,26 +1,26 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en-US" data-docs="">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#141711">
 
-<title>Workflows — Documentação</title>
-<meta name="description" content="O formato YAML completo — passos, dependências, imagens, recursos e agenda.">
+<title>Workflows — Documentation</title>
+<meta name="description" content="The complete YAML format — steps, dependencies, images, resources and schedule.">
 <meta name="author" content="Aretê Academy">
 <link rel="canonical" href="https://brevis.sh/docs/workflows/">
 <link rel="alternate" type="text/markdown" href="https://brevis.sh/docs/workflows/index.md">
-<link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/docs/workflows/"><link rel="alternate" hreflang="en" href="https://brevis.sh/en/docs/workflows/">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/workflows/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/workflows/">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="brevis.sh">
-<meta property="og:locale" content="pt-BR">
-<meta property="og:title" content="Workflows — Documentação">
-<meta property="og:description" content="O formato YAML completo — passos, dependências, imagens, recursos e agenda.">
+<meta property="og:locale" content="en-US">
+<meta property="og:title" content="Workflows — Documentation">
+<meta property="og:description" content="The complete YAML format — steps, dependencies, images, resources and schedule.">
 <meta property="og:url" content="https://brevis.sh/docs/workflows/">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Workflows — Documentação">
-<meta name="twitter:description" content="O formato YAML completo — passos, dependências, imagens, recursos e agenda.">
+<meta name="twitter:title" content="Workflows — Documentation">
+<meta name="twitter:description" content="The complete YAML format — steps, dependencies, images, resources and schedule.">
 
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,8 +35,8 @@
   "@context": "https://schema.org",
   "@type": "TechArticle",
   "headline": "Workflows",
-  "description": "O formato YAML completo — passos, dependências, imagens, recursos e agenda.",
-  "inLanguage": "pt-BR",
+  "description": "The complete YAML format — steps, dependencies, images, resources and schedule.",
+  "inLanguage": "en-US",
   "isPartOf": {
     "@type": "WebSite",
     "@id": "https://brevis.sh/#site"
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+<a class="skip-link" href="#conteudo">Skip to content</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -83,17 +83,17 @@
       <span>brevis<span class="tld">.sh</span></span>
     </a>
 
-    <nav class="main-nav" id="nav" aria-label="Navegação principal">
-      <a href="/#ecossistema">Ecossistema</a>
-      <a href="/docs/">Documentação</a>
-      <div class="lang-switch" role="group" aria-label="Idioma"><a href="/docs/workflows/" hreflang="pt-BR" aria-current="true">PT</a><a href="/en/docs/workflows/" hreflang="en">EN</a></div>
+    <nav class="main-nav" id="nav" aria-label="Main navigation">
+      <a href="/#ecossistema">Ecosystem</a>
+      <a href="/docs/">Documentation</a>
+      <details class="lang-dd"><summary aria-label="Language: English"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>English</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US" aria-current="true">English</a></li><li><a href="/es/docs/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
-        Explorar open source
+        Explore open source
       </a>
     </nav>
 
-    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="nav">
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
       <svg aria-hidden="true"><use href="#i-menu"></use></svg>
     </button>
   </div>
@@ -102,195 +102,195 @@
 <div class="doc-shell">
   <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
     <svg aria-hidden="true"><use href="#i-menu"></use></svg>
-    Menu da documentação
+    Documentation menu
   </button>
 
   <aside class="side" id="side">
     <div class="side-inner">
       <form class="search" role="search" onsubmit="return false">
         <svg aria-hidden="true"><use href="#i-search"></use></svg>
-        <label class="sr-only" for="q">Buscar na documentação</label>
-        <input type="search" id="q" placeholder="Buscar…" autocomplete="off" spellcheck="false">
+        <label class="sr-only" for="q">Search the documentation</label>
+        <input type="search" id="q" placeholder="Search…" autocomplete="off" spellcheck="false">
       </form>
-      <div class="search-out" id="search-out" data-none="Nada encontrado" hidden></div>
-      <nav class="side-nav" aria-label="Documentação">
-        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/ecosystem/">Ecossistema</a></li><li><a href="/docs/integrations/">Integrações</a></li><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/core/">Core</a></li><li><a href="/docs/workflows/" aria-current="page">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/">Pod por passo</a></li><li><a href="/docs/context/">Contexto entre passos</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li><li><a href="/docs/runtime/">Runtime do passo</a></li></ul><p class="side-group">SDK e bibliotecas</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li><li><a href="/docs/libraries/">Bibliotecas cliente</a></li><li><a href="/docs/python/">Python</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/console/">Console</a></li><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observabilidade</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul><p class="side-group">Ingestão</p><ul class="side-list"><li><a href="/docs/ingestion/">Ingestão</a></li><li><a href="/docs/ingestion-sinks/">Destinos da ingestão</a></li><li><a href="/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modelagem em SQL</p><ul class="side-list"><li><a href="/docs/sql/">SQL</a></li></ul><p class="side-group">O projeto</p><ul class="side-list"><li><a href="/docs/philosophy/">Filosofia</a></li><li><a href="/docs/faq/">FAQ</a></li></ul>
+      <div class="search-out" id="search-out" data-none="No results" hidden></div>
+      <nav class="side-nav" aria-label="Documentation">
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/docs/ecosystem/">Ecosystem</a></li><li><a href="/docs/integrations/">Integrations</a></li><li><a href="/docs/introduction/">Introduction</a></li><li><a href="/docs/installation/">Installation</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/docs/core/">Core</a></li><li><a href="/docs/workflows/" aria-current="page">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/docs/pod-per-step/">Pod per step</a></li><li><a href="/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parameters</a></li><li><a href="/docs/configuration/">Configuration</a></li><li><a href="/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK and libraries</p><ul class="side-list"><li><a href="/docs/sdk/">Go SDK</a></li><li><a href="/docs/libraries/">Client libraries</a></li><li><a href="/docs/python/">Python</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/docs/console/">Console</a></li><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observability</a></li><li><a href="/docs/white-label/">White label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/docs/ingestion/">Ingestion</a></li><li><a href="/docs/ingestion-sinks/">Ingestion sinks</a></li><li><a href="/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modelling in SQL</p><ul class="side-list"><li><a href="/docs/sql/">SQL</a></li></ul><p class="side-group">The project</p><ul class="side-list"><li><a href="/docs/philosophy/">Philosophy</a></li><li><a href="/docs/faq/">FAQ</a></li></ul>
       </nav>
     </div>
   </aside>
 
   <main class="doc" id="conteudo">
     <article class="doc-body">
-      <p class="doc-kicker">Documentação</p>
+      <p class="doc-kicker">Documentation</p>
       <h1>Workflows</h1>
-      <p class="doc-desc">O formato YAML completo — passos, dependências, imagens, recursos e agenda.</p>
-      <p>Um workflow é um arquivo YAML. Ele declara <strong>o que executar</strong>, <strong>em que ordem</strong> e <strong>com que runtime</strong> — e nada além disso.</p>
-<h2 id="estrutura-minima">Estrutura mínima<a class="anchor" href="#estrutura-minima" aria-label="link">#</a></h2>
+      <p class="doc-desc">The complete YAML format — steps, dependencies, images, resources and schedule.</p>
+      <p>A workflow is a YAML file. It declares <strong>what to run</strong>, <strong>in what order</strong> and <strong>with what runtime</strong> — and nothing beyond that.</p>
+<h2 id="minimum-structure">Minimum structure<a class="anchor" href="#minimum-structure" aria-label="link">#</a></h2>
 <div class="code-block" data-code="name: hello
 steps:
-  - id: unico
-    run: echo pronto"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">name</span>: hello
+  - id: only
+    run: echo done"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">name</span>: hello
 <span class="t-k">steps</span>:
-  - <span class="t-k">id</span>: unico
-    <span class="t-k">run</span>: echo pronto</code></pre></div>
-<p><code>name</code> é o identificador do workflow no banco e na interface. <code>steps</code> é a lista de passos, cada um com um <code>id</code> único e um <code>run</code>.</p>
-<h3 id="description-para-que-ele-serve"><code>description</code> — para que ele serve<a class="anchor" href="#description-para-que-ele-serve" aria-label="link">#</a></h3>
-<p>Opcional, texto livre, e nada no motor a lê:</p>
+  - <span class="t-k">id</span>: only
+    <span class="t-k">run</span>: echo done</code></pre></div>
+<p><code>name</code> identifies the workflow in the database and in the interface. <code>steps</code> is the list of steps, each with a unique <code>id</code> and a <code>run</code>.</p>
+<h3 id="description-what-it-is-for"><code>description</code> — what it is for<a class="anchor" href="#description-what-it-is-for" aria-label="link">#</a></h3>
+<p>Optional, free-form, and read by nothing in the engine:</p>
 <div class="code-block" data-code="name: daily-orders
 description: &gt;
-  Puxa os pedidos de ontem do fornecedor e grava no bronze.
-  Roda às 04:00 porque o fornecedor fecha os livros às 03:30.
+  Pulls yesterday&#x27;s orders from the vendor and lands them in bronze.
+  Runs at 04:00 because the vendor closes its books at 03:30.
 steps:
   - id: extract
-    run: python fetch.py"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">name</span>: daily-orders
+    run: python fetch.py"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">name</span>: daily-orders
 <span class="t-k">description</span>: &gt;
-  Puxa os pedidos de ontem do fornecedor e grava no bronze.
-  Roda às 04:00 porque o fornecedor fecha os livros às 03:30.
+  Pulls yesterday's orders from the vendor and lands them in bronze.
+  Runs at 04:00 because the vendor closes its books at 03:30.
 <span class="t-k">steps</span>:
   - <span class="t-k">id</span>: extract
     <span class="t-k">run</span>: python fetch.py</code></pre></div>
-<p>Ela aparece no topo da tela do workflow, acima das contagens e do agendamento. O grafo já diz o que o fluxo <strong>faz</strong>; essa é a única linha que diz por que ele existe, que é do que precisa quem o abre pela primeira vez às três da manhã.</p>
-<p>Um workflow sem ela não mostra nada ali — e não um bloco vazio, que parece algo que falhou ao carregar.</p>
-<h2 id="ordem-chain-ou-dag">Ordem: chain ou dag<a class="anchor" href="#ordem-chain-ou-dag" aria-label="link">#</a></h2>
-<div class="code-block" data-code="type: chain   # a ordem é a do arquivo
-type: dag     # a ordem vem de depends_on"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">type</span>: chain   <span class="t-c"># a ordem é a do arquivo</span>
-<span class="t-k">type</span>: dag     <span class="t-c"># a ordem vem de depends_on</span></code></pre></div>
-<p><code>chain</code> é açúcar: o parser converte a sequência em arestas, e <strong>o motor conhece apenas DAG</strong>. Use <code>dag</code> quando a ordem não for linear:</p>
+<p>It appears at the top of the workflow's screen, above the counts and the schedule. The graph already says what a flow <strong>does</strong>; this is the only place that says why it exists, which is what the person opening it for the first time at three in the morning actually needs.</p>
+<p>A workflow without one shows nothing there — not an empty block, which reads as something that failed to load.</p>
+<h2 id="order-chain-or-dag">Order: chain or dag<a class="anchor" href="#order-chain-or-dag" aria-label="link">#</a></h2>
+<div class="code-block" data-code="type: chain   # order is the file&#x27;s order
+type: dag     # order comes from depends_on"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">type</span>: chain   <span class="t-c"># order is the file's order</span>
+<span class="t-k">type</span>: dag     <span class="t-c"># order comes from depends_on</span></code></pre></div>
+<p><code>chain</code> is sugar: the parser turns the sequence into edges, and <strong>the engine only knows DAGs</strong>. Use <code>dag</code> when the order is not linear:</p>
 <div class="code-block" data-code="type: dag
 
 steps:
-  - id: preparar
-    run: ./preparar.sh
+  - id: prepare
+    run: ./prepare.sh
 
-  # Irmãos: dependem do mesmo passo, então rodam em paralelo.
-  - id: extrair
-    run: ./extrair.sh
-    depends_on: [preparar]
+  # Siblings: they depend on the same step, so they run in parallel.
+  - id: extract
+    run: ./extract.sh
+    depends_on: [prepare]
 
-  - id: validar
-    run: ./validar.sh
-    depends_on: [preparar]
+  - id: validate
+    run: ./validate.sh
+    depends_on: [prepare]
 
-  - id: publicar
-    run: ./publicar.sh
-    depends_on: [extrair, validar]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">type</span>: dag
+  - id: publish
+    run: ./publish.sh
+    depends_on: [extract, validate]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">type</span>: dag
 
 <span class="t-k">steps</span>:
-  - <span class="t-k">id</span>: preparar
-    <span class="t-k">run</span>: ./preparar.sh
+  - <span class="t-k">id</span>: prepare
+    <span class="t-k">run</span>: ./prepare.sh
 
-  <span class="t-c"># Irmãos: dependem do mesmo passo, então rodam em paralelo.</span>
-  - <span class="t-k">id</span>: extrair
-    <span class="t-k">run</span>: ./extrair.sh
-    <span class="t-k">depends_on</span>: [preparar]
+  <span class="t-c"># Siblings: they depend on the same step, so they run in parallel.</span>
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: ./extract.sh
+    <span class="t-k">depends_on</span>: [prepare]
 
-  - <span class="t-k">id</span>: validar
-    <span class="t-k">run</span>: ./validar.sh
-    <span class="t-k">depends_on</span>: [preparar]
+  - <span class="t-k">id</span>: validate
+    <span class="t-k">run</span>: ./validate.sh
+    <span class="t-k">depends_on</span>: [prepare]
 
-  - <span class="t-k">id</span>: publicar
-    <span class="t-k">run</span>: ./publicar.sh
-    <span class="t-k">depends_on</span>: [extrair, validar]</code></pre></div>
-<p>O runner percorre o grafo <strong>por níveis</strong>: tudo dentro de um nível roda em paralelo, e o nível seguinte só começa quando o anterior fecha inteiro.</p>
-<aside class="admon admon-warning"><p class="admon-t">Falha para o nível inteiro</p><p>O runner para na <strong>primeira</strong> falha do nível, sem iniciar o próximo. Continuar depois de um erro produziria resultado parcial que parece completo.</p></aside>
-<h2 id="agenda">Agenda<a class="anchor" href="#agenda" aria-label="link">#</a></h2>
-<div class="code-block" data-code="schedule: &quot;0 5 * * *&quot;   # cron de cinco campos
-concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">schedule</span>: "0 5 * * *"   <span class="t-c"># cron de cinco campos</span>
+  - <span class="t-k">id</span>: publish
+    <span class="t-k">run</span>: ./publish.sh
+    <span class="t-k">depends_on</span>: [extract, validate]</code></pre></div>
+<p>The runner walks the graph <strong>by levels</strong>: everything within a level runs in parallel, and the next level starts only when the previous one closes entirely.</p>
+<aside class="admon admon-warning"><p class="admon-t">A failure stops the whole level</p><p>The runner stops at the <strong>first</strong> failure in a level, without starting the next one. Continuing after an error would produce a partial result that looks complete.</p></aside>
+<h2 id="schedule">Schedule<a class="anchor" href="#schedule" aria-label="link">#</a></h2>
+<div class="code-block" data-code="schedule: &quot;0 5 * * *&quot;   # five-field cron
+concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">schedule</span>: "0 5 * * *"   <span class="t-c"># five-field cron</span>
 <span class="t-k">concurrency</span>: 1</code></pre></div>
-<p>Sem <code>schedule</code>, o workflow é manual: só roda por disparo na interface, por <code>brevis run</code> ou por <code>backfill</code>.</p>
-<p><code>concurrency: 1</code> limita execuções simultâneas do mesmo workflow — é o que impede um <code>*/15</code> de se sobrepor a si mesmo quando uma execução passa dos quinze minutos.</p>
-<p>Dois workflows <strong>diferentes</strong> que escrevem as mesmas tabelas precisam de um <strong>grupo</strong>. Um diário e um <code>*/15</code> que constroem os mesmos modelos dbt declaram, cada um:</p>
+<p>Without <code>schedule</code>, the workflow is manual: it runs only by trigger in the interface, by <code>brevis run</code>, or by <code>backfill</code>.</p>
+<p><code>concurrency: 1</code> limits simultaneous runs of the same workflow — it is what keeps a <code>*/15</code> from overlapping itself when one run goes past fifteen minutes.</p>
+<p>Two <strong>different</strong> workflows that write the same tables need a <strong>group</strong>. A daily and a <code>*/15</code> that both build the same dbt models each declare:</p>
 <div class="code-block" data-code="concurrency:
-  group: jaffle_models   # o recurso compartilhado, com o mesmo nome nos dois arquivos
-  limit: 1               # opcional; um grupo sem limite vale 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">concurrency</span>:
-  <span class="t-k">group</span>: jaffle_models   <span class="t-c"># o recurso compartilhado, com o mesmo nome nos dois arquivos</span>
-  <span class="t-k">limit</span>: 1               <span class="t-c"># opcional; um grupo sem limite vale 1</span></code></pre></div>
-<p>As execuções de todos os workflows do grupo contam contra um limite só, seja quem as tenha disparado — o agendamento, um landing, um backfill ou um clique. Uma execução que encontra o grupo cheio <strong>espera na fila</strong>: não é pulada e não falha. Um terceiro workflow que escreve as mesmas tabelas entra nomeando o grupo. Enquanto espera, a página da execução diz isso: qual grupo, o limite e quais execuções ocupam as vagas.</p>
-<ul><li>Todo membro declara o <strong>mesmo limite</strong>. <code>validate</code> e <code>publish</code> recusam um grupo declarado com 1 num arquivo e 3 em outro, inclusive contra membros já publicados.</li><li>Um grupo serializa <strong>execuções do Brevis</strong>. Um <code>dbt run</code> que alguém dispara na própria máquina não está nessa fila, e falha do mesmo jeito.</li></ul>
-<h2 id="imagem-e-recursos">Imagem e recursos<a class="anchor" href="#imagem-e-recursos" aria-label="link">#</a></h2>
-<div class="code-block" data-code="image: us-central1-docker.pkg.dev/exemplo/apps/dbt:1.10.3
+  group: jaffle_models   # the shared resource, named the same in both files
+  limit: 1               # optional; a group without one means 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">concurrency</span>:
+  <span class="t-k">group</span>: jaffle_models   <span class="t-c"># the shared resource, named the same in both files</span>
+  <span class="t-k">limit</span>: 1               <span class="t-c"># optional; a group without one means 1</span></code></pre></div>
+<p>Runs of every workflow in the group count against one limit, whatever started them — the schedule, a landing, a backfill or a click. A run that finds the group full <strong>waits in the queue</strong>; it is not skipped and does not fail. A third workflow that writes the same tables joins by naming the group. While it waits, the run's page says so: which group, its limit, and which runs hold the slots.</p>
+<ul><li>Every member declares the <strong>same limit</strong>. <code>validate</code> and <code>publish</code> refuse a group declared with 1 in one file and 3 in another, including against members that are already published.</li><li>A group serializes <strong>Brevis runs</strong>. A <code>dbt run</code> somebody starts on their own machine is not in this queue, and fails the same way.</li></ul>
+<h2 id="image-and-resources">Image and resources<a class="anchor" href="#image-and-resources" aria-label="link">#</a></h2>
+<div class="code-block" data-code="image: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
 resources:
   cpu: 200m
   memory: 1Gi
-  limits: {memory: 2Gi}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">image</span>: us-central1-docker.pkg.dev/exemplo/apps/dbt:1.10.3
+  limits: {memory: 2Gi}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">image</span>: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
 <span class="t-k">resources</span>:
   <span class="t-k">cpu</span>: 200m
   <span class="t-k">memory</span>: 1Gi
   <span class="t-k">limits</span>: {memory: 2Gi}</code></pre></div>
-<p>Declarados no topo, valem como <strong>padrão de todos os passos</strong>. Cada passo pode sobrescrever os seus:</p>
+<p>Declared at the top, they are the <strong>default for every step</strong>. Each step can override its own:</p>
 <div class="code-block" data-code="steps:
   - id: bronze
-    run: dbt build --select bronze+          # herda a imagem do topo
+    run: dbt build --select bronze+          # inherits the top-level image
 
-  - id: notificar
-    image: ghcr.io/exemplo/notify:0.3        # outro runtime
-    shell: false                             # distroless não tem shell
-    run: /notify --canal dados
+  - id: notify
+    image: ghcr.io/example/notify:0.3        # another runtime
+    shell: false                             # distroless has no shell
+    run: /notify --channel data
     resources: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
-    depends_on: [bronze]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">steps</span>:
+    depends_on: [bronze]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">steps</span>:
   - <span class="t-k">id</span>: bronze
-    <span class="t-k">run</span>: dbt build --select bronze+          <span class="t-c"># herda a imagem do topo</span>
+    <span class="t-k">run</span>: dbt build --select bronze+          <span class="t-c"># inherits the top-level image</span>
 
-  - <span class="t-k">id</span>: notificar
-    <span class="t-k">image</span>: ghcr.io/exemplo/notify:0.3        <span class="t-c"># outro runtime</span>
-    <span class="t-k">shell</span>: <span class="t-n">false</span>                             <span class="t-c"># distroless não tem shell</span>
-    <span class="t-k">run</span>: /notify --canal dados
+  - <span class="t-k">id</span>: notify
+    <span class="t-k">image</span>: ghcr.io/example/notify:0.3        <span class="t-c"># another runtime</span>
+    <span class="t-k">shell</span>: <span class="t-n">false</span>                             <span class="t-c"># distroless has no shell</span>
+    <span class="t-k">run</span>: /notify --channel data
     <span class="t-k">resources</span>: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
-<p>É isto que faz um fetcher em Go custar 12 MB e 32Mi ao lado de um <code>dbt build</code> de 1,9 GB, em vez de os dois pagarem o tamanho do maior. Ver <a href="/docs/pod-per-step/">Pod por passo</a>.</p>
-<h2 id="campos-do-passo">Campos do passo<a class="anchor" href="#campos-do-passo" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th>campo</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>obrigatório</strong></td><td>único no workflow; é o nome que aparece no grafo e nos logs</td></tr><tr><td><code>run</code></td><td></td><td>o comando</td></tr><tr><td><code>image</code></td><td></td><td>a imagem do passo; sem ela, herda a do topo</td></tr><tr><td><code>host</code></td><td></td><td>envia o comando para uma máquina que o motor <strong>não</strong> gerencia — alternativa a <code>image</code>, nunca companheira. Veja <a href="https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host" target="_blank" rel="noopener"><code>host:</code> no guia de Kubernetes</a></td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> executa sem shell — necessário em distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>lista de <code>id</code> que precisam terminar antes; uma entrada pode ser <code>{step, label}</code></td></tr><tr><td><code>marker</code></td><td><code>false</code></td><td>um passo sem comando, para um <code>start</code> ou um <code>end</code></td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> e <code>limits</code> daquele passo</td></tr><tr><td><code>runtime</code>, <code>tools</code></td><td></td><td>a linguagem e as ferramentas do passo — ver <a href="/docs/runtime/">Runtime do passo</a></td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>sob que estado das dependências este passo roda — veja abaixo</td></tr><tr><td><code>unless_empty</code></td><td></td><td>uma chave do contexto que decide se há o que fazer — veja abaixo</td></tr><tr><td><code>for_each</code></td><td></td><td>uma chave do contexto com uma lista; o passo roda uma vez por elemento — veja abaixo</td></tr><tr><td><code>group</code></td><td></td><td>desenha este passo dentro de uma caixa nomeada que colapsa — veja abaixo</td></tr><tr><td><code>uses</code></td><td></td><td>outro workflow cujos passos tomam o lugar deste — veja abaixo</td></tr><tr><td><code>on_error</code></td><td></td><td>anuncia as falhas deste passo — veja abaixo</td></tr></tbody></table></div>
-<h2 id="rodando-um-passo-so-quando-ha-o-que-fazer">Rodando um passo só quando há o que fazer<a class="anchor" href="#rodando-um-passo-so-quando-ha-o-que-fazer" aria-label="link">#</a></h2>
-<div class="code-block" data-code="# no extract
-context.set(has_rows=len(rows) &gt; 0)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-c"># no extract</span>
+<p>This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB <code>dbt build</code>, instead of both paying the size of the larger one. See <a href="/docs/pod-per-step/">Pod per step</a>.</p>
+<h2 id="step-fields">Step fields<a class="anchor" href="#step-fields" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>field</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>required</strong></td><td>unique in the workflow; the name shown in the graph and logs</td></tr><tr><td><code>run</code></td><td></td><td>the command</td></tr><tr><td><code>image</code></td><td></td><td>the step's image; without it, inherits the top-level one</td></tr><tr><td><code>host</code></td><td></td><td>send the command to a machine the engine does <strong>not</strong> manage — an alternative to <code>image</code>, never a companion. See <a href="https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host" target="_blank" rel="noopener"><code>host:</code> in the Kubernetes guide</a></td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> runs without a shell — required on distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>list of <code>id</code>s that must finish first; an entry may be <code>{step, label}</code></td></tr><tr><td><code>marker</code></td><td><code>false</code></td><td>a step with no command, for a <code>start</code> or an <code>end</code></td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> and <code>limits</code> for that step</td></tr><tr><td><code>runtime</code>, <code>tools</code></td><td></td><td>the step's language and tools — see <a href="/docs/runtime/">Step runtime</a></td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>under what state of its dependencies this step runs — see below</td></tr><tr><td><code>unless_empty</code></td><td></td><td>a context key that decides whether there is anything to do — see below</td></tr><tr><td><code>for_each</code></td><td></td><td>a context key holding a list; the step runs once per element — see below</td></tr><tr><td><code>group</code></td><td></td><td>draws this step inside a named, collapsible box — see below</td></tr><tr><td><code>uses</code></td><td></td><td>another workflow whose steps take this one's place — see below</td></tr><tr><td><code>on_error</code></td><td></td><td>announces this step's failures — see below</td></tr></tbody></table></div>
+<h2 id="running-a-step-only-when-there-is-something-to-do">Running a step only when there is something to do<a class="anchor" href="#running-a-step-only-when-there-is-something-to-do" aria-label="link">#</a></h2>
+<div class="code-block" data-code="# in extract
+context.set(has_rows=len(rows) &gt; 0)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
 <div class="code-block" data-code="  - id: transform
     run: ./transform.sh
     depends_on: [extract]
-    unless_empty: extract.has_rows"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>  - <span class="t-k">id</span>: transform
+    unless_empty: extract.has_rows"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>  - <span class="t-k">id</span>: transform
     <span class="t-k">run</span>: ./transform.sh
     <span class="t-k">depends_on</span>: [extract]
     <span class="t-k">unless_empty</span>: extract.has_rows</code></pre></div>
-<p>O <code>unless_empty</code> nomeia uma <strong>chave</strong>, não uma expressão. O passo decide e publica a resposta; o motor lê uma chave e pergunta se ela está vazia.</p>
-<div class="table-wrap"><table><thead><tr><th>conta como vazio</th><th>conta como presente</th></tr></thead><tbody><tr><td><code>false</code>, <code>0</code>, <code>""</code>, <code>null</code>, <code>[]</code>, <code>{}</code></td><td>todo o resto</td></tr></tbody></table></div>
-<p><code>"false"</code> como <strong>string</strong> está presente. Um passo que publicou esses cinco caracteres publicou alguma coisa, e adivinhar que ele queria dizer um booleano é como uma regra começa a ter opiniões que o autor dela não enxerga. Publique um booleano de verdade.</p>
-<h3 id="por-que-nao-uma-expressao">Por que não uma expressão<a class="anchor" href="#por-que-nao-uma-expressao" aria-label="link">#</a></h3>
-<p>O caminho tentador é <code>when: "{{ context.extract.rows &gt; 0 }}"</code>. Uma mini linguagem de expressão é um compromisso grande: precisa de parser, de um sistema de tipos para dizer o que <code>&gt;</code> significa sobre um JSON <code>any</code>, de uma história de segurança porque a expressão vem de um YAML que outra pessoa escreveu, e de mensagens de erro que apontam para dentro de uma string. Todo orquestrador que tem uma tem um bug tracker cheio disso.</p>
-<p>Aqui a decisão fica na linguagem que o autor já escreve, onde o framework de teste dele alcança.</p>
-<h3 id="uma-chave-que-nao-existe-e-falha-nao-valor-vazio">Uma chave que não existe é falha, não valor vazio<a class="anchor" href="#uma-chave-que-nao-existe-e-falha-nao-valor-vazio" aria-label="link">#</a></h3>
-<p>Se a chave não está lá, o passo <strong>falha</strong>, e a mensagem a nomeia junto do que o publicador de fato escreveu:</p>
-<div class="code-block" data-code="step &quot;transform&quot; reads `extract.has_row`, and &quot;extract&quot; published &quot;has_rows&quot; but not &quot;has_row&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"</code></pre></div>
-<p>A alternativa — ler chave ausente como "vazio, então pula" — transforma um erro de digitação num passo que para de rodar em silêncio e para sempre, sem nada em lugar nenhum dizendo por quê. É o pior resultado que essa feature pode ter.</p>
-<p>A chave é sempre qualificada pelo passo que a publica, e esse passo precisa ser um de que este depende. Os dois são recusados no <strong>publish</strong>: um passo travado numa chave que ele nunca vai ver ficaria pulado para sempre, e descobrir isso quando um noturno para de rodar é tarde demais.</p>
-<h2 id="rodando-um-passo-uma-vez-por-elemento">Rodando um passo uma vez por elemento<a class="anchor" href="#rodando-um-passo-uma-vez-por-elemento" aria-label="link">#</a></h2>
-<div class="code-block" data-code="# no extract
-context.set(partitions=[&quot;2026-01&quot;, &quot;2026-02&quot;, &quot;2026-03&quot;])"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-c"># no extract</span>
+<p><code>unless_empty</code> names a <strong>key</strong>, not an expression. The step decides and publishes the answer; the engine reads one key and asks whether it is empty.</p>
+<div class="table-wrap"><table><thead><tr><th>counts as empty</th><th>counts as present</th></tr></thead><tbody><tr><td><code>false</code>, <code>0</code>, <code>""</code>, <code>null</code>, <code>[]</code>, <code>{}</code></td><td>everything else</td></tr></tbody></table></div>
+<p><code>"false"</code> as a <strong>string</strong> is present. A step that published those five characters published something, and guessing that it meant a boolean is how a rule starts having opinions its author cannot see. Publish a real boolean.</p>
+<h3 id="why-not-an-expression">Why not an expression<a class="anchor" href="#why-not-an-expression" aria-label="link">#</a></h3>
+<p>The tempting design is <code>when: "{{ context.extract.rows &gt; 0 }}"</code>. A mini expression language is a large commitment: a parser, a type system to say what <code>&gt;</code> means across a JSON <code>any</code>, a security story because the expression comes out of a YAML somebody else wrote, and error messages that point into a string. Every orchestrator that has one has a bug tracker full of it.</p>
+<p>Here the decision lives in the language its author already writes, where their own test framework can reach it.</p>
+<h3 id="a-missing-key-is-a-failure-not-an-empty-value">A missing key is a failure, not an empty value<a class="anchor" href="#a-missing-key-is-a-failure-not-an-empty-value" aria-label="link">#</a></h3>
+<p>If the key is not there, the step <strong>fails</strong> and the message names it alongside what the publisher actually did write:</p>
+<div class="code-block" data-code="step &quot;transform&quot; reads `extract.has_row`, and &quot;extract&quot; published &quot;has_rows&quot; but not &quot;has_row&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"</code></pre></div>
+<p>The alternative — reading a missing key as "empty, so skip" — turns a typo into a step that stops running silently and forever, with nothing anywhere saying why. That is the worst outcome this feature can have.</p>
+<p>The key is always qualified by the step that publishes it, and that step has to be one this one depends on. Both are refused at <strong>publish</strong>: a step gated on a key it can never see would be skipped forever, and finding that out when a nightly stops running is too late.</p>
+<h2 id="running-a-step-once-per-element">Running a step once per element<a class="anchor" href="#running-a-step-once-per-element" aria-label="link">#</a></h2>
+<div class="code-block" data-code="# in extract
+context.set(partitions=[&quot;2026-01&quot;, &quot;2026-02&quot;, &quot;2026-03&quot;])"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <div class="code-block" data-code="  - id: load
     run: ./load.sh &quot;$BREVIS_MAP_VALUE&quot;
     depends_on: [extract]
-    for_each: extract.partitions"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>  - <span class="t-k">id</span>: load
+    for_each: extract.partitions"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>  - <span class="t-k">id</span>: load
     <span class="t-k">run</span>: ./load.sh "$BREVIS_MAP_VALUE"
     <span class="t-k">depends_on</span>: [extract]
     <span class="t-k">for_each</span>: extract.partitions</code></pre></div>
-<p>O passo roda uma vez por elemento, cada um com linha, retry e código de saída próprios. O grafo mostra <strong>um nó com <code>[3]</code></strong>, não três nós.</p>
-<div class="table-wrap"><table><thead><tr><th>variável</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_MAP_INDEX</code></td><td><code>0</code>, <code>1</code>, <code>2</code> …</td></tr><tr><td><code>BREVIS_MAP_VALUE</code></td><td>o elemento</td></tr></tbody></table></div>
-<p>Uma string JSON chega <strong>sem as aspas</strong>, então <code>for_each</code> sobre <code>["2026-01"]</code> entrega ao shell <code>2026-01</code> e não <code>"2026-01"</code>. Qualquer outra coisa — número, objeto, lista — chega como o JSON dela.</p>
-<p>Nenhuma das duas existe num passo não mapeado. Uma variável que está sempre lá e sempre vazia ensina quem lê o ambiente a ignorá-la.</p>
-<h3 id="a-forma-do-dag-nao-muda">A forma do DAG não muda<a class="anchor" href="#a-forma-do-dag-nao-muda" aria-label="link">#</a></h3>
-<p>Um passo mapeado continua sendo um nó com um conjunto de arestas. Só varia quantas linhas existem embaixo dele, então o layout é o que sempre foi e o <code>[3]</code> é contado dessas linhas na leitura — nada é armazenado, então nada precisa ficar sincronizado e uma contagem errada não sobrevive ao conserto da consulta.</p>
-<p>Enquanto instâncias ainda rodam, o card mostra <code>[2/3]</code>.</p>
-<h3 id="uma-instancia-que-falha-derruba-o-passo">Uma instância que falha derruba o passo<a class="anchor" href="#uma-instancia-que-falha-derruba-o-passo" aria-label="link">#</a></h3>
-<p>Três partições carregando e uma não é um passo que não fez o trabalho dele, e os passos abaixo enxergam isso. Um nó que fica verde porque a maior parte deu certo é um selo que mente.</p>
-<p><strong>Um retry refaz só as instâncias que falharam.</strong> Dezoito partições que deram certo não são recarregadas porque duas quebraram.</p>
-<h3 id="lista-vazia-e-skipped-nao-sucesso">Lista vazia é <code>skipped</code>, não sucesso<a class="anchor" href="#lista-vazia-e-skipped-nao-sucesso" aria-label="link">#</a></h3>
-<p>Um passo que não fez nada porque não havia o que fazer não teve sucesso em fazê-lo. Um nó verde sobre zero instâncias é exatamente o tipo de coisa em que alguém constrói um dashboard.</p>
-<p>Um valor que <strong>não é lista</strong> falha, e uma chave que não existe também — a mesma política do <code>unless_empty:</code>, e pelo mesmo motivo: um erro de digitação que silenciosamente produzisse zero instâncias desligaria o passo para sempre.</p>
-<h3 id="o-fan-out-e-limitado-e-o-limite-e-herdado">O fan-out é limitado, e o limite é herdado<a class="anchor" href="#o-fan-out-e-limitado-e-o-limite-e-herdado" aria-label="link">#</a></h3>
-<p>A lista viaja no contexto, e o contexto tem um teto de 4096 bytes que vem do kubelet. Um workflow não consegue pedir dez mil pods sem antes achar um jeito de dizer isso em quatro kilobytes. É um limite que vale manter, não contornar.</p>
-<h3 id="o-que-um-passo-mapeado-publica">O que um passo mapeado publica<a class="anchor" href="#o-que-um-passo-mapeado-publica" aria-label="link">#</a></h3>
-<p>A saída dele é gravada na linha de cada instância e <strong>não</strong> fica visível para os passos abaixo. Quatro instâncias publicando sob o nome de um passo são quatro valores para uma chave, e não existe resposta para <code>context.String("load.bucket")</code> que não seja um chute. O passo diz isso no log dele, em vez de descartar calado.</p>
-<h2 id="agrupando-passos-no-grafo">Agrupando passos no grafo<a class="anchor" href="#agrupando-passos-no-grafo" aria-label="link">#</a></h2>
+<p>The step runs once per element, each with a row, a retry and an exit code of its own. The graph shows <strong>one node with <code>[3]</code> on it</strong>, not three nodes.</p>
+<div class="table-wrap"><table><thead><tr><th>variable</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_MAP_INDEX</code></td><td><code>0</code>, <code>1</code>, <code>2</code> …</td></tr><tr><td><code>BREVIS_MAP_VALUE</code></td><td>the element</td></tr></tbody></table></div>
+<p>A JSON string arrives <strong>without its quotes</strong>, so <code>for_each</code> over <code>["2026-01"]</code> hands a shell <code>2026-01</code> and not <code>"2026-01"</code>. Anything else — a number, an object, a list — arrives as its JSON.</p>
+<p>Neither variable exists on an unmapped step. One that is always there and always empty teaches whoever reads the environment to ignore it.</p>
+<h3 id="the-shape-of-the-dag-does-not-change">The shape of the DAG does not change<a class="anchor" href="#the-shape-of-the-dag-does-not-change" aria-label="link">#</a></h3>
+<p>A mapped step is still one node with one set of edges. Only the number of rows under it varies, so the layout is what it always was and the <code>[3]</code> is counted from those rows at read time — nothing is stored, so nothing has to be kept in sync and a wrong count cannot outlive a fixed query.</p>
+<p>While instances are still going the card reads <code>[2/3]</code>.</p>
+<h3 id="one-failed-instance-fails-the-step">One failed instance fails the step<a class="anchor" href="#one-failed-instance-fails-the-step" aria-label="link">#</a></h3>
+<p>Three partitions loading and one not is a step that did not do its job, and the steps below it see that. A node that goes green because most of it worked is a badge that lies.</p>
+<p><strong>A retry redoes only the instances that failed.</strong> Eighteen partitions that worked are not reloaded because two broke.</p>
+<h3 id="an-empty-list-is-skipped-not-success">An empty list is <code>skipped</code>, not success<a class="anchor" href="#an-empty-list-is-skipped-not-success" aria-label="link">#</a></h3>
+<p>A step that did nothing because there was nothing to do did not succeed at doing it. A green node over zero instances is exactly the kind of thing somebody builds a dashboard on.</p>
+<p>A value that is <strong>not a list</strong> fails, and so does a key that is not there — the same policy <code>unless_empty:</code> has, and for the same reason: a typo that silently produced zero instances would disable the step forever.</p>
+<h3 id="the-fan-out-is-bounded-and-the-bound-is-inherited">The fan-out is bounded, and the bound is inherited<a class="anchor" href="#the-fan-out-is-bounded-and-the-bound-is-inherited" aria-label="link">#</a></h3>
+<p>The list travels in the context, and the context has a 4096-byte ceiling that comes from the kubelet. A workflow cannot ask for ten thousand pods without first finding a way to say so in four kilobytes. That is a limit worth keeping rather than working around.</p>
+<h3 id="what-a-mapped-step-publishes">What a mapped step publishes<a class="anchor" href="#what-a-mapped-step-publishes" aria-label="link">#</a></h3>
+<p>Its output is recorded on each instance's row and is <strong>not</strong> visible to the steps below. Four instances publishing under one step's name is four values for one key, and there is no answer to <code>context.String("load.bucket")</code> that is not a guess. The step says so in its log rather than dropping it quietly.</p>
+<h2 id="grouping-steps-on-the-graph">Grouping steps on the graph<a class="anchor" href="#grouping-steps-on-the-graph" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: extract_orders
     group: sales_data_reporting
@@ -298,7 +298,7 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
   - id: load_orders
     group: sales_data_reporting
     depends_on: [extract_orders]
-    run: ./load.sh"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">steps</span>:
+    run: ./load.sh"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">steps</span>:
   - <span class="t-k">id</span>: extract_orders
     <span class="t-k">group</span>: sales_data_reporting
     <span class="t-k">run</span>: ./extract.sh
@@ -306,45 +306,45 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
     <span class="t-k">group</span>: sales_data_reporting
     <span class="t-k">depends_on</span>: [extract_orders]
     <span class="t-k">run</span>: ./load.sh</code></pre></div>
-<p>Os passos são desenhados dentro de uma caixa nomeada que colapsa — o TaskGroup do Airflow, para quando um DAG cresce a ponto de deixar de ser legível.</p>
-<p><strong>Só visual.</strong> Os TaskGroups do Airflow também <em>prefixam</em> os ids dentro deles, então <code>extract</code> vira <code>sales.extract</code>. Aqui não: prefixar mudaria todo <code>depends_on</code>, toda chave de contexto e toda linha registrada de um workflow que já existe, por uma feature cujo valor inteiro é um grafo grande ficar mais legível. Namespacing pode vir depois — é uma adição estrita a isto.</p>
-<p>Um grupo é um <strong>rótulo</strong>, não um contêiner. Os passos mantêm os ids globais, um grupo pode atravessar níveis, e nada da execução muda.</p>
-<p>Clicar no nome do grupo o colapsa: os passos somem e as setas que cruzavam a fronteira passam a apontar para a caixa.</p>
-<h2 id="reaproveitando-outro-workflow">Reaproveitando outro workflow<a class="anchor" href="#reaproveitando-outro-workflow" aria-label="link">#</a></h2>
+<p>The steps are drawn inside a named box that collapses — Airflow's TaskGroup, for the case where a DAG gets big enough to stop being readable.</p>
+<p><strong>Visual only.</strong> Airflow's TaskGroups also <em>prefix</em> the ids inside them, so <code>extract</code> becomes <code>sales.extract</code>. This does not: prefixing would change every <code>depends_on</code>, every context key and every recorded row in an existing workflow, for a feature whose whole value is that a big graph reads better. Namespacing can be added later — it is a strict addition to this.</p>
+<p>A group is a <strong>label</strong>, not a container. Steps keep their global ids, a group may span levels, and nothing about execution changes.</p>
+<p>Clicking the group's name collapses it: its steps disappear and the arrows that crossed the boundary point at the box instead.</p>
+<h2 id="reusing-another-workflow">Reusing another workflow<a class="anchor" href="#reusing-another-workflow" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# nightly.yaml
 steps:
   - id: prepare
     run: ./prepare.sh
 
   - id: mlops
-    uses: ml_training       # outro workflow no mesmo publish
+    uses: ml_training       # another workflow in the same publish
     depends_on: [prepare]
 
   - id: report
     run: ./report.sh
-    depends_on: [mlops]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-c"># nightly.yaml</span>
+    depends_on: [mlops]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-c"># nightly.yaml</span>
 <span class="t-k">steps</span>:
   - <span class="t-k">id</span>: prepare
     <span class="t-k">run</span>: ./prepare.sh
 
   - <span class="t-k">id</span>: mlops
-    <span class="t-k">uses</span>: ml_training       <span class="t-c"># outro workflow no mesmo publish</span>
+    <span class="t-k">uses</span>: ml_training       <span class="t-c"># another workflow in the same publish</span>
     <span class="t-k">depends_on</span>: [prepare]
 
   - <span class="t-k">id</span>: report
     <span class="t-k">run</span>: ./report.sh
     <span class="t-k">depends_on</span>: [mlops]</code></pre></div>
-<p>No <strong>publish</strong>, os passos do <code>ml_training</code> tomam o lugar desse passo, prefixados com o id dele, e o nó <code>uses</code> desaparece:</p>
-<div class="code-block" data-code="prepare → mlops.train → mlops.evaluate → report"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>prepare → mlops.train → mlops.evaluate → report</code></pre></div>
-<p>Eles chegam como um grupo que colapsa, então o grafo mostra o que o arquivo disse.</p>
-<p><strong>Expandido no publish, não executado em runtime.</strong> Um passo que dispara um <em>run</em> filho e espera é o desenho que travou o Airflow, e este motor tem o mesmo ingrediente: o teto de pods é um semáforo por processo, então um pai segurando uma vaga enquanto espera um filho que precisa de vagas do mesmo pool trava — e só sob carga, ou seja, em produção. Um run, um grafo, um pool.</p>
-<p>O que se abre mão é um run filho com id e histórico próprios.</p>
-<h3 id="as-regras">As regras<a class="anchor" href="#as-regras" aria-label="link">#</a></h3>
-<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>o filho precisa estar no <strong>mesmo publish</strong></td><td>não basta já estar publicado</td></tr><tr><td>setas</td><td>que entram no passo viram setas para cada <strong>raiz</strong> do filho; as que saem, de cada <strong>folha</strong></td></tr><tr><td><code>image</code>, <code>env</code>, <code>secrets</code>, <code>resources</code> do filho</td><td>materializados em cada passo, então ele roda no que o arquivo dele disse</td></tr><tr><td>chaves de <code>unless_empty</code> / <code>for_each</code> do filho</td><td>acompanham o prefixo</td></tr><tr><td>aninhamento</td><td>achatado, em profundidade</td></tr><tr><td>um ciclo</td><td>recusado no publish, nomeando a cadeia</td></tr></tbody></table></div>
-<p><strong>"Mesmo publish", e não "já publicado", é a regra que importa.</strong> Uma expansão que lesse o banco faria o <code>brevis validate</code> — que não toca banco, de propósito — responder outra pergunta que o <code>brevis publish</code>, e o arquivo que passou na CI seria o que quebrou no deploy.</p>
-<p>O filho continua publicável sozinho: a expansão <strong>copia</strong>, não consome. Um passo não pode ter <code>uses:</code> e também declarar <code>run:</code>, <code>action:</code> ou <code>marker:</code> — isso é um arquivo dizendo duas coisas.</p>
-<h2 id="dizendo-o-que-uma-seta-significa">Dizendo o que uma seta significa<a class="anchor" href="#dizendo-o-que-uma-seta-significa" aria-label="link">#</a></h2>
-<p>Uma dependência pode carregar um rótulo, mostrado na seta do grafo.</p>
+<p>At <strong>publish</strong>, <code>ml_training</code>'s steps take that step's place, prefixed with its id, and the <code>uses</code> node disappears:</p>
+<div class="code-block" data-code="prepare → mlops.train → mlops.evaluate → report"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>prepare → mlops.train → mlops.evaluate → report</code></pre></div>
+<p>They arrive as one collapsible group, so the graph shows what the file said.</p>
+<p><strong>Expanded at publish, not run at run time.</strong> A step that triggered a child <em>run</em> and waited is the design that deadlocked Airflow, and this engine has the same ingredient: the pod ceiling is a per-process semaphore, so a parent holding a slot while waiting for a child that needs slots from the same pool hangs — and only under load, which is to say in production. One run, one graph, one pool.</p>
+<p>What it gives up is a child run with its own id and its own history.</p>
+<h3 id="the-rules">The rules<a class="anchor" href="#the-rules" aria-label="link">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>the child must be in the <strong>same publish</strong></td><td>not merely already published</td></tr><tr><td>arrows</td><td>into the step become arrows into each of the child's <strong>roots</strong>; out of it, out of each of its <strong>leaves</strong></td></tr><tr><td>the child's <code>image</code>, <code>env</code>, <code>secrets</code>, <code>resources</code></td><td>materialised onto each step, so it runs in what its own file said</td></tr><tr><td>the child's <code>unless_empty</code> / <code>for_each</code> keys</td><td>move with the prefix</td></tr><tr><td>nesting</td><td>flattened, depth first</td></tr><tr><td>a circle</td><td>refused at publish, naming the chain</td></tr></tbody></table></div>
+<p><strong>Same publish, and not "already published", is the important one.</strong> Expansion that read the database would make <code>brevis validate</code> — which touches no database, on purpose — answer a different question from <code>brevis publish</code>, and the file that passed CI would be the file that failed the deploy.</p>
+<p>The child is still publishable on its own: expansion <strong>copies</strong>, it does not consume. A step cannot both <code>uses:</code> and declare <code>run:</code>, <code>action:</code> or <code>marker:</code> — that is a file saying two things.</p>
+<h2 id="saying-what-an-arrow-means">Saying what an arrow means<a class="anchor" href="#saying-what-an-arrow-means" aria-label="link">#</a></h2>
+<p>A dependency can carry a label, shown on the arrow in the graph.</p>
 <div class="code-block" data-code="steps:
   - id: determine_load_type
     run: ./decide.sh
@@ -352,47 +352,47 @@ steps:
   - id: load_full
     run: ./full.sh
     depends_on:
-      - {step: determine_load_type, label: dados adicionais}
+      - {step: determine_load_type, label: additional data}
 
   - id: load_delta
     run: ./delta.sh
     depends_on:
       - step: determine_load_type
-        label: dados que mudaram"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">steps</span>:
+        label: changed existing data"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">steps</span>:
   - <span class="t-k">id</span>: determine_load_type
     <span class="t-k">run</span>: ./decide.sh
 
   - <span class="t-k">id</span>: load_full
     <span class="t-k">run</span>: ./full.sh
     <span class="t-k">depends_on</span>:
-      - {step: determine_load_type, label: dados adicionais}
+      - {step: determine_load_type, label: additional data}
 
   - <span class="t-k">id</span>: load_delta
     <span class="t-k">run</span>: ./delta.sh
     <span class="t-k">depends_on</span>:
       - <span class="t-k">step</span>: determine_load_type
-        <span class="t-k">label</span>: dados que mudaram</code></pre></div>
-<p>A forma simples — <code>depends_on: [extract]</code> — continua funcionando e continua sendo a normal. A maioria das dependências não tem nada a dizer, e um rótulo em toda seta é ruído.</p>
-<p>Os rótulos ganham o lugar deles numa <strong>bifurcação</strong>: duas setas saindo do mesmo passo sem nada escrito é um diagrama que exige abrir o código para ler, que é exatamente o que um grafo existe para evitar.</p>
-<h2 id="um-passo-que-nao-faz-nada">Um passo que não faz nada<a class="anchor" href="#um-passo-que-nao-faz-nada" aria-label="link">#</a></h2>
+        <span class="t-k">label</span>: changed existing data</code></pre></div>
+<p>The bare form — <code>depends_on: [extract]</code> — keeps working and stays the normal one. Most dependencies have nothing to say, and a label on every arrow is noise.</p>
+<p>The labels earn their place on a <strong>branch</strong>: two arrows leaving the same step with nothing written on them is a diagram that requires opening the source to read, which is the one thing a graph exists to avoid.</p>
+<h2 id="a-step-that-does-nothing">A step that does nothing<a class="anchor" href="#a-step-that-does-nothing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: start
     marker: true
 
   - id: end
     marker: true
-    depends_on: [load_full, load_delta, report]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">steps</span>:
+    depends_on: [load_full, load_delta, report]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">steps</span>:
   - <span class="t-k">id</span>: start
     <span class="t-k">marker</span>: <span class="t-n">true</span>
 
   - <span class="t-k">id</span>: end
     <span class="t-k">marker</span>: <span class="t-n">true</span>
     <span class="t-k">depends_on</span>: [load_full, load_delta, report]</code></pre></div>
-<p><code>marker: true</code> é um passo sem comando. Ele não roda nada, dá certo na hora, e aparece no grafo.</p>
-<p>Não é enfeite. Um <code>end</code> que depende de todos os ramos transforma <em>terminou tudo?</em> num nó só, em vez de seis setas para seguir — e ele se comporta como qualquer outro passo, então um <code>end</code> embaixo de um ramo que falhou fica <strong>skipped</strong>, não verde.</p>
-<p><strong>Um passo sem <code>run:</code> e sem <code>marker: true</code> continua recusado.</strong> Os dois casos não podem virar um: um comando vazio é quase sempre um engano, e o <code>marker: true</code> é como alguém diz que fez de propósito. Um marker que também declara <code>run:</code> também é recusado — isso é um arquivo dizendo duas coisas.</p>
-<h2 id="rodando-um-passo-so-quando-algo-falhou">Rodando um passo só quando algo falhou<a class="anchor" href="#rodando-um-passo-so-quando-algo-falhou" aria-label="link">#</a></h2>
-<p>Por padrão um passo roda quando tudo antes dele deu certo. O <code>when:</code> muda isso.</p>
+<p><code>marker: true</code> is a step with no command. It runs nothing, succeeds instantly, and appears on the graph.</p>
+<p>It is not decoration. An <code>end</code> that depends on every branch turns <em>did the whole thing finish?</em> into one node instead of six arrows to follow — and it behaves like any other step, so an <code>end</code> under a failed branch is <strong>skipped</strong>, not green.</p>
+<p><strong>A step with no <code>run:</code> and no <code>marker: true</code> is still refused.</strong> The two cases must not collapse into one: an empty command is almost always a mistake, and <code>marker: true</code> is how somebody says they meant it. A marker that also declares <code>run:</code> is refused too — that is a file saying two things.</p>
+<h2 id="running-a-step-only-when-something-failed">Running a step only when something failed<a class="anchor" href="#running-a-step-only-when-something-failed" aria-label="link">#</a></h2>
+<p>By default a step runs when everything before it worked. <code>when:</code> changes that.</p>
 <div class="code-block" data-code="steps:
   - id: extract
     run: python fetch.py
@@ -400,97 +400,97 @@ steps:
   - id: notify_failure
     run: ./notify.sh
     depends_on: [extract]
-    when: any_failed          # roda exatamente quando o extract não conseguiu
+    when: any_failed          # runs precisely when extract did not make it
 
   - id: cleanup
     run: ./cleanup.sh
     depends_on: [extract, transform]
-    when: all_done            # roda de qualquer jeito"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">steps</span>:
+    when: all_done            # runs either way"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">steps</span>:
   - <span class="t-k">id</span>: extract
     <span class="t-k">run</span>: python fetch.py
 
   - <span class="t-k">id</span>: notify_failure
     <span class="t-k">run</span>: ./notify.sh
     <span class="t-k">depends_on</span>: [extract]
-    <span class="t-k">when</span>: any_failed          <span class="t-c"># roda exatamente quando o extract não conseguiu</span>
+    <span class="t-k">when</span>: any_failed          <span class="t-c"># runs precisely when extract did not make it</span>
 
   - <span class="t-k">id</span>: cleanup
     <span class="t-k">run</span>: ./cleanup.sh
     <span class="t-k">depends_on</span>: [extract, transform]
-    <span class="t-k">when</span>: all_done            <span class="t-c"># roda de qualquer jeito</span></code></pre></div>
-<div class="table-wrap"><table><thead><tr><th>regra</th><th></th></tr></thead><tbody><tr><td><code>all_success</code></td><td>o padrão. Tudo de que este passo depende deu certo — as dependências <strong>dele</strong>, como no Airflow</td></tr><tr><td><code>any_failed</code></td><td>pelo menos um passo de que este depende falhou</td></tr><tr><td><code>all_done</code></td><td>tudo de que este passo depende terminou, como quer que tenha terminado</td></tr></tbody></table></div>
-<p>Uma regra desconhecida é recusada no publish, dizendo o que é válido. E tem que ser: um <code>when: on_failure</code> lido como "o padrão" rodaria no <strong>sucesso</strong> — o oposto do que ele diz, descoberto na noite em que importava.</p>
-<h3 id="um-passo-que-nao-roda-fica-skipped">Um passo que não roda fica <code>skipped</code><a class="anchor" href="#um-passo-que-nao-roda-fica-skipped" aria-label="link">#</a></h3>
-<p>É um estado próprio, desenhado na própria cor, e carrega o motivo: <em><code>extract</code> was failed</em>. Antes disso, um passo abaixo de uma falha não deixava registro nenhum e a tela o mostrava pendente para sempre.</p>
-<p><code>skipped</code> não é falha e não é sucesso. Um passo cujo anterior quebrou não falhou — nunca teve a chance — e dizer que ele deu certo é uma mentira que chega ao status da própria run.</p>
-<p>Uma regra de gatilho decide quais passos <strong>rodam</strong>. Ela não decide o resultado da run: um <code>notify_failure</code> que entregou a mensagem não quer dizer que o pipeline funcionou, e a run continua falha.</p>
-<h3 id="all-success-e-local-como-no-airflow"><code>all_success</code> é local, como no Airflow<a class="anchor" href="#all-success-e-local-como-no-airflow" aria-label="link">#</a></h3>
-<p>A regra pergunta sobre as dependências <strong>do próprio passo</strong> e nada mais. Uma falha num ramo sem relação não para este:</p>
-<div class="code-block" data-code="extract_orders ──✕                 (falhou)
-extract_users  ──✓── transform_users ──✓     continua"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>extract_orders ──✕                 (falhou)
-extract_users  ──✓── transform_users ──✓     continua</code></pre></div>
-<p>Um ramo <strong>abaixo</strong> da falha continua parando — <code>all_success</code> ser local não quer dizer que ele sumiu.</p>
-<p>Este motor abortava o grafo inteiro na primeira falha. Isso tinha um motivo: seguir depois de um erro produziu um resultado parcial que parecia completo, e um pipeline rodou 28 dias atrasado sem ninguém ver.</p>
-<p><strong>O que substitui essa proteção</strong>, e não é nada:</p>
-<ul><li>a run continua <strong>falhando</strong>, com o mesmo erro;</li><li>o grafo mostra o passo que falhou em vermelho e cada passo pulado na cor dele, dizendo qual passo o parou;</li><li>o alerta continua saindo quando a run desiste.</li></ul>
-<p>Um resultado parcial não parece mais completo, porque a run diz que não está.</p>
-<p><strong>O que se abre mão</strong>, dito na lata: um ramo sem relação agora escreve os dados dele numa run que falhou em outro lugar.</p>
-<h3 id="um-retry-roda-de-novo-so-o-que-falhou">Um retry roda de novo só o que falhou<a class="anchor" href="#um-retry-roda-de-novo-so-o-que-falhou" aria-label="link">#</a></h3>
-<p>O retry de uma run não refaz o grafo inteiro. Um passo que já deu certo numa tentativa anterior da <strong>mesma run</strong> mantém o resultado e não roda de novo — como se comporta uma DAG run limpa no Airflow.</p>
-<div class="code-block" data-code="tentativa 1   extract ✓    load ✕    report (pulado)
-tentativa 2   extract –    load ✓    report ✓          o extract não roda de novo"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>tentativa 1   extract ✓    load ✕    report (pulado)
-tentativa 2   extract –    load ✓    report ✓          o extract não roda de novo</code></pre></div>
-<p>Ele mantém a linha original: a duração, o log e o que ele publicou são os da primeira tentativa, porque foi quando o trabalho aconteceu. <strong>O passo abaixo dele continua lendo o que ele publicou</strong> — o contexto da run é guardado, não reconstruído.</p>
-<p>A distinção que importa: isso é sobre as tentativas anteriores <strong>desta run</strong>. Um passo que deu certo na run de <em>ontem</em> roda normalmente hoje. (Essa outra pergunta também existe, e é o que diz ao SDK se é a primeira vez de um passo — veja <code>BREVIS_RUN_FIRST</code>.)</p>
-<p>Um passo que ficou <strong>skipped</strong> não está resolvido: ele nunca rodou, e o retry decide sobre ele de novo com os resultados da nova tentativa.</p>
-<h2 id="anunciando-a-falha-de-um-passo">Anunciando a falha de um passo<a class="anchor" href="#anunciando-a-falha-de-um-passo" aria-label="link">#</a></h2>
-<p>Toda falha já é anunciada: com o webhook configurado, uma run que desiste manda uma mensagem, sem bloco repetido em arquivo nenhum. O <code>on_error</code> é para o passo que precisa do próprio.</p>
+    <span class="t-k">when</span>: all_done            <span class="t-c"># runs either way</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>rule</th><th></th></tr></thead><tbody><tr><td><code>all_success</code></td><td>the default. Everything this step depends on succeeded — its <strong>own</strong> dependencies, as in Airflow</td></tr><tr><td><code>any_failed</code></td><td>at least one step this one depends on failed</td></tr><tr><td><code>all_done</code></td><td>everything this step depends on has finished, however it ended</td></tr></tbody></table></div>
+<p>An unknown rule is refused at publish, naming what is valid. It has to be: a <code>when: on_failure</code> read as "the default" would run on <strong>success</strong> — the opposite of what it says, found on the night it mattered.</p>
+<h3 id="a-step-that-does-not-run-is-skipped">A step that does not run is <code>skipped</code><a class="anchor" href="#a-step-that-does-not-run-is-skipped" aria-label="link">#</a></h3>
+<p>It is a state of its own, drawn in its own colour, and it carries the reason: <em><code>extract</code> was failed</em>. Before this, a step below a failure had no record at all and the screen showed it pending forever.</p>
+<p><code>skipped</code> is not a failure and not a success. A step whose upstream broke did not fail — it was never given the chance — and calling it success is a lie that reaches the run's own status.</p>
+<p>A trigger rule decides which steps <strong>run</strong>. It does not decide the run's outcome: a <code>notify_failure</code> that delivered its message does not mean the pipeline worked, and the run is still failed.</p>
+<h3 id="all-success-is-local-as-in-airflow"><code>all_success</code> is local, as in Airflow<a class="anchor" href="#all-success-is-local-as-in-airflow" aria-label="link">#</a></h3>
+<p>The rule asks about a step's <strong>own</strong> dependencies and nothing else. A failure in an unrelated branch does not stop this one:</p>
+<div class="code-block" data-code="extract_orders ──✕                 (failed)
+extract_users  ──✓── transform_users ──✓     keeps going"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>extract_orders ──✕                 (failed)
+extract_users  ──✓── transform_users ──✓     keeps going</code></pre></div>
+<p>A branch <strong>below</strong> the failure still stops — <code>all_success</code> being local does not mean it is absent.</p>
+<p>This engine used to abort the whole graph at the first failure. That had a reason: carrying on after an error produced a partial result that looked complete, and a pipeline ran 28 days late without anyone noticing.</p>
+<p><strong>What replaces that protection</strong>, and it is not nothing:</p>
+<ul><li>the run still <strong>fails</strong>, with the same error;</li><li>the graph shows the failed step in red and every skipped one in its own colour, each saying which step stopped it;</li><li>the alert still goes out when the run gives up.</li></ul>
+<p>A partial result no longer looks complete, because the run says it is not.</p>
+<p><strong>What is given up</strong>, stated plainly: an unrelated branch now writes its data on a run that failed elsewhere.</p>
+<h3 id="a-retry-re-runs-only-what-failed">A retry re-runs only what failed<a class="anchor" href="#a-retry-re-runs-only-what-failed" aria-label="link">#</a></h3>
+<p>A run's retry does not redo the whole graph. A step that already succeeded on an earlier attempt of the <strong>same run</strong> keeps its result and is not run again — the way a cleared DAG run behaves in Airflow.</p>
+<div class="code-block" data-code="attempt 1   extract ✓    load ✕    report (skipped)
+attempt 2   extract –    load ✓    report ✓            extract is not re-run"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>attempt 1   extract ✓    load ✕    report (skipped)
+attempt 2   extract –    load ✓    report ✓            extract is not re-run</code></pre></div>
+<p>It keeps its original row: its duration, its log and what it published are the first attempt's, because that is when the work happened. <strong>The step below it still reads what it published</strong> — the run's context is stored, not rebuilt.</p>
+<p>The distinction that matters: this is about <strong>this run's</strong> earlier attempts. A step that succeeded in <em>yesterday's</em> run runs normally today. (That other question exists too, and it is what tells the SDK whether it is a step's first time — see <code>BREVIS_RUN_FIRST</code>.)</p>
+<p>A step that was <strong>skipped</strong> is not settled: it never ran, and the retry decides about it again with the new attempt's outcomes.</p>
+<h2 id="announcing-a-steps-failures">Announcing a step's failures<a class="anchor" href="#announcing-a-steps-failures" aria-label="link">#</a></h2>
+<p>Every failure is already announced: with a webhook configured, a run that gives up sends one message, with no block repeated in any file. <code>on_error</code> is for the step that needs its own.</p>
 <div class="code-block" data-code="steps:
   - id: fetch_observations
     run: python fetch.py
     on_error:
-      type: SLACK"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">steps</span>:
+      type: SLACK"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">steps</span>:
   - <span class="t-k">id</span>: fetch_observations
     <span class="t-k">run</span>: python fetch.py
     <span class="t-k">on_error</span>:
       <span class="t-k">type</span>: SLACK</code></pre></div>
-<div class="table-wrap"><table><thead><tr><th>campo</th><th></th><th></th></tr></thead><tbody><tr><td><code>type</code></td><td><strong>obrigatório</strong></td><td><code>SLACK</code>. Um valor desconhecido é recusado no publish, dizendo o que é válido</td></tr><tr><td><code>when</code></td><td><code>give_up</code></td><td><code>attempt</code> anuncia toda tentativa que falha, não só a última</td></tr></tbody></table></div>
-<p>Chegam duas mensagens em vez de uma, e é esse o ponto: o alerta da run diz <em><code>id_verification</code> falhou</em>, que é o que quem cuida do pipeline precisa; o do passo diz <em><code>fetch_observations</code> falhou</em>, que é o que quem cuida daquela integração precisa.</p>
-<p><strong>Não existe campo <code>webhook</code> nem <code>url</code>, e não vai existir.</strong> O destino é uma credencial — quem tem a URL posta no canal como se fosse a plataforma — e um arquivo de workflow é escrito por alguém que não necessariamente pode escolher para onde vão os alertas da empresa. O arquivo diz <strong>se</strong> e <strong>como</strong>; a instalação diz <strong>onde</strong>, pelo <code>BREVIS_SLACK_WEBHOOK</code>.</p>
-<p><strong><code>when: give_up</code> é o padrão por causa de quem está de plantão.</strong> Um passo que falha duas vezes e passa na terceira mandaria duas mensagens no outro padrão, e a segunda chegaria depois que o problema já tinha ido embora.</p>
-<p><strong>Um passo que não falhou nunca é anunciado.</strong> Num workflow onde um ramo quebra, quem cuida do outro ramo não é acordado.</p>
-<p>A entrega é trabalho do <code>brevis alert</code> — o alerta é gravado na mesma transação da falha, então uma queda do Slack o atrasa em vez de perdê-lo.</p>
+<div class="table-wrap"><table><thead><tr><th>field</th><th></th><th></th></tr></thead><tbody><tr><td><code>type</code></td><td><strong>required</strong></td><td><code>SLACK</code>. An unknown value is refused at publish, naming what is valid</td></tr><tr><td><code>when</code></td><td><code>give_up</code></td><td><code>attempt</code> announces every failed attempt, not only the last</td></tr></tbody></table></div>
+<p>Two messages arrive rather than one, and that is the point: the run-level alert says <em><code>id_verification</code> failed</em>, which is what whoever owns the pipeline needs; the step-level one says <em><code>fetch_observations</code> failed</em>, which is what whoever owns that integration needs.</p>
+<p><strong>There is no <code>webhook</code> or <code>url</code> field, and there will not be.</strong> The destination is a credential — whoever holds it posts in the channel as if they were the platform — and a workflow file is written by somebody who is not necessarily allowed to choose where the company's alerts go. The file says <strong>whether</strong> and <strong>how</strong>; the installation says <strong>where</strong>, through <code>BREVIS_SLACK_WEBHOOK</code>.</p>
+<p><strong><code>when: give_up</code> is the default because of whose night it is.</strong> A step that fails twice and passes on the third try would send two messages under the other default, and the second would arrive after the problem was gone.</p>
+<p><strong>A step that did not fail is never announced.</strong> In a workflow where one branch breaks, whoever owns the other branch is not woken up.</p>
+<p>Delivery is <code>brevis alert</code>'s job — the alert is recorded in the same transaction as the failure, so a Slack outage delays it instead of losing it.</p>
 <h2 id="tags">Tags<a class="anchor" href="#tags" aria-label="link">#</a></h2>
-<div class="code-block" data-code="tags: [analytics, dbt, diario]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">tags</span>: [analytics, dbt, diario]</code></pre></div>
-<p>Servem para filtrar na interface. Não afetam a execução.</p>
-<h2 id="validacao">Validação<a class="anchor" href="#validacao" aria-label="link">#</a></h2>
-<p>A validação não precisa de banco, então roda na CI junto com os testes:</p>
-<div class="code-block" data-code="brevis validate workflows/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> validate workflows/</code></pre></div>
+<div class="code-block" data-code="tags: [analytics, dbt, daily]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">tags</span>: [analytics, dbt, daily]</code></pre></div>
+<p>They filter in the interface. They do not affect execution.</p>
+<h2 id="validation">Validation<a class="anchor" href="#validation" aria-label="link">#</a></h2>
+<p>Validation needs no database, so it runs in CI alongside the tests:</p>
+<div class="code-block" data-code="brevis validate workflows/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span> validate workflows/</code></pre></div>
 <div class="code-block" data-code="  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
-  ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
+  ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *</code></pre></div>
-<p>Aceita arquivo ou diretório. Num diretório, casa <code>*.y*ml</code> e ordena — dois runs produzem o mesmo log, e a diferença entre dois deploys não vira ruído.</p>
-<h2 id="publicando">Publicando<a class="anchor" href="#publicando" aria-label="link">#</a></h2>
+<p>It takes a file or a directory. In a directory it matches <code>*.y*ml</code> and sorts — two runs produce the same log, and the difference between two deploys does not become noise.</p>
+<h2 id="publishing">Publishing<a class="anchor" href="#publishing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis publish workflows/
-brevis publish workflows/ --project acme --prune"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> publish workflows/
+brevis publish workflows/ --project acme --prune"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span> publish workflows/
 <span class="t-k">brevis</span> publish workflows/ <span class="t-n">--project</span> acme <span class="t-n">--prune</span></code></pre></div>
-<p><code>--prune</code> remove do projeto os workflows ausentes da lista publicada, preservando o histórico. <strong>Não é o padrão</strong>, e a razão é prática: <code>publish um-arquivo.yaml</code> não pode apagar os outros quarenta e oito só porque não foram citados na linha de comando.</p>
-<h2 id="proximos-passos">Próximos passos<a class="anchor" href="#proximos-passos" aria-label="link">#</a></h2>
-<ul><li><a href="/docs/parameters/">Parâmetros</a> — o que muda entre dois disparos</li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a> — como o workflow vira execução</li><li><a href="/docs/context/">Contexto entre passos</a> — o que um passo diz ao seguinte</li></ul>
+<p><code>--prune</code> removes from the project the workflows absent from the published list, preserving their history. It is <strong>not</strong> the default, for a practical reason: <code>publish one-file.yaml</code> must not delete the other forty-eight just because they were not named on the command line.</p>
+<h2 id="next-steps">Next steps<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
+<ul><li><a href="/docs/parameters/">Parameters</a> — what changes between two runs</li><li><a href="/docs/scheduler-and-queue/">Scheduler and queue</a> — how a workflow becomes execution</li><li><a href="/docs/context/">Context between steps</a> — what one step tells the next</li></ul>
 
-      <nav class="pagers" aria-label="Páginas">
-        <a class="pager pager-prev" href="/docs/core/"><span>Anterior</span><strong>Core</strong></a>
-        <a class="pager pager-next" href="/docs/scheduler-and-queue/"><span>Próximo</span><strong>Scheduler e fila</strong></a>
+      <nav class="pagers" aria-label="Pages">
+        <a class="pager pager-prev" href="/docs/core/"><span>Previous</span><strong>Core</strong></a>
+        <a class="pager pager-next" href="/docs/scheduler-and-queue/"><span>Next</span><strong>Scheduler and queue</strong></a>
       </nav>
 
       <p class="doc-edit">
-        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/pt/docs/workflows.md" target="_blank" rel="noopener">Editar esta página no GitHub</a>
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/en/docs/workflows.md" target="_blank" rel="noopener">Edit this page on GitHub</a>
       </p>
     </article>
 
-    <aside class="toc" aria-label="Nesta página">
-      <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#estrutura-minima">Estrutura mínima</a></li><li class="toc-3"><a href="#description-para-que-ele-serve">description — para que ele serve</a></li><li class="toc-2"><a href="#ordem-chain-ou-dag">Ordem: chain ou dag</a></li><li class="toc-2"><a href="#agenda">Agenda</a></li><li class="toc-2"><a href="#imagem-e-recursos">Imagem e recursos</a></li><li class="toc-2"><a href="#campos-do-passo">Campos do passo</a></li><li class="toc-2"><a href="#rodando-um-passo-so-quando-ha-o-que-fazer">Rodando um passo só quando há o que fazer</a></li><li class="toc-3"><a href="#por-que-nao-uma-expressao">Por que não uma expressão</a></li><li class="toc-3"><a href="#uma-chave-que-nao-existe-e-falha-nao-valor-vazio">Uma chave que não existe é falha, não valor vazio</a></li><li class="toc-2"><a href="#rodando-um-passo-uma-vez-por-elemento">Rodando um passo uma vez por elemento</a></li><li class="toc-3"><a href="#a-forma-do-dag-nao-muda">A forma do DAG não muda</a></li><li class="toc-3"><a href="#uma-instancia-que-falha-derruba-o-passo">Uma instância que falha derruba o passo</a></li><li class="toc-3"><a href="#lista-vazia-e-skipped-nao-sucesso">Lista vazia é skipped, não sucesso</a></li><li class="toc-3"><a href="#o-fan-out-e-limitado-e-o-limite-e-herdado">O fan-out é limitado, e o limite é herdado</a></li><li class="toc-3"><a href="#o-que-um-passo-mapeado-publica">O que um passo mapeado publica</a></li><li class="toc-2"><a href="#agrupando-passos-no-grafo">Agrupando passos no grafo</a></li><li class="toc-2"><a href="#reaproveitando-outro-workflow">Reaproveitando outro workflow</a></li><li class="toc-3"><a href="#as-regras">As regras</a></li><li class="toc-2"><a href="#dizendo-o-que-uma-seta-significa">Dizendo o que uma seta significa</a></li><li class="toc-2"><a href="#um-passo-que-nao-faz-nada">Um passo que não faz nada</a></li><li class="toc-2"><a href="#rodando-um-passo-so-quando-algo-falhou">Rodando um passo só quando algo falhou</a></li><li class="toc-3"><a href="#um-passo-que-nao-roda-fica-skipped">Um passo que não roda fica skipped</a></li><li class="toc-3"><a href="#all-success-e-local-como-no-airflow">all_success é local, como no Airflow</a></li><li class="toc-3"><a href="#um-retry-roda-de-novo-so-o-que-falhou">Um retry roda de novo só o que falhou</a></li><li class="toc-2"><a href="#anunciando-a-falha-de-um-passo">Anunciando a falha de um passo</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validacao">Validação</a></li><li class="toc-2"><a href="#publicando">Publicando</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
+    <aside class="toc" aria-label="On this page">
+      <p class="toc-t">On this page</p>
+      <ul><li class="toc-2"><a href="#minimum-structure">Minimum structure</a></li><li class="toc-3"><a href="#description-what-it-is-for">description — what it is for</a></li><li class="toc-2"><a href="#order-chain-or-dag">Order: chain or dag</a></li><li class="toc-2"><a href="#schedule">Schedule</a></li><li class="toc-2"><a href="#image-and-resources">Image and resources</a></li><li class="toc-2"><a href="#step-fields">Step fields</a></li><li class="toc-2"><a href="#running-a-step-only-when-there-is-something-to-do">Running a step only when there is something to do</a></li><li class="toc-3"><a href="#why-not-an-expression">Why not an expression</a></li><li class="toc-3"><a href="#a-missing-key-is-a-failure-not-an-empty-value">A missing key is a failure, not an empty value</a></li><li class="toc-2"><a href="#running-a-step-once-per-element">Running a step once per element</a></li><li class="toc-3"><a href="#the-shape-of-the-dag-does-not-change">The shape of the DAG does not change</a></li><li class="toc-3"><a href="#one-failed-instance-fails-the-step">One failed instance fails the step</a></li><li class="toc-3"><a href="#an-empty-list-is-skipped-not-success">An empty list is skipped, not success</a></li><li class="toc-3"><a href="#the-fan-out-is-bounded-and-the-bound-is-inherited">The fan-out is bounded, and the bound is inherited</a></li><li class="toc-3"><a href="#what-a-mapped-step-publishes">What a mapped step publishes</a></li><li class="toc-2"><a href="#grouping-steps-on-the-graph">Grouping steps on the graph</a></li><li class="toc-2"><a href="#reusing-another-workflow">Reusing another workflow</a></li><li class="toc-3"><a href="#the-rules">The rules</a></li><li class="toc-2"><a href="#saying-what-an-arrow-means">Saying what an arrow means</a></li><li class="toc-2"><a href="#a-step-that-does-nothing">A step that does nothing</a></li><li class="toc-2"><a href="#running-a-step-only-when-something-failed">Running a step only when something failed</a></li><li class="toc-3"><a href="#a-step-that-does-not-run-is-skipped">A step that does not run is skipped</a></li><li class="toc-3"><a href="#all-success-is-local-as-in-airflow">all_success is local, as in Airflow</a></li><li class="toc-3"><a href="#a-retry-re-runs-only-what-failed">A retry re-runs only what failed</a></li><li class="toc-2"><a href="#announcing-a-steps-failures">Announcing a step&#x27;s failures</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validation">Validation</a></li><li class="toc-2"><a href="#publishing">Publishing</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
     </aside>
   </main>
 </div>
@@ -504,24 +504,24 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
           <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
           <span>brevis<span class="tld">.sh</span></span>
         </a>
-        <p>Filosofia aplicada à infraestrutura de dados.</p>
+        <p>Philosophy applied to data infrastructure.</p>
       </div>
 
       <div class="footer-col">
-        <h2>projeto</h2>
+        <h2>project</h2>
         <ul>
-          <li><a href="/#ecossistema">Ecossistema</a></li>
-          <li><a href="/docs/philosophy/">Princípios</a></li>
-          <li><a href="/docs/introduction/#codigo-aberto-escolha-como-participar">Open source</a></li>
+          <li><a href="/#ecossistema">Ecosystem</a></li>
+          <li><a href="/docs/philosophy/">Principles</a></li>
+          <li><a href="/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/docs/faq/">FAQ</a></li>
         </ul>
       </div>
 
       <div class="footer-col">
-        <h2>código</h2>
+        <h2>code</h2>
         <ul>
-          <li><a href="/docs/">Documentação</a></li>
-          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repositório</a></li>
+          <li><a href="/docs/">Documentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repository</a></li>
           <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
           <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
         </ul>
@@ -529,12 +529,13 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
     </div>
 
     <div class="footer-bottom">
-      <p>Um projeto open source da <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
-      <p>MIT · construído em Go · Go gopher por Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+      <p>An open source project by <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · built in Go · Go gopher by Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
     </div>
   </div>
 </footer>
 
 <script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
 </body>
 </html>
