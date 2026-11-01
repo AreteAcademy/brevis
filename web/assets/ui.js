@@ -578,7 +578,7 @@
     function on() { return button.getAttribute("aria-pressed") === "true"; }
     function draw(live) {
       button.setAttribute("aria-pressed", live ? "true" : "false");
-      if (dot) dot.className = "h-1.5 w-1.5 rounded-full " + (live ? "bg-state-success live-dot-on" : "bg-line-strong");
+      if (dot) dot.className = "h-2 w-2 rounded-full " + (live ? "bg-state-success live-dot-on" : "bg-line-strong");
     }
     function schedule() {
       clearTimeout(timer);
