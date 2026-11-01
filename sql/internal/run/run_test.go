@@ -302,12 +302,21 @@ func TestFunctionsRunBeforeAnyModel(t *testing.T) {
 	}
 }
 
-// atomicConn is a spyConn that, like Postgres, can run a model's statements
-// as one unit, and can be told to refuse the one that creates.
+// atomicConn is a spyConn that, like Postgres, can run the swap of a model as
+// one unit, and can be told to refuse one statement (by prefix) in either the
+// scratch build (Exec) or the swap (ExecAtomic).
 type atomicConn struct {
 	spyConn
 	units  [][]string
-	failAt string // a statement prefix ExecAtomic refuses; "" refuses none
+	failAt string
+}
+
+func (a *atomicConn) Exec(ctx context.Context, s string) error {
+	if a.failAt != "" && strings.HasPrefix(s, a.failAt) {
+		a.ran = append(a.ran, s)
+		return fmt.Errorf("boom")
+	}
+	return a.spyConn.Exec(ctx, s)
 }
 
 func (a *atomicConn) ExecAtomic(_ context.Context, stmts []string) (int, error) {
@@ -320,13 +329,15 @@ func (a *atomicConn) ExecAtomic(_ context.Context, stmts []string) (int, error) 
 	return 0, nil
 }
 
-// A TABLE'S DROP AND CREATE TRAVEL TOGETHER, and a failing CREATE is reported
-// with its own statement. Run one by one, the DROP would already have
-// happened and the old table would be gone.
-func TestATableRebuildIsOneAtomicUnit(t *testing.T) {
+// THE SLOW BUILD RUNS OUTSIDE THE TRANSACTION AND ONLY THE SWAP INSIDE IT.
+// The DROP of the old table and the RENAME travel together; the scratch
+// clean-up and CREATE TABLE AS go one by one first, so the lock is held for
+// the rename and not for the whole CTAS.
+func TestATableRebuildSwapsInOneAtomicUnit(t *testing.T) {
 	p := load(t)
 	order, _ := p.Select("")
 	ctx := context.Background()
+	top := schema + ".top"
 
 	ok := &atomicConn{}
 	if _, err := run.Build(ctx, postgres.Dialect{}, ok, p, order, run.Options{}); err != nil {
@@ -334,26 +345,57 @@ func TestATableRebuildIsOneAtomicUnit(t *testing.T) {
 	}
 	var unit []string
 	for _, u := range ok.units {
-		if strings.HasPrefix(u[len(u)-1], "CREATE TABLE "+schema+".top") {
+		if strings.HasSuffix(u[len(u)-1], "RENAME TO top") {
 			unit = u
 		}
 	}
-	if len(unit) != 2 || !strings.HasPrefix(unit[0], "DROP TABLE") {
-		t.Fatalf("the table's DROP and CREATE were not sent as one unit: %q", unit)
+	if len(unit) != 2 || !strings.HasPrefix(unit[0], "DROP TABLE IF EXISTS "+top) {
+		t.Fatalf("the DROP and RENAME were not sent as one unit: %q", unit)
 	}
+	var cleared, created bool
 	for _, s := range ok.ran {
-		if strings.HasPrefix(s, "DROP TABLE") || strings.HasPrefix(s, "CREATE TABLE") {
-			t.Errorf("%q was sent on its own, outside the atomic unit", s)
+		cleared = cleared || s == "DROP TABLE IF EXISTS "+top+"__new"
+		if strings.HasPrefix(s, "CREATE TABLE "+top+"__new AS") {
+			if !cleared {
+				t.Error("the CTAS ran before a leftover scratch table was cleared")
+			}
+			created = true
+		}
+		if s == "DROP TABLE IF EXISTS "+top {
+			t.Errorf("the DROP of the old table was sent outside the transaction")
 		}
 	}
-
-	bad := &atomicConn{failAt: "CREATE TABLE"}
-	_, err := run.Build(ctx, postgres.Dialect{}, bad, p, order, run.Options{})
-	if err == nil {
-		t.Fatal("a refused CREATE was reported as built")
+	if !created {
+		t.Fatal("the scratch table was never built outside the transaction")
 	}
-	if !strings.Contains(err.Error(), "the warehouse refused this:\nCREATE TABLE "+schema+".top") {
-		t.Errorf("the failure does not name the model and the CREATE: %v", err)
+}
+
+// A CTAS THAT FAILS stops before the swap, names the CREATE, and clears the
+// scratch table; a SWAP THAT FAILS clears it too. The old table is never
+// touched in either case.
+func TestAFailedRebuildNamesTheStatementAndClearsTheScratchTable(t *testing.T) {
+	p := load(t)
+	order, _ := p.Select("")
+	top := schema + ".top"
+
+	for _, failAt := range []string{"CREATE TABLE " + top, "ALTER TABLE " + top} {
+		bad := &atomicConn{failAt: failAt}
+		_, err := run.Build(context.Background(), postgres.Dialect{}, bad, p, order, run.Options{})
+		if err == nil {
+			t.Fatalf("a refused %q was reported as built", failAt)
+		}
+		if !strings.Contains(err.Error(), "the warehouse refused this:\n"+failAt) {
+			t.Errorf("the failure does not name %q: %v", failAt, err)
+		}
+		last := bad.ran[len(bad.ran)-1]
+		if last != "DROP TABLE IF EXISTS "+top+"__new" {
+			t.Errorf("after %q the scratch table was not cleared; last statement %q", failAt, last)
+		}
+		for _, s := range bad.ran {
+			if s == "DROP TABLE IF EXISTS "+top {
+				t.Errorf("the old table was dropped outside the swap")
+			}
+		}
 	}
 }
 
@@ -395,5 +437,43 @@ func TestAFailingTableRebuildKeepsTheOldTable(t *testing.T) {
 	}
 	if after := reads(t, ctx, conn, top); after != before {
 		t.Errorf("the table changed after a failed rebuild: %q -> %q", before, after)
+	}
+}
+
+// A scratch table a crashed run left behind is cleared, not an error, and a
+// failing rebuild leaves none behind. Against a real server.
+func TestARebuildClearsALeftoverScratchTableAndLeavesNone(t *testing.T) {
+	ctx, d, conn := live(t)
+	p := load(t)
+	order, _ := p.Select("")
+	top := schema + ".top"
+	if _, err := run.Build(ctx, d, conn, p, order, run.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.Exec(ctx, "CREATE TABLE "+top+"__new AS SELECT 42 AS junk"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := run.Build(ctx, d, conn, p, order, run.Options{}); err != nil {
+		t.Fatalf("a leftover scratch table broke the rebuild: %v", err)
+	}
+	exists := func() any {
+		v, err := conn.Scalar(ctx, "SELECT to_regclass('"+top+"__new')::text")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+	if exists() != nil {
+		t.Error("the scratch table survived a good rebuild")
+	}
+
+	broken := p.Models[top]
+	broken.SQL = "SELECT this_column_is_not_there FROM " + schema + ".base"
+	p.Models[top] = broken
+	if _, err := run.Build(ctx, d, conn, p, order, run.Options{}); err == nil {
+		t.Fatal("a refused CREATE was reported as built")
+	}
+	if exists() != nil {
+		t.Error("the scratch table survived a failed rebuild")
 	}
 }

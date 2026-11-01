@@ -555,6 +555,21 @@ type Atomic interface {
 	ExecAtomic(ctx context.Context, statements []string) (failed int, err error)
 }
 
+// Swapper is implemented by a Dialect whose Build makes a table ASIDE and
+// swaps it in, so that the statements which must commit together are only
+// the end of the list.
+//
+// The statements before the tail (the slow CREATE TABLE AS into a scratch
+// table) run one by one, outside any transaction: readers of the old table
+// are not blocked while they run. Only the tail (drop the old, rename the
+// new) runs through Atomic, so the exclusive lock lasts for the swap.
+type Swapper interface {
+	// SwapTail says how many trailing statements of a Build are the swap.
+	// The first statement of the whole list must also be safe to run alone
+	// as the cleanup of a failed build.
+	SwapTail(statements []string) int
+}
+
 // Relation is one thing a SELECT could name.
 type Relation struct {
 	Schema string
