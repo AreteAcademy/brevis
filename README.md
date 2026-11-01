@@ -208,7 +208,7 @@ make build   # binary in bin/
 | variable | default | |
 |---|---|---|
 | `BREVIS_DATABASE_URL` | — | **required** |
-| `BREVIS_ENV` | `local` | `local` logs as text; anything else, JSON |
+| `BREVIS_ENV` | `production` | `local` logs as text and leaves the console open; anything else logs JSON and requires a credential. Unset is production: set `BREVIS_ENV=local` for development |
 | `BREVIS_HTTP_ADDR` | `:8080` | |
 | `BREVIS_METRICS_ADDR` | `:9090` | Prometheus scrape endpoint. A **separate** port from the one above; set to `""` to serve nothing |
 | `BREVIS_LOG_LEVEL` | `info` | |
