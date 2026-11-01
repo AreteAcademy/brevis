@@ -225,13 +225,13 @@ func MergeOf(m model.Model, columns []string) Merge {
 // the one part that is spelled differently in each warehouse.
 func NewRows(m model.Model, body string, minus func(expr string, secs int64) string) string {
 	ref, w := m.Ref(), m.Watermark
-	max := "(SELECT MAX(" + w + ") FROM " + ref + ")"
-	cmp := w + " > " + max
+	maxW := "(SELECT MAX(" + w + ") FROM " + ref + ")"
+	cmp := w + " > " + maxW
 	if m.Lookback > 0 {
-		cmp = w + " >= " + minus(max, int64(m.Lookback/time.Second))
+		cmp = w + " >= " + minus(maxW, int64(m.Lookback/time.Second))
 	}
 	return "SELECT * FROM (\n" + body + "\n) AS brevis_new\n" +
-		" WHERE " + max + " IS NULL\n" +
+		" WHERE " + maxW + " IS NULL\n" +
 		"    OR " + cmp
 }
 
