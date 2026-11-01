@@ -469,9 +469,12 @@
   "nav.projects.tip": "所有项目及其中的 workflows",
   "nav.runs": "运行",
   "nav.runs.failing": {
-  "nav.runs.running": {"one": "{count} 个运行进行中", "other": "{count} 个运行进行中"},
     "one": "{count} 个 workflows 失败中",
     "other": "{count} 个 workflows 失败中"
+  },
+  "nav.runs.running": {
+    "one": "{count} 个运行进行中",
+    "other": "{count} 个运行进行中"
   },
   "nav.runs.tip": "workflow 的每一次运行：耗时、参数和日志",
   "nav.sql": "SQL",

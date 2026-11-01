@@ -469,9 +469,12 @@
   "nav.projects.tip": "Jedes Projekt und die Workflows darin",
   "nav.runs": "Runs",
   "nav.runs.failing": {
-  "nav.runs.running": {"one": "{count} Lauf in Arbeit", "other": "{count} Läufe in Arbeit"},
     "one": "{count} Workflow schlägt fehl",
     "other": "{count} Workflows schlagen fehl"
+  },
+  "nav.runs.running": {
+    "one": "{count} Lauf in Arbeit",
+    "other": "{count} Läufe in Arbeit"
   },
   "nav.runs.tip": "Jede Ausführung eines Workflows: Zeiten, Parameter und Logs",
   "nav.sql": "SQL",

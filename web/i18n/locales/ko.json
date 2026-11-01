@@ -469,9 +469,12 @@
   "nav.projects.tip": "모든 프로젝트와 그 안의 workflows",
   "nav.runs": "실행",
   "nav.runs.failing": {
-  "nav.runs.running": {"one": "실행 {count}개 진행 중", "other": "실행 {count}개 진행 중"},
     "one": "실패 중인 workflows {count}개",
     "other": "실패 중인 workflows {count}개"
+  },
+  "nav.runs.running": {
+    "one": "실행 {count}개 진행 중",
+    "other": "실행 {count}개 진행 중"
   },
   "nav.runs.tip": "workflow가 실행된 모든 기록: 시간, 매개변수, 로그",
   "nav.sql": "SQL",

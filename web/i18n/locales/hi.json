@@ -469,9 +469,12 @@
   "nav.projects.tip": "हर प्रोजेक्ट और उसके Workflows",
   "nav.runs": "Run",
   "nav.runs.failing": {
-  "nav.runs.running": {"one": "{count} रन जारी है", "other": "{count} रन जारी हैं"},
     "one": "{count} Workflows विफल हो रहा",
     "other": "{count} Workflows विफल हो रहे"
+  },
+  "nav.runs.running": {
+    "one": "{count} रन जारी है",
+    "other": "{count} रन जारी हैं"
   },
   "nav.runs.tip": "workflow का हर बार चलना: समय, पैरामीटर और लॉग",
   "nav.sql": "SQL",

@@ -469,9 +469,12 @@
   "nav.projects.tip": "Все проекты и их Workflows",
   "nav.runs": "Запуски",
   "nav.runs.failing": {
-  "nav.runs.running": {"one": "{count} запуск выполняется", "other": "Выполняется запусков: {count}"},
     "one": "{count} Workflows падает",
     "other": "Workflows, которые падают: {count}"
+  },
+  "nav.runs.running": {
+    "one": "{count} запуск выполняется",
+    "other": "Выполняется запусков: {count}"
   },
   "nav.runs.tip": "Каждый запуск workflow: время, параметры и логи",
   "nav.sql": "SQL",
