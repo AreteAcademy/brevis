@@ -133,6 +133,23 @@ for comp, sufixo in (("api", False), ("scheduler", True)):
         raise SystemExit(f"{comp} should NOT use the -worker image: {linha.strip()}")
 PY
 
+# Behind the ingress every browser shares the proxy's address, so the login
+# throttle needs the client-IP header or one guesser locks the operator out.
+# Set with the ingress, absent without it, and overridable.
+python3 - "$full" "$rendered" <<'PY' || erro "BREVIS_AUTH_CLIENT_IP_HEADER is not wired to api.ingress.enabled"
+import sys
+on, off = (open(p).read() for p in sys.argv[1:])
+def api(doc):
+    return [d for d in doc.split('---') if 'component: api' in d and 'kind: Deployment' in d][0]
+assert 'BREVIS_AUTH_CLIENT_IP_HEADER' in api(on) and '"X-Forwarded-For"' in api(on), "not set with the ingress"
+assert 'BREVIS_AUTH_CLIENT_IP_HEADER' not in api(off), "set without an ingress"
+PY
+over="$(mktemp)"
+$HELM template brevis "$CHART" --namespace data "${MIN[@]}" --set api.ingress.enabled=true \
+  --set api.ingress.host=h --set auth.clientIPHeader=X-Real-IP > "$over" || erro "the chart does not render with auth.clientIPHeader"
+grep -q '"X-Real-IP"' "$over" || erro "auth.clientIPHeader does not override"
+rm -f "$over"
+
 # The metrics port stays off the Service. On the http port it would sit behind
 # the login; exposed through the Service it is one ServiceMonitor away from
 # publishing every workflow and step name.

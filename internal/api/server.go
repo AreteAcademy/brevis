@@ -51,6 +51,13 @@ func NewServerAutenticado(log *slog.Logger, checkers map[string]Checker, ui *UI,
 	}
 	if cred.Enabled() {
 		s.gate = &auth.Gate{Cred: cred, Next: s.mux, Insecure: inseguro}
+		if cred.ClientIPHeader == "" && !inseguro {
+			// Behind a proxy every browser arrives from its address, so a
+			// guesser would lock the operator out: keep the lock short.
+			s.gate.Limit = auth.NewLimiter()
+			s.gate.Limit.MaxLock = auth.SharedKeyMaxLock
+			log.Warn("BREVIS_AUTH_CLIENT_IP_HEADER is not set: behind a proxy every client shares one login-throttle key; set it to the header your proxy fills (e.g. X-Forwarded-For)")
+		}
 		if ui != nil {
 			ui.RegistrarLogin(s.mux, s.gate)
 		}

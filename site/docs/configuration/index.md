@@ -45,9 +45,14 @@ All three come together, or none does.
 
 Sign-in is throttled per client address (IPv6 by its /64): after three failures
 the address is locked for 2 seconds, doubling up to 15 minutes. **Behind an
-ingress or load balancer, leave the variable empty and every client shares the
-proxy's address, so one person guessing locks everybody out.** Set it only if
-the header is written by a proxy you trust and cannot be forged by the client.
+ingress or load balancer, set the variable** (the Helm chart does when
+`api.ingress.enabled` is on, override with `auth.clientIPHeader`): without it
+every client shares the proxy's address, so one person guessing would lock
+everybody out. In that case, outside `BREVIS_ENV=local`, the lockout is capped
+at 30 seconds and a warning is logged at boot. Set the variable only if the
+header is written by a proxy you trust and cannot be forged by the client. Only
+one password check runs per address at a time, so two people behind one NAT
+signing in at the same second may see a 429 for a moment.
 
 :::danger Half-configured is a boot error
 Whoever filled in the username believes the door is closed. The interface
