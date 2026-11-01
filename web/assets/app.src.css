@@ -1286,7 +1286,21 @@ table.ct > tbody > tr > td {
 /* The Runs list's Live dot: a ring that spreads from it while Live is on. */
 .live-dot-on {
   color: var(--color-state-success);
-  animation: st-pulse 2s ease-out infinite;
+  animation: live-pulse 1.4s ease-out infinite;
+}
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 70%, transparent);
+    transform: scale(1);
+  }
+  60% {
+    box-shadow: 0 0 0 7px transparent;
+    transform: scale(1.15);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    transform: scale(1);
+  }
 }
 @keyframes st-spin {
   to {

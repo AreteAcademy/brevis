@@ -445,7 +445,7 @@
       var label = indicator.querySelector("[data-live-label]");
       if (label) label.textContent = text;
       var dot = indicator.querySelector("span");
-      if (dot) dot.className = "h-1.5 w-1.5 rounded-full " +
+      if (dot) dot.className = "h-2 w-2 rounded-full " +
         (live ? "bg-state-running" : "bg-line-strong");
     }
 
