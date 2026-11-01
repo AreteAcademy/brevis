@@ -49,7 +49,7 @@ func TestTheCostLineSaysWhatAStatementWouldProcess(t *testing.T) {
 	if !strings.Contains(body, "121.8 kB") {
 		t.Errorf("the line does not carry the figure: %s", body)
 	}
-	if !strings.Contains(body, "will process") {
+	if !strings.Contains(body, "Will process") {
 		t.Errorf("the line does not say what the figure is: %s", body)
 	}
 	if got := w.asked["/v1/estimate"]["statement"]; got != "SELECT 1" {

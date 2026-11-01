@@ -90,11 +90,11 @@ func TestAWritableWorkbenchSaysSoInTheTopBar(t *testing.T) {
 func TestAWritableWorkbenchDoesNotClaimToReadOnly(t *testing.T) {
 	w, ui := browsing(t)
 	w.objects = `{"relations":[{"schema":"bronze","name":"orders"}],"writable":true}`
-	if strings.Contains(screen(t, ui, probeTarget), "Reads only.") {
+	if strings.Contains(screen(t, ui, probeTarget), "Reads only:") {
 		t.Error("a writable workbench claims to read only")
 	}
 	w.objects = `{"relations":[{"schema":"bronze","name":"orders"}]}`
-	if !strings.Contains(screen(t, ui, probeTarget), "Reads only.") {
+	if !strings.Contains(screen(t, ui, probeTarget), "Reads only:") {
 		t.Error("a read-only workbench no longer says what it refuses")
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // SQLView is the workbench.
@@ -425,4 +426,18 @@ func unreadableSaid(ctx context.Context, kinds []string) string {
 		names[i] = components.LogoTitle(ctx, kindLogo(k))
 	}
 	return strings.Join(names, ", ")
+}
+
+// bytesSaid is a byte count as the reader writes numbers: "273.9 MB" in
+// English, "273,9 MB" in Portuguese. The units are the same everywhere.
+func bytesSaid(ctx context.Context, n int64) string {
+	for _, u := range []struct {
+		size int64
+		unit string
+	}{{1 << 40, "TB"}, {1 << 30, "GB"}, {1 << 20, "MB"}, {1 << 10, "kB"}} {
+		if n >= u.size {
+			return i18n.Decimal(ctx, float64(n)/float64(u.size), 1) + " " + u.unit
+		}
+	}
+	return i18n.Number(ctx, n) + " B"
 }

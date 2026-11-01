@@ -31,6 +31,16 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   statement still never travels in a link.
 - "Filter tables" over the chosen connection's listing. The tree is in every
   language the console speaks.
+- **The editor and its bar** speak the reader's language: the tabs ("Query
+  N", stored as their number, so a tab saved before reads in today's
+  language), Run with ⌘↵, the connection with its logo and a link to the
+  connections (the Catalog, until there is a Connections screen), Copy, and
+  "Reads only" with the way to Workflows, where writes run.
+- **The estimate** says "Will process 273.9 MB" in the reader's number
+  format. A refusal is titled "Will be refused: the SQL service does not run
+  this statement", with the service's own sentence after it -- the service
+  does not say why it refused, so the console does not guess. A warehouse
+  that does not price says so in the reader's words.
 
 ### Security: the scan's findings, and the vulnerable dependencies
 

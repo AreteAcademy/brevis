@@ -118,20 +118,21 @@ templ SQL(v SQLView) {
 								data-writable
 								class="workbench-writable shrink-0 rounded px-2 py-1 text-[0.7rem]"
 							>
-								Statements here can <strong>change data</strong> on this connection — it was unlocked deliberately.
+								{ i18n.T(ctx, "sql.writable.before") } <strong>{ i18n.T(ctx, "sql.writable.strong") }</strong> { i18n.T(ctx, "sql.writable.after") }
 							</p>
 						}
 						<div
 							class="workbench-tabs flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line-soft pb-1"
 							data-tabs
 							role="tablist"
-							aria-label="Open statements"
+							aria-label={ i18n.T(ctx, "sql.tabs.label") }
+							data-tab-name={ i18n.T(ctx, "sql.tabs.name", "n", "{n}") }
 							data-js
 						>
 							<button
 								type="button"
 								data-tab-new
-								aria-label="New statement"
+								aria-label={ i18n.T(ctx, "sql.tabs.new") }
 								class="shrink-0 rounded-card px-2 py-1 text-sm text-muted hover:bg-surface-2 hover:text-ink"
 							>+</button>
 						</div>
@@ -147,7 +148,7 @@ templ SQL(v SQLView) {
 								<button
 									type="button"
 									data-tab-close
-									aria-label="Close this statement"
+									aria-label={ i18n.T(ctx, "sql.tabs.close") }
 									class="shrink-0 text-xs text-muted hover:text-ink"
 								>&#215;</button>
 							</span>
@@ -169,7 +170,7 @@ templ SQL(v SQLView) {
 								// this screen spends on nothing else.
 								@components.Button(components.ButtonAccent, components.SizeRegular, templ.Attributes{"type": "submit", "data-run": true}) {
 									@components.Icon("play", "h-3.5 w-3.5")
-									Run
+									{ i18n.T(ctx, "sql.run") }
 								}
 								// AND THE KEY THAT DOES IT. Ctrl-Enter and Cmd-Enter
 								// have run the query since the editor island landed,
@@ -179,10 +180,13 @@ templ SQL(v SQLView) {
 								// the answer to "against what"; with the picker gone,
 								// the button has to carry it, or choosing a connection
 								// in the tree becomes an invisible change.
+								// WITH ITS LOGO, and a way to every connection: the
+								// Catalog, until the Connections screen exists.
 								if on := v.Running(); on != "" {
 									<span class="flex min-w-0 items-center gap-1.5 text-muted">
-										@components.Icon("database", "h-3.5 w-3.5")
+										@components.Logo(kindLogo(kindOf(on)), 16)
 										<span class="truncate font-mono text-xs" data-running-on>{ on }</span>
+										<a href="/data" class="shrink-0 text-xs text-muted underline decoration-line-strong underline-offset-2 hover:text-ink">{ i18n.T(ctx, "sql.connections") }</a>
 									</span>
 								}
 								// COPY IS THE EDITOR'S TEXT, which only the island
@@ -190,13 +194,13 @@ templ SQL(v SQLView) {
 								// as somebody types -- so it is hidden until the
 								// island can drive it.
 								<span class="ml-auto" data-js>
-									@components.Button(components.ButtonSecondary, components.SizeSmall, templ.Attributes{"data-copy-statement": true}) {
+									@components.Button(components.ButtonSecondary, components.SizeSmall, templ.Attributes{"data-copy-statement": true, "data-copied-label": i18n.T(ctx, "sql.copied")}) {
 										@components.Icon("copy", "h-3.5 w-3.5")
-										Copy
+										{ i18n.T(ctx, "sql.copy") }
 									}
 								</span>
 							</div>
-							<label for="q" class="sr-only">SQL to run on this warehouse</label>
+							<label for="q" class="sr-only">{ i18n.T(ctx, "sql.editor.label") }</label>
 							<textarea
 								id="q"
 								name="q"
@@ -215,7 +219,8 @@ templ SQL(v SQLView) {
 							// says the opposite and both cannot be true.
 							if !v.Writable {
 								<p class="shrink-0 text-[0.7rem] text-muted">
-									Reads only. The service refuses anything else, and stops a query that would scan too much.
+									{ i18n.T(ctx, "sql.readonly") }
+									<a href="/workflows" class="underline decoration-line-strong underline-offset-2 hover:text-ink">{ i18n.T(ctx, "sql.readonly.link") }</a>
 								</p>
 							}
 							// AND WHAT THE COMPLETION KNOWS, SAID ONCE.
@@ -228,7 +233,7 @@ templ SQL(v SQLView) {
 							// somebody concludes a column does not exist.
 							<p class="shrink-0 text-[0.7rem] text-muted">
 								<kbd class="rounded border border-line px-1 py-0.5 font-mono">Ctrl+Space</kbd>
-								completes names. Columns complete for relations you have opened in the tree.
+								{ i18n.T(ctx, "sql.editor.complete") }
 							</p>
 							// THE COST LINE, EMPTY UNTIL SOMETHING FILLS IT.
 							//
@@ -612,15 +617,20 @@ templ Columns(cols []sqlserve.Column) {
 // THE SENTENCE IS THE SERVICE'S OWN, carried through unchanged. The ceiling
 // refuses with the same words at Run, and a console that reworded them would
 // drift from what actually happens.
+//
+// THE REFUSAL HAS ONE TITLE (screen-sql T2): the service does not say WHY it
+// refused -- a write and a query over the ceiling come back alike, with no
+// code -- and the console neither reads the SQL nor matches the sentence, so
+// it titles every refusal the same and shows the sentence under it. A
+// warehouse that does not price is a fact about the warehouse, said in the
+// reader's words.
 templ Cost(p sqlserve.Price) {
 	if p.State == "priced" {
-		<span data-cost-state="priced">
-			This query will process <strong class="font-medium text-ink">{ bytesText(p.Bytes) }</strong> when run.
-		</span>
+		<span data-cost-state="priced">{ i18n.T(ctx, "sql.cost.priced") } <strong class="font-medium text-ink">{ bytesSaid(ctx, p.Bytes) }</strong></span>
 	} else if p.State == "unpriced" {
-		<span data-cost-state="unpriced">{ p.Why }</span>
+		<span data-cost-state="unpriced">{ i18n.T(ctx, "sql.cost.unpriced") }</span>
 	} else {
-		<span data-cost-state="refused" class="text-state-failed">{ p.Why }</span>
+		<span data-cost-state="refused" class="text-state-failed"><strong class="font-medium">{ i18n.T(ctx, "sql.cost.refused") }</strong> { p.Why }</span>
 	}
 }
 
@@ -777,6 +787,6 @@ func sqlStatus(v SQLView) templ.Component {
 templ writesAllowed() {
 	<span data-mode="write" class="inline-flex items-center gap-1.5 rounded-card bg-state-queued/13 px-2 py-0.5 text-xs font-medium text-state-queued">
 		@components.Icon("triangle-alert", "h-3.5 w-3.5")
-		Writes allowed
+		{ i18n.T(ctx, "sql.writes.allowed") }
 	</span>
 }

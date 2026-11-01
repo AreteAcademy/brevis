@@ -547,8 +547,11 @@
     if (!btn || !navigator.clipboard) return;
     btn.addEventListener("click", function () {
       navigator.clipboard.writeText(text()).then(function () {
-        btn.setAttribute("aria-label", "Copied");
-        btn.setAttribute("title", "Copied");
+        // THE WORD IS THE PAGE'S, in the reader's language: this file
+        // writes no text of its own.
+        var said = btn.getAttribute("data-copied-label") || "";
+        btn.setAttribute("aria-label", said);
+        btn.setAttribute("title", said);
         setTimeout(function () {
           btn.removeAttribute("aria-label");
           btn.removeAttribute("title");
@@ -744,7 +747,7 @@
 
     tabs = parse(recall("tabs"), []);
     at = recall("tab") || "";
-    if (tabs.length === 0) tabs = [{ id: fresh(), name: "Query 1", text: echoed }];
+    if (tabs.length === 0) tabs = [{ id: fresh(), name: "1", text: echoed }];
     if (!here()) at = tabs[0].id;
 
     // THE SERVER'S ECHO WINS WHEN THERE IS ONE. What is in the box after a
@@ -802,13 +805,28 @@
   // The name is derived and never renumbered: closing the second of three
   // tabs must not rename the third, or the tab somebody was looking for
   // becomes the tab they just closed.
+  //
+  // WHAT IS STORED IS THE NUMBER, and the word around it is the page's
+  // (`data-tab-name`, "Consulta {n}"), so a tab reads in the language the
+  // console is in today -- and a tab stored as "Query 2" before this still
+  // reads as its number.
   function named() {
     var top = 0;
     tabs.forEach(function (t) {
-      var n = parseInt(String(t.name).replace(/\D+/g, ""), 10);
+      var n = numberOf(t.name);
       if (n > top) top = n;
     });
-    return "Query " + (top + 1);
+    return String(top + 1);
+  }
+
+  function numberOf(name) {
+    return parseInt(String(name).replace(/\D+/g, ""), 10) || 0;
+  }
+
+  function label(name) {
+    var strip = document.querySelector("[data-tabs]");
+    var pattern = (strip && strip.getAttribute("data-tab-name")) || "{n}";
+    return pattern.replace("{n}", String(numberOf(name)));
   }
 
   function goTo(id) {
@@ -868,7 +886,7 @@
       var node = tpl.content.firstElementChild.cloneNode(true);
       node.setAttribute("data-tab-id", t.id);
       var pick = node.querySelector("[data-tab-pick]");
-      pick.textContent = t.name;
+      pick.textContent = label(t.name);
       pick.setAttribute("aria-selected", t.id === at ? "true" : "false");
       node.querySelector("[data-tab-close]").hidden = tabs.length < 2;
       strip.insertBefore(node, add);
