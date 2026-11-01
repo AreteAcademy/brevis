@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Перейти к содержимому</a>
+<a class="skip-link" href="#content">Перейти к содержимому</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Основная навигация">
-      <a href="/ru/#ecossistema">Экосистема</a>
+      <a href="/ru/#ecosystem">Экосистема</a>
       <a href="/ru/docs/">Документация</a>
-      <details class="lang-dd"><summary aria-label="Язык: Русский"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Русский</span></summary><ul><li><a href="/docs/white-label/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/white-label/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/white-label/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/white-label/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/white-label/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/white-label/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/white-label/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/white-label/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/white-label/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/white-label/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/white-label/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Язык: Русский"><span>Русский</span></summary><ul><li><a href="/docs/white-label/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/white-label/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/white-label/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/white-label/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/white-label/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/white-label/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/white-label/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/white-label/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/white-label/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/white-label/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/white-label/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open source на GitHub
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Документация</p>
       <h1>White label</h1>
       <p class="doc-desc">Изменение заголовка, девиза, логотипа и палитры интерфейса через один YAML-файл.</p>
       <p>Интерфейс настраивается через файл. Цвета переопределяют переменные CSS <strong>во время выполнения</strong>, поэтому смена темы клиента ничего не перекомпилирует.</p>
-<h2 id="файл">Файл<a class="anchor" href="#файл" aria-label="link">#</a></h2>
+<h2 id="the-file">Файл<a class="anchor" href="#the-file" aria-label="link">#</a></h2>
 <p>Скопируйте <code>brand.example.yaml</code> в <code>brand.yaml</code> в корне или укажите на него <code>BREVIS_BRAND_FILE</code>:</p>
 <div class="code-block" data-code="titulo: Acme Data
 subtitulo: Data platform
@@ -150,28 +150,28 @@ cores:
   <span class="t-k">destaque</span>: "<span class="t-c">#aa8450"</span></code></pre></div>
 <p><strong>Каждое поле необязательно.</strong> То, что вы опустите, сохраняет значение по умолчанию, поэтому файл с одним лишь <code>titulo:</code> уже валиден.</p>
 <p>Перенос строки в <code>frase</code> сохраняется: он задаёт ритм фразы в боковой панели.</p>
-<h2 id="логотип">Логотип<a class="anchor" href="#логотип" aria-label="link">#</a></h2>
+<h2 id="logo">Логотип<a class="anchor" href="#logo" aria-label="link">#</a></h2>
 <div class="code-block" data-code="logo: https://example.com/mark.svg"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">logo</span>: https://example.com/mark.svg</code></pre></div>
 <p>Принимает URL (<code>https://</code> или <code>http://</code>) или внутренний путь, начинающийся с <code>/</code>. Если не указан, используется встроенный символ, который следует цвету темы.</p>
 <aside class="admon admon-warning"><p class="admon-t">Логотип, размещённый на стороне, зависит от этого хоста</p><p>Если хост недоступен или у кластера нет исходящего доступа в интернет, изображение не загрузится. Остальная часть интерфейса продолжит работать, но учитывайте это при выборе: остальной UI, включая шрифты и бандлы, отдаётся из самого бинарного файла именно для того, чтобы не зависеть от сети.</p></aside>
-<h2 id="проверка">Проверка<a class="anchor" href="#проверка" aria-label="link">#</a></h2>
+<h2 id="validating">Проверка<a class="anchor" href="#validating" aria-label="link">#</a></h2>
 <p>Неверное шестнадцатеричное значение проявилось бы только при запуске контейнера, а сообщение пришло бы через журнал pod — далеко от того, кто редактировал файл. Поэтому есть подкоманда:</p>
 <div class="code-block" data-code="brevis marca brand.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">brevis</span> marca brand.yaml</code></pre></div>
 <div class="code-block" data-code="  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product&#x27;s own)
         Powered by Brevis"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis</code></pre></div>
 <p>Вызывайте её в CI установки, и ошибка вернётся в pull request.</p>
 <aside class="admon admon-note"><p class="admon-t">Отсутствие означает разное</p><p>В <code>serve</code> отсутствующий файл означает «использовать идентичность по умолчанию» — и API поднимается. В <code>marca</code> отсутствующий файл — это <strong>ошибка</strong>: тот, кто попросил проверить путь, ожидает, что ему скажут, что такого пути нет.</p></aside>
-<h2 id="поведение-при-старте">Поведение при старте<a class="anchor" href="#поведение-при-старте" aria-label="link">#</a></h2>
+<h2 id="behaviour-at-boot">Поведение при старте<a class="anchor" href="#behaviour-at-boot" aria-label="link">#</a></h2>
 <p>Ошибка в содержимом — недопустимый цвет, сломанный YAML — <strong>не мешает интерфейсу подняться</strong>. Процесс записывает предупреждение и использует тему по умолчанию. Положить API из-за цвета было бы хуже, чем отдавать его с темой по умолчанию.</p>
-<div class="code-block" data-code="level=WARN msg=&quot;identidade visual ignorada&quot; arquivo=brand.yaml erro=&quot;cor invalida: #gggggg&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>level=WARN msg="identidade visual ignorada" arquivo=brand.yaml erro="cor invalida: #gggggg"</code></pre></div>
-<h2 id="что-нельзя-настроить">Что нельзя настроить<a class="anchor" href="#что-нельзя-настроить" aria-label="link">#</a></h2>
+<div class="code-block" data-code="level=WARN msg=&quot;visual identity ignored&quot; file=brand.yaml error=&quot;brand.yaml: colour accent: \&quot;#gggggg\&quot; is not a hex value (#rgb, #rrggbb or #rrggbbaa)&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>level=WARN msg="visual identity ignored" file=brand.yaml error="brand.yaml: colour accent: \"#gggggg\" is not a hex value (#rgb, #rrggbb or #rrggbbaa)"</code></pre></div>
+<h2 id="what-cannot-be-customised">Что нельзя настроить<a class="anchor" href="#what-cannot-be-customised" aria-label="link">#</a></h2>
 <p>Строка <strong>«Powered by Brevis»</strong> в подвале не берётся из конфигурации — она берётся из кода.</p>
-<h2 id="в-kubernetes">В Kubernetes<a class="anchor" href="#в-kubernetes" aria-label="link">#</a></h2>
+<h2 id="on-kubernetes">В Kubernetes<a class="anchor" href="#on-kubernetes" aria-label="link">#</a></h2>
 <p>Смонтируйте файл из ConfigMap:</p>
 <div class="code-block" data-code="volumes:
   - name: brand
@@ -205,7 +205,7 @@ containers:
 
     <aside class="toc" aria-label="На этой странице">
       <p class="toc-t">На этой странице</p>
-      <ul><li class="toc-2"><a href="#файл">Файл</a></li><li class="toc-2"><a href="#логотип">Логотип</a></li><li class="toc-2"><a href="#проверка">Проверка</a></li><li class="toc-2"><a href="#поведение-при-старте">Поведение при старте</a></li><li class="toc-2"><a href="#что-нельзя-настроить">Что нельзя настроить</a></li><li class="toc-2"><a href="#в-kubernetes">В Kubernetes</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file">Файл</a></li><li class="toc-2"><a href="#logo">Логотип</a></li><li class="toc-2"><a href="#validating">Проверка</a></li><li class="toc-2"><a href="#behaviour-at-boot">Поведение при старте</a></li><li class="toc-2"><a href="#what-cannot-be-customised">Что нельзя настроить</a></li><li class="toc-2"><a href="#on-kubernetes">В Kubernetes</a></li></ul>
     </aside>
   </main>
 </div>
@@ -225,9 +225,9 @@ containers:
       <div class="footer-col">
         <h2>проект</h2>
         <ul>
-          <li><a href="/ru/#ecossistema">Экосистема</a></li>
+          <li><a href="/ru/#ecosystem">Экосистема</a></li>
           <li><a href="/ru/docs/philosophy/">Принципы</a></li>
-          <li><a href="/ru/docs/introduction/#открытый-код-выберите-как-участвовать">Open source</a></li>
+          <li><a href="/ru/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/ru/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -250,7 +250,7 @@ containers:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

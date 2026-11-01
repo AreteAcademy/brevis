@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Перейти к содержимому</a>
+<a class="skip-link" href="#content">Перейти к содержимому</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Основная навигация">
-      <a href="/ru/#ecossistema">Экосистема</a>
+      <a href="/ru/#ecosystem">Экосистема</a>
       <a href="/ru/docs/">Документация</a>
-      <details class="lang-dd"><summary aria-label="Язык: Русский"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Русский</span></summary><ul><li><a href="/docs/python/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/python/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/python/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/python/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/python/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/python/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/python/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/python/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/python/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/python/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/python/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Язык: Русский"><span>Русский</span></summary><ul><li><a href="/docs/python/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/python/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/python/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/python/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/python/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/python/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/python/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/python/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/python/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/python/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/python/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open source на GitHub
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Документация</p>
       <h1>Python</h1>
@@ -140,7 +140,7 @@ context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
 <p><strong>Никаких зависимостей, никогда.</strong> Она читает одну переменную окружения, записывает один файл и выводит одну строку в stdout. Требуется Python 3.9+.</p>
 <p>Это не порт Go SDK: нет драйверов, нет пагинации, нет ingestion id. Она существует, чтобы команда могла использовать pandas, Polars или dbt и всё же получать то, для чего нужен оркестратор.</p>
-<h2 id="чтение-контекста">Чтение контекста<a class="anchor" href="#чтение-контекста" aria-label="link">#</a></h2>
+<h2 id="reading-context">Чтение контекста<a class="anchor" href="#reading-context" aria-label="link">#</a></h2>
 <p>Ключ всегда квалифицирован шагом, который его опубликовал:</p>
 <div class="code-block" data-code="context.get(&quot;extract.bucket&quot;)            # the value
 context.get(&quot;extract.nope&quot;, default=0)   # absent is not an error
@@ -151,7 +151,7 @@ context.of("extract")                    <span class="t-c"># everything that ste
 context.published()                      <span class="t-c"># what THIS step has published so far</span></code></pre></div>
 <p><code>context.get("bucket")</code> без шага <strong>отклоняется</strong> с перечислением шагов, опубликовавших такой ключ. Шаги изолированы — <code>extract</code> и <code>transform</code> могут оба опубликовать <code>bucket</code>, и ни один не потеряет его, — а ключ без шага перечёркивает это в тот момент, когда их становится два. Поиск и выбор одного — это приоритет по случайности: работает, пока молча не перестаёт.</p>
 <p>Чтение шага, от которого этот не зависит, — ошибка, и сообщение указывает на исправление.</p>
-<h2 id="запись">Запись<a class="anchor" href="#запись" aria-label="link">#</a></h2>
+<h2 id="writing">Запись<a class="anchor" href="#writing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="context.set(name=&quot;Daniel&quot;)
 context.set(label=&quot;Name&quot;)
 # both survive: {&quot;name&quot;: &quot;Daniel&quot;, &quot;label&quot;: &quot;Name&quot;}"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>context.set(name="Daniel")
@@ -159,7 +159,7 @@ context.set(label="Name")
 <span class="t-c"># both survive: {"name": "Daniel", "label": "Name"}</span></code></pre></div>
 <p>Вызовы <strong>объединяются</strong>. Один и тот же ключ дважды сохраняет последнюю запись; другой ключ не затрагивает первый. <strong>Аргумента шага нет</strong> — единственное пространство имён, в которое процесс может писать, — его собственное, и именно это делает изоляцию структурной, а не правилом.</p>
 <p>Ничто не попадает на диск до завершения процесса, поэтому жёстко упавший шаг ничего не публикует. Это правильно: вывод упавшего шага описывал бы незавершённую работу.</p>
-<h2 id="часы-которые-должен-читать-этот-запуск">Часы, которые должен читать этот запуск<a class="anchor" href="#часы-которые-должен-читать-этот-запуск" aria-label="link">#</a></h2>
+<h2 id="the-clock-this-run-should-read">Часы, которые должен читать этот запуск<a class="anchor" href="#the-clock-this-run-should-read" aria-label="link">#</a></h2>
 <p>Каждый запуск также несёт <strong>авто-параметры</strong>: значения, которые engine вычисляет сам. Их никто не объявляет, они есть у каждого запуска, и они отвечают на вопрос, на который пайплайн иначе ответил бы с помощью <code>datetime.now()</code>.</p>
 <div class="code-block" data-code="from datetime import timedelta
 from brevis import run
@@ -176,10 +176,10 @@ df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>run.now()</code></td><td>часы: слот или момент старта запуска</td></tr><tr><td><code>run.window()</code></td><td><code>(start, end)</code>, конец исключён — или <code>None</code></td></tr><tr><td><code>run.auto()</code></td><td>авто-параметры, см. ниже</td></tr><tr><td><code>run.context()</code></td><td>id, попытка, триггер, параметры и auto</td></tr><tr><td><code>run.params()</code> · <code>run.param(name)</code></td><td>параметры, объявленные в workflow</td></tr><tr><td><code>run.map_index()</code> · <code>run.map_value()</code></td><td>экземпляр, при <code>for_each:</code></td></tr></tbody></table></div>
 <p><code>window()</code> определяется <strong>cron</strong>, а не историей: backfill слота из марта даёт окно, которое было в марте. Запрос <code>[start, end)</code> никогда не пересекается и не оставляет пробелов, как бы поздно ни шёл запуск и как бы часто он ни повторялся.</p>
 <p>Если у workflow нет расписания, возвращается <code>None</code>, а не пара нулевых значений времени: запрос с начала эпохи выбирает всё, и такой сбой не должен быть тихим. <code>or</code> выше — это весь запасной вариант.</p>
-<h3 id="авто-параметры">Авто-параметры<a class="anchor" href="#авто-параметры" aria-label="link">#</a></h3>
+<h3 id="the-auto-parameters">Авто-параметры<a class="anchor" href="#the-auto-parameters" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th>поле</th><th></th></tr></thead><tbody><tr><td><code>date</code></td><td><code>"2026-09-08"</code> — партиция, папка, <code>WHERE</code></td></tr><tr><td><code>adjusted_at</code></td><td>часы, которые нужно читать вместо <code>now()</code></td></tr><tr><td><code>scheduled_at</code></td><td>слот, который запросил cron; <code>None</code> при ручном запуске</td></tr><tr><td><code>started_at</code></td><td>когда началась <strong>эта попытка</strong>; повторная попытка сдвигает его</td></tr><tr><td><code>delay_seconds</code></td><td>насколько эта попытка опоздала; никогда не отрицательно</td></tr><tr><td><code>interval_start</code> · <code>interval_end</code></td><td>окно, конец исключён</td></tr><tr><td><code>previous_error</code></td><td>предыдущий запуск не завершился успешно</td></tr><tr><td><code>previous_success_at</code></td><td>слот последнего запуска, который <strong>завершился успешно</strong> — то, что делает <code>previous_error</code> применимым на практике</td></tr></tbody></table></div>
 <p>Запустите скрипт вручную, и <code>run.now()</code> — это <strong>настенные</strong> часы, а <code>window()</code> — <code>None</code>, поэтому для локальной разработки не нужно писать никакой ветки.</p>
-<h2 id="один-экземпляр-размноженного-шага">Один экземпляр размноженного шага<a class="anchor" href="#один-экземпляр-размноженного-шага" aria-label="link">#</a></h2>
+<h2 id="one-instance-of-a-mapped-step">Один экземпляр размноженного шага<a class="anchor" href="#one-instance-of-a-mapped-step" aria-label="link">#</a></h2>
 <p>При <a href="/ru/docs/workflows/"><code>for_each:</code></a> engine запускает по одному процессу на элемент и сообщает каждому, какой элемент он получил:</p>
 <div class="code-block" data-code="partition = run.map_value()
 if partition is None:
@@ -193,7 +193,7 @@ load(f"/data/{partition}.csv")</code></pre></div>
 <p>JSON-строка приходит <strong>без кавычек</strong> — <code>for_each</code> по <code>["2026-01"]</code> передаёт шагу <code>2026-01</code>, а не <code>"2026-01"</code>. Всё остальное — объект, число, список — приходит как свой JSON, поэтому <code>json.loads(run.map_value())</code>.</p>
 <p>Оба значения — <code>None</code> у шага, который не размножен. Именно <code>None</code>, а не <code>-1</code> или <code>""</code>: сентинел — это число, с которым кто-нибудь в конце концов начнёт делать арифметику, а пустая строка неотличима от элемента, который <em>является</em> пустой строкой.</p>
 <p>Размноженный шаг <strong>не публикует контекст</strong> вниз по графу — четыре экземпляра не могут делить один ключ. Шаг, которому нужно что-то передать дальше, пишет файл, либо следующий за ним шаг считает приземлившееся.</p>
-<h2 id="метрики-которые-знает-только-ваш-пайплайн">Метрики, которые знает только ваш пайплайн<a class="anchor" href="#метрики-которые-знает-только-ваш-пайплайн" aria-label="link">#</a></h2>
+<h2 id="metrics-only-your-pipeline-knows">Метрики, которые знает только ваш пайплайн<a class="anchor" href="#metrics-only-your-pipeline-knows" aria-label="link">#</a></h2>
 <p>Engine уже измеряет то, что видит: длительность, попытки, глубину очереди. Чего он знать не может — сколько строк приземлилось, сколько отклонил вендор или сколько байт было отброшено. Это знает шаг, а библиотека это передаёт.</p>
 <div class="code-block" data-code="from brevis import metrics
 
@@ -209,22 +209,22 @@ metrics.inc("bytes_discarded_total", 4096)</code></pre></div>
 brevis_step_vendor_rejected_total{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 5"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
 brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>metrics.set(name, value)</code></td><td>gauge. После завершения шага значение остаётся, пока следующий запуск не запишет другое</td></tr><tr><td><code>metrics.inc(name, by=1)</code></td><td>счётчик. Суммируется по шагам и по запускам</td></tr></tbody></table></div>
-<h3 id="почему-это-не-открывает-порт">Почему это не открывает порт<a class="anchor" href="#почему-это-не-открывает-порт" aria-label="link">#</a></h3>
+<h3 id="why-this-does-not-open-a-port">Почему это не открывает порт<a class="anchor" href="#why-this-does-not-open-a-port" aria-label="link">#</a></h3>
 <p>Потому что <strong>шаг нельзя опросить</strong>. <code>:9090</code> принадлежит планировщику и API — долгоживущим процессам со стабильным адресом, которые опрашивают раз в пятнадцать-шестьдесят секунд. Шаг стартует в своём pod, работает сорок секунд и завершается: открытый им порт был бы опрошен ни разу или один раз по везению.</p>
 <p>Три известных ответа на это — Pushgateway (компонент, который нужно обслуживать, и серии, остающиеся, пока кто-нибудь их не удалит), коллектор OTLP (компонент <strong>и</strong> зависимость в этой библиотеке, у которой их нет и не будет) или поручить передачу <strong>оркестратору</strong>. Brevis уже читает stdout каждого шага в поисках строк <code>@brevis:</code> — так фазы SDK попадают на граф — и у него уже есть измеритель и endpoint Prometheus.</p>
 <p>Поэтому библиотека пишет <strong>одну строку в stdout</strong>, а остальное делает engine. Метрика приходит с метками workflow и шага бесплатно, потому что engine знает, что он запускал; через Pushgateway этой библиотеке пришлось бы размечать себя самой, и она бы ошиблась.</p>
 <p>Запись выполняется через <code>print(flush=True)</code>, потому что engine читает этот канал <strong>вживую</strong>. Буферизованная строка приходит при завершении процесса — для шага, работающего час, это опоздание на час, а для убитого шага — никогда.</p>
-<h3 id="что-метрика-отклоняет">Что метрика отклоняет<a class="anchor" href="#что-метрика-отклоняет" aria-label="link">#</a></h3>
+<h3 id="what-a-metric-refuses">Что метрика отклоняет<a class="anchor" href="#what-a-metric-refuses" aria-label="link">#</a></h3>
 <p><strong>Недопустимое имя отклоняется громко.</strong> Prometheus принимает буквы, цифры и подчёркивание, и первый символ не может быть цифрой. Отвергнутое им имя не порождает сломанную метрику — оно порождает вывод, который он <strong>отказывается разбирать</strong>, и теряется <strong>весь сбор</strong>, а с ним и все остальные метрики. Поэтому <code>rows-loaded</code> вызывает здесь <code>MetricError</code>, там, где допущена ошибка, а не приходит под именем, которого никто не писал.</p>
 <div class="table-wrap"><table><thead><tr><th>отклоняется</th><th>потому что</th></tr></thead><tbody><tr><td><code>rows-loaded</code>, <code>rows loaded</code>, <code>2rows</code></td><td>Prometheus это не разберёт, и теряется весь сбор</td></tr><tr><td><code>metrics.set("ok", True)</code></td><td><code>bool</code> в Python — это <code>int</code>, а сообщение <code>1</code> — число, смысл которого зависит от знания этого. Сообщайте количество или длительность, а не состояние</td></tr><tr><td><code>metrics.inc("x", -1)</code></td><td>счётчик только растёт. Каждый <code>rate()</code> над ним исходит из этого, и поломка проявляется на графике спустя недели</td></tr></tbody></table></div>
 <p>Запустите скрипт вручную, и строка всё равно уходит в stdout, где читается как то, что она есть. Ничто её не собирает, и ничего не падает — так же, как <code>context.set()</code> на ноутбуке.</p>
-<h2 id="что-она-отклоняет">Что она отклоняет<a class="anchor" href="#что-она-отклоняет" aria-label="link">#</a></h2>
+<h2 id="what-it-refuses">Что она отклоняет<a class="anchor" href="#what-it-refuses" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>потому что</th></tr></thead><tbody><tr><td>больше 4096 байт</td><td>платформа <strong>усекает</strong>, а не отклоняет, поэтому слишком большой объект приходит обрезанным вдвое и ниже по графу читается как «ничего не опубликовано»</td></tr><tr><td>значение не в формате JSON</td><td><code>datetime</code> превращается в <code>"..."</code> или исчезает в зависимости от того, кто сериализует. Ошибка называет ключ и предлагает <code>.isoformat()</code></td></tr><tr><td>нестроковый ключ</td><td><code>{1: "x"}</code> возвращается как <code>{"1": "x"}</code>, и поиск промахивается</td></tr></tbody></table></div>
 <p>Потолок — число платформы, а не наше. Любая функция «контекст между задачами» ломается одинаково: кто-то кладёт <strong>данные</strong> туда, где подходит только <strong>контекст</strong>. В четыре килобайта помещаются водяной знак, счётчик или список партиций. Публикуйте ссылку, а строки оставляйте на месте.</p>
 <aside class="admon admon-danger"><p class="admon-t">Это не хранилище секретов</p><p>Всё опубликованное видно любому, кто видит запуск, — оно находится в статусе pod и в истории запусков. Публикуйте путь, а не подписанный URL.</p></aside>
-<h2 id="запуск-вручную">Запуск вручную<a class="anchor" href="#запуск-вручную" aria-label="link">#</a></h2>
+<h2 id="running-it-by-hand">Запуск вручную<a class="anchor" href="#running-it-by-hand" aria-label="link">#</a></h2>
 <p>Вне Brevis нет входа, и никто не читает вывод. <code>get()</code> возвращает значение по умолчанию, <code>set()</code> принимает и отбрасывает, а библиотека один раз сообщает об этом на уровне INFO. Она <strong>не вызывает исключений</strong>: скрипт, который нельзя запустить вручную, нельзя разрабатывать. Валидация всё равно выполняется, поэтому значение, работающее на вашем ноутбуке, работает и в продакшене.</p>
-<h2 id="тестирование-вашего-шага">Тестирование вашего шага<a class="anchor" href="#тестирование-вашего-шага" aria-label="link">#</a></h2>
+<h2 id="testing-your-step">Тестирование вашего шага<a class="anchor" href="#testing-your-step" aria-label="link">#</a></h2>
 <p>Весь контракт — две переменные окружения, поэтому мокать нечего:</p>
 <div class="code-block" data-code="def test_my_step(monkeypatch, tmp_path):
     monkeypatch.setenv(&quot;BREVIS_INPUT&quot;, &#x27;{&quot;extract&quot;: {&quot;rows&quot;: 42}}&#x27;)
@@ -233,11 +233,11 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
     monkeypatch.setenv("BREVIS_INPUT", '{"extract": {"rows": 42}}')
     monkeypatch.setenv("BREVIS_OUTPUT", str(tmp_path / "out"))
     <span class="t-k">assert</span> context.get("extract.rows") == 42</code></pre></div>
-<h2 id="версии">Версии<a class="anchor" href="#версии" aria-label="link">#</a></h2>
+<h2 id="versions">Версии<a class="anchor" href="#versions" aria-label="link">#</a></h2>
 <p>Библиотека версионируется сама по себе, отдельно от engine и от Go SDK.</p>
 <aside class="admon admon-warning"><p class="admon-t">Не используйте `0.2.0`</p><p>Она вышла на PyPI только в виде wheel. <code>0.2.1</code> — тот же код, но полный.</p></aside>
 <p><code>brevis.run</code> нужен engine версии <strong><code>v0.9.0</code> или новее</strong>, чтобы было что читать; на более старом все поля пусты, а <code>run.now()</code> — это настенные часы, то есть то же, что и вне engine.</p>
-<h2 id="дальнейшие-шаги">Дальнейшие шаги<a class="anchor" href="#дальнейшие-шаги" aria-label="link">#</a></h2>
+<h2 id="next-steps">Дальнейшие шаги<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ru/docs/libraries/">Клиентские библиотеки</a> — контракт и другие языки</li><li><a href="/ru/docs/context/">Контекст между шагами</a> — концепция</li><li><a href="/ru/docs/parameters/">Параметры</a> — объявленные</li></ul>
 
       <nav class="pagers" aria-label="Страницы">
@@ -252,7 +252,7 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
 
     <aside class="toc" aria-label="На этой странице">
       <p class="toc-t">На этой странице</p>
-      <ul><li class="toc-2"><a href="#чтение-контекста">Чтение контекста</a></li><li class="toc-2"><a href="#запись">Запись</a></li><li class="toc-2"><a href="#часы-которые-должен-читать-этот-запуск">Часы, которые должен читать этот запуск</a></li><li class="toc-3"><a href="#авто-параметры">Авто-параметры</a></li><li class="toc-2"><a href="#один-экземпляр-размноженного-шага">Один экземпляр размноженного шага</a></li><li class="toc-2"><a href="#метрики-которые-знает-только-ваш-пайплайн">Метрики, которые знает только ваш пайплайн</a></li><li class="toc-3"><a href="#почему-это-не-открывает-порт">Почему это не открывает порт</a></li><li class="toc-3"><a href="#что-метрика-отклоняет">Что метрика отклоняет</a></li><li class="toc-2"><a href="#что-она-отклоняет">Что она отклоняет</a></li><li class="toc-2"><a href="#запуск-вручную">Запуск вручную</a></li><li class="toc-2"><a href="#тестирование-вашего-шага">Тестирование вашего шага</a></li><li class="toc-2"><a href="#версии">Версии</a></li><li class="toc-2"><a href="#дальнейшие-шаги">Дальнейшие шаги</a></li></ul>
+      <ul><li class="toc-2"><a href="#reading-context">Чтение контекста</a></li><li class="toc-2"><a href="#writing">Запись</a></li><li class="toc-2"><a href="#the-clock-this-run-should-read">Часы, которые должен читать этот запуск</a></li><li class="toc-3"><a href="#the-auto-parameters">Авто-параметры</a></li><li class="toc-2"><a href="#one-instance-of-a-mapped-step">Один экземпляр размноженного шага</a></li><li class="toc-2"><a href="#metrics-only-your-pipeline-knows">Метрики, которые знает только ваш пайплайн</a></li><li class="toc-3"><a href="#why-this-does-not-open-a-port">Почему это не открывает порт</a></li><li class="toc-3"><a href="#what-a-metric-refuses">Что метрика отклоняет</a></li><li class="toc-2"><a href="#what-it-refuses">Что она отклоняет</a></li><li class="toc-2"><a href="#running-it-by-hand">Запуск вручную</a></li><li class="toc-2"><a href="#testing-your-step">Тестирование вашего шага</a></li><li class="toc-2"><a href="#versions">Версии</a></li><li class="toc-2"><a href="#next-steps">Дальнейшие шаги</a></li></ul>
     </aside>
   </main>
 </div>
@@ -272,9 +272,9 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
       <div class="footer-col">
         <h2>проект</h2>
         <ul>
-          <li><a href="/ru/#ecossistema">Экосистема</a></li>
+          <li><a href="/ru/#ecosystem">Экосистема</a></li>
           <li><a href="/ru/docs/philosophy/">Принципы</a></li>
-          <li><a href="/ru/docs/introduction/#открытый-код-выберите-как-участвовать">Open source</a></li>
+          <li><a href="/ru/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/ru/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -297,7 +297,7 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -36,7 +36,7 @@ gelandet sind.
 Drei unterstützende Bausteine:
 
 - **[Console](/de/docs/console/index.md)** – die Weboberfläche über dem Core
-- **[agent](/de/docs/pod-per-step/#wo-jeder-step-läuft)** – führt einen Step in einem bereits vorhandenen Cluster aus
+- **[agent](/de/docs/pod-per-step/#where-each-step-runs)** – führt einen Step in einem bereits vorhandenen Cluster aus
 - **[`brevis` für Python](/de/docs/python/index.md)** – Run-Kontext für Python-Steps
 
 ## Nur einen Baustein verwenden
@@ -47,7 +47,7 @@ Ja. Jeder Baustein hat ein eigenes Modul, eine eigene Version und ein eigenes Im
 
 Eine Bestellung, die das SDK abruft, und eine Bestellung, die am Gateway eingeht, landen in derselben Tabelle, mit derselben brevis_ingestion_id. Die Wahl zwischen beiden wird zu einer Deployment-Entscheidung, nicht zu einer des Schemas.
 
-Über das SDK, mit `sdk.Landing` (Details unter [Das Landing-Layout](/de/docs/sdk/#das-landing-layout)):
+Über das SDK, mit `sdk.Landing` (Details unter [Das Landing-Layout](/de/docs/sdk/#the-landing-layout)):
 
 ```go
 sdk.Execute(ctx, &sdk.Pipeline{
@@ -60,7 +60,7 @@ sdk.Execute(ctx, &sdk.Pipeline{
 }, nil)
 ```
 
-Über das Gateway, ein POST auf `/v1/tables` (Details unter [Eine Route, N Tabellen](/de/docs/ingestion/#eine-route-n-tabellen)):
+Über das Gateway, ein POST auf `/v1/tables` (Details unter [Eine Route, N Tabellen](/de/docs/ingestion/#one-route-n-tables)):
 
 ```bash
 curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \

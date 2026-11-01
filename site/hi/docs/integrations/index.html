@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
-      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/integrations/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/integrations/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/integrations/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/integrations/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/integrations/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/integrations/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/integrations/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/integrations/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/integrations/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/integrations/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/integrations/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><span>हिन्दी</span></summary><ul><li><a href="/docs/integrations/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/integrations/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/integrations/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/integrations/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/integrations/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/integrations/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/integrations/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/integrations/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/integrations/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/integrations/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/integrations/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         ओपन सोर्स देखें
@@ -119,26 +119,26 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>इंटीग्रेशन</h1>
       <p class="doc-desc">क्या किससे जुड़ता है: डेटा कहाँ से आता है, कहाँ उतरता है, कहाँ मॉडल होता है और यह सब कहाँ चलता है।</p>
       <p><strong>जो आप पहले से इस्तेमाल करते हैं, और कुछ भी ऐसा नहीं जो अभी मौजूद न हो।</strong> कोई driver यहाँ तभी दिखता है जब रिपॉज़िटरी में उसका कोड आ जाता है — उससे पहले कभी नहीं।</p>
 <p>हर पंक्ति बताती है कि कौन-सा हिस्सा उस तक पहुँचता है, किस पैकेज या sink के ज़रिए, और कैसे देखना है यह जानने के लिए कहाँ जाएँ।</p>
-<h2 id="यह-स-लत-ह">यहाँ से लेता है<a class="anchor" href="#यह-स-लत-ह" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>वहाँ कैसे पहुँचता है</th><th>गाइड</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK: <code>from.HTTP</code></td><td><a href="/hi/docs/sdk/#सरत-और-गतवय">Go SDK</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>from/postgres</code></td><td><a href="/hi/docs/sdk/#सरत-और-गतवय">Go SDK</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>from/mysql</code></td><td><a href="/hi/docs/sdk/#सरत-और-गतवय">Go SDK</a></td></tr><tr><td><strong>फ़ाइलें</strong></td><td>SDK: <code>from.Files</code> — स्थानीय, S3, GCS</td><td><a href="/hi/docs/sdk/#सरत-और-गतवय">Go SDK</a></td></tr></tbody></table></div>
-<h2 id="यह-उतरत-ह">यहाँ उतरता है<a class="anchor" href="#यह-उतरत-ह" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>वहाँ कैसे पहुँचता है</th><th>गाइड</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK: <code>to/bigquery</code> · Gateway: <code>bigquery</code></td><td><a href="/hi/docs/sdk/#सरत-और-गतवय">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>to/postgres</code> · Gateway: <code>postgres</code></td><td><a href="/hi/docs/sdk/#सरत-और-गतवय">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>to/mysql</code> · Gateway: <code>mysql</code></td><td><a href="/hi/docs/sdk/#सरत-और-गतवय">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK: <code>to/redshift</code> · Gateway: <code>redshift</code></td><td><a href="/hi/docs/sdk/#सरत-और-गतवय">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK: <code>to/pubsub</code> · Gateway: <code>pubsub</code></td><td><a href="/hi/docs/sdk/#सरत-और-गतवय">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr></tbody></table></div>
-<h2 id="फइल-यह">फ़ाइलें यहाँ<a class="anchor" href="#फइल-यह" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>वहाँ कैसे पहुँचता है</th><th>गाइड</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK: <code>store/s3</code> · Gateway: <code>s3://</code> पर <code>files</code></td><td><a href="/hi/docs/sdk/#सरत-और-गतवय">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK: <code>store/gcs</code> · Gateway: <code>gs://</code> पर <code>files</code></td><td><a href="/hi/docs/sdk/#सरत-और-गतवय">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr></tbody></table></div>
-<h2 id="यह-मडल-हत-ह">यहाँ मॉडल होता है<a class="anchor" href="#यह-मडल-हत-ह" aria-label="link">#</a></h2>
+<h2 id="pulls-from">यहाँ से लेता है<a class="anchor" href="#pulls-from" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>वहाँ कैसे पहुँचता है</th><th>गाइड</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK: <code>from.HTTP</code></td><td><a href="/hi/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>from/postgres</code></td><td><a href="/hi/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>from/mysql</code></td><td><a href="/hi/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>फ़ाइलें</strong></td><td>SDK: <code>from.Files</code> — स्थानीय, S3, GCS</td><td><a href="/hi/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr></tbody></table></div>
+<h2 id="lands-in">यहाँ उतरता है<a class="anchor" href="#lands-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>वहाँ कैसे पहुँचता है</th><th>गाइड</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK: <code>to/bigquery</code> · Gateway: <code>bigquery</code></td><td><a href="/hi/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>to/postgres</code> · Gateway: <code>postgres</code></td><td><a href="/hi/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>to/mysql</code> · Gateway: <code>mysql</code></td><td><a href="/hi/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK: <code>to/redshift</code> · Gateway: <code>redshift</code></td><td><a href="/hi/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK: <code>to/pubsub</code> · Gateway: <code>pubsub</code></td><td><a href="/hi/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr></tbody></table></div>
+<h2 id="files-in">फ़ाइलें यहाँ<a class="anchor" href="#files-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>वहाँ कैसे पहुँचता है</th><th>गाइड</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK: <code>store/s3</code> · Gateway: <code>s3://</code> पर <code>files</code></td><td><a href="/hi/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK: <code>store/gcs</code> · Gateway: <code>gs://</code> पर <code>files</code></td><td><a href="/hi/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr></tbody></table></div>
+<h2 id="models-in">यहाँ मॉडल होता है<a class="anchor" href="#models-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>वहाँ कैसे पहुँचता है</th><th>गाइड</th></tr></thead><tbody><tr><td><strong>Postgres</strong></td><td>SQL: <code>--dialect postgres</code> (डिफ़ॉल्ट)</td><td><a href="/hi/docs/sql/">SQL</a></td></tr><tr><td><strong>BigQuery</strong></td><td>SQL: <code>--dialect bigquery</code></td><td><a href="/hi/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="यह-चलत-ह">यहाँ चलता है<a class="anchor" href="#यह-चलत-ह" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>वहाँ कैसे पहुँचता है</th><th>गाइड</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>हर हिस्से के लिए एक image: <code>areteacademy/brevis</code>, <code>brevis-gateway</code>, <code>brevis-sql</code></td><td><a href="/hi/docs/installation/#docker">इंस्टॉलेशन</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>हर step के लिए एक pod</td><td><a href="/hi/docs/kubernetes/">Kubernetes</a>, <a href="/hi/docs/pod-per-step/">हर step के लिए एक pod</a></td></tr><tr><td><strong>Helm</strong></td><td><code>deployments/helm/brevis</code> में मौजूद chart</td><td><a href="/hi/docs/kubernetes/#helm-स-इसटल-कर">Kubernetes</a></td></tr></tbody></table></div>
-<h2 id="इनम-लख-गय">इनमें लिखा गया<a class="anchor" href="#इनम-लख-गय" aria-label="link">#</a></h2>
+<h2 id="runs-on">यहाँ चलता है<a class="anchor" href="#runs-on" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>वहाँ कैसे पहुँचता है</th><th>गाइड</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>हर हिस्से के लिए एक image: <code>areteacademy/brevis</code>, <code>brevis-gateway</code>, <code>brevis-sql</code></td><td><a href="/hi/docs/installation/#docker">इंस्टॉलेशन</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>हर step के लिए एक pod</td><td><a href="/hi/docs/kubernetes/">Kubernetes</a>, <a href="/hi/docs/pod-per-step/">हर step के लिए एक pod</a></td></tr><tr><td><strong>Helm</strong></td><td><code>deployments/helm/brevis</code> में मौजूद chart</td><td><a href="/hi/docs/kubernetes/#install-it-with-helm">Kubernetes</a></td></tr></tbody></table></div>
+<h2 id="written-in">इनमें लिखा गया<a class="anchor" href="#written-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>वहाँ कैसे पहुँचता है</th><th>गाइड</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td>Core, SDK, Gateway और SQL</td><td><a href="/hi/docs/ecosystem/">इकोसिस्टम</a></td></tr><tr><td><strong>Python</strong></td><td><code>pip install brevis</code>: Python step में steps के बीच संदर्भ</td><td><a href="/hi/docs/python/">Python</a></td></tr><tr><td><strong>SQL</strong></td><td>brevis-sql के मॉडल सादी <code>.sql</code> फ़ाइलें हैं</td><td><a href="/hi/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="कलउड">क्लाउड<a class="anchor" href="#कलउड" aria-label="link">#</a></h2>
+<h2 id="clouds">क्लाउड<a class="anchor" href="#clouds" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>वहाँ कैसे पहुँचता है</th><th>गाइड</th></tr></thead><tbody><tr><td><strong>Google Cloud</strong></td><td>BigQuery, Pub/Sub और GCS, ऊपर</td><td>—</td></tr><tr><td><strong>AWS</strong></td><td>Redshift और S3, ऊपर</td><td>—</td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="पेज">
@@ -153,7 +153,7 @@
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#यह-स-लत-ह">यहाँ से लेता है</a></li><li class="toc-2"><a href="#यह-उतरत-ह">यहाँ उतरता है</a></li><li class="toc-2"><a href="#फइल-यह">फ़ाइलें यहाँ</a></li><li class="toc-2"><a href="#यह-मडल-हत-ह">यहाँ मॉडल होता है</a></li><li class="toc-2"><a href="#यह-चलत-ह">यहाँ चलता है</a></li><li class="toc-2"><a href="#इनम-लख-गय">इनमें लिखा गया</a></li><li class="toc-2"><a href="#कलउड">क्लाउड</a></li></ul>
+      <ul><li class="toc-2"><a href="#pulls-from">यहाँ से लेता है</a></li><li class="toc-2"><a href="#lands-in">यहाँ उतरता है</a></li><li class="toc-2"><a href="#files-in">फ़ाइलें यहाँ</a></li><li class="toc-2"><a href="#models-in">यहाँ मॉडल होता है</a></li><li class="toc-2"><a href="#runs-on">यहाँ चलता है</a></li><li class="toc-2"><a href="#written-in">इनमें लिखा गया</a></li><li class="toc-2"><a href="#clouds">क्लाउड</a></li></ul>
     </aside>
   </main>
 </div>
@@ -173,9 +173,9 @@
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -198,7 +198,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

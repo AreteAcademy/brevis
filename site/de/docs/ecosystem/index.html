@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Zum Inhalt springen</a>
+<a class="skip-link" href="#content">Zum Inhalt springen</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Hauptnavigation">
-      <a href="/de/#ecossistema">Ökosystem</a>
+      <a href="/de/#ecosystem">Ökosystem</a>
       <a href="/de/docs/">Dokumentation</a>
-      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Deutsch</span></summary><ul><li><a href="/docs/ecosystem/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ecosystem/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ecosystem/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ecosystem/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ecosystem/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/ecosystem/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ecosystem/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ecosystem/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ecosystem/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ecosystem/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ecosystem/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><span>Deutsch</span></summary><ul><li><a href="/docs/ecosystem/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ecosystem/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ecosystem/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ecosystem/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ecosystem/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/ecosystem/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ecosystem/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ecosystem/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ecosystem/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ecosystem/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ecosystem/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open Source erkunden
@@ -119,25 +119,25 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentation</p>
       <h1>Ökosystem</h1>
       <p class="doc-desc">Die vier Bausteine von brevis.sh, was jeder davon tut und worüber die Daten laufen.</p>
       <p>Der Core plant, reiht ein und überwacht – und berührt die Daten nie. Die Daten berühren das SDK, das abruft, das Gateway, das empfängt, und SQL, das dort modelliert, wo die Daten bereits gelandet sind.</p>
-<h2 id="die-vier-bausteine">Die vier Bausteine<a class="anchor" href="#die-vier-bausteine" aria-label="link">#</a></h2>
+<h2 id="the-four-pieces">Die vier Bausteine<a class="anchor" href="#the-four-pieces" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>Baustein</th><th>Was er tut</th><th>Bezug</th><th>Anleitung</th></tr></thead><tbody><tr><td><strong>Core</strong></td><td>Plant, reiht ein und startet einen Pod pro Step. Berührt die Daten nie.</td><td><code>areteacademy/brevis</code></td><td><a href="/de/docs/core/">Core</a></td></tr><tr><td><strong>SDK</strong></td><td>Eine Go-Bibliothek, die innerhalb Ihres Steps extrahiert, formt und lädt.</td><td><code>go get github.com/AreteAcademy/brevis/sdk</code></td><td><a href="/de/docs/sdk/">Go-SDK</a></td></tr><tr><td><strong>Gateway</strong></td><td>Nimmt HTTP POST entgegen, antwortet mit 202 und schreibt in Batches. Hat keine eigene Datenbank.</td><td><code>areteacademy/brevis-gateway</code></td><td><a href="/de/docs/ingestion/">Ingestion</a></td></tr><tr><td><strong>SQL</strong></td><td>Einfache .sql-Dateien werden in Abhängigkeitsreihenfolge zu Tabellen und Views.</td><td><code>areteacademy/brevis-sql</code></td><td><a href="/de/docs/sql/">SQL</a></td></tr></tbody></table></div>
 <h2 id="control-plane-data-plane">Control Plane, Data Plane<a class="anchor" href="#control-plane-data-plane" aria-label="link">#</a></h2>
 <p>Die <strong>Control Plane</strong> ist der Core: Er entscheidet, wann jeder Step läuft, hält die Queue und den Zustand in Postgres und startet einen Pod pro Step. Die Daten laufen nie über ihn.</p>
 <p>Die <strong>Data Plane</strong> sind die übrigen drei Bausteine. Die Daten stammen aus einer API, einer Datenbank oder aus Dateien und erreichen ihr Ziel auf einem von zwei Wegen: Das <strong>SDK ruft sie ab</strong>, innerhalb eines Ihrer Steps, oder sie werden per HTTP <strong>an das Gateway gepusht</strong>, von Webhooks und Anwendungen. Das Ziel ist eine Tabelle, ein Topic oder Dateien in einem Bucket. Sobald die Daten gelandet sind, modelliert <strong>SQL</strong> die Tabellen genau dort, in der Datenbank, in der sie gelandet sind.</p>
-<h3 id="drumherum">Drumherum<a class="anchor" href="#drumherum" aria-label="link">#</a></h3>
+<h3 id="around-it">Drumherum<a class="anchor" href="#around-it" aria-label="link">#</a></h3>
 <p>Drei unterstützende Bausteine:</p>
-<ul><li><strong><a href="/de/docs/console/">Console</a></strong> – die Weboberfläche über dem Core</li><li><strong><a href="/de/docs/pod-per-step/#wo-jeder-step-läuft">agent</a></strong> – führt einen Step in einem bereits vorhandenen Cluster aus</li><li><strong><a href="/de/docs/python/"><code>brevis</code> für Python</a></strong> – Run-Kontext für Python-Steps</li></ul>
-<h2 id="nur-einen-baustein-verwenden">Nur einen Baustein verwenden<a class="anchor" href="#nur-einen-baustein-verwenden" aria-label="link">#</a></h2>
+<ul><li><strong><a href="/de/docs/console/">Console</a></strong> – die Weboberfläche über dem Core</li><li><strong><a href="/de/docs/pod-per-step/#where-each-step-runs">agent</a></strong> – führt einen Step in einem bereits vorhandenen Cluster aus</li><li><strong><a href="/de/docs/python/"><code>brevis</code> für Python</a></strong> – Run-Kontext für Python-Steps</li></ul>
+<h2 id="using-only-one-piece">Nur einen Baustein verwenden<a class="anchor" href="#using-only-one-piece" aria-label="link">#</a></h2>
 <p>Ja. Jeder Baustein hat ein eigenes Modul, eine eigene Version und ein eigenes Image: Das SDK ist eine Go-Bibliothek, die in jedem Programm läuft, das Gateway startet allein mit einer YAML-Datei und ohne Datenbank, und brevis-sql läuft als Container. Der Core orchestriert die anderen, wenn Sie es möchten – er ist für keinen von ihnen Voraussetzung.</p>
-<h2 id="dieselbe-zeile">Dieselbe Zeile<a class="anchor" href="#dieselbe-zeile" aria-label="link">#</a></h2>
+<h2 id="the-same-row">Dieselbe Zeile<a class="anchor" href="#the-same-row" aria-label="link">#</a></h2>
 <p>Eine Bestellung, die das SDK abruft, und eine Bestellung, die am Gateway eingeht, landen in derselben Tabelle, mit derselben brevis_ingestion_id. Die Wahl zwischen beiden wird zu einer Deployment-Entscheidung, nicht zu einer des Schemas.</p>
-<p>Über das SDK, mit <code>sdk.Landing</code> (Details unter <a href="/de/docs/sdk/#das-landing-layout">Das Landing-Layout</a>):</p>
+<p>Über das SDK, mit <code>sdk.Landing</code> (Details unter <a href="/de/docs/sdk/#the-landing-layout">Das Landing-Layout</a>):</p>
 <div class="code-block" data-code="sdk.Execute(ctx, &amp;sdk.Pipeline{
 	Source:    sdk.Source{From: from.Files{Path: &quot;order.json&quot;}},
 	Transform: []sdk.Transformer{sdk.Landing(&quot;app_orders&quot;, sdk.LandingKey(&quot;id&quot;))},
@@ -153,7 +153,7 @@
 		Schema: sdk.LandingSchema(sdk.LandingOptions{}),
 	},
 }, <span class="t-k">nil</span>)</code></pre></div>
-<p>Über das Gateway, ein POST auf <code>/v1/tables</code> (Details unter <a href="/de/docs/ingestion/#eine-route-n-tabellen">Eine Route, N Tabellen</a>):</p>
+<p>Über das Gateway, ein POST auf <code>/v1/tables</code> (Details unter <a href="/de/docs/ingestion/#one-route-n-tables">Eine Route, N Tabellen</a>):</p>
 <div class="code-block" data-code="curl -X POST localhost:8080/v1/tables -H &#x27;Authorization: Bearer dev-key&#x27; \
     -d &#x27;{&quot;table_name&quot;:&quot;app_orders&quot;,&quot;unique_key&quot;:&quot;id&quot;,
          &quot;data&quot;:{&quot;id&quot;:&quot;A-1&quot;,&quot;customer&quot;:&quot;acme.example.com&quot;,&quot;total&quot;:150}}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/tables <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
@@ -177,7 +177,7 @@
 
     <aside class="toc" aria-label="Auf dieser Seite">
       <p class="toc-t">Auf dieser Seite</p>
-      <ul><li class="toc-2"><a href="#die-vier-bausteine">Die vier Bausteine</a></li><li class="toc-2"><a href="#control-plane-data-plane">Control Plane, Data Plane</a></li><li class="toc-3"><a href="#drumherum">Drumherum</a></li><li class="toc-2"><a href="#nur-einen-baustein-verwenden">Nur einen Baustein verwenden</a></li><li class="toc-2"><a href="#dieselbe-zeile">Dieselbe Zeile</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-four-pieces">Die vier Bausteine</a></li><li class="toc-2"><a href="#control-plane-data-plane">Control Plane, Data Plane</a></li><li class="toc-3"><a href="#around-it">Drumherum</a></li><li class="toc-2"><a href="#using-only-one-piece">Nur einen Baustein verwenden</a></li><li class="toc-2"><a href="#the-same-row">Dieselbe Zeile</a></li></ul>
     </aside>
   </main>
 </div>
@@ -197,9 +197,9 @@
       <div class="footer-col">
         <h2>Projekt</h2>
         <ul>
-          <li><a href="/de/#ecossistema">Ökosystem</a></li>
+          <li><a href="/de/#ecosystem">Ökosystem</a></li>
           <li><a href="/de/docs/philosophy/">Prinzipien</a></li>
-          <li><a href="/de/docs/introduction/#offener-code-wählen-sie-wie-sie-mitmachen">Open Source</a></li>
+          <li><a href="/de/docs/introduction/#open-code-choose-how-to-take-part">Open Source</a></li>
           <li><a href="/de/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -222,7 +222,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

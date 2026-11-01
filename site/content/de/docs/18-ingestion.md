@@ -44,7 +44,7 @@ curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
 ```
 
 Ohne Google-Cloud-Zugangsdaten wird der Batch wiederholt und landet in der Dead
-Letter – siehe [Wenn die Sink verweigert](#wenn-die-sink-verweigert).
+Letter – siehe [Wenn die Sink verweigert](#when-the-sink-refuses).
 
 Das `-slim`-Image enthält nur die Sinks `auto_table`, `files` und `postgres`;
 das `pubsub` dieses Beispiels und die übrigen sind im vollen Image. Ein Slim-Image
@@ -490,7 +490,7 @@ Steuerfelder oben, der Datensatz innerhalb von `data`, und sieben
 `brevis_*`-Tracking-Spalten in jeder Tabelle. Eine Route, N Tabellen, nichts
 deklariert.
 
-Es steht unter [Ingestion-Sinks](/docs/ingestion-sinks/#eine-route-n-tabellen-nichts-deklariert).
+Es steht unter [Ingestion-Sinks](/docs/ingestion-sinks/#one-route-n-tables-nothing-declared).
 
 ## Wie es weitergeht
 

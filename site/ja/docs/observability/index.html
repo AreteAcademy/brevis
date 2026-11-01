@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
-      <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/observability/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/observability/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/observability/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/observability/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/observability/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/observability/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/observability/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/observability/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/observability/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/observability/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/observability/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="言語: 日本語"><span>日本語</span></summary><ul><li><a href="/docs/observability/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/observability/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/observability/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/observability/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/observability/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/observability/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/observability/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/observability/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/observability/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/observability/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/observability/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         オープンソースを見る
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>オブザーバビリティ</h1>
@@ -127,11 +127,11 @@
       <p>Brevis は、<strong>両方の</strong>プロセスから、専用のポートで Prometheus メトリクスを公開します。</p>
 <div class="code-block" data-code="GET http://&lt;pod&gt;:9090/metrics"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>GET http://&lt;pod&gt;:9090/metrics</code></pre></div>
 <p>ポートは <code>BREVIS_METRICS_ADDR</code> で指定します。HTTP ポートとは意図的に分けています。メトリクスは インターフェースの認証を通らず、両方を同じ場所で提供すると、認証付きのスクレイプか、 開放されたダッシュボードかの二択を迫られるからです。</p>
-<h2 id="2-つのプロセス2-つのエンドポイント">2 つのプロセス、2 つのエンドポイント<a class="anchor" href="#2-つのプロセス2-つのエンドポイント" aria-label="link">#</a></h2>
+<h2 id="two-processes-two-endpoints">2 つのプロセス、2 つのエンドポイント<a class="anchor" href="#two-processes-two-endpoints" aria-label="link">#</a></h2>
 <p>ここは、多くの構成が API だけをスクレイプして間違える部分です。</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>提供するもの</th><th>報告するもの</th></tr></thead><tbody><tr><td><code>brevis serve</code></td><td>UI と HTTP API</td><td>キューの深さ</td></tr><tr><td><code>brevis scheduler</code></td><td>HTTP では何も提供しない</td><td>キューの深さ、claim のレイテンシ、slot、孤立、run、ステップ</td></tr></tbody></table></div>
 <p>実行するのはスケジューラなので、ほとんどすべてがそこから得られます。API だけで作ったダッシュボードは、 キューが増えていることは示しても、それを消化しているものについては<strong>何も</strong>示しません。</p>
-<h2 id="ステップが公開するメトリクス">ステップが公開するメトリクス<a class="anchor" href="#ステップが公開するメトリクス" aria-label="link">#</a></h2>
+<h2 id="the-metrics-a-step-publishes">ステップが公開するメトリクス<a class="anchor" href="#the-metrics-a-step-publishes" aria-label="link">#</a></h2>
 <p>エンジンが計測するものに加えて、ステップは独自のメトリクスを公開できます。何行が着地したか、 ベンダーが何行を拒否したか、などです。</p>
 <div class="code-block" data-code="from brevis import metrics
 metrics.set(&quot;rows_loaded&quot;, 48213)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> metrics
@@ -139,7 +139,7 @@ metrics.set("rows_loaded", 48213)</code></pre></div>
 <p>これらは<strong>同じ</strong>スケジューラの <code>/metrics</code> に、エンジンによってプレフィックスとラベルが付けられて 現れます。</p>
 <div class="code-block" data-code="brevis_step_rows_loaded{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 48213"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213</code></pre></div>
 <p>ステップはポートを開きません。stdout に 1 行書き、エンジンがそれを記録します。40 秒しか生きない pod はスクレイプできないからです。<a href="/ja/docs/python/">Python</a> を参照してください。</p>
-<h2 id="何を監視するか">何を監視するか<a class="anchor" href="#何を監視するか" aria-label="link">#</a></h2>
+<h2 id="what-to-watch">何を監視するか<a class="anchor" href="#what-to-watch" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>シグナル</th><th>理由</th></tr></thead><tbody><tr><td>キューの深さが増え続けて減らない</td><td>スケジューラが死んだか、負荷に対して <code>--concurrency</code> が低い</td></tr><tr><td>claim のレイテンシが増加している</td><td>データベースの競合、またはインターバルに対してキューが大きすぎる</td></tr><tr><td>孤立 &gt; 0</td><td>終了前に死んだプロセスが claim した run</td></tr><tr><td>slot が具体化されていない</td><td>スケジューラのループが止まり、スケジュールも一緒に止まる</td></tr></tbody></table></div>
 <p>最初の 2 つだけでは「高負荷」と「プロセスの停止」を区別できません。そのため slot が重要です。 キューが増え、<strong>かつ</strong> slot が作られているなら負荷です。キューが増え、slot が作られて<strong>いない</strong>なら、 ループが止まっています。</p>
 <h2 id="kubernetes">Kubernetes<a class="anchor" href="#kubernetes" aria-label="link">#</a></h2>
@@ -155,10 +155,10 @@ ports:
   - <span class="t-k">name</span>: metrics
     <span class="t-k">containerPort</span>: 9090</code></pre></div>
 <p>Prometheus Operator では、ロールごとに 1 つの <code>PodMonitor</code> を使います。そして、ロールごとに 1 つで なければなりません。2 つの Deployment は異なるラベルを持ち、異なるセットを報告するからです。</p>
-<h2 id="意図的に存在しないもの">意図的に存在しないもの<a class="anchor" href="#意図的に存在しないもの" aria-label="link">#</a></h2>
+<h2 id="what-is-deliberately-absent">意図的に存在しないもの<a class="anchor" href="#what-is-deliberately-absent" aria-label="link">#</a></h2>
 <p><strong>トレース。</strong> OpenTelemetry はまだありません。ステップは専用の pod として動き、その開始、終了、 試行、終了コード、ログといった重要な情報は、すでにデータベースと画面にあります。有用なトレースは ステップの内部にあるものであり、それはオーケストレータではなくステップのコードに属します。</p>
 <p>これはステップが単位である限り成り立ちます。ステップが別のサービスを呼び出し、問いが「40 秒は どこに消えたのか」になる日から、トレースはそのコストに見合うものになり始めます。</p>
-<h2 id="次のステップ">次のステップ<a class="anchor" href="#次のステップ" aria-label="link">#</a></h2>
+<h2 id="next-steps">次のステップ<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ja/docs/kubernetes/">Kubernetes</a> — 両方のプロセスのデプロイ</li><li><a href="/ja/docs/configuration/">設定</a> — <code>BREVIS_METRICS_ADDR</code> ほか</li></ul>
 
       <nav class="pagers" aria-label="ページ">
@@ -173,7 +173,7 @@ ports:
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#2-つのプロセス2-つのエンドポイント">2 つのプロセス、2 つのエンドポイント</a></li><li class="toc-2"><a href="#ステップが公開するメトリクス">ステップが公開するメトリクス</a></li><li class="toc-2"><a href="#何を監視するか">何を監視するか</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#意図的に存在しないもの">意図的に存在しないもの</a></li><li class="toc-2"><a href="#次のステップ">次のステップ</a></li></ul>
+      <ul><li class="toc-2"><a href="#two-processes-two-endpoints">2 つのプロセス、2 つのエンドポイント</a></li><li class="toc-2"><a href="#the-metrics-a-step-publishes">ステップが公開するメトリクス</a></li><li class="toc-2"><a href="#what-to-watch">何を監視するか</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#what-is-deliberately-absent">意図的に存在しないもの</a></li><li class="toc-2"><a href="#next-steps">次のステップ</a></li></ul>
     </aside>
   </main>
 </div>
@@ -193,9 +193,9 @@ ports:
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -218,7 +218,7 @@ ports:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

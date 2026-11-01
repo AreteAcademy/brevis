@@ -336,9 +336,9 @@ brevis brand brand.yaml
 ```
 
 ```
-  ok    Brevis · Orquestração
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+  ok    Brevis · Orchestration
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis
 ```
 

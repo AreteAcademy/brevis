@@ -44,7 +44,7 @@ curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
 ```
 
 Sans identifiants Google Cloud, le lot est réessayé et part dans la dead letter —
-voir [Quand le sink refuse](#quand-le-sink-refuse).
+voir [Quand le sink refuse](#when-the-sink-refuses).
 
 L'image `-slim` ne contient que les sinks `auto_table`, `files` et `postgres` ;
 le `pubsub` de cet exemple et les autres sont dans l'image complète. Une image
@@ -482,7 +482,7 @@ apparaît :
 Les champs de contrôle en haut, l'enregistrement dans `data`, et sept colonnes de
 suivi `brevis_*` sur chaque table. Une route, N tables, rien de déclaré.
 
-C'est dans [Sinks d'ingestion](/docs/ingestion-sinks/#une-route-n-tables-rien-de-declare).
+C'est dans [Sinks d'ingestion](/docs/ingestion-sinks/#one-route-n-tables-nothing-declared).
 
 ## Où aller ensuite
 

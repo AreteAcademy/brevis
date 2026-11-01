@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
-      <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/sql/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/sql/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/sql/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/sql/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/sql/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/sql/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/sql/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/sql/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/sql/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/sql/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/sql/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="言語: 日本語"><span>日本語</span></summary><ul><li><a href="/docs/sql/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/sql/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/sql/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/sql/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/sql/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/sql/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/sql/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/sql/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/sql/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/sql/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/sql/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         オープンソースを見る
@@ -119,29 +119,29 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>SQL</h1>
       <p class="doc-desc">通常の .sql ファイルを、依存関係の順にテーブルとビューへ変換します — ワークフローのステップとして、または単独で。</p>
       <p>テンプレートはありません。モデルは有効な SQL のままのファイルであり、順序は SQL 自体を読むことで決まります。Postgres と BigQuery を、同じ適合性スイートの下でサポートします。</p>
 <figure class="doc-figure"><img src="/assets/flow-sql.svg" width="360" height="410" alt="SQL のフロー: brevis-sql は raw.orders(SDK または Gateway が着地させたテーブル)を読みます。モデル staging.stg_orders はその上のビューになり、marts.orders はそのビューの上のテーブルになります。順序は SQL を読むことで決まります。同じモデルが Postgres でも BigQuery でもビルドされます。" loading="lazy"></figure>
-<h2 id="6-つのコマンド">6 つのコマンド<a class="anchor" href="#6-つのコマンド" aria-label="link">#</a></h2>
+<h2 id="six-commands">6 つのコマンド<a class="anchor" href="#six-commands" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>コマンド</th><th>内容</th></tr></thead><tbody><tr><td><code>brevis-sql compile</code></td><td>すべてのモデルをパースし、すべてのエッジを解決します。<strong>何にも接続しません</strong></td></tr><tr><td><code>brevis-sql graph</code></td><td>推論されたエッジを出力します。間違ったエッジは、後で発見されるのではなく、目に見えます</td></tr><tr><td><code>brevis-sql build</code></td><td>すべてのモデルを、依存関係の順に作成または置換します</td></tr><tr><td><code>brevis-sql test</code></td><td>すべてのモデルのテストを実行します。各テストは、何も見つからないはずの SELECT です</td></tr><tr><td><code>brevis-sql serve</code></td><td>読み取り専用のプレビューとクエリに HTTP で応答するため、Console にウェアハウスの認証情報は不要です</td></tr><tr><td><code>brevis-sql generation bump</code></td><td>テーブルが再構築されたことを記録し、<code>brevis-sql-api</code> のそのテーブルに対するキャッシュ済みの回答を古くします — <code>build --generations-from</code> は、ビルドするすべてのモデルについてこれを行います</td></tr></tbody></table></div>
 <p><code>--select orders+</code> を付けると、どのコマンドも、1 つのモデルとその下流のすべてに絞り込めます。</p>
-<h2 id="brevis-sql-serve-認証情報なしでウェアハウスを読む"><code>brevis-sql serve</code> — 認証情報なしでウェアハウスを読む<a class="anchor" href="#brevis-sql-serve-認証情報なしでウェアハウスを読む" aria-label="link">#</a></h2>
+<h2 id="brevis-sql-serve-reading-a-warehouse-without-a-credential"><code>brevis-sql serve</code> — 認証情報なしでウェアハウスを読む<a class="anchor" href="#brevis-sql-serve-reading-a-warehouse-without-a-credential" aria-label="link">#</a></h2>
 <p>Console の Data と SQL の画面は、何が着地したか、その中身は何かを表示します。どちらもウェアハウスには届きません。 隣で動き、エンジンが意図的に持たない認証情報を保持する、このサービスに問い合わせます。</p>
 <div class="code-block" data-code="brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span>-sql serve <span class="t-n">--connections</span> <span class="t-k">brevis</span>.yaml <span class="t-n">--addr</span> 127.0.0.1:8088</code></pre></div>
 <p>上限は予算ではありません。<code>--max-bytes</code> は 1 つのクエリを制限し、<code>--budget</code> は接続ごとの 1 時間あたりの合計を 制限します。見積もりに対して確認されるので、拒否は費用が発生する前に行われます。制限できるのはバイト数を 報告するウェアハウス、つまり BigQuery であって Postgres ではありません。起動時のバナーは、どの姿勢が 有効か(何も無い場合も含めて)を示します。</p>
 <p><strong>ファイルが宣言したものだけに到達でき</strong>、デフォルトでは、それが行うことに書き込みはありません。すべての 文は実行前に分類され、<code>--max-bytes</code> を超えてスキャンする読み取りは、費用が発生する前に見積もられて拒否され、 ウェアハウス自身にも書き込みの拒否が求められます。監査ログの行には文のハッシュが含まれ、文そのものは 含まれません。</p>
 <p><strong>専用のサービスアカウントはもう不要です。</strong> <code>brevis-sql build</code> はテーブルを作成するため、そのロールは書き込みが でき、そうしたロールを拒否するサービスは、作成、保管、ローテーションする必要のある 2 つ目のアカウントを 意味していました。ロールが防御線を担う唯一のものではなくなりました。Postgres は各文を <code>READ ONLY</code> で開いた トランザクション内で実行し、分類器には見えない書き込みである <code>SELECT nextval('s')</code> は Postgres 自身に 拒否されます。BigQuery は、見積もりを行うドライランで文の種類を報告するので、<code>CREATE TABLE</code> や <code>EXPORT DATA</code> はウェアハウス自身の判断で拒否されます。どちらも提供できないウェアハウスでも、書き込める 認証情報は引き続き拒否されます。</p>
 <p><code>BREVIS_ENV=local</code> 以外では、トークンが必須で、なければサービスは起動しません。</p>
-<h3 id="誰かが変更してよい開発用ウェアハウス">誰かが変更してよい開発用ウェアハウス<a class="anchor" href="#誰かが変更してよい開発用ウェアハウス" aria-label="link">#</a></h3>
+<h3 id="a-development-warehouse-somebody-may-change">誰かが変更してよい開発用ウェアハウス<a class="anchor" href="#a-development-warehouse-somebody-may-change" aria-label="link">#</a></h3>
 <div class="code-block" data-code="BREVIS_SQL_SERVE_WRITES=warehouse_dev"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>BREVIS_SQL_SERVE_WRITES=warehouse_dev</code></pre></div>
 <p>これは<strong>接続に名前を付けます</strong>。1 つのサービスが複数のウェアハウスに到達でき、開発に使う 1 つを 解放しても、隣の 1 つが解放されてはなりません。名前を付けた接続では、すべての層が引き下がり、 このサービスはその認証情報と同じだけの力を持ちます。行数の上限は画面を制限し、バイト数の上限は お金を制限しますが、どちらも文が変更するものを制限しません。</p>
 <p>これを設定する場所ではトークンが必須で、<code>BREVIS_ENV=local</code> も例外ではありません。起動時のバナーは 解放されたすべての接続を示し、Console はエディタの上にバナーを描画し、<code>brevis_sql_writable_connection</code> が メトリクスに現れます。<strong>本番では未設定にしてください。</strong> このリポジトリのどのマニフェストも、これを設定して いません。</p>
 <p>トークンには<strong>名前を付けられます</strong>。<code>BREVIS_SQL_SERVE_TOKEN_CONSOLE=…</code> は <code>console</code> という呼び出し元を宣言し、 その bearer が生成するすべての監査ログの行に <code>"caller":"console"</code> が含まれます。識別は、呼び出し元が埋める ヘッダーではなく認証情報そのものなので、ログは、そのトークンの保有者が持っていなかったことを語りません。 拒否されたトークンも行を残しますが、提示されたものは記録しません。</p>
-<h2 id="モデルは有効な-sql-のままのファイル">モデルは有効な SQL のままのファイル<a class="anchor" href="#モデルは有効な-sql-のままのファイル" aria-label="link">#</a></h2>
+<h2 id="a-model-is-a-file-that-stays-valid-sql">モデルは有効な SQL のままのファイル<a class="anchor" href="#a-model-is-a-file-that-stays-valid-sql" aria-label="link">#</a></h2>
 <p>設定は先頭のブロックコメントなので、ファイルはハイライト付きでエディタで開け、Console で手動で実行でき、 <code>psql -f</code> でも実行できます。</p>
 <div class="code-block" data-code="/* brevis
 materialized: table
@@ -159,7 +159,7 @@ tests:
 */
 select * from staging.stg_orders</code></pre></div>
 <p><strong>テンプレートはありません。</strong> <code>models/&lt;schema&gt;/&lt;name&gt;.sql</code> は <code>&lt;schema&gt;.&lt;name&gt;</code> であり、依存関係は、 自分で書く必要のある関数呼び出しではなく、SQL を読むことから得られます。<code>brevis-sql graph</code> は推論された ものを出力します。ヘッダーの <code>depends_on:</code> は、まれな取りこぼしに対する明示的な上書きです。</p>
-<h2 id="compile-から-test-まで">compile から test まで<a class="anchor" href="#compile-から-test-まで" aria-label="link">#</a></h2>
+<h2 id="from-compile-to-test">compile から test まで<a class="anchor" href="#from-compile-to-test" aria-label="link">#</a></h2>
 <p>2 つのモデルがあります。<code>raw.orders</code> をクレンジングするビューと、それに依存するテーブルです。</p>
 <p><code>models/staging/stg_orders.sql</code>:</p>
 <div class="code-block" data-code="/* brevis
@@ -232,7 +232,7 @@ marts.orders
   test <span class="t-n">--project</span> /project <span class="t-n">--dsn-from</span> BREVIS_SQL_DSN</code></pre></div>
 <div class="code-block" data-code="2 tests passed on postgres"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>2 tests passed on postgres</code></pre></div>
 <p>公開済みのイメージで得た実際の出力です。compile と graph は何にも接続しません。Postgres に対しては、build と test が「2 models built」と「2 tests passed」で終わります。</p>
-<h3 id="テストが失敗したとき">テストが失敗したとき<a class="anchor" href="#テストが失敗したとき" aria-label="link">#</a></h3>
+<h3 id="when-a-test-fails">テストが失敗したとき<a class="anchor" href="#when-a-test-fails" aria-label="link">#</a></h3>
 <p><code>raw.orders</code> に顧客のいない注文があると、<code>build</code> は通りますが <code>not_null</code> テストは通りません。失敗は、 モデル、列、行数、そして<strong>クエリ</strong>を示します。これはコンソールに貼り付けて、絞り込んでいくためのものです。</p>
 <div class="code-block" data-code="FAIL  marts.orders                   not_null         customer_id          1 row(s)
       SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
@@ -240,21 +240,35 @@ brevis-sql: 1 of 2 tests failed"><div class="code-head"><span class="code-lang">
       SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
 brevis-sql: 1 of 2 tests failed</code></pre></div>
 <p>プロセスは終了コード 1 で終了し、ワークフローのステップもそれとともに失敗します。</p>
-<h2 id="テストは違反する行を返す-select">テストは、違反する行を返す SELECT<a class="anchor" href="#テストは違反する行を返す-select" aria-label="link">#</a></h2>
+<h2 id="an-incremental-model-and-its-lookback">インクリメンタルモデルとその lookback<a class="anchor" href="#an-incremental-model-and-its-lookback" aria-label="link">#</a></h2>
+<p><code>materialized: incremental</code> には <code>unique_key</code> と <code>watermark</code> が必要です。各 build は、 ターゲットに既にある最大の watermark を超える行だけを読み、キーで MERGE します。 このフィルターは厳密なので、watermark と同値でも build の後にコミットされた行や、 古いタイムスタンプで遅れて届いた行は、<code>--full-refresh</code> するまで見えません。 任意の <code>lookback</code> がこれを解決します。</p>
+<div class="code-block" data-code="/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/</code></pre></div>
+<p>値は整数に <code>s</code>、<code>m</code>、<code>h</code>、<code>d</code> のいずれかを付けたものです。それ以外はモデル名付きで 拒否されます。フィルターは <code>updated_at &gt;= max - 2h</code> になり、重複した行は MERGE が 吸収します。lookback を指定する場合、watermark は TIMESTAMP 列でなければなりません。 <code>lookback</code> がなければ SQL は変わりません。</p>
+<h2 id="tests-are-selects-that-return-violating-rows">テストは、違反する行を返す SELECT<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
 <p><code>not_null</code>、<code>unique</code>、<code>accepted_values</code>、<code>relationships</code>。ゼロ行ならパスで、解釈すべきことはほかにありません。</p>
-<h2 id="書き込んだものを自分で伝える">書き込んだものを自分で伝える<a class="anchor" href="#書き込んだものを自分で伝える" aria-label="link">#</a></h2>
+<h2 id="it-says-what-it-wrote">書き込んだものを自分で伝える<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
 <p>マテリアライズされたすべてのモデルは、Brevis エンジンがすでに読んでいる <code>@brevis:</code> の行を出力するため、 <code>/data</code> に他のすべてと並んで表示されます(上の <code>build</code> の出力を参照)。ビューは行数をゼロではなく 報告しません。ビューは行を持たず、そこでのゼロは、本当に空のテーブルと区別がつかないからです。</p>
-<h2 id="2-つのウェアハウス1-つのスイート">2 つのウェアハウス、1 つのスイート<a class="anchor" href="#2-つのウェアハウス1-つのスイート" aria-label="link">#</a></h2>
+<h2 id="two-warehouses-one-suite">2 つのウェアハウス、1 つのスイート<a class="anchor" href="#two-warehouses-one-suite" aria-label="link">#</a></h2>
 <p>PostgreSQL と BigQuery(<code>--dialect bigquery</code>)で、どちらも同じテストスイートを実行します。実装が 1 つしかなかった間に書かれたもので、2 つ目が黙って乖離することはありません。</p>
 <p>BigQuery は Application Default Credentials で認証します。ワークロード ID では、それは pod 自身の ID であり、<code>--dsn-from</code> はプロジェクト id を保持する変数を指定します。</p>
 <h2 id="13-mb">13 MB<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
 <p>distroless、nonroot、シェルなし。公式の BigQuery クライアントは、空のバイナリで 31 MB、526 パッケージ なので、代わりに REST エンドポイントを通じて BigQuery と通信します。約 200 行で、黙って間違いうる あらゆる形に対して 1 つずつテストがあります。リポジトリのゲートがそのクライアントを名前で拒否するので、 この判断は、通常の依存関係のバージョンアップを越えて保たれます。</p>
-<h2 id="dbt-との照合">dbt との照合<a class="anchor" href="#dbt-との照合" aria-label="link">#</a></h2>
+<h2 id="verified-against-dbt">dbt との照合<a class="anchor" href="#verified-against-dbt" aria-label="link">#</a></h2>
 <p>jaffle-shop を、dbt が使ったのと同じシードデータに対して、このイメージでビルドしました。</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>結果</th></tr></thead><tbody><tr><td>モデルごとの、行と各行の md5</td><td><strong>一致、13 個中 13 個</strong></td></tr><tr><td>モデルごとの、列と型</td><td><strong>一致、13 個中 13 個</strong></td></tr><tr><td>13 モデル、初回ビルド</td><td>1.56 秒</td></tr></tbody></table></div>
-<h2 id="やらないこと">やらないこと<a class="anchor" href="#やらないこと" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-do">やらないこと<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
 <p><strong>dbt との互換性はありません</strong>。これは欠陥ではなく判断です。実際の dbt プロジェクトのモデルの約 3 分の 1 は、 <code>ref</code>、<code>source</code>、<code>config</code> 以上のものを使いません。残りはマクロを使い、パッケージは設計上テンプレートです。 誰にも予測できない半端な互換性は、ないよりも悪いものです。</p>
-<h2 id="次に進む先">次に進む先<a class="anchor" href="#次に進む先" aria-label="link">#</a></h2>
+<h2 id="where-to-go-next">次に進む先<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>目的</th><th>参照先</th></tr></thead><tbody><tr><td>4 つの構成要素の中での SQL の位置づけを見る</td><td><a href="/ja/docs/ecosystem/">エコシステム</a></td></tr><tr><td>brevis-sql をスケジュールされたステップとして実行する</td><td><a href="/ja/docs/core/">Core</a></td></tr><tr><td>モデリング対象のデータを着地させる</td><td><a href="/ja/docs/sdk/">Go SDK</a>または<a href="/ja/docs/ingestion/">取り込み</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="ページ">
@@ -269,7 +283,7 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#6-つのコマンド">6 つのコマンド</a></li><li class="toc-2"><a href="#brevis-sql-serve-認証情報なしでウェアハウスを読む">brevis-sql serve — 認証情報なしでウェアハウスを読む</a></li><li class="toc-3"><a href="#誰かが変更してよい開発用ウェアハウス">誰かが変更してよい開発用ウェアハウス</a></li><li class="toc-2"><a href="#モデルは有効な-sql-のままのファイル">モデルは有効な SQL のままのファイル</a></li><li class="toc-2"><a href="#compile-から-test-まで">compile から test まで</a></li><li class="toc-3"><a href="#テストが失敗したとき">テストが失敗したとき</a></li><li class="toc-2"><a href="#テストは違反する行を返す-select">テストは、違反する行を返す SELECT</a></li><li class="toc-2"><a href="#書き込んだものを自分で伝える">書き込んだものを自分で伝える</a></li><li class="toc-2"><a href="#2-つのウェアハウス1-つのスイート">2 つのウェアハウス、1 つのスイート</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#dbt-との照合">dbt との照合</a></li><li class="toc-2"><a href="#やらないこと">やらないこと</a></li><li class="toc-2"><a href="#次に進む先">次に進む先</a></li></ul>
+      <ul><li class="toc-2"><a href="#six-commands">6 つのコマンド</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve — 認証情報なしでウェアハウスを読む</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">誰かが変更してよい開発用ウェアハウス</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">モデルは有効な SQL のままのファイル</a></li><li class="toc-2"><a href="#from-compile-to-test">compile から test まで</a></li><li class="toc-3"><a href="#when-a-test-fails">テストが失敗したとき</a></li><li class="toc-2"><a href="#an-incremental-model-and-its-lookback">インクリメンタルモデルとその lookback</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">テストは、違反する行を返す SELECT</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">書き込んだものを自分で伝える</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">2 つのウェアハウス、1 つのスイート</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#verified-against-dbt">dbt との照合</a></li><li class="toc-2"><a href="#what-it-does-not-do">やらないこと</a></li><li class="toc-2"><a href="#where-to-go-next">次に進む先</a></li></ul>
     </aside>
   </main>
 </div>
@@ -289,9 +303,9 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -314,7 +328,7 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

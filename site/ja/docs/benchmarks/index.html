@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
-      <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/benchmarks/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/benchmarks/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/benchmarks/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/benchmarks/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/benchmarks/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/benchmarks/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/benchmarks/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/benchmarks/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/benchmarks/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/benchmarks/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/benchmarks/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="言語: 日本語"><span>日本語</span></summary><ul><li><a href="/docs/benchmarks/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/benchmarks/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/benchmarks/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/benchmarks/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/benchmarks/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/benchmarks/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/benchmarks/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/benchmarks/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/benchmarks/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/benchmarks/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/benchmarks/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         オープンソースを見る
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>ベンチマーク</h1>
@@ -127,28 +127,28 @@
       <p>1 つのコマンドで gateway 全体を計測します。</p>
 <div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>Postgres を起動し、gateway を起動し、[k6] で負荷をかけ、<strong>バッファが空になるのを待ち</strong>、gateway 自身の <code>/metrics</code> を取得して、<code>bench/results/REPORT.md</code> を書き出します。</p>
-<h2 id="3-つの証人そして重要なのは-3-つ目">3 つの証人、そして重要なのは 3 つ目<a class="anchor" href="#3-つの証人そして重要なのは-3-つ目" aria-label="link">#</a></h2>
+<h2 id="three-witnesses-and-the-third-is-the-one-that-matters">3 つの証人、そして重要なのは 3 つ目<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>k6 が知っているのは、プロデューサーが見たものです。gateway が知っているのは、自分がしたことです。 前者だけを持つ負荷テストでは、高速な gateway と、<code>202</code> を返しながら受け付けたものを捨てている gateway を 区別できません。</p>
 <p>そこでレポートは 2 つを並べ、さらに Postgres の行数を数えます。</p>
 <div class="table-wrap"><table><thead><tr><th>証人</th><th>イベント数</th></tr></thead><tbody><tr><td>k6 が <code>accepted</code> と告げられた</td><td>5,431,000</td></tr><tr><td>gateway が受信としてカウントした</td><td>5,431,000</td></tr><tr><td>Postgres の行数</td><td>5,431,000</td></tr><tr><td>dead letter のレコード数</td><td>0</td></tr></tbody></table></div>
 <p>最初の 2 つはどちらも gateway 自身の算術です。1 つは書いたレスポンスから、もう 1 つは加算したカウンタから 来ており、イベントを失うバグがあっても、<strong>両者の間で</strong>は整合を保てます。データベースだけが、 こちらの言い分を鵜呑みにしませんでした。</p>
 <p><strong>3 つが一致しない run は、パーセンタイルがどれだけ良くても失敗です。</strong></p>
-<h2 id="上記の-run">上記の run<a class="anchor" href="#上記の-run" aria-label="link">#</a></h2>
+<h2 id="the-run-above">上記の run<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
 <p><code>bench/results/REPORT.md</code> にある 2026-09-26 の run です。 <code>areteacademy/brevis-gateway:0.11.0</code>、Darwin arm64、11 CPU、同じカーネル上のコンテナ内の Postgres 17、 <code>write: append</code> の <code>auto_table[columns]</code>:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>受け付けたイベント</td><td><strong>5,431,000</strong>(135,768/s)</td></tr><tr><td>送信したボディ</td><td>40 秒で 1,156.7 MiB</td></tr><tr><td><code>503</code>(バックプレッシャー)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5.9 ms / 16.0 ms / 22.7 ms</td></tr><tr><td>配信したバッチ</td><td>1,087、葬られたものなし</td></tr></tbody></table></div>
-<h2 id="しきい値こそが要点">しきい値こそが要点<a class="anchor" href="#しきい値こそが要点" aria-label="link">#</a></h2>
+<h2 id="the-thresholds-are-the-point">しきい値こそが要点<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>k6 はしきい値のどれかが破られるとゼロ以外で終了するので、これはグラフではなく<strong>ゲート</strong>です。</p>
 <div class="table-wrap"><table><thead><tr><th>しきい値</th><th>理由</th></tr></thead><tbody><tr><td><code>p95 &lt; 500ms</code></td><td>受け付けの経路は sink のレイテンシから離れていなければならない。<code>COPY</code> を待つリクエストは、非同期パイプが防ぐために存在する欠陥です。</td></tr><tr><td><code>http_req_failed &lt; 1%</code></td><td><code>503</code> は問題ない。タイムアウトや 5xx は問題。</td></tr><tr><td><code>events accepted &gt; 1000</code></td><td>しきい値のスイートは、何も応答しなかった gateway に対しても通ってしまう。</td></tr></tbody></table></div>
 <p>意図的に緩く設定されています。CI が割り当てたどんなマシンでも動くからです。検出するのは、パーセントではなく、 リグレッションの姿である<strong>桁違いの変化</strong>です。</p>
 <p><strong><code>503</code> は失敗ではありません。</strong> 置き場のないイベントを gateway が拒否したもので、リトライしても安全です。 <code>ingestion_id</code> はイベントの固定された関数なので、同じボディを再送すれば同じレコードだからです。 これをエラーとして数えると、バックプレッシャーがバグに見えてしまいます。</p>
-<h2 id="測らないもの">測らないもの<a class="anchor" href="#測らないもの" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-measure">測らないもの<a class="anchor" href="#what-it-does-not-measure" aria-label="link">#</a></h2>
 <ul><li><strong>BigQuery ではありません。</strong> 宛先はコンテナ内の Postgres です。ウェアハウスのロードジョブのクォータ、 コミットのレイテンシ、DDL の同時実行性はこれらの数字に含まれず、含めることもできません。</li><li><strong>耐久性ではありません。</strong> <code>durability: memory</code> が唯一のティアなので、<code>202</code> は *RAM に受け付けた*ことを意味します。測るのはそれがどれだけ速く起きるかであって、<code>SIGKILL</code> の後に 何が生き残るかではありません。</li><li><strong>あなたのハードウェアではありません。</strong> 形と比率として読んでください。</li></ul>
-<h2 id="ローカルクラウドプロファイルごと">ローカルクラウド、プロファイルごと<a class="anchor" href="#ローカルクラウドプロファイルごと" aria-label="link">#</a></h2>
+<h2 id="the-local-cloud-by-profile">ローカルクラウド、プロファイルごと<a class="anchor" href="#the-local-cloud-by-profile" aria-label="link">#</a></h2>
 <div class="code-block" data-code="docker compose -f docker-compose.drivers.yml --profile gcp up -d
 docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">docker</span> compose <span class="t-n">-f</span> <span class="t-k">docker</span>-compose.drivers.yml <span class="t-n">--profile</span> gcp up <span class="t-n">-d</span>
 <span class="t-k">docker</span> compose <span class="t-n">-f</span> <span class="t-k">docker</span>-compose.drivers.yml <span class="t-n">--profile</span> all up <span class="t-n">-d</span></code></pre></div>
 <p>クラウドごとに 1 つではなく、プロファイル付きの 1 つのファイルです。2 つのファイルは 2 つのプロジェクト名 であり、両方にある <code>postgres</code> が、すでに一度エンジンの開発用データベースを置き換えてしまったからです。</p>
-<h3 id="floci-がカバーする-bigquery-は見かけより少ない">floci がカバーする BigQuery は、見かけより少ない<a class="anchor" href="#floci-がカバーする-bigquery-は見かけより少ない" aria-label="link">#</a></h3>
+<h3 id="floci-covers-less-of-bigquery-than-it-looks">floci がカバーする BigQuery は、見かけより少ない<a class="anchor" href="#floci-covers-less-of-bigquery-than-it-looks" aria-label="link">#</a></h3>
 <p>仮定ではなく計測した結果です。</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>データセットとテーブルの作成</td><td>✅</td></tr><tr><td><code>timePartitioning</code> と <code>clustering</code> が保持される</td><td>✅ — <code>0.9.1</code> のバグの形</td></tr><tr><td>列の <code>PATCH</code></td><td>✅ — <code>auto_table</code> の進化</td></tr><tr><td><code>insertAll</code></td><td>✅</td></tr><tr><td>クエリ</td><td>✅、<code>/var/run/docker.sock</code> をマウントした場合のみ</td></tr><tr><td><strong>ロードジョブ</strong></td><td>❌ <code>Only QUERY jobs are supported by the floci BigQuery emulator</code></td></tr></tbody></table></div>
 <p>SDK が BigQuery に書き込むのは、ロードジョブ<strong>だけ</strong>を通じてです。そのため floci が検証するのは、 ペイロードを DDL に変える <code>auto_table</code> のすべての行であり、<strong>Brevis の書き込みは 1 つもありません</strong>。 それでもローカルテストがない半分であり、持っておく価値はあります。しかし floci に対してスイートが 緑だからといって、BigQuery が動くことにはなりません。</p>
@@ -166,7 +166,7 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#3-つの証人そして重要なのは-3-つ目">3 つの証人、そして重要なのは 3 つ目</a></li><li class="toc-2"><a href="#上記の-run">上記の run</a></li><li class="toc-2"><a href="#しきい値こそが要点">しきい値こそが要点</a></li><li class="toc-2"><a href="#測らないもの">測らないもの</a></li><li class="toc-2"><a href="#ローカルクラウドプロファイルごと">ローカルクラウド、プロファイルごと</a></li><li class="toc-3"><a href="#floci-がカバーする-bigquery-は見かけより少ない">floci がカバーする BigQuery は、見かけより少ない</a></li></ul>
+      <ul><li class="toc-2"><a href="#three-witnesses-and-the-third-is-the-one-that-matters">3 つの証人、そして重要なのは 3 つ目</a></li><li class="toc-2"><a href="#the-run-above">上記の run</a></li><li class="toc-2"><a href="#the-thresholds-are-the-point">しきい値こそが要点</a></li><li class="toc-2"><a href="#what-it-does-not-measure">測らないもの</a></li><li class="toc-2"><a href="#the-local-cloud-by-profile">ローカルクラウド、プロファイルごと</a></li><li class="toc-3"><a href="#floci-covers-less-of-bigquery-than-it-looks">floci がカバーする BigQuery は、見かけより少ない</a></li></ul>
     </aside>
   </main>
 </div>
@@ -186,9 +186,9 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -211,7 +211,7 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

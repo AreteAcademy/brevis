@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Aller au contenu</a>
+<a class="skip-link" href="#content">Aller au contenu</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigation principale">
-      <a href="/fr/#ecossistema">Écosystème</a>
+      <a href="/fr/#ecosystem">Écosystème</a>
       <a href="/fr/docs/">Documentation</a>
-      <details class="lang-dd"><summary aria-label="Langue: Français"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Français</span></summary><ul><li><a href="/docs/runtime/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/runtime/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/runtime/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/runtime/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/runtime/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/runtime/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/runtime/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/runtime/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/runtime/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/runtime/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/runtime/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Langue: Français"><span>Français</span></summary><ul><li><a href="/docs/runtime/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/runtime/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/runtime/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/runtime/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/runtime/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/runtime/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/runtime/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/runtime/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/runtime/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/runtime/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/runtime/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Explorer l&#x27;open source
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentation</p>
       <h1>Runtime d&#x27;un step</h1>
@@ -137,7 +137,7 @@
 │   2m14s · attempt 1                  │
 └──────────────────────────────────────┘</code></pre></div>
 <p><strong>La plupart du temps, vous n'écrivez rien.</strong> Le moteur lit <code>run:</code> et <code>image:</code> et en déduit le reste.</p>
-<h2 id="quand-le-declarer">Quand le déclarer<a class="anchor" href="#quand-le-declarer" aria-label="link">#</a></h2>
+<h2 id="when-to-declare-it">Quand le déclarer<a class="anchor" href="#when-to-declare-it" aria-label="link">#</a></h2>
 <p>Deux champs, tous deux facultatifs, tous deux par step :</p>
 <div class="code-block" data-code="steps:
   - id: fetch
@@ -156,14 +156,14 @@
     <span class="t-k">tools</span>: [dbt]           <span class="t-c"># what it drives, not what it is</span></code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>champ</th><th></th></tr></thead><tbody><tr><td><code>runtime</code></td><td>le langage du step : <code>go</code>, <code>python</code>, <code>node</code>, <code>shell</code>…</td></tr><tr><td><code>tools</code></td><td>les outils que la commande pilote : <code>dbt</code>, <code>dlt</code>, <code>spark</code>…</td></tr></tbody></table></div>
 <p>La règle empirique : <strong>déclarez-le quand l'inférence se trompe.</strong> Un <code>run:</code> qui pointe vers un binaire compilé n'a aucun moyen de dire qu'il est en Go ; un wrapper qui appelle <code>dbt</code> en interne n'a aucun moyen de dire qu'il pilote dbt.</p>
-<h2 id="pourquoi-un-vocabulaire-ferme">Pourquoi un vocabulaire fermé<a class="anchor" href="#pourquoi-un-vocabulaire-ferme" aria-label="link">#</a></h2>
+<h2 id="why-a-closed-vocabulary">Pourquoi un vocabulaire fermé<a class="anchor" href="#why-a-closed-vocabulary" aria-label="link">#</a></h2>
 <p>Un id hors du vocabulaire est <strong>refusé à la publication</strong>, en nommant ce qui est valide. L'alternative est une puce qui s'affiche vide sur un écran trois jours plus tard, sans rien pour remonter à la cause.</p>
 <div class="code-block" data-code="workflow &quot;daily&quot;: step &quot;transform&quot;: `runtime: pyton` is not valid
   (valid: go, python, node, shell, …)"><div class="code-head"><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>workflow "daily": step "transform": `runtime: pyton` is not valid
   (valid: go, python, node, shell, …)</code></pre></div>
-<h2 id="a-quoi-sert-la-puce">À quoi sert la puce<a class="anchor" href="#a-quoi-sert-la-puce" aria-label="link">#</a></h2>
+<h2 id="what-the-chip-is-for">À quoi sert la puce<a class="anchor" href="#what-the-chip-is-for" aria-label="link">#</a></h2>
 <p>Ce n'est pas de la décoration. Quand un run échoue à 3 h du matin, la première question est « qu'exécute ce step ? », et la réponse se trouve généralement dans un autre dépôt. La puce la met sur le graphe lui-même — à côté de la version du SDK utilisée par le step, ce qui permet de distinguer « cassé aujourd'hui » de « cassé depuis la montée de version de mardi ».</p>
-<h2 id="etapes-suivantes">Étapes suivantes<a class="anchor" href="#etapes-suivantes" aria-label="link">#</a></h2>
+<h2 id="next-steps">Étapes suivantes<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/fr/docs/workflows/">Workflows</a> — tous les champs d'un step</li><li><a href="/fr/docs/pod-per-step/">Un pod par step</a> — où un step s'exécute réellement</li><li><a href="/fr/docs/observability/">Observabilité</a> — les métriques qui vont avec</li></ul>
 
       <nav class="pagers" aria-label="Pages">
@@ -178,7 +178,7 @@
 
     <aside class="toc" aria-label="Sur cette page">
       <p class="toc-t">Sur cette page</p>
-      <ul><li class="toc-2"><a href="#quand-le-declarer">Quand le déclarer</a></li><li class="toc-2"><a href="#pourquoi-un-vocabulaire-ferme">Pourquoi un vocabulaire fermé</a></li><li class="toc-2"><a href="#a-quoi-sert-la-puce">À quoi sert la puce</a></li><li class="toc-2"><a href="#etapes-suivantes">Étapes suivantes</a></li></ul>
+      <ul><li class="toc-2"><a href="#when-to-declare-it">Quand le déclarer</a></li><li class="toc-2"><a href="#why-a-closed-vocabulary">Pourquoi un vocabulaire fermé</a></li><li class="toc-2"><a href="#what-the-chip-is-for">À quoi sert la puce</a></li><li class="toc-2"><a href="#next-steps">Étapes suivantes</a></li></ul>
     </aside>
   </main>
 </div>
@@ -198,9 +198,9 @@
       <div class="footer-col">
         <h2>projet</h2>
         <ul>
-          <li><a href="/fr/#ecossistema">Écosystème</a></li>
+          <li><a href="/fr/#ecosystem">Écosystème</a></li>
           <li><a href="/fr/docs/philosophy/">Principes</a></li>
-          <li><a href="/fr/docs/introduction/#code-ouvert-choisissez-comment-participer">Open source</a></li>
+          <li><a href="/fr/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/fr/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -223,7 +223,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -35,7 +35,7 @@ di database tempat data tersebut mendarat.
 Tiga bagian pendukung:
 
 - **[Console](/id/docs/console/index.md)** — antarmuka web di atas Core
-- **[agent](/id/docs/pod-per-step/#di-mana-setiap-step-berjalan)** — menjalankan step di klaster yang sudah Anda miliki
+- **[agent](/id/docs/pod-per-step/#where-each-step-runs)** — menjalankan step di klaster yang sudah Anda miliki
 - **[`brevis` untuk Python](/id/docs/python/index.md)** — konteks run untuk step Python
 
 ## Memakai satu bagian saja
@@ -46,7 +46,7 @@ Bisa. Setiap bagian punya modul, versi, dan image sendiri: SDK adalah pustaka Go
 
 Sebuah order yang diambil SDK dan sebuah order yang tiba di Gateway mendarat di tabel yang sama, dengan brevis_ingestion_id yang sama. Memilih di antara keduanya menjadi keputusan deployment, bukan keputusan skema.
 
-Lewat SDK, dengan `sdk.Landing` (detail di [Layout landing](/id/docs/sdk/#layout-landing)):
+Lewat SDK, dengan `sdk.Landing` (detail di [Layout landing](/id/docs/sdk/#the-landing-layout)):
 
 ```go
 sdk.Execute(ctx, &sdk.Pipeline{
@@ -59,7 +59,7 @@ sdk.Execute(ctx, &sdk.Pipeline{
 }, nil)
 ```
 
-Lewat Gateway, sebuah POST ke `/v1/tables` (detail di [Satu rute, N tabel](/id/docs/ingestion/#satu-rute-n-tabel)):
+Lewat Gateway, sebuah POST ke `/v1/tables` (detail di [Satu rute, N tabel](/id/docs/ingestion/#one-route-n-tables)):
 
 ```bash
 curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \

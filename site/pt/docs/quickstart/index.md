@@ -25,24 +25,24 @@ Crie `hello.yaml`. Este exemplo usa apenas shell, então roda em qualquer lugar:
 ```yaml
 name: hello
 type: dag
-tags: [exemplo]
+tags: [example]
 
 steps:
-  - id: preparar
-    run: sh -c 'echo preparando; sleep 1'
+  - id: prepare
+    run: sh -c 'echo preparing; sleep 1'
 
-  # Os dois seguintes dependem do mesmo passo, então rodam EM PARALELO.
-  - id: extrair
-    run: sh -c 'sleep 2; echo 42 extraidos'
-    depends_on: [preparar]
+  # The next two depend on the same step, so they run IN PARALLEL.
+  - id: extract
+    run: sh -c 'sleep 2; echo 42 extracted'
+    depends_on: [prepare]
 
-  - id: validar
-    run: sh -c 'sleep 1; echo validado'
-    depends_on: [preparar]
+  - id: validate
+    run: sh -c 'sleep 1; echo validated'
+    depends_on: [prepare]
 
-  - id: publicar
-    run: echo publicado
-    depends_on: [extrair, validar]
+  - id: publish
+    run: echo published
+    depends_on: [extract, validate]
 ```
 
 Confira antes de publicar — isto não toca no banco:
@@ -67,18 +67,18 @@ brevis run hello.yaml
 
 ```text
 workflow hello (dag, 4 steps) in .
-  ▶ preparar
-    preparar | preparando
-  ✓ preparar
-  ▶ extrair
-  ▶ validar
-    validar | validado
-  ✓ validar
-    extrair | 42 extraidos
-  ✓ extrair
-  ▶ publicar
-    publicar | publicado
-  ✓ publicar
+  ▶ prepare
+    prepare | preparing
+  ✓ prepare
+  ▶ extract
+  ▶ validate
+    validate | validated
+  ✓ validate
+    extract | 42 extracted
+  ✓ extract
+  ▶ publish
+    publish | published
+  ✓ publish
 
 workflow hello finished
 ```

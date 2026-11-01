@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+<a class="skip-link" href="#content">Lewati ke konten</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigasi utama">
-      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/#ecosystem">Ekosistem</a>
       <a href="/id/docs/">Dokumentasi</a>
-      <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/workflows/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/workflows/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/workflows/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/workflows/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/workflows/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/workflows/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/workflows/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/workflows/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/workflows/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/workflows/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/workflows/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/workflows/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/workflows/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/workflows/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/workflows/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/workflows/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/workflows/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/workflows/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Jelajahi open source
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentasi</p>
       <h1>Workflows</h1>
       <p class="doc-desc">Format YAML lengkap — step, dependensi, image, resource, dan jadwal.</p>
       <p>Sebuah workflow adalah file YAML. Ia mendeklarasikan <strong>apa yang dijalankan</strong>, <strong>dalam urutan apa</strong>, dan <strong>dengan runtime apa</strong> — dan tidak lebih dari itu.</p>
-<h2 id="struktur-minimum">Struktur minimum<a class="anchor" href="#struktur-minimum" aria-label="link">#</a></h2>
+<h2 id="minimum-structure">Struktur minimum<a class="anchor" href="#minimum-structure" aria-label="link">#</a></h2>
 <div class="code-block" data-code="name: hello
 steps:
   - id: only
@@ -134,7 +134,7 @@ steps:
   - <span class="t-k">id</span>: only
     <span class="t-k">run</span>: echo done</code></pre></div>
 <p><code>name</code> mengidentifikasi workflow di database dan di antarmuka. <code>steps</code> adalah daftar step, masing-masing dengan <code>id</code> yang unik dan sebuah <code>run</code>.</p>
-<h3 id="description-untuk-apa-workflow-ini"><code>description</code> — untuk apa workflow ini<a class="anchor" href="#description-untuk-apa-workflow-ini" aria-label="link">#</a></h3>
+<h3 id="description-what-it-is-for"><code>description</code> — untuk apa workflow ini<a class="anchor" href="#description-what-it-is-for" aria-label="link">#</a></h3>
 <p>Opsional, bentuk bebas, dan tidak dibaca oleh apa pun di engine:</p>
 <div class="code-block" data-code="name: daily-orders
 description: &gt;
@@ -151,7 +151,7 @@ steps:
     <span class="t-k">run</span>: python fetch.py</code></pre></div>
 <p>Ia tampil di bagian atas layar workflow, di atas jumlah dan jadwal. Graf sudah menjelaskan apa yang <strong>dilakukan</strong> sebuah alur; ini satu-satunya tempat yang menjelaskan mengapa alur itu ada, dan itulah yang sebenarnya dibutuhkan orang yang membukanya untuk pertama kali pada pukul tiga pagi.</p>
 <p>Workflow tanpa deskripsi tidak menampilkan apa pun di sana — bukan blok kosong, yang terbaca seperti sesuatu yang gagal dimuat.</p>
-<h2 id="urutan-chain-atau-dag">Urutan: chain atau dag<a class="anchor" href="#urutan-chain-atau-dag" aria-label="link">#</a></h2>
+<h2 id="order-chain-or-dag">Urutan: chain atau dag<a class="anchor" href="#order-chain-or-dag" aria-label="link">#</a></h2>
 <div class="code-block" data-code="type: chain   # order is the file&#x27;s order
 type: dag     # order comes from depends_on"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">type</span>: chain   <span class="t-c"># order is the file's order</span>
 <span class="t-k">type</span>: dag     <span class="t-c"># order comes from depends_on</span></code></pre></div>
@@ -193,7 +193,7 @@ steps:
     <span class="t-k">depends_on</span>: [extract, validate]</code></pre></div>
 <p>Runner menelusuri graf <strong>per level</strong>: semua yang berada dalam satu level berjalan paralel, dan level berikutnya baru mulai ketika level sebelumnya selesai seluruhnya.</p>
 <aside class="admon admon-warning"><p class="admon-t">Satu kegagalan menghentikan seluruh level</p><p>Runner berhenti pada kegagalan <strong>pertama</strong> dalam sebuah level, tanpa memulai level berikutnya. Melanjutkan setelah error akan menghasilkan hasil parsial yang tampak lengkap.</p></aside>
-<h2 id="jadwal">Jadwal<a class="anchor" href="#jadwal" aria-label="link">#</a></h2>
+<h2 id="schedule">Jadwal<a class="anchor" href="#schedule" aria-label="link">#</a></h2>
 <div class="code-block" data-code="schedule: &quot;0 5 * * *&quot;   # five-field cron
 concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">schedule</span>: "0 5 * * *"   <span class="t-c"># five-field cron</span>
 <span class="t-k">concurrency</span>: 1</code></pre></div>
@@ -207,7 +207,7 @@ concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><butto
   <span class="t-k">limit</span>: 1               <span class="t-c"># optional; a group without one means 1</span></code></pre></div>
 <p>Run dari setiap workflow dalam group dihitung terhadap satu batas yang sama, apa pun yang memulainya — jadwal, sebuah landing, sebuah backfill, atau sebuah klik. Run yang mendapati group penuh <strong>menunggu di antrean</strong>; ia tidak dilewati dan tidak gagal. Workflow ketiga yang menulis tabel yang sama bergabung dengan menyebutkan nama group. Selama menunggu, halaman run menyatakannya: group mana, batasnya, dan run mana yang memegang slot.</p>
 <ul><li>Setiap anggota mendeklarasikan <strong>batas yang sama</strong>. <code>validate</code> dan <code>publish</code> menolak group yang dideklarasikan dengan 1 di satu file dan 3 di file lain, termasuk terhadap anggota yang sudah dipublikasikan.</li><li>Sebuah group menyerialisasi <strong>run Brevis</strong>. <code>dbt run</code> yang dijalankan seseorang di mesinnya sendiri tidak ada di antrean ini, dan gagal dengan cara yang sama.</li></ul>
-<h2 id="image-dan-resource">Image dan resource<a class="anchor" href="#image-dan-resource" aria-label="link">#</a></h2>
+<h2 id="image-and-resources">Image dan resource<a class="anchor" href="#image-and-resources" aria-label="link">#</a></h2>
 <div class="code-block" data-code="image: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
 resources:
   cpu: 200m
@@ -238,9 +238,9 @@ resources:
     <span class="t-k">resources</span>: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
 <p>Inilah yang membuat fetcher Go hanya berbiaya 12 MB dan 32Mi di samping <code>dbt build</code> sebesar 1,9 GB, alih-alih keduanya sama-sama menanggung ukuran yang lebih besar. Lihat <a href="/id/docs/pod-per-step/">Pod per step</a>.</p>
-<h2 id="field-step">Field step<a class="anchor" href="#field-step" aria-label="link">#</a></h2>
+<h2 id="step-fields">Field step<a class="anchor" href="#step-fields" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>field</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>wajib</strong></td><td>unik dalam workflow; nama yang ditampilkan di graf dan log</td></tr><tr><td><code>run</code></td><td></td><td>command-nya</td></tr><tr><td><code>image</code></td><td></td><td>image step; tanpanya, mewarisi image tingkat atas</td></tr><tr><td><code>host</code></td><td></td><td>kirim command ke mesin yang <strong>tidak</strong> dikelola engine — alternatif untuk <code>image</code>, bukan pendampingnya. Lihat <a href="https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host" target="_blank" rel="noopener"><code>host:</code> di panduan Kubernetes</a></td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> berjalan tanpa shell — wajib pada distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>daftar <code>id</code> yang harus selesai lebih dulu; sebuah entri boleh berupa <code>{step, label}</code></td></tr><tr><td><code>marker</code></td><td><code>false</code></td><td>step tanpa command, untuk <code>start</code> atau <code>end</code></td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code>, dan <code>limits</code> untuk step itu</td></tr><tr><td><code>runtime</code>, <code>tools</code></td><td></td><td>bahasa dan tool milik step — lihat <a href="/id/docs/runtime/">Runtime step</a></td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>pada state dependensi seperti apa step ini berjalan — lihat di bawah</td></tr><tr><td><code>unless_empty</code></td><td></td><td>sebuah key context yang menentukan apakah ada yang perlu dikerjakan — lihat di bawah</td></tr><tr><td><code>for_each</code></td><td></td><td>sebuah key context berisi list; step berjalan sekali per elemen — lihat di bawah</td></tr><tr><td><code>group</code></td><td></td><td>menggambar step ini di dalam kotak bernama yang dapat dilipat — lihat di bawah</td></tr><tr><td><code>uses</code></td><td></td><td>workflow lain yang step-nya menggantikan posisi step ini — lihat di bawah</td></tr><tr><td><code>on_error</code></td><td></td><td>mengumumkan kegagalan step ini — lihat di bawah</td></tr></tbody></table></div>
-<h2 id="menjalankan-step-hanya-ketika-ada-yang-perlu-dikerjakan">Menjalankan step hanya ketika ada yang perlu dikerjakan<a class="anchor" href="#menjalankan-step-hanya-ketika-ada-yang-perlu-dikerjakan" aria-label="link">#</a></h2>
+<h2 id="running-a-step-only-when-there-is-something-to-do">Menjalankan step hanya ketika ada yang perlu dikerjakan<a class="anchor" href="#running-a-step-only-when-there-is-something-to-do" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# in extract
 context.set(has_rows=len(rows) &gt; 0)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
@@ -254,15 +254,15 @@ context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
 <p><code>unless_empty</code> menyebut sebuah <strong>key</strong>, bukan ekspresi. Step yang memutuskan dan mempublikasikan jawabannya; engine membaca satu key dan menanyakan apakah isinya kosong.</p>
 <div class="table-wrap"><table><thead><tr><th>dihitung kosong</th><th>dihitung ada</th></tr></thead><tbody><tr><td><code>false</code>, <code>0</code>, <code>""</code>, <code>null</code>, <code>[]</code>, <code>{}</code></td><td>semua yang lain</td></tr></tbody></table></div>
 <p><code>"false"</code> sebagai <strong>string</strong> dihitung ada. Step yang mempublikasikan lima karakter itu telah mempublikasikan sesuatu, dan menebak bahwa maksudnya boolean adalah cara sebuah aturan mulai punya opini yang tidak terlihat oleh penulisnya. Publikasikan boolean yang sebenarnya.</p>
-<h3 id="mengapa-bukan-ekspresi">Mengapa bukan ekspresi<a class="anchor" href="#mengapa-bukan-ekspresi" aria-label="link">#</a></h3>
+<h3 id="why-not-an-expression">Mengapa bukan ekspresi<a class="anchor" href="#why-not-an-expression" aria-label="link">#</a></h3>
 <p>Desain yang menggoda adalah <code>when: "{{ context.extract.rows &gt; 0 }}"</code>. Bahasa ekspresi mini adalah komitmen besar: sebuah parser, sebuah sistem tipe untuk menjelaskan arti <code>&gt;</code> pada JSON <code>any</code>, sebuah kisah keamanan karena ekspresi itu datang dari YAML yang ditulis orang lain, dan pesan error yang menunjuk ke dalam sebuah string. Setiap orkestrator yang memilikinya punya bug tracker yang penuh dengan hal itu.</p>
 <p>Di sini keputusan berada dalam bahasa yang sudah ditulis oleh pembuatnya, di tempat framework test miliknya sendiri dapat menjangkaunya.</p>
-<h3 id="key-yang-hilang-adalah-kegagalan-bukan-nilai-kosong">Key yang hilang adalah kegagalan, bukan nilai kosong<a class="anchor" href="#key-yang-hilang-adalah-kegagalan-bukan-nilai-kosong" aria-label="link">#</a></h3>
+<h3 id="a-missing-key-is-a-failure-not-an-empty-value">Key yang hilang adalah kegagalan, bukan nilai kosong<a class="anchor" href="#a-missing-key-is-a-failure-not-an-empty-value" aria-label="link">#</a></h3>
 <p>Jika key tidak ada, step <strong>gagal</strong> dan pesannya menyebut key itu berdampingan dengan apa yang sebenarnya ditulis oleh publisher:</p>
 <div class="code-block" data-code="step &quot;transform&quot; reads `extract.has_row`, and &quot;extract&quot; published &quot;has_rows&quot; but not &quot;has_row&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"</code></pre></div>
 <p>Alternatifnya — membaca key yang hilang sebagai "kosong, jadi lewati" — mengubah typo menjadi step yang berhenti berjalan secara diam-diam dan selamanya, tanpa ada yang menjelaskan sebabnya. Itu hasil terburuk yang bisa dimiliki fitur ini.</p>
 <p>Key selalu dikualifikasikan oleh step yang mempublikasikannya, dan step itu harus salah satu yang menjadi dependensi step ini. Keduanya ditolak saat <strong>publish</strong>: step yang digerbangi oleh key yang tidak akan pernah terlihat olehnya akan dilewati selamanya, dan mengetahuinya ketika job malam berhenti berjalan sudah terlambat.</p>
-<h2 id="menjalankan-step-sekali-per-elemen">Menjalankan step sekali per elemen<a class="anchor" href="#menjalankan-step-sekali-per-elemen" aria-label="link">#</a></h2>
+<h2 id="running-a-step-once-per-element">Menjalankan step sekali per elemen<a class="anchor" href="#running-a-step-once-per-element" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# in extract
 context.set(partitions=[&quot;2026-01&quot;, &quot;2026-02&quot;, &quot;2026-03&quot;])"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
@@ -277,20 +277,20 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>variabel</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_MAP_INDEX</code></td><td><code>0</code>, <code>1</code>, <code>2</code> …</td></tr><tr><td><code>BREVIS_MAP_VALUE</code></td><td>elemennya</td></tr></tbody></table></div>
 <p>String JSON tiba <strong>tanpa tanda kutip</strong>, sehingga <code>for_each</code> atas <code>["2026-01"]</code> memberikan <code>2026-01</code> ke shell, bukan <code>"2026-01"</code>. Selain itu — angka, objek, list — tiba sebagai JSON-nya.</p>
 <p>Tidak satu pun dari kedua variabel itu ada pada step yang tidak di-map. Variabel yang selalu ada dan selalu kosong mengajari siapa pun yang membaca environment untuk mengabaikannya.</p>
-<h3 id="bentuk-dag-tidak-berubah">Bentuk DAG tidak berubah<a class="anchor" href="#bentuk-dag-tidak-berubah" aria-label="link">#</a></h3>
+<h3 id="the-shape-of-the-dag-does-not-change">Bentuk DAG tidak berubah<a class="anchor" href="#the-shape-of-the-dag-does-not-change" aria-label="link">#</a></h3>
 <p>Step yang di-map tetap satu node dengan satu set edge. Hanya jumlah baris di bawahnya yang bervariasi, sehingga layout-nya tetap seperti biasa dan <code>[3]</code> dihitung dari baris-baris itu saat dibaca — tidak ada yang disimpan, jadi tidak ada yang harus disinkronkan dan hitungan yang salah tidak bisa bertahan lebih lama dari query yang sudah diperbaiki.</p>
 <p>Selama instance masih berjalan, kartu menampilkan <code>[2/3]</code>.</p>
-<h3 id="satu-instance-gagal-membuat-step-gagal">Satu instance gagal membuat step gagal<a class="anchor" href="#satu-instance-gagal-membuat-step-gagal" aria-label="link">#</a></h3>
+<h3 id="one-failed-instance-fails-the-step">Satu instance gagal membuat step gagal<a class="anchor" href="#one-failed-instance-fails-the-step" aria-label="link">#</a></h3>
 <p>Tiga partisi dimuat dan satu tidak berarti step itu tidak menyelesaikan tugasnya, dan step di bawahnya melihat hal itu. Node yang menjadi hijau karena sebagian besar berhasil adalah lencana yang berbohong.</p>
 <p><strong>Retry hanya mengulang instance yang gagal.</strong> Delapan belas partisi yang berhasil tidak dimuat ulang hanya karena dua yang rusak.</p>
-<h3 id="list-kosong-adalah-skipped-bukan-sukses">List kosong adalah <code>skipped</code>, bukan sukses<a class="anchor" href="#list-kosong-adalah-skipped-bukan-sukses" aria-label="link">#</a></h3>
+<h3 id="an-empty-list-is-skipped-not-success">List kosong adalah <code>skipped</code>, bukan sukses<a class="anchor" href="#an-empty-list-is-skipped-not-success" aria-label="link">#</a></h3>
 <p>Step yang tidak melakukan apa-apa karena memang tidak ada yang dikerjakan tidak berhasil mengerjakannya. Node hijau di atas nol instance persis jenis hal yang dijadikan dasar dashboard oleh seseorang.</p>
 <p>Nilai yang <strong>bukan list</strong> gagal, begitu pula key yang tidak ada — kebijakan yang sama seperti <code>unless_empty:</code>, dengan alasan yang sama: typo yang diam-diam menghasilkan nol instance akan menonaktifkan step selamanya.</p>
-<h3 id="fan-out-dibatasi-dan-batasnya-diwarisi">Fan-out dibatasi, dan batasnya diwarisi<a class="anchor" href="#fan-out-dibatasi-dan-batasnya-diwarisi" aria-label="link">#</a></h3>
+<h3 id="the-fan-out-is-bounded-and-the-bound-is-inherited">Fan-out dibatasi, dan batasnya diwarisi<a class="anchor" href="#the-fan-out-is-bounded-and-the-bound-is-inherited" aria-label="link">#</a></h3>
 <p>List itu berjalan di context, dan context memiliki batas 4096 byte yang berasal dari kubelet. Sebuah workflow tidak bisa meminta sepuluh ribu pod tanpa lebih dulu menemukan cara menyatakannya dalam empat kilobyte. Itu batas yang layak dipertahankan, bukan dicari jalan pintasnya.</p>
-<h3 id="apa-yang-dipublikasikan-step-yang-di-map">Apa yang dipublikasikan step yang di-map<a class="anchor" href="#apa-yang-dipublikasikan-step-yang-di-map" aria-label="link">#</a></h3>
+<h3 id="what-a-mapped-step-publishes">Apa yang dipublikasikan step yang di-map<a class="anchor" href="#what-a-mapped-step-publishes" aria-label="link">#</a></h3>
 <p>Outputnya dicatat pada baris setiap instance dan <strong>tidak</strong> terlihat oleh step di bawahnya. Empat instance yang mempublikasikan di bawah nama satu step berarti empat nilai untuk satu key, dan tidak ada jawaban atas <code>context.String("load.bucket")</code> yang bukan tebakan. Step menyatakannya di log-nya alih-alih membuangnya begitu saja.</p>
-<h2 id="mengelompokkan-step-di-graf">Mengelompokkan step di graf<a class="anchor" href="#mengelompokkan-step-di-graf" aria-label="link">#</a></h2>
+<h2 id="grouping-steps-on-the-graph">Mengelompokkan step di graf<a class="anchor" href="#grouping-steps-on-the-graph" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: extract_orders
     group: sales_data_reporting
@@ -310,7 +310,7 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <p><strong>Hanya visual.</strong> TaskGroup Airflow juga <em>memberi prefiks</em> pada id di dalamnya, sehingga <code>extract</code> menjadi <code>sales.extract</code>. Di sini tidak: pemberian prefiks akan mengubah setiap <code>depends_on</code>, setiap key context, dan setiap baris tercatat pada workflow yang sudah ada, demi fitur yang seluruh nilainya adalah graf besar terbaca lebih baik. Namespacing dapat ditambahkan nanti — itu penambahan murni atas ini.</p>
 <p>Group adalah <strong>label</strong>, bukan container. Step mempertahankan id globalnya, sebuah group boleh melintasi beberapa level, dan tidak ada yang berubah pada eksekusi.</p>
 <p>Mengklik nama group melipatnya: step-nya menghilang dan panah yang melintasi batas menunjuk ke kotaknya.</p>
-<h2 id="memakai-ulang-workflow-lain">Memakai ulang workflow lain<a class="anchor" href="#memakai-ulang-workflow-lain" aria-label="link">#</a></h2>
+<h2 id="reusing-another-workflow">Memakai ulang workflow lain<a class="anchor" href="#reusing-another-workflow" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# nightly.yaml
 steps:
   - id: prepare
@@ -339,11 +339,11 @@ steps:
 <p>Step-step itu tiba sebagai satu group yang dapat dilipat, sehingga graf menampilkan apa yang dikatakan file.</p>
 <p><strong>Diekspansi saat publish, tidak dijalankan saat run.</strong> Step yang memicu <em>run</em> anak lalu menunggunya adalah desain yang membuat Airflow deadlock, dan engine ini punya bahan yang sama: batas pod adalah semaphore per proses, sehingga induk yang memegang slot sambil menunggu anak yang membutuhkan slot dari pool yang sama akan hang — dan hanya di bawah beban, yaitu di production. Satu run, satu graf, satu pool.</p>
 <p>Yang dikorbankan adalah run anak dengan id dan riwayatnya sendiri.</p>
-<h3 id="aturannya">Aturannya<a class="anchor" href="#aturannya" aria-label="link">#</a></h3>
+<h3 id="the-rules">Aturannya<a class="anchor" href="#the-rules" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>anak harus berada di <strong>publish yang sama</strong></td><td>bukan sekadar sudah dipublikasikan</td></tr><tr><td>panah</td><td>yang masuk ke step menjadi panah yang masuk ke setiap <strong>root</strong> anak; yang keluar darinya, keluar dari setiap <strong>leaf</strong>-nya</td></tr><tr><td><code>image</code>, <code>env</code>, <code>secrets</code>, <code>resources</code> milik anak</td><td>dimaterialisasi pada setiap step, sehingga berjalan di apa yang dikatakan file-nya sendiri</td></tr><tr><td>key <code>unless_empty</code> / <code>for_each</code> milik anak</td><td>ikut berpindah bersama prefiks</td></tr><tr><td>nesting</td><td>diratakan, depth first</td></tr><tr><td>sirkular</td><td>ditolak saat publish, dengan menyebut rantainya</td></tr></tbody></table></div>
 <p><strong>Publish yang sama, dan bukan "sudah dipublikasikan", adalah yang terpenting.</strong> Ekspansi yang membaca database akan membuat <code>brevis validate</code> — yang tidak menyentuh database, dengan sengaja — menjawab pertanyaan yang berbeda dari <code>brevis publish</code>, dan file yang lolos CI akan menjadi file yang gagal saat deploy.</p>
 <p>Anak tetap dapat dipublikasikan sendiri: ekspansi <strong>menyalin</strong>, tidak mengonsumsi. Sebuah step tidak boleh sekaligus <code>uses:</code> dan mendeklarasikan <code>run:</code>, <code>action:</code>, atau <code>marker:</code> — itu file yang mengatakan dua hal.</p>
-<h2 id="menyatakan-arti-sebuah-panah">Menyatakan arti sebuah panah<a class="anchor" href="#menyatakan-arti-sebuah-panah" aria-label="link">#</a></h2>
+<h2 id="saying-what-an-arrow-means">Menyatakan arti sebuah panah<a class="anchor" href="#saying-what-an-arrow-means" aria-label="link">#</a></h2>
 <p>Sebuah dependensi dapat membawa label, yang ditampilkan pada panah di graf.</p>
 <div class="code-block" data-code="steps:
   - id: determine_load_type
@@ -374,7 +374,7 @@ steps:
         <span class="t-k">label</span>: changed existing data</code></pre></div>
 <p>Bentuk polos — <code>depends_on: [extract]</code> — tetap berfungsi dan tetap menjadi bentuk normal. Sebagian besar dependensi tidak punya apa-apa untuk dikatakan, dan label pada setiap panah hanyalah noise.</p>
 <p>Label layak ada pada sebuah <strong>percabangan</strong>: dua panah yang keluar dari step yang sama tanpa tulisan apa pun adalah diagram yang mengharuskan membuka source untuk membacanya, padahal itulah satu hal yang justru ingin dihindari oleh sebuah graf.</p>
-<h2 id="step-yang-tidak-melakukan-apa-apa">Step yang tidak melakukan apa-apa<a class="anchor" href="#step-yang-tidak-melakukan-apa-apa" aria-label="link">#</a></h2>
+<h2 id="a-step-that-does-nothing">Step yang tidak melakukan apa-apa<a class="anchor" href="#a-step-that-does-nothing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: start
     marker: true
@@ -391,7 +391,7 @@ steps:
 <p><code>marker: true</code> adalah step tanpa command. Ia tidak menjalankan apa pun, berhasil seketika, dan muncul di graf.</p>
 <p>Ini bukan dekorasi. Sebuah <code>end</code> yang bergantung pada setiap cabang mengubah pertanyaan <em>apakah semuanya selesai?</em> menjadi satu node, bukan enam panah yang harus diikuti — dan ia berperilaku seperti step lain, sehingga <code>end</code> di bawah cabang yang gagal <strong>dilewati</strong>, bukan hijau.</p>
 <p><strong>Step tanpa <code>run:</code> dan tanpa <code>marker: true</code> tetap ditolak.</strong> Kedua kasus itu tidak boleh bercampur: command kosong hampir selalu sebuah kesalahan, dan <code>marker: true</code> adalah cara seseorang menyatakan bahwa ia memang bermaksud demikian. Marker yang juga mendeklarasikan <code>run:</code> juga ditolak — itu file yang mengatakan dua hal.</p>
-<h2 id="menjalankan-step-hanya-ketika-ada-yang-gagal">Menjalankan step hanya ketika ada yang gagal<a class="anchor" href="#menjalankan-step-hanya-ketika-ada-yang-gagal" aria-label="link">#</a></h2>
+<h2 id="running-a-step-only-when-something-failed">Menjalankan step hanya ketika ada yang gagal<a class="anchor" href="#running-a-step-only-when-something-failed" aria-label="link">#</a></h2>
 <p>Secara default, step berjalan ketika semua yang ada sebelumnya berhasil. <code>when:</code> mengubahnya.</p>
 <div class="code-block" data-code="steps:
   - id: extract
@@ -420,11 +420,11 @@ steps:
     <span class="t-k">when</span>: all_done            <span class="t-c"># runs either way</span></code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>aturan</th><th></th></tr></thead><tbody><tr><td><code>all_success</code></td><td>default. Semua yang menjadi dependensi step ini berhasil — dependensinya <strong>sendiri</strong>, seperti di Airflow</td></tr><tr><td><code>any_failed</code></td><td>setidaknya satu step yang menjadi dependensi step ini gagal</td></tr><tr><td><code>all_done</code></td><td>semua yang menjadi dependensi step ini sudah selesai, apa pun akhirnya</td></tr></tbody></table></div>
 <p>Aturan yang tidak dikenal ditolak saat publish, dengan menyebutkan apa yang valid. Harus demikian: <code>when: on_failure</code> yang dibaca sebagai "default" akan berjalan saat <strong>sukses</strong> — kebalikan dari yang tertulis, dan baru ketahuan pada malam yang menentukan.</p>
-<h3 id="step-yang-tidak-berjalan-berstatus-skipped">Step yang tidak berjalan berstatus <code>skipped</code><a class="anchor" href="#step-yang-tidak-berjalan-berstatus-skipped" aria-label="link">#</a></h3>
+<h3 id="a-step-that-does-not-run-is-skipped">Step yang tidak berjalan berstatus <code>skipped</code><a class="anchor" href="#a-step-that-does-not-run-is-skipped" aria-label="link">#</a></h3>
 <p>Ini state tersendiri, digambar dengan warnanya sendiri, dan membawa alasannya: <em><code>extract</code> berstatus failed</em>. Sebelum ini, step di bawah sebuah kegagalan tidak punya catatan sama sekali dan layar menampilkannya pending selamanya.</p>
 <p><code>skipped</code> bukan kegagalan dan bukan sukses. Step yang upstream-nya rusak tidak gagal — ia tidak pernah diberi kesempatan — dan menyebutnya sukses adalah kebohongan yang sampai ke status run itu sendiri.</p>
 <p>Trigger rule menentukan step mana yang <strong>berjalan</strong>. Ia tidak menentukan hasil run: <code>notify_failure</code> yang berhasil mengirim pesannya tidak berarti pipeline bekerja, dan run tetap berstatus failed.</p>
-<h3 id="all-success-bersifat-lokal-seperti-di-airflow"><code>all_success</code> bersifat lokal, seperti di Airflow<a class="anchor" href="#all-success-bersifat-lokal-seperti-di-airflow" aria-label="link">#</a></h3>
+<h3 id="all-success-is-local-as-in-airflow"><code>all_success</code> bersifat lokal, seperti di Airflow<a class="anchor" href="#all-success-is-local-as-in-airflow" aria-label="link">#</a></h3>
 <p>Aturan ini menanyakan dependensi <strong>milik</strong> step itu sendiri dan tidak yang lain. Kegagalan di cabang yang tidak terkait tidak menghentikan yang ini:</p>
 <div class="code-block" data-code="extract_orders ──✕                 (failed)
 extract_users  ──✓── transform_users ──✓     keeps going"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>extract_orders ──✕                 (failed)
@@ -435,7 +435,7 @@ extract_users  ──✓── transform_users ──✓     keeps going</code><
 <ul><li>run tetap <strong>gagal</strong>, dengan error yang sama;</li><li>graf menampilkan step yang gagal dengan warna merah dan setiap step yang dilewati dengan warnanya sendiri, masing-masing menyebutkan step mana yang menghentikannya;</li><li>alert tetap terkirim ketika run menyerah.</li></ul>
 <p>Hasil parsial tidak lagi tampak lengkap, karena run menyatakan bahwa ia tidak lengkap.</p>
 <p><strong>Apa yang dikorbankan</strong>, dinyatakan terus terang: cabang yang tidak terkait kini menulis datanya pada run yang gagal di tempat lain.</p>
-<h3 id="retry-hanya-menjalankan-ulang-yang-gagal">Retry hanya menjalankan ulang yang gagal<a class="anchor" href="#retry-hanya-menjalankan-ulang-yang-gagal" aria-label="link">#</a></h3>
+<h3 id="a-retry-re-runs-only-what-failed">Retry hanya menjalankan ulang yang gagal<a class="anchor" href="#a-retry-re-runs-only-what-failed" aria-label="link">#</a></h3>
 <p>Retry sebuah run tidak mengulang seluruh graf. Step yang sudah berhasil pada percobaan sebelumnya dari <strong>run yang sama</strong> mempertahankan hasilnya dan tidak dijalankan lagi — seperti perilaku DAG run yang di-clear di Airflow.</p>
 <div class="code-block" data-code="attempt 1   extract ✓    load ✕    report (skipped)
 attempt 2   extract –    load ✓    report ✓            extract is not re-run"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>attempt 1   extract ✓    load ✕    report (skipped)
@@ -443,7 +443,7 @@ attempt 2   extract –    load ✓    report ✓            extract is not re-r
 <p>Ia mempertahankan barisnya yang asli: durasi, log, dan apa yang dipublikasikannya adalah milik percobaan pertama, karena di situlah pekerjaan terjadi. <strong>Step di bawahnya tetap membaca apa yang dipublikasikannya</strong> — context run disimpan, bukan dibangun ulang.</p>
 <p>Pembedaan yang penting: ini tentang percobaan sebelumnya dari <strong>run ini</strong>. Step yang berhasil pada run <em>kemarin</em> berjalan normal hari ini. (Pertanyaan lain itu juga ada, dan itulah yang memberi tahu SDK apakah ini kali pertama sebuah step — lihat <code>BREVIS_RUN_FIRST</code>.)</p>
 <p>Step yang <strong>dilewati</strong> belum selesai: ia tidak pernah berjalan, dan retry memutuskannya lagi dengan hasil percobaan yang baru.</p>
-<h2 id="mengumumkan-kegagalan-sebuah-step">Mengumumkan kegagalan sebuah step<a class="anchor" href="#mengumumkan-kegagalan-sebuah-step" aria-label="link">#</a></h2>
+<h2 id="announcing-a-steps-failures">Mengumumkan kegagalan sebuah step<a class="anchor" href="#announcing-a-steps-failures" aria-label="link">#</a></h2>
 <p>Setiap kegagalan sudah diumumkan: dengan webhook terkonfigurasi, run yang menyerah mengirim satu pesan, tanpa blok yang diulang di file mana pun. <code>on_error</code> ditujukan untuk step yang membutuhkan pengumumannya sendiri.</p>
 <div class="code-block" data-code="steps:
   - id: fetch_observations
@@ -460,22 +460,22 @@ attempt 2   extract –    load ✓    report ✓            extract is not re-r
 <p><strong><code>when: give_up</code> menjadi default karena soal malam siapa yang terganggu.</strong> Step yang gagal dua kali lalu lolos pada percobaan ketiga akan mengirim dua pesan di bawah default yang lain, dan pesan kedua tiba setelah masalahnya hilang.</p>
 <p><strong>Step yang tidak gagal tidak pernah diumumkan.</strong> Dalam workflow ketika satu cabang rusak, pemilik cabang lainnya tidak dibangunkan.</p>
 <p>Pengiriman adalah tugas <code>brevis alert</code> — alert dicatat dalam transaksi yang sama dengan kegagalan, sehingga gangguan Slack hanya menundanya, bukan menghilangkannya.</p>
-<h2 id="tag">Tag<a class="anchor" href="#tag" aria-label="link">#</a></h2>
+<h2 id="tags">Tag<a class="anchor" href="#tags" aria-label="link">#</a></h2>
 <div class="code-block" data-code="tags: [analytics, dbt, daily]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">tags</span>: [analytics, dbt, daily]</code></pre></div>
 <p>Tag memfilter di antarmuka. Tag tidak memengaruhi eksekusi.</p>
-<h2 id="validasi">Validasi<a class="anchor" href="#validasi" aria-label="link">#</a></h2>
+<h2 id="validation">Validasi<a class="anchor" href="#validation" aria-label="link">#</a></h2>
 <p>Validasi tidak membutuhkan database, sehingga berjalan di CI bersama test:</p>
 <div class="code-block" data-code="brevis validate workflows/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">brevis</span> validate workflows/</code></pre></div>
 <div class="code-block" data-code="  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *</code></pre></div>
 <p>Ia menerima file atau direktori. Dalam direktori, ia mencocokkan <code>*.y*ml</code> dan mengurutkan — dua run menghasilkan log yang sama, dan selisih antara dua deploy tidak menjadi noise.</p>
-<h2 id="publikasi">Publikasi<a class="anchor" href="#publikasi" aria-label="link">#</a></h2>
+<h2 id="publishing">Publikasi<a class="anchor" href="#publishing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis publish workflows/
 brevis publish workflows/ --project acme --prune"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">brevis</span> publish workflows/
 <span class="t-k">brevis</span> publish workflows/ <span class="t-n">--project</span> acme <span class="t-n">--prune</span></code></pre></div>
 <p><code>--prune</code> menghapus dari project workflow yang tidak ada dalam daftar yang dipublikasikan, dengan mempertahankan riwayatnya. Ini <strong>bukan</strong> default, karena alasan praktis: <code>publish one-file.yaml</code> tidak boleh menghapus empat puluh delapan lainnya hanya karena tidak disebut di command line.</p>
-<h2 id="langkah-berikutnya">Langkah berikutnya<a class="anchor" href="#langkah-berikutnya" aria-label="link">#</a></h2>
+<h2 id="next-steps">Langkah berikutnya<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/id/docs/parameters/">Parameter</a> — apa yang berubah di antara dua run</li><li><a href="/id/docs/scheduler-and-queue/">Scheduler dan antrean</a> — bagaimana workflow menjadi eksekusi</li><li><a href="/id/docs/context/">Konteks antar step</a> — apa yang dikatakan satu step kepada step berikutnya</li></ul>
 
       <nav class="pagers" aria-label="Halaman">
@@ -490,7 +490,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#struktur-minimum">Struktur minimum</a></li><li class="toc-3"><a href="#description-untuk-apa-workflow-ini">description — untuk apa workflow ini</a></li><li class="toc-2"><a href="#urutan-chain-atau-dag">Urutan: chain atau dag</a></li><li class="toc-2"><a href="#jadwal">Jadwal</a></li><li class="toc-2"><a href="#image-dan-resource">Image dan resource</a></li><li class="toc-2"><a href="#field-step">Field step</a></li><li class="toc-2"><a href="#menjalankan-step-hanya-ketika-ada-yang-perlu-dikerjakan">Menjalankan step hanya ketika ada yang perlu dikerjakan</a></li><li class="toc-3"><a href="#mengapa-bukan-ekspresi">Mengapa bukan ekspresi</a></li><li class="toc-3"><a href="#key-yang-hilang-adalah-kegagalan-bukan-nilai-kosong">Key yang hilang adalah kegagalan, bukan nilai kosong</a></li><li class="toc-2"><a href="#menjalankan-step-sekali-per-elemen">Menjalankan step sekali per elemen</a></li><li class="toc-3"><a href="#bentuk-dag-tidak-berubah">Bentuk DAG tidak berubah</a></li><li class="toc-3"><a href="#satu-instance-gagal-membuat-step-gagal">Satu instance gagal membuat step gagal</a></li><li class="toc-3"><a href="#list-kosong-adalah-skipped-bukan-sukses">List kosong adalah skipped, bukan sukses</a></li><li class="toc-3"><a href="#fan-out-dibatasi-dan-batasnya-diwarisi">Fan-out dibatasi, dan batasnya diwarisi</a></li><li class="toc-3"><a href="#apa-yang-dipublikasikan-step-yang-di-map">Apa yang dipublikasikan step yang di-map</a></li><li class="toc-2"><a href="#mengelompokkan-step-di-graf">Mengelompokkan step di graf</a></li><li class="toc-2"><a href="#memakai-ulang-workflow-lain">Memakai ulang workflow lain</a></li><li class="toc-3"><a href="#aturannya">Aturannya</a></li><li class="toc-2"><a href="#menyatakan-arti-sebuah-panah">Menyatakan arti sebuah panah</a></li><li class="toc-2"><a href="#step-yang-tidak-melakukan-apa-apa">Step yang tidak melakukan apa-apa</a></li><li class="toc-2"><a href="#menjalankan-step-hanya-ketika-ada-yang-gagal">Menjalankan step hanya ketika ada yang gagal</a></li><li class="toc-3"><a href="#step-yang-tidak-berjalan-berstatus-skipped">Step yang tidak berjalan berstatus skipped</a></li><li class="toc-3"><a href="#all-success-bersifat-lokal-seperti-di-airflow">all_success bersifat lokal, seperti di Airflow</a></li><li class="toc-3"><a href="#retry-hanya-menjalankan-ulang-yang-gagal">Retry hanya menjalankan ulang yang gagal</a></li><li class="toc-2"><a href="#mengumumkan-kegagalan-sebuah-step">Mengumumkan kegagalan sebuah step</a></li><li class="toc-2"><a href="#tag">Tag</a></li><li class="toc-2"><a href="#validasi">Validasi</a></li><li class="toc-2"><a href="#publikasi">Publikasi</a></li><li class="toc-2"><a href="#langkah-berikutnya">Langkah berikutnya</a></li></ul>
+      <ul><li class="toc-2"><a href="#minimum-structure">Struktur minimum</a></li><li class="toc-3"><a href="#description-what-it-is-for">description — untuk apa workflow ini</a></li><li class="toc-2"><a href="#order-chain-or-dag">Urutan: chain atau dag</a></li><li class="toc-2"><a href="#schedule">Jadwal</a></li><li class="toc-2"><a href="#image-and-resources">Image dan resource</a></li><li class="toc-2"><a href="#step-fields">Field step</a></li><li class="toc-2"><a href="#running-a-step-only-when-there-is-something-to-do">Menjalankan step hanya ketika ada yang perlu dikerjakan</a></li><li class="toc-3"><a href="#why-not-an-expression">Mengapa bukan ekspresi</a></li><li class="toc-3"><a href="#a-missing-key-is-a-failure-not-an-empty-value">Key yang hilang adalah kegagalan, bukan nilai kosong</a></li><li class="toc-2"><a href="#running-a-step-once-per-element">Menjalankan step sekali per elemen</a></li><li class="toc-3"><a href="#the-shape-of-the-dag-does-not-change">Bentuk DAG tidak berubah</a></li><li class="toc-3"><a href="#one-failed-instance-fails-the-step">Satu instance gagal membuat step gagal</a></li><li class="toc-3"><a href="#an-empty-list-is-skipped-not-success">List kosong adalah skipped, bukan sukses</a></li><li class="toc-3"><a href="#the-fan-out-is-bounded-and-the-bound-is-inherited">Fan-out dibatasi, dan batasnya diwarisi</a></li><li class="toc-3"><a href="#what-a-mapped-step-publishes">Apa yang dipublikasikan step yang di-map</a></li><li class="toc-2"><a href="#grouping-steps-on-the-graph">Mengelompokkan step di graf</a></li><li class="toc-2"><a href="#reusing-another-workflow">Memakai ulang workflow lain</a></li><li class="toc-3"><a href="#the-rules">Aturannya</a></li><li class="toc-2"><a href="#saying-what-an-arrow-means">Menyatakan arti sebuah panah</a></li><li class="toc-2"><a href="#a-step-that-does-nothing">Step yang tidak melakukan apa-apa</a></li><li class="toc-2"><a href="#running-a-step-only-when-something-failed">Menjalankan step hanya ketika ada yang gagal</a></li><li class="toc-3"><a href="#a-step-that-does-not-run-is-skipped">Step yang tidak berjalan berstatus skipped</a></li><li class="toc-3"><a href="#all-success-is-local-as-in-airflow">all_success bersifat lokal, seperti di Airflow</a></li><li class="toc-3"><a href="#a-retry-re-runs-only-what-failed">Retry hanya menjalankan ulang yang gagal</a></li><li class="toc-2"><a href="#announcing-a-steps-failures">Mengumumkan kegagalan sebuah step</a></li><li class="toc-2"><a href="#tags">Tag</a></li><li class="toc-2"><a href="#validation">Validasi</a></li><li class="toc-2"><a href="#publishing">Publikasi</a></li><li class="toc-2"><a href="#next-steps">Langkah berikutnya</a></li></ul>
     </aside>
   </main>
 </div>
@@ -510,9 +510,9 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
       <div class="footer-col">
         <h2>proyek</h2>
         <ul>
-          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/#ecosystem">Ekosistem</a></li>
           <li><a href="/id/docs/philosophy/">Prinsip</a></li>
-          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/id/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -535,7 +535,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

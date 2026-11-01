@@ -335,7 +335,7 @@ orang asing yang mengirim apa pun yang mereka punya; di sini penulis pipeline
 tahu bentuknya dan menuliskannya, dalam diff yang direview seseorang.
 
 Ini bentuk yang sama dengan yang didaratkan gateway sebagai
-[`shape: columns`](/docs/ingestion-sinks/#dua-bentuk-satu-kontrak), lewat kode
+[`shape: columns`](/docs/ingestion-sinks/#two-shapes-one-contract), lewat kode
 yang sama — kolom yang sama, nilai yang sama, `brevis_ingestion_id` yang sama.
 
 **Nama field harus bisa menjadi nama kolom**: huruf atau underscore, lalu huruf,
@@ -349,7 +349,7 @@ di bawah key yang memegangnya: `customer` berisi `{"id": 7, "uf": "SP"}`, bukan
 `customer_id` dan `customer_uf`. Array juga `JSON`. Record yang menginginkan satu
 baris *per elemen array* membutuhkan `sdk.ArrayAt` di `Expand` milik source — ia
 berjalan sebelum `Landing`, dan merupakan operasi lain dengan nama lain.
-[`BREVIS_NORMALIZE_DATA`](#satu-kolom-per-field-bersarang) mengubah paruh pertama
+[`BREVIS_NORMALIZE_DATA`](#one-column-per-nested-field) mengubah paruh pertama
 itu untuk seluruh deployment; array tetap `JSON` dengan cara apa pun:
 
 ```go

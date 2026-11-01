@@ -35,7 +35,7 @@ banco onde ele pousou.
 Três peças de apoio:
 
 - **[Console](/pt/docs/console/index.md)** — a interface web do Core
-- **[agent](/pt/docs/pod-per-step/#onde-cada-passo-roda)** — roda a etapa num cluster que já é seu
+- **[agent](/pt/docs/pod-per-step/#where-each-step-runs)** — roda a etapa num cluster que já é seu
 - **[`brevis` para Python](/pt/docs/python/index.md)** — contexto de execução para etapas em Python
 
 ## Usar só uma peça
@@ -46,7 +46,7 @@ Pode. Cada peça tem módulo, versão e imagem próprios: o SDK é uma bibliotec
 
 Um pedido que o SDK busca e um pedido que chega ao Gateway pousam na mesma tabela, com o mesmo brevis_ingestion_id. Escolher entre os dois vira decisão de deploy, não de schema.
 
-Pelo SDK, com `sdk.Landing` (detalhes em [O layout de aterrissagem](/pt/docs/sdk/#o-layout-de-aterrissagem)):
+Pelo SDK, com `sdk.Landing` (detalhes em [O layout de aterrissagem](/pt/docs/sdk/#the-landing-layout)):
 
 ```go
 sdk.Execute(ctx, &sdk.Pipeline{
@@ -59,7 +59,7 @@ sdk.Execute(ctx, &sdk.Pipeline{
 }, nil)
 ```
 
-Pelo Gateway, um POST em `/v1/tables` (detalhes em [Uma rota, N tabelas](/pt/docs/ingestion/#uma-rota-n-tabelas)):
+Pelo Gateway, um POST em `/v1/tables` (detalhes em [Uma rota, N tabelas](/pt/docs/ingestion/#one-route-n-tables)):
 
 ```bash
 curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \

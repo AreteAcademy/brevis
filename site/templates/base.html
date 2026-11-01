@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{{ fontes }}">
-<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="{{ url_styles }}">
 {{ extra_css }}
 
 <script>document.documentElement.classList.add('js');</script>
@@ -36,7 +36,7 @@
 </head>
 <body class="{{ classe_body }}">
 
-<a class="skip-link" href="#conteudo">{{ i18n.pular }}</a>
+<a class="skip-link" href="#content">{{ i18n.pular }}</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -70,7 +70,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="{{ i18n.nav_rotulo }}">
-      <a href="{{ prefixo }}/#ecossistema">{{ i18n.nav_ecossistema }}</a>
+      <a href="{{ prefixo }}/#ecosystem">{{ i18n.nav_ecossistema }}</a>
       <a href="{{ prefixo }}/docs/">{{ i18n.docs }}</a>
       {{ seletor }}
       <a class="button button-secondary button-sm header-cta" href="{{ repo }}" target="_blank" rel="noopener">
@@ -101,7 +101,7 @@
       <div class="footer-col">
         <h2>{{ i18n.footer_projeto }}</h2>
         <ul>
-          <li><a href="{{ prefixo }}/#ecossistema">{{ i18n.nav_ecossistema }}</a></li>
+          <li><a href="{{ prefixo }}/#ecosystem">{{ i18n.nav_ecossistema }}</a></li>
           <li><a href="{{ prefixo_docs }}/docs/philosophy/">{{ i18n.nav_principios }}</a></li>
           <li><a href="{{ prefixo_docs }}/docs/introduction/#{{ i18n.nav_open_source_ancora }}">{{ i18n.nav_open_source }}</a></li>
           <li><a href="{{ prefixo_docs }}/docs/faq/">{{ i18n.nav_faq }}</a></li>
@@ -127,6 +127,6 @@
 </footer>
 
 {{ extra_js }}
-<script src="/js/lang.js" defer></script>
+<script src="{{ url_lang }}" defer></script>
 </body>
 </html>

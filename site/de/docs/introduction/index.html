@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Zum Inhalt springen</a>
+<a class="skip-link" href="#content">Zum Inhalt springen</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Hauptnavigation">
-      <a href="/de/#ecossistema">Ökosystem</a>
+      <a href="/de/#ecosystem">Ökosystem</a>
       <a href="/de/docs/">Dokumentation</a>
-      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Deutsch</span></summary><ul><li><a href="/docs/introduction/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/introduction/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/introduction/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/introduction/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/introduction/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/introduction/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/introduction/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/introduction/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/introduction/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/introduction/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/introduction/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><span>Deutsch</span></summary><ul><li><a href="/docs/introduction/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/introduction/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/introduction/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/introduction/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/introduction/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/introduction/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/introduction/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/introduction/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/introduction/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/introduction/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/introduction/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open Source erkunden
@@ -119,17 +119,17 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentation</p>
       <h1>Einführung</h1>
       <p class="doc-desc">Was brevis.sh ist, welches Problem es löst und wann es nicht die richtige Wahl ist.</p>
       <p>brevis.sh ist eine <strong>in Go geschriebene Laufzeitumgebung für Datenorchestrierung</strong>. Ein einziges Binary vereint, wofür man sonst vier Werkzeuge braucht: deklarative Transformation, Workflow-Orchestrierung, eine persistente Queue, einen Scheduler und eine Oberfläche, um all das zu betreiben.</p>
 <p>Es ist Open Source unter der MIT-Lizenz, und das Projekt entsteht bei <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a>.</p>
-<h2 id="das-problem">Das Problem<a class="anchor" href="#das-problem" aria-label="link">#</a></h2>
+<h2 id="the-problem">Das Problem<a class="anchor" href="#the-problem" aria-label="link">#</a></h2>
 <p>Ein üblicher Datenstack kombiniert ein Transformationswerkzeug, einen Orchestrator, eine Queue und eine Oberfläche. Jeder Baustein ist gut in dem, was er tut – und die Integration zwischen ihnen wird zur Dauerbaustelle: vier Versionierungsschemata, vier Arten der Konfiguration, vier Stellen, an denen man nachsehen muss, wenn etwas fehlschlägt.</p>
 <p>Diese Kosten tauchen in keinem Architekturdiagramm auf. Sie zeigen sich in der Zeit, die ein Team damit verbringt, den Klebstoff zu pflegen, statt sich der Fachlichkeit zu widmen, die nur es selbst kennt.</p>
-<h2 id="der-vorschlag">Der Vorschlag<a class="anchor" href="#der-vorschlag" aria-label="link">#</a></h2>
+<h2 id="the-proposal">Der Vorschlag<a class="anchor" href="#the-proposal" aria-label="link">#</a></h2>
 <p>Ein Artefakt, mit dem Subcommand, den die jeweilige Rolle braucht:</p>
 <div class="code-block" data-code="brevis serve        # API + interface
 brevis scheduler    # materialises schedules and drains the queue
@@ -160,32 +160,32 @@ steps:
     <span class="t-k">image</span>: ghcr.io/example/notify:0.3
     <span class="t-k">run</span>: /notify --channel data
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
-<h2 id="was-es-anders-macht">Was es anders macht<a class="anchor" href="#was-es-anders-macht" aria-label="link">#</a></h2>
+<h2 id="what-makes-it-different">Was es anders macht<a class="anchor" href="#what-makes-it-different" aria-label="link">#</a></h2>
 <p><strong>Jeder Step läuft in einem eigenen Pod, mit einem eigenen Image.</strong> Es gibt keinen generischen Worker, der auf Arbeit wartet: Die Arbeit bringt ihre eigene Laufzeitumgebung mit. Ein <code>dbt</code>-Step startet mit dem dbt-Image; ein Go-Fetcher daneben startet mit 5,8 MB und 32Mi Speicher, statt die Größe seines größten Nachbarn zu erben.</p>
 <p><strong>Der Scheduler erzeugt Runs; die Queue führt sie aus.</strong> Zwei unabhängige Schleifen, und diese Trennung ist gewollt: Die eine kann ausfallen, ohne die andere zu unterbrechen, und das Neuverarbeiten eines vergangenen Monats hängt nicht von der Uhr ab.</p>
 <p><strong>Die Validierung braucht keine Datenbank.</strong> <code>brevis validate</code> läuft in der CI neben den Tests, sodass ein YAML-Fehler im Pull Request scheitert und nicht im Cluster.</p>
-<h2 id="drei-bausteine-bewusst-getrennt">Drei Bausteine, bewusst getrennt<a class="anchor" href="#drei-bausteine-bewusst-getrennt" aria-label="link">#</a></h2>
+<h2 id="three-pieces-separate-on-purpose">Drei Bausteine, bewusst getrennt<a class="anchor" href="#three-pieces-separate-on-purpose" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>Baustein</th><th>Was er ist</th><th>Version</th></tr></thead><tbody><tr><td><strong>engine</strong></td><td><code>brevis</code>, das Binary, um das es auf dieser Seite geht: orchestriert, plant, führt aus und betreibt</td><td><code>0.15</code></td></tr><tr><td><strong>SDK</strong></td><td>ein Go-Modul, um den Step zu schreiben, der extrahiert und lädt</td><td><code>0.66</code></td></tr><tr><td><strong>gateway</strong></td><td>ein HTTP-Endpoint, der Daten landet, die <em>eintreffen</em>, statt sie abzuholen</td><td><code>0.8</code></td></tr></tbody></table></div>
 <p>Die Versionen sind unabhängig, weil es die Reifegrade sind. Das Gateway mit <code>0.15.3</code> zu nummerieren, nur weil die Engine dort steht, würde eine Reife behaupten, die es nicht hat – und eine Version lässt sich nicht zurückziehen.</p>
 <p>Was die drei zusammenhält, ist eine Zahl: die <code>ingestion_id</code>, eine unveränderliche UUID v5 über <code>provider|entity|source_key|record_ts</code>. Eine Zeile, die das <a href="/de/docs/ingestion/">Gateway</a> landet, und eine Zeile, die ein <a href="/de/docs/sdk/">SDK</a>-Fetcher für denselben Datensatz landet, sind <em>eine Zeile</em>, ohne Abgleich dazwischen.</p>
-<h2 id="wann-brevissh-nicht-die-richtige-wahl-ist">Wann brevis.sh nicht die richtige Wahl ist<a class="anchor" href="#wann-brevissh-nicht-die-richtige-wahl-ist" aria-label="link">#</a></h2>
+<h2 id="when-brevissh-is-not-the-choice">Wann brevis.sh nicht die richtige Wahl ist<a class="anchor" href="#when-brevissh-is-not-the-choice" aria-label="link">#</a></h2>
 <p>Zu dokumentieren, was ein Werkzeug nicht kann, spart mehr Zeit, als zu dokumentieren, was es kann:</p>
 <ul><li><strong>Sie betreiben bereits Airflow oder Dagster und sind zufrieden.</strong> Die Migration kostet mehr, als es spart, ein Binary weniger zu betreiben.</li><li><strong>Ihre Workflows drehen sich nicht um Daten.</strong> brevis.sh geht von DAGs für Transformation und Laden aus; ein Allzweck-Orchestrator dient Ihnen besser.</li><li><strong>Sie brauchen einen Katalog fertiger Operatoren.</strong> Hier ist ein Step ein Image und ein Befehl. Das ist einfach und begrenzt – es gibt keine hunderte Integrationen zum Einbinden.</li><li><strong>Ihr Team nutzt Kubernetes nicht und will es auch nicht.</strong> Der lokale Modus funktioniert, aber das Design setzt Pods voraus.</li></ul>
-<h2 id="offener-code-wählen-sie-wie-sie-mitmachen">Offener Code. Wählen Sie, wie Sie mitmachen.<a class="anchor" href="#offener-code-wählen-sie-wie-sie-mitmachen" aria-label="link">#</a></h2>
+<h2 id="open-code-choose-how-to-take-part">Offener Code. Wählen Sie, wie Sie mitmachen.<a class="anchor" href="#open-code-choose-how-to-take-part" aria-label="link">#</a></h2>
 <p>brevis.sh ist zu 100 % Open Source. Keine proprietären Lizenzen, keine eingeschränkte Edition, keine Sperren für das, was Sie bauen.</p>
-<h3 id="100-offen">100 % offen<a class="anchor" href="#100-offen" aria-label="link">#</a></h3>
+<h3 id="100-open">100 % offen<a class="anchor" href="#100-open" aria-label="link">#</a></h3>
 <p><em>Code · Open-Source-Lizenz</em></p>
 <p>Lesen, nutzen, anpassen und verbessern Sie die Laufzeitumgebung in Ihrem eigenen Betrieb. Vollständige Laufzeitumgebung · Prüfbarer Code · Offene Beiträge.</p>
 <p><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repository ansehen</a></p>
-<h3 id="gemeinsam-bauen">Gemeinsam bauen<a class="anchor" href="#gemeinsam-bauen" aria-label="link">#</a></h3>
+<h3 id="build-together">Gemeinsam bauen<a class="anchor" href="#build-together" aria-label="link">#</a></h3>
 <p><em>Community · offene Issues</em> · <strong>Hauptweg</strong></p>
 <p>Beteiligen Sie sich an den Gesprächen, die entscheiden, was aus dem Projekt wird. Issues und Vorschläge · Austausch unter Gleichgesinnten · Öffentliche Roadmap.</p>
 <p><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Das Projekt verfolgen</a></p>
-<h3 id="tiefgehend-lernen">Tiefgehend lernen<a class="anchor" href="#tiefgehend-lernen" aria-label="link">#</a></h3>
+<h3 id="learn-deeply">Tiefgehend lernen<a class="anchor" href="#learn-deeply" aria-label="link">#</a></h3>
 <p><em>aretê · Technologie mit Sinn</em></p>
 <p>Lernen Sie die Schule kennen, die philosophisches Denken und Softwareentwicklung verbindet. Originalinhalte · Kontinuierliches Lernen · Offener Kanal.</p>
 <p><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê besuchen</a></p>
-<h2 id="wie-es-weitergeht">Wie es weitergeht<a class="anchor" href="#wie-es-weitergeht" aria-label="link">#</a></h2>
+<h2 id="where-to-go-next">Wie es weitergeht<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>Wenn Sie ... möchten</th><th>gehen Sie zu</th></tr></thead><tbody><tr><td>installieren und sehen, wie es läuft</td><td><a href="/de/docs/installation/">Installation</a> und <a href="/de/docs/quickstart/">Schnellstart</a></td></tr><tr><td>das Workflow-Format verstehen</td><td><a href="/de/docs/workflows/">Workflows</a></td></tr><tr><td>die Architektur verstehen</td><td><a href="/de/docs/scheduler-and-queue/">Scheduler und Queue</a></td></tr><tr><td>die Liste der Befehle und Flags</td><td><a href="/de/docs/cli/">CLI</a></td></tr><tr><td>einen Fetcher in Go schreiben</td><td><a href="/de/docs/sdk/">SDK</a></td></tr><tr><td>einen Wert von einem Step an den nächsten weitergeben</td><td><a href="/de/docs/context/">Kontext zwischen Steps</a></td></tr><tr><td>einen Step in Python schreiben</td><td><a href="/de/docs/libraries/">Client-Bibliotheken</a></td></tr><tr><td>Daten über HTTP empfangen, statt sie abzuholen</td><td><a href="/de/docs/ingestion/">Ingestion</a></td></tr><tr><td>Dashboards und Alarme bauen</td><td><a href="/de/docs/observability/">Observability</a></td></tr></tbody></table></div>
 <aside class="admon admon-note"><p class="admon-t">Zum Namen</p><p><em>Brevis</em> ist lateinisch für „kurz, knapp“ – die Wurzel von <em>Brevität</em>. Er stammt aus Senecas <strong>De Brevitate Vitae</strong>: Nicht dass wir wenig Zeit hätten, sondern dass wir viel davon verlieren.</p></aside>
 
@@ -201,7 +201,7 @@ steps:
 
     <aside class="toc" aria-label="Auf dieser Seite">
       <p class="toc-t">Auf dieser Seite</p>
-      <ul><li class="toc-2"><a href="#das-problem">Das Problem</a></li><li class="toc-2"><a href="#der-vorschlag">Der Vorschlag</a></li><li class="toc-2"><a href="#was-es-anders-macht">Was es anders macht</a></li><li class="toc-2"><a href="#drei-bausteine-bewusst-getrennt">Drei Bausteine, bewusst getrennt</a></li><li class="toc-2"><a href="#wann-brevissh-nicht-die-richtige-wahl-ist">Wann brevis.sh nicht die richtige Wahl ist</a></li><li class="toc-2"><a href="#offener-code-wählen-sie-wie-sie-mitmachen">Offener Code. Wählen Sie, wie Sie mitmachen.</a></li><li class="toc-3"><a href="#100-offen">100 % offen</a></li><li class="toc-3"><a href="#gemeinsam-bauen">Gemeinsam bauen</a></li><li class="toc-3"><a href="#tiefgehend-lernen">Tiefgehend lernen</a></li><li class="toc-2"><a href="#wie-es-weitergeht">Wie es weitergeht</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-problem">Das Problem</a></li><li class="toc-2"><a href="#the-proposal">Der Vorschlag</a></li><li class="toc-2"><a href="#what-makes-it-different">Was es anders macht</a></li><li class="toc-2"><a href="#three-pieces-separate-on-purpose">Drei Bausteine, bewusst getrennt</a></li><li class="toc-2"><a href="#when-brevissh-is-not-the-choice">Wann brevis.sh nicht die richtige Wahl ist</a></li><li class="toc-2"><a href="#open-code-choose-how-to-take-part">Offener Code. Wählen Sie, wie Sie mitmachen.</a></li><li class="toc-3"><a href="#100-open">100 % offen</a></li><li class="toc-3"><a href="#build-together">Gemeinsam bauen</a></li><li class="toc-3"><a href="#learn-deeply">Tiefgehend lernen</a></li><li class="toc-2"><a href="#where-to-go-next">Wie es weitergeht</a></li></ul>
     </aside>
   </main>
 </div>
@@ -221,9 +221,9 @@ steps:
       <div class="footer-col">
         <h2>Projekt</h2>
         <ul>
-          <li><a href="/de/#ecossistema">Ökosystem</a></li>
+          <li><a href="/de/#ecosystem">Ökosystem</a></li>
           <li><a href="/de/docs/philosophy/">Prinzipien</a></li>
-          <li><a href="/de/docs/introduction/#offener-code-wählen-sie-wie-sie-mitmachen">Open Source</a></li>
+          <li><a href="/de/docs/introduction/#open-code-choose-how-to-take-part">Open Source</a></li>
           <li><a href="/de/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -246,7 +246,7 @@ steps:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

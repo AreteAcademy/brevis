@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+<a class="skip-link" href="#content">Lewati ke konten</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigasi utama">
-      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/#ecosystem">Ekosistem</a>
       <a href="/id/docs/">Dokumentasi</a>
-      <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/kubernetes/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/kubernetes/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/kubernetes/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/kubernetes/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/kubernetes/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/kubernetes/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/kubernetes/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/kubernetes/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/kubernetes/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/kubernetes/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/kubernetes/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/kubernetes/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/kubernetes/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/kubernetes/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/kubernetes/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/kubernetes/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/kubernetes/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/kubernetes/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/kubernetes/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/kubernetes/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/kubernetes/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/kubernetes/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Jelajahi open source
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentasi</p>
       <h1>Kubernetes</h1>
       <p class="doc-desc">Cara men-deploy engine, dengan izin apa, dan apa yang diperiksa sesudahnya.</p>
       <p>Instalasi tipikal memiliki <strong>dua Deployment</strong> dari binary yang sama — API dan scheduler — ditambah sebuah Postgres.</p>
-<h2 id="pasang-dengan-helm">Pasang dengan Helm<a class="anchor" href="#pasang-dengan-helm" aria-label="link">#</a></h2>
+<h2 id="install-it-with-helm">Pasang dengan Helm<a class="anchor" href="#install-it-with-helm" aria-label="link">#</a></h2>
 <p>Chart berada di repositori, di <code>deployments/helm/brevis</code>. Empat nilai wajib diisi dan yang lainnya punya default yang berfungsi:</p>
 <div class="code-block" data-code="helm install brevis ./deployments/helm/brevis \
   --namespace data --create-namespace \
@@ -151,11 +151,11 @@
   <span class="t-n">--set</span> api.ingress.tls.secretName=<span class="t-k">brevis</span>-tls</code></pre></div>
 <p>Di production, jauhkan connection string dari release: taruh di Secret dan berikan <code>--set database.existingSecret=brevis-db</code>. Jika diberikan inline, ia masuk ke manifest release yang tersimpan, yang dapat dibaca siapa pun yang bisa membaca Secret di namespace itu.</p>
 <p><code>helm show values ./deployments/helm/brevis</code> mendaftar setiap nilai dengan alasannya di sampingnya.</p>
-<h3 id="apa-yang-ditolak-chart">Apa yang ditolak chart<a class="anchor" href="#apa-yang-ditolak-chart" aria-label="link">#</a></h3>
+<h3 id="what-the-chart-refuses">Apa yang ditolak chart<a class="anchor" href="#what-the-chart-refuses" aria-label="link">#</a></h3>
 <p>Apa pun yang tidak dapat dibuatnya aman gagal saat render, dengan pesan yang menyebutkan apa yang akan rusak — bukan pada pukul 3 pagi, dalam run yang menghasilkan baris duplikat:</p>
 <div class="table-wrap"><table><thead><tr><th>ditolak</th><th>karena</th></tr></thead><tbody><tr><td><code>scheduler.replicas</code> sama sekali</td><td>dua replika akan mematerialisasi slot yang sama. <code>FOR UPDATE SKIP LOCKED</code> mencegah keduanya mengklaim item antrean yang sama; tidak ada yang mencegah keduanya membuat run terjadwal yang sama, dan <code>dbt build</code> akan berjalan dua kali atas satu jendela tanpa ada yang gagal</td></tr><tr><td>kredensial yang hilang di luar <code>local</code></td><td>engine menolak boot tanpanya, sehingga chart akan memberi Anda CrashLoopBackOff</td></tr><tr><td><code>auth.secret</code> di bawah 32 byte</td><td>ia menandatangani cookie sesi, dan engine menegakkan minimum yang sama</td></tr><tr><td>Ingress tanpa <code>host</code></td><td>ia akan cocok dengan setiap request yang mencapai controller — di klaster bersama, menjawab untuk hostname orang lain</td></tr><tr><td><code>alerts.enabled</code> tanpa webhook</td><td>pod akan menguras outbox dan mengirim ke mana-mana, yang lebih buruk daripada tidak berjalan: kegagalan lalu tampak sudah diumumkan</td></tr><tr><td>nilai yang tidak didefinisikan chart</td><td>typo pada <code>--set</code> kalau tidak akan tidak berbuat apa-apa, secara diam-diam</td></tr></tbody></table></div>
 <p><code>.github/scripts/helm-check.sh</code> menegaskan semua itu pada output yang dirender, ditambah invarian di atas — satu scheduler, <code>pods/log</code> ada, migrasi lebih dulu, port metrik tidak ada di Service.</p>
-<h2 id="tanpa-helm">Tanpa Helm<a class="anchor" href="#tanpa-helm" aria-label="link">#</a></h2>
+<h2 id="without-helm">Tanpa Helm<a class="anchor" href="#without-helm" aria-label="link">#</a></h2>
 <p>Tujuh manifest ada di <code>deployments/kubernetes/</code>, siap untuk <code>kubectl apply -f</code> setelah Anda mengedit namespace dan tag image:</p>
 <div class="code-block" data-code="kubectl apply -f deployments/kubernetes/rbac.yaml
 kubectl apply -f deployments/kubernetes/api.yaml
@@ -163,11 +163,11 @@ kubectl apply -f deployments/kubernetes/scheduler.yaml"><div class="code-head"><
 <span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/api.yaml
 <span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/scheduler.yaml</code></pre></div>
 <p>Mereka membawa keputusan yang sama dengan chart, dengan penalaran di komentar, dan juga <code>alert.yaml</code>, <code>report.yaml</code>, dan <code>publish-job.yaml</code>. Bagian di bawah menelusuri isi masing-masing.</p>
-<h2 id="dua-peran">Dua peran<a class="anchor" href="#dua-peran" aria-label="link">#</a></h2>
+<h2 id="the-two-roles">Dua peran<a class="anchor" href="#the-two-roles" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>peran</th><th>command</th><th>image</th><th>replika</th></tr></thead><tbody><tr><td>API + antarmuka</td><td><code>serve</code></td><td><code>:0.11.2</code> (distroless)</td><td>sebanyak yang Anda mau</td></tr><tr><td>scheduler + antrean</td><td><code>scheduler</code></td><td><code>:0.11.2-worker</code> (alpine)</td><td><strong>satu</strong></td></tr></tbody></table></div>
 <p>API memakai distroless karena hanya melayani HTTP: ia tidak mengeksekusi apa pun, sehingga tidak membutuhkan shell. Worker memakai alpine karena step <code>run:</code> membutuhkannya.</p>
 <aside class="admon admon-warning"><p class="admon-t">Satu replika scheduler</p><p>Dua proses yang mematerialisasi jadwal yang sama membuat run duplikat. Jika Anda butuh ketersediaan, gunakan <code>replicas: 1</code> dengan <code>strategy: Recreate</code>.</p></aside>
-<h2 id="migrasi">Migrasi<a class="anchor" href="#migrasi" aria-label="link">#</a></h2>
+<h2 id="migrations">Migrasi<a class="anchor" href="#migrations" aria-label="link">#</a></h2>
 <p>Jalankan sebagai Job sebelum deploy, tidak pernah saat boot <code>serve</code>:</p>
 <div class="code-block" data-code="apiVersion: batch/v1
 kind: Job
@@ -196,7 +196,7 @@ spec:
           <span class="t-k">args</span>: ["migrate", "up"]
           <span class="t-k">envFrom</span>:
             - <span class="t-k">secretRef</span>: {name: brevis-db}</code></pre></div>
-<h2 id="deployment-api">Deployment API<a class="anchor" href="#deployment-api" aria-label="link">#</a></h2>
+<h2 id="api-deployment">Deployment API<a class="anchor" href="#api-deployment" aria-label="link">#</a></h2>
 <div class="code-block" data-code="apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -259,7 +259,7 @@ spec:
             <span class="t-k">requests</span>: {cpu: 100m, memory: 128Mi}
             <span class="t-k">limits</span>: {memory: 256Mi}</code></pre></div>
 <aside class="admon admon-note"><p class="admon-t">Mengapa kedua probe berbeda</p><p><code>/health</code> <strong>tidak</strong> mengquery database; <code>/ready</code> melakukannya, dan menyebut dependensi yang gagal. Jika liveness bergantung pada Postgres, database yang goyah akan membuat Kubernetes <strong>membunuh</strong> pod API alih-alih sekadar mengeluarkannya dari load balancer — dan pemulihan menjadi lebih lambat tepat ketika sistem sudah berada di bawah tekanan.</p></aside>
-<h2 id="deployment-scheduler">Deployment scheduler<a class="anchor" href="#deployment-scheduler" aria-label="link">#</a></h2>
+<h2 id="scheduler-deployment">Deployment scheduler<a class="anchor" href="#scheduler-deployment" aria-label="link">#</a></h2>
 <div class="code-block" data-code="apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -324,7 +324,7 @@ spec:
             - <span class="t-k">name</span>: BREVIS_POD_ENV_FROM_SECRETS
               <span class="t-k">value</span>: bigquery-cred</code></pre></div>
 <p><code>BREVIS_PODS=on</code> <strong>mensyaratkan</strong> klaster: tanpa service account yang di-mount, boot gagal alih-alih diam-diam turun ke eksekusi lokal.</p>
-<h2 id="izin">Izin<a class="anchor" href="#izin" aria-label="link">#</a></h2>
+<h2 id="permissions">Izin<a class="anchor" href="#permissions" aria-label="link">#</a></h2>
 <p>Scheduler membuat, memantau, dan menghapus pod di namespace eksekusi. Tidak lebih dari itu:</p>
 <div class="code-block" data-code="apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -350,7 +350,7 @@ rules:
     <span class="t-k">resources</span>: ["pods/log"]
     <span class="t-k">verbs</span>: ["get"]</code></pre></div>
 <p><code>pods/log</code> adalah yang memungkinkan output sebuah step diikuti ke antarmuka. Tanpanya, run berfungsi dan log tetap kosong.</p>
-<h2 id="setelah-deploy">Setelah deploy<a class="anchor" href="#setelah-deploy" aria-label="link">#</a></h2>
+<h2 id="after-the-deploy">Setelah deploy<a class="anchor" href="#after-the-deploy" aria-label="link">#</a></h2>
 <div class="code-block" data-code="kubectl -n data get pods -l app=brevis-api
 kubectl -n data exec deploy/brevis-api -- brevis version
 curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">kubectl</span> <span class="t-n">-n</span> data get pods <span class="t-n">-l</span> app=<span class="t-k">brevis</span>-api
@@ -358,13 +358,13 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
 <span class="t-k">curl</span> <span class="t-n">-fsS</span> https://<span class="t-k">brevis</span>.example.com/ready</code></pre></div>
 <p>Picu workflow sederhana dari antarmuka dan pastikan pod step muncul dan menghilang:</p>
 <div class="code-block" data-code="kubectl -n data get pods -w"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">kubectl</span> <span class="t-n">-n</span> data get pods <span class="t-n">-w</span></code></pre></div>
-<h2 id="ketika-step-tetap-pending">Ketika step tetap Pending<a class="anchor" href="#ketika-step-tetap-pending" aria-label="link">#</a></h2>
+<h2 id="when-a-step-stays-pending">Ketika step tetap Pending<a class="anchor" href="#when-a-step-stays-pending" aria-label="link">#</a></h2>
 <p>Hampir selalu salah satu dari tiga ini:</p>
 <div class="table-wrap"><table><thead><tr><th>penyebab</th><th>cara memastikan</th></tr></thead><tbody><tr><td>taint tanpa toleration</td><td><code>kubectl describe pod</code> menampilkan <code>node(s) had untolerated taint</code></td></tr><tr><td><code>nodeSelector</code> tanpa node</td><td><code>describe</code> menampilkan <code>didn't match Pod's node affinity</code></td></tr><tr><td>resource tidak tersedia</td><td><code>describe</code> menampilkan <code>Insufficient cpu</code> atau <code>memory</code></td></tr></tbody></table></div>
 <p>Untuk memeriksa pod step yang gagal alih-alih menontonnya menghilang:</p>
 <div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>Biarkan nonaktif di production — pod yang berhenti memakai kuota.</p>
-<h2 id="langkah-berikutnya">Langkah berikutnya<a class="anchor" href="#langkah-berikutnya" aria-label="link">#</a></h2>
+<h2 id="next-steps">Langkah berikutnya<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/id/docs/pod-per-step/">Pod per step</a> — model eksekusi</li><li><a href="/id/docs/configuration/">Konfigurasi</a> — setiap variabel <code>BREVIS_POD_*</code></li><li><a href="/id/docs/observability/">Observabilitas</a> — apa yang di-scrape, dan dari proses mana</li></ul>
 
       <nav class="pagers" aria-label="Halaman">
@@ -379,7 +379,7 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#pasang-dengan-helm">Pasang dengan Helm</a></li><li class="toc-3"><a href="#apa-yang-ditolak-chart">Apa yang ditolak chart</a></li><li class="toc-2"><a href="#tanpa-helm">Tanpa Helm</a></li><li class="toc-2"><a href="#dua-peran">Dua peran</a></li><li class="toc-2"><a href="#migrasi">Migrasi</a></li><li class="toc-2"><a href="#deployment-api">Deployment API</a></li><li class="toc-2"><a href="#deployment-scheduler">Deployment scheduler</a></li><li class="toc-2"><a href="#izin">Izin</a></li><li class="toc-2"><a href="#setelah-deploy">Setelah deploy</a></li><li class="toc-2"><a href="#ketika-step-tetap-pending">Ketika step tetap Pending</a></li><li class="toc-2"><a href="#langkah-berikutnya">Langkah berikutnya</a></li></ul>
+      <ul><li class="toc-2"><a href="#install-it-with-helm">Pasang dengan Helm</a></li><li class="toc-3"><a href="#what-the-chart-refuses">Apa yang ditolak chart</a></li><li class="toc-2"><a href="#without-helm">Tanpa Helm</a></li><li class="toc-2"><a href="#the-two-roles">Dua peran</a></li><li class="toc-2"><a href="#migrations">Migrasi</a></li><li class="toc-2"><a href="#api-deployment">Deployment API</a></li><li class="toc-2"><a href="#scheduler-deployment">Deployment scheduler</a></li><li class="toc-2"><a href="#permissions">Izin</a></li><li class="toc-2"><a href="#after-the-deploy">Setelah deploy</a></li><li class="toc-2"><a href="#when-a-step-stays-pending">Ketika step tetap Pending</a></li><li class="toc-2"><a href="#next-steps">Langkah berikutnya</a></li></ul>
     </aside>
   </main>
 </div>
@@ -399,9 +399,9 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
       <div class="footer-col">
         <h2>proyek</h2>
         <ul>
-          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/#ecosystem">Ekosistem</a></li>
           <li><a href="/id/docs/philosophy/">Prinsip</a></li>
-          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/id/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -424,7 +424,7 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -35,7 +35,7 @@ Core планирует, ставит в очередь и наблюдает, �
 Три вспомогательных компонента:
 
 - **[Console](/ru/docs/console/index.md)** — веб-интерфейс поверх Core
-- **[agent](/ru/docs/pod-per-step/#где-выполняется-каждый-шаг)** — запускает шаг в уже имеющемся у вас кластере
+- **[agent](/ru/docs/pod-per-step/#where-each-step-runs)** — запускает шаг в уже имеющемся у вас кластере
 - **[`brevis` для Python](/ru/docs/python/index.md)** — контекст запуска для шагов на Python
 
 ## Использование только одного компонента
@@ -46,7 +46,7 @@ Core планирует, ставит в очередь и наблюдает, �
 
 Заказ, который забирает SDK, и заказ, который приходит в Gateway, попадают в одну и ту же таблицу с одним и тем же brevis_ingestion_id. Выбор между ними становится решением о развёртывании, а не о схеме.
 
-Через SDK, с помощью `sdk.Landing` (подробности в разделе [Структура приземления](/ru/docs/sdk/#структура-приземления)):
+Через SDK, с помощью `sdk.Landing` (подробности в разделе [Структура приземления](/ru/docs/sdk/#the-landing-layout)):
 
 ```go
 sdk.Execute(ctx, &sdk.Pipeline{
@@ -59,7 +59,7 @@ sdk.Execute(ctx, &sdk.Pipeline{
 }, nil)
 ```
 
-Через Gateway, POST-запросом на `/v1/tables` (подробности в разделе [Один маршрут, N таблиц](/ru/docs/ingestion/#один-маршрут-n-таблиц)):
+Через Gateway, POST-запросом на `/v1/tables` (подробности в разделе [Один маршрут, N таблиц](/ru/docs/ingestion/#one-route-n-tables)):
 
 ```bash
 curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \

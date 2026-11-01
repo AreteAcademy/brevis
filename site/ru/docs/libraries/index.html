@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Перейти к содержимому</a>
+<a class="skip-link" href="#content">Перейти к содержимому</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Основная навигация">
-      <a href="/ru/#ecossistema">Экосистема</a>
+      <a href="/ru/#ecosystem">Экосистема</a>
       <a href="/ru/docs/">Документация</a>
-      <details class="lang-dd"><summary aria-label="Язык: Русский"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Русский</span></summary><ul><li><a href="/docs/libraries/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/libraries/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/libraries/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/libraries/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/libraries/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/libraries/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/libraries/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/libraries/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/libraries/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/libraries/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/libraries/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Язык: Русский"><span>Русский</span></summary><ul><li><a href="/docs/libraries/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/libraries/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/libraries/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/libraries/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/libraries/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/libraries/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/libraries/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/libraries/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/libraries/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/libraries/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/libraries/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open source на GitHub
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Документация</p>
       <h1>Клиентские библиотеки</h1>
       <p class="doc-desc">Как шаг на любом языке читает контекст и часы запуска — и для каких языков библиотека уже есть.</p>
       <p>От оркестратора шагу нужны две вещи: <strong>то, что опубликовал предыдущий шаг</strong>, и <strong>какие часы должен читать этот запуск</strong>. Клиентские библиотеки передают эти две вещи и больше ничего.</p>
-<h2 id="контракт-важнее-библиотек">Контракт важнее библиотек<a class="anchor" href="#контракт-важнее-библиотек" aria-label="link">#</a></h2>
+<h2 id="the-contract-comes-before-the-libraries">Контракт важнее библиотек<a class="anchor" href="#the-contract-comes-before-the-libraries" aria-label="link">#</a></h2>
 <p>Engine определяет <strong>две переменные окружения и файл</strong>:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>BREVIS_INPUT</code></td><td><code>{"&lt;step id&gt;": {…}}</code> — что опубликовали зависимости этого шага</td></tr><tr><td><code>BREVIS_OUTPUT</code></td><td>путь, по которому нужно записать <strong>один</strong> JSON-объект</td></tr></tbody></table></div>
 <p>Плюс переменные запуска и автоматические параметры, все только для чтения: <code>BREVIS_RUN_*</code> и <code>BREVIS_AUTO_*</code>. В Kubernetes <code>BREVIS_OUTPUT</code> — это <code>/dev/termination-log</code>, который engine и так читает, чтобы получить код завершения.</p>
@@ -136,15 +136,15 @@ jq -n --arg n &quot;$(date -Is)&quot; &#x27;{published_at: $n}&#x27; &gt; &quot;
 ./publish <span class="t-n">--until</span> "$window"
 jq <span class="t-n">-n</span> <span class="t-n">--arg</span> n "$(date <span class="t-n">-Is</span>)" '{published_at: $n}' &gt; "$BREVIS_OUTPUT"</code></pre></div>
 <p>Библиотека здесь не открывает новых возможностей — она избавляет вас от валидации, обработки отсутствующих значений и сообщений об ошибках, которые не стоит писать заново.</p>
-<h2 id="какие-есть">Какие есть<a class="anchor" href="#какие-есть" aria-label="link">#</a></h2>
+<h2 id="which-ones-exist">Какие есть<a class="anchor" href="#which-ones-exist" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>язык</th><th></th><th></th></tr></thead><tbody><tr><td><strong>Python</strong></td><td><code>pip install brevis</code></td><td><a href="/ru/docs/python/">доступна</a> — <code>0.2.1</code> на PyPI</td></tr><tr><td><strong>Go</strong></td><td><code>brevis/sdk/context</code></td><td>доступна, внутри модуля SDK</td></tr><tr><td><strong>Node.js</strong></td><td>—</td><td>запланирована</td></tr><tr><td><strong>Rust</strong></td><td>—</td><td>запланирована</td></tr><tr><td>любой другой</td><td>переменные выше</td><td>сегодня</td></tr></tbody></table></div>
 <aside class="admon admon-note"><p class="admon-t">Go не живёт в `lib/`</p><p>Поддержка контекста для Go находится в модуле <code>sdk/</code>, который проект уже публикует, как подпакет, не попадающий в сборку у тех, кто его не импортирует. <code>lib/go-context</code> означал бы второй модуль Go для пакета, у которого он уже есть.</p>
 <p>Правило таково: <strong>по одному каталогу на язык, у которого ещё нет опубликованного артефакта</strong>.</p></aside>
 <p>Каждая библиотека — отдельный артефакт со своей версией и тегом: исправление в клиенте для Python не вынуждает выпускать новую версию engine.</p>
-<h2 id="чем-они-являются-и-чем-нет">Чем они являются и чем нет<a class="anchor" href="#чем-они-являются-и-чем-нет" aria-label="link">#</a></h2>
+<h2 id="what-they-are-and-what-they-are-not">Чем они являются и чем нет<a class="anchor" href="#what-they-are-and-what-they-are-not" aria-label="link">#</a></h2>
 <p>Это <strong>тонкие клиенты поверх контракта</strong>, а не порты Go SDK.</p>
 <p>Порт ETL-механизмов SDK — драйверов, пагинации, контрольных точек, ingestion id — здесь не к месту и, вероятно, не к месту нигде: у каждого языка, для которого это могло бы быть сделано, уже есть инструменты лучше, а задача Brevis — их запускать. Поэтому библиотека для Python существует для того, чтобы команда могла использовать pandas, Polars или dbt и при этом получать то единственное, для чего нужен оркестратор.</p>
-<h2 id="метрики">Метрики<a class="anchor" href="#метрики" aria-label="link">#</a></h2>
+<h2 id="metrics">Метрики<a class="anchor" href="#metrics" aria-label="link">#</a></h2>
 <p>Библиотека <strong>выпускает</strong> метрики, а публикует их engine:</p>
 <div class="code-block" data-code="from brevis import metrics
 
@@ -155,11 +155,11 @@ metrics.set("rows_loaded", 48213)      <span class="t-c"># a gauge: the last val
 metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up</span></code></pre></div>
 <p>Они появляются в <code>/metrics</code> <strong>engine</strong>, на порту планировщика, с метками workflow и шага — см. <a href="/ru/docs/observability/">Наблюдаемость</a>.</p>
 <p><strong>Это не открывает порт, и не могло бы.</strong> Шаг работает в собственном pod сорок секунд и завершается; открытый им порт был бы опрошен ни разу или один раз по везению. Поэтому строка уходит в stdout — тот же канал, который engine и так читает, чтобы рисовать фазы пайплайна, — и engine её записывает. Ничего не нужно устанавливать, ничего не нужно обслуживать, а метки — метки engine, потому что шаг не может знать slug собственного workflow.</p>
-<p>Подробности API — в разделе <a href="/ru/docs/python/#метрики-которые-знает-только-ваш-пайплайн">Python</a>.</p>
-<h2 id="как-написать-клиент-для-другого-языка">Как написать клиент для другого языка<a class="anchor" href="#как-написать-клиент-для-другого-языка" aria-label="link">#</a></h2>
+<p>Подробности API — в разделе <a href="/ru/docs/python/#metrics-only-your-pipeline-knows">Python</a>.</p>
+<h2 id="writing-a-client-for-another-language">Как написать клиент для другого языка<a class="anchor" href="#writing-a-client-for-another-language" aria-label="link">#</a></h2>
 <p>Если вы доберётесь до Node.js или Rust раньше нас, вот что клиент обязан делать правильно — и чему реализация на Python уже научилась на собственных ошибках:</p>
 <ol><li><strong>Ключи, квалифицированные шагом.</strong> <code>get("bucket")</code> без указания шага должен отклоняться. Два шага могут опубликовать <code>bucket</code>, а выбор одного поиском — это приоритет по случайности.</li><li><strong>Объединять записи.</strong> Два вызова с разными ключами сохраняют оба; один и тот же ключ дважды сохраняет последний.</li><li><strong>Сбрасывать только при завершении процесса.</strong> Шаг, жёстко упавший, ничего не публикует — и это правильно, потому что вывод упавшего шага описывал бы незавершённую работу.</li><li><strong>Отклонять больше 4096 байт.</strong> Платформа <strong>усекает</strong>, а не отклоняет, и вдвое обрезанный объект приходит следующему шагу как невалидный JSON.</li><li><strong>Работать вне Brevis.</strong> Без <code>BREVIS_INPUT</code> <code>get()</code> возвращает значение по умолчанию, а <code>set()</code> принимает и отбрасывает, не вызывая исключения: скрипт, который нельзя запустить вручную, нельзя разрабатывать.</li></ol>
-<h2 id="дальнейшие-шаги">Дальнейшие шаги<a class="anchor" href="#дальнейшие-шаги" aria-label="link">#</a></h2>
+<h2 id="next-steps">Дальнейшие шаги<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ru/docs/python/">Python</a> — полный API</li><li><a href="/ru/docs/context/">Контекст между шагами</a> — концепция и потолок в 4096 байт</li><li><a href="/ru/docs/parameters/">Параметры</a> — объявленные и автоматические</li></ul>
 
       <nav class="pagers" aria-label="Страницы">
@@ -174,7 +174,7 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
 
     <aside class="toc" aria-label="На этой странице">
       <p class="toc-t">На этой странице</p>
-      <ul><li class="toc-2"><a href="#контракт-важнее-библиотек">Контракт важнее библиотек</a></li><li class="toc-2"><a href="#какие-есть">Какие есть</a></li><li class="toc-2"><a href="#чем-они-являются-и-чем-нет">Чем они являются и чем нет</a></li><li class="toc-2"><a href="#метрики">Метрики</a></li><li class="toc-2"><a href="#как-написать-клиент-для-другого-языка">Как написать клиент для другого языка</a></li><li class="toc-2"><a href="#дальнейшие-шаги">Дальнейшие шаги</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-contract-comes-before-the-libraries">Контракт важнее библиотек</a></li><li class="toc-2"><a href="#which-ones-exist">Какие есть</a></li><li class="toc-2"><a href="#what-they-are-and-what-they-are-not">Чем они являются и чем нет</a></li><li class="toc-2"><a href="#metrics">Метрики</a></li><li class="toc-2"><a href="#writing-a-client-for-another-language">Как написать клиент для другого языка</a></li><li class="toc-2"><a href="#next-steps">Дальнейшие шаги</a></li></ul>
     </aside>
   </main>
 </div>
@@ -194,9 +194,9 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
       <div class="footer-col">
         <h2>проект</h2>
         <ul>
-          <li><a href="/ru/#ecossistema">Экосистема</a></li>
+          <li><a href="/ru/#ecosystem">Экосистема</a></li>
           <li><a href="/ru/docs/philosophy/">Принципы</a></li>
-          <li><a href="/ru/docs/introduction/#открытый-код-выберите-как-участвовать">Open source</a></li>
+          <li><a href="/ru/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/ru/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -219,7 +219,7 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

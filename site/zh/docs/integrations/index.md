@@ -14,27 +14,27 @@
 
 |  | 接入方式 | 指南 |
 |---|---|---|
-| **HTTP** | SDK：`from.HTTP` | [Go SDK](/zh/docs/sdk/#源与目的地) |
-| **Postgres** | SDK：`from/postgres` | [Go SDK](/zh/docs/sdk/#源与目的地) |
-| **MySQL** | SDK：`from/mysql` | [Go SDK](/zh/docs/sdk/#源与目的地) |
-| **文件** | SDK：`from.Files`，本地、S3、GCS | [Go SDK](/zh/docs/sdk/#源与目的地) |
+| **HTTP** | SDK：`from.HTTP` | [Go SDK](/zh/docs/sdk/#sources-and-destinations) |
+| **Postgres** | SDK：`from/postgres` | [Go SDK](/zh/docs/sdk/#sources-and-destinations) |
+| **MySQL** | SDK：`from/mysql` | [Go SDK](/zh/docs/sdk/#sources-and-destinations) |
+| **文件** | SDK：`from.Files`，本地、S3、GCS | [Go SDK](/zh/docs/sdk/#sources-and-destinations) |
 
 ## 数据落地
 
 |  | 接入方式 | 指南 |
 |---|---|---|
-| **BigQuery** | SDK：`to/bigquery` · Gateway：`bigquery` | [Go SDK](/zh/docs/sdk/#源与目的地)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
-| **Postgres** | SDK：`to/postgres` · Gateway：`postgres` | [Go SDK](/zh/docs/sdk/#源与目的地)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
-| **MySQL** | SDK：`to/mysql` · Gateway：`mysql` | [Go SDK](/zh/docs/sdk/#源与目的地)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
-| **Redshift** | SDK：`to/redshift` · Gateway：`redshift` | [Go SDK](/zh/docs/sdk/#源与目的地)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
-| **Pub/Sub** | SDK：`to/pubsub` · Gateway：`pubsub` | [Go SDK](/zh/docs/sdk/#源与目的地)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
+| **BigQuery** | SDK：`to/bigquery` · Gateway：`bigquery` | [Go SDK](/zh/docs/sdk/#sources-and-destinations)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
+| **Postgres** | SDK：`to/postgres` · Gateway：`postgres` | [Go SDK](/zh/docs/sdk/#sources-and-destinations)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
+| **MySQL** | SDK：`to/mysql` · Gateway：`mysql` | [Go SDK](/zh/docs/sdk/#sources-and-destinations)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
+| **Redshift** | SDK：`to/redshift` · Gateway：`redshift` | [Go SDK](/zh/docs/sdk/#sources-and-destinations)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
+| **Pub/Sub** | SDK：`to/pubsub` · Gateway：`pubsub` | [Go SDK](/zh/docs/sdk/#sources-and-destinations)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
 
 ## 文件存储
 
 |  | 接入方式 | 指南 |
 |---|---|---|
-| **S3** | SDK：`store/s3` · Gateway：`s3://` 上的 `files` | [Go SDK](/zh/docs/sdk/#源与目的地)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
-| **GCS** | SDK：`store/gcs` · Gateway：`gs://` 上的 `files` | [Go SDK](/zh/docs/sdk/#源与目的地)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
+| **S3** | SDK：`store/s3` · Gateway：`s3://` 上的 `files` | [Go SDK](/zh/docs/sdk/#sources-and-destinations)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
+| **GCS** | SDK：`store/gcs` · Gateway：`gs://` 上的 `files` | [Go SDK](/zh/docs/sdk/#sources-and-destinations)、[摄取 sink](/zh/docs/ingestion-sinks/index.md) |
 
 ## 建模所在
 
@@ -49,7 +49,7 @@
 |---|---|---|
 | **Docker** | 每个组成部分一个镜像：`areteacademy/brevis`、`brevis-gateway`、`brevis-sql` | [安装](/zh/docs/installation/#docker) |
 | **Kubernetes** | 每个 step 一个 pod | [Kubernetes](/zh/docs/kubernetes/index.md)、[每个 step 一个 pod](/zh/docs/pod-per-step/index.md) |
-| **Helm** | `deployments/helm/brevis` 中的 chart | [Kubernetes](/zh/docs/kubernetes/#使用-helm-安装) |
+| **Helm** | `deployments/helm/brevis` 中的 chart | [Kubernetes](/zh/docs/kubernetes/#install-it-with-helm) |
 
 ## 使用的语言
 

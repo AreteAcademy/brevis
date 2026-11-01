@@ -45,7 +45,7 @@ curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
 ```
 
 Tanpa kredensial Google Cloud, batch di-retry dan masuk ke dead letter — lihat
-[Ketika sink menolak](#ketika-sink-menolak).
+[Ketika sink menolak](#when-the-sink-refuses).
 
 Image `-slim` hanya membawa sink `auto_table`, `files`, dan `postgres`; `pubsub`
 pada contoh ini dan sink lainnya ada di image penuh. Image slim dengan sink yang
@@ -481,7 +481,7 @@ membuat tabel itu bila belum ada, dan menumbuhkan kolom ketika field baru muncul
 Field kontrol di atas, record di dalam `data`, dan tujuh kolom pelacakan
 `brevis_*` pada setiap tabel. Satu rute, N tabel, tanpa deklarasi apa pun.
 
-Ia ada di [Sink ingestion](/docs/ingestion-sinks/#satu-rute-n-tabel-tanpa-deklarasi).
+Ia ada di [Sink ingestion](/docs/ingestion-sinks/#one-route-n-tables-nothing-declared).
 
 ## Ke mana selanjutnya
 

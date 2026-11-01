@@ -223,7 +223,7 @@ Eine Tabelle ohne Gewissheit anzulegen ist schlimmer, als sie nicht anzulegen.
 ### Die Uhr
 
 `p.Run.Auto` ist das, was die Engine über diesen Run ermittelt hat – die
-[Auto-Parameter](/docs/parameters/#auto-parameter). `Auto.Now()` ist die Uhr, die
+[Auto-Parameter](/docs/parameters/#auto-params). `Auto.Now()` ist die Uhr, die
 statt `time.Now()` zu lesen ist: Bei einem geplanten Run ist es der Slot, er
 bewegt sich also nicht, wenn der Run spät dran ist, und nicht, wenn der Run drei
 Stunden später wiederholt wird.
@@ -336,7 +336,7 @@ postet, was er hat; hier kennt der Autor der Pipeline die Form und schreibt sie
 auf, in einem Diff, den jemand prüft.
 
 Es ist dieselbe Form, die ein Gateway als
-[`shape: columns`](/docs/ingestion-sinks/#zwei-formen-ein-vertrag) landet,
+[`shape: columns`](/docs/ingestion-sinks/#two-shapes-one-contract) landet,
 über denselben Code – dieselben Spalten, dieselben Werte, dieselbe
 `brevis_ingestion_id`.
 
@@ -353,7 +353,7 @@ ist ein völlig gültiger JSON-Schlüssel.
 `JSON`. Ein Datensatz, der eine Zeile *pro Array-Element* will, will
 `sdk.ArrayAt` im `Expand` der Quelle – das läuft vor `Landing` und ist eine
 andere Operation mit einem anderen Namen.
-[`BREVIS_NORMALIZE_DATA`](#eine-spalte-pro-verschachteltem-feld) ändert die erste Hälfte
+[`BREVIS_NORMALIZE_DATA`](#one-column-per-nested-field) ändert die erste Hälfte
 davon für ein ganzes Deployment; ein Array bleibt in beiden Fällen `JSON`:
 
 ```go

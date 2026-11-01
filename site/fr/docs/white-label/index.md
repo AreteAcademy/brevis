@@ -63,8 +63,8 @@ brevis marca brand.yaml
 
 ```
   ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis
 ```
 
@@ -84,7 +84,7 @@ thème par défaut. Arrêter l'API à cause d'une couleur serait pire que la ser
 avec le thème par défaut.
 
 ```
-level=WARN msg="identidade visual ignorada" arquivo=brand.yaml erro="cor invalida: #gggggg"
+level=WARN msg="visual identity ignored" file=brand.yaml error="brand.yaml: colour accent: \"#gggggg\" is not a hex value (#rgb, #rrggbb or #rrggbbaa)"
 ```
 
 ## Ce qui ne peut pas être personnalisé

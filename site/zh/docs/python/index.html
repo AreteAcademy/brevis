@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
-      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/python/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/python/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/python/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/python/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/python/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/python/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/python/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/python/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/python/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/python/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/python/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><span>简体中文</span></summary><ul><li><a href="/docs/python/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/python/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/python/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/python/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/python/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/python/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/python/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/python/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/python/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/python/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/python/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         探索开源项目
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>Python</h1>
@@ -140,7 +140,7 @@ context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
 <p><strong>永远没有依赖。</strong> 它读取一个环境变量，写入一个文件，向 stdout 打印一行。需要 Python 3.9+。</p>
 <p>它不是 Go SDK 的移植版：没有驱动，没有分页，没有摄取 id。它存在的目的，是让团队可以使用 pandas、Polars 或 dbt，同时仍能获得编排器应当提供的东西。</p>
-<h2 id="读取上下文">读取上下文<a class="anchor" href="#读取上下文" aria-label="link">#</a></h2>
+<h2 id="reading-context">读取上下文<a class="anchor" href="#reading-context" aria-label="link">#</a></h2>
 <p>键始终由发布它的 step 限定：</p>
 <div class="code-block" data-code="context.get(&quot;extract.bucket&quot;)            # the value
 context.get(&quot;extract.nope&quot;, default=0)   # absent is not an error
@@ -151,7 +151,7 @@ context.of("extract")                    <span class="t-c"># everything that ste
 context.published()                      <span class="t-c"># what THIS step has published so far</span></code></pre></div>
 <p>不带 step 的 <code>context.get("bucket")</code> 会被<strong>拒绝</strong>，并指出发布了该键的 step。step 之间是相互隔离的：<code>extract</code> 和 <code>transform</code> 都可以发布 <code>bucket</code>，而不会有任何一个丢失，而不带 step 的键一旦两个 step 都发布了，就会丢掉这种隔离。通过搜索挑选其中一个，是偶然形成的优先级：它在悄悄失效之前一直有效。</p>
 <p>读取当前 step 并不依赖的 step 是错误，错误信息会指出修复办法。</p>
-<h2 id="写入">写入<a class="anchor" href="#写入" aria-label="link">#</a></h2>
+<h2 id="writing">写入<a class="anchor" href="#writing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="context.set(name=&quot;Daniel&quot;)
 context.set(label=&quot;Name&quot;)
 # both survive: {&quot;name&quot;: &quot;Daniel&quot;, &quot;label&quot;: &quot;Name&quot;}"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>context.set(name="Daniel")
@@ -159,7 +159,7 @@ context.set(label="Name")
 <span class="t-c"># both survive: {"name": "Daniel", "label": "Name"}</span></code></pre></div>
 <p>调用会<strong>合并</strong>。同一个键写两次，保留最后一次写入；不同的键则不会影响第一个。<strong>没有 step 参数</strong>：进程唯一能写入的命名空间就是它自己的，这使隔离成为结构上的保证，而不是一条规则。</p>
 <p>在进程退出之前，没有任何内容会写入磁盘，所以异常终止的 step 什么都不会发布。这是正确的：崩溃的 step 的输出所描述的工作并没有完成。</p>
-<h2 id="这个-run-应该读取的时钟">这个 run 应该读取的时钟<a class="anchor" href="#这个-run-应该读取的时钟" aria-label="link">#</a></h2>
+<h2 id="the-clock-this-run-should-read">这个 run 应该读取的时钟<a class="anchor" href="#the-clock-this-run-should-read" aria-label="link">#</a></h2>
 <p>每个 run 还带有<strong>自动参数</strong>：引擎自己算出的值。没有人声明它们，每个 run 都有，它们回答的是 pipeline 否则会用 <code>datetime.now()</code> 回答的问题。</p>
 <div class="code-block" data-code="from datetime import timedelta
 from brevis import run
@@ -176,10 +176,10 @@ df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>run.now()</code></td><td>时钟：slot，或 run 开始的时间</td></tr><tr><td><code>run.window()</code></td><td><code>(start, end)</code>，不含 end，或者 <code>None</code></td></tr><tr><td><code>run.auto()</code></td><td>自动参数，见下文</td></tr><tr><td><code>run.context()</code></td><td>id、尝试次数、触发方式、参数和 auto</td></tr><tr><td><code>run.params()</code> · <code>run.param(name)</code></td><td>workflow 中声明的参数</td></tr><tr><td><code>run.map_index()</code> · <code>run.map_value()</code></td><td><code>for_each:</code> 下的实例</td></tr></tbody></table></div>
 <p><code>window()</code> 来自 <strong>cron</strong>，而不是历史：对三月的某个 slot 做 backfill，得到的是三月当时的窗口。请求 <code>[start, end)</code> 的 pipeline，无论 run 多晚、重试多频繁，都不会重叠，也不会出现缺口。</p>
 <p>当 workflow 没有调度时，它返回 <code>None</code>，而不是一对零值时间：从纪元开始的查询会选中所有数据，这种失败不该是无声的。上面的 <code>or</code> 就是全部的回退逻辑。</p>
-<h3 id="自动参数">自动参数<a class="anchor" href="#自动参数" aria-label="link">#</a></h3>
+<h3 id="the-auto-parameters">自动参数<a class="anchor" href="#the-auto-parameters" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th>字段</th><th></th></tr></thead><tbody><tr><td><code>date</code></td><td><code>"2026-09-08"</code>：分区、文件夹、<code>WHERE</code></td></tr><tr><td><code>adjusted_at</code></td><td>用来取代 <code>now()</code> 的时钟</td></tr><tr><td><code>scheduled_at</code></td><td>cron 所要求的 slot；手动 run 时为 <code>None</code></td></tr><tr><td><code>started_at</code></td><td><strong>这次尝试</strong>开始的时间；重试会改变它</td></tr><tr><td><code>delay_seconds</code></td><td>这次尝试晚了多久；永远不会为负</td></tr><tr><td><code>interval_start</code> · <code>interval_end</code></td><td>窗口，不含 end</td></tr><tr><td><code>previous_error</code></td><td>在这个 run 之前的那个 run 没有成功</td></tr><tr><td><code>previous_success_at</code></td><td>最近一次<strong>成功</strong>的 run 的 slot，这使 <code>previous_error</code> 变得可操作</td></tr></tbody></table></div>
 <p>手动运行脚本时，<code>run.now()</code> <strong>就是</strong>挂钟时间，<code>window()</code> 是 <code>None</code>，所以本地开发无需编写任何分支。</p>
-<h2 id="做了映射的-step-的一个实例">做了映射的 step 的一个实例<a class="anchor" href="#做了映射的-step-的一个实例" aria-label="link">#</a></h2>
+<h2 id="one-instance-of-a-mapped-step">做了映射的 step 的一个实例<a class="anchor" href="#one-instance-of-a-mapped-step" aria-label="link">#</a></h2>
 <p>在 <a href="/zh/docs/workflows/"><code>for_each:</code></a> 下，引擎为每个元素运行一个进程，并告诉每个进程它拿到的是哪一个：</p>
 <div class="code-block" data-code="partition = run.map_value()
 if partition is None:
@@ -193,7 +193,7 @@ load(f"/data/{partition}.csv")</code></pre></div>
 <p>JSON 字符串会<strong>不带引号</strong>传入：对 <code>["2026-01"]</code> 做 <code>for_each</code> 时，step 收到的是 <code>2026-01</code>，而不是 <code>"2026-01"</code>。其他任何类型（对象、数字、列表）都以其 JSON 形式传入，因此用 <code>json.loads(run.map_value())</code>。</p>
 <p>在没有做映射的 step 上，两者都是 <code>None</code>。是 <code>None</code>，而不是 <code>-1</code> 或 <code>""</code>：哨兵值是最终会有人拿来做算术的数字，而空字符串与*本身就是*空字符串的元素无法区分。</p>
 <p>做了映射的 step 不会向下游发布<strong>任何 context</strong>：四个实例无法共用一个键。需要传递东西的 step 应写一个文件，或者由其后的 step 统计落地了什么。</p>
-<h2 id="只有你的-pipeline-才知道的指标">只有你的 pipeline 才知道的指标<a class="anchor" href="#只有你的-pipeline-才知道的指标" aria-label="link">#</a></h2>
+<h2 id="metrics-only-your-pipeline-knows">只有你的 pipeline 才知道的指标<a class="anchor" href="#metrics-only-your-pipeline-knows" aria-label="link">#</a></h2>
 <p>引擎已经度量了它能看到的东西：耗时、尝试次数、队列深度。它无从得知的是有多少行落地、供应商拒绝了多少行、丢弃了多少字节。step 知道这些，而库负责把它们带出去。</p>
 <div class="code-block" data-code="from brevis import metrics
 
@@ -209,22 +209,22 @@ metrics.inc("bytes_discarded_total", 4096)</code></pre></div>
 brevis_step_vendor_rejected_total{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 5"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
 brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>metrics.set(name, value)</code></td><td>gauge。step 退出后，该值会保留，直到下一次 run 写入另一个值</td></tr><tr><td><code>metrics.inc(name, by=1)</code></td><td>counter。在 step 之间和 run 之间累加</td></tr></tbody></table></div>
-<h3 id="为什么这不会开启端口">为什么这不会开启端口<a class="anchor" href="#为什么这不会开启端口" aria-label="link">#</a></h3>
+<h3 id="why-this-does-not-open-a-port">为什么这不会开启端口<a class="anchor" href="#why-this-does-not-open-a-port" aria-label="link">#</a></h3>
 <p>因为 <strong>step 不可被抓取</strong>。<code>:9090</code> 属于调度器和 API，它们是长期运行、地址稳定的进程，每十五到六十秒被抓取一次。step 在自己的 pod 中启动，运行四十秒就退出：它打开的端口要么永远不会被抓取，要么只是碰巧被抓取一次。</p>
 <p>已知的三种应对办法是：Pushgateway（需要运维的组件，而且序列会一直保留到有人删除）、OTLP collector（既是一个组件，也是这个库里的一项依赖，而这个库没有依赖，也不会有），或者让<strong>编排器</strong>来承载它们。Brevis 本来就会读取每个 step 的 stdout，寻找 <code>@brevis:</code> 行，SDK 的各个阶段就是这样到达图上的，而且它本来就有计量器和 Prometheus 端点。</p>
 <p>所以库向 stdout 写<strong>一行</strong>，其余交给引擎。指标会自动带上 workflow 和 step 的标签，因为引擎知道自己运行的是什么；而通过 Pushgateway，这个库必须自己加标签，并且会加错。</p>
 <p>写入使用 <code>print(flush=True)</code>，因为引擎是<strong>实时</strong>读取这条管道的。带缓冲的行要到进程退出时才会到达，对于运行一小时的 step 来说就是晚了一小时，对于被杀掉的 step 则永远不会到达。</p>
-<h3 id="指标会拒绝什么">指标会拒绝什么<a class="anchor" href="#指标会拒绝什么" aria-label="link">#</a></h3>
+<h3 id="what-a-metric-refuses">指标会拒绝什么<a class="anchor" href="#what-a-metric-refuses" aria-label="link">#</a></h3>
 <p><strong>无效的名称会被明确拒绝。</strong> Prometheus 接受字母、数字和下划线，且首字符不能是数字。它不接受的名称不会产生一个损坏的指标，而是产生一份它<strong>拒绝解析</strong>的输出，导致<strong>整次抓取</strong>丢失，连同其他所有指标。所以 <code>rows-loaded</code> 会在犯错的地方抛出 <code>MetricError</code>，而不是以一个没人写过的名称到达。</p>
 <div class="table-wrap"><table><thead><tr><th>被拒绝的</th><th>原因</th></tr></thead><tbody><tr><td><code>rows-loaded</code>、<code>rows loaded</code>、<code>2rows</code></td><td>Prometheus 不会解析它，整次抓取都会丢失</td></tr><tr><td><code>metrics.set("ok", True)</code></td><td>在 Python 中 <code>bool</code> 是 <code>int</code>，而上报 <code>1</code> 是一个含义取决于是否知道这一点的数字。请上报数量或耗时，而不是状态</td></tr><tr><td><code>metrics.inc("x", -1)</code></td><td>counter 只增不减。对它做的每个 <code>rate()</code> 都基于这一假设，而问题会在几周后的图表中暴露出来</td></tr></tbody></table></div>
 <p>手动运行脚本时，这一行仍会输出到 stdout，在那里它就是它本来的样子。没有东西收集它，也没有东西失败，这与笔记本电脑上的 <code>context.set()</code> 一样。</p>
-<h2 id="它拒绝什么">它拒绝什么<a class="anchor" href="#它拒绝什么" aria-label="link">#</a></h2>
+<h2 id="what-it-refuses">它拒绝什么<a class="anchor" href="#what-it-refuses" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>原因</th></tr></thead><tbody><tr><td>超过 4096 字节</td><td>平台会<strong>截断</strong>而不是拒绝，所以过大的对象会被截断一半，并在下游被读作“什么都没发布”</td></tr><tr><td>不是 JSON 的值</td><td><code>datetime</code> 会变成 <code>"..."</code> 还是消失，取决于由谁来序列化。错误信息会指出键并建议使用 <code>.isoformat()</code></td></tr><tr><td>非字符串的键</td><td><code>{1: "x"}</code> 会变回 <code>{"1": "x"}</code>，导致查找落空</td></tr></tbody></table></div>
 <p>这个上限是平台的数字，不是我们的。每个“任务之间的 context”功能都以同样的方式失败：有人把<strong>数据</strong>放到了只适合放 <strong>context</strong> 的地方。四千字节足够放下一个水位线、一个计数或一个分区列表。请发布引用，让行留在原处。</p>
 <aside class="admon admon-danger"><p class="admon-t">这不是密钥存储</p><p>发布的所有内容对任何能看到这个 run 的人都是可见的：它在 pod 的状态里，也在 run 的历史里。请发布路径，而不是签名 URL。</p></aside>
-<h2 id="手动运行">手动运行<a class="anchor" href="#手动运行" aria-label="link">#</a></h2>
+<h2 id="running-it-by-hand">手动运行<a class="anchor" href="#running-it-by-hand" aria-label="link">#</a></h2>
 <p>在 Brevis 之外没有输入，也没有任何东西会读取输出。<code>get()</code> 返回默认值，<code>set()</code> 接受并丢弃，库会在 INFO 级别说明一次。它<strong>不会抛出异常</strong>：无法手动运行的脚本，是无法开发的。校验仍然会运行，所以在你笔记本电脑上能工作的值，在生产环境中也能工作。</p>
-<h2 id="测试你的-step">测试你的 step<a class="anchor" href="#测试你的-step" aria-label="link">#</a></h2>
+<h2 id="testing-your-step">测试你的 step<a class="anchor" href="#testing-your-step" aria-label="link">#</a></h2>
 <p>整个约定就是两个环境变量，因此没有什么需要 mock：</p>
 <div class="code-block" data-code="def test_my_step(monkeypatch, tmp_path):
     monkeypatch.setenv(&quot;BREVIS_INPUT&quot;, &#x27;{&quot;extract&quot;: {&quot;rows&quot;: 42}}&#x27;)
@@ -233,11 +233,11 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
     monkeypatch.setenv("BREVIS_INPUT", '{"extract": {"rows": 42}}')
     monkeypatch.setenv("BREVIS_OUTPUT", str(tmp_path / "out"))
     <span class="t-k">assert</span> context.get("extract.rows") == 42</code></pre></div>
-<h2 id="版本">版本<a class="anchor" href="#版本" aria-label="link">#</a></h2>
+<h2 id="versions">版本<a class="anchor" href="#versions" aria-label="link">#</a></h2>
 <p>该库的版本与引擎和 Go SDK 各自独立。</p>
 <aside class="admon admon-warning"><p class="admon-t">不要使用 `0.2.0`</p><p>它在 PyPI 上只发布了 wheel。<code>0.2.1</code> 是同样的代码，且是完整的。</p></aside>
 <p><code>brevis.run</code> 需要 <strong><code>v0.9.0</code> 或更新版本</strong>的引擎才有东西可读；在更旧的引擎上，每个字段都是空的，<code>run.now()</code> 是挂钟时间，与它在引擎之外的行为相同。</p>
-<h2 id="下一步">下一步<a class="anchor" href="#下一步" aria-label="link">#</a></h2>
+<h2 id="next-steps">下一步<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/zh/docs/libraries/">客户端库</a>：约定以及其他语言</li><li><a href="/zh/docs/context/">step 之间的上下文</a>：概念</li><li><a href="/zh/docs/parameters/">参数</a>：声明的参数</li></ul>
 
       <nav class="pagers" aria-label="页面">
@@ -252,7 +252,7 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#读取上下文">读取上下文</a></li><li class="toc-2"><a href="#写入">写入</a></li><li class="toc-2"><a href="#这个-run-应该读取的时钟">这个 run 应该读取的时钟</a></li><li class="toc-3"><a href="#自动参数">自动参数</a></li><li class="toc-2"><a href="#做了映射的-step-的一个实例">做了映射的 step 的一个实例</a></li><li class="toc-2"><a href="#只有你的-pipeline-才知道的指标">只有你的 pipeline 才知道的指标</a></li><li class="toc-3"><a href="#为什么这不会开启端口">为什么这不会开启端口</a></li><li class="toc-3"><a href="#指标会拒绝什么">指标会拒绝什么</a></li><li class="toc-2"><a href="#它拒绝什么">它拒绝什么</a></li><li class="toc-2"><a href="#手动运行">手动运行</a></li><li class="toc-2"><a href="#测试你的-step">测试你的 step</a></li><li class="toc-2"><a href="#版本">版本</a></li><li class="toc-2"><a href="#下一步">下一步</a></li></ul>
+      <ul><li class="toc-2"><a href="#reading-context">读取上下文</a></li><li class="toc-2"><a href="#writing">写入</a></li><li class="toc-2"><a href="#the-clock-this-run-should-read">这个 run 应该读取的时钟</a></li><li class="toc-3"><a href="#the-auto-parameters">自动参数</a></li><li class="toc-2"><a href="#one-instance-of-a-mapped-step">做了映射的 step 的一个实例</a></li><li class="toc-2"><a href="#metrics-only-your-pipeline-knows">只有你的 pipeline 才知道的指标</a></li><li class="toc-3"><a href="#why-this-does-not-open-a-port">为什么这不会开启端口</a></li><li class="toc-3"><a href="#what-a-metric-refuses">指标会拒绝什么</a></li><li class="toc-2"><a href="#what-it-refuses">它拒绝什么</a></li><li class="toc-2"><a href="#running-it-by-hand">手动运行</a></li><li class="toc-2"><a href="#testing-your-step">测试你的 step</a></li><li class="toc-2"><a href="#versions">版本</a></li><li class="toc-2"><a href="#next-steps">下一步</a></li></ul>
     </aside>
   </main>
 </div>
@@ -272,9 +272,9 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -297,7 +297,7 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -28,7 +28,7 @@ Core 负责调度、排队和监控，从不接触数据。真正接触数据的
 另有三个配套部分：
 
 - **[Console](/docs/console/)** — Core 之上的 Web 界面
-- **[agent](/docs/pod-per-step/#每个-step-在哪里运行)** — 在你已有的集群中运行 step
+- **[agent](/docs/pod-per-step/#where-each-step-runs)** — 在你已有的集群中运行 step
 - **[`brevis` for Python](/docs/python/)** — 为 Python step 提供运行上下文
 
 ## 只使用其中一个组成部分
@@ -39,7 +39,7 @@ Core 负责调度、排队和监控，从不接触数据。真正接触数据的
 
 SDK 抓取的订单与到达 Gateway 的订单，会以相同的 brevis_ingestion_id 落到同一张表里。在两者之间选择，变成了部署层面的决定，而不是 schema 层面的决定。
 
-通过 SDK，使用 `sdk.Landing`（详见[落地布局](/docs/sdk/#落地布局)）：
+通过 SDK，使用 `sdk.Landing`（详见[落地布局](/docs/sdk/#the-landing-layout)）：
 
 ```go
 sdk.Execute(ctx, &sdk.Pipeline{
@@ -52,7 +52,7 @@ sdk.Execute(ctx, &sdk.Pipeline{
 }, nil)
 ```
 
-通过 Gateway，向 `/v1/tables` 发送 POST（详见[一条路由，N 张表](/docs/ingestion/#一条路由n-张表)）：
+通过 Gateway，向 `/v1/tables` 发送 POST（详见[一条路由，N 张表](/docs/ingestion/#one-route-n-tables)）：
 
 ```bash
 curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \

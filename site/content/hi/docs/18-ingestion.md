@@ -39,7 +39,7 @@ curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
 {"accepted":1,"rejected":null}
 ```
 
-Google Cloud क्रेडेंशियल के बिना, batch का retry होता है और वह dead letter में जाता है — देखें [जब sink मना करे](#जब-sink-मन-कर)।
+Google Cloud क्रेडेंशियल के बिना, batch का retry होता है और वह dead letter में जाता है — देखें [जब sink मना करे](#when-the-sink-refuses)।
 
 `-slim` image सिर्फ़ `auto_table`, `files` और `postgres` sinks ढोती है; इस उदाहरण का `pubsub` और बाकी पूरी image में हैं। जो slim image ऐसा sink माँगे जो वह नहीं ढोती, वह शुरू होते समय कारण के साथ मना कर दी जाती है।
 
@@ -325,7 +325,7 @@ Shutdown पर बफ़र में जो है वह डिलीवर �
 
 ऊपर नियंत्रण फ़ील्ड, रिकॉर्ड `data` के भीतर, और हर तालिका पर सात `brevis_*` ट्रैकिंग कॉलम। एक route, N तालिकाएँ, कुछ घोषित नहीं।
 
-यह [Ingestion sinks](/docs/ingestion-sinks/#एक-route-n-तलकए-कछ-घषत-नह) में है।
+यह [Ingestion sinks](/docs/ingestion-sinks/#one-route-n-tables-nothing-declared) में है।
 
 ## आगे कहाँ जाएँ
 

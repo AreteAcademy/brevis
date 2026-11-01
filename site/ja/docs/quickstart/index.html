@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
-      <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/quickstart/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/quickstart/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/quickstart/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/quickstart/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/quickstart/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/quickstart/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/quickstart/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/quickstart/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/quickstart/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/quickstart/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/quickstart/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="言語: 日本語"><span>日本語</span></summary><ul><li><a href="/docs/quickstart/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/quickstart/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/quickstart/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/quickstart/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/quickstart/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/quickstart/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/quickstart/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/quickstart/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/quickstart/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/quickstart/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/quickstart/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         オープンソースを見る
@@ -119,18 +119,18 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>クイックスタート</h1>
       <p class="doc-desc">何もない状態から、インターフェース上で動く DAG まで、4 つのステップで。</p>
       <p>このガイドでは、brevis.sh を起動し、ワークフローを公開して実行します。最後には、 各ステップのリアルタイムの状態が付いたグラフが表示されます。</p>
 <p>要件: 到達可能な PostgreSQL と、<code>BREVIS_DATABASE_URL</code> 変数。</p>
-<h2 id="1-スキーマを適用する">1. スキーマを適用する<a class="anchor" href="#1-スキーマを適用する" aria-label="link">#</a></h2>
+<h2 id="1-apply-the-schema">1. スキーマを適用する<a class="anchor" href="#1-apply-the-schema" aria-label="link">#</a></h2>
 <div class="code-block" data-code="export BREVIS_DATABASE_URL=&#x27;postgres://brevis:brevis@localhost:5432/brevis?sslmode=disable&#x27;
 brevis migrate up"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>export BREVIS_DATABASE_URL='postgres://<span class="t-k">brevis</span>:<span class="t-k">brevis</span>@localhost:5432/<span class="t-k">brevis</span>?sslmode=disable'
 <span class="t-k">brevis</span> migrate up</code></pre></div>
-<h2 id="2-ワークフローを書く">2. ワークフローを書く<a class="anchor" href="#2-ワークフローを書く" aria-label="link">#</a></h2>
+<h2 id="2-write-a-workflow">2. ワークフローを書く<a class="anchor" href="#2-write-a-workflow" aria-label="link">#</a></h2>
 <p><code>hello.yaml</code> を作成します。この例はシェルだけを使うので、どこでも動きます。</p>
 <div class="code-block" data-code="name: hello
 type: dag
@@ -174,7 +174,7 @@ steps:
 <p>公開する前に確認します。これはデータベースに触れません。</p>
 <div class="code-block" data-code="brevis validate hello.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> validate hello.yaml</code></pre></div>
 <div class="code-block" data-code="  ok    hello                        dag  4 steps, 4 dependencies  (manual)"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>  ok    hello                        dag  4 steps, 4 dependencies  (manual)</code></pre></div>
-<h2 id="3-キューを使わずに今すぐ実行する">3. キューを使わずに今すぐ実行する<a class="anchor" href="#3-キューを使わずに今すぐ実行する" aria-label="link">#</a></h2>
+<h2 id="3-run-it-now-without-the-queue">3. キューを使わずに今すぐ実行する<a class="anchor" href="#3-run-it-now-without-the-queue" aria-label="link">#</a></h2>
 <p>グラフが動くのを見る最短の方法です。</p>
 <div class="code-block" data-code="brevis run hello.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> run hello.yaml</code></pre></div>
 <div class="code-block" data-code="workflow hello (dag, 4 steps) in .
@@ -208,7 +208,7 @@ workflow hello finished"><div class="code-head"><span class="code-lang">text</sp
 workflow hello finished</code></pre></div>
 <p><code>extract</code> と <code>validate</code> は同じステップに依存しているため、同時に始まります。 ランナーはグラフを<strong>レベルごとに</strong>進みます。同じレベルのものはすべて並列に実行され、 次のレベルは前のレベルが完全に終わってから始まります。</p>
 <aside class="admon admon-note"><p class="admon-t">`run` は本質的にローカルです</p><p><code>brevis run</code> は <code>BREVIS_ENV=local</code>(空の場合もローカルとみなされます)のときだけ動作し、 ステップを実行中のインスタンス自身のプロセスとして実行します。<code>image:</code> を宣言している ステップも同様です。pod を作るのは <code>scheduler</code> です。</p></aside>
-<h2 id="4-公開して運用する">4. 公開して運用する<a class="anchor" href="#4-公開して運用する" aria-label="link">#</a></h2>
+<h2 id="4-publish-and-operate">4. 公開して運用する<a class="anchor" href="#4-publish-and-operate" aria-label="link">#</a></h2>
 <p>ワークフローをデータベースに登録し、インターフェースに表示し、スケジュールに従って 動かすための手順です。</p>
 <div class="code-block" data-code="brevis publish hello.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> publish hello.yaml</code></pre></div>
 <div class="code-block" data-code="  published  hello                      (manual)"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>  published  hello                      (manual)</code></pre></div>
@@ -216,9 +216,9 @@ workflow hello finished</code></pre></div>
 <div class="code-block" data-code="brevis serve"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> serve</code></pre></div>
 <div class="code-block" data-code="brevis scheduler --interval 5s --concurrency 4"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--interval</span> 5s <span class="t-n">--concurrency</span> 4</code></pre></div>
 <p><code>http://localhost:8080</code> を開き、ワークフロー一覧から <code>hello</code> を探して ▶ をクリックします。 グラフ上で、各ステップの状態がリアルタイムに変わっていきます。</p>
-<h2 id="何が起きたのか">何が起きたのか<a class="anchor" href="#何が起きたのか" aria-label="link">#</a></h2>
+<h2 id="what-happened">何が起きたのか<a class="anchor" href="#what-happened" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>migrate up</code></td><td>テーブルを作成しました</td></tr><tr><td><code>validate</code></td><td>データベースに触れずに YAML を検査しました</td></tr><tr><td><code>run</code></td><td>キューを使わず、インスタンス自身で実行しました</td></tr><tr><td><code>publish</code></td><td>ワークフローとそのスケジュールを保存しました</td></tr><tr><td><code>serve</code></td><td>API とインターフェースを起動しました</td></tr><tr><td><code>scheduler</code></td><td>スケジュールを具体化し、キューを消化しました</td></tr></tbody></table></div>
-<h2 id="次のステップ">次のステップ<a class="anchor" href="#次のステップ" aria-label="link">#</a></h2>
+<h2 id="next-steps">次のステップ<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ja/docs/workflows/">Workflows</a> — YAML 形式の全体</li><li><a href="/ja/docs/parameters/">パラメータ</a> — 2 回の run の間で何が変わるか</li><li><a href="/ja/docs/pod-per-step/">ステップごとの pod</a> — これがどのように Kubernetes になるか</li></ul>
 
       <nav class="pagers" aria-label="ページ">
@@ -233,7 +233,7 @@ workflow hello finished</code></pre></div>
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#1-スキーマを適用する">1. スキーマを適用する</a></li><li class="toc-2"><a href="#2-ワークフローを書く">2. ワークフローを書く</a></li><li class="toc-2"><a href="#3-キューを使わずに今すぐ実行する">3. キューを使わずに今すぐ実行する</a></li><li class="toc-2"><a href="#4-公開して運用する">4. 公開して運用する</a></li><li class="toc-2"><a href="#何が起きたのか">何が起きたのか</a></li><li class="toc-2"><a href="#次のステップ">次のステップ</a></li></ul>
+      <ul><li class="toc-2"><a href="#1-apply-the-schema">1. スキーマを適用する</a></li><li class="toc-2"><a href="#2-write-a-workflow">2. ワークフローを書く</a></li><li class="toc-2"><a href="#3-run-it-now-without-the-queue">3. キューを使わずに今すぐ実行する</a></li><li class="toc-2"><a href="#4-publish-and-operate">4. 公開して運用する</a></li><li class="toc-2"><a href="#what-happened">何が起きたのか</a></li><li class="toc-2"><a href="#next-steps">次のステップ</a></li></ul>
     </aside>
   </main>
 </div>
@@ -253,9 +253,9 @@ workflow hello finished</code></pre></div>
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -278,7 +278,7 @@ workflow hello finished</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

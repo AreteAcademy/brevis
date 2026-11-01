@@ -622,36 +622,51 @@ a.chip:focus-visible .ico {
 
 .lang-dd {
   position: relative;
+  /* A flex box, so the item has the summary's own height and no line box of
+     the body's 16px type around it: that strut put it half a pixel off the
+     links beside it. */
+  display: flex;
+  align-items: center;
 }
 
+/* The language is a MENU ITEM: the same type, colour and hover as the links
+   beside it (`.main-nav a`), with a caret to say it opens. */
 .lang-dd summary {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.28rem 0.6rem;
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+  line-height: 1.7;
+  font-size: 0.9rem;
   color: var(--text-dim);
   cursor: pointer;
   list-style: none;
-  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.lang-dd summary::after {
+  content: "";
+  width: 0.38rem;
+  height: 0.38rem;
+  margin-top: -0.2rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+
+.lang-dd[open] summary::after {
+  margin-top: 0.15rem;
+  transform: rotate(225deg);
 }
 
 .lang-dd summary::-webkit-details-marker {
   display: none;
 }
 
-.lang-dd summary svg {
-  width: 0.9rem;
-  height: 0.9rem;
-}
-
 .lang-dd summary:hover,
 .lang-dd[open] summary {
-  color: var(--text);
-  background: var(--surface);
+  color: var(--lime);
 }
 
 .lang-dd ul {
@@ -1476,6 +1491,14 @@ a.chip:focus-visible .ico {
     border-bottom: 1px solid var(--line-soft);
   }
 
+  .lang-dd summary {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.85rem 0;
+    font-size: 1rem;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
   .lang-dd ul {
     position: static;
     max-height: 14rem;
@@ -1551,9 +1574,10 @@ a.chip:focus-visible .ico {
 
 /* ---------------------------------------------------------- quem usa ---- */
 
-/* Uma faixa, como a "trusted by" do Databend: um rótulo pequeno e os quatro
-   nomes numa linha, apagados até o hover. Sem logotipos (o comentário no
-   template diz por quê). */
+/* Uma faixa, como a "trusted by" do Databend: um rótulo pequeno e as marcas
+   das empresas numa linha, apagadas até o hover. São os arquivos que cada
+   empresa publica no próprio site; quem tem como marca só o nome em tipografia
+   (Pulsar Code) continua sendo um nome. */
 .users-strip {
   padding: clamp(2rem, 4vw, 3rem) 0;
   border-top: 1px solid var(--line-soft);
@@ -1591,6 +1615,38 @@ a.chip:focus-visible .ico {
 .user:hover,
 .user:focus-visible {
   color: var(--text);
+}
+
+.user-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 40px;
+}
+
+/* ONE COLOUR FOR ALL: each mark is the company's own file, and a strip of five
+   palettes is five logos competing. Greyscale keeps the shape and drops the
+   brand's colour; the hover brings the strip's text colour back. */
+.user-logo img {
+  width: auto;
+  filter: grayscale(1) contrast(0.9);
+  opacity: 0.7;
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+.user-logo:hover img,
+.user-logo:focus-visible img {
+  opacity: 1;
+  filter: grayscale(1);
+}
+
+/* A mark with a ground of its own is a tile: rounded, like the favicon it is. */
+.user-mark {
+  border-radius: 8px;
+}
+
+.user-round {
+  border-radius: 50%;
 }
 
 .users-note {

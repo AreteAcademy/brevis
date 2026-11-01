@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
-      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/observability/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/observability/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/observability/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/observability/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/observability/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/observability/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/observability/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/observability/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/observability/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/observability/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/observability/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><span>简体中文</span></summary><ul><li><a href="/docs/observability/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/observability/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/observability/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/observability/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/observability/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/observability/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/observability/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/observability/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/observability/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/observability/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/observability/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         探索开源项目
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>可观测性</h1>
@@ -127,11 +127,11 @@
       <p>Brevis 在自己的端口上暴露 Prometheus 指标，<strong>两个</strong>进程都会提供。</p>
 <div class="code-block" data-code="GET http://&lt;pod&gt;:9090/metrics"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>GET http://&lt;pod&gt;:9090/metrics</code></pre></div>
 <p>端口来自 <code>BREVIS_METRICS_ADDR</code>。它刻意与 HTTP 端口分开：指标不经过界面的认证，而从同一个地方提供两者，就得在需要认证的抓取与开放的仪表盘之间二选一。</p>
-<h2 id="两个进程两个端点">两个进程，两个端点<a class="anchor" href="#两个进程两个端点" aria-label="link">#</a></h2>
+<h2 id="two-processes-two-endpoints">两个进程，两个端点<a class="anchor" href="#two-processes-two-endpoints" aria-label="link">#</a></h2>
 <p>这是大多数部署出错的地方：只抓取了 API。</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>提供</th><th>上报</th></tr></thead><tbody><tr><td><code>brevis serve</code></td><td>界面和 HTTP API</td><td>队列深度</td></tr><tr><td><code>brevis scheduler</code></td><td>不通过 HTTP 提供任何东西</td><td>队列深度、认领延迟、slot、孤儿、run、step</td></tr></tbody></table></div>
 <p>执行工作的是调度器，所以几乎所有指标都来自它。只基于 API 搭建的仪表盘会显示队列在增长，却<strong>完全看不到</strong>是什么在消费它。</p>
-<h2 id="step-发布的指标">step 发布的指标<a class="anchor" href="#step-发布的指标" aria-label="link">#</a></h2>
+<h2 id="the-metrics-a-step-publishes">step 发布的指标<a class="anchor" href="#the-metrics-a-step-publishes" aria-label="link">#</a></h2>
 <p>除了引擎度量的内容之外，step 还可以发布自己的指标，比如有多少行落地、供应商拒绝了多少行：</p>
 <div class="code-block" data-code="from brevis import metrics
 metrics.set(&quot;rows_loaded&quot;, 48213)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> metrics
@@ -139,7 +139,7 @@ metrics.set("rows_loaded", 48213)</code></pre></div>
 <p>它们出现在<strong>同一个</strong>调度器 <code>/metrics</code> 上，由引擎加上前缀和标签：</p>
 <div class="code-block" data-code="brevis_step_rows_loaded{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 48213"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213</code></pre></div>
 <p>step 不会开启端口：它向 stdout 写一行，由引擎记录，因为只存活四十秒的 pod 无法被抓取。见 <a href="/zh/docs/python/">Python</a>。</p>
-<h2 id="应该关注什么">应该关注什么<a class="anchor" href="#应该关注什么" aria-label="link">#</a></h2>
+<h2 id="what-to-watch">应该关注什么<a class="anchor" href="#what-to-watch" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>信号</th><th>原因</th></tr></thead><tbody><tr><td>队列深度只升不降</td><td>调度器挂了，或者 <code>--concurrency</code> 对当前负载来说太低</td></tr><tr><td>认领延迟在增长</td><td>数据库存在争用，或者队列对该间隔来说太大</td></tr><tr><td>孤儿 &gt; 0</td><td>run 被一个在完成之前就死掉的进程认领了</td></tr><tr><td>slot 没有生成</td><td>调度器循环停止了，调度也随之停止</td></tr></tbody></table></div>
 <p>仅凭前两项，无法区分“高负载”与“进程已死”，这就是 slot 重要的原因。队列上升<strong>同时</strong>有 slot 在创建，是负载；队列上升而<strong>没有</strong> slot，则是循环停止了。</p>
 <h2 id="kubernetes">Kubernetes<a class="anchor" href="#kubernetes" aria-label="link">#</a></h2>
@@ -155,10 +155,10 @@ ports:
   - <span class="t-k">name</span>: metrics
     <span class="t-k">containerPort</span>: 9090</code></pre></div>
 <p>使用 Prometheus Operator 时，每个角色一个 <code>PodMonitor</code>，而且确实需要每个角色一个，因为两个 Deployment 的标签不同，上报的指标集也不同。</p>
-<h2 id="刻意缺失的内容">刻意缺失的内容<a class="anchor" href="#刻意缺失的内容" aria-label="link">#</a></h2>
+<h2 id="what-is-deliberately-absent">刻意缺失的内容<a class="anchor" href="#what-is-deliberately-absent" aria-label="link">#</a></h2>
 <p><strong>Trace。</strong> 目前还没有 OpenTelemetry。step 作为自己的 pod 运行，关于它的重要信息（开始、结束、尝试、退出码、日志）已经在数据库中，也显示在界面上。真正有用的 trace 会在 step 内部，而那属于 step 的代码，不属于编排器。</p>
 <p>只要 step 是最小单位，这一点就成立。等到某天 step 调用了另一个服务，问题变成“这 40 秒花在哪里了”，trace 就开始值得付出它的成本了。</p>
-<h2 id="下一步">下一步<a class="anchor" href="#下一步" aria-label="link">#</a></h2>
+<h2 id="next-steps">下一步<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/zh/docs/kubernetes/">Kubernetes</a>：部署两个进程</li><li><a href="/zh/docs/configuration/">配置</a>：<code>BREVIS_METRICS_ADDR</code> 及其他变量</li></ul>
 
       <nav class="pagers" aria-label="页面">
@@ -173,7 +173,7 @@ ports:
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#两个进程两个端点">两个进程，两个端点</a></li><li class="toc-2"><a href="#step-发布的指标">step 发布的指标</a></li><li class="toc-2"><a href="#应该关注什么">应该关注什么</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#刻意缺失的内容">刻意缺失的内容</a></li><li class="toc-2"><a href="#下一步">下一步</a></li></ul>
+      <ul><li class="toc-2"><a href="#two-processes-two-endpoints">两个进程，两个端点</a></li><li class="toc-2"><a href="#the-metrics-a-step-publishes">step 发布的指标</a></li><li class="toc-2"><a href="#what-to-watch">应该关注什么</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#what-is-deliberately-absent">刻意缺失的内容</a></li><li class="toc-2"><a href="#next-steps">下一步</a></li></ul>
     </aside>
   </main>
 </div>
@@ -193,9 +193,9 @@ ports:
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -218,7 +218,7 @@ ports:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

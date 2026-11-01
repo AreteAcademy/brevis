@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
-      <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/ecosystem/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ecosystem/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ecosystem/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ecosystem/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ecosystem/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ecosystem/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ecosystem/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/ecosystem/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ecosystem/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ecosystem/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ecosystem/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="言語: 日本語"><span>日本語</span></summary><ul><li><a href="/docs/ecosystem/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ecosystem/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ecosystem/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ecosystem/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ecosystem/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ecosystem/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ecosystem/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/ecosystem/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ecosystem/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ecosystem/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ecosystem/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         オープンソースを見る
@@ -119,25 +119,25 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>エコシステム</h1>
       <p class="doc-desc">brevis.sh の 4 つの構成要素と、それぞれの役割、そしてデータが通る場所。</p>
       <p>Core はスケジューリング、キューイング、監視を担い、データには一切触れません。データに触れるのは、取得する SDK、受け取る Gateway、そしてデータが着地した後にモデリングする SQL です。</p>
-<h2 id="4-つの構成要素">4 つの構成要素<a class="anchor" href="#4-つの構成要素" aria-label="link">#</a></h2>
+<h2 id="the-four-pieces">4 つの構成要素<a class="anchor" href="#the-four-pieces" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>構成要素</th><th>役割</th><th>入手方法</th><th>ガイド</th></tr></thead><tbody><tr><td><strong>Core</strong></td><td>スケジュールし、キューに積み、ステップごとに 1 つの pod を起動します。データには一切触れません。</td><td><code>areteacademy/brevis</code></td><td><a href="/ja/docs/core/">Core</a></td></tr><tr><td><strong>SDK</strong></td><td>ステップの中で抽出、整形、ロードを行う Go ライブラリです。</td><td><code>go get github.com/AreteAcademy/brevis/sdk</code></td><td><a href="/ja/docs/sdk/">Go SDK</a></td></tr><tr><td><strong>Gateway</strong></td><td>HTTP POST を受け取り、202 を返し、バッチで書き込みます。専用のデータベースは持ちません。</td><td><code>areteacademy/brevis-gateway</code></td><td><a href="/ja/docs/ingestion/">取り込み</a></td></tr><tr><td><strong>SQL</strong></td><td>通常の .sql ファイルを、依存関係の順にテーブルとビューへ変換します。</td><td><code>areteacademy/brevis-sql</code></td><td><a href="/ja/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="コントロールプレーンとデータプレーン">コントロールプレーンとデータプレーン<a class="anchor" href="#コントロールプレーンとデータプレーン" aria-label="link">#</a></h2>
+<h2 id="control-plane-data-plane">コントロールプレーンとデータプレーン<a class="anchor" href="#control-plane-data-plane" aria-label="link">#</a></h2>
 <p><strong>コントロールプレーン</strong>は Core です。各ステップをいつ実行するかを決め、 キューと状態を Postgres に保持し、ステップごとに 1 つの pod を起動します。 データがここを通ることはありません。</p>
 <p><strong>データプレーン</strong>は残りの 3 つの構成要素です。データは API、データベース、 ファイルから届き、2 通りのどちらかで宛先に到達します。1 つは、あなたのステップの中で <strong>SDK が取得する</strong>方法、もう 1 つは Webhook やアプリから HTTP で <strong>Gateway にプッシュされる</strong>方法です。宛先はテーブル、トピック、 またはバケット内のファイルです。データが着地した後は、<strong>SQL</strong> が着地先の データベース内でそのままテーブルをモデリングします。</p>
-<h3 id="周辺の構成要素">周辺の構成要素<a class="anchor" href="#周辺の構成要素" aria-label="link">#</a></h3>
+<h3 id="around-it">周辺の構成要素<a class="anchor" href="#around-it" aria-label="link">#</a></h3>
 <p>補助的な 3 つの構成要素があります。</p>
-<ul><li><strong><a href="/ja/docs/console/">Console</a></strong> — Core の上に載る Web インターフェース</li><li><strong><a href="/ja/docs/pod-per-step/#各ステップが動く場所">agent</a></strong> — 既存のクラスタでステップを実行します</li><li><strong><a href="/ja/docs/python/">Python 用の <code>brevis</code></a></strong> — Python ステップ向けの実行コンテキスト</li></ul>
-<h2 id="1-つの構成要素だけを使う">1 つの構成要素だけを使う<a class="anchor" href="#1-つの構成要素だけを使う" aria-label="link">#</a></h2>
+<ul><li><strong><a href="/ja/docs/console/">Console</a></strong> — Core の上に載る Web インターフェース</li><li><strong><a href="/ja/docs/pod-per-step/#where-each-step-runs">agent</a></strong> — 既存のクラスタでステップを実行します</li><li><strong><a href="/ja/docs/python/">Python 用の <code>brevis</code></a></strong> — Python ステップ向けの実行コンテキスト</li></ul>
+<h2 id="using-only-one-piece">1 つの構成要素だけを使う<a class="anchor" href="#using-only-one-piece" aria-label="link">#</a></h2>
 <p>使えます。各構成要素は独自のモジュール、バージョン、イメージを持っています。SDK は任意のプログラムで動く Go ライブラリで、Gateway は YAML ファイルだけでデータベースなしに単独で起動し、brevis-sql はコンテナとして動きます。Core は必要なときに他の構成要素をオーケストレーションしますが、どれの前提条件でもありません。</p>
-<h2 id="同じ行">同じ行<a class="anchor" href="#同じ行" aria-label="link">#</a></h2>
+<h2 id="the-same-row">同じ行<a class="anchor" href="#the-same-row" aria-label="link">#</a></h2>
 <p>SDK が取得した注文と Gateway に届いた注文は、同じ brevis_ingestion_id を持つ同じテーブルに着地します。両者の選択はデプロイの判断であり、スキーマの判断ではなくなります。</p>
-<p>SDK では <code>sdk.Landing</code> を使います(詳細は<a href="/ja/docs/sdk/#ランディングレイアウト">ランディングレイアウト</a>):</p>
+<p>SDK では <code>sdk.Landing</code> を使います(詳細は<a href="/ja/docs/sdk/#the-landing-layout">ランディングレイアウト</a>):</p>
 <div class="code-block" data-code="sdk.Execute(ctx, &amp;sdk.Pipeline{
 	Source:    sdk.Source{From: from.Files{Path: &quot;order.json&quot;}},
 	Transform: []sdk.Transformer{sdk.Landing(&quot;app_orders&quot;, sdk.LandingKey(&quot;id&quot;))},
@@ -153,7 +153,7 @@
 		Schema: sdk.LandingSchema(sdk.LandingOptions{}),
 	},
 }, <span class="t-k">nil</span>)</code></pre></div>
-<p>Gateway では <code>/v1/tables</code> への POST を使います(詳細は<a href="/ja/docs/ingestion/#1-つのルートn-個のテーブル">1 つのルート、N 個のテーブル</a>):</p>
+<p>Gateway では <code>/v1/tables</code> への POST を使います(詳細は<a href="/ja/docs/ingestion/#one-route-n-tables">1 つのルート、N 個のテーブル</a>):</p>
 <div class="code-block" data-code="curl -X POST localhost:8080/v1/tables -H &#x27;Authorization: Bearer dev-key&#x27; \
     -d &#x27;{&quot;table_name&quot;:&quot;app_orders&quot;,&quot;unique_key&quot;:&quot;id&quot;,
          &quot;data&quot;:{&quot;id&quot;:&quot;A-1&quot;,&quot;customer&quot;:&quot;acme.example.com&quot;,&quot;total&quot;:150}}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/tables <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
@@ -177,7 +177,7 @@
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#4-つの構成要素">4 つの構成要素</a></li><li class="toc-2"><a href="#コントロールプレーンとデータプレーン">コントロールプレーンとデータプレーン</a></li><li class="toc-3"><a href="#周辺の構成要素">周辺の構成要素</a></li><li class="toc-2"><a href="#1-つの構成要素だけを使う">1 つの構成要素だけを使う</a></li><li class="toc-2"><a href="#同じ行">同じ行</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-four-pieces">4 つの構成要素</a></li><li class="toc-2"><a href="#control-plane-data-plane">コントロールプレーンとデータプレーン</a></li><li class="toc-3"><a href="#around-it">周辺の構成要素</a></li><li class="toc-2"><a href="#using-only-one-piece">1 つの構成要素だけを使う</a></li><li class="toc-2"><a href="#the-same-row">同じ行</a></li></ul>
     </aside>
   </main>
 </div>
@@ -197,9 +197,9 @@
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -222,7 +222,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

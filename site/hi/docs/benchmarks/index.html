@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
-      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/benchmarks/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/benchmarks/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/benchmarks/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/benchmarks/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/benchmarks/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/benchmarks/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/benchmarks/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/benchmarks/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/benchmarks/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/benchmarks/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/benchmarks/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><span>हिन्दी</span></summary><ul><li><a href="/docs/benchmarks/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/benchmarks/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/benchmarks/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/benchmarks/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/benchmarks/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/benchmarks/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/benchmarks/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/benchmarks/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/benchmarks/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/benchmarks/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/benchmarks/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         ओपन सोर्स देखें
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>Benchmarks</h1>
@@ -127,28 +127,28 @@
       <p>एक कमांड, और वह पूरे gateway को मापती है:</p>
 <div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>यह एक Postgres खड़ा करती है, gateway शुरू करती है, उस पर [k6] से भार डालती है, <strong>बफ़र के खाली होने का इंतज़ार करती है</strong>, gateway का अपना <code>/metrics</code> scrape करती है और <code>bench/results/REPORT.md</code> लिखती है।</p>
-<h2 id="तन-गवह-और-तसर-वह-ह-ज-मयन-रखत-ह">तीन गवाह, और तीसरा वही है जो मायने रखता है<a class="anchor" href="#तन-गवह-और-तसर-वह-ह-ज-मयन-रखत-ह" aria-label="link">#</a></h2>
+<h2 id="three-witnesses-and-the-third-is-the-one-that-matters">तीन गवाह, और तीसरा वही है जो मायने रखता है<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>k6 जानता है कि producer ने क्या देखा। Gateway जानता है कि उसने क्या किया। सिर्फ़ पहले वाले के साथ चलाया गया load test तेज़ gateway को उससे अलग नहीं बता सकता जो <code>202</code> देता है और जो उसने स्वीकार किया उसे गिरा देता है।</p>
 <p>इसलिए रिपोर्ट दोनों को आमने-सामने रखती है — और Postgres में पंक्तियाँ गिनती है:</p>
 <div class="table-wrap"><table><thead><tr><th>गवाह</th><th>events</th></tr></thead><tbody><tr><td>k6 को <code>accepted</code> बताया गया</td><td>5,431,000</td></tr><tr><td>gateway ने received गिना</td><td>5,431,000</td></tr><tr><td>Postgres में पंक्तियाँ</td><td>5,431,000</td></tr><tr><td>dead letter में रिकॉर्ड</td><td>0</td></tr></tbody></table></div>
 <p>पहले दो दोनों gateway का अपना गणित हैं — एक उस response से जो उसने लिखा, एक उस counter से जो उसने बढ़ाया — और events गँवाने वाला bug इन्हें <strong>आपस में</strong> सुसंगत रख सकता है। डेटाबेस अकेला है जिसने हमारी बात पर भरोसा नहीं किया।</p>
 <p><strong>जिस run में तीनों असहमत हों वह विफल हुआ</strong>, percentiles कितने भी अच्छे हों।</p>
-<h2 id="ऊपर-वल-run">ऊपर वाला run<a class="anchor" href="#ऊपर-वल-run" aria-label="link">#</a></h2>
+<h2 id="the-run-above">ऊपर वाला run<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
 <p><code>bench/results/REPORT.md</code> में 2026-09-26 का run: <code>areteacademy/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPUs, उसी kernel पर container में Postgres 17, <code>write: append</code> के साथ <code>auto_table[columns]</code>:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>स्वीकार किए गए events</td><td><strong>5,431,000</strong> (135,768/s)</td></tr><tr><td>भेजी गई body</td><td>40s में 1,156.7 MiB</td></tr><tr><td><code>503</code> (backpressure)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5.9 ms / 16.0 ms / 22.7 ms</td></tr><tr><td>डिलीवर किए गए batches</td><td>1,087, कोई दफ़न नहीं</td></tr></tbody></table></div>
-<h2 id="thresholds-ह-असल-बत-ह">Thresholds ही असली बात हैं<a class="anchor" href="#thresholds-ह-असल-बत-ह" aria-label="link">#</a></h2>
+<h2 id="the-thresholds-are-the-point">Thresholds ही असली बात हैं<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>जब कोई विफल होता है तो k6 गैर-शून्य के साथ निकलता है, इसलिए यह <strong>गेट</strong> है, चार्ट नहीं:</p>
 <div class="table-wrap"><table><thead><tr><th>threshold</th><th>क्यों</th></tr></thead><tbody><tr><td><code>p95 &lt; 500ms</code></td><td>स्वीकार का रास्ता sink की देरी से दूर रहना चाहिए। <code>COPY</code> का इंतज़ार करता अनुरोध वही दोष है जिसके विरुद्ध async pipe है।</td></tr><tr><td><code>http_req_failed &lt; 1%</code></td><td><code>503</code> ठीक है; timeout या 5xx नहीं।</td></tr><tr><td><code>events accepted &gt; 1000</code></td><td>threshold सुइट उस gateway के विरुद्ध भी पास हो जाता है जिसने कुछ जवाब ही नहीं दिया।</td></tr></tbody></table></div>
 <p>ये जानबूझकर ढीले हैं: यह उसी मशीन पर चलता है जो CI ने दी। ये <strong>परिमाण का एक क्रम</strong> पकड़ते हैं, जैसा regression दिखता है, एक प्रतिशत नहीं।</p>
 <p><strong><code>503</code> विफलता नहीं है।</strong> यह gateway का ऐसे event को मना करना है जिसे रखने की जगह उसके पास नहीं है, और दोबारा कोशिश करना सुरक्षित है — <code>ingestion_id</code> event का स्थिर फ़ंक्शन है, इसलिए वही body दोबारा भेजना वही रिकॉर्ड है। उसे त्रुटि गिनना backpressure को bug जैसा दिखा देता।</p>
-<h2 id="यह-कय-नह-मपत">यह क्या नहीं मापता<a class="anchor" href="#यह-कय-नह-मपत" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-measure">यह क्या नहीं मापता<a class="anchor" href="#what-it-does-not-measure" aria-label="link">#</a></h2>
 <ul><li><strong>BigQuery नहीं।</strong> गंतव्य container में एक Postgres है। Warehouse का load-job quota, commit की देरी और DDL concurrency इन संख्याओं में नहीं हैं और हो भी नहीं सकते।</li><li><strong>टिकाऊपन नहीं।</strong> <code>durability: memory</code> इकलौता स्तर है, इसलिए <code>202</code> का मतलब <em>RAM में स्वीकार</em> है। यह मापता है कि वह कितनी तेज़ी से होता है, यह नहीं कि <code>SIGKILL</code> के बाद क्या बचता है।</li><li><strong>आपका हार्डवेयर नहीं।</strong> इसे एक आकार और अनुपात की तरह पढ़ें।</li></ul>
-<h2 id="परफइल-क-हसब-स-सथनय-कलउड">प्रोफ़ाइल के हिसाब से स्थानीय क्लाउड<a class="anchor" href="#परफइल-क-हसब-स-सथनय-कलउड" aria-label="link">#</a></h2>
+<h2 id="the-local-cloud-by-profile">प्रोफ़ाइल के हिसाब से स्थानीय क्लाउड<a class="anchor" href="#the-local-cloud-by-profile" aria-label="link">#</a></h2>
 <div class="code-block" data-code="docker compose -f docker-compose.drivers.yml --profile gcp up -d
 docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">docker</span> compose <span class="t-n">-f</span> <span class="t-k">docker</span>-compose.drivers.yml <span class="t-n">--profile</span> gcp up <span class="t-n">-d</span>
 <span class="t-k">docker</span> compose <span class="t-n">-f</span> <span class="t-k">docker</span>-compose.drivers.yml <span class="t-n">--profile</span> all up <span class="t-n">-d</span></code></pre></div>
 <p>प्रोफ़ाइल वाली एक फ़ाइल, हर क्लाउड के लिए एक नहीं: दो फ़ाइलें दो प्रोजेक्ट नाम हैं, और दोनों में <code>postgres</code> एक बार engine का development डेटाबेस बदल चुका है।</p>
-<h3 id="floci-bigquery-क-उतन-हसस-नह-कवर-करत-जतन-लगत-ह">floci BigQuery का उतना हिस्सा नहीं कवर करता जितना लगता है<a class="anchor" href="#floci-bigquery-क-उतन-हसस-नह-कवर-करत-जतन-लगत-ह" aria-label="link">#</a></h3>
+<h3 id="floci-covers-less-of-bigquery-than-it-looks">floci BigQuery का उतना हिस्सा नहीं कवर करता जितना लगता है<a class="anchor" href="#floci-covers-less-of-bigquery-than-it-looks" aria-label="link">#</a></h3>
 <p>मापा गया है, मान लिया नहीं गया:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>dataset और तालिका बनाना</td><td>✅</td></tr><tr><td><code>timePartitioning</code> और <code>clustering</code> सुरक्षित</td><td>✅ — <code>0.9.1</code> वाले bug का आकार</td></tr><tr><td>कॉलम का <code>PATCH</code></td><td>✅ — <code>auto_table</code> का विकास</td></tr><tr><td><code>insertAll</code></td><td>✅</td></tr><tr><td>queries</td><td>✅, सिर्फ़ <code>/var/run/docker.sock</code> माउंट होने पर</td></tr><tr><td><strong>load jobs</strong></td><td>❌ <code>Only QUERY jobs are supported by the floci BigQuery emulator</code></td></tr></tbody></table></div>
 <p>SDK BigQuery में <strong>सिर्फ़</strong> load jobs से लिखता है। इसलिए floci <code>auto_table</code> की हर वह पंक्ति परखता है जो payload को DDL में बदलती है — और <strong>Brevis का एक भी write नहीं</strong>। आज उस आधे हिस्से का कोई स्थानीय टेस्ट नहीं है, और उसका होना मूल्यवान है। लेकिन floci के विरुद्ध हरा सुइट यह नहीं कहता कि BigQuery काम करता है।</p>
@@ -166,7 +166,7 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#तन-गवह-और-तसर-वह-ह-ज-मयन-रखत-ह">तीन गवाह, और तीसरा वही है जो मायने रखता है</a></li><li class="toc-2"><a href="#ऊपर-वल-run">ऊपर वाला run</a></li><li class="toc-2"><a href="#thresholds-ह-असल-बत-ह">Thresholds ही असली बात हैं</a></li><li class="toc-2"><a href="#यह-कय-नह-मपत">यह क्या नहीं मापता</a></li><li class="toc-2"><a href="#परफइल-क-हसब-स-सथनय-कलउड">प्रोफ़ाइल के हिसाब से स्थानीय क्लाउड</a></li><li class="toc-3"><a href="#floci-bigquery-क-उतन-हसस-नह-कवर-करत-जतन-लगत-ह">floci BigQuery का उतना हिस्सा नहीं कवर करता जितना लगता है</a></li></ul>
+      <ul><li class="toc-2"><a href="#three-witnesses-and-the-third-is-the-one-that-matters">तीन गवाह, और तीसरा वही है जो मायने रखता है</a></li><li class="toc-2"><a href="#the-run-above">ऊपर वाला run</a></li><li class="toc-2"><a href="#the-thresholds-are-the-point">Thresholds ही असली बात हैं</a></li><li class="toc-2"><a href="#what-it-does-not-measure">यह क्या नहीं मापता</a></li><li class="toc-2"><a href="#the-local-cloud-by-profile">प्रोफ़ाइल के हिसाब से स्थानीय क्लाउड</a></li><li class="toc-3"><a href="#floci-covers-less-of-bigquery-than-it-looks">floci BigQuery का उतना हिस्सा नहीं कवर करता जितना लगता है</a></li></ul>
     </aside>
   </main>
 </div>
@@ -186,9 +186,9 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -211,7 +211,7 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

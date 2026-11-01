@@ -93,7 +93,7 @@ und die Engine hält sie fest. Nichts zu installieren, nichts zu betreiben, und 
 Labels stammen von der Engine, weil ein Step den Slug seines eigenen Workflows
 nicht kennen kann.
 
-Die Details der API stehen unter [Python](/de/docs/python/#metriken-die-nur-ihre-pipeline-kennt).
+Die Details der API stehen unter [Python](/de/docs/python/#metrics-only-your-pipeline-knows).
 
 ## Einen Client für eine andere Sprache schreiben
 

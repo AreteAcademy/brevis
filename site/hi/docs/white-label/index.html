@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
-      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/white-label/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/white-label/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/white-label/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/white-label/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/white-label/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/white-label/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/white-label/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/white-label/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/white-label/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/white-label/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/white-label/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><span>हिन्दी</span></summary><ul><li><a href="/docs/white-label/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/white-label/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/white-label/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/white-label/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/white-label/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/white-label/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/white-label/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/white-label/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/white-label/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/white-label/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/white-label/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         ओपन सोर्स देखें
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>White label</h1>
       <p class="doc-desc">एक YAML फ़ाइल से इंटरफ़ेस का शीर्षक, ध्येय-वाक्य, लोगो और पैलेट बदलना।</p>
       <p>इंटरफ़ेस को एक फ़ाइल से अनुकूलित किया जा सकता है। रंग CSS वेरिएबल को <strong>runtime पर</strong> अधिलेखित करते हैं, इसलिए किसी ग्राहक की थीम बदलने से कुछ दोबारा compile नहीं होता।</p>
-<h2 id="फइल">फ़ाइल<a class="anchor" href="#फइल" aria-label="link">#</a></h2>
+<h2 id="the-file">फ़ाइल<a class="anchor" href="#the-file" aria-label="link">#</a></h2>
 <p><code>brand.example.yaml</code> को root पर <code>brand.yaml</code> में कॉपी करें, या <code>BREVIS_BRAND_FILE</code> को उस पर इंगित करें:</p>
 <div class="code-block" data-code="titulo: Acme Data
 subtitulo: Data platform
@@ -150,28 +150,28 @@ cores:
   <span class="t-k">destaque</span>: "<span class="t-c">#aa8450"</span></code></pre></div>
 <p><strong>हर फ़ील्ड वैकल्पिक है।</strong> जो आप छोड़ दें वह डिफ़ॉल्ट रखता है, इसलिए सिर्फ़ <code>titulo:</code> वाली फ़ाइल भी मान्य है।</p>
 <p><code>frase</code> की पंक्ति-विराम सुरक्षित रहती है: वह साइडबार में वाक्य की लय तय करती है।</p>
-<h2 id="लग">लोगो<a class="anchor" href="#लग" aria-label="link">#</a></h2>
+<h2 id="logo">लोगो<a class="anchor" href="#logo" aria-label="link">#</a></h2>
 <div class="code-block" data-code="logo: https://example.com/mark.svg"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">logo</span>: https://example.com/mark.svg</code></pre></div>
 <p>URL (<code>https://</code> या <code>http://</code>) या <code>/</code> से शुरू होता आंतरिक path स्वीकार करता है। न हो, तो अंतर्निहित चिह्न इस्तेमाल होता है, जो थीम के रंग का अनुसरण करता है।</p>
 <aside class="admon admon-warning"><p class="admon-t">कहीं और होस्ट किया लोगो उस होस्ट पर निर्भर है</p><p>अगर वह बंद हो जाए, या cluster के पास इंटरनेट egress न हो, तो image लोड नहीं होती। इंटरफ़ेस का बाकी हिस्सा चलता रहता है, लेकिन चुनते समय इसे तौलें — बाकी UI, फ़ॉन्ट और bundles समेत, बाइनरी से ही परोसा जाता है, ठीक इसीलिए कि नेटवर्क पर निर्भर न रहना पड़े।</p></aside>
-<h2 id="validate-करन">Validate करना<a class="anchor" href="#validate-करन" aria-label="link">#</a></h2>
+<h2 id="validating">Validate करना<a class="anchor" href="#validating" aria-label="link">#</a></h2>
 <p>गलत hex मान तभी सामने आता जब container उठता, और संदेश pod के लॉग से आता — फ़ाइल बदलने वाले से दूर। इसलिए एक सबकमांड है:</p>
 <div class="code-block" data-code="brevis marca brand.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">brevis</span> marca brand.yaml</code></pre></div>
 <div class="code-block" data-code="  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product&#x27;s own)
         Powered by Brevis"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis</code></pre></div>
 <p>इसे इंस्टॉलेशन के CI में बुलाएँ और त्रुटि pull request में लौट आती है।</p>
 <aside class="admon admon-note"><p class="admon-t">अनुपस्थिति के अलग-अलग मतलब हैं</p><p><code>serve</code> में, फ़ाइल का न होना "डिफ़ॉल्ट पहचान इस्तेमाल करो" है — और API उठ जाती है। <code>marca</code> में, फ़ाइल का न होना <strong>त्रुटि</strong> है: जिसने path को validate करने को कहा, वह यह सुनने की उम्मीद करता है कि वह मौजूद नहीं है।</p></aside>
-<h2 id="boot-पर-वयवहर">Boot पर व्यवहार<a class="anchor" href="#boot-पर-वयवहर" aria-label="link">#</a></h2>
+<h2 id="behaviour-at-boot">Boot पर व्यवहार<a class="anchor" href="#behaviour-at-boot" aria-label="link">#</a></h2>
 <p>सामग्री की त्रुटि — अमान्य रंग, टूटी YAML — इंटरफ़ेस को उठने से <strong>नहीं रोकती</strong>। प्रोसेस चेतावनी लॉग करती है और डिफ़ॉल्ट थीम इस्तेमाल करती है। एक रंग की वजह से API को गिरा देना, उसे डिफ़ॉल्ट थीम के साथ परोसने से बुरा होता।</p>
-<div class="code-block" data-code="level=WARN msg=&quot;identidade visual ignorada&quot; arquivo=brand.yaml erro=&quot;cor invalida: #gggggg&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>level=WARN msg="identidade visual ignorada" arquivo=brand.yaml erro="cor invalida: #gggggg"</code></pre></div>
-<h2 id="कय-अनकलत-नह-ह-सकत">क्या अनुकूलित नहीं हो सकता<a class="anchor" href="#कय-अनकलत-नह-ह-सकत" aria-label="link">#</a></h2>
+<div class="code-block" data-code="level=WARN msg=&quot;visual identity ignored&quot; file=brand.yaml error=&quot;brand.yaml: colour accent: \&quot;#gggggg\&quot; is not a hex value (#rgb, #rrggbb or #rrggbbaa)&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>level=WARN msg="visual identity ignored" file=brand.yaml error="brand.yaml: colour accent: \"#gggggg\" is not a hex value (#rgb, #rrggbb or #rrggbbaa)"</code></pre></div>
+<h2 id="what-cannot-be-customised">क्या अनुकूलित नहीं हो सकता<a class="anchor" href="#what-cannot-be-customised" aria-label="link">#</a></h2>
 <p>फ़ुटर की <strong>"Powered by Brevis"</strong> पंक्ति कॉन्फ़िगरेशन से नहीं आती — वह कोड से आती है।</p>
-<h2 id="kubernetes-पर">Kubernetes पर<a class="anchor" href="#kubernetes-पर" aria-label="link">#</a></h2>
+<h2 id="on-kubernetes">Kubernetes पर<a class="anchor" href="#on-kubernetes" aria-label="link">#</a></h2>
 <p>फ़ाइल को ConfigMap से माउंट करें:</p>
 <div class="code-block" data-code="volumes:
   - name: brand
@@ -205,7 +205,7 @@ containers:
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#फइल">फ़ाइल</a></li><li class="toc-2"><a href="#लग">लोगो</a></li><li class="toc-2"><a href="#validate-करन">Validate करना</a></li><li class="toc-2"><a href="#boot-पर-वयवहर">Boot पर व्यवहार</a></li><li class="toc-2"><a href="#कय-अनकलत-नह-ह-सकत">क्या अनुकूलित नहीं हो सकता</a></li><li class="toc-2"><a href="#kubernetes-पर">Kubernetes पर</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file">फ़ाइल</a></li><li class="toc-2"><a href="#logo">लोगो</a></li><li class="toc-2"><a href="#validating">Validate करना</a></li><li class="toc-2"><a href="#behaviour-at-boot">Boot पर व्यवहार</a></li><li class="toc-2"><a href="#what-cannot-be-customised">क्या अनुकूलित नहीं हो सकता</a></li><li class="toc-2"><a href="#on-kubernetes">Kubernetes पर</a></li></ul>
     </aside>
   </main>
 </div>
@@ -225,9 +225,9 @@ containers:
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -250,7 +250,7 @@ containers:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

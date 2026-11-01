@@ -36,7 +36,7 @@ dans la base où elles ont atterri.
 Trois composants complémentaires :
 
 - **[Console](/fr/docs/console/index.md)** — l'interface web du Core
-- **[agent](/fr/docs/pod-per-step/#où-chaque-step-sexecute)** — exécute un step dans un cluster que vous avez déjà
+- **[agent](/fr/docs/pod-per-step/#where-each-step-runs)** — exécute un step dans un cluster que vous avez déjà
 - **[`brevis` pour Python](/fr/docs/python/index.md)** — contexte d'exécution pour les steps Python
 
 ## N'utiliser qu'un seul composant
@@ -47,7 +47,7 @@ Oui. Chaque composant a son propre module, sa version et son image : le SDK est 
 
 Une commande que le SDK récupère et une commande qui arrive au Gateway atterrissent dans la même table, avec le même brevis_ingestion_id. Choisir entre les deux devient une décision de déploiement, pas de schéma.
 
-Via le SDK, avec `sdk.Landing` (détails dans [La disposition d'atterrissage](/fr/docs/sdk/#la-disposition-datterrissage)) :
+Via le SDK, avec `sdk.Landing` (détails dans [La disposition d'atterrissage](/fr/docs/sdk/#the-landing-layout)) :
 
 ```go
 sdk.Execute(ctx, &sdk.Pipeline{
@@ -60,7 +60,7 @@ sdk.Execute(ctx, &sdk.Pipeline{
 }, nil)
 ```
 
-Via le Gateway, un POST vers `/v1/tables` (détails dans [Une route, N tables](/fr/docs/ingestion/#une-route-n-tables)) :
+Via le Gateway, un POST vers `/v1/tables` (détails dans [Une route, N tables](/fr/docs/ingestion/#one-route-n-tables)) :
 
 ```bash
 curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \

@@ -267,7 +267,7 @@ campo aceptado en silencio es un campo que alguien cree que se está almacenando
 Estas ocho son **del SDK**, no de este sink: `sdk.LandingSchema` las declara
 y `sdk.LandingID` acuña la identidad, de modo que un pipeline puede aterrizar la misma
 tabla con los mismos ids. Una sola definición, porque dos divergirían. Ver
-[el layout de aterrizaje del SDK](/docs/sdk/#el-layout-de-aterrizaje).
+[el layout de aterrizaje del SDK](/docs/sdk/#the-landing-layout).
 
 **`brevis_` está reservado.** Un `data` que lleve cualquier clave con ese prefijo se rechaza
 **por evento**; de lo contrario un productor falsifica un campo de control, y un
@@ -413,13 +413,13 @@ y se rompe el día en que alguien apunta un stream a BigQuery.
 
 Ambas formas tienen un equivalente en el SDK, y es el mismo código y no uno
 equivalente: `sdk.Landing(table, sdk.LandingKey("id"))` aterriza `document`, y
-añadir [`sdk.LandingColumns()`](/docs/sdk/#dos-formas-el-registro-completo-o-una-columna-por-campo)
+añadir [`sdk.LandingColumns()`](/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field)
 aterriza `columns`. Mismas columnas, mismos valores, mismo `brevis_ingestion_id`, de modo que un
 stream puede pasar entre un gateway y un pipeline sin una migración, y los dos
 se pueden leer como una sola tabla.
 
 El pipeline puede hacer crecer la misma columna del mismo modo: definir
-[`Evolve: sdk.EvolveAdditiveFromPayload`](/docs/sdk/#cuando-aparece-un-campo-que-la-tabla-no-tiene)
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)
 en el destino y un campo que el lote lleve se convierte en columna, con esta
 regla, mediante este código.
 
@@ -434,14 +434,14 @@ ordinario.
 **Hay que elegirlo antes de crear la primera tabla.** Cambiarlo después añade ocho
 columnas y abandona ocho —nada elimina una columna—, así que una tabla que ya
 lleva el layout con un prefijo rechaza una carga que declare otro. Ver
-[la página del SDK](/docs/sdk/#el-prefijo-brevis-se-puede-cambiar) para la
+[la página del SDK](/docs/sdk/#the-brevis-prefix-is-yours-to-change) para la
 normalización y la salida.
 
 **Los campos de un objeto anidado pueden obtener columnas propias.**
 `BREVIS_NORMALIZE_DATA=true` en el proceso del gateway aplana un nivel
 —`{"name": {"first": "x"}}` aterriza como `name_first`— y todos los streams lo comparten,
 así que dos sinks no pueden discrepar sobre una tabla en la que ambos podrían escribir. Ver
-[la página del SDK](/docs/sdk/#una-columna-por-campo-anidado) para saber qué renombra,
+[la página del SDK](/docs/sdk/#one-column-per-nested-field) para saber qué renombra,
 que es la mitad que hay que leer antes de activarlo.
 
 **En BigQuery, `nationalID` y `nationalId` son una sola columna.** BigQuery pliega

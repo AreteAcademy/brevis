@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+<a class="skip-link" href="#content">Lewati ke konten</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigasi utama">
-      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/#ecosystem">Ekosistem</a>
       <a href="/id/docs/">Dokumentasi</a>
-      <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/introduction/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/introduction/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/introduction/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/introduction/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/introduction/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/introduction/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/introduction/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/introduction/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/introduction/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/introduction/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/introduction/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/introduction/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/introduction/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/introduction/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/introduction/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/introduction/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/introduction/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/introduction/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/introduction/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/introduction/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/introduction/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/introduction/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Jelajahi open source
@@ -119,17 +119,17 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentasi</p>
       <h1>Pengantar</h1>
       <p class="doc-desc">Apa itu brevis.sh, masalah yang diselesaikannya, dan kapan ia bukan pilihan yang tepat.</p>
       <p>brevis.sh adalah <strong>runtime orkestrasi data yang ditulis dalam Go</strong>. Satu binary menyatukan apa yang biasanya membutuhkan empat tool: transformasi deklaratif, orkestrasi workflow, antrean persisten, scheduler, dan antarmuka untuk mengoperasikan semuanya.</p>
 <p>Proyek ini bersumber terbuka dengan lisensi MIT, dan lahir di <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a>.</p>
-<h2 id="masalahnya">Masalahnya<a class="anchor" href="#masalahnya" aria-label="link">#</a></h2>
+<h2 id="the-problem">Masalahnya<a class="anchor" href="#the-problem" aria-label="link">#</a></h2>
 <p>Stack data yang umum menggabungkan tool transformasi, orkestrator, antrean, dan antarmuka. Setiap bagian bagus pada tugasnya — dan integrasi di antara mereka menjadi pekerjaan permanen: empat skema versi, empat cara konfigurasi, empat tempat untuk memeriksa ketika sesuatu gagal.</p>
 <p>Biaya itu tidak pernah muncul di diagram arsitektur. Ia muncul pada waktu yang dihabiskan tim untuk merawat perekat, alih-alih mengerjakan domain yang hanya mereka pahami.</p>
-<h2 id="usulannya">Usulannya<a class="anchor" href="#usulannya" aria-label="link">#</a></h2>
+<h2 id="the-proposal">Usulannya<a class="anchor" href="#the-proposal" aria-label="link">#</a></h2>
 <p>Satu artefak, dengan subcommand yang dibutuhkan oleh perannya:</p>
 <div class="code-block" data-code="brevis serve        # API + interface
 brevis scheduler    # materialises schedules and drains the queue
@@ -160,32 +160,32 @@ steps:
     <span class="t-k">image</span>: ghcr.io/example/notify:0.3
     <span class="t-k">run</span>: /notify --channel data
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
-<h2 id="apa-yang-membuatnya-berbeda">Apa yang membuatnya berbeda<a class="anchor" href="#apa-yang-membuatnya-berbeda" aria-label="link">#</a></h2>
+<h2 id="what-makes-it-different">Apa yang membuatnya berbeda<a class="anchor" href="#what-makes-it-different" aria-label="link">#</a></h2>
 <p><strong>Setiap step berjalan di pod-nya sendiri, dengan image-nya sendiri.</strong> Tidak ada worker generik yang menunggu pekerjaan: pekerjaan membawa runtime-nya sendiri. Step <code>dbt</code> naik dengan image dbt; fetcher Go di sebelahnya naik dengan 5,8 MB dan 32Mi memori, alih-alih mewarisi ukuran tetangganya yang terbesar.</p>
 <p><strong>Scheduler membuat run; antrean mengeksekusinya.</strong> Dua loop independen, dan pemisahan itu disengaja: yang satu bisa mati tanpa mengganggu yang lain, dan memproses ulang bulan lalu tidak bergantung pada jam.</p>
 <p><strong>Validasi tidak membutuhkan database.</strong> <code>brevis validate</code> berjalan di CI bersama test, sehingga kesalahan YAML gagal di pull request dan bukan di klaster.</p>
-<h2 id="tiga-bagian-sengaja-dipisah">Tiga bagian, sengaja dipisah<a class="anchor" href="#tiga-bagian-sengaja-dipisah" aria-label="link">#</a></h2>
+<h2 id="three-pieces-separate-on-purpose">Tiga bagian, sengaja dipisah<a class="anchor" href="#three-pieces-separate-on-purpose" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>bagian</th><th>apa itu</th><th>versi</th></tr></thead><tbody><tr><td><strong>engine</strong></td><td><code>brevis</code>, binary yang dibahas halaman ini: mengorkestrasi, menjadwalkan, mengeksekusi, dan mengoperasikan</td><td><code>0.15</code></td></tr><tr><td><strong>SDK</strong></td><td>modul Go untuk menulis step yang mengekstrak dan memuat</td><td><code>0.66</code></td></tr><tr><td><strong>gateway</strong></td><td>endpoint HTTP yang mendaratkan data yang <em>datang</em>, alih-alih pergi mengambilnya</td><td><code>0.8</code></td></tr></tbody></table></div>
 <p>Versinya independen karena tingkat kematangannya memang berbeda. Menomori gateway <code>0.15.3</code> hanya karena engine ada di sana akan mengklaim kematangan yang tidak dimilikinya, dan sebuah versi tidak bisa ditarik kembali setelah dipublikasikan.</p>
 <p>Yang menyatukan ketiganya adalah sebuah angka: <code>ingestion_id</code>, UUID v5 yang dibekukan atas <code>provider|entity|source_key|record_ts</code>. Baris yang didaratkan <a href="/id/docs/ingestion/">gateway</a> dan baris yang didaratkan fetcher <a href="/id/docs/sdk/">SDK</a> untuk record yang sama adalah <em>satu baris</em>, tanpa rekonsiliasi di antara keduanya.</p>
-<h2 id="kapan-brevissh-bukan-pilihan">Kapan brevis.sh bukan pilihan<a class="anchor" href="#kapan-brevissh-bukan-pilihan" aria-label="link">#</a></h2>
+<h2 id="when-brevissh-is-not-the-choice">Kapan brevis.sh bukan pilihan<a class="anchor" href="#when-brevissh-is-not-the-choice" aria-label="link">#</a></h2>
 <p>Mendokumentasikan apa yang tidak dilakukan sebuah tool menghemat lebih banyak waktu daripada mendokumentasikan apa yang dilakukannya:</p>
 <ul><li><strong>Anda sudah menjalankan Airflow atau Dagster dan puas.</strong> Migrasi lebih mahal daripada penghematan mengoperasikan satu binary lebih sedikit.</li><li><strong>Workflow Anda bukan tentang data.</strong> brevis.sh mengasumsikan DAG transformasi dan load; orkestrator serba guna lebih cocok untuk Anda.</li><li><strong>Anda butuh katalog operator siap pakai.</strong> Di sini sebuah step adalah image dan sebuah command. Itu sederhana, dan terbatas — tidak ada ratusan integrasi yang tinggal diseret masuk.</li><li><strong>Tim Anda tidak memakai Kubernetes dan tidak berniat memakainya.</strong> Mode lokal berfungsi, tetapi desainnya mengasumsikan pod.</li></ul>
-<h2 id="kode-terbuka-pilih-cara-anda-ikut-serta">Kode terbuka. Pilih cara Anda ikut serta.<a class="anchor" href="#kode-terbuka-pilih-cara-anda-ikut-serta" aria-label="link">#</a></h2>
+<h2 id="open-code-choose-how-to-take-part">Kode terbuka. Pilih cara Anda ikut serta.<a class="anchor" href="#open-code-choose-how-to-take-part" aria-label="link">#</a></h2>
 <p>brevis.sh 100% sumber terbuka. Tanpa lisensi proprietary, tanpa edisi terbatas, tanpa pembatasan pada apa yang Anda bangun.</p>
-<h3 id="100-terbuka">100% terbuka<a class="anchor" href="#100-terbuka" aria-label="link">#</a></h3>
+<h3 id="100-open">100% terbuka<a class="anchor" href="#100-open" aria-label="link">#</a></h3>
 <p><em>kode · lisensi sumber terbuka</em></p>
 <p>Baca, gunakan, adaptasi, dan tingkatkan runtime di operasi Anda sendiri. Runtime lengkap · Kode yang dapat diaudit · Kontribusi terbuka.</p>
 <p><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Lihat repositori</a></p>
-<h3 id="membangun-bersama">Membangun bersama<a class="anchor" href="#membangun-bersama" aria-label="link">#</a></h3>
+<h3 id="build-together">Membangun bersama<a class="anchor" href="#build-together" aria-label="link">#</a></h3>
 <p><em>komunitas · issue terbuka</em> · <strong>Jalur utama</strong></p>
 <p>Ikut dalam percakapan yang menentukan akan menjadi apa proyek ini. Issue dan proposal · Pertukaran antar rekan · Roadmap publik.</p>
 <p><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Ikuti proyek</a></p>
-<h3 id="belajar-mendalam">Belajar mendalam<a class="anchor" href="#belajar-mendalam" aria-label="link">#</a></h3>
+<h3 id="learn-deeply">Belajar mendalam<a class="anchor" href="#learn-deeply" aria-label="link">#</a></h3>
 <p><em>aretê · teknologi dengan tujuan</em></p>
 <p>Kenali sekolah yang menghubungkan pemikiran filosofis dan rekayasa perangkat lunak. Konten orisinal · Pembelajaran berkelanjutan · Kanal terbuka.</p>
 <p><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Kunjungi Aretê</a></p>
-<h2 id="ke-mana-selanjutnya">Ke mana selanjutnya<a class="anchor" href="#ke-mana-selanjutnya" aria-label="link">#</a></h2>
+<h2 id="where-to-go-next">Ke mana selanjutnya<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>jika Anda ingin</th><th>buka</th></tr></thead><tbody><tr><td>memasang dan melihatnya berjalan</td><td><a href="/id/docs/installation/">Instalasi</a> dan <a href="/id/docs/quickstart/">Quickstart</a></td></tr><tr><td>memahami format workflow</td><td><a href="/id/docs/workflows/">Workflows</a></td></tr><tr><td>memahami arsitekturnya</td><td><a href="/id/docs/scheduler-and-queue/">Scheduler dan antrean</a></td></tr><tr><td>daftar command dan flag</td><td><a href="/id/docs/cli/">CLI</a></td></tr><tr><td>menulis fetcher dalam Go</td><td><a href="/id/docs/sdk/">SDK</a></td></tr><tr><td>meneruskan nilai dari satu step ke step berikutnya</td><td><a href="/id/docs/context/">Konteks antar step</a></td></tr><tr><td>menulis step dalam Python</td><td><a href="/id/docs/libraries/">Pustaka klien</a></td></tr><tr><td>menerima data lewat HTTP alih-alih mengambilnya</td><td><a href="/id/docs/ingestion/">Ingestion</a></td></tr><tr><td>membangun dashboard dan alert</td><td><a href="/id/docs/observability/">Observabilitas</a></td></tr></tbody></table></div>
 <aside class="admon admon-note"><p class="admon-t">Tentang nama</p><p><em>Brevis</em> dalam bahasa Latin berarti "pendek, singkat" — akar kata <em>brevity</em>. Nama ini berasal dari <strong>De Brevitate Vitae</strong> karya Seneca: bukan karena kita punya sedikit waktu, melainkan karena kita menyia-nyiakan banyak.</p></aside>
 
@@ -201,7 +201,7 @@ steps:
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#masalahnya">Masalahnya</a></li><li class="toc-2"><a href="#usulannya">Usulannya</a></li><li class="toc-2"><a href="#apa-yang-membuatnya-berbeda">Apa yang membuatnya berbeda</a></li><li class="toc-2"><a href="#tiga-bagian-sengaja-dipisah">Tiga bagian, sengaja dipisah</a></li><li class="toc-2"><a href="#kapan-brevissh-bukan-pilihan">Kapan brevis.sh bukan pilihan</a></li><li class="toc-2"><a href="#kode-terbuka-pilih-cara-anda-ikut-serta">Kode terbuka. Pilih cara Anda ikut serta.</a></li><li class="toc-3"><a href="#100-terbuka">100% terbuka</a></li><li class="toc-3"><a href="#membangun-bersama">Membangun bersama</a></li><li class="toc-3"><a href="#belajar-mendalam">Belajar mendalam</a></li><li class="toc-2"><a href="#ke-mana-selanjutnya">Ke mana selanjutnya</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-problem">Masalahnya</a></li><li class="toc-2"><a href="#the-proposal">Usulannya</a></li><li class="toc-2"><a href="#what-makes-it-different">Apa yang membuatnya berbeda</a></li><li class="toc-2"><a href="#three-pieces-separate-on-purpose">Tiga bagian, sengaja dipisah</a></li><li class="toc-2"><a href="#when-brevissh-is-not-the-choice">Kapan brevis.sh bukan pilihan</a></li><li class="toc-2"><a href="#open-code-choose-how-to-take-part">Kode terbuka. Pilih cara Anda ikut serta.</a></li><li class="toc-3"><a href="#100-open">100% terbuka</a></li><li class="toc-3"><a href="#build-together">Membangun bersama</a></li><li class="toc-3"><a href="#learn-deeply">Belajar mendalam</a></li><li class="toc-2"><a href="#where-to-go-next">Ke mana selanjutnya</a></li></ul>
     </aside>
   </main>
 </div>
@@ -221,9 +221,9 @@ steps:
       <div class="footer-col">
         <h2>proyek</h2>
         <ul>
-          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/#ecosystem">Ekosistem</a></li>
           <li><a href="/id/docs/philosophy/">Prinsip</a></li>
-          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/id/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -246,7 +246,7 @@ steps:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
-      <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/installation/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/installation/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/installation/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/installation/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/installation/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/installation/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/installation/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/installation/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/installation/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/installation/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/installation/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="言語: 日本語"><span>日本語</span></summary><ul><li><a href="/docs/installation/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/installation/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/installation/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/installation/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/installation/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/installation/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/installation/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/installation/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/installation/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/installation/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/installation/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         オープンソースを見る
@@ -119,16 +119,16 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>インストール</h1>
       <p class="doc-desc">バイナリの入手方法、必要なもの、そしてインストールが正しいことの確認方法。</p>
       <p>brevis.sh は<strong>単一のバイナリ</strong>と <strong>Docker イメージ</strong>として提供されます。一緒にインストールする ランタイムはありません。マイグレーション、インターフェースのアセット、フォントはすべて バイナリの中に入っています。</p>
-<h2 id="要件">要件<a class="anchor" href="#要件" aria-label="link">#</a></h2>
+<h2 id="requirements">要件<a class="anchor" href="#requirements" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><strong>PostgreSQL</strong></td><td><code>serve</code>、<code>scheduler</code>、<code>migrate</code>、<code>publish</code>、<code>backfill</code> に必要です</td></tr><tr><td><strong>Go 1.25+</strong></td><td>ソースからビルドする場合のみ必要です</td></tr><tr><td><strong>Kubernetes</strong></td><td>任意です。クラスタがなければ、ステップはローカルプロセスとして実行されます</td></tr></tbody></table></div>
 <p><code>brevis run</code>、<code>validate</code>、<code>marca</code>、<code>hash</code>、<code>version</code> にデータベースは<strong>不要</strong>です。</p>
-<h2 id="ソースからビルドする">ソースからビルドする<a class="anchor" href="#ソースからビルドする" aria-label="link">#</a></h2>
+<h2 id="building-from-source">ソースからビルドする<a class="anchor" href="#building-from-source" aria-label="link">#</a></h2>
 <p>バージョンとコミットが埋め込まれたバイナリを作る方法です。</p>
 <div class="code-block" data-code="git clone https://github.com/AreteAcademy/brevis.git
 cd brevis
@@ -150,7 +150,7 @@ cd <span class="t-k">brevis</span>
 <div class="table-wrap"><table><thead><tr><th>タグ</th><th>ベース</th><th>理由</th></tr></thead><tbody><tr><td><code>:0.11.2</code></td><td>distroless</td><td>API は HTTP を提供するだけで何も実行しないため、シェルなし、攻撃面は最小です</td></tr><tr><td><code>:0.11.2-worker</code></td><td>alpine + tini</td><td><code>run:</code> のステップにはシェルが必要です</td></tr></tbody></table></div>
 <div class="code-block" data-code="docker run --rm areteacademy/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> areteacademy/<span class="t-k">brevis</span>:latest version</code></pre></div>
 <p>どちらのイメージも <a href="https://hub.docker.com/r/areteacademy/brevis" target="_blank" rel="noopener">hub.docker.com/r/areteacademy/brevis</a> にあり、 <code>amd64</code> と <code>arm64</code> に対応しています。</p>
-<h2 id="ローカル環境一式">ローカル環境一式<a class="anchor" href="#ローカル環境一式" aria-label="link">#</a></h2>
+<h2 id="a-full-local-environment">ローカル環境一式<a class="anchor" href="#a-full-local-environment" aria-label="link">#</a></h2>
 <p>リポジトリには <code>docker-compose.yml</code> が含まれており、Postgres、API、スケジューラを起動します。</p>
 <div class="code-block" data-code="make up      # Postgres + API + scheduler
 make smoke   # checks /health and /ready
@@ -160,7 +160,7 @@ make down"><div class="code-head"><span class="code-lang">bash</span><button cla
 <span class="t-k">make</span> logs
 <span class="t-k">make</span> down</code></pre></div>
 <p>インターフェースは <code>http://localhost:8080</code> にあります。</p>
-<h2 id="最小限の設定">最小限の設定<a class="anchor" href="#最小限の設定" aria-label="link">#</a></h2>
+<h2 id="minimum-configuration">最小限の設定<a class="anchor" href="#minimum-configuration" aria-label="link">#</a></h2>
 <p>必須の変数は 1 つだけです。</p>
 <div class="code-block" data-code="export BREVIS_DATABASE_URL=&#x27;postgres://brevis:brevis@localhost:5432/brevis?sslmode=disable&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>export BREVIS_DATABASE_URL='postgres://<span class="t-k">brevis</span>:<span class="t-k">brevis</span>@localhost:5432/<span class="t-k">brevis</span>?sslmode=disable'</code></pre></div>
 <p>これがないと、データベースを使うサブコマンドは起動時に失敗します。これは意図的です。認証情報なしで 起動したプロセスは最初のリクエストで初めて問題に気づき、その時点では readiness がすでに オーケストレータに嘘をついています。</p>
@@ -168,12 +168,12 @@ make down"><div class="code-head"><span class="code-lang">bash</span><button cla
 erro: BREVIS_DATABASE_URL e obrigatoria"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>$ brevis migrate status
 erro: BREVIS_DATABASE_URL e obrigatoria</code></pre></div>
 <p>全一覧は<a href="/ja/docs/configuration/">設定</a>にあります。</p>
-<h2 id="スキーマの適用">スキーマの適用<a class="anchor" href="#スキーマの適用" aria-label="link">#</a></h2>
+<h2 id="applying-the-schema">スキーマの適用<a class="anchor" href="#applying-the-schema" aria-label="link">#</a></h2>
 <p>マイグレーションはバイナリに埋め込まれており、専用のサブコマンドで適用します。 <strong><code>serve</code> がスキーマを変更することはありません</strong>。</p>
 <div class="code-block" data-code="brevis migrate up
 brevis migrate status"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> migrate up
 <span class="t-k">brevis</span> migrate status</code></pre></div>
-<h2 id="動作確認">動作確認<a class="anchor" href="#動作確認" aria-label="link">#</a></h2>
+<h2 id="confirming">動作確認<a class="anchor" href="#confirming" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis version
 brevis validate examples/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> version
 <span class="t-k">brevis</span> validate examples/</code></pre></div>
@@ -196,7 +196,7 @@ brevis validate examples/"><div class="code-head"><span class="code-lang">bash</
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#要件">要件</a></li><li class="toc-2"><a href="#ソースからビルドする">ソースからビルドする</a></li><li class="toc-2"><a href="#docker">Docker</a></li><li class="toc-2"><a href="#ローカル環境一式">ローカル環境一式</a></li><li class="toc-2"><a href="#最小限の設定">最小限の設定</a></li><li class="toc-2"><a href="#スキーマの適用">スキーマの適用</a></li><li class="toc-2"><a href="#動作確認">動作確認</a></li></ul>
+      <ul><li class="toc-2"><a href="#requirements">要件</a></li><li class="toc-2"><a href="#building-from-source">ソースからビルドする</a></li><li class="toc-2"><a href="#docker">Docker</a></li><li class="toc-2"><a href="#a-full-local-environment">ローカル環境一式</a></li><li class="toc-2"><a href="#minimum-configuration">最小限の設定</a></li><li class="toc-2"><a href="#applying-the-schema">スキーマの適用</a></li><li class="toc-2"><a href="#confirming">動作確認</a></li></ul>
     </aside>
   </main>
 </div>
@@ -216,9 +216,9 @@ brevis validate examples/"><div class="code-head"><span class="code-lang">bash</
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -241,7 +241,7 @@ brevis validate examples/"><div class="code-head"><span class="code-lang">bash</
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

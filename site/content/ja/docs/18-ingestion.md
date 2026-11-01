@@ -42,7 +42,7 @@ curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
 ```
 
 Google Cloud の認証情報がなければ、バッチはリトライされ、dead letter に送られます。
-[sink が拒否したとき](#sink-が拒否したとき)を参照してください。
+[sink が拒否したとき](#when-the-sink-refuses)を参照してください。
 
 `-slim` イメージが含むのは `auto_table`、`files`、`postgres` の sink だけです。この例の `pubsub` と
 その他は完全なイメージにあります。含まれていない sink を指定した slim イメージは、起動時に理由を
@@ -429,7 +429,7 @@ gateway はイベントを**受け付けました**。`durability: memory`(実�
 制御フィールドは最上位に、レコードは `data` の中にあり、すべてのテーブルに 7 つの `brevis_*` 追跡列が
 付きます。1 つのルート、N 個のテーブル、宣言するものは何もありません。
 
-これは[取り込みの sink](/docs/ingestion-sinks/#1-つのルートn-個のテーブル宣言するものは何もない)にあります。
+これは[取り込みの sink](/docs/ingestion-sinks/#one-route-n-tables-nothing-declared)にあります。
 
 ## 次に進む先
 

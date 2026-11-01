@@ -208,7 +208,7 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 ### 時計
 
 `p.Run.Auto` は、エンジンがこの run について算出したものです。
-[自動パラメータ](/ja/docs/parameters/#自動パラメータ)を参照してください。`Auto.Now()` は、
+[自動パラメータ](/ja/docs/parameters/#auto-params)を参照してください。`Auto.Now()` は、
 `time.Now()` の代わりに読むべき時計です。スケジュールされた run ではそれは slot なので、run が遅れても
 動かず、3 時間後にリトライされても動きません。
 
@@ -311,7 +311,7 @@ Target{
 gateway が推論するのは、プロデューサーが手持ちのものを何でも送ってくる他人だからです。ここでは
 パイプラインの作者が形を知っていて、誰かがレビューする差分の中にそれを書き下ろします。
 
-これは、gateway が [`shape: columns`](/ja/docs/ingestion-sinks/#2-つの形1-つの契約) として着地させるのと
+これは、gateway が [`shape: columns`](/ja/docs/ingestion-sinks/#two-shapes-one-contract) として着地させるのと
 同じ形で、同じコードを通ります。列も、値も、`brevis_ingestion_id` も同じです。
 
 **フィールド名は列名になれるものでなければなりません。** 英字またはアンダースコアで始まり、
@@ -324,7 +324,7 @@ gateway が推論するのは、プロデューサーが手持ちのものを何
 **1 つの** `JSON` 列になります。`customer` は `customer_id` と `customer_uf` ではなく、
 `{"id": 7, "uf": "SP"}` を保持します。配列も `JSON` です。配列の要素ごとに 1 行が欲しいレコードには、
 ソースの `Expand` に `sdk.ArrayAt` が必要です。それは `Landing` より前に実行される、別の名前を持つ
-別の操作です。[`BREVIS_NORMALIZE_DATA`](#ネストされたフィールドごとに-1-列) は、デプロイ全体について
+別の操作です。[`BREVIS_NORMALIZE_DATA`](#one-column-per-nested-field) は、デプロイ全体について
 この前半を変更します。配列はどちらの場合でも `JSON` のままです。
 
 ```go

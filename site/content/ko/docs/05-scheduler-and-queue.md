@@ -115,8 +115,8 @@ brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true
 ```
 
 ```
-  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los
+  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them
 ```
 
 이 명령은 **큐에 넣을 뿐 실행하지 않습니다.** 실행은 `scheduler`의 일이며, 같은 분리

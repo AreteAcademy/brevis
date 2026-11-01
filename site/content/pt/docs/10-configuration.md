@@ -50,8 +50,8 @@ funciona.
 Fora de `BREVIS_ENV=local`, subir sem credencial é recusado:
 
 ```
-erro: BREVIS_ENV=production exige credencial: defina BREVIS_AUTH_USER,
-BREVIS_AUTH_PASSWORD_HASH (gere com `brevis hash`) e BREVIS_AUTH_SECRET
+error: BREVIS_ENV=production requires a credential: set BREVIS_AUTH_USER,
+BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and BREVIS_AUTH_SECRET
 ```
 
 :::note Os nomes antigos continuam funcionando
@@ -82,9 +82,9 @@ do banco a todo passo de todo pipeline.
 O que a task precisa é declarado:
 
 ```bash
-BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE   # repassa essas duas do processo
-BREVIS_TASK_ENV=STAGE=prod                # define um literal
-BREVIS_TASK_ENV='*'                       # repassa tudo MENOS as BREVIS_*
+BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE   # forwards these two from the process
+BREVIS_TASK_ENV=STAGE=prod                # sets a literal
+BREVIS_TASK_ENV='*'                       # forwards everything EXCEPT BREVIS_*
 ```
 
 `PATH` e `HOME` entram sempre — sem `PATH` nenhum comando resolve, e o erro
@@ -135,25 +135,25 @@ balanceador.
 ## Exemplo completo
 
 ```bash
-# obrigatória
-export BREVIS_DATABASE_URL='postgres://brevis:senha@db:5432/brevis?sslmode=require'
+# required
+export BREVIS_DATABASE_URL='postgres://brevis:secret@db:5432/brevis?sslmode=require'
 
-# produção exige credencial
+# production requires credentials
 export BREVIS_ENV=production
-export BREVIS_AUTH_USER=operador
-export BREVIS_AUTH_PASSWORD_HASH="$(brevis hash < senha.txt)"
+export BREVIS_AUTH_USER=operator
+export BREVIS_AUTH_PASSWORD_HASH="$(brevis hash < password.txt)"
 export BREVIS_AUTH_SECRET="$(openssl rand -base64 48)"
 
-# o que as tasks precisam, e nada além
+# what the tasks need, and nothing more
 export BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE,DBT_KEYFILE
 
 # pods
 export BREVIS_PODS=on
-export BREVIS_POD_NAMESPACE=dados
+export BREVIS_POD_NAMESPACE=data
 export BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
 export BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred
 
-# alertas
+# alerts
 export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
-export BREVIS_UI_URL='https://brevis.exemplo.com'
+export BREVIS_UI_URL='https://brevis.example.com'
 ```

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc serif">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
-      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/philosophy/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/philosophy/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/philosophy/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/philosophy/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/philosophy/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/philosophy/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/philosophy/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/philosophy/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/philosophy/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/philosophy/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/philosophy/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><span>हिन्दी</span></summary><ul><li><a href="/docs/philosophy/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/philosophy/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/philosophy/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/philosophy/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/philosophy/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/philosophy/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/philosophy/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/philosophy/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/philosophy/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/philosophy/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/philosophy/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         ओपन सोर्स देखें
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>दर्शन</h1>
@@ -130,9 +130,9 @@
 <p>सेनेका की यह सूक्ति brevis.sh के पीछे के सवाल का मार्गदर्शन करती है: कौन-सी जटिलताएँ सचमुच टीम के समय के लायक हैं? हर workflow अलग-थलग pods में चलता है ताकि विफलताओं, संस्करणों और निर्भरताओं की साफ़ सीमाएँ हों।</p>
 <p>इस सवाल से runtime में चार चुनाव निकलते हैं:</p>
 <ul><li><strong>हर step के लिए image</strong> — हर step वह runtime घोषित करता है जो उसे चाहिए। एक संस्करण बढ़ाने से बाकियों को छूना नहीं पड़ता।</li><li><strong>हर run के लिए लॉग</strong> — आउटपुट उसी run का होता है जिसने उसे बनाया। विफलता की जाँच का मतलब खोया हुआ संदर्भ दोबारा बनाना नहीं है।</li><li><strong>स्थायी retries</strong> — प्रयास प्रोसेस से लंबा जीता है। रीस्टार्ट उसे नहीं मिटाता जो काम के बारे में पहले से पता था।</li><li><strong>निर्भरताओं का अलगाव</strong> — एक step जो कुछ साथ ढोता है वह उसके पड़ोसियों में नहीं रिसता। साफ़ सीमा ही विफलता को पढ़ने लायक बनाती है।</li></ul>
-<h2 id="परजकट-कय-परसतवत-करत-ह">प्रोजेक्ट क्या प्रस्तावित करता है<a class="anchor" href="#परजकट-कय-परसतवत-करत-ह" aria-label="link">#</a></h2>
+<h2 id="what-the-project-proposes">प्रोजेक्ट क्या प्रस्तावित करता है<a class="anchor" href="#what-the-project-proposes" aria-label="link">#</a></h2>
 <p><em>अभ्यास के बिना दर्शन</em> और <em>दिशा के बिना तकनीक</em> के बीच, <strong>जो मायने रखता है उसे करने की स्पष्टता।</strong></p>
-<h2 id="औजर-हमर-सचन-क-ढग-क-गढत-ह">औज़ार हमारे सोचने के ढंग को गढ़ते हैं।<a class="anchor" href="#औजर-हमर-सचन-क-ढग-क-गढत-ह" aria-label="link">#</a></h2>
+<h2 id="tools-shape-the-way-we-think">औज़ार हमारे सोचने के ढंग को गढ़ते हैं।<a class="anchor" href="#tools-shape-the-way-we-think" aria-label="link">#</a></h2>
 <blockquote><p>“टिकाऊ कोड सिर्फ़ वह कोड नहीं जो चलता रहता है। वह कोड है जो लोगों के लिए सोचने की जगह छोड़ता है।” — सॉफ़्टवेयर पर लागू दर्शन</p></blockquote>
 <blockquote><p>“स्पष्टता परिष्कार का उलटा नहीं है। वह कसौटी है जो परिष्कार को शोर बनने से रोकती है।” — सिद्धांत से ओपन सोर्स</p></blockquote>
 
@@ -148,7 +148,7 @@
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#de-brevitate-vitae">De brevitate vitae</a></li><li class="toc-2"><a href="#परजकट-कय-परसतवत-करत-ह">प्रोजेक्ट क्या प्रस्तावित करता है</a></li><li class="toc-2"><a href="#औजर-हमर-सचन-क-ढग-क-गढत-ह">औज़ार हमारे सोचने के ढंग को गढ़ते हैं।</a></li></ul>
+      <ul><li class="toc-2"><a href="#de-brevitate-vitae">De brevitate vitae</a></li><li class="toc-2"><a href="#what-the-project-proposes">प्रोजेक्ट क्या प्रस्तावित करता है</a></li><li class="toc-2"><a href="#tools-shape-the-way-we-think">औज़ार हमारे सोचने के ढंग को गढ़ते हैं।</a></li></ul>
     </aside>
   </main>
 </div>
@@ -168,9 +168,9 @@
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -193,7 +193,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Aller au contenu</a>
+<a class="skip-link" href="#content">Aller au contenu</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigation principale">
-      <a href="/fr/#ecossistema">Écosystème</a>
+      <a href="/fr/#ecosystem">Écosystème</a>
       <a href="/fr/docs/">Documentation</a>
-      <details class="lang-dd"><summary aria-label="Langue: Français"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Français</span></summary><ul><li><a href="/docs/kubernetes/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/kubernetes/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/kubernetes/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/kubernetes/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/kubernetes/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/kubernetes/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/kubernetes/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/kubernetes/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/kubernetes/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/kubernetes/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/kubernetes/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Langue: Français"><span>Français</span></summary><ul><li><a href="/docs/kubernetes/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/kubernetes/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/kubernetes/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/kubernetes/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/kubernetes/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/kubernetes/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/kubernetes/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/kubernetes/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/kubernetes/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/kubernetes/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/kubernetes/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Explorer l&#x27;open source
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentation</p>
       <h1>Kubernetes</h1>
       <p class="doc-desc">Comment déployer le moteur, avec quelles permissions, et ce qu&#x27;il faut vérifier ensuite.</p>
       <p>Une installation type comprend <strong>deux Deployments</strong> du même binaire — l'API et le scheduler — plus un Postgres.</p>
-<h2 id="linstaller-avec-helm">L'installer avec Helm<a class="anchor" href="#linstaller-avec-helm" aria-label="link">#</a></h2>
+<h2 id="install-it-with-helm">L'installer avec Helm<a class="anchor" href="#install-it-with-helm" aria-label="link">#</a></h2>
 <p>Le chart se trouve dans le dépôt, à <code>deployments/helm/brevis</code>. Quatre valeurs sont requises et tout le reste a une valeur par défaut fonctionnelle :</p>
 <div class="code-block" data-code="helm install brevis ./deployments/helm/brevis \
   --namespace data --create-namespace \
@@ -151,11 +151,11 @@
   <span class="t-n">--set</span> api.ingress.tls.secretName=<span class="t-k">brevis</span>-tls</code></pre></div>
 <p>En production, gardez la chaîne de connexion hors de la release : mettez-la dans un Secret et passez <code>--set database.existingSecret=brevis-db</code>. Passée en ligne, elle atterrit dans le manifeste stocké de la release, que peut lire quiconque peut lire les Secrets de ce namespace.</p>
 <p><code>helm show values ./deployments/helm/brevis</code> liste chaque valeur avec sa raison à côté.</p>
-<h3 id="ce-que-le-chart-refuse">Ce que le chart refuse<a class="anchor" href="#ce-que-le-chart-refuse" aria-label="link">#</a></h3>
+<h3 id="what-the-chart-refuses">Ce que le chart refuse<a class="anchor" href="#what-the-chart-refuses" aria-label="link">#</a></h3>
 <p>Tout ce qu'il ne peut pas rendre sûr échoue au moment du rendu, avec un message qui dit ce qui casserait — pas à 3 h du matin, dans un run qui a produit des lignes en double :</p>
 <div class="table-wrap"><table><thead><tr><th>refusé</th><th>parce que</th></tr></thead><tbody><tr><td><code>scheduler.replicas</code>, sous quelque forme que ce soit</td><td>deux matérialiseraient les mêmes slots. <code>FOR UPDATE SKIP LOCKED</code> les empêche de réclamer le même élément de la file ; rien ne les empêche de créer le même run planifié, et un <code>dbt build</code> s'exécuterait deux fois sur une même fenêtre sans que rien n'échoue</td></tr><tr><td>un identifiant manquant hors de <code>local</code></td><td>le moteur refuse de démarrer sans, donc le chart vous livrerait un CrashLoopBackOff</td></tr><tr><td><code>auth.secret</code> de moins de 32 octets</td><td>il signe le cookie de session, et le moteur impose le même minimum</td></tr><tr><td>un Ingress sans <code>host</code></td><td>il correspondrait à toutes les requêtes atteignant le contrôleur — dans un cluster partagé, répondant pour le nom d'hôte de quelqu'un d'autre</td></tr><tr><td><code>alerts.enabled</code> sans webhook</td><td>le pod viderait l'outbox et ne livrerait nulle part, ce qui est pire que de ne pas tourner : l'échec paraît alors annoncé</td></tr><tr><td>une valeur que le chart ne définit pas</td><td>une faute de frappe dans <code>--set</code> ne fait sinon rien, en silence</td></tr></tbody></table></div>
 <p><code>.github/scripts/helm-check.sh</code> vérifie tout cela sur la sortie rendue, plus les invariants ci-dessus — un seul scheduler, <code>pods/log</code> présent, les migrations en premier, le port des métriques hors du Service.</p>
-<h2 id="sans-helm">Sans Helm<a class="anchor" href="#sans-helm" aria-label="link">#</a></h2>
+<h2 id="without-helm">Sans Helm<a class="anchor" href="#without-helm" aria-label="link">#</a></h2>
 <p>Sept manifestes se trouvent dans <code>deployments/kubernetes/</code>, prêts pour <code>kubectl apply -f</code> après avoir modifié le namespace et le tag de l'image :</p>
 <div class="code-block" data-code="kubectl apply -f deployments/kubernetes/rbac.yaml
 kubectl apply -f deployments/kubernetes/api.yaml
@@ -163,7 +163,7 @@ kubectl apply -f deployments/kubernetes/scheduler.yaml"><div class="code-head"><
 <span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/api.yaml
 <span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/scheduler.yaml</code></pre></div>
 <p>Ils portent les mêmes décisions que le chart, avec le raisonnement en commentaires, et <code>alert.yaml</code>, <code>report.yaml</code> et <code>publish-job.yaml</code> en plus. Les sections ci-dessous détaillent le contenu de chacun.</p>
-<h2 id="les-deux-roles">Les deux rôles<a class="anchor" href="#les-deux-roles" aria-label="link">#</a></h2>
+<h2 id="the-two-roles">Les deux rôles<a class="anchor" href="#the-two-roles" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>rôle</th><th>commande</th><th>image</th><th>réplicas</th></tr></thead><tbody><tr><td>API + interface</td><td><code>serve</code></td><td><code>:0.11.2</code> (distroless)</td><td>autant que vous voulez</td></tr><tr><td>scheduler + file</td><td><code>scheduler</code></td><td><code>:0.11.2-worker</code> (alpine)</td><td><strong>un</strong></td></tr></tbody></table></div>
 <p>L'API est distroless parce qu'elle ne fait que servir du HTTP : elle n'exécute rien, donc n'a pas besoin de shell. Le worker est alpine parce que les steps <code>run:</code> en ont besoin.</p>
 <aside class="admon admon-warning"><p class="admon-t">Un seul réplica du scheduler</p><p>Deux processus qui matérialisent la même planification créent des runs en double. Si vous avez besoin de disponibilité, utilisez <code>replicas: 1</code> avec <code>strategy: Recreate</code>.</p></aside>
@@ -196,7 +196,7 @@ spec:
           <span class="t-k">args</span>: ["migrate", "up"]
           <span class="t-k">envFrom</span>:
             - <span class="t-k">secretRef</span>: {name: brevis-db}</code></pre></div>
-<h2 id="deployment-de-lapi">Deployment de l'API<a class="anchor" href="#deployment-de-lapi" aria-label="link">#</a></h2>
+<h2 id="api-deployment">Deployment de l'API<a class="anchor" href="#api-deployment" aria-label="link">#</a></h2>
 <div class="code-block" data-code="apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -259,7 +259,7 @@ spec:
             <span class="t-k">requests</span>: {cpu: 100m, memory: 128Mi}
             <span class="t-k">limits</span>: {memory: 256Mi}</code></pre></div>
 <aside class="admon admon-note"><p class="admon-t">Pourquoi les deux sondes diffèrent</p><p><code>/health</code> n'interroge <strong>pas</strong> la base de données ; <code>/ready</code> le fait, et nomme la dépendance qui a échoué. Si la liveness dépendait de Postgres, une vacillation de la base ferait <strong>tuer</strong> les pods de l'API par Kubernetes au lieu de simplement les retirer du load balancer — et la reprise serait plus lente précisément quand le système est déjà sous tension.</p></aside>
-<h2 id="deployment-du-scheduler">Deployment du scheduler<a class="anchor" href="#deployment-du-scheduler" aria-label="link">#</a></h2>
+<h2 id="scheduler-deployment">Deployment du scheduler<a class="anchor" href="#scheduler-deployment" aria-label="link">#</a></h2>
 <div class="code-block" data-code="apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -350,7 +350,7 @@ rules:
     <span class="t-k">resources</span>: ["pods/log"]
     <span class="t-k">verbs</span>: ["get"]</code></pre></div>
 <p><code>pods/log</code> est ce qui permet de suivre la sortie d'un step jusque dans l'interface. Sans lui, le run fonctionne et le log reste vide.</p>
-<h2 id="après-le-deploiement">Après le déploiement<a class="anchor" href="#après-le-deploiement" aria-label="link">#</a></h2>
+<h2 id="after-the-deploy">Après le déploiement<a class="anchor" href="#after-the-deploy" aria-label="link">#</a></h2>
 <div class="code-block" data-code="kubectl -n data get pods -l app=brevis-api
 kubectl -n data exec deploy/brevis-api -- brevis version
 curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">kubectl</span> <span class="t-n">-n</span> data get pods <span class="t-n">-l</span> app=<span class="t-k">brevis</span>-api
@@ -358,13 +358,13 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
 <span class="t-k">curl</span> <span class="t-n">-fsS</span> https://<span class="t-k">brevis</span>.example.com/ready</code></pre></div>
 <p>Déclenchez un workflow simple depuis l'interface et confirmez que le pod du step apparaît puis disparaît :</p>
 <div class="code-block" data-code="kubectl -n data get pods -w"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">kubectl</span> <span class="t-n">-n</span> data get pods <span class="t-n">-w</span></code></pre></div>
-<h2 id="quand-un-step-reste-en-pending">Quand un step reste en Pending<a class="anchor" href="#quand-un-step-reste-en-pending" aria-label="link">#</a></h2>
+<h2 id="when-a-step-stays-pending">Quand un step reste en Pending<a class="anchor" href="#when-a-step-stays-pending" aria-label="link">#</a></h2>
 <p>C'est presque toujours l'une de ces trois causes :</p>
 <div class="table-wrap"><table><thead><tr><th>cause</th><th>comment la confirmer</th></tr></thead><tbody><tr><td>taint sans toleration</td><td><code>kubectl describe pod</code> affiche <code>node(s) had untolerated taint</code></td></tr><tr><td><code>nodeSelector</code> sans nœud</td><td><code>describe</code> affiche <code>didn't match Pod's node affinity</code></td></tr><tr><td>ressource indisponible</td><td><code>describe</code> affiche <code>Insufficient cpu</code> ou <code>memory</code></td></tr></tbody></table></div>
 <p>Pour inspecter le pod d'un step en échec plutôt que le regarder disparaître :</p>
 <div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>Laissez-le désactivé en production — les pods arrêtés consomment du quota.</p>
-<h2 id="etapes-suivantes">Étapes suivantes<a class="anchor" href="#etapes-suivantes" aria-label="link">#</a></h2>
+<h2 id="next-steps">Étapes suivantes<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/fr/docs/pod-per-step/">Un pod par step</a> — le modèle d'exécution</li><li><a href="/fr/docs/configuration/">Configuration</a> — toutes les variables <code>BREVIS_POD_*</code></li><li><a href="/fr/docs/observability/">Observabilité</a> — quoi scruter, et depuis quel processus</li></ul>
 
       <nav class="pagers" aria-label="Pages">
@@ -379,7 +379,7 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
 
     <aside class="toc" aria-label="Sur cette page">
       <p class="toc-t">Sur cette page</p>
-      <ul><li class="toc-2"><a href="#linstaller-avec-helm">L&#x27;installer avec Helm</a></li><li class="toc-3"><a href="#ce-que-le-chart-refuse">Ce que le chart refuse</a></li><li class="toc-2"><a href="#sans-helm">Sans Helm</a></li><li class="toc-2"><a href="#les-deux-roles">Les deux rôles</a></li><li class="toc-2"><a href="#migrations">Migrations</a></li><li class="toc-2"><a href="#deployment-de-lapi">Deployment de l&#x27;API</a></li><li class="toc-2"><a href="#deployment-du-scheduler">Deployment du scheduler</a></li><li class="toc-2"><a href="#permissions">Permissions</a></li><li class="toc-2"><a href="#après-le-deploiement">Après le déploiement</a></li><li class="toc-2"><a href="#quand-un-step-reste-en-pending">Quand un step reste en Pending</a></li><li class="toc-2"><a href="#etapes-suivantes">Étapes suivantes</a></li></ul>
+      <ul><li class="toc-2"><a href="#install-it-with-helm">L&#x27;installer avec Helm</a></li><li class="toc-3"><a href="#what-the-chart-refuses">Ce que le chart refuse</a></li><li class="toc-2"><a href="#without-helm">Sans Helm</a></li><li class="toc-2"><a href="#the-two-roles">Les deux rôles</a></li><li class="toc-2"><a href="#migrations">Migrations</a></li><li class="toc-2"><a href="#api-deployment">Deployment de l&#x27;API</a></li><li class="toc-2"><a href="#scheduler-deployment">Deployment du scheduler</a></li><li class="toc-2"><a href="#permissions">Permissions</a></li><li class="toc-2"><a href="#after-the-deploy">Après le déploiement</a></li><li class="toc-2"><a href="#when-a-step-stays-pending">Quand un step reste en Pending</a></li><li class="toc-2"><a href="#next-steps">Étapes suivantes</a></li></ul>
     </aside>
   </main>
 </div>
@@ -399,9 +399,9 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
       <div class="footer-col">
         <h2>projet</h2>
         <ul>
-          <li><a href="/fr/#ecossistema">Écosystème</a></li>
+          <li><a href="/fr/#ecosystem">Écosystème</a></li>
           <li><a href="/fr/docs/philosophy/">Principes</a></li>
-          <li><a href="/fr/docs/introduction/#code-ouvert-choisissez-comment-participer">Open source</a></li>
+          <li><a href="/fr/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/fr/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -424,7 +424,7 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Saltar al contenido</a>
+<a class="skip-link" href="#content">Saltar al contenido</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegación principal">
-      <a href="/es/#ecossistema">Ecosistema</a>
+      <a href="/es/#ecosystem">Ecosistema</a>
       <a href="/es/docs/">Documentación</a>
-      <details class="lang-dd"><summary aria-label="Idioma: Español"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Español</span></summary><ul><li><a href="/docs/white-label/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/white-label/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/white-label/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/white-label/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/white-label/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/white-label/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/white-label/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/white-label/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/white-label/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/white-label/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/white-label/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Idioma: Español"><span>Español</span></summary><ul><li><a href="/docs/white-label/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/white-label/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/white-label/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/white-label/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/white-label/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/white-label/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/white-label/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/white-label/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/white-label/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/white-label/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/white-label/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Explorar el código abierto
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentación</p>
       <h1>White label</h1>
       <p class="doc-desc">Cambiar el título, el lema, el logo y la paleta de la interfaz mediante un único archivo YAML.</p>
       <p>La interfaz se puede personalizar mediante un archivo. Los colores sobrescriben las variables CSS <strong>en tiempo de ejecución</strong>, así que cambiar el tema de un cliente no recompila nada.</p>
-<h2 id="el-archivo">El archivo<a class="anchor" href="#el-archivo" aria-label="link">#</a></h2>
+<h2 id="the-file">El archivo<a class="anchor" href="#the-file" aria-label="link">#</a></h2>
 <p>Copiar <code>brand.example.yaml</code> a <code>brand.yaml</code> en la raíz, o apuntar <code>BREVIS_BRAND_FILE</code> hacia él:</p>
 <div class="code-block" data-code="titulo: Acme Data
 subtitulo: Data platform
@@ -154,24 +154,24 @@ cores:
 <div class="code-block" data-code="logo: https://example.com/mark.svg"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">logo</span>: https://example.com/mark.svg</code></pre></div>
 <p>Acepta una URL (<code>https://</code> o <code>http://</code>) o una ruta interna que empiece con <code>/</code>. Si falta, usa el símbolo incorporado, que sigue el color del tema.</p>
 <aside class="admon admon-warning"><p class="admon-t">Un logo alojado en otro lugar depende de ese host</p><p>Si se cae, o si el clúster no tiene salida a internet, la imagen no carga. El resto de la interfaz sigue funcionando, pero conviene sopesarlo al elegir: el resto de la UI, fuentes y bundles incluidos, se sirve desde el propio binario justamente para no depender de la red.</p></aside>
-<h2 id="validar">Validar<a class="anchor" href="#validar" aria-label="link">#</a></h2>
+<h2 id="validating">Validar<a class="anchor" href="#validating" aria-label="link">#</a></h2>
 <p>Un valor hexadecimal erróneo solo afloraría cuando el contenedor arrancara, y el mensaje llegaría por el log del pod, lejos de quien editó el archivo. De ahí un subcomando:</p>
 <div class="code-block" data-code="brevis marca brand.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> marca brand.yaml</code></pre></div>
 <div class="code-block" data-code="  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product&#x27;s own)
         Powered by Brevis"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis</code></pre></div>
 <p>Se puede invocar en el CI de la instalación y el error vuelve en el pull request.</p>
 <aside class="admon admon-note"><p class="admon-t">La ausencia significa cosas distintas</p><p>En <code>serve</code>, un archivo ausente significa «usar la identidad por defecto», y la API arranca. En <code>marca</code>, un archivo ausente es un <strong>error</strong>: quien pidió validar una ruta espera que le digan que no existe.</p></aside>
-<h2 id="comportamiento-al-arrancar">Comportamiento al arrancar<a class="anchor" href="#comportamiento-al-arrancar" aria-label="link">#</a></h2>
+<h2 id="behaviour-at-boot">Comportamiento al arrancar<a class="anchor" href="#behaviour-at-boot" aria-label="link">#</a></h2>
 <p>Un error de contenido —un color inválido, YAML roto— <strong>no impide que la interfaz arranque</strong>. El proceso registra una advertencia y usa el tema por defecto. Derribar la API por un color sería peor que servirla con el tema por defecto.</p>
-<div class="code-block" data-code="level=WARN msg=&quot;identidade visual ignorada&quot; arquivo=brand.yaml erro=&quot;cor invalida: #gggggg&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>level=WARN msg="identidade visual ignorada" arquivo=brand.yaml erro="cor invalida: #gggggg"</code></pre></div>
-<h2 id="lo-que-no-se-puede-personalizar">Lo que no se puede personalizar<a class="anchor" href="#lo-que-no-se-puede-personalizar" aria-label="link">#</a></h2>
+<div class="code-block" data-code="level=WARN msg=&quot;visual identity ignored&quot; file=brand.yaml error=&quot;brand.yaml: colour accent: \&quot;#gggggg\&quot; is not a hex value (#rgb, #rrggbb or #rrggbbaa)&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>level=WARN msg="visual identity ignored" file=brand.yaml error="brand.yaml: colour accent: \"#gggggg\" is not a hex value (#rgb, #rrggbb or #rrggbbaa)"</code></pre></div>
+<h2 id="what-cannot-be-customised">Lo que no se puede personalizar<a class="anchor" href="#what-cannot-be-customised" aria-label="link">#</a></h2>
 <p>La línea <strong>«Powered by Brevis»</strong> del pie de página no viene de la configuración: viene del código.</p>
-<h2 id="en-kubernetes">En Kubernetes<a class="anchor" href="#en-kubernetes" aria-label="link">#</a></h2>
+<h2 id="on-kubernetes">En Kubernetes<a class="anchor" href="#on-kubernetes" aria-label="link">#</a></h2>
 <p>Montar el archivo desde un ConfigMap:</p>
 <div class="code-block" data-code="volumes:
   - name: brand
@@ -205,7 +205,7 @@ containers:
 
     <aside class="toc" aria-label="En esta página">
       <p class="toc-t">En esta página</p>
-      <ul><li class="toc-2"><a href="#el-archivo">El archivo</a></li><li class="toc-2"><a href="#logo">Logo</a></li><li class="toc-2"><a href="#validar">Validar</a></li><li class="toc-2"><a href="#comportamiento-al-arrancar">Comportamiento al arrancar</a></li><li class="toc-2"><a href="#lo-que-no-se-puede-personalizar">Lo que no se puede personalizar</a></li><li class="toc-2"><a href="#en-kubernetes">En Kubernetes</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file">El archivo</a></li><li class="toc-2"><a href="#logo">Logo</a></li><li class="toc-2"><a href="#validating">Validar</a></li><li class="toc-2"><a href="#behaviour-at-boot">Comportamiento al arrancar</a></li><li class="toc-2"><a href="#what-cannot-be-customised">Lo que no se puede personalizar</a></li><li class="toc-2"><a href="#on-kubernetes">En Kubernetes</a></li></ul>
     </aside>
   </main>
 </div>
@@ -225,9 +225,9 @@ containers:
       <div class="footer-col">
         <h2>proyecto</h2>
         <ul>
-          <li><a href="/es/#ecossistema">Ecosistema</a></li>
+          <li><a href="/es/#ecosystem">Ecosistema</a></li>
           <li><a href="/es/docs/philosophy/">Principios</a></li>
-          <li><a href="/es/docs/introduction/#codigo-abierto-elige-como-participar">Código abierto</a></li>
+          <li><a href="/es/docs/introduction/#open-code-choose-how-to-take-part">Código abierto</a></li>
           <li><a href="/es/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -250,7 +250,7 @@ containers:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -14,27 +14,27 @@ Chaque ligne indique quel composant l'atteint, par quel package ou sink, et où 
 
 |  | comment y accéder | guide |
 |---|---|---|
-| **HTTP** | SDK : `from.HTTP` | [SDK Go](/fr/docs/sdk/#sources-et-destinations) |
-| **Postgres** | SDK : `from/postgres` | [SDK Go](/fr/docs/sdk/#sources-et-destinations) |
-| **MySQL** | SDK : `from/mysql` | [SDK Go](/fr/docs/sdk/#sources-et-destinations) |
-| **fichiers** | SDK : `from.Files` — local, S3, GCS | [SDK Go](/fr/docs/sdk/#sources-et-destinations) |
+| **HTTP** | SDK : `from.HTTP` | [SDK Go](/fr/docs/sdk/#sources-and-destinations) |
+| **Postgres** | SDK : `from/postgres` | [SDK Go](/fr/docs/sdk/#sources-and-destinations) |
+| **MySQL** | SDK : `from/mysql` | [SDK Go](/fr/docs/sdk/#sources-and-destinations) |
+| **fichiers** | SDK : `from.Files` — local, S3, GCS | [SDK Go](/fr/docs/sdk/#sources-and-destinations) |
 
 ## Atterrit dans
 
 |  | comment y accéder | guide |
 |---|---|---|
-| **BigQuery** | SDK : `to/bigquery` · Gateway : `bigquery` | [SDK Go](/fr/docs/sdk/#sources-et-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
-| **Postgres** | SDK : `to/postgres` · Gateway : `postgres` | [SDK Go](/fr/docs/sdk/#sources-et-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
-| **MySQL** | SDK : `to/mysql` · Gateway : `mysql` | [SDK Go](/fr/docs/sdk/#sources-et-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
-| **Redshift** | SDK : `to/redshift` · Gateway : `redshift` | [SDK Go](/fr/docs/sdk/#sources-et-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
-| **Pub/Sub** | SDK : `to/pubsub` · Gateway : `pubsub` | [SDK Go](/fr/docs/sdk/#sources-et-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
+| **BigQuery** | SDK : `to/bigquery` · Gateway : `bigquery` | [SDK Go](/fr/docs/sdk/#sources-and-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
+| **Postgres** | SDK : `to/postgres` · Gateway : `postgres` | [SDK Go](/fr/docs/sdk/#sources-and-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
+| **MySQL** | SDK : `to/mysql` · Gateway : `mysql` | [SDK Go](/fr/docs/sdk/#sources-and-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
+| **Redshift** | SDK : `to/redshift` · Gateway : `redshift` | [SDK Go](/fr/docs/sdk/#sources-and-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
+| **Pub/Sub** | SDK : `to/pubsub` · Gateway : `pubsub` | [SDK Go](/fr/docs/sdk/#sources-and-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
 
 ## Fichiers dans
 
 |  | comment y accéder | guide |
 |---|---|---|
-| **S3** | SDK : `store/s3` · Gateway : `files` sur `s3://` | [SDK Go](/fr/docs/sdk/#sources-et-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
-| **GCS** | SDK : `store/gcs` · Gateway : `files` sur `gs://` | [SDK Go](/fr/docs/sdk/#sources-et-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
+| **S3** | SDK : `store/s3` · Gateway : `files` sur `s3://` | [SDK Go](/fr/docs/sdk/#sources-and-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
+| **GCS** | SDK : `store/gcs` · Gateway : `files` sur `gs://` | [SDK Go](/fr/docs/sdk/#sources-and-destinations), [Sinks d'ingestion](/fr/docs/ingestion-sinks/index.md) |
 
 ## Modélise dans
 
@@ -49,7 +49,7 @@ Chaque ligne indique quel composant l'atteint, par quel package ou sink, et où 
 |---|---|---|
 | **Docker** | une image par composant : `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Installation](/fr/docs/installation/#docker) |
 | **Kubernetes** | un pod par step | [Kubernetes](/fr/docs/kubernetes/index.md), [Un pod par step](/fr/docs/pod-per-step/index.md) |
-| **Helm** | le chart dans `deployments/helm/brevis` | [Kubernetes](/fr/docs/kubernetes/#linstaller-avec-helm) |
+| **Helm** | le chart dans `deployments/helm/brevis` | [Kubernetes](/fr/docs/kubernetes/#install-it-with-helm) |
 
 ## Écrit en
 

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
-      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/observability/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/observability/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/observability/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/observability/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/observability/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/observability/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/observability/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/observability/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/observability/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/observability/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/observability/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><span>हिन्दी</span></summary><ul><li><a href="/docs/observability/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/observability/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/observability/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/observability/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/observability/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/observability/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/observability/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/observability/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/observability/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/observability/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/observability/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         ओपन सोर्स देखें
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>ऑब्ज़र्वेबिलिटी</h1>
@@ -127,11 +127,11 @@
       <p>Brevis अपने ही port पर Prometheus मेट्रिक्स उजागर करता है, <strong>दोनों</strong> प्रोसेस से।</p>
 <div class="code-block" data-code="GET http://&lt;pod&gt;:9090/metrics"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>GET http://&lt;pod&gt;:9090/metrics</code></pre></div>
 <p>Port <code>BREVIS_METRICS_ADDR</code> से आता है। वह HTTP port से जानबूझकर अलग है: मेट्रिक्स इंटरफ़ेस के authentication से नहीं गुज़रते, और दोनों को एक ही जगह से परोसना authenticated scrape और खुले डैशबोर्ड के बीच चुनाव करने पर मजबूर करता।</p>
-<h2 id="द-परसस-द-endpoints">दो प्रोसेस, दो endpoints<a class="anchor" href="#द-परसस-द-endpoints" aria-label="link">#</a></h2>
+<h2 id="two-processes-two-endpoints">दो प्रोसेस, दो endpoints<a class="anchor" href="#two-processes-two-endpoints" aria-label="link">#</a></h2>
 <p>अधिकांश सेटअप यहीं गलती करते हैं, सिर्फ़ API को scrape करके।</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>परोसता है</th><th>रिपोर्ट करता है</th></tr></thead><tbody><tr><td><code>brevis serve</code></td><td>UI और HTTP API</td><td>कतार की गहराई</td></tr><tr><td><code>brevis scheduler</code></td><td>HTTP पर कुछ नहीं</td><td>कतार की गहराई, claim की देरी, slots, अनाथ, runs, steps</td></tr></tbody></table></div>
 <p>चलाने का काम शेड्यूलर करता है, इसलिए लगभग सब कुछ उसी से आता है। सिर्फ़ API पर बना डैशबोर्ड कतार को बढ़ता दिखाता है और उसे खाली करने वाले के बारे में <strong>कुछ नहीं</strong>।</p>
-<h2 id="step-ज-मटरकस-परकशत-करत-ह">Step जो मेट्रिक्स प्रकाशित करता है<a class="anchor" href="#step-ज-मटरकस-परकशत-करत-ह" aria-label="link">#</a></h2>
+<h2 id="the-metrics-a-step-publishes">Step जो मेट्रिक्स प्रकाशित करता है<a class="anchor" href="#the-metrics-a-step-publishes" aria-label="link">#</a></h2>
 <p>Engine जो मापता है उसके अलावा, step अपने भी प्रकाशित कर सकता है — कितनी पंक्तियाँ उतरीं, vendor ने कितनी ठुकराईं:</p>
 <div class="code-block" data-code="from brevis import metrics
 metrics.set(&quot;rows_loaded&quot;, 48213)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> metrics
@@ -139,7 +139,7 @@ metrics.set("rows_loaded", 48213)</code></pre></div>
 <p>वे <strong>उसी</strong> शेड्यूलर <code>/metrics</code> पर दिखते हैं, engine के लगाए उपसर्ग और label के साथ:</p>
 <div class="code-block" data-code="brevis_step_rows_loaded{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 48213"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213</code></pre></div>
 <p>Step कोई port नहीं खोलता: वह stdout पर एक पंक्ति लिखता है और engine उसे दर्ज करता है — चालीस सेकंड जीने वाला pod scrape नहीं किया जा सकता। देखें <a href="/hi/docs/python/">Python</a>।</p>
-<h2 id="कय-दख">क्या देखें<a class="anchor" href="#कय-दख" aria-label="link">#</a></h2>
+<h2 id="what-to-watch">क्या देखें<a class="anchor" href="#what-to-watch" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>संकेत</th><th>क्यों</th></tr></thead><tbody><tr><td>कतार की गहराई बढ़ रही है और घट नहीं रही</td><td>शेड्यूलर मर गया, या भार के लिए <code>--concurrency</code> कम है</td></tr><tr><td>claim की देरी बढ़ रही है</td><td>डेटाबेस पर होड़, या अंतराल के लिए कतार बहुत बड़ी</td></tr><tr><td>अनाथ &gt; 0</td><td>ऐसे run जिन्हें दावा करने वाली प्रोसेस पूरा करने से पहले मर गई</td></tr><tr><td>slots नहीं बन रहे</td><td>शेड्यूलर का लूप रुक गया, और schedules उसके साथ रुकते हैं</td></tr></tbody></table></div>
 <p>पहले दो अकेले "भारी भार" और "मरी हुई प्रोसेस" में फ़र्क नहीं बताते — इसीलिए slots मायने रखते हैं। Slots बनते रहने <strong>के साथ</strong> बढ़ती कतार भार है; slots <strong>के बिना</strong> बढ़ती कतार रुका हुआ लूप है।</p>
 <h2 id="kubernetes">Kubernetes<a class="anchor" href="#kubernetes" aria-label="link">#</a></h2>
@@ -155,10 +155,10 @@ ports:
   - <span class="t-k">name</span>: metrics
     <span class="t-k">containerPort</span>: 9090</code></pre></div>
 <p>Prometheus Operator के साथ, हर भूमिका के लिए एक <code>PodMonitor</code> — और यह हर भूमिका के लिए एक ही होना ज़रूरी है, क्योंकि दोनों Deployments के label अलग हैं और वे अलग सेट रिपोर्ट करते हैं।</p>
-<h2 id="कय-जनबझकर-अनपसथत-ह">क्या जानबूझकर अनुपस्थित है<a class="anchor" href="#कय-जनबझकर-अनपसथत-ह" aria-label="link">#</a></h2>
+<h2 id="what-is-deliberately-absent">क्या जानबूझकर अनुपस्थित है<a class="anchor" href="#what-is-deliberately-absent" aria-label="link">#</a></h2>
 <p><strong>Traces।</strong> अभी OpenTelemetry नहीं है। Step अपने pod की तरह चलता है, और उसके बारे में जो मायने रखता है — शुरू, अंत, प्रयास, exit code, लॉग — वह पहले से डेटाबेस में और स्क्रीन पर है। उपयोगी trace वह होता जो step के भीतर है, और वह step के कोड का है, ऑर्केस्ट्रेटर का नहीं।</p>
 <p>यह तब तक सही है जब तक step ही इकाई है। जिस दिन step किसी दूसरी service को बुलाए और सवाल "40 सेकंड कहाँ गए" बन जाए, उस दिन trace अपनी लागत के लायक होने लगता है।</p>
-<h2 id="अगल-कदम">अगले कदम<a class="anchor" href="#अगल-कदम" aria-label="link">#</a></h2>
+<h2 id="next-steps">अगले कदम<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/hi/docs/kubernetes/">Kubernetes</a> — दोनों प्रोसेस को deploy करना</li><li><a href="/hi/docs/configuration/">कॉन्फ़िगरेशन</a> — <code>BREVIS_METRICS_ADDR</code> और बाकी</li></ul>
 
       <nav class="pagers" aria-label="पेज">
@@ -173,7 +173,7 @@ ports:
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#द-परसस-द-endpoints">दो प्रोसेस, दो endpoints</a></li><li class="toc-2"><a href="#step-ज-मटरकस-परकशत-करत-ह">Step जो मेट्रिक्स प्रकाशित करता है</a></li><li class="toc-2"><a href="#कय-दख">क्या देखें</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#कय-जनबझकर-अनपसथत-ह">क्या जानबूझकर अनुपस्थित है</a></li><li class="toc-2"><a href="#अगल-कदम">अगले कदम</a></li></ul>
+      <ul><li class="toc-2"><a href="#two-processes-two-endpoints">दो प्रोसेस, दो endpoints</a></li><li class="toc-2"><a href="#the-metrics-a-step-publishes">Step जो मेट्रिक्स प्रकाशित करता है</a></li><li class="toc-2"><a href="#what-to-watch">क्या देखें</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#what-is-deliberately-absent">क्या जानबूझकर अनुपस्थित है</a></li><li class="toc-2"><a href="#next-steps">अगले कदम</a></li></ul>
     </aside>
   </main>
 </div>
@@ -193,9 +193,9 @@ ports:
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -218,7 +218,7 @@ ports:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

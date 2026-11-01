@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
-      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/ingestion-sinks/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion-sinks/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion-sinks/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion-sinks/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ingestion-sinks/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ingestion-sinks/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/ingestion-sinks/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ingestion-sinks/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion-sinks/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ingestion-sinks/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ingestion-sinks/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><span>简体中文</span></summary><ul><li><a href="/docs/ingestion-sinks/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion-sinks/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion-sinks/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion-sinks/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ingestion-sinks/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ingestion-sinks/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/ingestion-sinks/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ingestion-sinks/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion-sinks/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ingestion-sinks/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ingestion-sinks/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         探索开源项目
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>摄取 sink</h1>
@@ -129,7 +129,7 @@
 <p><strong>六个中有两个没有经过端到端验证</strong>，表格如实说明了这一点，而不是让“可运行”这个词去承载一个没有人检查过的说法。BigQuery 和 Redshift 没有本地模拟器，所以测试的是配置、拒绝逻辑以及底层的驱动，而驱动已由 SDK 自己的测试套件覆盖。两者的首次生产使用才是真正的证明，应当选用一个低风险的 stream。</p>
 <p>未知的 <code>type:</code> 会在<strong>启动时被拒绝</strong>，并指出*这个二进制文件*包含哪些。在自己没有的 sink 上启动的 gateway，会因为没有人看得见的原因而丢弃事件。</p>
 <p><code>gs://</code> 和 <code>s3://</code> 不是独立的连接器：<code>files</code> 能读取这三种路径形式，所以 dead letter 在笔记本电脑上是一个文件夹，在生产环境中是一个 bucket，而这里无需任何改动。</p>
-<h2 id="各自如何写入">各自如何写入<a class="anchor" href="#各自如何写入" aria-label="link">#</a></h2>
+<h2 id="how-each-one-writes">各自如何写入<a class="anchor" href="#how-each-one-writes" aria-label="link">#</a></h2>
 <p>在四个写入表的目的地上，<code>write</code> 是<strong>必填的，且没有默认值</strong>，因为这两种模式确实不同，只有表的所有者才知道该用哪一种：</p>
 <div class="table-wrap"><table><thead><tr><th></th><th><code>append</code></th><th><code>merge</code></th></tr></thead><tbody><tr><td><strong>postgres</strong></td><td><code>COPY FROM STDIN</code></td><td><code>INSERT … ON CONFLICT (ingestion_id) DO NOTHING</code></td></tr><tr><td><strong>mysql</strong></td><td>每个块一次多行 <code>INSERT</code></td><td><code>INSERT IGNORE</code></td></tr><tr><td><strong>bigquery</strong></td><td>加载行（超过内联上限时通过 GCS）</td><td><code>MERGE … WHEN NOT MATCHED THEN INSERT</code></td></tr><tr><td><strong>redshift</strong></td><td>从 S3 <code>COPY</code></td><td><code>COPY</code> 到暂存表，然后 <code>MERGE</code></td></tr></tbody></table></div>
 <p><code>merge</code> 在四者中的含义<strong>完全相同</strong>：幂等插入，且<strong>先到者生效</strong>。重复投递会被忽略，而不是被应用：这对事件来说是正确的，因为事件只发生一次且不会改变；而对承载可变状态的行来说则是错误的。</p>
@@ -137,7 +137,7 @@
 <div class="code-block" data-code="CREATE UNIQUE INDEX CONCURRENTLY ON landing.orders (ingestion_id);"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">CREATE</span> UNIQUE INDEX CONCURRENTLY <span class="t-k">ON</span> landing.orders (ingestion_id);</code></pre></div>
 <p>没有这个索引，<code>ON CONFLICT</code> 就无从匹配，每次重复投递都会造成重复，而表的所有者要求的恰恰相反。这种拒绝不会丢失批次：它会被重试，然后连同原因和 <code>CREATE INDEX</code> 语句一起埋入记录上的 dead letter，在有人创建索引期间，没有人会丢失事件。</p>
 <p><strong><code>upsert</code> 会按名称被拒绝。</strong> <code>ON CONFLICT DO UPDATE</code>，即*最后*一次投递生效，是一种真实的模式，但<strong>尚未实现</strong>。接受这个词却表现得像 <code>merge</code>，恰恰是这个字段要防止的失败，所以配置会直接说明这一点。</p>
-<h2 id="每个-sink-各自独有的特点">每个 sink 各自独有的特点<a class="anchor" href="#每个-sink-各自独有的特点" aria-label="link">#</a></h2>
+<h2 id="each-one-with-what-is-true-only-of-it">每个 sink 各自独有的特点<a class="anchor" href="#each-one-with-what-is-true-only-of-it" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# Postgres: schema-qualified name, and the table has to exist.
 sink: {type: postgres, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
 
@@ -185,10 +185,10 @@ sink:
   <span class="t-k">write</span>: merge</code></pre></div>
 <p><code>dsn_from</code> 指定保存连接字符串的<strong>环境变量</strong>的名称，绝不是连接字符串本身：DSN 带有密码，而那个文件在 git 中。这与 workflow 中 <code>secrets:</code> 所做的区分相同。</p>
 <p><code>iam_role</code> 是一个角色，驱动<strong>不接受密钥</strong>：<code>COPY</code> 的 URL 中的密钥最终会出现在集群的查询日志里，而有很多人会读那份日志。</p>
-<h2 id="没有列声明">没有列声明<a class="anchor" href="#没有列声明" aria-label="link">#</a></h2>
+<h2 id="no-column-declaration">没有列声明<a class="anchor" href="#no-column-declaration" aria-label="link">#</a></h2>
 <p>gateway 不发送列清单。pipeline 声明自己的列，是因为它的行具有它所掌控的单一形状；而 gateway 的批次是*N* 个客户端在一个 flush 窗口内 post 的任何东西，形状允许不同。</p>
 <p>驱动在接触服务器<strong>之前</strong>，从<strong>表本身</strong>解析出列清单，并与批次所携带的内容取交集。表中没有的字段会被拒绝，并附上修复它的信息，而不是在 <code>COPY</code> 中途以 <code>column "x" of relation "y" does not exist</code> 失败；某个事件省略的字段则写为 <code>NULL</code>。</p>
-<h2 id="导入列表就是选择">导入列表就是选择<a class="anchor" href="#导入列表就是选择" aria-label="link">#</a></h2>
+<h2 id="the-import-list-is-the-selection">导入列表就是选择<a class="anchor" href="#the-import-list-is-the-selection" aria-label="link">#</a></h2>
 <p>sink 和 hook 一样是<strong>编译进去</strong>的，二进制文件会注册它所拥有的 sink：</p>
 <div class="code-block" data-code="func main() {
     sinks := gateway.NewSinks()
@@ -205,18 +205,18 @@ sink:
 <p>它的价值正如听起来那样：</p>
 <div class="table-wrap"><table><thead><tr><th>构建</th><th>包数量</th><th>二进制文件</th></tr></thead><tbody><tr><td>全部六个 sink、两个对象存储、两个 metastore</td><td>约 900</td><td>55.0 MB</td></tr><tr><td><code>postgres</code> + 本地 <code>files</code></td><td>约 240</td><td><strong>10.2 MB</strong></td></tr></tbody></table></div>
 <p>对象存储是<strong>第二个</strong>注册表，因为 scheme 不是目的地：<code>files</code> 是一个 sink，它可以写入目录、<code>gs://</code> 和 <code>s3://</code>，而只写本地的构建不应该为此携带 AWS SDK。</p>
-<h3 id="两个已发布的镜像">两个已发布的镜像<a class="anchor" href="#两个已发布的镜像" aria-label="link">#</a></h3>
+<h3 id="two-published-images">两个已发布的镜像<a class="anchor" href="#two-published-images" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th>镜像</th><th>包含</th><th>拉取大小（amd64）</th></tr></thead><tbody><tr><td><code>areteacademy/brevis-gateway:0.32.0</code></td><td>六个 sink、S3、GCS、Redis、memcached</td><td>19.1 MB</td></tr><tr><td><code>areteacademy/brevis-gateway:0.32.0-slim</code></td><td><code>postgres</code>、本地 <code>files</code>、<code>auto_table</code></td><td><strong>5.2 MB</strong></td></tr></tbody></table></div>
 <p>两者来自同一棵树的同一次构建，所以这两个标签始终是同一个 commit。没有 <code>latest-slim</code>，因为 <code>latest</code> 本来就是一个没有人应该部署的标签。</p>
 <p><strong>想要不同的组合？</strong> <code>cmd/gateway-slim</code> 只有十五行，import 块就是它的全部配置。复制它，修改 import，然后构建。想要 hook 的人本来就在编译自己的二进制文件，所以选择 sink 不会让他们多付出任何代价。</p>
-<h3 id="拒绝信息会说明你手里拿的是哪个构建">拒绝信息会说明你手里拿的是哪个构建<a class="anchor" href="#拒绝信息会说明你手里拿的是哪个构建" aria-label="link">#</a></h3>
+<h3 id="the-refusal-says-which-build-you-are-holding">拒绝信息会说明你手里拿的是哪个构建<a class="anchor" href="#the-refusal-says-which-build-you-are-holding" aria-label="link">#</a></h3>
 <div class="code-block" data-code="sink type &quot;bigquery&quot; is not one this binary carries (it has: files, postgres).
 Sinks are compiled in, so this is a build that left it out rather than a
 destination that does not exist."><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>sink type "bigquery" is not one this binary carries (it has: files, postgres).
 Sinks are compiled in, so this is a build that left it out rather than a
 destination that does not exist.</code></pre></div>
 <p>固定的清单会让那个人去查找一个并非自己犯下的配置错误。对象存储也是如此：在没有 S3 后端的二进制文件中使用 <code>s3://</code> 的 dead letter，会在<strong>启动时</strong>被拒绝，并指出 scheme，而不是等到它第一次必须埋入批次时才被发现。</p>
-<h2 id="一条路由n-张表无需声明任何东西">一条路由，N 张表，无需声明任何东西<a class="anchor" href="#一条路由n-张表无需声明任何东西" aria-label="link">#</a></h2>
+<h2 id="one-route-n-tables-nothing-declared">一条路由，N 张表，无需声明任何东西<a class="anchor" href="#one-route-n-tables-nothing-declared" aria-label="link">#</a></h2>
 <div class="code-block" data-code="sink:
   type: auto_table
   shape: columns
@@ -229,7 +229,7 @@ destination that does not exist.</code></pre></div>
   <span class="t-k">metastore</span>: {type: redis, addr_from: BREVIS_METASTORE_ADDR, ttl: 60s}
   <span class="t-k">into</span>: {type: bigquery, project: acme-prod, dataset: landing, write: merge}</code></pre></div>
 <p><code>auto_table</code> <strong>只路由，不写入</strong>：写入的是 <code>into</code>，它不带 <code>table</code>，表来自每个事件。带有 <code>table</code> 的 <code>into</code> 会在启动时被拒绝，因为路由器之下的固定表会悄悄胜出，每个事件都会落到它里面。</p>
-<h3 id="信封">信封<a class="anchor" href="#信封" aria-label="link">#</a></h3>
+<h3 id="the-envelope">信封<a class="anchor" href="#the-envelope" aria-label="link">#</a></h3>
 <p>请求体是一个<strong>信封</strong>：控制字段在顶层，记录在 <code>data</code> 内部。</p>
 <div class="code-block" data-code="{
   &quot;table_name&quot;: &quot;app_orders&quot;,
@@ -256,7 +256,7 @@ destination that does not exist.</code></pre></div>
 }</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>字段</th><th></th><th>含义</th></tr></thead><tbody><tr><td><code>table_name</code></td><td><strong>必填</strong></td><td>这条数据落到哪里</td></tr><tr><td><code>data</code></td><td><strong>必填</strong></td><td>记录，而且只有记录</td></tr><tr><td><code>unique_key</code></td><td>默认为 <code>id</code></td><td><code>data</code> 的哪个字段标识这条记录，<strong>在 <code>merge</code> 下必填</strong></td></tr><tr><td><code>operation</code></td><td>默认为 <code>INSERT</code></td><td><code>INSERT</code>、<code>UPDATE</code> 或 <code>DELETE</code></td></tr><tr><td><code>description</code></td><td>可选</td><td><strong>接受但尚未使用</strong>，见下文</td></tr></tbody></table></div>
 <p><code>table_name</code> 与 <code>total</code> 和 <code>customer</code> 并排，是<strong>传输</strong>的字段假扮成了<strong>记录</strong>的字段。把它们分开，是每一种 CDC 格式的构造方式，也使得保留一个前缀成为可能，因为现在有了一个只有生产者才会写入的地方。</p>
-<h3 id="键属于-merge而不属于信封">键属于 <code>merge</code>，而不属于信封<a class="anchor" href="#键属于-merge而不属于信封" aria-label="link">#</a></h3>
+<h3 id="the-key-belongs-to-merge-not-to-the-envelope">键属于 <code>merge</code>，而不属于信封<a class="anchor" href="#the-key-belongs-to-merge-not-to-the-envelope" aria-label="link">#</a></h3>
 <p><code>unique_key</code> 是可选的，是否<strong>必填</strong>取决于写入模式，因为这两种模式要的东西不同：</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>write: merge</code></td><td><strong>必填。</strong> 这种模式的存在，就是为了每条记录只保留一行，而 <code>brevis_record_key</code> 就是“每条记录”的含义：解析当前版本的 <code>qualify</code> 就是按它分区的。装满了不指明任何记录的行的 merge 表，是没有人能够解析的表。</td></tr><tr><td><code>write: append</code></td><td><strong>可选。</strong> append 表是日志，而日志条目不一定要*关于*某条记录：一行审计、一个 webhook、一个指标样本。要求这里必须有 <code>id</code>，会迫使生产者编造一个，这比 <code>NULL</code> 更糟，因为它看起来是真的。</td></tr></tbody></table></div>
 <p>在 <code>append</code> 下，该列创建为可空，没有键的行带有 <code>NULL</code>，而不是 <code>""</code>，那是另一个事实。而且 <code>brevis_ingestion_id</code> 仍然存在：没有键时，<strong>内容就是键</strong>，所以同一份文档发送两次，就是同一个 id。</p>
@@ -267,14 +267,14 @@ destination that does not exist.</code></pre></div>
  record's identity and \"data\".\"pedido_id\" is missing or empty. Drop
  \"unique_key\" to fall back to \"id\", or send the field"]}</code></pre></div>
 <p><strong><code>description</code> 会被读取，但目前不会去往任何地方。</strong> 它是为 Console 的摄取页面而放进契约的，而那个页面尚未编写。在这里说明这一点，是因为被悄悄接受的字段，会让人相信它正在被存储。</p>
-<h3 id="八个固定列外加记录携带的任何内容">八个固定列，外加记录携带的任何内容<a class="anchor" href="#八个固定列外加记录携带的任何内容" aria-label="link">#</a></h3>
+<h3 id="eight-fixed-columns-plus-whatever-the-record-carries">八个固定列，外加记录携带的任何内容<a class="anchor" href="#eight-fixed-columns-plus-whatever-the-record-carries" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th>列</th><th></th><th></th></tr></thead><tbody><tr><td><code>brevis_ingestion_id</code></td><td><code>STRING</code></td><td>标识，也是 merge 键</td></tr><tr><td><code>brevis_record_key</code></td><td><code>STRING</code></td><td><code>data[unique_key]</code>：这条数据关于哪条<strong>记录</strong>；在 <code>append</code> 下为 <code>NULL</code></td></tr><tr><td><code>brevis_operation</code></td><td><code>STRING</code></td><td><code>INSERT</code>、<code>UPDATE</code> 或 <code>DELETE</code></td></tr><tr><td><code>brevis_received_at</code></td><td><code>TIMESTAMP</code></td><td>到达时间，按<strong>我们的</strong>时钟：分区列</td></tr><tr><td><code>brevis_loaded_at</code></td><td><code>TIMESTAMP</code></td><td>写入时间，由<strong>目的地</strong>打戳</td></tr><tr><td><code>brevis_stream</code></td><td><code>STRING</code></td><td>由哪条路由写入</td></tr><tr><td><code>brevis_gateway</code></td><td><code>STRING</code></td><td>哪个部署</td></tr><tr><td><code>brevis_received_bytes</code></td><td><code>INT64</code></td><td>事件<strong>到达</strong>时有多大，包含信封</td></tr></tbody></table></div>
-<p>这八列属于 <strong>SDK</strong>，而不属于这个 sink：<code>sdk.LandingSchema</code> 声明它们，<code>sdk.LandingID</code> 生成标识，所以 pipeline 可以用相同的 id 落地同一张表。只有一份定义，因为两份会产生偏差。见 <a href="/zh/docs/sdk/#落地布局">SDK 的落地布局</a>。</p>
+<p>这八列属于 <strong>SDK</strong>，而不属于这个 sink：<code>sdk.LandingSchema</code> 声明它们，<code>sdk.LandingID</code> 生成标识，所以 pipeline 可以用相同的 id 落地同一张表。只有一份定义，因为两份会产生偏差。见 <a href="/zh/docs/sdk/#the-landing-layout">SDK 的落地布局</a>。</p>
 <p><strong><code>brevis_</code> 是保留的。</strong> 带有任何该前缀的键的 <code>data</code> 会<strong>按事件</strong>被拒绝，否则生产者就能伪造控制字段，而伪造的 <code>brevis_received_at</code> 比没有更糟，因为它看起来是真的。</p>
 <p><strong><code>brevis_loaded_at</code> 是数据库的 <code>DEFAULT</code></strong>，不是 gateway 发送的值。gateway 知道的是<strong>分发</strong>时间，目的地知道的是<strong>写入</strong>时间，两列之间的差距就是每一行真实的端到端延迟，无需任何埋点。</p>
 <p><strong><code>brevis_received_at</code> 是分区列，绝不是客户端的时钟</strong>：生产者的时钟可能是错的或缺失的，而由客户端控制的分区列，意味着客户端可以写入 2035 年。未分区的落地表，是只增不减的查询账单。聚簇按 <code>brevis_record_key</code>，因为读取某一条记录的历史，正是人们对这类表的常规用法。</p>
 <p>一份声明服务于所有目的地，因为 SDK 的 DDL 生成器会转换每种类型：<code>STRING</code> 在 Postgres 上变成 <code>TEXT</code>，在 MySQL 上变成 <code>LONGTEXT</code>，在 BigQuery 上是 <code>STRING</code>；<code>JSON</code> 依次变成 <code>JSONB</code>、<code>JSON</code> 和 <code>JSON</code>。</p>
-<h3 id="无需度量基础设施即可掌握数据量">无需度量基础设施即可掌握数据量<a class="anchor" href="#无需度量基础设施即可掌握数据量" aria-label="link">#</a></h3>
+<h3 id="volume-without-infrastructure-to-measure-volume">无需度量基础设施即可掌握数据量<a class="anchor" href="#volume-without-infrastructure-to-measure-volume" aria-label="link">#</a></h3>
 <p><code>brevis_received_bytes</code> 是<strong>免费的</strong>：gateway 在解码时本来就会统计这些字节，用来驱动 <code>buffer.flush.size</code>，而在此之前这个数字就在那里消失了。单独度量记录，每个事件需要一次 <code>json.Marshal</code>，即 2.0 µs，而解析本身花费 3.1 µs，<strong>热路径上多出 67%</strong>，只是为了精化一个其作用在于趋势和归因的数字。</p>
 <p>它回答的是指标<strong>在结构上无法回答</strong>的问题。每个 <code>brevis_gateway_*</code> 序列都是按 <em>stream</em> 的，并且刻意不带 <code>table</code> 标签：使用 <code>auto_table</code> 时，一条路由会变成 N 张表，而这个标签由生产者来选择。所以“哪张表在增长、从什么时候开始”，在任何地方都没有答案。</p>
 <div class="code-block" data-code="select date(brevis_received_at) day,
@@ -289,7 +289,7 @@ group by 1 order by 1 desc</code></pre></div>
 <p>没有这个列，同一个问题意味着扫描整个 JSON 列，即 <code>sum(length(to_json_string(data)))</code>，扫描的字节数大约是<strong>五十倍</strong>，每次有人问都是如此。这一列在第一次查询时就回本了。</p>
 <p><strong>它是入口量，不是存储量。</strong> 目的地保存的是带类型且压缩过的行：400 字节的 JSON 在磁盘上可能只有 80 字节。对它求和得到的是*到达*了多少，绝不是为保存它而计费的量。</p>
 <p>并且<strong>生产者无法写入它</strong>。gateway 在 hook 之后打上这个值，并覆盖信封中携带的任何内容：发送了该字段的客户端，报告的是它自己的数据量，对它求和就失去了意义。</p>
-<h3 id="数据量序列是选择性开启的">数据量序列是选择性开启的<a class="anchor" href="#数据量序列是选择性开启的" aria-label="link">#</a></h3>
+<h3 id="the-volume-series-are-opt-in">数据量序列是选择性开启的<a class="anchor" href="#the-volume-series-are-opt-in" aria-label="link">#</a></h3>
 <div class="code-block" data-code="BREVIS_INGESTION_METRICS=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>BREVIS_INGESTION_METRICS=true</code></pre></div>
 <div class="code-block" data-code="brevis_gateway_ingested_bytes_total{stream,table}
 brevis_gateway_ingested_events_total{stream,table}"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>brevis_gateway_ingested_bytes_total{stream,table}
@@ -297,7 +297,7 @@ brevis_gateway_ingested_events_total{stream,table}</code></pre></div>
 <p><strong>默认关闭</strong>，而默认值就是重点：<code>table</code> 是由*生产者*选择的标签。这个文件中的其他一切，都以运维人员在 YAML 中写下的内容作为标签，所以序列数量在进程启动之前就已知。没有人应该因为升级而发现指标账单。</p>
 <p>无法解析的值读作<strong>关闭</strong>，绝不是失败：这是可观测性，这里的一个拼写错误，不应成为摄取端点无法启动的原因。</p>
 <p>无论哪种情况，这个列都在。指标买到的是*现在*；这个列买到的是*从什么时候开始*以及*由谁*。</p>
-<h3 id="两种形态一份契约">两种形态，一份契约<a class="anchor" href="#两种形态一份契约" aria-label="link">#</a></h3>
+<h3 id="two-shapes-one-contract">两种形态，一份契约<a class="anchor" href="#two-shapes-one-contract" aria-label="link">#</a></h3>
 <p><code>shape</code> 决定<strong>记录</strong>为行贡献什么。无论哪种，生产者的契约都是一样的：信封从不改变。改变的是表的样子，而那是运维人员的决定，不是生产者的决定。</p>
 <div class="code-block" data-code="shape: document   # the default
 shape: columns"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">shape</span>: document   <span class="t-c"># the default</span>
@@ -319,13 +319,13 @@ SELECT JSON_VALUE(customer, &#x27;$.uf&#x27;) ...;           -- SP"><div class="
 <span class="t-k">SELECT</span> JSON_VALUE(customer, '$.uf') ...;           <span class="t-c">-- SP</span></code></pre></div>
 <p>如果 <code>JSON_TYPE</code> 回答 <code>string</code> 而 <code>JSON_VALUE</code> 回答 NULL，说明对象被编码了两次：列里保存的是对象的文本，而不是对象。<strong>0.15.0</strong> 及之前的 gateway 版本在 BigQuery 上，在<strong>两种</strong>形态下都是这样；一行命令的检查与修复方法见 <a href="https://github.com/AreteAcademy/brevis/blob/master/gateway/CHANGELOG.md" target="_blank" rel="noopener">gateway 变更日志</a>。Postgres 和 MySQL 从未受到影响：它们的服务器会解析文本。</p>
 <p>字段名必须符合 BigQuery 的规则，这是四者中最严格的。Postgres 几乎接受任何带引号的名称，而这正是陷阱：表在那里创建出来了，却在有人把 stream 指向 BigQuery 的那天出问题。</p>
-<p>两种形态都有对应的 SDK 等价物，而且是同一段代码，而不是一段相匹配的代码：<code>sdk.Landing(table, sdk.LandingKey("id"))</code> 落地 <code>document</code>，加上 <a href="/zh/docs/sdk/#两种形态整条记录或每个字段一列"><code>sdk.LandingColumns()</code></a> 则落地 <code>columns</code>。相同的列，相同的值，相同的 <code>brevis_ingestion_id</code>，因此 stream 可以在 gateway 与 pipeline 之间切换而无需迁移，两者也可以当作一张表来读取。</p>
-<p>pipeline 也可以用同样的方式增加同样的列：在目的地上设置 <a href="/zh/docs/sdk/#当出现表中没有的字段时"><code>Evolve: sdk.EvolveAdditiveFromPayload</code></a>，批次携带的字段就会按这条规则、通过这段代码变成一列。</p>
+<p>两种形态都有对应的 SDK 等价物，而且是同一段代码，而不是一段相匹配的代码：<code>sdk.Landing(table, sdk.LandingKey("id"))</code> 落地 <code>document</code>，加上 <a href="/zh/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field"><code>sdk.LandingColumns()</code></a> 则落地 <code>columns</code>。相同的列，相同的值，相同的 <code>brevis_ingestion_id</code>，因此 stream 可以在 gateway 与 pipeline 之间切换而无需迁移，两者也可以当作一张表来读取。</p>
+<p>pipeline 也可以用同样的方式增加同样的列：在目的地上设置 <a href="/zh/docs/sdk/#when-a-field-the-table-does-not-have-shows-up"><code>Evolve: sdk.EvolveAdditiveFromPayload</code></a>，批次携带的字段就会按这条规则、通过这段代码变成一列。</p>
 <p><strong>前缀是可配置的，而且是整个进程的一项决定。</strong> <code>BREVIS_LANDING_PREFIX=acme</code> 会让它们变成 <code>acme_ingestion_id</code> 等等，适用于这个 gateway 中的每个 stream，所以两个 sink 不会对它们都可能写入的表产生分歧。上面的保留规则随之移动：在 <code>acme_</code> 下，发送 <code>acme_region</code> 的生产者会被拒绝，而 <code>brevis_region</code> 是普通字段。</p>
-<p><strong>请在创建第一张表之前选定它。</strong> 之后再修改会新增八列并遗弃八列，因为没有任何东西会删除列，所以已经带有某个前缀布局的表，会拒绝声明了另一个前缀的加载。规范化的方式以及出路见 <a href="/zh/docs/sdk/#brevis-前缀可以由你修改">SDK 页面</a>。</p>
-<p><strong>嵌套对象的字段可以拥有自己的列。</strong> 在 gateway 的进程上设置 <code>BREVIS_NORMALIZE_DATA=true</code> 会展开一层，<code>{"name": {"first": "x"}}</code> 落地为 <code>name_first</code>，并且每个 stream 共享它，所以两个 sink 不会对它们都可能写入的表产生分歧。它会重命名什么，请见 <a href="/zh/docs/sdk/#每个嵌套字段一列">SDK 页面</a>，这是开启之前需要阅读的那一半。</p>
+<p><strong>请在创建第一张表之前选定它。</strong> 之后再修改会新增八列并遗弃八列，因为没有任何东西会删除列，所以已经带有某个前缀布局的表，会拒绝声明了另一个前缀的加载。规范化的方式以及出路见 <a href="/zh/docs/sdk/#the-brevis-prefix-is-yours-to-change">SDK 页面</a>。</p>
+<p><strong>嵌套对象的字段可以拥有自己的列。</strong> 在 gateway 的进程上设置 <code>BREVIS_NORMALIZE_DATA=true</code> 会展开一层，<code>{"name": {"first": "x"}}</code> 落地为 <code>name_first</code>，并且每个 stream 共享它，所以两个 sink 不会对它们都可能写入的表产生分歧。它会重命名什么，请见 <a href="/zh/docs/sdk/#one-column-per-nested-field">SDK 页面</a>，这是开启之前需要阅读的那一半。</p>
 <p><strong>在 BigQuery 上，<code>nationalID</code> 和 <code>nationalId</code> 是同一列。</strong> BigQuery 会折叠列名的大小写，所以一次 flush 中，一个 <code>DELETE</code> 带有一种写法而一个 <code>INSERT</code> 带有另一种写法，会创建<strong>一个</strong>列（排序后的第一个），而不是让 <code>CREATE</code> 失败。单个事件同时携带两者会被拒绝，并指出两个字段。Postgres 和 MySQL 把它们保留为两列，这对它们来说是正确的。哪种写法胜出以及哪些内容不会迁移，见 <a href="/zh/docs/sdk/">SDK 页面</a>。</p>
-<h3 id="update-和-delete-是被记录的而不是被应用的"><code>UPDATE</code> 和 <code>DELETE</code> 是被记录的，而不是被应用的<a class="anchor" href="#update-和-delete-是被记录的而不是被应用的" aria-label="link">#</a></h3>
+<h3 id="update-and-delete-are-recorded-not-applied"><code>UPDATE</code> 和 <code>DELETE</code> 是被记录的，而不是被应用的<a class="anchor" href="#update-and-delete-are-recorded-not-applied" aria-label="link">#</a></h3>
 <p><code>brevis_operation</code> 是一列。落地表是<strong>历史</strong>：原地应用的 <code>UPDATE</code> 会丢失之前的版本，而你需要那个版本的那天，就是出问题的那天。解析“每条记录的当前版本”是下游模型的工作：</p>
 <div class="code-block" data-code="qualify row_number() over (partition by brevis_record_key
                            order by brevis_received_at desc) = 1
@@ -333,7 +333,7 @@ SELECT JSON_VALUE(customer, &#x27;$.uf&#x27;) ...;           -- SP"><div class="
                            order by brevis_received_at desc) = 1
    and brevis_operation &lt;&gt; 'DELETE'</code></pre></div>
 <p>Debezium、Fivetran 和 Airbyte 就是这样做的，这意味着 CDC 在写入路径上<strong>没有任何</strong>成本：没有 upsert 模式，没有锁，没有删除。</p>
-<h3 id="标识里没有时钟">标识里没有时钟<a class="anchor" href="#标识里没有时钟" aria-label="link">#</a></h3>
+<h3 id="the-identity-has-no-clock-in-it">标识里没有时钟<a class="anchor" href="#the-identity-has-no-clock-in-it" aria-label="link">#</a></h3>
 <div class="code-block" data-code="brevis_ingestion_id = uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>brevis_ingestion_id = uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))</code></pre></div>
 <p>公式里没有 <code>occurred_at</code>，这是有意的：到达时间成了<strong>我们</strong>的责任，而我们的时钟是 <code>time.Now()</code>，每次投递都不同。标识里有了它，每次重复投递都会成为新事件，<code>merge</code> 也就什么都吸收不了了。</p>
 <div class="code-block" data-code="same record, same content, twice  →  same id, merge absorbs
@@ -341,20 +341,20 @@ same record, content changed      →  a different id, both versions land"><div 
 same record, content changed      →  a different id, both versions land</code></pre></div>
 <p>注意事项已有说明：<code>data</code> 逐字节完全相同的两个真正不同的事件会合并为一个。对 CDC 来说这是<strong>正确的</strong>：对同一条记录用相同的值做两次相同的更新，是同一个事实。</p>
 <p>指纹是对<strong>规范</strong>形式的文档计算的：每一层的键都排序，数组保持顺序，所有内容都带引号。Go 会随机化 map 的遍历顺序，所以朴素的哈希会在同一事件的两次投递之间产生不同的结果，而这正是它要防止的事。</p>
-<h3 id="表会自行增加列">表会自行增加列<a class="anchor" href="#表会自行增加列" aria-label="link">#</a></h3>
+<h3 id="the-table-grows-a-column-on-its-own">表会自行增加列<a class="anchor" href="#the-table-grows-a-column-on-its-own" aria-label="link">#</a></h3>
 <p><code>data</code> 携带表中没有的字段时，会让该列出现。<strong>只增不减</strong>：不删除任何东西，不收窄任何东西。</p>
 <p>在 BigQuery 上，这在 <strong>0.13.0</strong> 才成为现实。在此之前，<code>auto_table</code> 在每个目的地上都声明 <code>Evolve: additive</code>，而只有 Postgres 和 MySQL 驱动会读取这个声明，所以在那里形状在创建时就冻结了，而没有任何东西说明这一点。</p>
 <blockquote><p><strong>从 0.11.0 或 0.12.0 升级时</strong>，在 <code>0.11.0</code> 之前创建的表需要一次性迁移，因为第八个固定列进入了声明，而没有进入表：  ``<code>sql ALTER TABLE </code>&lt;dataset&gt;.&lt;table&gt;<code> ADD COLUMN IF NOT EXISTS brevis_received_bytes INT64 </code>``  Postgres 和 MySQL 从未受到影响。</p></blockquote>
 <p>在与 <code>ALTER</code> 的竞争中落败的批次会失败，而管道的常规重试会解决它：等待 DDL 的批次与等待 worker 的批次是同一回事，所以没有第二个缓冲区。跨副本时，metastore 为每张表、每种形态保持一个一秒钟的*去抖*，这样十个副本看到同一个新字段，就不会变成对 BigQuery 每张表每十秒五次元数据操作配额的十次 <code>ALTER</code>。</p>
 <p><strong>是去抖，而不是锁</strong>：没有释放任何东西，也没有续租。落败者是被*重试*，而不是被阻塞，持有去抖的副本死掉，只会让其他副本多等一秒。这是业界的做法：Delta Lake 和 Iceberg 乐观提交并重试，Kafka Connect 从分区顺序中获得串行化，Fivetran 保持每张表只有一个写入者。</p>
-<h3 id="名称就是攻击面">名称就是攻击面<a class="anchor" href="#名称就是攻击面" aria-label="link">#</a></h3>
+<h3 id="the-name-is-the-attack-surface">名称就是攻击面<a class="anchor" href="#the-name-is-the-attack-surface" aria-label="link">#</a></h3>
 <p><code>auto_table</code> 把载荷中的字符串变成 DDL，所以 <code>naming</code> 下的每个字段都是一项拒绝规则：</p>
 <ul><li><strong><code>pattern</code></strong> 默认为 <code>^[a-z][a-z0-9_]{2,48}$</code>，即 Postgres、MySQL、BigQuery 和 Redshift 不加引号都接受的名称的交集。通过的名称无需在任何地方加引号，也不可能携带注入。</li><li><strong><code>allow</code></strong> 按前缀进一步收窄。</li><li><strong><code>max_new_per_hour</code></strong>（默认 20）限制滚动一小时内的<strong>创建</strong>数量，绝不限制写入：已存在的表绝不会被限速。在 <code>metastore: memory</code> 下，额度保存在进程中，四个副本会放行四倍；在 <code>redis</code> 或 <code>memcached</code> 下，它们共享一个计数器。</li></ul>
 <p>规则之外的名称会<strong>按事件</strong>被拒绝，并在响应中说明，而同一请求中每个格式正确的事件仍然会落地：</p>
 <div class="code-block" data-code="{&quot;accepted&quot;: 0, &quot;rejected&quot;: [&quot;event 0: the table name \&quot;orders\&quot; does not match ^(app|svc)_[a-z0-9_]{2,40}$&quot;]}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>{"accepted": <span class="t-n">0</span>, "rejected": ["event <span class="t-n">0</span>: the table name \"orders\" does not match ^(app|svc)_[a-z0-9_]{<span class="t-n">2</span>,<span class="t-n">40</span>}$"]}</code></pre></div>
 <p>是按事件而不是按批次，这是有意的。如果在写入时才拒绝，整个批次都会失败：一个生产者的一个格式错误的事件，会把同一个 flush 窗口中所有其他生产者的事件一并埋掉，而它们都没有收到通知。</p>
 <p><strong>在没有 <code>listen.auth</code> 的端点上，<code>auto_table</code> 会被拒绝</strong>，包括在 <code>BREVIS_ENV=local</code> 下。能够指定表名的生产者就能创建表，所以即使在普通 stream 不需要认证的地方，它也需要认证。NetworkPolicy 无法替代它：那只限制谁能访问端口，而不限制他们请求哪个表名。</p>
-<h3 id="metastore-是缓存">metastore 是缓存<a class="anchor" href="#metastore-是缓存" aria-label="link">#</a></h3>
+<h3 id="the-metastore-is-a-cache">metastore 是缓存<a class="anchor" href="#the-metastore-is-a-cache" aria-label="link">#</a></h3>
 <p>它的存在是为了让每个事件的写入不必对应每个事件的查询，它保存三样东西：哪些表存在、DDL 的*去抖*，以及 <code>max_new_per_hour</code> 背后的计数器。</p>
 <p>它是缓存，<strong>不是</strong>事实来源。表是否存在由目的地裁决，而 <em>N</em> 个副本竞相创建同一张表是常态：<code>AlreadyExists</code> 就是成功，这只是减少了竞争。TTL 是它可能<strong>出错</strong>的时长。</p>
 <div class="table-wrap"><table><thead><tr><th>后端</th><th>何时使用</th></tr></thead><tbody><tr><td><code>memory</code></td><td>默认值，不需要任何东西。只有<strong>一个</strong>副本时，这是正确的答案</td></tr><tr><td><code>redis</code></td><td>需要 <code>addr_from</code>。<code>SETNX</code> 是 claim，<code>INCR</code> 是计数器</td></tr><tr><td><code>memcached</code></td><td>需要 <code>addr_from</code>。<code>Add</code> 是 claim，过期以<strong>秒</strong>为粒度</td></tr></tbody></table></div>
@@ -369,11 +369,11 @@ same record, content changed      →  a different id, both versions land</code>
 <p>过期是有代价的。当 <code>sinkFor</code> 不*知道*某张表时，会计入 <code>naming.max_new_per_hour</code>，所以一次未命中会为一张已经存在数周的表计费，而在一张表最后一个事件之后一分钟重启的 pod，从它所付费的共享后端那里什么都得不到。对于长期存在的表，答案是 <code>ttl: 0</code>。</p>
 <blockquote><p>在 <code>0.12.0</code> 和 <code>0.13.1</code> 上，这种写法<strong>无法解析</strong>：YAML 把单独的零读作 int，<code>0.13.2</code> 是第一个两种写法都接受的版本。在这些版本上，请写 <code>ttl: 0s</code>。</p></blockquote>
 <p><code>addr_from</code> 指定保存地址的<strong>环境变量</strong>的名称，绝不是地址本身：它带有密码的情况相当常见。</p>
-<h3 id="bigquery-有-flush-下限">BigQuery 有 flush 下限<a class="anchor" href="#bigquery-有-flush-下限" aria-label="link">#</a></h3>
+<h3 id="bigquery-has-a-flush-floor">BigQuery 有 flush 下限<a class="anchor" href="#bigquery-has-a-flush-floor" aria-label="link">#</a></h3>
 <p><strong>BigQuery 允许每张表每天 1,500 次加载作业。</strong> 默认的一秒窗口是 86,400 次，是配额的 57 倍，大约二十五分钟就用完了。这对 Pub/Sub 不是问题，而这个数字会从 Pub/Sub 的配置*带到*这里。</p>
 <p>所以，写入 BigQuery 的 stream（无论直接写入还是通过路由器），窗口小于 60 秒时会在<strong>加载时被拒绝</strong>。真正的答案是 Storage Write API，但它尚未编写；在此之前，配置会拒绝它无法兑现的窗口，而不是让第一次部署去发现问题。</p>
 <p><code>auto_table</code> 无法路由到 <strong>Redshift</strong>：该驱动不创建表，所以每个新名称都会在加载时失败。会在启动时按名称被拒绝。</p>
-<h2 id="尚不存在的内容">尚不存在的内容<a class="anchor" href="#尚不存在的内容" aria-label="link">#</a></h2>
+<h2 id="what-does-not-exist-yet">尚不存在的内容<a class="anchor" href="#what-does-not-exist-yet" aria-label="link">#</a></h2>
 <p><code>sqlite</code>、<code>dynamodb</code>、<code>kinesis</code>、<code>sqs</code>、<code>sns</code>、<code>kafka</code> 和 <code>rabbitmq</code> 都在计划中，尚未编写任何代码。（<code>redis</code> 和 <code>memcached</code> 作为 <strong>metastore</strong> 存在，那是另一回事：关于表的已知信息的缓存，绝不是目的地。）本页顶部的表格说明了每一个的状态，并且在状态变化时更新，不会提前更新。</p>
 
       <nav class="pagers" aria-label="页面">
@@ -388,7 +388,7 @@ same record, content changed      →  a different id, both versions land</code>
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#各自如何写入">各自如何写入</a></li><li class="toc-2"><a href="#每个-sink-各自独有的特点">每个 sink 各自独有的特点</a></li><li class="toc-2"><a href="#没有列声明">没有列声明</a></li><li class="toc-2"><a href="#导入列表就是选择">导入列表就是选择</a></li><li class="toc-3"><a href="#两个已发布的镜像">两个已发布的镜像</a></li><li class="toc-3"><a href="#拒绝信息会说明你手里拿的是哪个构建">拒绝信息会说明你手里拿的是哪个构建</a></li><li class="toc-2"><a href="#一条路由n-张表无需声明任何东西">一条路由，N 张表，无需声明任何东西</a></li><li class="toc-3"><a href="#信封">信封</a></li><li class="toc-3"><a href="#键属于-merge而不属于信封">键属于 merge，而不属于信封</a></li><li class="toc-3"><a href="#八个固定列外加记录携带的任何内容">八个固定列，外加记录携带的任何内容</a></li><li class="toc-3"><a href="#无需度量基础设施即可掌握数据量">无需度量基础设施即可掌握数据量</a></li><li class="toc-3"><a href="#数据量序列是选择性开启的">数据量序列是选择性开启的</a></li><li class="toc-3"><a href="#两种形态一份契约">两种形态，一份契约</a></li><li class="toc-3"><a href="#update-和-delete-是被记录的而不是被应用的">UPDATE 和 DELETE 是被记录的，而不是被应用的</a></li><li class="toc-3"><a href="#标识里没有时钟">标识里没有时钟</a></li><li class="toc-3"><a href="#表会自行增加列">表会自行增加列</a></li><li class="toc-3"><a href="#名称就是攻击面">名称就是攻击面</a></li><li class="toc-3"><a href="#metastore-是缓存">metastore 是缓存</a></li><li class="toc-3"><a href="#bigquery-有-flush-下限">BigQuery 有 flush 下限</a></li><li class="toc-2"><a href="#尚不存在的内容">尚不存在的内容</a></li></ul>
+      <ul><li class="toc-2"><a href="#how-each-one-writes">各自如何写入</a></li><li class="toc-2"><a href="#each-one-with-what-is-true-only-of-it">每个 sink 各自独有的特点</a></li><li class="toc-2"><a href="#no-column-declaration">没有列声明</a></li><li class="toc-2"><a href="#the-import-list-is-the-selection">导入列表就是选择</a></li><li class="toc-3"><a href="#two-published-images">两个已发布的镜像</a></li><li class="toc-3"><a href="#the-refusal-says-which-build-you-are-holding">拒绝信息会说明你手里拿的是哪个构建</a></li><li class="toc-2"><a href="#one-route-n-tables-nothing-declared">一条路由，N 张表，无需声明任何东西</a></li><li class="toc-3"><a href="#the-envelope">信封</a></li><li class="toc-3"><a href="#the-key-belongs-to-merge-not-to-the-envelope">键属于 merge，而不属于信封</a></li><li class="toc-3"><a href="#eight-fixed-columns-plus-whatever-the-record-carries">八个固定列，外加记录携带的任何内容</a></li><li class="toc-3"><a href="#volume-without-infrastructure-to-measure-volume">无需度量基础设施即可掌握数据量</a></li><li class="toc-3"><a href="#the-volume-series-are-opt-in">数据量序列是选择性开启的</a></li><li class="toc-3"><a href="#two-shapes-one-contract">两种形态，一份契约</a></li><li class="toc-3"><a href="#update-and-delete-are-recorded-not-applied">UPDATE 和 DELETE 是被记录的，而不是被应用的</a></li><li class="toc-3"><a href="#the-identity-has-no-clock-in-it">标识里没有时钟</a></li><li class="toc-3"><a href="#the-table-grows-a-column-on-its-own">表会自行增加列</a></li><li class="toc-3"><a href="#the-name-is-the-attack-surface">名称就是攻击面</a></li><li class="toc-3"><a href="#the-metastore-is-a-cache">metastore 是缓存</a></li><li class="toc-3"><a href="#bigquery-has-a-flush-floor">BigQuery 有 flush 下限</a></li><li class="toc-2"><a href="#what-does-not-exist-yet">尚不存在的内容</a></li></ul>
     </aside>
   </main>
 </div>
@@ -408,9 +408,9 @@ same record, content changed      →  a different id, both versions land</code>
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -433,7 +433,7 @@ same record, content changed      →  a different id, both versions land</code>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -57,6 +57,18 @@ def prefixo_docs(lang):
     return prefixo(lang) if lang in DOCS else prefixo(PADRAO)
 
 
+def versionado(caminho):
+    """/css/x.css -> /css/x.css?v=<hash do conteúdo>.
+
+    /css, /js e /assets saem com `immutable` por um ano (_headers) e a URL não
+    carregava hash: um navegador que já tinha o styles.css de ontem recebia o
+    HTML de hoje e o seletor de idiomas, sem o CSS dele. O hash na URL é o que
+    faz um arquivo novo ser um arquivo novo.
+    """
+    import hashlib
+    return "%s?v=%s" % (caminho, hashlib.sha256((RAIZ / caminho.lstrip("/")).read_bytes()).hexdigest()[:10])
+
+
 def prefixo(lang):
     return "" if lang == PADRAO else "/" + lang
 
@@ -201,10 +213,19 @@ def figura(alt, src):
 ADMON = {"note": "nota", "warning": "atenção", "tip": "dica", "danger": "cuidado"}
 
 
-def markdown(texto, rotulos):
-    """Devolve (html, sumário). O sumário lista os h2/h3 para o índice lateral."""
+def markdown(texto, rotulos, ids=None):
+    """Devolve (html, sumário). O sumário lista os h2/h3 para o índice lateral.
+
+    `ids` são os ids dos h2/h3 da MESMA página em inglês, na ordem: uma âncora é
+    parte da URL e a URL é en-US em todos os idiomas, então o título traduzido
+    não a escreve -- `/pt/docs/sql/#the-landing-layout`, e não o título em
+    português. Sem `ids` (o inglês), o id sai do próprio título, e um título
+    repetido ganha `-2`, `-3`: dois ids iguais numa página eram um link que
+    vai sempre para o primeiro.
+    """
     linhas = texto.split("\n")
     saida, sumario = [], []
+    vistos = {}
     i = 0
     while i < len(linhas):
         ln = linhas[i]
@@ -264,6 +285,12 @@ def markdown(texto, rotulos):
             nivel, txt = len(m.group(1)), inline(m.group(2))
             ident = slug(m.group(2))
             if nivel in (2, 3):
+                if ids is not None and len(sumario) < len(ids):
+                    ident = ids[len(sumario)]
+                else:
+                    vistos[ident] = vistos.get(ident, 0) + 1
+                    if vistos[ident] > 1:
+                        ident = "%s-%d" % (ident, vistos[ident])
                 sumario.append({"n": nivel, "id": ident, "t": re.sub(r"<[^>]+>", "", txt)})
                 saida.append('<h%d id="%s">%s<a class="anchor" href="#%s" aria-label="link">#</a></h%d>'
                              % (nivel, ident, txt, ident, nivel))
@@ -450,6 +477,14 @@ def gerar(destino):
     escritos, urls, indice = [], [], []
     paginas_por_idioma = {}
 
+    # Os ids dos títulos de cada página, em inglês: as outras línguas usam
+    # estes (ver markdown()).
+    ids_en, niveis_en = {}, {}
+    for pg in carregar_docs(PADRAO):
+        _, sm = markdown(pg["corpo"], i18n[PADRAO]["ui"])
+        ids_en[pg["slug"]] = [h["id"] for h in sm]
+        niveis_en[pg["slug"]] = [h["n"] for h in sm]
+
     for lang in IDIOMAS:
         s = i18n[lang]
         s_ui = s["ui"]
@@ -463,6 +498,8 @@ def gerar(destino):
             "lang": LOCALE[lang],
             "prefixo": pfx,
             "prefixo_docs": prefixo_docs(lang),
+            "url_styles": versionado("/css/styles.css"),
+            "url_lang": versionado("/js/lang.js"),
             "repo": REPO,
             "ano": "2026",
             "alt_landing": alternativas,
@@ -486,9 +523,6 @@ def gerar(destino):
                              % (href, LOCALE[l], LOCALE[l], atual, html.escape(IDIOMA_NATIVO[l])))
             rotulo = html.escape(s["ui"]["idioma"])
             return ('<details class="lang-dd"><summary aria-label="%s: %s">'
-                    '<svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" '
-                    'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" '
-                    'd="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>'
                     '<span>%s</span></summary><ul>%s</ul></details>'
                     % (rotulo, html.escape(IDIOMA_NATIVO[lang]), html.escape(IDIOMA_NATIVO[lang]),
                        "".join(itens)))
@@ -507,7 +541,7 @@ def gerar(destino):
             "classe_body": "page-landing",
             "conteudo": corpo,
             "extra_css": "",
-            "extra_js": '<script src="/js/main.js" defer></script>',
+            "extra_js": '<script src="%s" defer></script>' % versionado("/js/main.js"),
             "jsonld": json.dumps(jsonld(lang, s), ensure_ascii=False, indent=2),
         }))
         escritos.append(escrever(destino, ("%s/index.html" % pfx).lstrip("/"), pagina))
@@ -535,7 +569,7 @@ def gerar(destino):
                 for pg in grupos[g])
             secoes.append('<h2>%s</h2><div class="surface-grid">%s</div>'
                           % (html.escape(g), cartoes))
-        corpo = ('<main id="conteudo" class="doc-index"><div class="shell">'
+        corpo = ('<main id="content" class="doc-index"><div class="shell">'
                  '<p class="eyebrow">%s</p><h1>%s</h1><p class="lead">%s</p>%s</div></main>'
                  % (html.escape(s_ui["docs"]), html.escape(s_ui["docs_titulo"]),
                     html.escape(s_ui["docs_desc"]), "".join(secoes)))
@@ -550,7 +584,7 @@ def gerar(destino):
             "seletor": seletor("docs/"),
             "classe_body": "page-landing",
             "conteudo": corpo,
-            "extra_css": '<link rel="stylesheet" href="/css/docs.css">',
+            "extra_css": '<link rel="stylesheet" href="%s">' % versionado("/css/docs.css"),
             "extra_js": "",
             "jsonld": json.dumps({"@context": "https://schema.org", "@type": "CollectionPage",
                                   "name": s_ui["docs_titulo"], "inLanguage": LOCALE[lang]},
@@ -561,7 +595,27 @@ def gerar(destino):
 
         # ---- páginas ----
         for idx, p in enumerate(paginas if tem_docs else []):
-            corpo_html, sumario = markdown(p["corpo"], s["ui"])
+            ids = None if lang == PADRAO else ids_en.get(p["slug"])
+            if ids is not None:
+                # A page that has a section its English original lacks (or the
+                # other way round) cannot be matched heading by heading: every
+                # id after the difference would point at its neighbour. It keeps
+                # its own ids until the translation catches up.
+                _, previo = markdown(p["corpo"], s["ui"])
+                niveis = [h["n"] for h in previo]
+                if len(previo) != len(ids):
+                    print("aviso: %s/%s tem %d títulos h2/h3 e o inglês %d; fica com ids próprios até a tradução alcançar"
+                          % (lang, p["slug"], len(previo), len(ids)), file=sys.stderr)
+                    ids = None
+                elif niveis != niveis_en[p["slug"]]:
+                    # O mesmo número de títulos, em outra ordem: casar por
+                    # posição apontaria cada âncora para a seção vizinha. A
+                    # sequência de níveis (h2/h3) é o que uma tradução
+                    # preserva e uma reordenação quase nunca.
+                    print("aviso: %s/%s tem os títulos h2/h3 em outra ordem que o inglês; fica com ids próprios"
+                          % (lang, p["slug"]), file=sys.stderr)
+                    ids = None
+            corpo_html, sumario = markdown(p["corpo"], s["ui"], ids)
             # O autor escreve sempre "/docs/x/"; o idioma que não fica na raiz
             # recebe o prefixo aqui, para que a mesma frase sirva aos dois.
             if pfx:
@@ -606,8 +660,8 @@ def gerar(destino):
                 "classe_body": "page-doc serif" if p.get("serif") else "page-doc",
                 "fontes": fontes(p.get("serif")),
                 "conteudo": corpo,
-                "extra_css": '<link rel="stylesheet" href="/css/docs.css">',
-                "extra_js": '<script src="/js/docs.js" defer></script>',
+                "extra_css": '<link rel="stylesheet" href="%s">' % versionado("/css/docs.css"),
+                "extra_js": '<script src="%s" defer></script>' % versionado("/js/docs.js"),
                 "jsonld": json.dumps(jsonld_doc(lang, s, p), ensure_ascii=False, indent=2),
             }))
             escritos.append(escrever(destino, "%s/%s" % (pfx.lstrip("/"), rel + "index.html") if pfx
@@ -644,14 +698,15 @@ def gerar(destino):
 
     # ---- artefatos ----
     s = i18n[PADRAO]
-    erro = ('<main id="conteudo" class="erro-404"><div class="shell">'
+    erro = ('<main id="content" class="erro-404"><div class="shell">'
             '<p class="eyebrow">404</p><h1>%s</h1><p class="lead">%s</p>'
             '<div class="button-row"><a class="button button-primary" href="/">%s</a>'
             '<a class="button button-secondary" href="/docs/">%s</a></div></div></main>'
             % (html.escape(s["ui"]["erro_titulo"]), html.escape(s["ui"]["erro_texto"]),
                html.escape(s["ui"]["erro_home"]), html.escape(s["ui"]["docs"])))
     escrever(destino, "404.html", preencher(tpl["base"], {
-        "lang": LOCALE[PADRAO], "prefixo": "", "prefixo_docs": "", "repo": REPO, "ano": "2026",
+        "lang": LOCALE[PADRAO], "prefixo": "", "prefixo_docs": "", "repo": REPO,
+        "url_styles": versionado("/css/styles.css"), "url_lang": versionado("/js/lang.js"), "ano": "2026",
         "fontes": fontes(),
         "titulo": html.escape(s["ui"]["erro_titulo"]),
         "descricao": html.escape(s["ui"]["erro_texto"]),
@@ -664,7 +719,11 @@ def gerar(destino):
         **{"i18n." + k: html.escape(v) if isinstance(v, str) else v
            for k, v in s["ui"].items()},
     }))
-    escrever(destino, "search-index.json", json.dumps(indice, ensure_ascii=False, separators=(",", ":")))
+    # UMA ENTRADA POR LINHA. Numa linha só, qualquer página alterada em qualquer
+    # PR mexia no arquivo inteiro e todo merge de documentação conflitava aqui;
+    # linha a linha, dois PRs só conflitam se tocam a mesma página.
+    escrever(destino, "search-index.json",
+             "[\n" + ",\n".join(json.dumps(e, ensure_ascii=False, separators=(",", ":")) for e in indice) + "\n]\n")
     escrever(destino, "sitemap.xml",
              '<?xml version="1.0" encoding="UTF-8"?>\n'
              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'

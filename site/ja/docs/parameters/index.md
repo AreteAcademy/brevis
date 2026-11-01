@@ -146,7 +146,7 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01
 `--param` は繰り返し指定できます。`=` のない入力は**エラー**です。
 
 ```
-erro: --param "load_full": use chave=valor
+error: --param "load_full": use key=value
 ```
 
 これは意図的です。値を忘れた `--param load_full` はデフォルトで実行され、オペレータは

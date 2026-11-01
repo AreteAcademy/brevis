@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
-      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/workflows/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/workflows/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/workflows/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/workflows/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/workflows/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/workflows/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/workflows/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/workflows/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/workflows/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><span>हिन्दी</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/workflows/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/workflows/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/workflows/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/workflows/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/workflows/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/workflows/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/workflows/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/workflows/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/workflows/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         ओपन सोर्स देखें
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>Workflows</h1>
       <p class="doc-desc">पूरा YAML फ़ॉर्मेट — steps, निर्भरताएँ, images, संसाधन और शेड्यूल।</p>
       <p>Workflow एक YAML फ़ाइल है। वह घोषित करती है कि <strong>क्या चलाना है</strong>, <strong>किस क्रम में</strong> और <strong>किस runtime के साथ</strong> — और इससे आगे कुछ नहीं।</p>
-<h2 id="नयनतम-सरचन">न्यूनतम संरचना<a class="anchor" href="#नयनतम-सरचन" aria-label="link">#</a></h2>
+<h2 id="minimum-structure">न्यूनतम संरचना<a class="anchor" href="#minimum-structure" aria-label="link">#</a></h2>
 <div class="code-block" data-code="name: hello
 steps:
   - id: only
@@ -134,7 +134,7 @@ steps:
   - <span class="t-k">id</span>: only
     <span class="t-k">run</span>: echo done</code></pre></div>
 <p><code>name</code> डेटाबेस में और इंटरफ़ेस में workflow की पहचान है। <code>steps</code> steps की सूची है, हर एक की अनूठी <code>id</code> और एक <code>run</code> के साथ।</p>
-<h3 id="description-यह-कसलए-ह"><code>description</code> — यह किसलिए है<a class="anchor" href="#description-यह-कसलए-ह" aria-label="link">#</a></h3>
+<h3 id="description-what-it-is-for"><code>description</code> — यह किसलिए है<a class="anchor" href="#description-what-it-is-for" aria-label="link">#</a></h3>
 <p>वैकल्पिक, मुक्त-रूप, और engine में कुछ इसे नहीं पढ़ता:</p>
 <div class="code-block" data-code="name: daily-orders
 description: &gt;
@@ -151,7 +151,7 @@ steps:
     <span class="t-k">run</span>: python fetch.py</code></pre></div>
 <p>यह workflow की स्क्रीन के शीर्ष पर दिखता है, गिनतियों और शेड्यूल के ऊपर। ग्राफ़ पहले से बताता है कि प्रवाह <strong>क्या करता है</strong>; यही अकेली जगह है जो बताती है कि वह क्यों मौजूद है, और रात के तीन बजे पहली बार उसे खोलने वाले को असल में यही चाहिए।</p>
 <p>जिस workflow में यह नहीं होता वहाँ कुछ नहीं दिखता — खाली block नहीं, जो ऐसा पढ़ा जाता है जैसे कुछ लोड होने में विफल रहा।</p>
-<h2 id="करम-chain-य-dag">क्रम: chain या dag<a class="anchor" href="#करम-chain-य-dag" aria-label="link">#</a></h2>
+<h2 id="order-chain-or-dag">क्रम: chain या dag<a class="anchor" href="#order-chain-or-dag" aria-label="link">#</a></h2>
 <div class="code-block" data-code="type: chain   # order is the file&#x27;s order
 type: dag     # order comes from depends_on"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">type</span>: chain   <span class="t-c"># order is the file's order</span>
 <span class="t-k">type</span>: dag     <span class="t-c"># order comes from depends_on</span></code></pre></div>
@@ -193,7 +193,7 @@ steps:
     <span class="t-k">depends_on</span>: [extract, validate]</code></pre></div>
 <p>Runner ग्राफ़ पर <strong>स्तरों के हिसाब से</strong> चलता है: एक स्तर के भीतर सब कुछ समानांतर चलता है, और अगला स्तर तभी शुरू होता है जब पिछला पूरी तरह बंद हो जाए।</p>
 <aside class="admon admon-warning"><p class="admon-t">एक विफलता पूरे स्तर को रोक देती है</p><p>Runner स्तर में <strong>पहली</strong> विफलता पर रुक जाता है, अगला स्तर शुरू किए बिना। त्रुटि के बाद चलते रहना ऐसा आंशिक नतीजा बनाता जो पूरा दिखता है।</p></aside>
-<h2 id="शडयल">शेड्यूल<a class="anchor" href="#शडयल" aria-label="link">#</a></h2>
+<h2 id="schedule">शेड्यूल<a class="anchor" href="#schedule" aria-label="link">#</a></h2>
 <div class="code-block" data-code="schedule: &quot;0 5 * * *&quot;   # five-field cron
 concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">schedule</span>: "0 5 * * *"   <span class="t-c"># five-field cron</span>
 <span class="t-k">concurrency</span>: 1</code></pre></div>
@@ -207,7 +207,7 @@ concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><butto
   <span class="t-k">limit</span>: 1               <span class="t-c"># optional; a group without one means 1</span></code></pre></div>
 <p>समूह के हर workflow के run एक सीमा के विरुद्ध गिने जाते हैं, उन्हें जिसने भी शुरू किया हो — शेड्यूल, landing, backfill या क्लिक। जिस run को समूह भरा मिले वह <strong>कतार में प्रतीक्षा करता है</strong>; वह छोड़ा नहीं जाता और विफल नहीं होता। वही तालिकाएँ लिखने वाला तीसरा workflow समूह का नाम लेकर जुड़ता है। प्रतीक्षा के दौरान run का पेज यह बताता है: कौन-सा समूह, उसकी सीमा, और कौन-से run slots थामे हैं।</p>
 <ul><li>हर सदस्य <strong>वही सीमा</strong> घोषित करता है। <code>validate</code> और <code>publish</code> ऐसे समूह को मना करते हैं जो एक फ़ाइल में 1 और दूसरी में 3 के साथ घोषित हो, पहले से प्रकाशित सदस्यों के विरुद्ध भी।</li><li>समूह <strong>Brevis के run</strong> को क्रमबद्ध करता है। कोई अपनी मशीन पर <code>dbt run</code> शुरू करे तो वह इस कतार में नहीं है, और उसी तरह विफल होता है।</li></ul>
-<h2 id="image-और-ससधन">Image और संसाधन<a class="anchor" href="#image-और-ससधन" aria-label="link">#</a></h2>
+<h2 id="image-and-resources">Image और संसाधन<a class="anchor" href="#image-and-resources" aria-label="link">#</a></h2>
 <div class="code-block" data-code="image: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
 resources:
   cpu: 200m
@@ -238,9 +238,9 @@ resources:
     <span class="t-k">resources</span>: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
 <p>इसी से Go fetcher 1.9 GB के <code>dbt build</code> के बगल में 12 MB और 32Mi का पड़ता है, दोनों के बड़े वाले का आकार चुकाने के बजाय। देखें <a href="/hi/docs/pod-per-step/">हर step के लिए एक pod</a>।</p>
-<h2 id="step-क-फलड">Step के फ़ील्ड<a class="anchor" href="#step-क-फलड" aria-label="link">#</a></h2>
+<h2 id="step-fields">Step के फ़ील्ड<a class="anchor" href="#step-fields" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>फ़ील्ड</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>ज़रूरी</strong></td><td>workflow में अनूठी; ग्राफ़ और लॉग में दिखने वाला नाम</td></tr><tr><td><code>run</code></td><td></td><td>कमांड</td></tr><tr><td><code>image</code></td><td></td><td>step की image; इसके बिना, शीर्ष वाली विरासत में मिलती है</td></tr><tr><td><code>host</code></td><td></td><td>कमांड को ऐसी मशीन पर भेजें जिसे engine <strong>नहीं</strong> सँभालता — <code>image</code> का विकल्प, साथी कभी नहीं। देखें <a href="https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host" target="_blank" rel="noopener">Kubernetes गाइड में <code>host:</code></a></td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> बिना shell के चलाता है — distroless पर ज़रूरी</td></tr><tr><td><code>depends_on</code></td><td></td><td><code>id</code> की सूची जो पहले खत्म होनी चाहिए; प्रविष्टि <code>{step, label}</code> हो सकती है</td></tr><tr><td><code>marker</code></td><td><code>false</code></td><td>बिना कमांड का step, <code>start</code> या <code>end</code> के लिए</td></tr><tr><td><code>resources</code></td><td></td><td>उस step के लिए <code>cpu</code>, <code>memory</code> और <code>limits</code></td></tr><tr><td><code>runtime</code>, <code>tools</code></td><td></td><td>step की भाषा और टूल — देखें <a href="/hi/docs/runtime/">Step runtime</a></td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>अपनी निर्भरताओं की किस स्थिति में यह step चलता है — नीचे देखें</td></tr><tr><td><code>unless_empty</code></td><td></td><td>वह संदर्भ key जो तय करती है कि करने को कुछ है या नहीं — नीचे देखें</td></tr><tr><td><code>for_each</code></td><td></td><td>सूची रखने वाली संदर्भ key; step हर तत्व के लिए एक बार चलता है — नीचे देखें</td></tr><tr><td><code>group</code></td><td></td><td>इस step को नामित, सिकुड़ने वाले बॉक्स के भीतर बनाता है — नीचे देखें</td></tr><tr><td><code>uses</code></td><td></td><td>दूसरा workflow जिसके steps इसकी जगह लेते हैं — नीचे देखें</td></tr><tr><td><code>on_error</code></td><td></td><td>इस step की विफलताओं की घोषणा करता है — नीचे देखें</td></tr></tbody></table></div>
-<h2 id="step-क-सरफ-तब-चलन-जब-करन-क-कछ-ह">Step को सिर्फ़ तब चलाना जब करने को कुछ हो<a class="anchor" href="#step-क-सरफ-तब-चलन-जब-करन-क-कछ-ह" aria-label="link">#</a></h2>
+<h2 id="running-a-step-only-when-there-is-something-to-do">Step को सिर्फ़ तब चलाना जब करने को कुछ हो<a class="anchor" href="#running-a-step-only-when-there-is-something-to-do" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# in extract
 context.set(has_rows=len(rows) &gt; 0)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
@@ -254,15 +254,15 @@ context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
 <p><code>unless_empty</code> <strong>key</strong> का नाम लेता है, एक्सप्रेशन का नहीं। Step फ़ैसला करता है और जवाब प्रकाशित करता है; engine एक key पढ़ता है और पूछता है कि वह खाली है या नहीं।</p>
 <div class="table-wrap"><table><thead><tr><th>खाली गिना जाता है</th><th>मौजूद गिना जाता है</th></tr></thead><tbody><tr><td><code>false</code>, <code>0</code>, <code>""</code>, <code>null</code>, <code>[]</code>, <code>{}</code></td><td>बाकी सब कुछ</td></tr></tbody></table></div>
 <p><strong>string</strong> के रूप में <code>"false"</code> मौजूद है। जिस step ने वे पाँच अक्षर प्रकाशित किए, उसने कुछ प्रकाशित किया, और यह अंदाज़ा लगाना कि उसका मतलब boolean था ही वह तरीका है जिससे कोई नियम ऐसी राय रखने लगता है जो उसका लेखक देख नहीं सकता। असली boolean प्रकाशित करें।</p>
-<h3 id="एकसपरशन-कय-नह">एक्सप्रेशन क्यों नहीं<a class="anchor" href="#एकसपरशन-कय-नह" aria-label="link">#</a></h3>
+<h3 id="why-not-an-expression">एक्सप्रेशन क्यों नहीं<a class="anchor" href="#why-not-an-expression" aria-label="link">#</a></h3>
 <p>लुभावना डिज़ाइन <code>when: "{{ context.extract.rows &gt; 0 }}"</code> है। छोटी एक्सप्रेशन भाषा बड़ी प्रतिबद्धता है: एक parser, यह बताने के लिए टाइप सिस्टम कि JSON <code>any</code> में <code>&gt;</code> का क्या अर्थ है, एक सुरक्षा कहानी क्योंकि एक्सप्रेशन किसी और की लिखी YAML से निकलता है, और ऐसे त्रुटि संदेश जो string के भीतर इशारा करते हैं। जिस भी ऑर्केस्ट्रेटर में यह है, उसके bug tracker में इसी से भरा पड़ा है।</p>
 <p>यहाँ फ़ैसला उसी भाषा में रहता है जो उसका लेखक पहले से लिखता है, जहाँ उसका अपना टेस्ट फ्रेमवर्क पहुँच सकता है।</p>
-<h3 id="गयब-key-वफलत-ह-खल-मन-नह">गायब key विफलता है, खाली मान नहीं<a class="anchor" href="#गयब-key-वफलत-ह-खल-मन-नह" aria-label="link">#</a></h3>
+<h3 id="a-missing-key-is-a-failure-not-an-empty-value">गायब key विफलता है, खाली मान नहीं<a class="anchor" href="#a-missing-key-is-a-failure-not-an-empty-value" aria-label="link">#</a></h3>
 <p>Key न हो तो step <strong>विफल</strong> होता है और संदेश उसका नाम बताता है, साथ में यह भी कि प्रकाशक ने असल में क्या लिखा:</p>
 <div class="code-block" data-code="step &quot;transform&quot; reads `extract.has_row`, and &quot;extract&quot; published &quot;has_rows&quot; but not &quot;has_row&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"</code></pre></div>
 <p>विकल्प — गायब key को "खाली, इसलिए छोड़ दो" पढ़ना — टाइपो को ऐसे step में बदल देता है जो चुपचाप और हमेशा के लिए चलना बंद कर दे, और कहीं कुछ न बताए कि क्यों। इस फ़ीचर का यह सबसे बुरा नतीजा है।</p>
 <p>Key हमेशा उस step से योग्य होती है जो उसे प्रकाशित करता है, और वह step ऐसा होना चाहिए जिस पर यह निर्भर हो। दोनों <strong>publish</strong> पर मना किए जाते हैं: जो step उस key पर टिका है जिसे वह कभी नहीं देख सकता, वह हमेशा छोड़ा जाता, और जब रात का run चलना बंद हो तब यह पता चलना देर है।</p>
-<h2 id="step-क-हर-ततव-क-लए-एक-बर-चलन">Step को हर तत्व के लिए एक बार चलाना<a class="anchor" href="#step-क-हर-ततव-क-लए-एक-बर-चलन" aria-label="link">#</a></h2>
+<h2 id="running-a-step-once-per-element">Step को हर तत्व के लिए एक बार चलाना<a class="anchor" href="#running-a-step-once-per-element" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# in extract
 context.set(partitions=[&quot;2026-01&quot;, &quot;2026-02&quot;, &quot;2026-03&quot;])"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
@@ -277,20 +277,20 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>वेरिएबल</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_MAP_INDEX</code></td><td><code>0</code>, <code>1</code>, <code>2</code> …</td></tr><tr><td><code>BREVIS_MAP_VALUE</code></td><td>तत्व</td></tr></tbody></table></div>
 <p>JSON string <strong>बिना अपने उद्धरण चिह्नों के</strong> आती है, इसलिए <code>["2026-01"]</code> पर <code>for_each</code> shell को <code>2026-01</code> देता है, <code>"2026-01"</code> नहीं। बाकी सब कुछ — संख्या, ऑब्जेक्ट, सूची — अपने JSON के रूप में आता है।</p>
 <p>Mapped न होने वाले step पर दोनों में से कोई वेरिएबल नहीं होता। जो हमेशा मौजूद और हमेशा खाली हो, वह environment पढ़ने वाले को उसे अनदेखा करना सिखाता है।</p>
-<h3 id="dag-क-आकर-नह-बदलत">DAG का आकार नहीं बदलता<a class="anchor" href="#dag-क-आकर-नह-बदलत" aria-label="link">#</a></h3>
+<h3 id="the-shape-of-the-dag-does-not-change">DAG का आकार नहीं बदलता<a class="anchor" href="#the-shape-of-the-dag-does-not-change" aria-label="link">#</a></h3>
 <p>Mapped step अब भी एक नोड है, edges के एक ही सेट के साथ। उसके नीचे सिर्फ़ पंक्तियों की संख्या बदलती है, इसलिए लेआउट वही है जो हमेशा था और <code>[3]</code> पढ़ने के समय उन पंक्तियों से गिना जाता है — कुछ सहेजा नहीं जाता, इसलिए कुछ तालमेल में रखना नहीं पड़ता और गलत गिनती ठीक की गई query से ज़्यादा नहीं जी सकती।</p>
 <p>जब तक इंस्टेंस चल रहे हैं, कार्ड <code>[2/3]</code> पढ़ता है।</p>
-<h3 id="एक-वफल-इसटस-step-क-वफल-करत-ह">एक विफल इंस्टेंस step को विफल करता है<a class="anchor" href="#एक-वफल-इसटस-step-क-वफल-करत-ह" aria-label="link">#</a></h3>
+<h3 id="one-failed-instance-fails-the-step">एक विफल इंस्टेंस step को विफल करता है<a class="anchor" href="#one-failed-instance-fails-the-step" aria-label="link">#</a></h3>
 <p>तीन partitions लोड हों और एक न हो, तो वह step अपना काम नहीं कर पाया, और उसके नीचे के steps यह देखते हैं। जो नोड इसलिए हरा हो जाए कि ज़्यादातर चला, वह झूठ बोलने वाला बैज है।</p>
 <p><strong>Retry सिर्फ़ उन इंस्टेंस को दोबारा करता है जो विफल हुए।</strong> अठारह partitions जो चले, दो के टूटने पर दोबारा लोड नहीं होते।</p>
-<h3 id="खल-सच-skipped-ह-सफलत-नह">खाली सूची <code>skipped</code> है, सफलता नहीं<a class="anchor" href="#खल-सच-skipped-ह-सफलत-नह" aria-label="link">#</a></h3>
+<h3 id="an-empty-list-is-skipped-not-success">खाली सूची <code>skipped</code> है, सफलता नहीं<a class="anchor" href="#an-empty-list-is-skipped-not-success" aria-label="link">#</a></h3>
 <p>जिस step ने कुछ नहीं किया क्योंकि करने को कुछ नहीं था, वह उसे करने में सफल नहीं हुआ। शून्य इंस्टेंस के ऊपर हरा नोड ठीक वही चीज़ है जिस पर कोई डैशबोर्ड बना बैठता है।</p>
 <p><strong>सूची न होने वाला</strong> मान विफल होता है, और गायब key भी — वही नीति जो <code>unless_empty:</code> की है, उसी कारण से: चुपचाप शून्य इंस्टेंस बनाने वाला टाइपो step को हमेशा के लिए बंद कर देता।</p>
-<h3 id="fan-out-समत-ह-और-सम-वरसत-म-मलत-ह">Fan-out सीमित है, और सीमा विरासत में मिलती है<a class="anchor" href="#fan-out-समत-ह-और-सम-वरसत-म-मलत-ह" aria-label="link">#</a></h3>
+<h3 id="the-fan-out-is-bounded-and-the-bound-is-inherited">Fan-out सीमित है, और सीमा विरासत में मिलती है<a class="anchor" href="#the-fan-out-is-bounded-and-the-bound-is-inherited" aria-label="link">#</a></h3>
 <p>सूची संदर्भ में चलती है, और संदर्भ की 4096 बाइट की सीमा kubelet से आती है। Workflow दस हज़ार pods नहीं माँग सकता जब तक पहले चार किलोबाइट में उसे कहने का तरीका न खोज ले। यह रखने लायक सीमा है, घूमकर निकलने लायक नहीं।</p>
-<h3 id="mapped-step-कय-परकशत-करत-ह">Mapped step क्या प्रकाशित करता है<a class="anchor" href="#mapped-step-कय-परकशत-करत-ह" aria-label="link">#</a></h3>
+<h3 id="what-a-mapped-step-publishes">Mapped step क्या प्रकाशित करता है<a class="anchor" href="#what-a-mapped-step-publishes" aria-label="link">#</a></h3>
 <p>उसका आउटपुट हर इंस्टेंस की पंक्ति पर दर्ज होता है और नीचे के steps को <strong>नहीं</strong> दिखता। एक step के नाम के नीचे प्रकाशित करते चार इंस्टेंस एक key के चार मान हैं, और <code>context.String("load.bucket")</code> का कोई जवाब अनुमान के सिवा कुछ नहीं। Step इसे चुपचाप गिराने के बजाय अपने लॉग में बता देता है।</p>
-<h2 id="गरफ-पर-steps-क-समहत-करन">ग्राफ़ पर steps को समूहित करना<a class="anchor" href="#गरफ-पर-steps-क-समहत-करन" aria-label="link">#</a></h2>
+<h2 id="grouping-steps-on-the-graph">ग्राफ़ पर steps को समूहित करना<a class="anchor" href="#grouping-steps-on-the-graph" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: extract_orders
     group: sales_data_reporting
@@ -310,7 +310,7 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <p><strong>सिर्फ़ दृश्य।</strong> Airflow के TaskGroups उनके भीतर की ids पर <em>उपसर्ग</em> भी लगाते हैं, इसलिए <code>extract</code> <code>sales.extract</code> बन जाता है। यह ऐसा नहीं करता: उपसर्ग मौजूदा workflow के हर <code>depends_on</code>, हर संदर्भ key और हर दर्ज पंक्ति को बदल देता, ऐसे फ़ीचर के लिए जिसका पूरा मूल्य यह है कि बड़ा ग्राफ़ बेहतर पढ़ा जाता है। Namespacing बाद में जोड़ी जा सकती है — यह इसमें सख़्त जोड़ है।</p>
 <p>समूह <strong>लेबल</strong> है, कंटेनर नहीं। Steps अपनी वैश्विक ids रखते हैं, समूह स्तरों में फैल सकता है, और execution के बारे में कुछ नहीं बदलता।</p>
 <p>समूह के नाम पर क्लिक करने से वह सिकुड़ता है: उसके steps गायब हो जाते हैं और सीमा पार करने वाले तीर बॉक्स की ओर इशारा करते हैं।</p>
-<h2 id="दसर-workflow-क-दबर-इसतमल">दूसरे workflow का दोबारा इस्तेमाल<a class="anchor" href="#दसर-workflow-क-दबर-इसतमल" aria-label="link">#</a></h2>
+<h2 id="reusing-another-workflow">दूसरे workflow का दोबारा इस्तेमाल<a class="anchor" href="#reusing-another-workflow" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# nightly.yaml
 steps:
   - id: prepare
@@ -339,11 +339,11 @@ steps:
 <p>वे एक सिकुड़ने वाले समूह के रूप में आते हैं, इसलिए ग्राफ़ वही दिखाता है जो फ़ाइल ने कहा।</p>
 <p><strong>Publish पर फैलाया जाता है, run के समय नहीं चलाया जाता।</strong> जो step child <em>run</em> ट्रिगर करके इंतज़ार करे, वही डिज़ाइन है जिसने Airflow को deadlock किया, और इस engine में भी वही सामग्री है: pod की सीमा प्रति-प्रोसेस semaphore है, इसलिए slot थामे बैठा parent उस child के इंतज़ार में जिसे उसी pool से slots चाहिए, अटक जाता है — और सिर्फ़ भार में, यानी production में। एक run, एक ग्राफ़, एक pool।</p>
 <p>जो यह छोड़ता है वह अपनी id और अपने इतिहास वाला child run है।</p>
-<h3 id="नयम">नियम<a class="anchor" href="#नयम" aria-label="link">#</a></h3>
+<h3 id="the-rules">नियम<a class="anchor" href="#the-rules" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>child <strong>उसी publish</strong> में होना चाहिए</td><td>सिर्फ़ पहले से प्रकाशित होना काफ़ी नहीं</td></tr><tr><td>तीर</td><td>step में आने वाले तीर child के हर <strong>root</strong> में आने वाले तीर बन जाते हैं; उससे बाहर जाने वाले, उसके हर <strong>leaf</strong> से बाहर</td></tr><tr><td>child के <code>image</code>, <code>env</code>, <code>secrets</code>, <code>resources</code></td><td>हर step पर materialise होते हैं, ताकि वह उसमें चले जो उसकी अपनी फ़ाइल ने कहा</td></tr><tr><td>child की <code>unless_empty</code> / <code>for_each</code> keys</td><td>उपसर्ग के साथ चलती हैं</td></tr><tr><td>nesting</td><td>समतल की जाती है, गहराई-प्रथम</td></tr><tr><td>चक्र</td><td>publish पर मना, श्रृंखला का नाम बताते हुए</td></tr></tbody></table></div>
 <p><strong>उसी publish में, और "पहले से प्रकाशित" नहीं, यह ज़रूरी वाली बात है।</strong> डेटाबेस पढ़ने वाला विस्तार <code>brevis validate</code> — जो जानबूझकर कोई डेटाबेस नहीं छूता — को <code>brevis publish</code> से अलग सवाल का जवाब देने वाला बना देता, और जो फ़ाइल CI में पास हुई वही deploy में विफल होती।</p>
 <p>Child अब भी अपने आप प्रकाशित हो सकता है: विस्तार <strong>नकल</strong> करता है, खपत नहीं। Step <code>uses:</code> भी और <code>run:</code>, <code>action:</code> या <code>marker:</code> भी घोषित नहीं कर सकता — यह फ़ाइल का दो बातें कहना है।</p>
-<h2 id="तर-क-मतलब-बतन">तीर का मतलब बताना<a class="anchor" href="#तर-क-मतलब-बतन" aria-label="link">#</a></h2>
+<h2 id="saying-what-an-arrow-means">तीर का मतलब बताना<a class="anchor" href="#saying-what-an-arrow-means" aria-label="link">#</a></h2>
 <p>निर्भरता लेबल ढो सकती है, जो ग्राफ़ में तीर पर दिखता है।</p>
 <div class="code-block" data-code="steps:
   - id: determine_load_type
@@ -374,7 +374,7 @@ steps:
         <span class="t-k">label</span>: changed existing data</code></pre></div>
 <p>सादा रूप — <code>depends_on: [extract]</code> — काम करता रहता है और सामान्य बना रहता है। ज़्यादातर निर्भरताओं के पास कहने को कुछ नहीं होता, और हर तीर पर लेबल शोर है।</p>
 <p>लेबल अपनी जगह <strong>शाखा</strong> पर कमाते हैं: एक ही step से निकलते दो तीर जिन पर कुछ लिखा नहीं, ऐसा डायग्राम है जिसे पढ़ने के लिए स्रोत खोलना पड़ता है, और ग्राफ़ ठीक इसी से बचने के लिए है।</p>
-<h2 id="ऐस-step-ज-कछ-नह-करत">ऐसा step जो कुछ नहीं करता<a class="anchor" href="#ऐस-step-ज-कछ-नह-करत" aria-label="link">#</a></h2>
+<h2 id="a-step-that-does-nothing">ऐसा step जो कुछ नहीं करता<a class="anchor" href="#a-step-that-does-nothing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: start
     marker: true
@@ -391,7 +391,7 @@ steps:
 <p><code>marker: true</code> बिना कमांड का step है। वह कुछ नहीं चलाता, तुरंत सफल होता है, और ग्राफ़ पर दिखता है।</p>
 <p>यह सजावट नहीं है। हर शाखा पर निर्भर <code>end</code> <em>क्या पूरा काम खत्म हुआ?</em> को छह तीरों के पीछे चलने के बजाय एक नोड बना देता है — और वह किसी भी दूसरे step की तरह व्यवहार करता है, इसलिए विफल शाखा के नीचे का <code>end</code> <strong>skipped</strong> होता है, हरा नहीं।</p>
 <p><strong>जिस step में न <code>run:</code> है और न <code>marker: true</code>, वह अब भी मना है।</strong> दोनों मामले एक में नहीं सिमटने चाहिए: खाली कमांड लगभग हमेशा गलती है, और <code>marker: true</code> वह तरीका है जिससे कोई कहता है कि उसका यही मतलब था। जो marker <code>run:</code> भी घोषित करे वह भी मना है — यह फ़ाइल का दो बातें कहना है।</p>
-<h2 id="step-क-सरफ-तब-चलन-जब-कछ-वफल-हआ-ह">Step को सिर्फ़ तब चलाना जब कुछ विफल हुआ हो<a class="anchor" href="#step-क-सरफ-तब-चलन-जब-कछ-वफल-हआ-ह" aria-label="link">#</a></h2>
+<h2 id="running-a-step-only-when-something-failed">Step को सिर्फ़ तब चलाना जब कुछ विफल हुआ हो<a class="anchor" href="#running-a-step-only-when-something-failed" aria-label="link">#</a></h2>
 <p>डिफ़ॉल्ट रूप से step तब चलता है जब उससे पहले सब कुछ चला। <code>when:</code> इसे बदलता है।</p>
 <div class="code-block" data-code="steps:
   - id: extract
@@ -420,11 +420,11 @@ steps:
     <span class="t-k">when</span>: all_done            <span class="t-c"># runs either way</span></code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>नियम</th><th></th></tr></thead><tbody><tr><td><code>all_success</code></td><td>डिफ़ॉल्ट। जिन पर यह step निर्भर है वे सब सफल हुए — इसकी <strong>अपनी</strong> निर्भरताएँ, जैसे Airflow में</td></tr><tr><td><code>any_failed</code></td><td>जिन steps पर यह निर्भर है उनमें से कम से कम एक विफल हुआ</td></tr><tr><td><code>all_done</code></td><td>जिन पर यह step निर्भर है वे सब खत्म हो चुके, चाहे जैसे भी खत्म हुए</td></tr></tbody></table></div>
 <p>अज्ञात नियम publish पर मना किया जाता है, यह बताते हुए कि क्या मान्य है। ऐसा होना ही चाहिए: <code>when: on_failure</code> जिसे "डिफ़ॉल्ट" पढ़ लिया जाए वह <strong>सफलता</strong> पर चलता — जो वह कहता है उसका उलटा, उस रात पता चलता जब मायने रखता।</p>
-<h3 id="ज-step-नह-चलत-वह-skipped-ह">जो step नहीं चलता वह <code>skipped</code> है<a class="anchor" href="#ज-step-नह-चलत-वह-skipped-ह" aria-label="link">#</a></h3>
+<h3 id="a-step-that-does-not-run-is-skipped">जो step नहीं चलता वह <code>skipped</code> है<a class="anchor" href="#a-step-that-does-not-run-is-skipped" aria-label="link">#</a></h3>
 <p>यह अपनी अलग स्थिति है, अपने रंग में बनी, और कारण साथ ढोती है: <em><code>extract</code> विफल था</em>। इससे पहले, विफलता के नीचे के step का कोई रिकॉर्ड ही नहीं था और स्क्रीन उसे हमेशा के लिए pending दिखाती थी।</p>
 <p><code>skipped</code> न विफलता है न सफलता। जिस step का upstream टूटा वह विफल नहीं हुआ — उसे मौका ही नहीं मिला — और उसे सफलता कहना झूठ है जो run की अपनी स्थिति तक पहुँचता है।</p>
 <p>Trigger नियम तय करता है कि कौन-से steps <strong>चलें</strong>। वह run का नतीजा तय नहीं करता: <code>notify_failure</code> जिसने अपना संदेश पहुँचा दिया, उसका मतलब यह नहीं कि pipeline चली, और run अब भी विफल है।</p>
-<h3 id="all-success-सथनय-ह-जस-airflow-म"><code>all_success</code> स्थानीय है, जैसे Airflow में<a class="anchor" href="#all-success-सथनय-ह-जस-airflow-म" aria-label="link">#</a></h3>
+<h3 id="all-success-is-local-as-in-airflow"><code>all_success</code> स्थानीय है, जैसे Airflow में<a class="anchor" href="#all-success-is-local-as-in-airflow" aria-label="link">#</a></h3>
 <p>नियम step की <strong>अपनी</strong> निर्भरताओं के बारे में पूछता है और कुछ नहीं। असंबंधित शाखा की विफलता इसे नहीं रोकती:</p>
 <div class="code-block" data-code="extract_orders ──✕                 (failed)
 extract_users  ──✓── transform_users ──✓     keeps going"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>extract_orders ──✕                 (failed)
@@ -435,7 +435,7 @@ extract_users  ──✓── transform_users ──✓     keeps going</code><
 <ul><li>run अब भी उसी त्रुटि के साथ <strong>विफल</strong> होता है;</li><li>ग्राफ़ विफल step को लाल में और हर skipped को अपने रंग में दिखाता है, हर एक बताता है कि किस step ने उसे रोका;</li><li>run के हार मानने पर अलर्ट अब भी जाता है।</li></ul>
 <p>आंशिक नतीजा अब पूरा नहीं दिखता, क्योंकि run कहता है कि वह नहीं है।</p>
 <p><strong>जो छोड़ा गया है</strong>, सीधे कहें तो: कहीं और विफल हुए run पर असंबंधित शाखा अब अपना डेटा लिखती है।</p>
-<h3 id="retry-सरफ-वह-दबर-चलत-ह-ज-वफल-हआ">Retry सिर्फ़ वही दोबारा चलाता है जो विफल हुआ<a class="anchor" href="#retry-सरफ-वह-दबर-चलत-ह-ज-वफल-हआ" aria-label="link">#</a></h3>
+<h3 id="a-retry-re-runs-only-what-failed">Retry सिर्फ़ वही दोबारा चलाता है जो विफल हुआ<a class="anchor" href="#a-retry-re-runs-only-what-failed" aria-label="link">#</a></h3>
 <p>Run का retry पूरा ग्राफ़ दोबारा नहीं करता। जो step <strong>उसी run</strong> के पहले प्रयास में पहले ही सफल हो चुका है, वह अपना नतीजा रखता है और दोबारा नहीं चलता — जैसे Airflow में cleared DAG run व्यवहार करता है।</p>
 <div class="code-block" data-code="attempt 1   extract ✓    load ✕    report (skipped)
 attempt 2   extract –    load ✓    report ✓            extract is not re-run"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>attempt 1   extract ✓    load ✕    report (skipped)
@@ -443,7 +443,7 @@ attempt 2   extract –    load ✓    report ✓            extract is not re-r
 <p>वह अपनी मूल पंक्ति रखता है: उसकी अवधि, उसका लॉग और जो उसने प्रकाशित किया वे पहले प्रयास के हैं, क्योंकि काम तब हुआ। <strong>उसके नीचे का step अब भी वही पढ़ता है जो उसने प्रकाशित किया</strong> — run का संदर्भ सहेजा गया है, दोबारा नहीं बनाया गया।</p>
 <p>मायने रखने वाला फ़र्क: यह <strong>इस run के</strong> पहले प्रयासों के बारे में है। जो step <em>कल के</em> run में सफल हुआ वह आज सामान्य रूप से चलता है। (वह दूसरा सवाल भी मौजूद है, और वही SDK को बताता है कि यह step का पहली बार है या नहीं — देखें <code>BREVIS_RUN_FIRST</code>।)</p>
 <p>जो step <strong>skipped</strong> हुआ वह निपटा हुआ नहीं है: वह कभी चला नहीं, और retry नए प्रयास के नतीजों के साथ उसके बारे में दोबारा फ़ैसला करता है।</p>
-<h2 id="step-क-वफलतओ-क-घषण">Step की विफलताओं की घोषणा<a class="anchor" href="#step-क-वफलतओ-क-घषण" aria-label="link">#</a></h2>
+<h2 id="announcing-a-steps-failures">Step की विफलताओं की घोषणा<a class="anchor" href="#announcing-a-steps-failures" aria-label="link">#</a></h2>
 <p>हर विफलता की घोषणा पहले से होती है: webhook कॉन्फ़िगर हो तो हार मानने वाला run एक संदेश भेजता है, किसी फ़ाइल में कोई block दोहराए बिना। <code>on_error</code> उस step के लिए है जिसे अपना चाहिए।</p>
 <div class="code-block" data-code="steps:
   - id: fetch_observations
@@ -470,12 +470,12 @@ attempt 2   extract –    load ✓    report ✓            extract is not re-r
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *</code></pre></div>
 <p>यह फ़ाइल या डायरेक्टरी लेता है। डायरेक्टरी में यह <code>*.y*ml</code> से मेल खाता है और क्रमबद्ध करता है — दो run एक ही लॉग बनाते हैं, और दो deploys के बीच का फ़र्क शोर नहीं बनता।</p>
-<h2 id="publish-करन">Publish करना<a class="anchor" href="#publish-करन" aria-label="link">#</a></h2>
+<h2 id="publishing">Publish करना<a class="anchor" href="#publishing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis publish workflows/
 brevis publish workflows/ --project acme --prune"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">brevis</span> publish workflows/
 <span class="t-k">brevis</span> publish workflows/ <span class="t-n">--project</span> acme <span class="t-n">--prune</span></code></pre></div>
 <p><code>--prune</code> प्रकाशित सूची में अनुपस्थित workflows को प्रोजेक्ट से हटाता है, उनका इतिहास सुरक्षित रखते हुए। यह डिफ़ॉल्ट <strong>नहीं</strong> है, व्यावहारिक कारण से: <code>publish one-file.yaml</code> बाकी अड़तालीस को सिर्फ़ इसलिए नहीं हटा सकता कि कमांड लाइन पर उनका नाम नहीं था।</p>
-<h2 id="अगल-कदम">अगले कदम<a class="anchor" href="#अगल-कदम" aria-label="link">#</a></h2>
+<h2 id="next-steps">अगले कदम<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/hi/docs/parameters/">पैरामीटर</a> — दो run के बीच क्या बदलता है</li><li><a href="/hi/docs/scheduler-and-queue/">शेड्यूलर और कतार</a> — workflow execution कैसे बनता है</li><li><a href="/hi/docs/context/">steps के बीच संदर्भ</a> — एक step अगले को क्या बताता है</li></ul>
 
       <nav class="pagers" aria-label="पेज">
@@ -490,7 +490,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#नयनतम-सरचन">न्यूनतम संरचना</a></li><li class="toc-3"><a href="#description-यह-कसलए-ह">description — यह किसलिए है</a></li><li class="toc-2"><a href="#करम-chain-य-dag">क्रम: chain या dag</a></li><li class="toc-2"><a href="#शडयल">शेड्यूल</a></li><li class="toc-2"><a href="#image-और-ससधन">Image और संसाधन</a></li><li class="toc-2"><a href="#step-क-फलड">Step के फ़ील्ड</a></li><li class="toc-2"><a href="#step-क-सरफ-तब-चलन-जब-करन-क-कछ-ह">Step को सिर्फ़ तब चलाना जब करने को कुछ हो</a></li><li class="toc-3"><a href="#एकसपरशन-कय-नह">एक्सप्रेशन क्यों नहीं</a></li><li class="toc-3"><a href="#गयब-key-वफलत-ह-खल-मन-नह">गायब key विफलता है, खाली मान नहीं</a></li><li class="toc-2"><a href="#step-क-हर-ततव-क-लए-एक-बर-चलन">Step को हर तत्व के लिए एक बार चलाना</a></li><li class="toc-3"><a href="#dag-क-आकर-नह-बदलत">DAG का आकार नहीं बदलता</a></li><li class="toc-3"><a href="#एक-वफल-इसटस-step-क-वफल-करत-ह">एक विफल इंस्टेंस step को विफल करता है</a></li><li class="toc-3"><a href="#खल-सच-skipped-ह-सफलत-नह">खाली सूची skipped है, सफलता नहीं</a></li><li class="toc-3"><a href="#fan-out-समत-ह-और-सम-वरसत-म-मलत-ह">Fan-out सीमित है, और सीमा विरासत में मिलती है</a></li><li class="toc-3"><a href="#mapped-step-कय-परकशत-करत-ह">Mapped step क्या प्रकाशित करता है</a></li><li class="toc-2"><a href="#गरफ-पर-steps-क-समहत-करन">ग्राफ़ पर steps को समूहित करना</a></li><li class="toc-2"><a href="#दसर-workflow-क-दबर-इसतमल">दूसरे workflow का दोबारा इस्तेमाल</a></li><li class="toc-3"><a href="#नयम">नियम</a></li><li class="toc-2"><a href="#तर-क-मतलब-बतन">तीर का मतलब बताना</a></li><li class="toc-2"><a href="#ऐस-step-ज-कछ-नह-करत">ऐसा step जो कुछ नहीं करता</a></li><li class="toc-2"><a href="#step-क-सरफ-तब-चलन-जब-कछ-वफल-हआ-ह">Step को सिर्फ़ तब चलाना जब कुछ विफल हुआ हो</a></li><li class="toc-3"><a href="#ज-step-नह-चलत-वह-skipped-ह">जो step नहीं चलता वह skipped है</a></li><li class="toc-3"><a href="#all-success-सथनय-ह-जस-airflow-म">all_success स्थानीय है, जैसे Airflow में</a></li><li class="toc-3"><a href="#retry-सरफ-वह-दबर-चलत-ह-ज-वफल-हआ">Retry सिर्फ़ वही दोबारा चलाता है जो विफल हुआ</a></li><li class="toc-2"><a href="#step-क-वफलतओ-क-घषण">Step की विफलताओं की घोषणा</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validation">Validation</a></li><li class="toc-2"><a href="#publish-करन">Publish करना</a></li><li class="toc-2"><a href="#अगल-कदम">अगले कदम</a></li></ul>
+      <ul><li class="toc-2"><a href="#minimum-structure">न्यूनतम संरचना</a></li><li class="toc-3"><a href="#description-what-it-is-for">description — यह किसलिए है</a></li><li class="toc-2"><a href="#order-chain-or-dag">क्रम: chain या dag</a></li><li class="toc-2"><a href="#schedule">शेड्यूल</a></li><li class="toc-2"><a href="#image-and-resources">Image और संसाधन</a></li><li class="toc-2"><a href="#step-fields">Step के फ़ील्ड</a></li><li class="toc-2"><a href="#running-a-step-only-when-there-is-something-to-do">Step को सिर्फ़ तब चलाना जब करने को कुछ हो</a></li><li class="toc-3"><a href="#why-not-an-expression">एक्सप्रेशन क्यों नहीं</a></li><li class="toc-3"><a href="#a-missing-key-is-a-failure-not-an-empty-value">गायब key विफलता है, खाली मान नहीं</a></li><li class="toc-2"><a href="#running-a-step-once-per-element">Step को हर तत्व के लिए एक बार चलाना</a></li><li class="toc-3"><a href="#the-shape-of-the-dag-does-not-change">DAG का आकार नहीं बदलता</a></li><li class="toc-3"><a href="#one-failed-instance-fails-the-step">एक विफल इंस्टेंस step को विफल करता है</a></li><li class="toc-3"><a href="#an-empty-list-is-skipped-not-success">खाली सूची skipped है, सफलता नहीं</a></li><li class="toc-3"><a href="#the-fan-out-is-bounded-and-the-bound-is-inherited">Fan-out सीमित है, और सीमा विरासत में मिलती है</a></li><li class="toc-3"><a href="#what-a-mapped-step-publishes">Mapped step क्या प्रकाशित करता है</a></li><li class="toc-2"><a href="#grouping-steps-on-the-graph">ग्राफ़ पर steps को समूहित करना</a></li><li class="toc-2"><a href="#reusing-another-workflow">दूसरे workflow का दोबारा इस्तेमाल</a></li><li class="toc-3"><a href="#the-rules">नियम</a></li><li class="toc-2"><a href="#saying-what-an-arrow-means">तीर का मतलब बताना</a></li><li class="toc-2"><a href="#a-step-that-does-nothing">ऐसा step जो कुछ नहीं करता</a></li><li class="toc-2"><a href="#running-a-step-only-when-something-failed">Step को सिर्फ़ तब चलाना जब कुछ विफल हुआ हो</a></li><li class="toc-3"><a href="#a-step-that-does-not-run-is-skipped">जो step नहीं चलता वह skipped है</a></li><li class="toc-3"><a href="#all-success-is-local-as-in-airflow">all_success स्थानीय है, जैसे Airflow में</a></li><li class="toc-3"><a href="#a-retry-re-runs-only-what-failed">Retry सिर्फ़ वही दोबारा चलाता है जो विफल हुआ</a></li><li class="toc-2"><a href="#announcing-a-steps-failures">Step की विफलताओं की घोषणा</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validation">Validation</a></li><li class="toc-2"><a href="#publishing">Publish करना</a></li><li class="toc-2"><a href="#next-steps">अगले कदम</a></li></ul>
     </aside>
   </main>
 </div>
@@ -510,9 +510,9 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -535,7 +535,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

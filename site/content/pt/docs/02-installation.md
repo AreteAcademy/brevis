@@ -69,7 +69,7 @@ O repositório traz um `docker-compose.yml` que sobe Postgres, API e scheduler:
 
 ```bash
 make up      # Postgres + API + scheduler
-make smoke   # confere /health e /ready
+make smoke   # checks /health and /ready
 make logs
 make down
 ```

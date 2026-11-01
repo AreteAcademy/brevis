@@ -14,27 +14,27 @@
 
 |  | 연결 방법 | 가이드 |
 |---|---|---|
-| **HTTP** | SDK: `from.HTTP` | [Go SDK](/ko/docs/sdk/#소스와-목적지) |
-| **Postgres** | SDK: `from/postgres` | [Go SDK](/ko/docs/sdk/#소스와-목적지) |
-| **MySQL** | SDK: `from/mysql` | [Go SDK](/ko/docs/sdk/#소스와-목적지) |
-| **files** | SDK: `from.Files` — 로컬, S3, GCS | [Go SDK](/ko/docs/sdk/#소스와-목적지) |
+| **HTTP** | SDK: `from.HTTP` | [Go SDK](/ko/docs/sdk/#sources-and-destinations) |
+| **Postgres** | SDK: `from/postgres` | [Go SDK](/ko/docs/sdk/#sources-and-destinations) |
+| **MySQL** | SDK: `from/mysql` | [Go SDK](/ko/docs/sdk/#sources-and-destinations) |
+| **files** | SDK: `from.Files` — 로컬, S3, GCS | [Go SDK](/ko/docs/sdk/#sources-and-destinations) |
 
 ## 데이터 적재 대상
 
 |  | 연결 방법 | 가이드 |
 |---|---|---|
-| **BigQuery** | SDK: `to/bigquery` · Gateway: `bigquery` | [Go SDK](/ko/docs/sdk/#소스와-목적지), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
-| **Postgres** | SDK: `to/postgres` · Gateway: `postgres` | [Go SDK](/ko/docs/sdk/#소스와-목적지), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
-| **MySQL** | SDK: `to/mysql` · Gateway: `mysql` | [Go SDK](/ko/docs/sdk/#소스와-목적지), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
-| **Redshift** | SDK: `to/redshift` · Gateway: `redshift` | [Go SDK](/ko/docs/sdk/#소스와-목적지), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
-| **Pub/Sub** | SDK: `to/pubsub` · Gateway: `pubsub` | [Go SDK](/ko/docs/sdk/#소스와-목적지), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
+| **BigQuery** | SDK: `to/bigquery` · Gateway: `bigquery` | [Go SDK](/ko/docs/sdk/#sources-and-destinations), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
+| **Postgres** | SDK: `to/postgres` · Gateway: `postgres` | [Go SDK](/ko/docs/sdk/#sources-and-destinations), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
+| **MySQL** | SDK: `to/mysql` · Gateway: `mysql` | [Go SDK](/ko/docs/sdk/#sources-and-destinations), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
+| **Redshift** | SDK: `to/redshift` · Gateway: `redshift` | [Go SDK](/ko/docs/sdk/#sources-and-destinations), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
+| **Pub/Sub** | SDK: `to/pubsub` · Gateway: `pubsub` | [Go SDK](/ko/docs/sdk/#sources-and-destinations), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
 
 ## 파일 적재 대상
 
 |  | 연결 방법 | 가이드 |
 |---|---|---|
-| **S3** | SDK: `store/s3` · Gateway: `s3://`에 대한 `files` | [Go SDK](/ko/docs/sdk/#소스와-목적지), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
-| **GCS** | SDK: `store/gcs` · Gateway: `gs://`에 대한 `files` | [Go SDK](/ko/docs/sdk/#소스와-목적지), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
+| **S3** | SDK: `store/s3` · Gateway: `s3://`에 대한 `files` | [Go SDK](/ko/docs/sdk/#sources-and-destinations), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
+| **GCS** | SDK: `store/gcs` · Gateway: `gs://`에 대한 `files` | [Go SDK](/ko/docs/sdk/#sources-and-destinations), [수집 sink](/ko/docs/ingestion-sinks/index.md) |
 
 ## 모델링 대상
 
@@ -49,7 +49,7 @@
 |---|---|---|
 | **Docker** | 구성 요소마다 이미지 하나: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [설치](/ko/docs/installation/#docker) |
 | **Kubernetes** | step마다 pod 하나 | [Kubernetes](/ko/docs/kubernetes/index.md), [step당 pod 하나](/ko/docs/pod-per-step/index.md) |
-| **Helm** | `deployments/helm/brevis`의 차트 | [Kubernetes](/ko/docs/kubernetes/#helm으로-설치하기) |
+| **Helm** | `deployments/helm/brevis`의 차트 | [Kubernetes](/ko/docs/kubernetes/#install-it-with-helm) |
 
 ## 작성 언어
 

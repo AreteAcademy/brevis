@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+<a class="skip-link" href="#content">Lewati ke konten</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigasi utama">
-      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/#ecosystem">Ekosistem</a>
       <a href="/id/docs/">Dokumentasi</a>
-      <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/pod-per-step/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/pod-per-step/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/pod-per-step/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/pod-per-step/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/pod-per-step/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/pod-per-step/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/pod-per-step/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/pod-per-step/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/pod-per-step/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/pod-per-step/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/pod-per-step/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/pod-per-step/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/pod-per-step/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/pod-per-step/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/pod-per-step/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/pod-per-step/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/pod-per-step/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/pod-per-step/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/pod-per-step/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/pod-per-step/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/pod-per-step/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/pod-per-step/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Jelajahi open source
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentasi</p>
       <h1>Pod per step</h1>
@@ -143,23 +143,23 @@ walks the graph
     follows the log     ◄───────  container stdout
     reads the exit code ◄───────  containerStatuses[0].terminated
     deletes the pod ───────────►  (gone)</code></pre></div>
-<h2 id="apa-yang-berubah">Apa yang berubah<a class="anchor" href="#apa-yang-berubah" aria-label="link">#</a></h2>
+<h2 id="what-this-changes">Apa yang berubah<a class="anchor" href="#what-this-changes" aria-label="link">#</a></h2>
 <p>Worker monolitik memaksa image berisi segala yang mungkin dibutuhkan step mana pun. Dalam praktiknya:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>satu image</th><th>pod per step</th></tr></thead><tbody><tr><td>step dbt</td><td>1,9 GB · 1Gi RAM</td><td>1,9 GB · 1Gi RAM</td></tr><tr><td>fetcher Go di sebelahnya</td><td><strong>1,9 GB · 1Gi</strong></td><td><strong>12 MB · 32Mi</strong></td></tr><tr><td>menaikkan versi dbt</td><td>build ulang semuanya</td><td>satu baris di YAML workflow itu</td></tr><tr><td>step yang bocor memori</td><td>menjatuhkan worker beserta tetangganya</td><td>mati sendirian</td></tr></tbody></table></div>
 <p>Baris ketiga paling tidak kentara dan paling mahal dalam keseharian: dengan satu image, memindahkan dbt dari 1.10 ke 1.11 di satu pipeline memaksa perpindahan itu di semuanya.</p>
-<h2 id="image-menurut-peran">Image menurut peran<a class="anchor" href="#image-menurut-peran" aria-label="link">#</a></h2>
+<h2 id="images-by-role">Image menurut peran<a class="anchor" href="#images-by-role" aria-label="link">#</a></h2>
 <p>Image ditentukan per <strong>peran</strong>, bukan per proyek. Segala sisa di dalam image ditarik oleh setiap node yang menjalankan step itu:</p>
 <div class="table-wrap"><table><thead><tr><th>peran</th><th>ukuran</th><th>cold start</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td><strong>5,8 MB</strong></td><td>0,18 d</td></tr><tr><td><strong>Python</strong></td><td><strong>118 MB</strong></td><td>0,54 d</td></tr><tr><td><strong>dbt</strong></td><td><strong>620 MB</strong></td><td>3,3 d</td></tr></tbody></table></div>
 <p>Sebelumnya: satu image 1,87 GB untuk semuanya.</p>
 <p>Untuk dbt, <code>dbt parse</code> berjalan saat build dan <code>target/partial_parse.msgpack</code> dibawa di dalam image — <strong>lebih cepat 2,68 d per pod</strong>, pada setiap pemanggilan.</p>
-<h2 id="di-mana-setiap-step-berjalan">Di mana setiap step berjalan<a class="anchor" href="#di-mana-setiap-step-berjalan" aria-label="link">#</a></h2>
+<h2 id="where-each-step-runs">Di mana setiap step berjalan<a class="anchor" href="#where-each-step-runs" aria-label="link">#</a></h2>
 <p>Keputusan dibuat sekali, saat boot, dan bergantung pada <code>BREVIS_PODS</code> serta ada tidaknya klaster:</p>
 <div class="table-wrap"><table><thead><tr><th><code>BREVIS_PODS</code></th><th>dengan klaster</th><th>tanpa klaster</th></tr></thead><tbody><tr><td><code>auto</code> (default)</td><td>step dengan <code>image:</code> menjadi pod</td><td>semuanya sebagai proses lokal, dengan peringatan di log</td></tr><tr><td><code>on</code></td><td>step dengan <code>image:</code> menjadi pod</td><td><strong>error boot</strong></td></tr><tr><td><code>off</code></td><td>semuanya sebagai proses lokal</td><td>semuanya sebagai proses lokal</td></tr></tbody></table></div>
 <p><strong>Step dengan <code>host:</code> tidak melewati semua ini.</strong> Ia diperiksa sebelum pod dan sebelum proses, lalu pergi ke mesin yang sudah berjalan — <code>BREVIS_PODS</code> tidak berlaku untuknya, dan ia tidak pernah turun ke proses lokal. Itu disengaja: <code>image:</code> turun ke eksekusi lokal dengan peringatan karena container dan proses adalah command yang sama dalam dua pembungkus, sedangkan host tidak. Host adalah tempat lisensi berada, atau GPU, atau datanya.</p>
 <p><code>auto</code> menjadi default karena binary yang sama berjalan di kedua tempat: di laptop tidak ada service account yang di-mount sehingga ia turun ke proses lokal; di klaster ada, dan ia mulai membuat pod.</p>
 <p><code>on</code> ada untuk deployment yang <strong>tidak boleh</strong> diam-diam menjadi eksekusi lokal. Di sana, ketiadaan klaster harus menjadi error boot.</p>
 <aside class="admon admon-warning"><p class="admon-t">`brevis run` tidak membuat pod</p><p>Command <code>run</code> hanya membangun executor proses. Step dengan <code>image:</code> berjalan di instance itu sendiri — dan menyatakannya. Diam saja akan membuatnya tampak seolah step berjalan di image yang dideklarasikan, jenis kesalahan yang baru muncul setelah hasilnya sudah salah.</p></aside>
-<h2 id="identitas-dan-kredensial">Identitas dan kredensial<a class="anchor" href="#identitas-dan-kredensial" aria-label="link">#</a></h2>
+<h2 id="identity-and-credentials">Identitas dan kredensial<a class="anchor" href="#identity-and-credentials" aria-label="link">#</a></h2>
 <p>Identitas yang dipakai pod saat naik adalah keputusan <strong>instalasi</strong>, bukan keputusan workflow — sebuah pipeline tidak boleh bisa memilih service account tempat ia berjalan. Maka ia berasal dari environment:</p>
 <div class="code-block" data-code="BREVIS_POD_NAMESPACE=data
 BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
@@ -169,16 +169,16 @@ BREVIS_POD_SERVICE_ACCOUNT=<span class="t-k">brevis</span>-runner
 BREVIS_POD_PULL_SECRETS=registry-cred
 BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred,api-tokens</code></pre></div>
 <p>Dalam mode pod, environment task berasal dari Secret klaster — bukan dari <code>BREVIS_TASK_ENV</code>.</p>
-<h2 id="node-selector-dan-toleration">Node selector dan toleration<a class="anchor" href="#node-selector-dan-toleration" aria-label="link">#</a></h2>
+<h2 id="node-selector-and-tolerations">Node selector dan toleration<a class="anchor" href="#node-selector-and-tolerations" aria-label="link">#</a></h2>
 <div class="code-block" data-code="BREVIS_POD_NODE_SELECTOR=&#x27;kubernetes.io/arch=arm64&#x27;
 BREVIS_POD_TOLERATIONS=&#x27;dedicated=data:NoSchedule&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>BREVIS_POD_NODE_SELECTOR='kubernetes.io/arch=arm64'
 BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
 <p>Hanya operator <code>Equal</code> yang diterima pada toleration: <code>Exists</code> akan mentoleransi taint <strong>apa pun</strong> dengan key itu, terlalu luas untuk keputusan yang berasal dari variabel environment.</p>
 <p>Toleration yang salah format <strong>diabaikan</strong> alih-alih dijadikan error boot — ia membiarkan pod <code>Pending</code>, yang terlihat, sedangkan menolak boot juga akan menghentikan workflow yang tidak membutuhkan pool itu.</p>
-<h2 id="men-debug-kegagalan">Men-debug kegagalan<a class="anchor" href="#men-debug-kegagalan" aria-label="link">#</a></h2>
+<h2 id="debugging-a-failure">Men-debug kegagalan<a class="anchor" href="#debugging-a-failure" aria-label="link">#</a></h2>
 <div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>Mempertahankan pod yang gagal untuk <code>kubectl logs</code> dan <code>kubectl describe</code>. Biarkan nonaktif di production: pod yang berhenti memakai kuota klaster.</p>
-<h2 id="langkah-berikutnya">Langkah berikutnya<a class="anchor" href="#langkah-berikutnya" aria-label="link">#</a></h2>
+<h2 id="next-steps">Langkah berikutnya<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/id/docs/kubernetes/">Kubernetes</a> — deployment lengkap</li><li><a href="/id/docs/configuration/">Konfigurasi</a> — setiap variabel <code>BREVIS_POD_*</code></li><li><a href="/id/docs/observability/">Observabilitas</a> — metrik dari kedua proses</li></ul>
 
       <nav class="pagers" aria-label="Halaman">
@@ -193,7 +193,7 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#apa-yang-berubah">Apa yang berubah</a></li><li class="toc-2"><a href="#image-menurut-peran">Image menurut peran</a></li><li class="toc-2"><a href="#di-mana-setiap-step-berjalan">Di mana setiap step berjalan</a></li><li class="toc-2"><a href="#identitas-dan-kredensial">Identitas dan kredensial</a></li><li class="toc-2"><a href="#node-selector-dan-toleration">Node selector dan toleration</a></li><li class="toc-2"><a href="#men-debug-kegagalan">Men-debug kegagalan</a></li><li class="toc-2"><a href="#langkah-berikutnya">Langkah berikutnya</a></li></ul>
+      <ul><li class="toc-2"><a href="#what-this-changes">Apa yang berubah</a></li><li class="toc-2"><a href="#images-by-role">Image menurut peran</a></li><li class="toc-2"><a href="#where-each-step-runs">Di mana setiap step berjalan</a></li><li class="toc-2"><a href="#identity-and-credentials">Identitas dan kredensial</a></li><li class="toc-2"><a href="#node-selector-and-tolerations">Node selector dan toleration</a></li><li class="toc-2"><a href="#debugging-a-failure">Men-debug kegagalan</a></li><li class="toc-2"><a href="#next-steps">Langkah berikutnya</a></li></ul>
     </aside>
   </main>
 </div>
@@ -213,9 +213,9 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
       <div class="footer-col">
         <h2>proyek</h2>
         <ul>
-          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/#ecosystem">Ekosistem</a></li>
           <li><a href="/id/docs/philosophy/">Prinsip</a></li>
-          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/id/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -238,7 +238,7 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

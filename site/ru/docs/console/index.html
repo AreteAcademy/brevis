@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Перейти к содержимому</a>
+<a class="skip-link" href="#content">Перейти к содержимому</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Основная навигация">
-      <a href="/ru/#ecossistema">Экосистема</a>
+      <a href="/ru/#ecosystem">Экосистема</a>
       <a href="/ru/docs/">Документация</a>
-      <details class="lang-dd"><summary aria-label="Язык: Русский"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Русский</span></summary><ul><li><a href="/docs/console/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/console/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/console/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/console/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/console/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/console/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/console/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/console/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/console/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/console/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/console/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Язык: Русский"><span>Русский</span></summary><ul><li><a href="/docs/console/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/console/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/console/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/console/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/console/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/console/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/console/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/console/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/console/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/console/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/console/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open source на GitHub
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Документация</p>
       <h1>Console</h1>
@@ -127,25 +127,25 @@
       <p>Интерфейс поставляется внутри бинарного файла — это не отдельный сервис, который нужно устанавливать и поддерживать. Доля успешных запусков, средняя длительность, очередь, история попыток и расписание ближайших запусков.</p>
 <p>Console поднимается вместе с <code>brevis serve</code> на том же порту, что и HTTP API (<code>BREVIS_HTTP_ADDR</code>, по умолчанию <code>:8080</code>). В <a href="/ru/docs/quickstart/">Быстром старте</a> он открывается по адресу <code>localhost:8080</code>.</p>
 <p>Экраны ниже воссозданы в SVG по консоли, с демонстрационными данными, — никогда не скриншоты: настоящая консоль работает с данными клиентов в продакшене.</p>
-<h2 id="обзор">Обзор<a class="anchor" href="#обзор" aria-label="link">#</a></h2>
+<h2 id="overview">Обзор<a class="anchor" href="#overview" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console.svg" width="1000" height="600" alt="Консоль Brevis на экране обзора: доля успешных запусков 94,2 процента из 344 запусков, столбчатая диаграмма запусков по часам со средней длительностью, кольцо распределения, то, что выполняется сейчас, и ближайшие запланированные запуски." loading="lazy"></figure>
 <p>Обзор с метриками и графиками. Доля успешных запусков, средняя длительность, то, что выполняется сейчас, и ближайшие запланированные запуски — на одном экране.</p>
 <h2 id="workflows">Workflows<a class="anchor" href="#workflows" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflows.svg" width="1000" height="600" alt="Список workflow: поиск, фильтры по состоянию и по тегу и двенадцать workflow с переключателем паузы, выражением cron, следующим и последним запуском, тегами и кнопкой немедленного запуска каждого." loading="lazy"></figure>
 <p>Список workflow с поиском, фильтрами, паузой и запуском. В каждой строке указаны cron, следующий и последний запуск и теги.</p>
-<h2 id="один-workflow">Один workflow<a class="anchor" href="#один-workflow" aria-label="link">#</a></h2>
+<h2 id="one-workflow">Один workflow<a class="anchor" href="#one-workflow" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflow.svg" width="1000" height="600" alt="Страница одного workflow: четыре шага, три зависимости, cron и теги; форма запуска с параметрами; доля успешных запусков 96,1 процента из 176 запусков; DAG с состоянием каждого шага; и календарь на год, где каждый квадрат — день, окрашенный по худшему исходу этого дня." loading="lazy"></figure>
 <p>Шаги и зависимости, форма запуска с параметрами, DAG с состоянием каждого шага и календарь на год, где каждый день окрашен в цвет худшего результата.</p>
-<h2 id="запуски">Запуски<a class="anchor" href="#запуски" aria-label="link">#</a></h2>
+<h2 id="runs">Запуски<a class="anchor" href="#runs" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-runs.svg" width="1000" height="600" alt="История запусков: 1284 запуска с их состоянием, workflow, триггером, слотом, к которому они относятся, длительностью каждого и временем создания. У некоторых указано, какая попытка завершилась успешно." loading="lazy"></figure>
 <p>История запусков с попыткой каждого. Состояние, workflow, триггер, слот, к которому относится запуск, длительность и время создания.</p>
-<h2 id="один-запуск">Один запуск<a class="anchor" href="#один-запуск" aria-label="link">#</a></h2>
+<h2 id="one-run">Один запуск<a class="anchor" href="#one-run" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-run.svg" width="1000" height="600" alt="Завершённый запуск: его состояние, триггер и слот; граф с командой, образом и длительностью каждого шага; девять авто-параметров, которые engine вычисляет для каждого запуска, — часы, которые нужно читать вместо now(), дата партиции, насколько поздно началась попытка и охватываемое окно; и вывод каждого шага." loading="lazy"></figure>
 <p>DAG запуска в реальном времени и авто-параметры, которые engine вычислил для него. Граф с командой, образом и длительностью каждого шага и вывод каждого шага.</p>
-<h2 id="проекты">Проекты<a class="anchor" href="#проекты" aria-label="link">#</a></h2>
+<h2 id="projects">Проекты<a class="anchor" href="#projects" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-projects.svg" width="1000" height="600" alt="Два проекта, analytics и platform, каждый со своим пространством имён для workflow — в обоих может быть daily_ingest, и они не конфликтуют." loading="lazy"></figure>
 <p>Проекты, чтобы две команды не конфликтовали из-за одного имени. Каждый проект задаёт пространство имён для своих workflow: у двух проектов может быть по <code>daily_ingest</code>.</p>
-<h2 id="поставляется-в-бинарном-файле">Поставляется в бинарном файле<a class="anchor" href="#поставляется-в-бинарном-файле" aria-label="link">#</a></h2>
+<h2 id="it-ships-in-the-binary">Поставляется в бинарном файле<a class="anchor" href="#it-ships-in-the-binary" aria-label="link">#</a></h2>
 <p>Шрифты и бандлы отдаются из бинарного файла — работает без интернета.</p>
 
       <nav class="pagers" aria-label="Страницы">
@@ -160,7 +160,7 @@
 
     <aside class="toc" aria-label="На этой странице">
       <p class="toc-t">На этой странице</p>
-      <ul><li class="toc-2"><a href="#обзор">Обзор</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#один-workflow">Один workflow</a></li><li class="toc-2"><a href="#запуски">Запуски</a></li><li class="toc-2"><a href="#один-запуск">Один запуск</a></li><li class="toc-2"><a href="#проекты">Проекты</a></li><li class="toc-2"><a href="#поставляется-в-бинарном-файле">Поставляется в бинарном файле</a></li></ul>
+      <ul><li class="toc-2"><a href="#overview">Обзор</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#one-workflow">Один workflow</a></li><li class="toc-2"><a href="#runs">Запуски</a></li><li class="toc-2"><a href="#one-run">Один запуск</a></li><li class="toc-2"><a href="#projects">Проекты</a></li><li class="toc-2"><a href="#it-ships-in-the-binary">Поставляется в бинарном файле</a></li></ul>
     </aside>
   </main>
 </div>
@@ -180,9 +180,9 @@
       <div class="footer-col">
         <h2>проект</h2>
         <ul>
-          <li><a href="/ru/#ecossistema">Экосистема</a></li>
+          <li><a href="/ru/#ecosystem">Экосистема</a></li>
           <li><a href="/ru/docs/philosophy/">Принципы</a></li>
-          <li><a href="/ru/docs/introduction/#открытый-код-выберите-как-участвовать">Open source</a></li>
+          <li><a href="/ru/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/ru/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -205,7 +205,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

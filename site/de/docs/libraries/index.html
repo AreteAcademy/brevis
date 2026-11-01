@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Zum Inhalt springen</a>
+<a class="skip-link" href="#content">Zum Inhalt springen</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Hauptnavigation">
-      <a href="/de/#ecossistema">Ökosystem</a>
+      <a href="/de/#ecosystem">Ökosystem</a>
       <a href="/de/docs/">Dokumentation</a>
-      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Deutsch</span></summary><ul><li><a href="/docs/libraries/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/libraries/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/libraries/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/libraries/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/libraries/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/libraries/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/libraries/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/libraries/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/libraries/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/libraries/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/libraries/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><span>Deutsch</span></summary><ul><li><a href="/docs/libraries/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/libraries/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/libraries/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/libraries/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/libraries/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/libraries/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/libraries/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/libraries/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/libraries/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/libraries/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/libraries/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         Open Source erkunden
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentation</p>
       <h1>Client-Bibliotheken</h1>
       <p class="doc-desc">Wie ein Step in jeder Sprache den Kontext und die Uhr des Runs liest – und welche Sprachen bereits eine Bibliothek haben.</p>
       <p>Ein Step braucht vom Orchestrator zwei Dinge: <strong>was der vorherige Step veröffentlicht hat</strong> und <strong>welche Uhr dieser Run lesen soll</strong>. Die Client-Bibliotheken reichen diese beiden weiter, und sonst nichts.</p>
-<h2 id="der-vertrag-kommt-vor-den-bibliotheken">Der Vertrag kommt vor den Bibliotheken<a class="anchor" href="#der-vertrag-kommt-vor-den-bibliotheken" aria-label="link">#</a></h2>
+<h2 id="the-contract-comes-before-the-libraries">Der Vertrag kommt vor den Bibliotheken<a class="anchor" href="#the-contract-comes-before-the-libraries" aria-label="link">#</a></h2>
 <p>Was die Engine definiert, sind <strong>zwei Umgebungsvariablen und eine Datei</strong>:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>BREVIS_INPUT</code></td><td><code>{"&lt;step id&gt;": {…}}</code> – was die Abhängigkeiten dieses Steps veröffentlicht haben</td></tr><tr><td><code>BREVIS_OUTPUT</code></td><td>ein Pfad, in den <strong>ein</strong> JSON-Objekt geschrieben wird</td></tr></tbody></table></div>
 <p>Dazu kommen die Variablen des Runs und die Auto-Parameter, alle nur lesbar: <code>BREVIS_RUN_*</code> und <code>BREVIS_AUTO_*</code>. Unter Kubernetes ist <code>BREVIS_OUTPUT</code> <code>/dev/termination-log</code>, den die Engine ohnehin liest, um den Exit-Code zu erhalten.</p>
@@ -136,15 +136,15 @@ jq -n --arg n &quot;$(date -Is)&quot; &#x27;{published_at: $n}&#x27; &gt; &quot;
 ./publish <span class="t-n">--until</span> "$window"
 jq <span class="t-n">-n</span> <span class="t-n">--arg</span> n "$(date <span class="t-n">-Is</span>)" '{published_at: $n}' &gt; "$BREVIS_OUTPUT"</code></pre></div>
 <p>Eine Bibliothek eröffnet hier keine neue Fähigkeit – sie erspart Ihnen die Validierung, den Umgang mit fehlenden Werten und die Fehlermeldungen, die man besser nicht neu schreibt.</p>
-<h2 id="welche-es-gibt">Welche es gibt<a class="anchor" href="#welche-es-gibt" aria-label="link">#</a></h2>
+<h2 id="which-ones-exist">Welche es gibt<a class="anchor" href="#which-ones-exist" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>Sprache</th><th></th><th></th></tr></thead><tbody><tr><td><strong>Python</strong></td><td><code>pip install brevis</code></td><td><a href="/de/docs/python/">verfügbar</a> – <code>0.2.1</code> auf PyPI</td></tr><tr><td><strong>Go</strong></td><td><code>brevis/sdk/context</code></td><td>verfügbar, innerhalb des SDK-Moduls</td></tr><tr><td><strong>Node.js</strong></td><td>—</td><td>geplant</td></tr><tr><td><strong>Rust</strong></td><td>—</td><td>geplant</td></tr><tr><td>alles andere</td><td>die Variablen oben</td><td>heute</td></tr></tbody></table></div>
 <aside class="admon admon-note"><p class="admon-t">Go lebt nicht in `lib/`</p><p>Die Kontextunterstützung für Go lebt im Modul <code>sdk/</code>, das das Projekt ohnehin veröffentlicht, als Unterpaket, das für jeden, der es nicht importiert, auf nichts zusammenschrumpft. Ein <code>lib/go-context</code> würde ein zweites Go-Modul für ein Paket bedeuten, das bereits eines hat.</p>
 <p>Die Regel lautet <strong>ein Verzeichnis pro Sprache, die noch kein veröffentlichtes Artefakt hat</strong>.</p></aside>
 <p>Jede Bibliothek ist ein eigenes Artefakt mit eigener Version und eigenem Tag: Ein Fix im Python-Client erzwingt kein Engine-Release.</p>
-<h2 id="was-sie-sind-und-was-nicht">Was sie sind und was nicht<a class="anchor" href="#was-sie-sind-und-was-nicht" aria-label="link">#</a></h2>
+<h2 id="what-they-are-and-what-they-are-not">Was sie sind und was nicht<a class="anchor" href="#what-they-are-and-what-they-are-not" aria-label="link">#</a></h2>
 <p>Sie sind <strong>schlanke Clients über dem Vertrag</strong>, keine Portierungen des Go-SDK.</p>
 <p>Eine Portierung der ETL-Maschinerie des SDK – Treiber, Paginierung, Checkpoints, Ingestion-Ids – gehört nicht hierher und wohl nirgendwohin: Jede Sprache, auf die das zielen würde, hat dafür bereits bessere Werkzeuge, und die Aufgabe von Brevis ist es, sie auszuführen. Deshalb gibt es die Python-Bibliothek: damit ein Team pandas, Polars oder dbt nutzen kann und dennoch das eine bekommt, wofür ein Orchestrator da ist.</p>
-<h2 id="metriken">Metriken<a class="anchor" href="#metriken" aria-label="link">#</a></h2>
+<h2 id="metrics">Metriken<a class="anchor" href="#metrics" aria-label="link">#</a></h2>
 <p>Die Bibliothek <strong>gibt</strong> Metriken <strong>aus</strong>, und die Engine macht sie verfügbar:</p>
 <div class="code-block" data-code="from brevis import metrics
 
@@ -155,11 +155,11 @@ metrics.set("rows_loaded", 48213)      <span class="t-c"># a gauge: the last val
 metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up</span></code></pre></div>
 <p>Sie kommen aus dem <code>/metrics</code> der <strong>Engine</strong>, auf dem Port des Schedulers, mit Workflow und Step als Labels – siehe <a href="/de/docs/observability/">Observability</a>.</p>
 <p><strong>Das öffnet keinen Port, und es könnte keinen öffnen.</strong> Ein Step läuft vierzig Sekunden in einem eigenen Pod und endet; ein Port, den er öffnete, würde nie abgefragt oder einmal durch Zufall. Die Zeile geht also nach stdout – dieselbe Leitung, die die Engine ohnehin liest, um die Phasen einer Pipeline zu zeichnen –, und die Engine hält sie fest. Nichts zu installieren, nichts zu betreiben, und die Labels stammen von der Engine, weil ein Step den Slug seines eigenen Workflows nicht kennen kann.</p>
-<p>Die Details der API stehen unter <a href="/de/docs/python/#metriken-die-nur-ihre-pipeline-kennt">Python</a>.</p>
-<h2 id="einen-client-für-eine-andere-sprache-schreiben">Einen Client für eine andere Sprache schreiben<a class="anchor" href="#einen-client-für-eine-andere-sprache-schreiben" aria-label="link">#</a></h2>
+<p>Die Details der API stehen unter <a href="/de/docs/python/#metrics-only-your-pipeline-knows">Python</a>.</p>
+<h2 id="writing-a-client-for-another-language">Einen Client für eine andere Sprache schreiben<a class="anchor" href="#writing-a-client-for-another-language" aria-label="link">#</a></h2>
 <p>Wenn Sie vor uns bei Node.js oder Rust ankommen, hier ist, was ein Client richtig machen muss – und was die Python-Implementierung bereits auf die harte Tour gelernt hat:</p>
 <ol><li><strong>Schlüssel, die nach Step qualifiziert sind.</strong> <code>get("bucket")</code> ohne Step muss verweigert werden. Zwei Steps können <code>bucket</code> veröffentlichen, und einen per Suche auszuwählen ist Vorrang durch Zufall.</li><li><strong>Schreibvorgänge zusammenführen.</strong> Zwei Aufrufe mit verschiedenen Schlüsseln behalten beide; derselbe Schlüssel zweimal behält den letzten.</li><li><strong>Nur beim Prozessende schreiben.</strong> Ein Step, der hart stirbt, veröffentlicht nichts – was korrekt ist, denn die Ausgabe eines abgestürzten Steps beschrieb Arbeit, die nicht fertig wurde.</li><li><strong>Über 4096 Byte verweigern.</strong> Die Plattform <strong>schneidet ab</strong>, statt zu verweigern, und ein in der Mitte durchgeschnittenes Objekt kommt beim nächsten Step als ungültiges JSON an.</li><li><strong>Außerhalb von Brevis funktionieren.</strong> Ohne <code>BREVIS_INPUT</code> liefert <code>get()</code> den Standardwert, und <code>set()</code> nimmt an und verwirft, ohne eine Ausnahme zu werfen: Ein Skript, das sich nicht von Hand ausführen lässt, lässt sich nicht entwickeln.</li></ol>
-<h2 id="nächste-schritte">Nächste Schritte<a class="anchor" href="#nächste-schritte" aria-label="link">#</a></h2>
+<h2 id="next-steps">Nächste Schritte<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/de/docs/python/">Python</a> – die vollständige API</li><li><a href="/de/docs/context/">Kontext zwischen Steps</a> – das Konzept und die Obergrenze von 4096 Byte</li><li><a href="/de/docs/parameters/">Parameter</a> – die deklarierten und die automatischen</li></ul>
 
       <nav class="pagers" aria-label="Seiten">
@@ -174,7 +174,7 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
 
     <aside class="toc" aria-label="Auf dieser Seite">
       <p class="toc-t">Auf dieser Seite</p>
-      <ul><li class="toc-2"><a href="#der-vertrag-kommt-vor-den-bibliotheken">Der Vertrag kommt vor den Bibliotheken</a></li><li class="toc-2"><a href="#welche-es-gibt">Welche es gibt</a></li><li class="toc-2"><a href="#was-sie-sind-und-was-nicht">Was sie sind und was nicht</a></li><li class="toc-2"><a href="#metriken">Metriken</a></li><li class="toc-2"><a href="#einen-client-für-eine-andere-sprache-schreiben">Einen Client für eine andere Sprache schreiben</a></li><li class="toc-2"><a href="#nächste-schritte">Nächste Schritte</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-contract-comes-before-the-libraries">Der Vertrag kommt vor den Bibliotheken</a></li><li class="toc-2"><a href="#which-ones-exist">Welche es gibt</a></li><li class="toc-2"><a href="#what-they-are-and-what-they-are-not">Was sie sind und was nicht</a></li><li class="toc-2"><a href="#metrics">Metriken</a></li><li class="toc-2"><a href="#writing-a-client-for-another-language">Einen Client für eine andere Sprache schreiben</a></li><li class="toc-2"><a href="#next-steps">Nächste Schritte</a></li></ul>
     </aside>
   </main>
 </div>
@@ -194,9 +194,9 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
       <div class="footer-col">
         <h2>Projekt</h2>
         <ul>
-          <li><a href="/de/#ecossistema">Ökosystem</a></li>
+          <li><a href="/de/#ecosystem">Ökosystem</a></li>
           <li><a href="/de/docs/philosophy/">Prinzipien</a></li>
-          <li><a href="/de/docs/introduction/#offener-code-wählen-sie-wie-sie-mitmachen">Open Source</a></li>
+          <li><a href="/de/docs/introduction/#open-code-choose-how-to-take-part">Open Source</a></li>
           <li><a href="/de/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -219,7 +219,7 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

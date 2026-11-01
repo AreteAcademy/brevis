@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
-      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/scheduler-and-queue/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/scheduler-and-queue/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/scheduler-and-queue/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/scheduler-and-queue/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/scheduler-and-queue/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/scheduler-and-queue/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/scheduler-and-queue/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/scheduler-and-queue/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/scheduler-and-queue/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/scheduler-and-queue/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/scheduler-and-queue/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><span>हिन्दी</span></summary><ul><li><a href="/docs/scheduler-and-queue/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/scheduler-and-queue/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/scheduler-and-queue/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/scheduler-and-queue/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/scheduler-and-queue/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/scheduler-and-queue/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/scheduler-and-queue/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/scheduler-and-queue/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/scheduler-and-queue/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/scheduler-and-queue/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/scheduler-and-queue/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         ओपन सोर्स देखें
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>शेड्यूलर और कतार</h1>
@@ -142,17 +142,17 @@ creates the Run  ─────────────►  (pending in the dat
                                    walks the graph
                                    executes each step
                                    records state and log</code></pre></div>
-<h2 id="अलग-कय">अलग क्यों<a class="anchor" href="#अलग-कय" aria-label="link">#</a></h2>
+<h2 id="why-separate">अलग क्यों<a class="anchor" href="#why-separate" aria-label="link">#</a></h2>
 <p>जो एक ही लूप शेड्यूल भी करे और चलाए भी, उसमें एक बुरी बात है: जब चलाने वाला हिस्सा अटकता है, शेड्यूलिंग भी उसके साथ रुक जाती है। अगले बारह घंटे के slot बस बनते ही नहीं, और किसी को तब तक पता नहीं चलता जब तक कोई ऐसा डेटा न ढूँढे जो कभी पहुँचा ही नहीं।</p>
 <p>दोनों अलग हों तो:</p>
 <ul><li><strong>शेड्यूलर</strong> बंद हो सकता है और कतार जो बन चुका है उसे खाली करती रहती है;</li><li><strong>कतार</strong> बंद हो सकती है और slot बनते रहते हैं, उसके लौटने पर चलाए जाने के लिए;</li><li><strong>दोबारा प्रोसेस करना घड़ी पर निर्भर नहीं करता</strong> — <code>backfill</code> बीते run उसी रास्ते से बनाता है जिससे cron बनाता।</li></ul>
-<h2 id="परसस">प्रोसेस<a class="anchor" href="#परसस" aria-label="link">#</a></h2>
+<h2 id="the-process">प्रोसेस<a class="anchor" href="#the-process" aria-label="link">#</a></h2>
 <p>दोनों लूप एक ही कमांड में रहते हैं:</p>
 <div class="code-block" data-code="brevis scheduler --interval 5s --concurrency 4 --max-pods 10"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--interval</span> 5s <span class="t-n">--concurrency</span> 4 <span class="t-n">--max-pods</span> 10</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>flag</th><th>डिफ़ॉल्ट</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td><code>10s</code></td><td>शेड्यूलर के चक्रों के बीच का अंतराल</td></tr><tr><td><code>--concurrency</code></td><td><code>5</code></td><td>एक साथ चलने वाले <strong>run</strong></td></tr><tr><td><code>--max-pods</code></td><td><code>5</code></td><td>कुल मिलाकर एक साथ चलने वाले <strong>steps</strong></td></tr></tbody></table></div>
 <p><code>--concurrency</code> और <code>--max-pods</code> जानबूझकर अलग चीज़ें गिनते हैं: अगर सीमा सिर्फ़ run पर होती, तो तीन समानांतर steps वाले पाँच run पंद्रह pods बन जाते।</p>
 <aside class="admon admon-note"><p class="admon-t">`serve` schedules को नहीं बनाता</p><p>API प्रोसेस वही शेड्यूलर उठाती है, लेकिन <strong>लूप के बिना</strong> — वह सिर्फ़ इंटरफ़ेस से आने वाले मैन्युअल ट्रिगर परोसने के लिए है, ताकि "शेड्यूलर run बनाता है" वाले नियम का मालिक एक ही रहे। Schedules चलें, इसके लिए साथ में एक <code>brevis scheduler</code> चलना चाहिए।</p></aside>
-<h2 id="परभष-क-सनपशट">परिभाषा का स्नैपशॉट<a class="anchor" href="#परभष-क-सनपशट" aria-label="link">#</a></h2>
+<h2 id="the-definition-snapshot">परिभाषा का स्नैपशॉट<a class="anchor" href="#the-definition-snapshot" aria-label="link">#</a></h2>
 <p>जब शेड्यूलर कोई run बनाता है, तो वह <strong>workflow की परिभाषा को run के भीतर</strong> रख देता है। Execution उसी स्नैपशॉट को पढ़ता है, डिस्क पर पड़ी YAML को नहीं।</p>
 <p>कारण ठोस है: ट्रिगर और execution के बीच किसी ने फ़ाइल बदलकर deploy कर दी हो सकती है। स्नैपशॉट के बिना, 05:00 पर एक परिभाषा के साथ बना run 05:02 पर दूसरी परिभाषा के साथ चलता — और लॉग के पास फ़र्क समझाने का कोई तरीका न होता।</p>
 <h2 id="retries">Retries<a class="anchor" href="#retries" aria-label="link">#</a></h2>
@@ -170,11 +170,11 @@ creates the Run  ─────────────►  (pending in the dat
 <div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31
 brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31
 <span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
-<div class="code-block" data-code="  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los</code></pre></div>
+<div class="code-block" data-code="  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them</code></pre></div>
 <p>यह <strong>कतार में डालता है, चलाता नहीं।</strong> चलाना <code>scheduler</code> का काम है — वही अलगाव फिर से। <code>--to</code> पूरे दिन को शामिल करता है।</p>
-<h2 id="landing-स-शर-हन">Landing से शुरू होना<a class="anchor" href="#landing-स-शर-हन" aria-label="link">#</a></h2>
+<h2 id="started-by-a-landing">Landing से शुरू होना<a class="anchor" href="#started-by-a-landing" aria-label="link">#</a></h2>
 <p>कोई workflow इसलिए चल सकता है कि डेटा आया, इसलिए नहीं कि घड़ी ने कहा:</p>
 <div class="code-block" data-code="trigger:
   on_landed:
@@ -187,23 +187,23 @@ brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true">
   <span class="t-k">debounce</span>: 5m</code></pre></div>
 <p>हर step पहले से घोषित करता है कि उसने क्या लिखा, उस pipe पर जो चरणों को ढोती है — वही <code>/data</code> को भरता है। Workflow इनमें से किसी एक नाम की सदस्यता लेता है और तब शुरू होता है जब उस पर कुछ उतरता है।</p>
 <p>अंत में <code>/*</code> पूरे dataset की सदस्यता लेता है। यह <code>auto_table</code> के लिए है, जो हर route के लिए एक तालिका बनाता है: जिन तालिकाओं को किसी ने घोषित नहीं किया उनके लिए सिर्फ़ dataset का नाम ही लिया जा सकता है। यह <code>bronze/orders</code> से मेल खाता है, <code>bronze_raw/orders</code> से नहीं।</p>
-<h3 id="वड-और-दस-landing-एक-run-कय-ह">विंडो, और दस landing एक run क्यों हैं<a class="anchor" href="#वड-और-दस-landing-एक-run-कय-ह" aria-label="link">#</a></h3>
+<h3 id="the-window-and-why-ten-landings-are-one-run">विंडो, और दस landing एक run क्यों हैं<a class="anchor" href="#the-window-and-why-ten-landings-are-one-run" aria-label="link">#</a></h3>
 <p><code>debounce</code> एक झोंके को समेट देता है। पाँच मिनट के भीतर उतरी दस तालिकाएँ <strong>एक</strong> run शुरू करती हैं, दस नहीं, और run बताता है कि कौन-सी:</p>
 <div class="code-block" data-code="BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items</code></pre></div>
 <p>सटीक सूची <code>BREVIS_AUTO_PARAMS</code> में JSON के रूप में भी होती है, जिसे तब पढ़ना चाहिए जब किसी target में अल्पविराम हो सकता हो।</p>
 <p>विंडो इस आधार पर कटती है कि <strong>engine ने landing कब दर्ज की</strong>, इस पर नहीं कि step ने उसका होना कब बताया। जो step उस क्षण की रिपोर्ट करता है जब उसकी query शुरू हुई, वह कुछ सच और कुछ पुराना बता रहा होता है, और एक बिगड़ी घड़ी वरना एक झोंके को दो run में बाँट देती।</p>
 <p><code>debounce</code> छोड़ दें तो हर landing एक run शुरू करती है।</p>
-<h3 id="यह-कय-नह-करग">यह क्या नहीं करेगा<a class="anchor" href="#यह-कय-नह-करग" aria-label="link">#</a></h3>
+<h3 id="what-it-will-not-do">यह क्या नहीं करेगा<a class="anchor" href="#what-it-will-not-do" aria-label="link">#</a></h3>
 <p><strong>कोई workflow अपने ही write से कभी शुरू नहीं होता।</strong> Engine ऐसी landing को छोड़ देता है जिसका लेखक सदस्यता लेने वाला workflow ही है, और कारण लॉग करता है — इसके बिना, जो workflow उसी तालिका को पढ़ता और लिखता है वह हमेशा के लिए खुद को ट्रिगर करता रहता।</p>
 <p>इसे <strong>चलने के समय</strong> मना किया जाता है, फ़ाइल जाँचते समय नहीं, और यह भूल नहीं बल्कि सीमा है: <code>brevis validate</code> फ़ाइलें पढ़ता है और कोई फ़ाइल यह घोषित नहीं करती कि step क्या लिखता है। Warehouse का target कनेक्शन तय करता है, YAML नहीं। इसलिए <code>validate</code> ऐसे workflow को पास कर देता है जो runtime पर मना कर दिया जाएगा, हर बार, कारण लॉग में लिखकर।</p>
 <p><strong>पहला चक्र कुछ शुरू नहीं करता।</strong> ट्रिगर उस क्षण से गिनना शुरू करता है जब वह चालू होता है, शेड्यूल की तरह — वरना एक को प्रकाशित करते ही catalog के पूरे इतिहास की हर landing के लिए एक run चल पड़ता।</p>
-<h2 id="अलरट">अलर्ट<a class="anchor" href="#अलरट" aria-label="link">#</a></h2>
+<h2 id="alerts">अलर्ट<a class="anchor" href="#alerts" aria-label="link">#</a></h2>
 <div class="code-block" data-code="export BREVIS_SLACK_WEBHOOK=&#x27;https://hooks.slack.com/services/...&#x27;
 export BREVIS_UI_URL=&#x27;https://brevis.example.com&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
 export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code></pre></div>
 <p>Webhook के बिना, प्रोसेस boot पर चेतावनी देती है कि विफलताओं की रिपोर्ट नहीं होगी। जो इंस्टॉलेशन चुपचाप विफल होता है, उसका पता आम तौर पर ग्राहक को चलता है, टीम को नहीं।</p>
 <p><code>BREVIS_UI_URL</code> अलर्ट के भीतर run का लिंक बनाता है — इसके बिना अलर्ट बताता है कि क्या विफल हुआ, पर पाठक को run हाथ से ढूँढना पड़ता है।</p>
-<h2 id="अगल-कदम">अगले कदम<a class="anchor" href="#अगल-कदम" aria-label="link">#</a></h2>
+<h2 id="next-steps">अगले कदम<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/hi/docs/pod-per-step/">हर step के लिए एक pod</a> — हर step असल में कहाँ चलता है</li><li><a href="/hi/docs/cli/">CLI</a> — <code>scheduler</code> और <code>backfill</code> का हर flag</li></ul>
 
       <nav class="pagers" aria-label="पेज">
@@ -218,7 +218,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#अलग-कय">अलग क्यों</a></li><li class="toc-2"><a href="#परसस">प्रोसेस</a></li><li class="toc-2"><a href="#परभष-क-सनपशट">परिभाषा का स्नैपशॉट</a></li><li class="toc-2"><a href="#retries">Retries</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#landing-स-शर-हन">Landing से शुरू होना</a></li><li class="toc-3"><a href="#वड-और-दस-landing-एक-run-कय-ह">विंडो, और दस landing एक run क्यों हैं</a></li><li class="toc-3"><a href="#यह-कय-नह-करग">यह क्या नहीं करेगा</a></li><li class="toc-2"><a href="#अलरट">अलर्ट</a></li><li class="toc-2"><a href="#अगल-कदम">अगले कदम</a></li></ul>
+      <ul><li class="toc-2"><a href="#why-separate">अलग क्यों</a></li><li class="toc-2"><a href="#the-process">प्रोसेस</a></li><li class="toc-2"><a href="#the-definition-snapshot">परिभाषा का स्नैपशॉट</a></li><li class="toc-2"><a href="#retries">Retries</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#started-by-a-landing">Landing से शुरू होना</a></li><li class="toc-3"><a href="#the-window-and-why-ten-landings-are-one-run">विंडो, और दस landing एक run क्यों हैं</a></li><li class="toc-3"><a href="#what-it-will-not-do">यह क्या नहीं करेगा</a></li><li class="toc-2"><a href="#alerts">अलर्ट</a></li><li class="toc-2"><a href="#next-steps">अगले कदम</a></li></ul>
     </aside>
   </main>
 </div>
@@ -238,9 +238,9 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -263,7 +263,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

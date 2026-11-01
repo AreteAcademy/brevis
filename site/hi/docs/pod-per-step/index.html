@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
-      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/pod-per-step/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/pod-per-step/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/pod-per-step/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/pod-per-step/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/pod-per-step/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/pod-per-step/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/pod-per-step/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/pod-per-step/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/pod-per-step/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/pod-per-step/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/pod-per-step/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><span>हिन्दी</span></summary><ul><li><a href="/docs/pod-per-step/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/pod-per-step/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/pod-per-step/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/pod-per-step/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/pod-per-step/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/pod-per-step/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/pod-per-step/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/pod-per-step/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/pod-per-step/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/pod-per-step/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/pod-per-step/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         ओपन सोर्स देखें
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>हर step के लिए एक pod</h1>
@@ -143,23 +143,23 @@ walks the graph
     follows the log     ◄───────  container stdout
     reads the exit code ◄───────  containerStatuses[0].terminated
     deletes the pod ───────────►  (gone)</code></pre></div>
-<h2 id="इसस-कय-बदलत-ह">इससे क्या बदलता है<a class="anchor" href="#इसस-कय-बदलत-ह" aria-label="link">#</a></h2>
+<h2 id="what-this-changes">इससे क्या बदलता है<a class="anchor" href="#what-this-changes" aria-label="link">#</a></h2>
 <p>एकाश्म worker image को मजबूर करता है कि उसमें वह सब हो जो कोई भी step माँग सकता है। व्यवहार में:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>एक ही image</th><th>हर step के लिए pod</th></tr></thead><tbody><tr><td>dbt step</td><td>1.9 GB · 1Gi RAM</td><td>1.9 GB · 1Gi RAM</td></tr><tr><td>उसके बगल में Go fetcher</td><td><strong>1.9 GB · 1Gi</strong></td><td><strong>12 MB · 32Mi</strong></td></tr><tr><td>dbt का संस्करण बढ़ाना</td><td>सब कुछ दोबारा बिल्ड</td><td>उस workflow की YAML में एक पंक्ति</td></tr><tr><td>मेमोरी रिसाने वाला step</td><td>worker और उसके पड़ोसियों को गिरा देता है</td><td>अकेला मरता है</td></tr></tbody></table></div>
 <p>तीसरी पंक्ति सबसे कम स्पष्ट है और रोज़ के काम में सबसे महँगी: एक ही image के साथ, एक pipeline में dbt को 1.10 से 1.11 पर ले जाना सबमें यही बदलाव ज़रूरी कर देता है।</p>
-<h2 id="भमक-क-हसब-स-images">भूमिका के हिसाब से images<a class="anchor" href="#भमक-क-हसब-स-images" aria-label="link">#</a></h2>
+<h2 id="images-by-role">भूमिका के हिसाब से images<a class="anchor" href="#images-by-role" aria-label="link">#</a></h2>
 <p>Images प्रति <strong>भूमिका</strong> होती हैं, प्रति प्रोजेक्ट नहीं। image में बचा हर फ़ालतू हिस्सा उस step को चलाने वाला हर node खींचता है:</p>
 <div class="table-wrap"><table><thead><tr><th>भूमिका</th><th>आकार</th><th>cold start</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td><strong>5.8 MB</strong></td><td>0.18 s</td></tr><tr><td><strong>Python</strong></td><td><strong>118 MB</strong></td><td>0.54 s</td></tr><tr><td><strong>dbt</strong></td><td><strong>620 MB</strong></td><td>3.3 s</td></tr></tbody></table></div>
 <p>पहले: सबके लिए एक ही 1.87 GB की image।</p>
 <p>dbt के लिए, <code>dbt parse</code> बिल्ड के समय चलता है और <code>target/partial_parse.msgpack</code> image में चला जाता है — हर invocation पर <strong>प्रति pod 2.68 s कम</strong>।</p>
-<h2 id="हर-step-कह-चलत-ह">हर step कहाँ चलता है<a class="anchor" href="#हर-step-कह-चलत-ह" aria-label="link">#</a></h2>
+<h2 id="where-each-step-runs">हर step कहाँ चलता है<a class="anchor" href="#where-each-step-runs" aria-label="link">#</a></h2>
 <p>यह फ़ैसला boot पर एक बार होता है, और <code>BREVIS_PODS</code> पर तथा इस पर निर्भर करता है कि cluster है या नहीं:</p>
 <div class="table-wrap"><table><thead><tr><th><code>BREVIS_PODS</code></th><th>cluster के साथ</th><th>cluster के बिना</th></tr></thead><tbody><tr><td><code>auto</code> (डिफ़ॉल्ट)</td><td><code>image:</code> वाला step pod बनता है</td><td>सब कुछ स्थानीय प्रोसेस की तरह, लॉग में चेतावनी के साथ</td></tr><tr><td><code>on</code></td><td><code>image:</code> वाला step pod बनता है</td><td><strong>boot त्रुटि</strong></td></tr><tr><td><code>off</code></td><td>सब कुछ स्थानीय प्रोसेस की तरह</td><td>सब कुछ स्थानीय प्रोसेस की तरह</td></tr></tbody></table></div>
 <p><strong><code>host:</code> वाला step इनमें से किसी से नहीं गुज़रता।</strong> उसे pod से पहले और प्रोसेस से पहले जाँचा जाता है, और वह पहले से चल रही मशीन पर जाता है — उस पर <code>BREVIS_PODS</code> लागू नहीं होता, और वह कभी स्थानीय प्रोसेस पर वापस नहीं आता। यह जानबूझकर है: <code>image:</code> चेतावनी के साथ स्थानीय execution पर इसलिए उतर आता है कि container और प्रोसेस दो आवरणों में वही कमांड हैं, और host ऐसा नहीं है। वहीं लाइसेंस रहता है, या GPU, या डेटा।</p>
 <p><code>auto</code> डिफ़ॉल्ट इसलिए है कि वही बाइनरी दोनों जगह चलती है: लैपटॉप पर कोई service account माउंट नहीं होता और वह स्थानीय प्रोसेस पर लौट आती है; cluster में होता है, और वह pods बनाने लगती है।</p>
 <p><code>on</code> उस deployment के लिए है जो <strong>चुपचाप</strong> स्थानीय execution <strong>नहीं</strong> बन सकता। वहाँ cluster का न होना boot त्रुटि होना चाहिए।</p>
 <aside class="admon admon-warning"><p class="admon-t">`brevis run` कोई pod नहीं बनाता</p><p><code>run</code> कमांड सिर्फ़ प्रोसेस executor बनाती है। <code>image:</code> वाला step उसी इंस्टेंस पर चलता है — और यह बता देता है। चुप रहना ऐसा दिखाता कि step घोषित image पर चला, और इसी तरह की गलती तब सामने आती है जब नतीजा पहले ही गलत हो चुका होता है।</p></aside>
-<h2 id="पहचन-और-करडशयल">पहचान और क्रेडेंशियल<a class="anchor" href="#पहचन-और-करडशयल" aria-label="link">#</a></h2>
+<h2 id="identity-and-credentials">पहचान और क्रेडेंशियल<a class="anchor" href="#identity-and-credentials" aria-label="link">#</a></h2>
 <p>Pods किस पहचान के साथ उठते हैं, यह <strong>इंस्टॉलेशन</strong> का फ़ैसला है, workflow का नहीं — pipeline को यह चुनने में सक्षम नहीं होना चाहिए कि वह किस service account के रूप में चले। इसलिए यह environment से आता है:</p>
 <div class="code-block" data-code="BREVIS_POD_NAMESPACE=data
 BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
@@ -169,16 +169,16 @@ BREVIS_POD_SERVICE_ACCOUNT=<span class="t-k">brevis</span>-runner
 BREVIS_POD_PULL_SECRETS=registry-cred
 BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred,api-tokens</code></pre></div>
 <p>Pod मोड में task का environment cluster के Secrets से आता है — <code>BREVIS_TASK_ENV</code> से नहीं।</p>
-<h2 id="node-selector-और-tolerations">Node selector और tolerations<a class="anchor" href="#node-selector-और-tolerations" aria-label="link">#</a></h2>
+<h2 id="node-selector-and-tolerations">Node selector और tolerations<a class="anchor" href="#node-selector-and-tolerations" aria-label="link">#</a></h2>
 <div class="code-block" data-code="BREVIS_POD_NODE_SELECTOR=&#x27;kubernetes.io/arch=arm64&#x27;
 BREVIS_POD_TOLERATIONS=&#x27;dedicated=data:NoSchedule&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>BREVIS_POD_NODE_SELECTOR='kubernetes.io/arch=arm64'
 BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
 <p>Tolerations में सिर्फ़ <code>Equal</code> ऑपरेटर स्वीकार है: <code>Exists</code> उस key वाले <strong>किसी भी</strong> taint को सह लेता, जो environment वेरिएबल से आने वाले फ़ैसले के लिए बहुत व्यापक है।</p>
 <p>गलत बनी toleration को boot त्रुटि बनाने के बजाय <strong>अनदेखा</strong> किया जाता है — वह pod को <code>Pending</code> में छोड़ देती है, जो दिखाई देता है, जबकि boot से मना करना उन workflows को भी रोक देता जिन्हें उस pool की ज़रूरत नहीं।</p>
-<h2 id="वफलत-क-debug-करन">विफलता को debug करना<a class="anchor" href="#वफलत-क-debug-करन" aria-label="link">#</a></h2>
+<h2 id="debugging-a-failure">विफलता को debug करना<a class="anchor" href="#debugging-a-failure" aria-label="link">#</a></h2>
 <div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>विफल pod को <code>kubectl logs</code> और <code>kubectl describe</code> के लिए रखे रखता है। Production में इसे बंद रखें: रुके हुए pods cluster का quota खाते हैं।</p>
-<h2 id="अगल-कदम">अगले कदम<a class="anchor" href="#अगल-कदम" aria-label="link">#</a></h2>
+<h2 id="next-steps">अगले कदम<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/hi/docs/kubernetes/">Kubernetes</a> — पूरा deployment</li><li><a href="/hi/docs/configuration/">कॉन्फ़िगरेशन</a> — हर <code>BREVIS_POD_*</code> वेरिएबल</li><li><a href="/hi/docs/observability/">ऑब्ज़र्वेबिलिटी</a> — दोनों प्रोसेस के मेट्रिक्स</li></ul>
 
       <nav class="pagers" aria-label="पेज">
@@ -193,7 +193,7 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#इसस-कय-बदलत-ह">इससे क्या बदलता है</a></li><li class="toc-2"><a href="#भमक-क-हसब-स-images">भूमिका के हिसाब से images</a></li><li class="toc-2"><a href="#हर-step-कह-चलत-ह">हर step कहाँ चलता है</a></li><li class="toc-2"><a href="#पहचन-और-करडशयल">पहचान और क्रेडेंशियल</a></li><li class="toc-2"><a href="#node-selector-और-tolerations">Node selector और tolerations</a></li><li class="toc-2"><a href="#वफलत-क-debug-करन">विफलता को debug करना</a></li><li class="toc-2"><a href="#अगल-कदम">अगले कदम</a></li></ul>
+      <ul><li class="toc-2"><a href="#what-this-changes">इससे क्या बदलता है</a></li><li class="toc-2"><a href="#images-by-role">भूमिका के हिसाब से images</a></li><li class="toc-2"><a href="#where-each-step-runs">हर step कहाँ चलता है</a></li><li class="toc-2"><a href="#identity-and-credentials">पहचान और क्रेडेंशियल</a></li><li class="toc-2"><a href="#node-selector-and-tolerations">Node selector और tolerations</a></li><li class="toc-2"><a href="#debugging-a-failure">विफलता को debug करना</a></li><li class="toc-2"><a href="#next-steps">अगले कदम</a></li></ul>
     </aside>
   </main>
 </div>
@@ -213,9 +213,9 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -238,7 +238,7 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

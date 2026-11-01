@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
-      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/ecosystem/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ecosystem/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ecosystem/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ecosystem/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ecosystem/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ecosystem/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/ecosystem/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ecosystem/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ecosystem/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ecosystem/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ecosystem/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><span>简体中文</span></summary><ul><li><a href="/docs/ecosystem/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ecosystem/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ecosystem/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ecosystem/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ecosystem/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ecosystem/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/ecosystem/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ecosystem/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ecosystem/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ecosystem/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ecosystem/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         探索开源项目
@@ -119,25 +119,25 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>生态</h1>
       <p class="doc-desc">brevis.sh 的四个组成部分、各自的职责，以及数据经过的路径。</p>
       <p>Core 负责调度、排队和监控，从不接触数据。真正接触数据的是：负责抓取的 SDK、负责接收的 Gateway，以及在数据落地之后对其建模的 SQL。</p>
-<h2 id="四个组成部分">四个组成部分<a class="anchor" href="#四个组成部分" aria-label="link">#</a></h2>
+<h2 id="the-four-pieces">四个组成部分<a class="anchor" href="#the-four-pieces" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>组成部分</th><th>作用</th><th>获取方式</th><th>指南</th></tr></thead><tbody><tr><td><strong>Core</strong></td><td>调度、排队，并为每个 step 启动一个 pod。从不接触数据。</td><td><code>areteacademy/brevis</code></td><td><a href="/zh/docs/core/">Core</a></td></tr><tr><td><strong>SDK</strong></td><td>一个 Go 库，在你的 step 内部完成抽取、整形和加载。</td><td><code>go get github.com/AreteAcademy/brevis/sdk</code></td><td><a href="/zh/docs/sdk/">Go SDK</a></td></tr><tr><td><strong>Gateway</strong></td><td>接收 HTTP POST，返回 202，并分批写入。自身没有数据库。</td><td><code>areteacademy/brevis-gateway</code></td><td><a href="/zh/docs/ingestion/">摄取</a></td></tr><tr><td><strong>SQL</strong></td><td>普通的 .sql 文件按依赖顺序变成表和视图。</td><td><code>areteacademy/brevis-sql</code></td><td><a href="/zh/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="控制平面与数据平面">控制平面与数据平面<a class="anchor" href="#控制平面与数据平面" aria-label="link">#</a></h2>
+<h2 id="control-plane-data-plane">控制平面与数据平面<a class="anchor" href="#control-plane-data-plane" aria-label="link">#</a></h2>
 <p><strong>控制平面</strong>就是 Core：它决定每个 step 何时运行，把队列和状态保存在 Postgres 中，并为每个 step 启动一个 pod。数据从不经过它。</p>
 <p><strong>数据平面</strong>是另外三个组成部分。数据来自 API、数据库或文件，通过两种方式之一到达目的地：由 <strong>SDK 抓取</strong>（在你自己的 step 内部），或者由 webhook 和应用通过 HTTP <strong>推送到 Gateway</strong>。目的地可以是表、topic，或 bucket 中的文件。数据落地之后，<strong>SQL</strong> 就在它所在的数据库里直接对表建模。</p>
-<h3 id="周边">周边<a class="anchor" href="#周边" aria-label="link">#</a></h3>
+<h3 id="around-it">周边<a class="anchor" href="#around-it" aria-label="link">#</a></h3>
 <p>另有三个配套部分：</p>
-<ul><li><strong><a href="/zh/docs/console/">Console</a></strong> — Core 之上的 Web 界面</li><li><strong><a href="/zh/docs/pod-per-step/#每个-step-在哪里运行">agent</a></strong> — 在你已有的集群中运行 step</li><li><strong><a href="/zh/docs/python/"><code>brevis</code> for Python</a></strong> — 为 Python step 提供运行上下文</li></ul>
-<h2 id="只使用其中一个组成部分">只使用其中一个组成部分<a class="anchor" href="#只使用其中一个组成部分" aria-label="link">#</a></h2>
+<ul><li><strong><a href="/zh/docs/console/">Console</a></strong> — Core 之上的 Web 界面</li><li><strong><a href="/zh/docs/pod-per-step/#where-each-step-runs">agent</a></strong> — 在你已有的集群中运行 step</li><li><strong><a href="/zh/docs/python/"><code>brevis</code> for Python</a></strong> — 为 Python step 提供运行上下文</li></ul>
+<h2 id="using-only-one-piece">只使用其中一个组成部分<a class="anchor" href="#using-only-one-piece" aria-label="link">#</a></h2>
 <p>可以。每个组成部分都有自己的模块、版本和镜像：SDK 是一个可以在任何程序中运行的 Go 库，Gateway 只需一个 YAML 文件即可独立启动，无需数据库，brevis-sql 则作为容器运行。你需要时，Core 可以编排其他几个部分，但它不是其中任何一个的前提条件。</p>
-<h2 id="同一行数据">同一行数据<a class="anchor" href="#同一行数据" aria-label="link">#</a></h2>
+<h2 id="the-same-row">同一行数据<a class="anchor" href="#the-same-row" aria-label="link">#</a></h2>
 <p>SDK 抓取的订单与到达 Gateway 的订单，会以相同的 brevis_ingestion_id 落到同一张表里。在两者之间选择，变成了部署层面的决定，而不是 schema 层面的决定。</p>
-<p>通过 SDK，使用 <code>sdk.Landing</code>（详见<a href="/zh/docs/sdk/#落地布局">落地布局</a>）：</p>
+<p>通过 SDK，使用 <code>sdk.Landing</code>（详见<a href="/zh/docs/sdk/#the-landing-layout">落地布局</a>）：</p>
 <div class="code-block" data-code="sdk.Execute(ctx, &amp;sdk.Pipeline{
 	Source:    sdk.Source{From: from.Files{Path: &quot;order.json&quot;}},
 	Transform: []sdk.Transformer{sdk.Landing(&quot;app_orders&quot;, sdk.LandingKey(&quot;id&quot;))},
@@ -153,7 +153,7 @@
 		Schema: sdk.LandingSchema(sdk.LandingOptions{}),
 	},
 }, <span class="t-k">nil</span>)</code></pre></div>
-<p>通过 Gateway，向 <code>/v1/tables</code> 发送 POST（详见<a href="/zh/docs/ingestion/#一条路由n-张表">一条路由，N 张表</a>）：</p>
+<p>通过 Gateway，向 <code>/v1/tables</code> 发送 POST（详见<a href="/zh/docs/ingestion/#one-route-n-tables">一条路由，N 张表</a>）：</p>
 <div class="code-block" data-code="curl -X POST localhost:8080/v1/tables -H &#x27;Authorization: Bearer dev-key&#x27; \
     -d &#x27;{&quot;table_name&quot;:&quot;app_orders&quot;,&quot;unique_key&quot;:&quot;id&quot;,
          &quot;data&quot;:{&quot;id&quot;:&quot;A-1&quot;,&quot;customer&quot;:&quot;acme.example.com&quot;,&quot;total&quot;:150}}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/tables <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
@@ -177,7 +177,7 @@
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#四个组成部分">四个组成部分</a></li><li class="toc-2"><a href="#控制平面与数据平面">控制平面与数据平面</a></li><li class="toc-3"><a href="#周边">周边</a></li><li class="toc-2"><a href="#只使用其中一个组成部分">只使用其中一个组成部分</a></li><li class="toc-2"><a href="#同一行数据">同一行数据</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-four-pieces">四个组成部分</a></li><li class="toc-2"><a href="#control-plane-data-plane">控制平面与数据平面</a></li><li class="toc-3"><a href="#around-it">周边</a></li><li class="toc-2"><a href="#using-only-one-piece">只使用其中一个组成部分</a></li><li class="toc-2"><a href="#the-same-row">同一行数据</a></li></ul>
     </aside>
   </main>
 </div>
@@ -197,9 +197,9 @@
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -222,7 +222,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

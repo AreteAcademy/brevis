@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=eed2faa512">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,9 +84,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
-      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/ingestion-sinks/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion-sinks/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion-sinks/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion-sinks/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ingestion-sinks/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ingestion-sinks/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ingestion-sinks/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ingestion-sinks/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion-sinks/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ingestion-sinks/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/ingestion-sinks/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><span>हिन्दी</span></summary><ul><li><a href="/docs/ingestion-sinks/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion-sinks/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion-sinks/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion-sinks/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ingestion-sinks/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ingestion-sinks/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ingestion-sinks/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ingestion-sinks/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion-sinks/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ingestion-sinks/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/ingestion-sinks/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
         ओपन सोर्स देखें
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>Ingestion sinks</h1>
@@ -129,7 +129,7 @@
 <p><strong>छह में से दो end-to-end अप्रमाणित हैं</strong>, और तालिका यह कहती है, "चलता है" शब्द को ऐसे दावे का वाहक बनने देने के बजाय जिसे किसी ने जाँचा नहीं। BigQuery और Redshift का कोई स्थानीय emulator नहीं है, इसलिए जो परखा जाता है वह कॉन्फ़िग, इनकार और नीचे का driver है — जिसे SDK का अपना सुइट पहले से कवर करता है। दोनों में से किसी का पहला production उपयोग असली प्रमाण है, और वह कम जोखिम वाला stream होना चाहिए।</p>
 <p>अज्ञात <code>type:</code> <strong>शुरू होते समय मना</strong> होता है, यह बताते हुए कि <em>यह बाइनरी</em> क्या ढोती है। जो gateway ऐसे sink पर शुरू हो जाए जो उसके पास नहीं है, वह ऐसे कारण से events गिराता है जो किसी को दिखता नहीं।</p>
 <p><code>gs://</code> और <code>s3://</code> अलग connectors नहीं हैं: <code>files</code> तीनों path रूप पढ़ता है, इसलिए dead letter लैपटॉप पर फ़ोल्डर है और production में bucket, यहाँ कुछ बदले बिना।</p>
-<h2 id="हर-एक-कस-लखत-ह">हर एक कैसे लिखता है<a class="anchor" href="#हर-एक-कस-लखत-ह" aria-label="link">#</a></h2>
+<h2 id="how-each-one-writes">हर एक कैसे लिखता है<a class="anchor" href="#how-each-one-writes" aria-label="link">#</a></h2>
 <p>तालिका में लिखने वाले चारों गंतव्यों पर <code>write</code> <strong>ज़रूरी है और कभी डिफ़ॉल्ट नहीं होता</strong>, क्योंकि दोनों मोड सचमुच अलग हैं और केवल तालिका का मालिक जानता है कि कौन-सा है:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th><code>append</code></th><th><code>merge</code></th></tr></thead><tbody><tr><td><strong>postgres</strong></td><td><code>COPY FROM STDIN</code></td><td><code>INSERT … ON CONFLICT (ingestion_id) DO NOTHING</code></td></tr><tr><td><strong>mysql</strong></td><td>प्रति block multi-row <code>INSERT</code></td><td><code>INSERT IGNORE</code></td></tr><tr><td><strong>bigquery</strong></td><td>पंक्तियाँ लोड होती हैं (inline सीमा से ऊपर GCS के ज़रिए)</td><td><code>MERGE … WHEN NOT MATCHED THEN INSERT</code></td></tr><tr><td><strong>redshift</strong></td><td>S3 से <code>COPY</code></td><td>staging तालिका में <code>COPY</code>, फिर <code>MERGE</code></td></tr></tbody></table></div>
 <p><code>merge</code> का अर्थ <strong>चारों में एक ही है</strong>: idempotent insert, और <strong>पहली डिलीवरी जीतती है</strong>। दोबारा की डिलीवरी अनदेखी होती है, लागू नहीं — जो event के लिए सही है, जो एक बार हुआ और बदलता नहीं, और बदलती स्थिति ढोने वाली पंक्ति के लिए गलत।</p>
@@ -137,7 +137,7 @@
 <div class="code-block" data-code="CREATE UNIQUE INDEX CONCURRENTLY ON landing.orders (ingestion_id);"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">CREATE</span> UNIQUE INDEX CONCURRENTLY <span class="t-k">ON</span> landing.orders (ingestion_id);</code></pre></div>
 <p>Index के बिना <code>ON CONFLICT</code> के पास मिलाने को कुछ नहीं होता, और हर दोबारा की डिलीवरी उस तालिका में डुप्लिकेट बनाती जिसके मालिक ने उलटा माँगा था। इनकार खोया हुआ batch नहीं है: उसका retry होता है, फिर कारण और <code>CREATE INDEX</code> के साथ रिकॉर्ड पर dead letter में दफ़नाया जाता है — जब तक कोई index बनाता है, कोई events नहीं खोता।</p>
 <p><strong><code>upsert</code> नाम लेकर मना है।</strong> <code>ON CONFLICT DO UPDATE</code>, जहाँ <em>आखिरी</em> डिलीवरी जीतती है, असली मोड है जो <strong>लागू नहीं</strong> है। शब्द को स्वीकार करके <code>merge</code> की तरह बरतना ठीक वही विफलता है जिसे रोकने के लिए वह फ़ील्ड है, इसलिए कॉन्फ़िग यही कहता है।</p>
-<h2 id="हर-एक-वह-ज-सरफ-उस-क-बर-म-सच-ह">हर एक, वह जो सिर्फ़ उसी के बारे में सच है<a class="anchor" href="#हर-एक-वह-ज-सरफ-उस-क-बर-म-सच-ह" aria-label="link">#</a></h2>
+<h2 id="each-one-with-what-is-true-only-of-it">हर एक, वह जो सिर्फ़ उसी के बारे में सच है<a class="anchor" href="#each-one-with-what-is-true-only-of-it" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# Postgres: schema-qualified name, and the table has to exist.
 sink: {type: postgres, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
 
@@ -185,10 +185,10 @@ sink:
   <span class="t-k">write</span>: merge</code></pre></div>
 <p><code>dsn_from</code> कनेक्शन string रखने वाले <strong>environment वेरिएबल</strong> का नाम लेता है, string का कभी नहीं: DSN पासवर्ड ढोता है और वह फ़ाइल git में है। यह वही बँटवारा है जो workflow में <code>secrets:</code> करता है।</p>
 <p><code>iam_role</code> role है और driver <strong>key स्वीकार नहीं करेगा</strong>: <code>COPY</code> के URL में key cluster के query log में पहुँच जाती है, जिसे बहुत लोग पढ़ते हैं।</p>
-<h2 id="कई-कलम-घषण-नह">कोई कॉलम घोषणा नहीं<a class="anchor" href="#कई-कलम-घषण-नह" aria-label="link">#</a></h2>
+<h2 id="no-column-declaration">कोई कॉलम घोषणा नहीं<a class="anchor" href="#no-column-declaration" aria-label="link">#</a></h2>
 <p>Gateway कॉलम सूची नहीं भेजता। Pipeline अपनी घोषित करती है क्योंकि उसकी पंक्तियों का एक आकार है जिसे वह नियंत्रित करती है; gateway का batch वह है जो <em>N</em> क्लाइंट ने एक flush विंडो में पोस्ट किया, और आकारों के भिन्न होने की अनुमति है।</p>
 <p>Driver सूची को <strong>तालिका से ही</strong> निकालता है, batch जो ढोता है उससे काटकर, सर्वर को छूने से <strong>पहले</strong>। जो फ़ील्ड तालिका में नहीं है वह उस संदेश के साथ मना होता है जो उसे ठीक करता है, <code>COPY</code> के बीच में <code>column "x" of relation "y" does not exist</code> से विफल होने के बजाय; जो फ़ील्ड कोई event छोड़ दे वह <code>NULL</code> लिखा जाता है।</p>
-<h2 id="import-सच-ह-चयन-ह">Import सूची ही चयन है<a class="anchor" href="#import-सच-ह-चयन-ह" aria-label="link">#</a></h2>
+<h2 id="the-import-list-is-the-selection">Import सूची ही चयन है<a class="anchor" href="#the-import-list-is-the-selection" aria-label="link">#</a></h2>
 <p>Sinks hooks की तरह <strong>compile होकर भीतर</strong> होते हैं, और बाइनरी वही पंजीकृत करती है जो उसके पास है:</p>
 <div class="code-block" data-code="func main() {
     sinks := gateway.NewSinks()
@@ -205,18 +205,18 @@ sink:
 <p>यह उतने का है जितना सुनने में लगता है:</p>
 <div class="table-wrap"><table><thead><tr><th>बिल्ड</th><th>पैकेज</th><th>बाइनरी</th></tr></thead><tbody><tr><td>छहों sinks, दोनों ऑब्जेक्ट स्टोर, दोनों metastores</td><td>करीब 900</td><td>55.0 MB</td></tr><tr><td><code>postgres</code> + स्थानीय <code>files</code></td><td>करीब 240</td><td><strong>10.2 MB</strong></td></tr></tbody></table></div>
 <p>ऑब्जेक्ट स्टोर <strong>दूसरी</strong> registry हैं, क्योंकि स्कीम गंतव्य नहीं है: <code>files</code> एक sink है जो डायरेक्टरी, <code>gs://</code> और <code>s3://</code> में लिखता है, और जो बिल्ड सिर्फ़ स्थानीय रूप से लिखता है उसे ऐसा करने के लिए AWS SDK नहीं ढोना चाहिए।</p>
-<h3 id="द-परकशत-images">दो प्रकाशित images<a class="anchor" href="#द-परकशत-images" aria-label="link">#</a></h3>
+<h3 id="two-published-images">दो प्रकाशित images<a class="anchor" href="#two-published-images" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th>image</th><th>क्या ढोती है</th><th>pull (amd64)</th></tr></thead><tbody><tr><td><code>areteacademy/brevis-gateway:0.32.0</code></td><td>छह sinks, S3, GCS, Redis, memcached</td><td>19.1 MB</td></tr><tr><td><code>areteacademy/brevis-gateway:0.32.0-slim</code></td><td><code>postgres</code>, स्थानीय <code>files</code>, <code>auto_table</code></td><td><strong>5.2 MB</strong></td></tr></tbody></table></div>
 <p>दोनों एक ट्री के एक बिल्ड से, इसलिए दोनों tags हमेशा वही commit हैं। <code>latest-slim</code> नहीं है — <code>latest</code> पहले से ऐसा tag है जिसे किसी को deploy नहीं करना चाहिए।</p>
 <p><strong>कोई और जोड़ी चाहिए?</strong> <code>cmd/gateway-slim</code> पंद्रह पंक्तियाँ है और import block ही उसका पूरा कॉन्फ़िगरेशन है। उसकी नकल करें, imports बदलें, बिल्ड करें। जो hook चाहता है वह पहले से अपनी बाइनरी बना रहा है, इसलिए sinks चुनने में उसे कुछ और नहीं लगता।</p>
-<h3 id="इनकर-बतत-ह-क-आप-कन-स-बलड-थम-ह">इनकार बताता है कि आप कौन-सा बिल्ड थामे हैं<a class="anchor" href="#इनकर-बतत-ह-क-आप-कन-स-बलड-थम-ह" aria-label="link">#</a></h3>
+<h3 id="the-refusal-says-which-build-you-are-holding">इनकार बताता है कि आप कौन-सा बिल्ड थामे हैं<a class="anchor" href="#the-refusal-says-which-build-you-are-holding" aria-label="link">#</a></h3>
 <div class="code-block" data-code="sink type &quot;bigquery&quot; is not one this binary carries (it has: files, postgres).
 Sinks are compiled in, so this is a build that left it out rather than a
 destination that does not exist."><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>sink type "bigquery" is not one this binary carries (it has: files, postgres).
 Sinks are compiled in, so this is a build that left it out rather than a
 destination that does not exist.</code></pre></div>
 <p>स्थिर सूची उस व्यक्ति को कॉन्फ़िग की ऐसी गलती ढूँढने भेज देती जो उसने की नहीं। ऑब्जेक्ट स्टोर पर भी यही लागू होता है: S3 backend के बिना बाइनरी में <code>s3://</code> dead letter <strong>शुरू होते समय</strong>, स्कीम का नाम लेकर मना होता है, पहले batch पर नहीं जिसे उसे दफ़नाना पड़ता।</p>
-<h2 id="एक-route-n-तलकए-कछ-घषत-नह">एक route, N तालिकाएँ, कुछ घोषित नहीं<a class="anchor" href="#एक-route-n-तलकए-कछ-घषत-नह" aria-label="link">#</a></h2>
+<h2 id="one-route-n-tables-nothing-declared">एक route, N तालिकाएँ, कुछ घोषित नहीं<a class="anchor" href="#one-route-n-tables-nothing-declared" aria-label="link">#</a></h2>
 <div class="code-block" data-code="sink:
   type: auto_table
   shape: columns
@@ -229,7 +229,7 @@ destination that does not exist.</code></pre></div>
   <span class="t-k">metastore</span>: {type: redis, addr_from: BREVIS_METASTORE_ADDR, ttl: 60s}
   <span class="t-k">into</span>: {type: bigquery, project: acme-prod, dataset: landing, write: merge}</code></pre></div>
 <p><code>auto_table</code> <strong>route करता है, लिखता नहीं</strong>: <code>into</code> वह है जो लिखता है, और उसमें कोई <code>table</code> नहीं — तालिका हर event से आती है। <code>table</code> वाला <code>into</code> शुरू होते समय मना होता है, क्योंकि router के नीचे की निश्चित तालिका चुपचाप जीतती और हर event उसी में उतरता।</p>
-<h3 id="envelope">Envelope<a class="anchor" href="#envelope" aria-label="link">#</a></h3>
+<h3 id="the-envelope">Envelope<a class="anchor" href="#the-envelope" aria-label="link">#</a></h3>
 <p>Body एक <strong>envelope</strong> है: ऊपर नियंत्रण फ़ील्ड, रिकॉर्ड <code>data</code> के भीतर।</p>
 <div class="code-block" data-code="{
   &quot;table_name&quot;: &quot;app_orders&quot;,
@@ -256,7 +256,7 @@ destination that does not exist.</code></pre></div>
 }</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>फ़ील्ड</th><th></th><th>यह क्या है</th></tr></thead><tbody><tr><td><code>table_name</code></td><td><strong>ज़रूरी</strong></td><td>यह कहाँ उतरता है</td></tr><tr><td><code>data</code></td><td><strong>ज़रूरी</strong></td><td>रिकॉर्ड, और सिर्फ़ वही</td></tr><tr><td><code>unique_key</code></td><td>डिफ़ॉल्ट <code>id</code></td><td><code>data</code> का कौन-सा फ़ील्ड रिकॉर्ड की पहचान है — <strong><code>merge</code> के तहत ज़रूरी</strong></td></tr><tr><td><code>operation</code></td><td>डिफ़ॉल्ट <code>INSERT</code></td><td><code>INSERT</code>, <code>UPDATE</code> या <code>DELETE</code></td></tr><tr><td><code>description</code></td><td>वैकल्पिक</td><td><strong>स्वीकार किया जाता है और अभी इस्तेमाल नहीं होता</strong> — नीचे देखें</td></tr></tbody></table></div>
 <p><code>table_name</code> का <code>total</code> और <code>customer</code> के बगल में बैठना <strong>transport</strong> के फ़ील्ड का <strong>रिकॉर्ड</strong> का फ़ील्ड होने का दिखावा करना था। उन्हें अलग करना ही हर CDC फ़ॉर्मेट का आकार है — और यही उपसर्ग आरक्षित करना संभव बनाता है, क्योंकि अब एक ही जगह है जहाँ सिर्फ़ producer लिखता है।</p>
-<h3 id="key-merge-क-ह-envelope-क-नह">Key <code>merge</code> की है, envelope की नहीं<a class="anchor" href="#key-merge-क-ह-envelope-क-नह" aria-label="link">#</a></h3>
+<h3 id="the-key-belongs-to-merge-not-to-the-envelope">Key <code>merge</code> की है, envelope की नहीं<a class="anchor" href="#the-key-belongs-to-merge-not-to-the-envelope" aria-label="link">#</a></h3>
 <p><code>unique_key</code> वैकल्पिक है, और वह <strong>ज़रूरी</strong> है या नहीं यह write मोड पर निर्भर करता है — क्योंकि दोनों मोड अलग चीज़ें चाहते हैं:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>write: merge</code></td><td><strong>ज़रूरी।</strong> मोड प्रति रिकॉर्ड एक पंक्ति रखने के लिए है, और "प्रति रिकॉर्ड" का अर्थ <code>brevis_record_key</code> है: वर्तमान संस्करण निकालने वाला <code>qualify</code> उसी पर partition करता है। जिस merge तालिका में ऐसी पंक्तियाँ हों जो कोई रिकॉर्ड नहीं बतातीं, उसे कोई resolve नहीं कर सकता।</td></tr><tr><td><code>write: append</code></td><td><strong>वैकल्पिक।</strong> Append तालिका लॉग है, और लॉग की प्रविष्टि का किसी रिकॉर्ड <em>के बारे में</em> होना ज़रूरी नहीं: ऑडिट पंक्ति, webhook, मेट्रिक नमूना। वहाँ <code>id</code> माँगना producers से उसे गढ़वाता, जो <code>NULL</code> से बुरा है क्योंकि असली दिखता है।</td></tr></tbody></table></div>
 <p><code>append</code> के तहत कॉलम nullable बनता है और बिना key वाली पंक्ति <code>NULL</code> ढोती है — <code>""</code> नहीं, जो अलग तथ्य है। और <code>brevis_ingestion_id</code> फिर भी मौजूद है: key के बिना, <strong>सामग्री ही key है</strong>, इसलिए वही दस्तावेज़ दो बार वही id है।</p>
@@ -267,14 +267,14 @@ destination that does not exist.</code></pre></div>
  record's identity and \"data\".\"pedido_id\" is missing or empty. Drop
  \"unique_key\" to fall back to \"id\", or send the field"]}</code></pre></div>
 <p><strong><code>description</code> पढ़ा जाता है और आज कहीं नहीं जाता।</strong> यह console के ingestion पेज के लिए अनुबंध में है, जो अभी लिखा नहीं गया। यह यहाँ इसलिए कहा गया है कि चुपचाप स्वीकार किया गया फ़ील्ड वह है जिसके बारे में कोई मानता है कि वह सहेजा जा रहा है।</p>
-<h3 id="आठ-नशचत-कलम-और-रकरड-ज-भ-ढए">आठ निश्चित कॉलम, और रिकॉर्ड जो भी ढोए<a class="anchor" href="#आठ-नशचत-कलम-और-रकरड-ज-भ-ढए" aria-label="link">#</a></h3>
+<h3 id="eight-fixed-columns-plus-whatever-the-record-carries">आठ निश्चित कॉलम, और रिकॉर्ड जो भी ढोए<a class="anchor" href="#eight-fixed-columns-plus-whatever-the-record-carries" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th>कॉलम</th><th></th><th></th></tr></thead><tbody><tr><td><code>brevis_ingestion_id</code></td><td><code>STRING</code></td><td>पहचान, और merge की key</td></tr><tr><td><code>brevis_record_key</code></td><td><code>STRING</code></td><td><code>data[unique_key]</code> — यह किस <strong>रिकॉर्ड</strong> के बारे में है; <code>append</code> के तहत <code>NULL</code></td></tr><tr><td><code>brevis_operation</code></td><td><code>STRING</code></td><td><code>INSERT</code>, <code>UPDATE</code> या <code>DELETE</code></td></tr><tr><td><code>brevis_received_at</code></td><td><code>TIMESTAMP</code></td><td>आगमन, <strong>हमारी</strong> घड़ी पर — partition कॉलम</td></tr><tr><td><code>brevis_loaded_at</code></td><td><code>TIMESTAMP</code></td><td>write, <strong>गंतव्य</strong> द्वारा मुहर लगाया गया</td></tr><tr><td><code>brevis_stream</code></td><td><code>STRING</code></td><td>किस route ने लिखा</td></tr><tr><td><code>brevis_gateway</code></td><td><code>STRING</code></td><td>कौन-सा deployment</td></tr><tr><td><code>brevis_received_bytes</code></td><td><code>INT64</code></td><td>event <strong>कितना बड़ा आया</strong>, envelope समेत</td></tr></tbody></table></div>
-<p>ये आठ <strong>SDK के</strong> हैं, इस sink के नहीं: <code>sdk.LandingSchema</code> उन्हें घोषित करता है और <code>sdk.LandingID</code> पहचान गढ़ता है, इसलिए pipeline वही तालिका वही ids के साथ उतार सकती है। एक परिभाषा, क्योंकि दो भटक जातीं। देखें <a href="/hi/docs/sdk/#लडग-लआउट">SDK का लैंडिंग लेआउट</a>।</p>
+<p>ये आठ <strong>SDK के</strong> हैं, इस sink के नहीं: <code>sdk.LandingSchema</code> उन्हें घोषित करता है और <code>sdk.LandingID</code> पहचान गढ़ता है, इसलिए pipeline वही तालिका वही ids के साथ उतार सकती है। एक परिभाषा, क्योंकि दो भटक जातीं। देखें <a href="/hi/docs/sdk/#the-landing-layout">SDK का लैंडिंग लेआउट</a>।</p>
 <p><strong><code>brevis_</code> आरक्षित है।</strong> उस उपसर्ग वाली कोई भी key ढोने वाला <code>data</code> <strong>प्रति event</strong> मना होता है — वरना producer नियंत्रण फ़ील्ड गढ़ लेता, और गढ़ा हुआ <code>brevis_received_at</code> न होने से बुरा है क्योंकि असली दिखता है।</p>
 <p><strong><code>brevis_loaded_at</code> डेटाबेस का <code>DEFAULT</code> है</strong>, gateway का भेजा मान नहीं। Gateway <strong>dispatch</strong> का समय जानता है, गंतव्य <strong>write</strong> का समय जानता है, और दोनों कॉलम का अंतर हर पंक्ति के लिए असली end-to-end देरी है, कुछ instrument किए बिना।</p>
 <p><strong><code>brevis_received_at</code> partition कॉलम है, क्लाइंट की घड़ी कभी नहीं</strong>: producer की घड़ी गलत या अनुपस्थित हो सकती है, और क्लाइंट के नियंत्रण वाला partition कॉलम ऐसा क्लाइंट है जो 2035 में लिख सकता है। बिना partition वाली लैंडिंग तालिका ऐसा query बिल है जो सिर्फ़ बढ़ता है। Clustering <code>brevis_record_key</code> से है, क्योंकि ऐसी तालिका के साथ हर कोई एक रिकॉर्ड का इतिहास पढ़ता है।</p>
 <p>एक घोषणा हर गंतव्य को परोसती है, क्योंकि SDK का DDL generator हर टाइप का अनुवाद करता है: <code>STRING</code> Postgres पर <code>TEXT</code>, MySQL पर <code>LONGTEXT</code> और BigQuery पर <code>STRING</code> बनता है; <code>JSON</code> क्रमशः <code>JSONB</code>, <code>JSON</code> और <code>JSON</code> बनता है।</p>
-<h3 id="वलयम-वलयम-मपन-क-बनयद-ढच-क-बन">वॉल्यूम, वॉल्यूम मापने के बुनियादी ढाँचे के बिना<a class="anchor" href="#वलयम-वलयम-मपन-क-बनयद-ढच-क-बन" aria-label="link">#</a></h3>
+<h3 id="volume-without-infrastructure-to-measure-volume">वॉल्यूम, वॉल्यूम मापने के बुनियादी ढाँचे के बिना<a class="anchor" href="#volume-without-infrastructure-to-measure-volume" aria-label="link">#</a></h3>
 <p><code>brevis_received_bytes</code> <strong>मुफ़्त</strong> है: gateway <code>buffer.flush.size</code> चलाने के लिए ये बाइट decode पर पहले से गिनता है, और अब तक वह संख्या वहीं मर जाती थी। अकेले रिकॉर्ड को मापने में प्रति event एक <code>json.Marshal</code> लगता — parse पहले से जो 3.1 µs खर्च करता है उसके विरुद्ध 2.0 µs, <strong>hot path पर 67% ज़्यादा</strong> — ऐसी संख्या को सुधारने के लिए जिसका काम रुझान और आरोपण है।</p>
 <p>यह उसका जवाब देता है जो मेट्रिक्स <strong>संरचनात्मक रूप से नहीं दे सकते</strong>। हर <code>brevis_gateway_*</code> series प्रति <em>stream</em> है और जानबूझकर उस पर <code>table</code> label नहीं है: <code>auto_table</code> के साथ एक route N तालिकाएँ बन जाता है और वह label producer के चुनने की चीज़ है। इसलिए "कौन-सी तालिका बढ़ रही है, और कब से" का जवाब कहीं नहीं था।</p>
 <div class="code-block" data-code="select date(brevis_received_at) day,
@@ -289,7 +289,7 @@ group by 1 order by 1 desc</code></pre></div>
 <p>कॉलम के बिना वही सवाल पूरे JSON कॉलम को स्कैन करना है — <code>sum(length(to_json_string(data)))</code> — करीब <strong>पचास गुना ज़्यादा स्कैन किए गए बाइट</strong>, हर बार जब कोई पूछे। कॉलम पहली query पर ही अपना खर्च निकाल लेता है।</p>
 <p><strong>यह ingress है, storage नहीं।</strong> गंतव्य पंक्ति को typed और compressed रखता है: JSON के 400 बाइट डिस्क पर 80 हो सकते हैं। इसका योग वह देता है जो <em>आया</em>, वह नहीं जिसे रखने का बिल लगता है।</p>
 <p>और <strong>producer इसे नहीं लिख सकता।</strong> Gateway hook के बाद मान पर मुहर लगाता है और envelope में जो था उसे अधिलेखित करता है — जो क्लाइंट यह फ़ील्ड भेजता वह अपना वॉल्यूम खुद रिपोर्ट करता, और उसका योग कुछ मायने नहीं रखता।</p>
-<h3 id="वलयम-series-opt-in-ह">वॉल्यूम series opt-in हैं<a class="anchor" href="#वलयम-series-opt-in-ह" aria-label="link">#</a></h3>
+<h3 id="the-volume-series-are-opt-in">वॉल्यूम series opt-in हैं<a class="anchor" href="#the-volume-series-are-opt-in" aria-label="link">#</a></h3>
 <div class="code-block" data-code="BREVIS_INGESTION_METRICS=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>BREVIS_INGESTION_METRICS=true</code></pre></div>
 <div class="code-block" data-code="brevis_gateway_ingested_bytes_total{stream,table}
 brevis_gateway_ingested_events_total{stream,table}"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>brevis_gateway_ingested_bytes_total{stream,table}
@@ -297,7 +297,7 @@ brevis_gateway_ingested_events_total{stream,table}</code></pre></div>
 <p><strong>डिफ़ॉल्ट रूप से बंद</strong>, और डिफ़ॉल्ट ही मुद्दा है: <code>table</code> वह label है जो <em>producer</em> चुनता है। इस फ़ाइल में बाकी सब कुछ उस पर label होता है जो ऑपरेटर ने YAML में लिखा, इसलिए series की संख्या प्रोसेस शुरू होने से पहले ज्ञात है। अपग्रेड करने की वजह से किसी को मेट्रिक्स का बिल नहीं मिलना चाहिए।</p>
 <p>जो मान कोई parse न कर सके वह <strong>बंद</strong> पढ़ा जाता है, विफलता कभी नहीं: यह ऑब्ज़र्वेबिलिटी है, और यहाँ का टाइपो ingestion endpoint के शुरू न होने का कारण नहीं होना चाहिए।</p>
 <p>कॉलम दोनों तरह है। मेट्रिक <em>अभी</em> खरीदता है; कॉलम <em>कब से</em> और <em>किसके द्वारा</em> खरीदता है।</p>
-<h3 id="द-आकर-एक-अनबध">दो आकार, एक अनुबंध<a class="anchor" href="#द-आकर-एक-अनबध" aria-label="link">#</a></h3>
+<h3 id="two-shapes-one-contract">दो आकार, एक अनुबंध<a class="anchor" href="#two-shapes-one-contract" aria-label="link">#</a></h3>
 <p><code>shape</code> तय करता है कि <strong>रिकॉर्ड</strong> पंक्ति में क्या योगदान देता है। Producer का अनुबंध दोनों तरह वही है — envelope कभी नहीं बदलता। जो बदलता है वह तालिका का रूप है, जो ऑपरेटर का फ़ैसला है, producer का नहीं।</p>
 <div class="code-block" data-code="shape: document   # the default
 shape: columns"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">shape</span>: document   <span class="t-c"># the default</span>
@@ -319,13 +319,13 @@ SELECT JSON_VALUE(customer, &#x27;$.uf&#x27;) ...;           -- SP"><div class="
 <span class="t-k">SELECT</span> JSON_VALUE(customer, '$.uf') ...;           <span class="t-c">-- SP</span></code></pre></div>
 <p>अगर <code>JSON_TYPE</code> <code>string</code> कहे और <code>JSON_VALUE</code> NULL, तो ऑब्जेक्ट दो बार encode हुआ — कॉलम ऑब्जेक्ट की जगह ऑब्जेक्ट का TEXT थामे है। <strong>0.15.0</strong> तक के (और समेत) gateway संस्करणों ने BigQuery पर यह किया, <strong>दोनों</strong> आकारों में; एक-पंक्ति जाँच और मरम्मत के लिए <a href="https://github.com/AreteAcademy/brevis/blob/master/gateway/CHANGELOG.md" target="_blank" rel="noopener">gateway changelog</a> देखें। Postgres और MySQL कभी प्रभावित नहीं थे: उनका सर्वर टेक्स्ट को parse करता है।</p>
 <p>फ़ील्ड का नाम BigQuery के नियम से मेल खाना चाहिए, जो चारों में सबसे सँकरा है। Postgres quoted होने पर लगभग कुछ भी स्वीकार कर लेगा, और यही जाल है: तालिका वहाँ बन जाती है और उस दिन टूटती है जब कोई stream BigQuery की ओर इंगित करे।</p>
-<p>दोनों आकारों का SDK समतुल्य है, और वह मेल खाता कोड नहीं बल्कि वही कोड है: <code>sdk.Landing(table, sdk.LandingKey("id"))</code> <code>document</code> उतारता है, और <a href="/hi/docs/sdk/#द-आकर-पर-रकरड-य-हर-फलड-क-लए-एक-कलम"><code>sdk.LandingColumns()</code></a> जोड़ने पर <code>columns</code>। वही कॉलम, वही मान, वही <code>brevis_ingestion_id</code> — इसलिए stream बिना migration के gateway और pipeline के बीच जा सकता है, और दोनों को एक तालिका की तरह पढ़ा जा सकता है।</p>
-<p>Pipeline वही कॉलम उसी तरह बढ़ा सकती है: गंतव्य पर <a href="/hi/docs/sdk/#जब-तलक-म-न-हन-वल-फलड-दख"><code>Evolve: sdk.EvolveAdditiveFromPayload</code></a> सेट करें और batch जो फ़ील्ड ढोता है वह इसी नियम से, इसी कोड से कॉलम बन जाता है।</p>
+<p>दोनों आकारों का SDK समतुल्य है, और वह मेल खाता कोड नहीं बल्कि वही कोड है: <code>sdk.Landing(table, sdk.LandingKey("id"))</code> <code>document</code> उतारता है, और <a href="/hi/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field"><code>sdk.LandingColumns()</code></a> जोड़ने पर <code>columns</code>। वही कॉलम, वही मान, वही <code>brevis_ingestion_id</code> — इसलिए stream बिना migration के gateway और pipeline के बीच जा सकता है, और दोनों को एक तालिका की तरह पढ़ा जा सकता है।</p>
+<p>Pipeline वही कॉलम उसी तरह बढ़ा सकती है: गंतव्य पर <a href="/hi/docs/sdk/#when-a-field-the-table-does-not-have-shows-up"><code>Evolve: sdk.EvolveAdditiveFromPayload</code></a> सेट करें और batch जो फ़ील्ड ढोता है वह इसी नियम से, इसी कोड से कॉलम बन जाता है।</p>
 <p><strong>उपसर्ग कॉन्फ़िगर किया जा सकता है, और यह पूरी प्रोसेस का एक फ़ैसला है।</strong> <code>BREVIS_LANDING_PREFIX=acme</code> उन्हें <code>acme_ingestion_id</code> और बाकी बना देता है — इस gateway का हर stream, इसलिए दो sinks उस तालिका पर असहमत नहीं हो सकते जिसमें वे दोनों लिख सकते हैं। ऊपर का आरक्षित नियम इसके साथ चलता है: <code>acme_</code> के तहत, <code>acme_region</code> भेजने वाला producer मना होता है और <code>brevis_region</code> सामान्य फ़ील्ड है।</p>
-<p><strong>इसे पहली तालिका बनने से पहले चुनें।</strong> बाद में बदलना आठ कॉलम जोड़ता है और आठ छोड़ देता है — कुछ कॉलम नहीं हटाता — इसलिए जिस तालिका में एक उपसर्ग के साथ लेआउट पहले से है वह दूसरा घोषित करने वाले लोड को मना करती है। सामान्यीकरण और बाहर निकलने के रास्ते के लिए <a href="/hi/docs/sdk/#brevis-उपसरग-बदलन-आपक-हथ-म-ह">SDK का पेज</a> देखें।</p>
-<p><strong>नेस्टेड ऑब्जेक्ट के फ़ील्ड को अपने कॉलम मिल सकते हैं।</strong> Gateway की प्रोसेस पर <code>BREVIS_NORMALIZE_DATA=true</code> एक स्तर समतल करता है — <code>{"name": {"first": "x"}}</code> <code>name_first</code> बनकर उतरता है — और हर stream इसे साझा करता है, इसलिए दो sinks उस तालिका पर असहमत नहीं हो सकते जिसमें वे दोनों लिख सकते हैं। यह क्या नाम बदलता है, जो इसे चालू करने से पहले पढ़ने वाला आधा है, उसके लिए <a href="/hi/docs/sdk/#हर-नसटड-फलड-क-लए-एक-कलम">SDK का पेज</a> देखें।</p>
+<p><strong>इसे पहली तालिका बनने से पहले चुनें।</strong> बाद में बदलना आठ कॉलम जोड़ता है और आठ छोड़ देता है — कुछ कॉलम नहीं हटाता — इसलिए जिस तालिका में एक उपसर्ग के साथ लेआउट पहले से है वह दूसरा घोषित करने वाले लोड को मना करती है। सामान्यीकरण और बाहर निकलने के रास्ते के लिए <a href="/hi/docs/sdk/#the-brevis-prefix-is-yours-to-change">SDK का पेज</a> देखें।</p>
+<p><strong>नेस्टेड ऑब्जेक्ट के फ़ील्ड को अपने कॉलम मिल सकते हैं।</strong> Gateway की प्रोसेस पर <code>BREVIS_NORMALIZE_DATA=true</code> एक स्तर समतल करता है — <code>{"name": {"first": "x"}}</code> <code>name_first</code> बनकर उतरता है — और हर stream इसे साझा करता है, इसलिए दो sinks उस तालिका पर असहमत नहीं हो सकते जिसमें वे दोनों लिख सकते हैं। यह क्या नाम बदलता है, जो इसे चालू करने से पहले पढ़ने वाला आधा है, उसके लिए <a href="/hi/docs/sdk/#one-column-per-nested-field">SDK का पेज</a> देखें।</p>
 <p><strong>BigQuery पर, <code>nationalID</code> और <code>nationalId</code> एक कॉलम हैं।</strong> BigQuery कॉलम का केस मिला देता है, इसलिए जिस flush में <code>DELETE</code> में एक वर्तनी और <code>INSERT</code> में दूसरी है वह <code>CREATE</code> को विफल करने के बजाय <strong>एक</strong> कॉलम बनाता है — क्रमबद्ध क्रम में पहला। जो एक event दोनों ढोता है वह दोनों फ़ील्ड का नाम बताकर मना होता है। Postgres और MySQL उन्हें दो कॉलम रखते हैं, जो उनके लिए सही है। कौन-सी वर्तनी जीतती है और क्या migrate नहीं होता, इसके लिए <a href="/hi/docs/sdk/">SDK का पेज</a> देखें।</p>
-<h3 id="update-और-delete-दरज-हत-ह-लग-नह"><code>UPDATE</code> और <code>DELETE</code> दर्ज होते हैं, लागू नहीं<a class="anchor" href="#update-और-delete-दरज-हत-ह-लग-नह" aria-label="link">#</a></h3>
+<h3 id="update-and-delete-are-recorded-not-applied"><code>UPDATE</code> और <code>DELETE</code> दर्ज होते हैं, लागू नहीं<a class="anchor" href="#update-and-delete-are-recorded-not-applied" aria-label="link">#</a></h3>
 <p><code>brevis_operation</code> कॉलम है। लैंडिंग तालिका <strong>इतिहास</strong> है: जगह पर लागू <code>UPDATE</code> पिछला संस्करण खो देता है, और जिस दिन आपको वह संस्करण चाहिए वही दिन है जब कुछ टूटा। "हर रिकॉर्ड का वर्तमान संस्करण" resolve करना आगे के मॉडल का काम है:</p>
 <div class="code-block" data-code="qualify row_number() over (partition by brevis_record_key
                            order by brevis_received_at desc) = 1
@@ -333,7 +333,7 @@ SELECT JSON_VALUE(customer, &#x27;$.uf&#x27;) ...;           -- SP"><div class="
                            order by brevis_received_at desc) = 1
    and brevis_operation &lt;&gt; 'DELETE'</code></pre></div>
 <p>जो Debezium, Fivetran और Airbyte करते हैं — और इसका मतलब है कि CDC write के रास्ते में <strong>कुछ नहीं</strong> खर्च करता: कोई upsert मोड नहीं, कोई lock नहीं, कोई delete नहीं।</p>
-<h3 id="पहचन-म-घड-नह-ह">पहचान में घड़ी नहीं है<a class="anchor" href="#पहचन-म-घड-नह-ह" aria-label="link">#</a></h3>
+<h3 id="the-identity-has-no-clock-in-it">पहचान में घड़ी नहीं है<a class="anchor" href="#the-identity-has-no-clock-in-it" aria-label="link">#</a></h3>
 <div class="code-block" data-code="brevis_ingestion_id = uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>brevis_ingestion_id = uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))</code></pre></div>
 <p>सूत्र में कोई <code>occurred_at</code> नहीं है, और यह जानबूझकर है: आगमन <strong>हमारी</strong> ज़िम्मेदारी बन गया, और हमारी घड़ी <code>time.Now()</code> है — हर डिलीवरी पर अलग। जिस पहचान में वह होती वह हर दोबारा की डिलीवरी को नया event बना देती, और <code>merge</code> कुछ सोखना बंद कर देता।</p>
 <div class="code-block" data-code="same record, same content, twice  →  same id, merge absorbs
@@ -341,20 +341,20 @@ same record, content changed      →  a different id, both versions land"><div 
 same record, content changed      →  a different id, both versions land</code></pre></div>
 <p>चेतावनी वही दस्तावेज़ी है: बाइट-समान <code>data</code> वाले दो सचमुच अलग events एक में सिमट जाते हैं। CDC के लिए यह <strong>सही</strong> है — एक रिकॉर्ड पर समान मानों वाले दो समान अपडेट एक ही तथ्य हैं।</p>
 <p>Fingerprint दस्तावेज़ के <strong>canonical</strong> रूप पर है — हर स्तर पर keys क्रमबद्ध, सूचियाँ क्रम में, सब कुछ quoted। Go map iteration को यादृच्छिक करता है, इसलिए भोला hash एक ही event की दो डिलीवरी में अलग होता, जो वही एक चीज़ है जिसे रोकने के लिए वह है।</p>
-<h3 id="तलक-अपन-आप-कलम-बढत-ह">तालिका अपने आप कॉलम बढ़ाती है<a class="anchor" href="#तलक-अपन-आप-कलम-बढत-ह" aria-label="link">#</a></h3>
+<h3 id="the-table-grows-a-column-on-its-own">तालिका अपने आप कॉलम बढ़ाती है<a class="anchor" href="#the-table-grows-a-column-on-its-own" aria-label="link">#</a></h3>
 <p>जिस <code>data</code> में ऐसा फ़ील्ड है जो तालिका में नहीं, उससे कॉलम प्रकट होता है। <strong>योगात्मक, और केवल योगात्मक</strong>: कुछ नहीं हटता, कुछ संकरा नहीं होता।</p>
 <p>BigQuery पर यह <strong>0.13.0</strong> में ही सच हुआ। उससे पहले, <code>auto_table</code> हर गंतव्य पर <code>Evolve: additive</code> घोषित करता था और घोषणा केवल Postgres और MySQL drivers पढ़ते थे — इसलिए वहाँ आकार निर्माण पर जम गया था और कुछ नहीं कहता था।</p>
 <blockquote><p><strong>0.11.0 या 0.12.0 से आ रहे हों तो</strong>, <code>0.11.0</code> से पहले बनी तालिकाओं को एक बार की migration चाहिए, क्योंकि आठवाँ निश्चित कॉलम घोषणा में गया, तालिका में नहीं:  ``<code>sql ALTER TABLE </code>&lt;dataset&gt;.&lt;table&gt;<code> ADD COLUMN IF NOT EXISTS brevis_received_bytes INT64 </code>``  Postgres और MySQL कभी प्रभावित नहीं थे।</p></blockquote>
 <p>जो batch <code>ALTER</code> की होड़ हारता है वह विफल होता है, और pipe का सामान्य retry उसे सुलझा देता है — DDL की प्रतीक्षा करता batch और worker की प्रतीक्षा करता batch एक ही चीज़ हैं, इसलिए कोई दूसरा बफ़र नहीं। Replicas के पार metastore प्रति तालिका और प्रति आकार एक-सेकंड का <em>debounce</em> रखता है, ताकि वही नया फ़ील्ड देखते दस replicas BigQuery के प्रति तालिका प्रति दस सेकंड पाँच metadata ऑपरेशन के quota के विरुद्ध दस <code>ALTER</code> न बन जाएँ।</p>
 <p><strong>Debounce, lock नहीं</strong>: कुछ छोड़ा नहीं जाता और कोई lease नवीनीकृत नहीं होती। जो हारता है उसका <em>retry</em> होता है, उसे रोका नहीं जाता, और जो replica एक थामे हुए मर जाए वह दूसरों को एक सेकंड का खर्च देता है। बाज़ार यही करता है — Delta Lake और Iceberg आशावादी ढंग से commit करते और retry करते हैं, Kafka Connect क्रमबद्धता partition के क्रम से पाता है, Fivetran प्रति तालिका एक writer रखता है।</p>
-<h3 id="नम-ह-हमल-क-सतह-ह">नाम ही हमले की सतह है<a class="anchor" href="#नम-ह-हमल-क-सतह-ह" aria-label="link">#</a></h3>
+<h3 id="the-name-is-the-attack-surface">नाम ही हमले की सतह है<a class="anchor" href="#the-name-is-the-attack-surface" aria-label="link">#</a></h3>
 <p><code>auto_table</code> payload की string को DDL बनाता है, इसलिए <code>naming</code> के तहत हर फ़ील्ड इनकार है:</p>
 <ul><li><strong><code>pattern</code></strong> का डिफ़ॉल्ट <code>^[a-z][a-z0-9_]{2,48}$</code> है — वह जो Postgres, MySQL, BigQuery और Redshift बिना quote के स्वीकार करते हैं, उसका प्रतिच्छेदन। जो नाम पास होता है उसे कहीं quoting नहीं चाहिए और वह injection नहीं ढो सकता।</li><li><strong><code>allow</code></strong> उपसर्ग से और सँकरा करता है।</li><li><strong><code>max_new_per_hour</code></strong> (डिफ़ॉल्ट 20) एक चलते घंटे में <strong>निर्माण</strong> को बाँधता है, writes को कभी नहीं: जो तालिका पहले से मौजूद है उस पर कभी दर-सीमा नहीं लगती। <code>metastore: memory</code> के तहत बजट प्रोसेस में रहता है और चार replicas इसका चार गुना स्वीकार करते हैं; <code>redis</code> या <code>memcached</code> के तहत वे एक counter साझा करते हैं।</li></ul>
 <p>नियमों से बाहर का नाम response में <strong>प्रति event</strong> मना होता है, और उसी अनुरोध का हर सही-बना event फिर भी उतरता है:</p>
 <div class="code-block" data-code="{&quot;accepted&quot;: 0, &quot;rejected&quot;: [&quot;event 0: the table name \&quot;orders\&quot; does not match ^(app|svc)_[a-z0-9_]{2,40}$&quot;]}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>{"accepted": <span class="t-n">0</span>, "rejected": ["event <span class="t-n">0</span>: the table name \"orders\" does not match ^(app|svc)_[a-z0-9_]{<span class="t-n">2</span>,<span class="t-n">40</span>}$"]}</code></pre></div>
 <p>जानबूझकर प्रति event, प्रति batch नहीं। इसे write के समय मना करना पूरे batch को विफल करता — एक producer का एक विकृत event उसी flush विंडो के हर दूसरे producer के events को दफ़ना देता, किसी को बताए बिना।</p>
 <p><strong>बिना <code>listen.auth</code> वाले endpoint पर <code>auto_table</code> मना है</strong>, <code>BREVIS_ENV=local</code> में भी। जो producer तालिका का नाम ले सकता है वह उसे बना सकता है, इसलिए उसे वहाँ भी authentication चाहिए जहाँ सामान्य stream को नहीं चाहिए। NetworkPolicy इसे कवर नहीं करती: वह सीमित करती है कि port तक कौन पहुँचे, यह नहीं कि वे किस तालिका का नाम माँगें।</p>
-<h3 id="metastore-एक-cache-ह">Metastore एक cache है<a class="anchor" href="#metastore-एक-cache-ह" aria-label="link">#</a></h3>
+<h3 id="the-metastore-is-a-cache">Metastore एक cache है<a class="anchor" href="#the-metastore-is-a-cache" aria-label="link">#</a></h3>
 <p>यह इसलिए है कि प्रति-event write प्रति-event lookup न हो, और यह तीन चीज़ें थामता है: कौन-सी तालिकाएँ मौजूद हैं, DDL <em>debounce</em>, और <code>max_new_per_hour</code> के पीछे का counter।</p>
 <p>यह cache है और सत्य का स्रोत <strong>नहीं</strong>। तालिका मौजूद है या नहीं यह गंतव्य तय करता है, और एक बनाने के लिए होड़ करते <em>N</em> replicas सामान्य स्थिति है: <code>AlreadyExists</code> सफलता है, और यह सिर्फ़ होड़ घटाता है। TTL वह अवधि है जितनी देर यह <strong>गलत</strong> हो सकता है।</p>
 <div class="table-wrap"><table><thead><tr><th>backend</th><th>कब</th></tr></thead><tbody><tr><td><code>memory</code></td><td>डिफ़ॉल्ट, कुछ नहीं माँगता। <strong>एक</strong> replica के साथ यही सही जवाब है</td></tr><tr><td><code>redis</code></td><td><code>addr_from</code> ज़रूरी। <code>SETNX</code> claim है, <code>INCR</code> counter है</td></tr><tr><td><code>memcached</code></td><td><code>addr_from</code> ज़रूरी। <code>Add</code> claim है, और expiry <strong>सेकंड</strong>-दानेदार है</td></tr></tbody></table></div>
@@ -369,11 +369,11 @@ same record, content changed      →  a different id, both versions land</code>
 <p>Expiry की कीमत है। <code>sinkFor</code> <code>naming.max_new_per_hour</code> तब वसूलता है जब वह तालिका को <strong>जानता</strong> नहीं — इसलिए miss हफ़्तों से मौजूद तालिका के लिए भी वसूलता है, और तालिका के आखिरी event के एक मिनट बाद रीस्टार्ट होता pod उस साझा backend से कुछ नहीं पाता जिसकी वह कीमत चुका रहा है। लंबे समय तक जीने वाली तालिकाओं के साथ, <code>ttl: 0</code> ही जवाब है।</p>
 <blockquote><p><code>0.12.0</code> और <code>0.13.1</code> पर वह वर्तनी <strong>parse नहीं होती</strong> — YAML खाली शून्य को int पढ़ता है, और <code>0.13.2</code> पहला है जो दोनों लेता है। उन संस्करणों पर <code>ttl: 0s</code> लिखें।</p></blockquote>
 <p><code>addr_from</code> पता रखने वाले <strong>environment वेरिएबल</strong> का नाम लेता है, पते का कभी नहीं: वह अक्सर पासवर्ड ढोता है।</p>
-<h3 id="bigquery-क-flush-क-नचल-सम-ह">BigQuery की flush की निचली सीमा है<a class="anchor" href="#bigquery-क-flush-क-नचल-सम-ह" aria-label="link">#</a></h3>
+<h3 id="bigquery-has-a-flush-floor">BigQuery की flush की निचली सीमा है<a class="anchor" href="#bigquery-has-a-flush-floor" aria-label="link">#</a></h3>
 <p><strong>BigQuery प्रति तालिका प्रति दिन 1,500 load jobs की अनुमति देता है।</strong> डिफ़ॉल्ट एक-सेकंड की विंडो 86,400 है — quota का 57 गुना, करीब पच्चीस मिनट में खत्म। Pub/Sub के लिए यह समस्या नहीं है, और संख्या यहाँ Pub/Sub कॉन्फ़िग <em>से</em> पहुँचती।</p>
 <p>इसलिए जो stream BigQuery में लिखता है, सीधे या router के ज़रिए, 60s से कम विंडो के साथ <strong>लोड पर मना</strong> होता है। असली जवाब Storage Write API है, जो लिखा नहीं गया; जब तक नहीं, कॉन्फ़िग उस विंडो से मना करता है जिसे वह निभा नहीं सकता, पहले deploy को पता चलने देने के बजाय।</p>
 <p><code>auto_table</code> <strong>Redshift</strong> में route नहीं कर सकता: वह driver तालिकाएँ नहीं बनाता, इसलिए हर नया नाम लोड पर विफल होता। नाम लेकर, शुरू होते समय मना।</p>
-<h2 id="ज-अभ-मजद-नह-ह">जो अभी मौजूद नहीं है<a class="anchor" href="#ज-अभ-मजद-नह-ह" aria-label="link">#</a></h2>
+<h2 id="what-does-not-exist-yet">जो अभी मौजूद नहीं है<a class="anchor" href="#what-does-not-exist-yet" aria-label="link">#</a></h2>
 <p><code>sqlite</code>, <code>dynamodb</code>, <code>kinesis</code>, <code>sqs</code>, <code>sns</code>, <code>kafka</code> और <code>rabbitmq</code> योजना में हैं और कुछ लिखा नहीं गया। (<code>redis</code> और <code>memcached</code> <strong>metastore</strong> के रूप में मौजूद हैं, जो अलग चीज़ है: तालिकाओं के बारे में जो ज्ञात है उसका cache, गंतव्य कभी नहीं।) इस पेज के शुरू की तालिका हर एक की स्थिति बताती है, और स्थिति बदलने पर अपडेट होती है — उससे पहले नहीं।</p>
 
       <nav class="pagers" aria-label="पेज">
@@ -388,7 +388,7 @@ same record, content changed      →  a different id, both versions land</code>
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#हर-एक-कस-लखत-ह">हर एक कैसे लिखता है</a></li><li class="toc-2"><a href="#हर-एक-वह-ज-सरफ-उस-क-बर-म-सच-ह">हर एक, वह जो सिर्फ़ उसी के बारे में सच है</a></li><li class="toc-2"><a href="#कई-कलम-घषण-नह">कोई कॉलम घोषणा नहीं</a></li><li class="toc-2"><a href="#import-सच-ह-चयन-ह">Import सूची ही चयन है</a></li><li class="toc-3"><a href="#द-परकशत-images">दो प्रकाशित images</a></li><li class="toc-3"><a href="#इनकर-बतत-ह-क-आप-कन-स-बलड-थम-ह">इनकार बताता है कि आप कौन-सा बिल्ड थामे हैं</a></li><li class="toc-2"><a href="#एक-route-n-तलकए-कछ-घषत-नह">एक route, N तालिकाएँ, कुछ घोषित नहीं</a></li><li class="toc-3"><a href="#envelope">Envelope</a></li><li class="toc-3"><a href="#key-merge-क-ह-envelope-क-नह">Key merge की है, envelope की नहीं</a></li><li class="toc-3"><a href="#आठ-नशचत-कलम-और-रकरड-ज-भ-ढए">आठ निश्चित कॉलम, और रिकॉर्ड जो भी ढोए</a></li><li class="toc-3"><a href="#वलयम-वलयम-मपन-क-बनयद-ढच-क-बन">वॉल्यूम, वॉल्यूम मापने के बुनियादी ढाँचे के बिना</a></li><li class="toc-3"><a href="#वलयम-series-opt-in-ह">वॉल्यूम series opt-in हैं</a></li><li class="toc-3"><a href="#द-आकर-एक-अनबध">दो आकार, एक अनुबंध</a></li><li class="toc-3"><a href="#update-और-delete-दरज-हत-ह-लग-नह">UPDATE और DELETE दर्ज होते हैं, लागू नहीं</a></li><li class="toc-3"><a href="#पहचन-म-घड-नह-ह">पहचान में घड़ी नहीं है</a></li><li class="toc-3"><a href="#तलक-अपन-आप-कलम-बढत-ह">तालिका अपने आप कॉलम बढ़ाती है</a></li><li class="toc-3"><a href="#नम-ह-हमल-क-सतह-ह">नाम ही हमले की सतह है</a></li><li class="toc-3"><a href="#metastore-एक-cache-ह">Metastore एक cache है</a></li><li class="toc-3"><a href="#bigquery-क-flush-क-नचल-सम-ह">BigQuery की flush की निचली सीमा है</a></li><li class="toc-2"><a href="#ज-अभ-मजद-नह-ह">जो अभी मौजूद नहीं है</a></li></ul>
+      <ul><li class="toc-2"><a href="#how-each-one-writes">हर एक कैसे लिखता है</a></li><li class="toc-2"><a href="#each-one-with-what-is-true-only-of-it">हर एक, वह जो सिर्फ़ उसी के बारे में सच है</a></li><li class="toc-2"><a href="#no-column-declaration">कोई कॉलम घोषणा नहीं</a></li><li class="toc-2"><a href="#the-import-list-is-the-selection">Import सूची ही चयन है</a></li><li class="toc-3"><a href="#two-published-images">दो प्रकाशित images</a></li><li class="toc-3"><a href="#the-refusal-says-which-build-you-are-holding">इनकार बताता है कि आप कौन-सा बिल्ड थामे हैं</a></li><li class="toc-2"><a href="#one-route-n-tables-nothing-declared">एक route, N तालिकाएँ, कुछ घोषित नहीं</a></li><li class="toc-3"><a href="#the-envelope">Envelope</a></li><li class="toc-3"><a href="#the-key-belongs-to-merge-not-to-the-envelope">Key merge की है, envelope की नहीं</a></li><li class="toc-3"><a href="#eight-fixed-columns-plus-whatever-the-record-carries">आठ निश्चित कॉलम, और रिकॉर्ड जो भी ढोए</a></li><li class="toc-3"><a href="#volume-without-infrastructure-to-measure-volume">वॉल्यूम, वॉल्यूम मापने के बुनियादी ढाँचे के बिना</a></li><li class="toc-3"><a href="#the-volume-series-are-opt-in">वॉल्यूम series opt-in हैं</a></li><li class="toc-3"><a href="#two-shapes-one-contract">दो आकार, एक अनुबंध</a></li><li class="toc-3"><a href="#update-and-delete-are-recorded-not-applied">UPDATE और DELETE दर्ज होते हैं, लागू नहीं</a></li><li class="toc-3"><a href="#the-identity-has-no-clock-in-it">पहचान में घड़ी नहीं है</a></li><li class="toc-3"><a href="#the-table-grows-a-column-on-its-own">तालिका अपने आप कॉलम बढ़ाती है</a></li><li class="toc-3"><a href="#the-name-is-the-attack-surface">नाम ही हमले की सतह है</a></li><li class="toc-3"><a href="#the-metastore-is-a-cache">Metastore एक cache है</a></li><li class="toc-3"><a href="#bigquery-has-a-flush-floor">BigQuery की flush की निचली सीमा है</a></li><li class="toc-2"><a href="#what-does-not-exist-yet">जो अभी मौजूद नहीं है</a></li></ul>
     </aside>
   </main>
 </div>
@@ -408,9 +408,9 @@ same record, content changed      →  a different id, both versions land</code>
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -433,7 +433,7 @@ same record, content changed      →  a different id, both versions land</code>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

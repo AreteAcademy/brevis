@@ -180,7 +180,7 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 
 ### 时钟
 
-`p.Run.Auto` 是引擎对这个 run 所算出的信息，即[自动参数](/docs/parameters/#自动参数)。`Auto.Now()` 是用来取代 `time.Now()` 的时钟：在调度的 run 上它就是 slot，所以 run 迟到时它不会移动，三个小时后重试时它也不会移动。
+`p.Run.Auto` 是引擎对这个 run 所算出的信息，即[自动参数](/docs/parameters/#auto-params)。`Auto.Now()` 是用来取代 `time.Now()` 的时钟：在调度的 run 上它就是 slot，所以 run 迟到时它不会移动，三个小时后重试时它也不会移动。
 
 ```go
 Before: func(ctx context.Context, p *sdk.Pipeline) error {
@@ -262,11 +262,11 @@ Target{
 
 **这些列由你声明。** SDK 从不推断 schema，这个选项也不改变这一点：它决定的是*行*如何构建，而不是表是什么。gateway 会推断，因为它的生产者是随便发送手头数据的陌生人；而在这里，pipeline 的作者知道结构并把它写下来，写在会有人评审的 diff 里。
 
-它与 gateway 以 [`shape: columns`](/docs/ingestion-sinks/#两种形态一份契约) 落地的形态相同，走的是同一段代码：相同的列，相同的值，相同的 `brevis_ingestion_id`。
+它与 gateway 以 [`shape: columns`](/docs/ingestion-sinks/#two-shapes-one-contract) 落地的形态相同，走的是同一段代码：相同的列，相同的值，相同的 `brevis_ingestion_id`。
 
 **字段名必须能够用作列名**：以字母或下划线开头，后面是字母、数字和下划线。这是 BigQuery 的规则，也是四个目的地中最严格的，所以在这里通过的名称在所有地方都能用。带有 `my-field` 的记录会在写入任何东西之前，按名称被拒绝。文档形态没有这条规则：连字符作为 JSON 键完全没有问题。
 
-**默认不会展平。** 嵌套对象会变成以持有它的键命名的一个 `JSON` 列：`customer` 保存 `{"id": 7, "uf": "SP"}`，而不是 `customer_id` 和 `customer_uf`。数组同样是 `JSON`。如果希望*每个数组元素*一行，需要在源的 `Expand` 中使用 `sdk.ArrayAt`：它在 `Landing` 之前运行，是另一个名称不同的操作。[`BREVIS_NORMALIZE_DATA`](#每个嵌套字段一列) 会对整个部署改变前半部分的行为；无论如何，数组仍然是 `JSON`：
+**默认不会展平。** 嵌套对象会变成以持有它的键命名的一个 `JSON` 列：`customer` 保存 `{"id": 7, "uf": "SP"}`，而不是 `customer_id` 和 `customer_uf`。数组同样是 `JSON`。如果希望*每个数组元素*一行，需要在源的 `Expand` 中使用 `sdk.ArrayAt`：它在 `Landing` 之前运行，是另一个名称不同的操作。[`BREVIS_NORMALIZE_DATA`](#one-column-per-nested-field) 会对整个部署改变前半部分的行为；无论如何，数组仍然是 `JSON`：
 
 ```go
 Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},
