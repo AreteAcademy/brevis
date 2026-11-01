@@ -8,7 +8,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -441,4 +443,60 @@ func asGap(err error, target *remote.GapError) bool {
 		err = u.Unwrap()
 	}
 	return false
+}
+
+// A timeout used to kill only the shell: a grandchild kept the output pipes
+// open, so the step hung until the lease expired and the child lived on.
+func TestATimedOutStepKillsItsDescendantsAndEndsPromptly(t *testing.T) {
+	e := pair(t, agent.Options{})
+
+	dir := t.TempDir()
+	pidFile := filepath.Join(dir, "child.pid")
+	tk := task("t1", fmt.Sprintf(`sh -c 'trap "" TERM; echo $$ > %q; sleep 30' & wait`, pidFile))
+	tk.Timeout = time.Second
+
+	start := time.Now()
+	run(t, e, tk)
+	if d := time.Since(start); d > 6*time.Second {
+		t.Fatalf("the timed out step took %s to end", d)
+	}
+
+	b, err := os.ReadFile(pidFile)
+	if err != nil {
+		t.Fatalf("the child never started: %v", err)
+	}
+	pid, _ := strconv.Atoi(strings.TrimSpace(string(b)))
+	time.Sleep(200 * time.Millisecond)
+	if syscall.Kill(pid, 0) == nil {
+		_ = syscall.Kill(pid, syscall.SIGKILL)
+		t.Error("the child outlived the timeout")
+	}
+}
+
+// Cancel sends SIGTERM first; a child that ignores it must still die.
+func TestCancelKillsAChildThatIgnoresSigterm(t *testing.T) {
+	e := pair(t, agent.Options{})
+
+	pidFile := filepath.Join(t.TempDir(), "child.pid")
+	tk := task("t2", fmt.Sprintf(`sh -c 'trap "" TERM; echo $$ > %q; sleep 30' & wait`, pidFile))
+	ch, err := e.Execute(context.Background(), tk)
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	time.Sleep(500 * time.Millisecond)
+	if err := e.Cancel(context.Background(), "t2"); err != nil {
+		t.Fatalf("Cancel: %v", err)
+	}
+	collect(t, ch)
+
+	b, err := os.ReadFile(pidFile)
+	if err != nil {
+		t.Fatalf("the child never started: %v", err)
+	}
+	pid, _ := strconv.Atoi(strings.TrimSpace(string(b)))
+	time.Sleep(3 * time.Second)
+	if syscall.Kill(pid, 0) == nil {
+		_ = syscall.Kill(pid, syscall.SIGKILL)
+		t.Error("a child that ignores SIGTERM survived the cancel")
+	}
 }
