@@ -507,7 +507,7 @@ func open(ctx context.Context) (*postgres.Pool, config.Config, error) {
 	if err != nil {
 		return nil, config.Config{}, err
 	}
-	pool, err := postgres.New(ctx, cfg.DatabaseURL)
+	pool, err := postgres.New(ctx, cfg.DatabaseURL, postgres.PoolOptions{MaxConns: cfg.DBMaxConns})
 	return pool, cfg, err
 }
 
@@ -942,6 +942,7 @@ func cmdScheduler() *cobra.Command {
 				loops <- runLoops(
 					func() error { return sched.Run(ctx) },
 					func() error { return disp.Run(ctx) },
+					func() error { return pruneLoop(ctx, cfg, runs, log) },
 				)
 			}()
 
@@ -952,6 +953,26 @@ func cmdScheduler() *cobra.Command {
 	}
 	f.bind(c)
 	return c
+}
+
+// pruneLoop runs the scheduled prune when BREVIS_RETENTION_TRIM_DAYS is set, and
+// returns at once when it is not (the default).
+func pruneLoop(ctx context.Context, cfg config.Config, runs *postgres.RunRepo, log *slog.Logger) error {
+	if cfg.RetentionTrimAfter <= 0 {
+		return nil
+	}
+	policy := postgres.Retention{TrimAfter: cfg.RetentionTrimAfter, PurgeAfter: cfg.RetentionPurgeAfter}
+	if err := policy.Validate(); err != nil {
+		return err
+	}
+	log.Info("scheduled prune is on", "trim_after", policy.TrimAfter.String(),
+		"purge_after", policy.PurgeAfter.String(), "every", cfg.RetentionInterval.String())
+	t := time.NewTicker(cfg.RetentionInterval)
+	defer t.Stop()
+	scheduler.RunPrune(ctx, t.C, func(ctx context.Context) (fmt.Stringer, error) {
+		return runs.Prune(ctx, policy, false)
+	}, log)
+	return nil
 }
 
 // runLoops runs the scheduler's loops together and returns when ALL of them
@@ -1364,7 +1385,10 @@ func serve(ctx context.Context) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	pool, err := postgres.New(ctx, cfg.DatabaseURL)
+	// The console's own process and pool: the claim loops and lease renewals
+	// live in `brevis scheduler`, so a timeout here can only cut a console query.
+	pool, err := postgres.New(ctx, cfg.DatabaseURL, postgres.PoolOptions{
+		MaxConns: cfg.DBMaxConns, StatementTimeout: cfg.ConsoleStatementTimeout})
 	if err != nil {
 		return err
 	}
