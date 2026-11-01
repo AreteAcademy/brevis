@@ -395,6 +395,12 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	// spawned. Killing only the shell leaves a python that goes on writing to a
 	// pipe nobody reads.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// exec.CommandContext kills only cmd.Process on a timeout. A grandchild
+	// (`cd x && python load.py`) would keep the output pipes open, the streams
+	// would never end and no exit line would be written. Kill the group, as the
+	// local executor does, and bound Wait in case an orphan escaped the group.
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	cmd.WaitDelay = 3 * time.Second
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -572,6 +578,9 @@ func (a *Agent) Resume(execID string, after int64) (io.ReadCloser, error) {
 	return a.reading(e, after), nil
 }
 
+// killGrace is how long a cancelled group has to exit on SIGTERM before SIGKILL.
+const killGrace = 2 * time.Second
+
 // Cancel stops a step.
 //
 // The process GROUP is signalled, not the process: the shell spawned whatever
@@ -607,7 +616,11 @@ func (a *Agent) Cancel(execID string) error {
 	exited, cmd := e.exited, e.cmd
 	e.mu.Unlock()
 	if !exited && cmd != nil && cmd.Process != nil {
-		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+		pgid := cmd.Process.Pid
+		_ = syscall.Kill(-pgid, syscall.SIGTERM)
+		// A process that ignores SIGTERM would survive: escalate once the
+		// grace is over, if anything in the group is still alive.
+		time.AfterFunc(killGrace, func() { _ = syscall.Kill(-pgid, syscall.SIGKILL) })
 	}
 	return nil
 }
