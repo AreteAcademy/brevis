@@ -281,7 +281,7 @@ jobs:
       # branch is worse than none.
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: brevis-sql v${{ steps.v.outputs.version }}
