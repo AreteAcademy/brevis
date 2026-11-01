@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ja" data-docs="/ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>CLI — ドキュメント</title>
+<meta name="description" content="エンジンの 12 個のサブコマンドと、そのフラグ、引数、それぞれが必要とするもの。">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/ja/docs/cli/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/ja/docs/cli/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/cli/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/cli/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/cli/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/cli/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/cli/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/cli/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/cli/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/cli/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/cli/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/cli/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/cli/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="ja">
+<meta property="og:title" content="CLI — ドキュメント">
+<meta property="og:description" content="エンジンの 12 個のサブコマンドと、そのフラグ、引数、それぞれが必要とするもの。">
+<meta property="og:url" content="https://brevis.sh/ja/docs/cli/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CLI — ドキュメント">
+<meta name="twitter:description" content="エンジンの 12 個のサブコマンドと、そのフラグ、引数、それぞれが必要とするもの。">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "CLI",
+  "description": "エンジンの 12 個のサブコマンドと、そのフラグ、引数、それぞれが必要とするもの。",
+  "inLanguage": "ja",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">本文へスキップ</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/ja/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
+      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/docs/">ドキュメント</a>
+      <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/cli/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/cli/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/cli/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/cli/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/cli/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/cli/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/cli/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/cli/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/cli/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/cli/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/cli/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        オープンソースを見る
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="メニューを開く" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    ドキュメントメニュー
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">ドキュメントを検索</label>
+        <input type="search" id="q" placeholder="検索…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="結果なし" hidden></div>
+      <nav class="side-nav" aria-label="ドキュメント">
+        <p class="side-group">はじめに</p><ul class="side-list"><li><a href="/ja/docs/ecosystem/">エコシステム</a></li><li><a href="/ja/docs/integrations/">インテグレーション</a></li><li><a href="/ja/docs/introduction/">はじめに</a></li><li><a href="/ja/docs/installation/">インストール</a></li><li><a href="/ja/docs/quickstart/">クイックスタート</a></li></ul><p class="side-group">基本概念</p><ul class="side-list"><li><a href="/ja/docs/core/">Core</a></li><li><a href="/ja/docs/workflows/">Workflows</a></li><li><a href="/ja/docs/scheduler-and-queue/">スケジューラとキュー</a></li><li><a href="/ja/docs/pod-per-step/">ステップごとの pod</a></li><li><a href="/ja/docs/context/">ステップ間のコンテキスト</a></li></ul><p class="side-group">リファレンス</p><ul class="side-list"><li><a href="/ja/docs/cli/" aria-current="page">CLI</a></li><li><a href="/ja/docs/parameters/">パラメータ</a></li><li><a href="/ja/docs/configuration/">設定</a></li><li><a href="/ja/docs/runtime/">ステップのランタイム</a></li></ul><p class="side-group">SDK とライブラリ</p><ul class="side-list"><li><a href="/ja/docs/sdk/">Go SDK</a></li><li><a href="/ja/docs/libraries/">クライアントライブラリ</a></li><li><a href="/ja/docs/python/">Python</a></li></ul><p class="side-group">運用</p><ul class="side-list"><li><a href="/ja/docs/console/">Console</a></li><li><a href="/ja/docs/kubernetes/">Kubernetes</a></li><li><a href="/ja/docs/observability/">オブザーバビリティ</a></li><li><a href="/ja/docs/white-label/">ホワイトラベル</a></li></ul><p class="side-group">取り込み</p><ul class="side-list"><li><a href="/ja/docs/ingestion/">取り込み</a></li><li><a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></li><li><a href="/ja/docs/benchmarks/">ベンチマーク</a></li></ul><p class="side-group">SQL によるモデリング</p><ul class="side-list"><li><a href="/ja/docs/sql/">SQL</a></li></ul><p class="side-group">プロジェクト</p><ul class="side-list"><li><a href="/ja/docs/philosophy/">哲学</a></li><li><a href="/ja/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">ドキュメント</p>
+      <h1>CLI</h1>
+      <p class="doc-desc">エンジンの 12 個のサブコマンドと、そのフラグ、引数、それぞれが必要とするもの。</p>
+      <p>エンジンは複数のバイナリではなく、サブコマンドを持つ 1 つのバイナリです。API、スケジューラ、 ワーカーは同じシステムのロールであり、バイナリが 1 つなので、バージョン、イメージ、 ビルド経路もそれぞれ 1 つで済みます。</p>
+<div class="code-block" data-code="brevis [command] [flags]"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>brevis [command] [flags]</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>コマンド</th><th>データベース</th><th><code>local</code> 以外での認証情報</th><th>ロール</th></tr></thead><tbody><tr><td><a href="#serve"><code>serve</code></a></td><td><strong>必要</strong></td><td><strong>必須</strong></td><td>API + インターフェース</td></tr><tr><td><a href="#scheduler"><code>scheduler</code></a></td><td><strong>必要</strong></td><td><strong>必須</strong></td><td>両方のループ</td></tr><tr><td><a href="#migrate"><code>migrate</code></a></td><td><strong>必要</strong></td><td><strong>必須</strong></td><td>スキーマ</td></tr><tr><td><a href="#publish"><code>publish</code></a></td><td><strong>必要</strong></td><td><strong>必須</strong></td><td>ワークフローとスケジュールを保存する</td></tr><tr><td><a href="#backfill"><code>backfill</code></a></td><td><strong>必要</strong></td><td><strong>必須</strong></td><td>範囲を再処理する</td></tr><tr><td><a href="#cancel"><code>cancel</code></a></td><td><strong>必要</strong></td><td><strong>必須</strong></td><td>run を停止する</td></tr><tr><td><a href="#run"><code>run</code></a></td><td>不要</td><td>—</td><td>今すぐ、インスタンス自身で実行する</td></tr><tr><td><a href="#validate"><code>validate</code></a></td><td>不要</td><td>—</td><td>ワークフローの YAML を検証する</td></tr><tr><td><a href="#brand"><code>brand</code></a></td><td>不要</td><td>—</td><td>ブランディングの YAML を検証する</td></tr><tr><td><a href="#hash"><code>hash</code></a></td><td>不要</td><td>—</td><td>パスワードのハッシュを生成する</td></tr><tr><td><a href="#version"><code>version</code></a></td><td>不要</td><td>—</td><td>バージョン、コミット、ビルド</td></tr></tbody></table></div>
+<p>最初の 6 つは設定を読み込み、<code>BREVIS_DATABASE_URL</code> がないと<strong>起動時に失敗</strong>します。残りの 5 つは そうではありません。だから <code>validate</code> は、Postgres のない CI でも動作します。</p>
+<p>この 6 つには認証情報のルールも適用されます。<code>BREVIS_ENV</code> が <code>local</code> 以外の場合、 3 つの認証用変数なしで起動すると<strong>起動エラー</strong>になります。</p>
+<hr>
+<h2 id="serve">serve<a class="anchor" href="#serve" aria-label="link">#</a></h2>
+<p>HTTP API とインターフェースを起動します。フラグはなく、すべて環境から取得します。</p>
+<div class="code-block" data-code="brevis serve"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> serve</code></pre></div>
+<p><code>SIGINT</code>/<code>SIGTERM</code> で graceful に停止するため、デプロイで処理中のリクエストが切断されることは ありません。このプロセスは<strong>スケジュールを具体化しません</strong>。それには <code>brevis scheduler</code> を 並行して動かす必要があります。</p>
+<p><code>api</code> イメージの <code>CMD</code> です(distroless、シェルなし)。</p>
+<hr>
+<h2 id="scheduler">scheduler<a class="anchor" href="#scheduler" aria-label="link">#</a></h2>
+<p>両方のループです。スケジューラがスケジュールを run に具体化し、ディスパッチャがキューから取り出して 実行します。</p>
+<div class="code-block" data-code="brevis scheduler --interval 5s --concurrency 4 --max-pods 10"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--interval</span> 5s <span class="t-n">--concurrency</span> 4 <span class="t-n">--max-pods</span> 10</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>フラグ</th><th>型</th><th>デフォルト</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td>duration</td><td><code>10s</code></td><td>サイクルの間隔</td></tr><tr><td><code>--concurrency</code></td><td>int</td><td><code>5</code></td><td>同時に実行される <strong>run</strong> の数</td></tr><tr><td><code>--max-pods</code></td><td>int</td><td><code>5</code></td><td>同時に実行される<strong>ステップ</strong>の合計数</td></tr></tbody></table></div>
+<p><code>worker</code> イメージの <code>CMD</code> です(シェル付きの alpine。<code>run:</code> のステップにシェルが必要なため)。</p>
+<hr>
+<h2 id="alert">alert<a class="anchor" href="#alert" aria-label="link">#</a></h2>
+<p>スケジューラが記録したアラートを配信します。<code>serve</code> と <code>scheduler</code> に並ぶ 3 つ目のプロセスです。</p>
+<div class="code-block" data-code="brevis alert --interval 1s --max-attempts 6"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> alert <span class="t-n">--interval</span> 1s <span class="t-n">--max-attempts</span> 6</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>フラグ</th><th>型</th><th>デフォルト</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td>duration</td><td><code>1s</code></td><td>配信サイクルの間隔</td></tr><tr><td><code>--max-attempts</code></td><td>int</td><td><code>6</code></td><td>アラートを未配信として記録するまでの試行回数</td></tr></tbody></table></div>
+<p><strong>これが存在するのは、アラートが書き込まれる場所のためであって、配信がプロセスに値するからでは ありません。</strong> スケジューラは、アラートを正当化する失敗と同じトランザクションでアラートを記録します。 run が試行回数を使い切ってアラートが存在するか、どちらも起きなかったかのどちらかです。そのうえで 誰かがそのテーブルを消化する必要があり、それは Slack の障害にも自分自身の再起動にも耐えなければ なりません。これ以前は、Webhook が失敗するとログに 1 行残るだけで、アラートは単に消えていました。</p>
+<p>チャンネル(<code>BREVIS_SLACK_WEBHOOK</code>)が設定されていないと、起動を拒否します。配信先のない 配信プロセスは、アウトボックスが埋まるのと同じ速さで「未配信」に消化してしまい、その行は Slack に拒否された場合とまったく同じに見えるからです。</p>
+<p>諦めたアラートは<strong>保持されます</strong>。「発生、未配信、4 回試行、Slack から 403」という行が重要なのは、 誰かが届かないメッセージを待っているケースだからです。</p>
+<p><code>worker</code> イメージの <code>CMD</code> です。</p>
+<hr>
+<h2 id="report">report<a class="anchor" href="#report" aria-label="link">#</a></h2>
+<p>実行内容の定期サマリを送信します。</p>
+<div class="code-block" data-code="brevis report --window 168h              # sends it
+brevis report --window 168h --dry-run    # prints it, sends nothing"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> report <span class="t-n">--window</span> 168h              <span class="t-c"># sends it</span>
+<span class="t-k">brevis</span> report <span class="t-n">--window</span> 168h <span class="t-n">--dry-run</span>    <span class="t-c"># prints it, sends nothing</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>フラグ</th><th>型</th><th>デフォルト</th><th></th></tr></thead><tbody><tr><td><code>--window</code></td><td>duration</td><td><code>168h</code></td><td>どこまで遡って調べるか</td></tr><tr><td><code>--dry-run</code></td><td>bool</td><td><code>false</code></td><td>送信せずに出力する</td></tr></tbody></table></div>
+<p>ループではなく<strong>コマンド</strong>であり、これがレポートとアラートの違いです。CronJob から実行されるため、 新しいループも、新しい状態も、リーダー選出も不要です。クラスタにはすでにスケジューラがあります。 <code>--dry-run</code> は、週次のメッセージを信頼できるようになるための手段であり、送られるはずだった内容を 読むことができます。</p>
+<p>アラートのアウトボックスは<strong>経由しません</strong>。両者が共有するのは配信チャンネルだけです。アラートを 失うことは誰にも聞こえない障害であり、ある週のサマリを逃しても次の週のサマリが来るだけです。</p>
+<p>メッセージには、run 数、成功数、失敗数、最も多く失敗したパイプライン、最も時間がかかったもの、 SDK が報告した行数とバイト数が含まれます。CPU やメモリは<strong>含まれず</strong>、ゼロとして出力することも しません。エンジンはそれらを収集しておらず、メッセージにはそれらが実際にある場所が示されます。</p>
+<p>空のウィンドウでは、100% と報告するのではなく、その旨を伝えます。何もないところから出した成功率は、 レポートが出力できる中で最も安心させる数字であり、最も真実でない数字です。空の週は、 たいていスケジューラが止まっていたことを意味します。</p>
+<p><code>deployments/kubernetes/report.yaml</code> が、これを週次で実行します。</p>
+<hr>
+<h2 id="migrate">migrate<a class="anchor" href="#migrate" aria-label="link">#</a></h2>
+<div class="code-block" data-code="brevis migrate up      # applies what is missing
+brevis migrate down    # reverts the last one
+brevis migrate status  # shows the state"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> migrate up      <span class="t-c"># applies what is missing</span>
+<span class="t-k">brevis</span> migrate down    <span class="t-c"># reverts the last one</span>
+<span class="t-k">brevis</span> migrate status  <span class="t-c"># shows the state</span></code></pre></div>
+<p>引数をちょうど 1 つ取ります。マイグレーションはバイナリに埋め込まれており、専用のサブコマンドで 適用されます。<strong><code>serve</code> がスキーマを変更することはありません</strong>。</p>
+<hr>
+<h2 id="validate">validate<a class="anchor" href="#validate" aria-label="link">#</a></h2>
+<p>1 つ以上のワークフローファイルを検証します。ファイル<strong>またはディレクトリ</strong>を受け取ります。</p>
+<div class="code-block" data-code="brevis validate examples/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> validate examples/</code></pre></div>
+<div class="code-block" data-code="  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
+  ok    hello                        dag  4 steps, 4 dependencias  (manual)"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
+  ok    hello                        dag  4 steps, 4 dependencias  (manual)</code></pre></div>
+<p>データベースには触れず、サーバーも起動しないため、エディタでも CI でも実行できます。 ゼロ以外の終了コードで終了し、失敗の数を数えます。</p>
+<hr>
+<h2 id="run">run<a class="anchor" href="#run" aria-label="link">#</a></h2>
+<p>ワークフローを<strong>今すぐ、インスタンス自身で</strong>実行します。キューも、データベースも、 スケジューラも使いません。</p>
+<div class="code-block" data-code="brevis run examples/hello.yaml
+brevis run wf.yaml --param load_full=true --retries 3 --timeout 5m"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> run examples/hello.yaml
+<span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true <span class="t-n">--retries</span> 3 <span class="t-n">--timeout</span> 5m</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>フラグ</th><th>型</th><th>デフォルト</th><th></th></tr></thead><tbody><tr><td><code>--param</code></td><td>繰り返し可</td><td>—</td><td>宣言済みパラメータの <code>key=value</code></td></tr><tr><td><code>--workdir</code></td><td>string</td><td>ファイルのディレクトリ</td><td>ステップの作業ディレクトリ</td></tr><tr><td><code>--retries</code></td><td>int</td><td><code>1</code></td><td>ステップあたりの試行回数(<code>1</code> = リトライなし)</td></tr><tr><td><code>--timeout</code></td><td>duration</td><td><code>0</code></td><td>ステップごとのタイムアウト(<code>0</code> = 制限なし)</td></tr></tbody></table></div>
+<p><code>=</code> のない <code>--param</code> は、警告ではなく<strong>エラー</strong>です。値を忘れた <code>--param load_full</code> は デフォルトで実行され、オペレータは値が適用されたと思い込むことになるからです。</p>
+<aside class="admon admon-warning"><p class="admon-t">4 つの制限</p><p><code>run</code> は <code>BREVIS_ENV=local</code> のときだけ動作します。<code>image:</code> のあるステップはインスタンス自身で 実行され、その旨が表示されます。Go のタスクレジストリはないため、未登録のタスクを指す <code>action:</code> は、 利用可能なものを示して失敗します。そして <code>run</code> は <code>BREVIS_HOSTS</code> を読まないため、<code>host:</code> のある ステップはここではまったく実行できません。変数を設定していても、ホスト名を示して失敗します。</p></aside>
+<hr>
+<h2 id="publish">publish<a class="anchor" href="#publish" aria-label="link">#</a></h2>
+<p>ワークフローとそのスケジュールをデータベースに保存します。ファイルまたはディレクトリを受け取ります。</p>
+<div class="code-block" data-code="brevis publish examples/hello.yaml
+brevis publish workflows/ --project acme --prune"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> publish examples/hello.yaml
+<span class="t-k">brevis</span> publish workflows/ <span class="t-n">--project</span> acme <span class="t-n">--prune</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>フラグ</th><th>型</th><th>デフォルト</th><th></th></tr></thead><tbody><tr><td><code>--project</code></td><td>string</td><td><code>default</code></td><td>プロジェクトの slug</td></tr><tr><td><code>--prune</code></td><td>bool</td><td><code>false</code></td><td>リストにないワークフローをプロジェクトから削除する</td></tr></tbody></table></div>
+<p><code>--prune</code> を付けても、削除されたワークフローの履歴は保持されます。</p>
+<hr>
+<h2 id="backfill">backfill<a class="anchor" href="#backfill" aria-label="link">#</a></h2>
+<p>公開済みのワークフローの過去の slot を具体化します。<strong>キューに追加するだけで、実行は しません。</strong></p>
+<div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>フラグ</th><th></th><th></th></tr></thead><tbody><tr><td><code>--from</code></td><td><strong>必須</strong></td><td>開始日、<code>YYYY-MM-DD</code></td></tr><tr><td><code>--to</code></td><td><strong>必須</strong></td><td>終了日、<code>YYYY-MM-DD</code></td></tr><tr><td><code>--param</code></td><td></td><td>範囲内の<strong>すべての</strong> slot に適用される</td></tr></tbody></table></div>
+<p><code>--to</code> はその日全体を含みます。内部的には、終了がその日付の <code>23:59:59</code> になります。</p>
+<hr>
+<h2 id="cancel">cancel<a class="anchor" href="#cancel" aria-label="link">#</a></h2>
+<p>まだ待機中、または実行中の run をキャンセルします。イベントフィードには、キャンセルしたのは <code>cli</code> と表示されます。</p>
+<div class="code-block" data-code="brevis cancel 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> cancel 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>応答</th><th>何が起きたか</th></tr></thead><tbody><tr><td><code>canceled</code></td><td>run はキューで待機中でした。キューから外れ、実行されません</td></tr><tr><td><code>cancel requested</code></td><td>run は実行中です。ディスパッチャが <code>--cancel-poll</code>(2 秒)以内にステップを停止します</td></tr><tr><td><code>already ended: &lt;status&gt;</code></td><td>run はすでに終了しています。何も変わりません</td></tr></tbody></table></div>
+<p>キャンセルされた run はリトライされません。存在しない id はエラーです。</p>
+<hr>
+<h2 id="gateway">gateway<a class="anchor" href="#gateway" aria-label="link">#</a></h2>
+<p>gateway が <code>/data</code> にどのように現れるか。その設定が、意図的な操作として公開されます。トラフィックが 公開されることは決してなく、実行時に公開されることもありません。</p>
+<div class="code-block" data-code="gateway describe gateway.yaml &gt; manifest.json   # the gateway&#x27;s own binary
+brevis gateway publish manifest.json
+brevis gateway unpublish events_gateway"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>gateway describe gateway.yaml &gt; manifest.json   <span class="t-c"># the gateway's own binary</span>
+<span class="t-k">brevis</span> gateway publish manifest.json
+<span class="t-k">brevis</span> gateway unpublish events_gateway</code></pre></div>
+<p><code>publish</code> は何かを書き込む前にマニフェスト全体を検査し、最初の問題のストリームとロールを示します。 そして、その gateway の宛先を 1 つのトランザクションで置き換えます。<code>unpublish</code> は廃止された gateway を削除し、その名前の gateway が公開されていなければエラーになります。</p>
+<p><code>brevis-sql-api</code> が データ → Endpoints にどのように現れるか。各エンドポイントが何を受け取り何を 読むかが、意図的な操作として公開されます。トラフィックが公開されることは決してありません。</p>
+<div class="code-block" data-code="brevis-sql-api describe --config api.yaml --out manifest.json   # the API&#x27;s own binary
+brevis endpoints publish manifest.json
+brevis endpoints unpublish metrics-api"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span>-sql-api describe <span class="t-n">--config</span> api.yaml <span class="t-n">--out</span> manifest.json   <span class="t-c"># the API's own binary</span>
+<span class="t-k">brevis</span> endpoints publish manifest.json
+<span class="t-k">brevis</span> endpoints unpublish metrics-api</code></pre></div>
+<p><code>publish</code> は何かを書き込む前にマニフェスト全体を検査し、その API のエンドポイントを 1 つの トランザクションで置き換えます。認証情報のような形をした名前、デフォルト値、注記があれば、 そのすべてが拒否されます。</p>
+<p><code>brevis publish</code> のモードではなく独立したコマンドにしているのは、ワークフローと gateway では 集合のセマンティクスが異なるためです。<code>publish --prune</code> が gateway の行に及ぶことは あってはなりません。</p>
+<hr>
+<h2 id="prune">prune<a class="anchor" href="#prune" aria-label="link">#</a></h2>
+<p>保持ポリシーを適用します。Brevis の中で何かを削除する<strong>唯一の</strong>ものであり、自動的に実行されることは 決してなく、オペレータがスケジュールします。</p>
+<div class="code-block" data-code="brevis prune --dry-run          # what would go, changing nothing
+brevis prune
+brevis prune --purge-after 0    # trim only, never delete a run"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> prune <span class="t-n">--dry-run</span>          <span class="t-c"># what would go, changing nothing</span>
+<span class="t-k">brevis</span> prune
+<span class="t-k">brevis</span> prune <span class="t-n">--purge-after</span> 0    <span class="t-c"># trim only, never delete a run</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>フラグ</th><th>デフォルト</th><th></th></tr></thead><tbody><tr><td><code>--trim-after</code></td><td><code>720h</code></td><td>ログ、フェーズ、公開された出力を空にする</td></tr><tr><td><code>--purge-after</code></td><td><code>8760h</code></td><td>run を完全に削除する。<code>0</code> は削除しない</td></tr></tbody></table></div>
+<hr>
+<h2 id="brand">brand<a class="anchor" href="#brand" aria-label="link">#</a></h2>
+<p>サーバーを起動せずに、ブランディングファイルを検証します。</p>
+<div class="code-block" data-code="brevis brand brand.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> brand brand.yaml</code></pre></div>
+<div class="code-block" data-code="  ok    Brevis · Orquestração
+        logo      /assets/logo.svg  (simbolo embutido)
+        destaque  #aa8450
+        Powered by Brevis"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>  ok    Brevis · Orquestração
+        logo      /assets/logo.svg  (simbolo embutido)
+        destaque  #aa8450
+        Powered by Brevis</code></pre></div>
+<p>起動時との挙動の違いが 1 つあります。<strong>ファイルがないことはエラーです。</strong> <code>serve</code> では、ファイルが ないことは「デフォルトのアイデンティティを使う」という意味ですが、パスの検証を依頼した人は、 それが存在しないと教えてもらうことを期待するからです。</p>
+<hr>
+<h2 id="hash">hash<a class="anchor" href="#hash" aria-label="link">#</a></h2>
+<p><code>BREVIS_AUTH_PASSWORD_HASH</code> の値を生成します。</p>
+<div class="code-block" data-code="brevis hash"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> hash</code></pre></div>
+<p>パスワードは、引数からではなく、<strong>エコーなし</strong>でターミナルから読み取られます。引数は任意の プロセスの <code>ps</code> に表示され、シェルの履歴にも残るからです。12 文字より短いパスワードは 拒否されます。</p>
+<p>ハッシュだけが <strong>stdout</strong> に出力され、ラベルは <strong>stderr</strong> に出力されるため、 <code>brevis hash &gt; hash.txt</code> で保存されるのは必要なものだけです。</p>
+<hr>
+<h2 id="version">version<a class="anchor" href="#version" aria-label="link">#</a></h2>
+<div class="code-block" data-code="brevis version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> version</code></pre></div>
+<div class="code-block" data-code="brevis 0.11.2
+  commit  bb832ff
+  build   2026-09-05T12:00:00Z
+  go      go1.25.7 darwin/arm64"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>brevis 0.11.2
+  commit  bb832ff
+  build   2026-09-05T12:00:00Z
+  go      go1.25.7 darwin/arm64</code></pre></div>
+<p><code>go build</code> で直接ビルドすると、<code>brevis dev</code> と表示され、コミットも日付もありません。誰かが おかしな挙動を報告したとき、これをリリース成果物と見分けられることが重要です。</p>
+
+      <nav class="pagers" aria-label="ページ">
+        <a class="pager pager-prev" href="/ja/docs/context/"><span>前へ</span><strong>ステップ間のコンテキスト</strong></a>
+        <a class="pager pager-next" href="/ja/docs/parameters/"><span>次へ</span><strong>パラメータ</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/ja/docs/cli.md" target="_blank" rel="noopener">GitHub でこのページを編集</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="このページの内容">
+      <p class="toc-t">このページの内容</p>
+      <ul><li class="toc-2"><a href="#serve">serve</a></li><li class="toc-2"><a href="#scheduler">scheduler</a></li><li class="toc-2"><a href="#alert">alert</a></li><li class="toc-2"><a href="#report">report</a></li><li class="toc-2"><a href="#migrate">migrate</a></li><li class="toc-2"><a href="#validate">validate</a></li><li class="toc-2"><a href="#run">run</a></li><li class="toc-2"><a href="#publish">publish</a></li><li class="toc-2"><a href="#backfill">backfill</a></li><li class="toc-2"><a href="#cancel">cancel</a></li><li class="toc-2"><a href="#gateway">gateway</a></li><li class="toc-2"><a href="#prune">prune</a></li><li class="toc-2"><a href="#brand">brand</a></li><li class="toc-2"><a href="#hash">hash</a></li><li class="toc-2"><a href="#version">version</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/ja/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>データインフラに応用された哲学。</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>プロジェクト</h2>
+        <ul>
+          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/docs/philosophy/">原則</a></li>
+          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>コード</h2>
+        <ul>
+          <li><a href="/ja/docs/">ドキュメント</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">リポジトリ</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>オープンソースプロジェクト。制作: <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · Go で構築 · Go gopher: Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

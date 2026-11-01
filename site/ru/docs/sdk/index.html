@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ru" data-docs="/ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Go SDK — Документация</title>
+<meta name="description" content="Как написать загрузчик — извлечь данные из источника, преобразовать и загрузить в место назначения.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/ru/docs/sdk/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/ru/docs/sdk/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/sdk/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/sdk/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/sdk/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/sdk/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/sdk/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/sdk/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/sdk/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/sdk/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/sdk/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/sdk/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/sdk/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="ru">
+<meta property="og:title" content="Go SDK — Документация">
+<meta property="og:description" content="Как написать загрузчик — извлечь данные из источника, преобразовать и загрузить в место назначения.">
+<meta property="og:url" content="https://brevis.sh/ru/docs/sdk/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Go SDK — Документация">
+<meta name="twitter:description" content="Как написать загрузчик — извлечь данные из источника, преобразовать и загрузить в место назначения.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Go SDK",
+  "description": "Как написать загрузчик — извлечь данные из источника, преобразовать и загрузить в место назначения.",
+  "inLanguage": "ru",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Перейти к содержимому</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/ru/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Основная навигация">
+      <a href="/ru/#ecossistema">Экосистема</a>
+      <a href="/ru/docs/">Документация</a>
+      <details class="lang-dd"><summary aria-label="Язык: Русский"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Русский</span></summary><ul><li><a href="/docs/sdk/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/sdk/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/sdk/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/sdk/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/sdk/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/sdk/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/sdk/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/sdk/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/sdk/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/sdk/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/sdk/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Open source на GitHub
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Открыть меню" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Меню документации
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Поиск по документации</label>
+        <input type="search" id="q" placeholder="Поиск…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Ничего не найдено" hidden></div>
+      <nav class="side-nav" aria-label="Документация">
+        <p class="side-group">Начало работы</p><ul class="side-list"><li><a href="/ru/docs/ecosystem/">Экосистема</a></li><li><a href="/ru/docs/integrations/">Интеграции</a></li><li><a href="/ru/docs/introduction/">Введение</a></li><li><a href="/ru/docs/installation/">Установка</a></li><li><a href="/ru/docs/quickstart/">Быстрый старт</a></li></ul><p class="side-group">Концепции</p><ul class="side-list"><li><a href="/ru/docs/core/">Core</a></li><li><a href="/ru/docs/workflows/">Workflows</a></li><li><a href="/ru/docs/scheduler-and-queue/">Планировщик и очередь</a></li><li><a href="/ru/docs/pod-per-step/">Pod на шаг</a></li><li><a href="/ru/docs/context/">Контекст между шагами</a></li></ul><p class="side-group">Справочник</p><ul class="side-list"><li><a href="/ru/docs/cli/">CLI</a></li><li><a href="/ru/docs/parameters/">Параметры</a></li><li><a href="/ru/docs/configuration/">Конфигурация</a></li><li><a href="/ru/docs/runtime/">Рантайм шага</a></li></ul><p class="side-group">SDK и библиотеки</p><ul class="side-list"><li><a href="/ru/docs/sdk/" aria-current="page">Go SDK</a></li><li><a href="/ru/docs/libraries/">Клиентские библиотеки</a></li><li><a href="/ru/docs/python/">Python</a></li></ul><p class="side-group">Эксплуатация</p><ul class="side-list"><li><a href="/ru/docs/console/">Console</a></li><li><a href="/ru/docs/kubernetes/">Kubernetes</a></li><li><a href="/ru/docs/observability/">Наблюдаемость</a></li><li><a href="/ru/docs/white-label/">White label</a></li></ul><p class="side-group">Приём данных</p><ul class="side-list"><li><a href="/ru/docs/ingestion/">Приём данных</a></li><li><a href="/ru/docs/ingestion-sinks/">Sinks приёма данных</a></li><li><a href="/ru/docs/benchmarks/">Бенчмарки</a></li></ul><p class="side-group">Моделирование в SQL</p><ul class="side-list"><li><a href="/ru/docs/sql/">SQL</a></li></ul><p class="side-group">О проекте</p><ul class="side-list"><li><a href="/ru/docs/philosophy/">Философия</a></li><li><a href="/ru/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Документация</p>
+      <h1>Go SDK</h1>
+      <p class="doc-desc">Как написать загрузчик — извлечь данные из источника, преобразовать и загрузить в место назначения.</p>
+      <p>Когда задача шага — <strong>забрать данные и куда-то загрузить</strong>, Go SDK даёт вам весь загрузчик в несколько строк. Это отдельный модуль, версионируемый независимо от engine.</p>
+<div class="code-block" data-code="go get github.com/AreteAcademy/brevis/sdk@latest"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">go</span> get github.com/AreteAcademy/<span class="t-k">brevis</span>/sdk@latest</code></pre></div>
+<p>Требуется Go 1.23 или новее — SDK передаёт строки потоком в виде <code>iter.Seq2</code>.</p>
+<aside class="admon admon-warning"><p class="admon-t">Не используйте `v0.1.0`</p><p>В неё попал <code>go.mod</code>, фиксирующий несуществующую ревизию, а прокси модулей Go неизменяем. Начинайте с <code>v0.1.1</code>.</p></aside>
+<h2 id="три-шага">Три шага<a class="anchor" href="#три-шага" aria-label="link">#</a></h2>
+<div class="code-block" data-code="import (
+	&quot;github.com/AreteAcademy/brevis/sdk&quot;
+	&quot;github.com/AreteAcademy/brevis/sdk/from&quot;
+	&quot;github.com/AreteAcademy/brevis/sdk/to/bigquery&quot;
+)
+
+rows, err := sdk.Extract(ctx, sdk.Source{
+	From: from.HTTP{URL: &quot;https://api.example.com/v1/events&quot;},
+})
+
+rows = sdk.Transform(rows, sdk.Accept(&quot;id&quot;, &quot;created_at&quot;, &quot;amount&quot;))
+
+res, err := sdk.Load(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: &quot;bronze&quot;, Name: &quot;events&quot;},
+	Columns: []string{&quot;id&quot;, &quot;created_at&quot;, &quot;amount&quot;},
+})"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">import</span> (
+	"github.com/AreteAcademy/brevis/sdk"
+	"github.com/AreteAcademy/brevis/sdk/from"
+	"github.com/AreteAcademy/brevis/sdk/to/bigquery"
+)
+
+rows, <span class="t-k">err</span> := sdk.Extract(ctx, sdk.Source{
+	From: from.HTTP{URL: "https:<span class="t-c">//api.example.com/v1/events"},</span>
+})
+
+rows = sdk.Transform(rows, sdk.Accept("id", "created_at", "amount"))
+
+res, <span class="t-k">err</span> := sdk.Load(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: "bronze", Name: "events"},
+	Columns: []string{"id", "created_at", "amount"},
+})</code></pre></div>
+<p><code>Extract</code> читает, <code>Transform</code> преобразует, <code>Load</code> записывает. Каждый принимает и возвращает последовательность — ничто не материализуется в памяти целиком.</p>
+<figure class="doc-figure"><img src="/assets/flow-sdk.svg" width="360" height="514" alt="Схема работы SDK: sdk.Extract читает из HTTP API с помощью from.HTTP, sdk.Transform оставляет принятые поля, а sdk.Load записывает строки в таблицу BigQuery. Три вызова выполняются внутри вашего собственного шага." loading="lazy"></figure>
+<h2 id="драйвер-это-значение-а-не-настройка">Драйвер — это значение, а не настройка<a class="anchor" href="#драйвер-это-значение-а-не-настройка" aria-label="link">#</a></h2>
+<p><code>from.HTTP</code> несёт всё, что нужно HTTP-источнику: URL, заголовки, повторные попытки, пагинацию и то, что означает ответ. <code>from.Files</code> несёт путь и формат. Ни одному не приходится уступать место полям другого, поэтому нет структуры источника, собирающей сорок опций, из которых каждый драйвер читает шесть.</p>
+<p>Он также определяет, <strong>что вы компилируете</strong>. Go отсекает зависимости по импортируемому пакету, но никогда по используемому полю:</p>
+<div class="table-wrap"><table><thead><tr><th>что вы импортируете</th><th>пакеты</th><th>AWS</th><th>Google</th></tr></thead><tbody><tr><td><code>sdk</code></td><td>190</td><td>нет</td><td>нет</td></tr><tr><td><code>sdk</code> + <code>from</code></td><td>194</td><td>нет</td><td>нет</td></tr><tr><td><code>sdk</code> + <code>from</code> + <code>to</code> (файлы)</td><td>195</td><td>нет</td><td>нет</td></tr><tr><td><code>sdk</code> + <code>to/bigquery</code></td><td>456</td><td>нет</td><td><strong>да</strong></td></tr><tr><td><code>sdk</code> + <code>from</code> + <code>store/s3</code></td><td>265</td><td><strong>да</strong></td><td>нет</td></tr></tbody></table></div>
+<p>Целый файловый пайплайн — чтение и запись — стоит 195 пакетов и вообще ни одного облачного SDK. <strong>Драйвер с SDK вендора за спиной живёт в собственном пакете</strong>, поэтому BigQuery — это <code>to/bigquery</code>, а хранилища объектов — <code>store/s3</code> и <code>store/gcs</code>.</p>
+<h2 id="источники-и-места-назначения">Источники и места назначения<a class="anchor" href="#источники-и-места-назначения" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>источник</th><th>пакет</th></tr></thead><tbody><tr><td>HTTP</td><td><code>from.HTTP</code></td></tr><tr><td>файлы (локальные, S3, GCS)</td><td><code>from.Files</code></td></tr><tr><td>Postgres</td><td><code>from/postgres</code></td></tr><tr><td>MySQL</td><td><code>from/mysql</code></td></tr><tr><td>несколько источников</td><td><code>from.Many</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>место назначения</th><th>пакет</th></tr></thead><tbody><tr><td>файлы</td><td><code>to.Files</code></td></tr><tr><td>BigQuery</td><td><code>to/bigquery</code></td></tr><tr><td>Postgres</td><td><code>to/postgres</code></td></tr><tr><td>MySQL</td><td><code>to/mysql</code></td></tr><tr><td>Redshift</td><td><code>to/redshift</code></td></tr><tr><td>Pub/Sub</td><td><code>to/pubsub</code></td></tr></tbody></table></div>
+<p>Backend определяется схемой пути, а <code>Store</code> <strong>передаётся снаружи</strong>, а не выбирается внутри драйвера:</p>
+<div class="code-block" data-code="from.Files{Path: &quot;s3://bucket/day=1/*.ndjson&quot;, Store: s3.New(client)}
+to.Files{Path: &quot;gs://bucket/landing/&quot;, Store: gcs.New(client)}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>from.Files{Path: "s3:<span class="t-c">//bucket/day=1/*.ndjson", Store: s3.New(client)}</span>
+to.Files{Path: "gs:<span class="t-c">//bucket/landing/", Store: gcs.New(client)}</span></code></pre></div>
+<p>Именно это не даёт программе с локальными файлами скомпилировать ни одной строки кода AWS или Google.</p>
+<h3 id="публикация-в-топик">Публикация в топик<a class="anchor" href="#публикация-в-топик" aria-label="link">#</a></h3>
+<p><code>to/pubsub</code> — единственное место назначения, которое не таблица, и оно ведёт себя иначе, о чём стоит знать, прежде чем использовать его: <strong>оно ничего не добавляет к тому, что отправляет.</strong></p>
+<div class="code-block" data-code="Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: &quot;acme-prod&quot;,
+        Name:    &quot;orders&quot;,
+
+        // Nil is the default, and it means NO attributes at all.
+        Attributes: func(e sdk.Envelope) map[string]string {
+            row, ok := e.Payload.(map[string]any)
+            if !ok {
+                return nil
+            }
+            return map[string]string{&quot;orderId&quot;: fmt.Sprint(row[&quot;order_id&quot;])}
+        },
+    },
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: "acme-prod",
+        Name:    "orders",
+
+        <span class="t-c">// Nil is the default, and it means NO attributes at all.</span>
+        Attributes: <span class="t-k">func</span>(e sdk.Envelope) <span class="t-k">map</span>[string]string {
+            row, ok := e.Payload.(<span class="t-k">map</span>[string]any)
+            <span class="t-k">if</span> !ok {
+                <span class="t-k">return</span> <span class="t-k">nil</span>
+            }
+            <span class="t-k">return</span> <span class="t-k">map</span>[string]string{"orderId": fmt.Sprint(row["order_id"])}
+        },
+    },
+},</code></pre></div>
+<p>Подписчик получает ваш payload байт в байт плюс ровно те атрибуты, которые вы назвали. Ничего больше — ни <code>ingestion_id</code>, ни <code>provider</code>, никакого конверта.</p>
+<p>Это правило, а не минимализм. Таблицу создаёт пайплайн, который в неё пишет, поэтому SDK вправе решать, каковы её столбцы. <strong>Топик — нет</strong>: он существует до вашего пайплайна, его подписчики написаны раньше, и их фильтры написаны раньше. Атрибут, добавленный самовольно, — это Brevis, редактирующий чужой контракт, и подписчик узнал бы об этом в три часа ночи.</p>
+<p>Из этого вытекают три вещи:</p>
+<ul><li><strong>Он никогда не создаёт топик.</strong> Пайплайн, который может создать топик, может создать не тот, и в отличие от таблицы с опечаткой этого никто не замечает — сообщения уходят куда-то, а подписчик, который должен был их получить, молчит.</li><li><strong><code>Schema</code>, <code>Dedup</code> и <code>PartitionBy</code> отклоняются</strong> с названием опции. Они существуют для таблиц: <code>Schema</code> — это способ, которым место назначения создаёт таблицу, дедупликации нужна строка для замены, партиция — понятие таблицы. Ближайшее здесь — <code>OrderingKey</code>, но это другое: он группирует сообщения, которые должны <em>прийти</em> по порядку.</li><li><strong>Сбой частичен.</strong> Публикация не транзакционна, поэтому 48 000 сообщений, упавших на 31 000-м, <em>доставили</em> 31 000. Результат сообщает, что фактически ушло, а ошибка говорит, что повторный запуск — это повторная доставка: подписчик должен быть идемпотентным, а Pub/Sub в любом случае at-least-once.</li></ul>
+<p>Работающий пример на эмуляторе: <a href="https://github.com/AreteAcademy/brevis/tree/master/examples/13-pubsub" target="_blank" rel="noopener"><code>examples/13-pubsub</code></a>.</p>
+<h2 id="весь-загрузчик-целиком">Весь загрузчик целиком<a class="anchor" href="#весь-загрузчик-целиком" aria-label="link">#</a></h2>
+<p><code>sdk.Run</code> берёт на себя флаги, <code>-dry-run</code>, журналирование, повторные попытки, пагинацию, происхождение данных, создание таблицы и код завершения. В файле остаётся только то, что специфично для этого источника:</p>
+<div class="code-block" data-code="package main
+
+import (
+	&quot;time&quot;
+
+	&quot;github.com/AreteAcademy/brevis/sdk&quot;
+	&quot;github.com/AreteAcademy/brevis/sdk/from&quot;
+)
+
+func main() {
+	sdk.Run(sdk.Pipeline{
+		Source: sdk.Source{
+			From: from.HTTP{
+				URL:     &quot;https://api.example.com/v1/events&quot;,
+				Timeout: 15 * time.Second,
+			},
+			Guard:  sdk.RejectIf(&quot;error&quot;),
+			Expand: sdk.ArrayAt(&quot;results&quot;),
+		},
+		Target: sdk.Target{
+			Provider: &quot;example&quot;,
+			Entity:   &quot;events&quot;,
+			Key:      sdk.Key(&quot;id&quot;),
+			When:     sdk.Field(&quot;created_at&quot;),
+		},
+	})
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">package</span> main
+
+<span class="t-k">import</span> (
+	"time"
+
+	"github.com/AreteAcademy/brevis/sdk"
+	"github.com/AreteAcademy/brevis/sdk/from"
+)
+
+<span class="t-k">func</span> main() {
+	sdk.Run(sdk.Pipeline{
+		Source: sdk.Source{
+			From: from.HTTP{
+				URL:     "https:<span class="t-c">//api.example.com/v1/events",</span>
+				Timeout: 15 * time.Second,
+			},
+			Guard:  sdk.RejectIf("error"),
+			Expand: sdk.ArrayAt("results"),
+		},
+		Target: sdk.Target{
+			Provider: "example",
+			Entity:   "events",
+			Key:      sdk.Key("id"),
+			When:     sdk.Field("created_at"),
+		},
+	})
+}</code></pre></div>
+<div class="code-block" data-code="go run ./fetcher -dry-run   # extracts, counts rows and errors, writes nothing
+go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">go</span> run ./fetcher <span class="t-n">-dry-run</span>   <span class="t-c"># extracts, counts rows and errors, writes nothing</span>
+<span class="t-k">go</span> run ./fetcher</code></pre></div>
+<h2 id="контекст-запуска">Контекст запуска<a class="anchor" href="#контекст-запуска" aria-label="link">#</a></h2>
+<p>Когда загрузчик выполняется <strong>как шаг workflow</strong>, engine добавляет в окружение то, чего иначе знать не мог: первый ли это запуск, с какими параметрами он был отправлен, какой это запуск. SDK читает это в <code>Pipeline.Run</code>:</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	if p.Run.Params[&quot;load_full&quot;] == &quot;true&quot; {
+		p.Source.From = from.HTTP{URL: base + &quot;?full=1&quot;}
+	}
+	return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+	<span class="t-k">if</span> p.Run.Params["load_full"] == "true" {
+		p.Source.From = from.HTTP{URL: base + "?full=1"}
+	}
+	<span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p>При ручном запуске <code>Run</code> возвращается обнулённым — читать его необязательно, и игнорирование ничего не стоит.</p>
+<p>Без истории ответ на вопрос «это первый запуск?» всегда <strong>нет</strong>: создание таблицы без уверенности хуже, чем отказ от создания.</p>
+<h3 id="часы">Часы<a class="anchor" href="#часы" aria-label="link">#</a></h3>
+<p><code>p.Run.Auto</code> — это то, что engine вычислил об этом запуске, — <a href="/ru/docs/parameters/#авто-параметры">авто-параметры</a>. <code>Auto.Now()</code> — часы, которые нужно читать вместо <code>time.Now()</code>: на запуске по расписанию это слот, поэтому они не сдвигаются, когда запуск опаздывает, и не сдвигаются, когда запуск повторяется через три часа.</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	if !ok { // no schedule: fall back to a fixed window
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		&quot;?from=&quot; + start.Format(time.RFC3339) +
+		&quot;&amp;to=&quot; + end.Format(time.RFC3339)}
+	return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	<span class="t-k">if</span> !ok { <span class="t-c">// no schedule: fall back to a fixed window</span>
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		"?from=" + start.Format(time.RFC3339) +
+		"&amp;to=" + end.Format(time.RFC3339)}
+	<span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p>При ручном запуске <code>Auto.Now()</code> — <em>это</em> настенные часы, а <code>Window()</code> возвращает <code>false</code>, поэтому для локальной разработки особых случаев не нужно.</p>
+<h2 id="не-путать-с-клиентскими-библиотеками">Не путать с клиентскими библиотеками<a class="anchor" href="#не-путать-с-клиентскими-библиотеками" aria-label="link">#</a></h2>
+<p>Этот SDK — механизм ETL на Go: драйверы, пагинация, происхождение данных, создание таблиц. <a href="/ru/docs/libraries/">Клиентские библиотеки</a> — другое: тонкие клиенты, передающие шагу контекст запуска и часы, сегодня для Python, а позже для Node.js и Rust. Шагу на pandas или dbt нужны они, а не этот SDK.</p>
+<h2 id="параметры-которые-строят-пайплайн">Параметры, которые строят пайплайн<a class="anchor" href="#параметры-которые-строят-пайплайн" aria-label="link">#</a></h2>
+<p><code>p.Run.Params</code> читается внутри пайплайна, что слишком поздно для значения, которое определяет, <strong>чем пайплайн является</strong>: один источник на штат, одна таблица на арендатора. <code>Pipeline.Flags</code> разбирается внутри <code>Run</code>, так что тоже слишком поздно по той же причине.</p>
+<div class="code-block" data-code="func main() {
+	sdk.Run(pipeline(sdk.ParamList(&quot;ufs&quot;)))
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">func</span> main() {
+	sdk.Run(pipeline(sdk.ParamList("ufs")))
+}</code></pre></div>
+<p><code>sdk.Param</code> и <code>sdk.ParamList</code> сначала читают окружение engine, затем <code>-param name=value</code>:</p>
+<div class="code-block" data-code="./fetch-stations -param ufs=SP,RJ"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>./fetch-stations <span class="t-n">-param</span> ufs=SP,RJ</code></pre></div>
+<p>Побеждает окружение: под управлением engine оно и есть значение, а флаг, оставленный в манифесте, не должен переопределять то, что ввёл оператор. Без engine остаётся флаг, что лучше, чем каждый раз писать <code>BREVIS_RUN_PARAMS</code> в виде JSON.</p>
+<h2 id="структура-приземления">Структура приземления<a class="anchor" href="#структура-приземления" aria-label="link">#</a></h2>
+<p>Пайплайн может приземлить <strong>ту же таблицу, что приземляет gateway</strong> — те же столбцы и тот же <code>brevis_ingestion_id</code> — поэтому выбор между ними становится решением о развёртывании, а не о схеме. Команда может читать оба вместе и переходить от одного к другому без миграции.</p>
+<div class="code-block" data-code="const table = &quot;landing.orders&quot;
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey(&quot;id&quot;))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">const</span> table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})</code></pre></div>
+<p><code>sdk.LandingSchema</code> — это девять столбцов: восемь принадлежат структуре и один — производителю. <code>sdk.Landing</code> заполняет их и кладёт запись целиком в <code>data</code>. Добавляйте в схему собственные столбцы, если хотите, или берите <code>sdk.LandingControlColumns</code> и давайте полям записи отдельные столбцы.</p>
+<h3 id="две-формы-запись-целиком-или-по-столбцу-на-поле">Две формы: запись целиком или по столбцу на поле<a class="anchor" href="#две-формы-запись-целиком-или-по-столбцу-на-поле" aria-label="link">#</a></h3>
+<p>То, что выше, — это форма <strong>document</strong>: запись попадает в <code>data</code> как JSON, и таблица одна и та же, что бы ни содержала запись. Добавьте <code>sdk.LandingColumns()</code>, и у каждого поля записи появится собственный столбец:</p>
+<div class="code-block" data-code="sdk.Landing(table, sdk.LandingKey(&quot;source_key&quot;), sdk.LandingColumns())"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())</code></pre></div>
+<p>Тогда таблица — это <code>sdk.LandingControlColumns</code> плюс ваши столбцы, а <strong>не</strong> <code>sdk.LandingSchema</code>, который несёт <code>data</code>:</p>
+<div class="code-block" data-code="Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: &quot;source_key&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;series&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;data&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;valor&quot;, Type: sdk.TypeString},
+    ),
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: "source_key", Type: sdk.TypeString},
+        sdk.Column{Name: "series", Type: sdk.TypeString},
+        sdk.Column{Name: "data", Type: sdk.TypeString},
+        sdk.Column{Name: "valor", Type: sdk.TypeString},
+    ),
+}</code></pre></div>
+<p><strong>Эти столбцы объявляете вы.</strong> SDK никогда не выводит схему, и эта опция этого не меняет: она определяет, как строится <em>строка</em>, но никогда — чем является таблица. Gateway выводит схему, потому что его производитель — посторонний, который присылает всё, что у него есть; здесь автор пайплайна знает форму и записывает её в диффе, который кто-то просматривает.</p>
+<p>Это та же форма, которую gateway приземляет как <a href="/ru/docs/ingestion-sinks/#две-формы-один-контракт"><code>shape: columns</code></a>, тем же кодом — те же столбцы, те же значения, тот же <code>brevis_ingestion_id</code>.</p>
+<p><strong>Имя поля должно быть допустимым именем столбца</strong>: буква или подчёркивание, затем буквы, цифры и подчёркивания. Это правило BigQuery, самое узкое из четырёх мест назначения, поэтому имя, проходящее здесь, работает везде. Запись с <code>my-field</code> отклоняется по имени до того, как что-либо записано. У формы document такого правила нет — дефис вполне допустим как ключ JSON.</p>
+<p><strong>По умолчанию он не разворачивает вложенность.</strong> Вложенный объект становится ОДНИМ столбцом <code>JSON</code> под ключом, который его содержал: <code>customer</code> хранит <code>{"id": 7, "uf": "SP"}</code>, а не <code>customer_id</code> и <code>customer_uf</code>. Массив — тоже <code>JSON</code>. Запись, которой нужна одна строка <em>на элемент массива</em>, требует <code>sdk.ArrayAt</code> в <code>Expand</code> источника — он выполняется до <code>Landing</code> и является другой операцией с другим именем. <a href="#один-столбец-на-вложенное-поле"><code>BREVIS_NORMALIZE_DATA</code></a> меняет первую половину этого для всего развёртывания; массив остаётся <code>JSON</code> в любом случае:</p>
+<div class="code-block" data-code="Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt(&quot;results&quot;)},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},</code></pre></div>
+<p><strong><code>null</code> остаётся <code>NULL</code></strong>, никогда не <code>""</code>. Поле, присланное как null, и поле, присланное пустым, — разные факты, и столбец потом не может их различить.</p>
+<p><strong><code>data</code> становится вашим.</strong> В этой форме у структуры нет столбца с таким именем, поэтому производитель с полем <code>data</code> — а именно его присылает серия Bacen — получает собственный столбец с собственным значением. В форме <code>document</code> это один ключ внутри JSON структуры.</p>
+<h3 id="префикс-brevis-можно-изменить">Префикс <code>brevis_</code> можно изменить<a class="anchor" href="#префикс-brevis-можно-изменить" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_LANDING_PREFIX=acme"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>BREVIS_LANDING_PREFIX=acme</code></pre></div>
+<p>и восемь столбцов структуры становятся <code>acme_ingestion_id</code>, <code>acme_record_key</code> и так далее. Если не задан, они такие, какими были всегда.</p>
+<p><strong>Выбирайте его при создании таблицы, потому что последующая смена — это не переименование.</strong> SDK никогда не удаляет столбцы, поэтому поток, меняющий префикс, не переименовывает восемь — он добавляет восемь и бросает восемь. Во всех строках после этого в старом наборе стоят NULL, а</p>
+<div class="code-block" data-code="qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1</code></pre></div>
+<p>партиционирует по столбцу, в который уже ничего не пишется. Строки приходят, дашборд замирает, и ничто ничего не логирует.</p>
+<p>Поэтому таблица, уже несущая структуру под одним префиксом, <strong>отклоняет</strong> загрузку, объявляющую другой, до извлечения, называя оба. Укажите новую таблицу или сначала сами переименуйте восемь столбцов.</p>
+<p><strong>Всё, что вы введёте, нормализуется</strong>, так что ошибиться можно в одном написании, а не в четырёх:</p>
+<div class="table-wrap"><table><thead><tr><th>вы задаёте</th><th>вы получаете</th></tr></thead><tbody><tr><td>ничего или пусто</td><td><code>brevis_</code></td></tr><tr><td><code>_NAME</code></td><td><code>name_</code></td></tr><tr><td><code>_NAME_</code></td><td><code>name_</code></td></tr><tr><td><code>NAME</code></td><td><code>name_</code></td></tr></tbody></table></div>
+<p>Обрезать <code>_</code> с обоих концов, привести к нижнему регистру, добавить ровно один. Два значения отклоняются, а не угадываются: только подчёркивания, потому что остался бы <code>ingestion_id</code> — именно тот столбец, который <code>sdk.IngestionID()</code> пишет в каждом обычном пайплайне, — и всё, что не может начинать имя столбца. <strong>Процесс с непригодным значением не запускается</strong>, что единственно честный исход: альтернатива — таблицы, названные по префиксу, который вы заменяли.</p>
+<p><strong>Он действует на ПРОЦЕСС, и в этом суть, а не ограничение.</strong> Все потоки одного gateway разделяют его, поэтому два sink не могут расходиться — как и схема, объявляющая таблицу, и трансформер, который её заполняет.</p>
+<p><strong>Зарезервированное правило движется вместе с ним.</strong> При <code>acme_</code> производитель, присылающий <code>acme_region</code>, отклоняется, потому что тот, кто может подделать управляющий столбец, подделывает правдоподобный. А <code>brevis_region</code> становится обычным полем.</p>
+<p><code>data</code> никогда не несёт префикс. Это столбец производителя, а не структуры.</p>
+<h3 id="один-столбец-на-вложенное-поле">Один столбец на вложенное поле<a class="anchor" href="#один-столбец-на-вложенное-поле" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_NORMALIZE_DATA=true"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>BREVIS_NORMALIZE_DATA=true</code></pre></div>
+<p>и у полей вложенного объекта появляются собственные столбцы, как это делает <code>json_normalize</code> в pandas — на один уровень:</p>
+<div class="code-block" data-code="data = [
+    {&quot;id&quot;: 1, &quot;name&quot;: {&quot;first&quot;: &quot;Coleen&quot;, &quot;last&quot;: &quot;Volk&quot;}},
+    {&quot;name&quot;: {&quot;given&quot;: &quot;Mark&quot;, &quot;family&quot;: &quot;Regner&quot;}},
+    {&quot;id&quot;: 2, &quot;name&quot;: &quot;Faye Raker&quot;},
+]"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>data = [
+    {"id": 1, "name": {"first": "Coleen", "last": "Volk"}},
+    {"name": {"given": "Mark", "family": "Regner"}},
+    {"id": 2, "name": "Faye Raker"},
+]</code></pre></div>
+<div class="code-block" data-code="id  name_first  name_last  name_given  name_family  name"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>id  name_first  name_last  name_given  name_family  name</code></pre></div>
+<p><strong>Выбирайте до первой таблицы, потому что она не только ДОБАВЛЯЕТ столбцы.</strong> Она их переименовывает, а SDK никогда ни один не удаляет — поэтому старое имя остаётся с уже лежащими в нём строками, а всё последующее приземляется в новое, и запрос, который кто-то написал к нему, продолжает выполняться и перестаёт видеть новые строки. Происходят два переименования:</p>
+<ul><li><code>userName</code> становится <code>username</code>, независимо от того, есть ли вложенность</li><li><code>name</code>, содержавший объекты, заменяется на <code>name_first</code> и <code>name_last</code></li></ul>
+<p>Таблица, уже несущая любую из этих форм, <strong>отклоняет</strong> загрузку с этой опцией до извлечения, называя оба столбца. Укажите новую таблицу или сначала сами переименуйте столбцы.</p>
+<p><strong><code>name</code> может появиться и развёрнутым, и целым</strong>, и пример выше это показывает: третья запись несёт <code>name</code> как строку, поэтому в таблице есть <code>name_first</code>, <code>name_last</code> И <code>name</code>. Поле, являющееся объектом в одной записи и скаляром в другой, даёт оба.</p>
+<p><strong>Один уровень, а массивы — это значения.</strong> <code>{"a": {"b": {"c": 1}}}</code> — это <code>a_b</code>, содержащий <code>{"c": 1}</code> — столбец <code>JSON</code>, а не <code>a_b_c</code>. <code>{"a": [1, 2]}</code> — это <code>a</code>, тоже <code>JSON</code>. Записи, которой нужна одна строка на элемент массива, по-прежнему нужен <code>sdk.ArrayAt</code>.</p>
+<p><strong>Соединяется и приводится к нижнему регистру, без разбиения по camelCase.</strong> <code>userName</code> становится <code>username</code>, а не <code>user_name</code>, потому что у другого прочтения нет согласованного ответа для аббревиатур — <code>HTTPStatus</code>, <code>userID</code>, — и каждая библиотека расходится в этом с остальными.</p>
+<p><strong>Коллизия отклоняется, а не разрешается.</strong> <code>{"name_first": 1, "name": {"first": 2}}</code> сделало бы один столбец из двух полей, а обход map в Go случаен: если бы побеждало одно, тот же пакет давал бы в другом запуске другую таблицу. Отказ называет оба.</p>
+<p><strong>Зарезервированный префикс проверяется на столбце, а не на поле.</strong> Производитель, присылающий <code>{"brevis": {"stream": "x"}}</code>, иначе создал бы <code>brevis_stream</code> через дверь, за которой проверка поля не следит. Он отклоняется с названием <code>brevis.stream</code>, чтобы найти поле.</p>
+<p><strong>Действует на ПРОЦЕСС</strong>, как и префикс, и по той же причине: все потоки одного gateway разделяют её, поэтому два sink не могут расходиться в отношении таблицы, в которую могут писать оба. Применяется только к форме <code>columns</code> — при <code>document</code> запись целиком попадает в один столбец <code>JSON</code>, и разворачивать нечего.</p>
+<h3 id="текст-который-уже-является-json">Текст, который уже является JSON<a class="anchor" href="#текст-который-уже-является-json" aria-label="link">#</a></h3>
+<p>Столбец, объявленный как <code>sdk.TypeJSON</code>, получает JSON-<strong>значение</strong> — объект, массив, число. В BigQuery строка кодируется целиком, поэтому Go <code>string</code> там становится строковым литералом JSON, и столбец оказывается содержащим ТЕКСТ вашего объекта, а не сам объект:</p>
+<div class="code-block" data-code="SELECT JSON_TYPE(payload) ...;            -- &quot;string&quot;, not &quot;object&quot;
+SELECT JSON_VALUE(payload, &#x27;$.a&#x27;) ...;    -- NULL"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">SELECT</span> JSON_TYPE(payload) ...;            <span class="t-c">-- "string", not "object"</span>
+<span class="t-k">SELECT</span> JSON_VALUE(payload, '$.a') ...;    <span class="t-c">-- NULL</span></code></pre></div>
+<p>Столбец правильного типа, а данные в нём недоступны, — худший из трёх исходов, потому что ничего не падает. <strong>Место назначения BigQuery отклоняет это</strong> начиная с <code>v0.74.0</code>, называя столбец.</p>
+<p>Передавайте сам объект, когда он у вас есть. Когда то, что у вас есть, уже является текстом JSON — столбец, прочитанный из другой базы данных, тело ответа, которое вы не хотите заново разбирать, — скажите об этом:</p>
+<div class="code-block" data-code="row[&quot;payload&quot;] = sdk.JSONText(body)"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>row["payload"] = sdk.JSONText(body)</code></pre></div>
+<p>Собственный <code>json.RawMessage</code> из <code>encoding/json</code> тоже работает и по той же причине: оба записывают тот JSON, который держат, а не его строку в кавычках.</p>
+<p><strong>Postgres и MySQL не затронуты и не отклоняют.</strong> Их сервер разбирает строку в столбец JSON и всегда так делал.</p>
+<h3 id="когда-появляется-поле-которого-нет-в-таблице">Когда появляется поле, которого нет в таблице<a class="anchor" href="#когда-появляется-поле-которого-нет-в-таблице" aria-label="link">#</a></h3>
+<p>Производитель добавляет поле, и загрузка останавливается, называя его: строка несёт столбец, который никто не объявлял, а запись в место назначения, о нём не упоминавшее, молча отбросила бы его. Этот отказ по умолчанию правилен — но в таблице приземления это единственное изменение, которое не может сломать читателя, и место назначения может его выполнить:</p>
+<div class="code-block" data-code="postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}</code></pre></div>
+<p>Тогда пакет <strong>дополняет</strong> ваше объявление: поле, которое он несёт, а объявление нет, становится столбцом, <code>STRING</code>, если поле не объект и не массив, а в этом случае <code>JSON</code>. Это то же правило и тот же код, которым gateway приземляет <code>shape: columns</code>, поэтому оба дают одну и ту же таблицу.</p>
+<p>Два других значения, и разница между ними в том, откуда берётся столбец:</p>
+<div class="table-wrap"><table><thead><tr><th><code>Evolve</code></th><th>добавляет</th></tr></thead><tbody><tr><td><code>sdk.EvolveNone</code> (по умолчанию)</td><td>ничего. Любое различие отклоняется, называя обе стороны</td></tr><tr><td><code>sdk.EvolveAdditive</code></td><td>столбец, который есть в вашем <strong>объявлении</strong>, но нет в таблице</td></tr><tr><td><code>sdk.EvolveAdditiveFromPayload</code></td><td>то же, плюс столбец, который несёт <strong>пакет</strong></td></tr></tbody></table></div>
+<p><strong>Только <code>ADD COLUMN</code>.</strong> Столбец, исчезнувший из источника, перестаёт записываться и остаётся в таблице; ничего не переименовывается, ничего не удаляется, и ни один тип никогда не сужается. Это не пробел — таблица приземления есть история, и единственное изменение, которое не может сломать читающего её, — новый столбец, допускающий null.</p>
+<p><strong>Оно дополняет объявление, но не заменяет его.</strong> Если ничего не объявлено, оно отклоняется до извлечения с названием таблицы: создание целой таблицы по payload — другое решение, и SDK его не принимает. В структуре приземления вред был бы конкретным — <code>brevis_received_at</code> получился бы текстом вместо метки времени, а <code>brevis_loaded_at</code> вообще не путешествует в строке, так что замер сквозной задержки попросту отсутствовал бы.</p>
+<p><strong>SDK по-прежнему не выводит.</strong> Тип берётся из ФОРМЫ поля, никогда из его значения: <code>21129</code> и <code>8.89</code> оба объявляют <code>STRING</code>, поэтому в день, когда серия опубликует целое число, ничего не изменится. Тип, считанный с первого пакета, — это именно тот сбой, который призвано предотвратить это правило.</p>
+<p><strong>И <code>null</code> ничего не решает — но остаётся в строке.</strong> Это два разных вопроса, и один ответ на оба стоил v0.77.0.</p>
+<p>У null нет формы, поэтому <strong>схеме</strong> нечего читать: поле, пришедшее <code>null</code>, не объявляет столбец, а столбец появляется с первой записи, несущей ЗНАЧЕНИЕ, с формой этого значения. Иначе null стал бы <code>STRING</code> за неимением ответа, а первый после него массив заставил бы место назначения отклонить весь пакет — без миграции <code>STRING</code> в <code>JSON</code>, которая это исправила бы.</p>
+<p><strong>Строка</strong> несёт то, что прислал производитель, включая null. Иначе нельзя: столбец, который вы ОБЪЯВИЛИ в <code>Target.Schema</code> и который пришёл пустым, должен быть в строке, иначе проверка, сравнивающая объявление со строкой, читает цепочку, перестав его выдавать, — и отклоняет загрузку. Именно это делала v0.77.0, и именно это отменила 0.78.0.</p>
+<p>Остальное решает место назначения: поле, равное null В КАЖДОЙ записи пакета и не имеющее столбца в таблице, не записывается никуда и ничего не отклоняет. Null и отсутствующее поле приземляются одним и тем же <code>NULL</code>, поэтому ничего не теряется.</p>
+<p><strong>Поле, меняющее форму, отклоняется, а не поглощается.</strong> Если <code>valor</code> пришло скаляром и сделало текстовый столбец, объект, пришедший позже, — смена рода, и пакет останавливается — с собственным комментарием столбца в сообщении, чтобы было видно, что никто его не объявлял. Переименуйте столбец или мигрируйте его сами.</p>
+<p><strong>В BigQuery два написания одного имени — один столбец.</strong> BigQuery не различает регистр столбцов: пакет с <code>nationalID</code> в одной записи и <code>nationalId</code> в другой объявляет <strong>один</strong> столбец, а не два, и побеждает написание, первое в отсортированном порядке, — <code>nationalID</code>, потому что <code>D</code> сортируется раньше <code>d</code>. Не первое по приходу: повторённый тот же пакет не должен создавать столбец с другим написанием. Объявление <code>createdat</code> для таблицы, в которой столбец называется <code>createdAt</code>, — тоже тот же столбец, поэтому ничего не добавляется и ничего не отклоняется.</p>
+<p><strong>Одна запись, несущая оба написания, отклоняется с названием обоих.</strong> У места назначения один столбец, и одно из двух значений молча победило бы, поэтому загрузка останавливается: переименуйте одно из них в <code>Transform</code> или отобразите оба на одно поле. Две <em>записи</em>, каждая с одним написанием, допустимы — это обычный трафик CDC, и именно его это правило призвано приземлять.</p>
+<p><strong>Ничего не мигрируется.</strong> Таблица, где уже есть два столбца, различающиеся только регистром, сохраняет оба; ни один не переименовывается и не удаляется.</p>
+<p><strong>Postgres и MySQL регистр не объединяют.</strong> Там идентификатор в кавычках различим, поэтому два написания — это два столбца, намеренно, и тот же загрузчик, направленный на BigQuery, приземлит их в один.</p>
+<p><strong>Каждый столбец, созданный пакетом, сообщает об этом в таблице.</strong> Комментарий в Postgres и MySQL, описание поля в BigQuery, с датой:</p>
+<div class="code-block" data-code="brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision</code></pre></div>
+<p>Через полгода это единственное, что остаётся и отвечает на вопрос «когда появился этот столбец и кто это решил». К тому времени строка журнала уже ротирована.</p>
+<p><strong>Это не режим.</strong> <code>Target.Schema</code> по-прежнему — вы объявляете, чем является таблица; это даёт вам уже существующую структуру вместо того, чтобы заставлять вас её набирать. Ничто в SDK не ведёт себя иначе из-за того, что вы этим воспользовались, а пайплайн, объявляющий собственную схему, не затрагивается.</p>
+<p><strong>Пишите имя таблицы один раз.</strong> Оно идёт в <code>Landing</code>, потому что это второй слот id, и в место назначения, потому что туда идут строки. <strong>Ничто не проверяет, что они совпадают</strong>: <code>Writer</code> знает собственную таблицу, но раскрывает её только через <code>Describe</code>, то есть имя для журналов и ошибок, а id, построенный на нём, привязал бы каждый уже записанный id к строке журнала. Если рассинхронизировать их, строки приземлятся правильно, с id, выпущенными для таблицы, в которую никто не писал. Они будут выглядеть нормально. Они не совпадут с id gateway.</p>
+<p><strong>Три столбца равны <code>NULL</code>, и это честный ответ.</strong> <code>brevis_stream</code> и <code>brevis_gateway</code> называют то, чего у пайплайна нет, — <code>brevis_gateway IS NULL</code> — способ отличить строку пайплайна от строки gateway. <code>brevis_received_bytes</code> тоже <code>NULL</code>: у gateway он считает то, что пришло по сети, включая конверт, а собственный JSON записи примерно на 30% меньше. Один столбец с двумя значениями сделал бы сумму по строкам с обоих путей неверной на долю, пришедшую с каждого. <code>length(data)</code> точно отвечает за версию пайплайна.</p>
+<p><strong>Для слияния нужен <code>DedupKey</code>, а без него слияния нет вообще.</strong> Каждый драйвер сопоставляет по <code>ingestion_id</code>, если не сказано иное, а столбец идентичности этой структуры — <code>brevis_ingestion_id</code>:</p>
+<div class="code-block" data-code="Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}</code></pre></div>
+<p><code>UniqueID</code> ставит ограничение UNIQUE на id, а Postgres и MySQL оба отказываются выполнять слияние без него — <code>ON CONFLICT</code> не с чем сопоставлять. <code>DedupKey</code>, которого нет в вашей <code>Schema</code>, отклоняется до запуска чего-либо, потому что слияние по столбцу, которого нет в таблице, ничего не сопоставляет, а слияние, ничего не сопоставляющее, выглядит так же, как сопоставляющее всё, что должно.</p>
+<p><strong>Зависит от места назначения, и сегодня MySQL не может.</strong> В BigQuery нет ограничений уникальности, и объявление отклоняется сразу. <code>string</code> в MySQL — это <code>LONGTEXT</code>, а MySQL не индексирует <code>LONGTEXT</code> без длины, поэтому таблицу приземления со слиянием там вообще нельзя <em>создать</em>:</p>
+<div class="code-block" data-code="Error 1170 (42000): BLOB/TEXT column &#x27;brevis_ingestion_id&#x27; used in key
+specification without a key length"><div class="code-head"><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length</code></pre></div>
+<p>В Postgres работает, потому что его <code>string</code> — это <code>TEXT</code>. В MySQL приземляйте с <code>DedupNone</code> и разрешайте актуальную версию ниже по потоку, либо создайте таблицу сами через <code>CreateSQL</code> со столбцом id заданной длины.</p>
+<p><strong>Id адресуется по содержимому.</strong> Одна и та же запись даёт один и тот же id с любого пути, а изменённая запись — новый, и именно это делает повторный запуск пустой операцией, а не дубликатом.</p>
+<h2 id="справочник">Справочник<a class="anchor" href="#справочник" aria-label="link">#</a></h2>
+<ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> — полный API</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> — двенадцать работающих примеров</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> — история по версиям</li></ul>
+
+      <nav class="pagers" aria-label="Страницы">
+        <a class="pager pager-prev" href="/ru/docs/runtime/"><span>Назад</span><strong>Рантайм шага</strong></a>
+        <a class="pager pager-next" href="/ru/docs/libraries/"><span>Далее</span><strong>Клиентские библиотеки</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/ru/docs/sdk.md" target="_blank" rel="noopener">Править эту страницу на GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="На этой странице">
+      <p class="toc-t">На этой странице</p>
+      <ul><li class="toc-2"><a href="#три-шага">Три шага</a></li><li class="toc-2"><a href="#драйвер-это-значение-а-не-настройка">Драйвер — это значение, а не настройка</a></li><li class="toc-2"><a href="#источники-и-места-назначения">Источники и места назначения</a></li><li class="toc-3"><a href="#публикация-в-топик">Публикация в топик</a></li><li class="toc-2"><a href="#весь-загрузчик-целиком">Весь загрузчик целиком</a></li><li class="toc-2"><a href="#контекст-запуска">Контекст запуска</a></li><li class="toc-3"><a href="#часы">Часы</a></li><li class="toc-2"><a href="#не-путать-с-клиентскими-библиотеками">Не путать с клиентскими библиотеками</a></li><li class="toc-2"><a href="#параметры-которые-строят-пайплайн">Параметры, которые строят пайплайн</a></li><li class="toc-2"><a href="#структура-приземления">Структура приземления</a></li><li class="toc-3"><a href="#две-формы-запись-целиком-или-по-столбцу-на-поле">Две формы: запись целиком или по столбцу на поле</a></li><li class="toc-3"><a href="#префикс-brevis-можно-изменить">Префикс brevis_ можно изменить</a></li><li class="toc-3"><a href="#один-столбец-на-вложенное-поле">Один столбец на вложенное поле</a></li><li class="toc-3"><a href="#текст-который-уже-является-json">Текст, который уже является JSON</a></li><li class="toc-3"><a href="#когда-появляется-поле-которого-нет-в-таблице">Когда появляется поле, которого нет в таблице</a></li><li class="toc-2"><a href="#справочник">Справочник</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/ru/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Философия в приложении к инфраструктуре данных.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>проект</h2>
+        <ul>
+          <li><a href="/ru/#ecossistema">Экосистема</a></li>
+          <li><a href="/ru/docs/philosophy/">Принципы</a></li>
+          <li><a href="/ru/docs/introduction/#открытый-код-выберите-как-участвовать">Open source</a></li>
+          <li><a href="/ru/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>код</h2>
+        <ul>
+          <li><a href="/ru/docs/">Документация</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Репозиторий</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Open source проект от <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · написано на Go · Go gopher — Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

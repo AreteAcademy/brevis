@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="id" data-docs="/id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Parameter — Dokumentasi</title>
+<meta name="description" content="Apa yang berubah di antara dua run workflow yang sama, tanpa mengedit file.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/id/docs/parameters/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/id/docs/parameters/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/parameters/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/parameters/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/parameters/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/parameters/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/parameters/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/parameters/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/parameters/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/parameters/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/parameters/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/parameters/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/parameters/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="id">
+<meta property="og:title" content="Parameter — Dokumentasi">
+<meta property="og:description" content="Apa yang berubah di antara dua run workflow yang sama, tanpa mengedit file.">
+<meta property="og:url" content="https://brevis.sh/id/docs/parameters/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Parameter — Dokumentasi">
+<meta name="twitter:description" content="Apa yang berubah di antara dua run workflow yang sama, tanpa mengedit file.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Parameter",
+  "description": "Apa yang berubah di antara dua run workflow yang sama, tanpa mengedit file.",
+  "inLanguage": "id",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/id/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Navigasi utama">
+      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/docs/">Dokumentasi</a>
+      <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/parameters/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/parameters/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/parameters/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/parameters/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/parameters/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/parameters/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/parameters/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/parameters/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/parameters/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/parameters/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/parameters/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Jelajahi open source
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Buka menu" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Menu dokumentasi
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Cari di dokumentasi</label>
+        <input type="search" id="q" placeholder="Cari…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Tidak ada hasil" hidden></div>
+      <nav class="side-nav" aria-label="Dokumentasi">
+        <p class="side-group">Memulai</p><ul class="side-list"><li><a href="/id/docs/ecosystem/">Ekosistem</a></li><li><a href="/id/docs/integrations/">Integrasi</a></li><li><a href="/id/docs/introduction/">Pengantar</a></li><li><a href="/id/docs/installation/">Instalasi</a></li><li><a href="/id/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Konsep</p><ul class="side-list"><li><a href="/id/docs/core/">Core</a></li><li><a href="/id/docs/workflows/">Workflows</a></li><li><a href="/id/docs/scheduler-and-queue/">Scheduler dan antrean</a></li><li><a href="/id/docs/pod-per-step/">Pod per step</a></li><li><a href="/id/docs/context/">Konteks antar step</a></li></ul><p class="side-group">Referensi</p><ul class="side-list"><li><a href="/id/docs/cli/">CLI</a></li><li><a href="/id/docs/parameters/" aria-current="page">Parameter</a></li><li><a href="/id/docs/configuration/">Konfigurasi</a></li><li><a href="/id/docs/runtime/">Runtime step</a></li></ul><p class="side-group">SDK dan pustaka</p><ul class="side-list"><li><a href="/id/docs/sdk/">Go SDK</a></li><li><a href="/id/docs/libraries/">Pustaka klien</a></li><li><a href="/id/docs/python/">Python</a></li></ul><p class="side-group">Operasi</p><ul class="side-list"><li><a href="/id/docs/console/">Console</a></li><li><a href="/id/docs/kubernetes/">Kubernetes</a></li><li><a href="/id/docs/observability/">Observabilitas</a></li><li><a href="/id/docs/white-label/">White label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/id/docs/ingestion/">Ingestion</a></li><li><a href="/id/docs/ingestion-sinks/">Sink ingestion</a></li><li><a href="/id/docs/benchmarks/">Benchmark</a></li></ul><p class="side-group">Pemodelan di SQL</p><ul class="side-list"><li><a href="/id/docs/sql/">SQL</a></li></ul><p class="side-group">Proyek</p><ul class="side-list"><li><a href="/id/docs/philosophy/">Filosofi</a></li><li><a href="/id/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Dokumentasi</p>
+      <h1>Parameter</h1>
+      <p class="doc-desc">Apa yang berubah di antara dua run workflow yang sama, tanpa mengedit file.</p>
+      <p>Sebuah workflow dapat mendeklarasikan <strong>parameter run</strong>: nilai yang berubah di antara dua pemicu tanpa file berubah.</p>
+<h2 id="mendeklarasikan">Mendeklarasikan<a class="anchor" href="#mendeklarasikan" aria-label="link">#</a></h2>
+<div class="code-block" data-code="params:
+  - name: load_full
+    type: boolean
+    default: &quot;false&quot;
+
+  - name: start_date
+    type: string
+    pattern: &#x27;^\d{4}-\d{2}-\d{2}$&#x27;
+
+steps:
+  - id: run
+    run: dbt build --vars &#x27;{&quot;load_full&quot;:&quot;{{ .load_full }}&quot;}&#x27; --select bronze+"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">params</span>:
+  - <span class="t-k">name</span>: load_full
+    <span class="t-k">type</span>: boolean
+    <span class="t-k">default</span>: "<span class="t-n">false</span>"
+
+  - <span class="t-k">name</span>: start_date
+    <span class="t-k">type</span>: string
+    <span class="t-k">pattern</span>: '^\d{4}-\d{2}-\d{2}$'
+
+<span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: run
+    <span class="t-k">run</span>: dbt build --vars '{"load_full":"{{ .load_full }}"}' --select bronze+</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>field</th><th></th><th></th></tr></thead><tbody><tr><td><code>name</code></td><td><strong>wajib</strong></td><td>nama yang dipakai di template dan di <code>--param</code></td></tr><tr><td><code>type</code></td><td></td><td><code>string</code>, <code>boolean</code>, <code>integer</code>, atau `list</td><td>&lt;type&gt;` untuk banyak nilai</td></tr><tr><td><code>default</code></td><td></td><td>dipakai ketika pemicu tidak memberikan nilai</td></tr><tr><td><code>pattern</code></td><td></td><td>regular expression yang harus dipenuhi nilai</td></tr><tr><td><code>title</code></td><td></td><td>label yang ditampilkan form, hingga 60 karakter; jika tidak ada, namanya</td></tr><tr><td><code>group</code></td><td></td><td>mengelompokkan parameter di form, hingga 60 karakter</td></tr><tr><td><code>warn</code></td><td></td><td>biaya dari nilai selain default, ditampilkan di bawah field, hingga 200 karakter</td></tr><tr><td><code>uses</code></td><td></td><td>key konektor yang dituju parameter (<code>bigquery</code>, <code>postgres</code>), untuk logonya</td></tr></tbody></table></div>
+<p>Parameter <strong>tanpa <code>default</code></strong> bersifat wajib: pemicu yang menghilangkannya gagal sebelum menjalankan step apa pun.</p>
+<p><code>title</code>, <code>group</code>, <code>warn</code>, dan <code>uses</code> adalah cara form menampilkan parameter, dan <strong>tidak satu pun mengubah nilai apa yang boleh diberikan</strong>. Masing-masing satu baris; <code>uses</code> berupa huruf kecil, angka, dan <code>-</code>. Publish menolak yang lain, dengan menyebut parameternya.</p>
+<div class="code-block" data-code="params:
+  - name: load_full
+    type: boolean
+    default: &quot;false&quot;
+    title: Full load
+    group: Load
+    warn: reprocesses the whole table; it costs
+    uses: bigquery"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">params</span>:
+  - <span class="t-k">name</span>: load_full
+    <span class="t-k">type</span>: boolean
+    <span class="t-k">default</span>: "<span class="t-n">false</span>"
+    <span class="t-k">title</span>: Full load
+    <span class="t-k">group</span>: Load
+    <span class="t-k">warn</span>: reprocesses the whole table; it costs
+    <span class="t-k">uses</span>: bigquery</code></pre></div>
+<h2 id="daftar-nilai">Daftar nilai<a class="anchor" href="#daftar-nilai" aria-label="link">#</a></h2>
+<p><code>list|&lt;type&gt;</code> mendeklarasikan parameter yang membawa banyak nilai — tabel yang akan dimuat, layer yang akan dibangun ulang, jendela yang akan di-backfill:</p>
+<div class="code-block" data-code="params:
+  - name: tables
+    type: list|string
+    default: &quot;users,orders&quot;
+
+  - name: layers
+    type: list|string
+    enum: [bronze, silver, gold]     # an enum restricts each ITEM
+    default: &quot;bronze&quot;
+
+  - name: days
+    type: list|integer
+    default: &quot;1,7,30&quot;"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">params</span>:
+  - <span class="t-k">name</span>: tables
+    <span class="t-k">type</span>: list|string
+    <span class="t-k">default</span>: "users,orders"
+
+  - <span class="t-k">name</span>: layers
+    <span class="t-k">type</span>: list|string
+    <span class="t-k">enum</span>: [bronze, silver, gold]     <span class="t-c"># an enum restricts each ITEM</span>
+    <span class="t-k">default</span>: "bronze"
+
+  - <span class="t-k">name</span>: days
+    <span class="t-k">type</span>: list|integer
+    <span class="t-k">default</span>: "1,7,30"</code></pre></div>
+<p>Elemennya dapat berupa <code>string</code>, <code>integer</code>, atau <code>boolean</code>. Setiap item divalidasi sendiri-sendiri, sehingga <code>list|integer</code> yang diberi <code>1,x,30</code> gagal dengan menyebut <strong>item 2</strong> alih-alih seluruh nilai.</p>
+<p>Di mana pun ia adalah <strong>satu string yang dipisahkan koma</strong>: di database, di <code>BREVIS_RUN_PARAMS</code>, dan di command. Itulah yang membuatnya bekerja di sebuah step tanpa kasus khusus sama sekali —</p>
+<div class="code-block" data-code="run: dbt build --select {{ .tables }}      # dbt build --select users,orders"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">run</span>: dbt build --select {{ .tables }}      <span class="t-c"># dbt build --select users,orders</span></code></pre></div>
+<p>— dan itulah mengapa koma tidak boleh muncul di dalam item. Item kosong dan item berulang juga ditolak: pengulangan diam-diam menggandakan apa pun yang dilakukan step per item.</p>
+<h3 id="sebagai-array-di-dalam-step">Sebagai array, di dalam step<a class="anchor" href="#sebagai-array-di-dalam-step" aria-label="link">#</a></h3>
+<div class="code-block" data-code="for _, table := range p.Run.ParamList(&quot;tables&quot;) {
+    load(table)
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">for</span> _, table := <span class="t-k">range</span> p.Run.ParamList("tables") {
+    load(table)
+}</code></pre></div>
+<div class="code-block" data-code="from brevis import run
+
+for table in run.param_list(&quot;tables&quot;):
+    load(table)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> run
+
+<span class="t-k">for</span> table <span class="t-k">in</span> run.param_list("tables"):
+    load(table)</code></pre></div>
+<p>Keduanya mengembalikan <code>[]</code> untuk parameter yang tidak diisi siapa pun, alih-alih list berisi satu string kosong: mengiterasi "tidak ada yang dikerjakan" seharusnya tidak melakukan apa-apa. Item dikembalikan sebagai string — termasuk <code>list|integer</code> — karena step lebih tahu daripada pustaka apa yang harus dilakukan dengan angka.</p>
+<h3 id="di-antarmuka">Di antarmuka<a class="anchor" href="#di-antarmuka" aria-label="link">#</a></h3>
+<p>List dengan <code>enum</code> dirender sebagai checkbox, yang tidak membutuhkan JavaScript dan yang dikirim browser satu nilai per kotak yang dicentang. Tanpa <code>enum</code> ia adalah field teks yang itemnya menjadi chip yang dapat dihapus, dan dengan JavaScript nonaktif ia tetap menjadi field berisi <code>users,orders</code> — persis yang diharapkan server.</p>
+<h3 id="di-command-line">Di command line<a class="anchor" href="#di-command-line" aria-label="link">#</a></h3>
+<div class="code-block" data-code="brevis run wf.yaml --param tables=events,sessions --param days=1,30"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> tables=events,sessions <span class="t-n">--param</span> days=1,30</code></pre></div>
+<aside class="admon admon-note"><p class="admon-t">Engine yang lebih lama tidak akan membacanya</p><p>Tipe disimpan bersama workflow, dan engine dari sebelum fitur ini menolak <code>list|string</code> saat publish sebagai tipe yang tidak dikenal. Upgrade engine sebelum mempublikasikan workflow yang memakainya.</p></aside>
+<h2 id="memakainya-di-command">Memakainya di command<a class="anchor" href="#memakainya-di-command" aria-label="link">#</a></h2>
+<p>Nilai masuk ke <code>run</code> lewat template, dalam kurung kurawal ganda dengan titik:</p>
+<div class="code-block" data-code="run: ./load.sh --since {{ .start_date }}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">run</span>: ./load.sh --since {{ .start_date }}</code></pre></div>
+<h2 id="memberikannya-di-command-line">Memberikannya di command line<a class="anchor" href="#memberikannya-di-command-line" aria-label="link">#</a></h2>
+<div class="code-block" data-code="brevis run wf.yaml --param load_full=true
+brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true
+<span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true <span class="t-n">--param</span> start_date=2026-01-01</code></pre></div>
+<p><code>--param</code> dapat diulang. Input tanpa <code>=</code> adalah <strong>error</strong>:</p>
+<div class="code-block" data-code="erro: --param &quot;load_full&quot;: use chave=valor"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>erro: --param "load_full": use chave=valor</code></pre></div>
+<p>Itu disengaja. <code>--param load_full</code>, dengan lupa memberi nilai, akan berjalan dengan default — dan operator akan mengira backfill terjadi dengan parameter yang dimaksudkannya.</p>
+<h2 id="di-backfill">Di backfill<a class="anchor" href="#di-backfill" aria-label="link">#</a></h2>
+<p>Nilai berlaku untuk <strong>setiap</strong> slot dalam rentang. Ini kasus penggunaan utama: "proses ulang seluruh Januari dengan <code>load_full=true</code>".</p>
+<div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
+<h2 id="di-antarmuka">Di antarmuka<a class="anchor" href="#di-antarmuka" aria-label="link">#</a></h2>
+<p>Workflow dengan <code>params</code> mendapat <strong>form</strong> sebagai pengganti tombol pemicu sederhana. Field berasal dari deklarasi, dan <code>pattern</code> divalidasi sebelum pengiriman.</p>
+<h2 id="di-environment-step">Di environment step<a class="anchor" href="#di-environment-step" aria-label="link">#</a></h2>
+<p>Parameter run juga masuk ke <strong>environment</strong> setiap step, dengan prefiks. Ini ada agar fetcher yang ditulis dengan <a href="/id/docs/sdk/">SDK</a> dapat melihatnya tanpa menerima apa pun sebagai argumen:</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+    if p.Run.Params[&quot;load_full&quot;] == &quot;true&quot; {
+        p.Source.URL += &quot;&amp;full=1&quot;
+    }
+    return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+    <span class="t-k">if</span> p.Run.Params["load_full"] == "true" {
+        p.Source.URL += "&amp;full=1"
+    }
+    <span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<h2 id="auto-params">Auto params<a class="anchor" href="#auto-params" aria-label="link">#</a></h2>
+<p>Setiap run juga membawa <strong>auto params</strong>: nilai yang dihitung sendiri oleh engine. Tidak ada yang mendeklarasikannya, setiap run memilikinya, dan semuanya ada di layar run.</p>
+<p>Yang terpenting adalah <code>adjusted_at</code>, dan bug yang dihilangkannya layak disebut. Sebuah fetcher membaca <code>now()</code>, mengurangi jendelanya, dan meminta vendor data dua jam terakhir. Pada run yang mulai tepat waktu itu benar. Pada run yang ditunda antrean selama empat puluh menit, itu salah empat puluh menit — dan empat puluh menit itu milik <strong>tidak ada run sama sekali</strong>, karena slot berikutnya juga membaca <code>now()</code>-nya sendiri. Tidak ada yang gagal; datanya begitu saja hilang, dan baru ditemukan berminggu-minggu kemudian.</p>
+<p>Maka engine menyerahkan sebuah jam. Baca <code>adjusted_at</code> di tempat Anda biasanya membaca <code>now()</code>:</p>
+<div class="table-wrap"><table><thead><tr><th>param</th><th></th><th></th></tr></thead><tbody><tr><td><code>adjusted_at</code></td><td>selalu</td><td>jam yang seharusnya dibaca run ini: slot bila ada, jika tidak waktu mulai</td></tr><tr><td><code>date</code></td><td>selalu</td><td><code>adjusted_at</code> sebagai <code>YYYY-MM-DD</code>, UTC — partisi, folder, <code>WHERE</code></td></tr><tr><td><code>delay_seconds</code></td><td>selalu</td><td>seberapa terlambat percobaan ini terhadap slot-nya; <code>0</code> pada run manual tanpa slot</td></tr><tr><td><code>previous_error</code></td><td>selalu</td><td>run sebelum ini tidak berhasil</td></tr><tr><td><code>scheduled_at</code></td><td>dengan slot</td><td>slot yang diminta cron</td></tr><tr><td><code>started_at</code></td><td></td><td>kapan percobaan ini dimulai; retry menggesernya</td></tr><tr><td><code>interval_start</code></td><td>dengan slot</td><td>slot <strong>sebelumnya</strong></td></tr><tr><td><code>interval_end</code></td><td>dengan slot</td><td>slot ini, <strong>tidak termasuk</strong></td></tr><tr><td><code>previous_success_at</code></td><td></td><td>slot dari run terakhir yang berhasil</td></tr></tbody></table></div>
+<p>Sebuah run punya slot ketika jadwal yang membuatnya, ketika backfill yang membuatnya, atau ketika dipicu secara manual <strong>untuk slot masa lalu</strong>: field <code>slot</code> pada pemicu (<code>2026-10-27T04:00:00Z</code>) menjalankan slot itu lagi, dengan param slot tersebut. Slot yang tidak pernah dipicu cron ditolak, dengan menyebutkan slot terdekat sebelumnya.</p>
+<p><strong>Setiap timestamp di sini adalah UTC</strong>, ditulis sebagai RFC 3339 dengan <code>Z</code>, dan layar run juga menampilkannya dalam UTC — sehingga halaman dan <code>$BREVIS_AUTO_ADJUSTED_AT</code> tidak pernah berbeda. <code>date</code> adalah <strong>hari UTC</strong>, yang untuk workflow yang slot-nya melintasi tengah malam UTC bukanlah hari lokal: <code>0 22 * * *</code> di <code>America/Sao_Paulo</code> memiliki <code>date</code> hari berikutnya. <code>ds</code> milik Airflow berperilaku sama, dengan alasan yang sama — slot adalah sebuah instan, dan sebuah instan baru punya satu hari setelah zona waktu dipilih.</p>
+<p><code>interval_start</code> dan <code>interval_end</code> berasal dari <strong>cron</strong>, bukan dari riwayat: backfill slot bulan Maret menghasilkan jendela yang dimiliki Maret, bukan jendela yang kebetulan digambarkan oleh run workflow ini hari ini. Pipeline yang meminta <code>[start, end)</code> tidak pernah tumpang tindih dan tidak pernah berlubang, seberapa pun terlambatnya ia berjalan dan seberapa sering ia di-retry.</p>
+<p>Nilai-nilai itu adalah <strong>snapshot</strong>, dihitung ketika run mulai dan disimpan pada run tersebut. <code>previous_error</code> adalah fakta tentang saat run ini dimulai; menghitung ulang besok — setelah run sebelumnya di-retry dan lolos — akan menjawab pertanyaan yang berbeda dengan nama yang sama.</p>
+<h3 id="membacanya">Membacanya<a class="anchor" href="#membacanya" aria-label="link">#</a></h3>
+<p>Di step shell, satu variabel per nilai, sehingga tidak ada yang perlu diparse:</p>
+<div class="code-block" data-code="steps:
+  - id: extract
+    run: |
+      curl &quot;https://api.example.com/events?since=$BREVIS_AUTO_INTERVAL_START&amp;until=$BREVIS_AUTO_INTERVAL_END&quot; \
+        &gt; &quot;/data/$BREVIS_AUTO_DATE.json&quot;"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: |
+      curl "https://api.example.com/events?since=$BREVIS_AUTO_INTERVAL_START&amp;until=$BREVIS_AUTO_INTERVAL_END" \
+        &gt; "/data/$BREVIS_AUTO_DATE.json"</code></pre></div>
+<p>Seluruh set juga ada di <code>$BREVIS_AUTO_PARAMS</code> sebagai satu objek JSON, untuk step yang lebih suka mem-parse sekali.</p>
+<p>Di Go, <a href="/id/docs/sdk/">SDK</a> membacakannya untuk Anda:</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+    start, end, ok := p.Run.Auto.Window()
+    if !ok { // no schedule: fall back to a fixed window
+        start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+    }
+    p.Source.URL += &quot;&amp;from=&quot; + start.Format(time.RFC3339) +
+        &quot;&amp;to=&quot; + end.Format(time.RFC3339)
+    return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+    start, end, ok := p.Run.Auto.Window()
+    <span class="t-k">if</span> !ok { <span class="t-c">// no schedule: fall back to a fixed window</span>
+        start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+    }
+    p.Source.URL += "&amp;from=" + start.Format(time.RFC3339) +
+        "&amp;to=" + end.Format(time.RFC3339)
+    <span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p><code>Auto.Now()</code> adalah jam yang dibaca sebagai pengganti <code>time.Now()</code>. Di luar engine — fetcher yang dijalankan seseorang secara manual — ia <em>adalah</em> jam dinding, sehingga tidak ada yang perlu diperlakukan khusus untuk pengembangan lokal.</p>
+<p>Di Python, <code>pip install brevis</code> membaca nilai yang sama:</p>
+<div class="code-block" data-code="from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f&quot;/data/{run.auto().date}.parquet&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">from</span> datetime <span class="t-k">import</span> timedelta
+<span class="t-k">from</span> brevis <span class="t-k">import</span> run
+
+since, until = run.window() <span class="t-k">or</span> (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
+<p><code>window()</code> mengembalikan <code>None</code> ketika workflow tidak punya jadwal, alih-alih sepasang waktu nol — query dari epoch memilih segalanya, dan kegagalan itu tidak boleh diam-diam. <code>or</code> di atas adalah seluruh fallback-nya.</p>
+<h3 id="di-dlt-tidak-ada-yang-perlu-dibaca">Di dlt, tidak ada yang perlu dibaca<a class="anchor" href="#di-dlt-tidak-ada-yang-perlu-dibaca" aria-label="link">#</a></h3>
+<p><a href="https://dlthub.com" target="_blank" rel="noopener">dlt</a> menyimpan kursornya sendiri, dalam state yang ditulisnya ke tujuan. State itu hanya bergerak <strong>maju</strong>, yang tidak masalah sampai Anda menjalankan ulang slot lama: kursor masih menunjuk hari ini, sehingga backfill membaca jendela hari ini, dan jawaban dlt sendiri untuk itu adalah membuang state.</p>
+<p>Jendela yang diserahkan Brevis berasal dari cron, sehingga run Maret menghasilkan jendela Maret seberapa pun seringnya di-retry. dlt akan menerimanya — namanya milik dlt sendiri, dibaca sebelum ia mencari Airflow, dan engine menyetelnya pada setiap run terjadwal:</p>
+<div class="code-block" data-code="@dlt.resource(primary_key=&quot;id&quot;)
+def events(
+    updated_at=dlt.sources.incremental(
+        &quot;updated_at&quot;,
+        initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        allow_external_schedulers=True,   # this line is the whole integration
+    )
+):
+    yield from api.events(since=updated_at.start_value, until=updated_at.end_value)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>@dlt.resource(primary_key="id")
+<span class="t-k">def</span> events(
+    updated_at=dlt.sources.incremental(
+        "updated_at",
+        initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        allow_external_schedulers=<span class="t-k">True</span>,   <span class="t-c"># this line is the whole integration</span>
+    )
+):
+    <span class="t-k">yield</span> <span class="t-k">from</span> api.events(since=updated_at.start_value, until=updated_at.end_value)</code></pre></div>
+<p><code>allow_external_schedulers=True</code> adalah seluruhnya. <code>$DLT_INTERVAL_START</code> dan <code>$DLT_INTERVAL_END</code> menjadi <code>initial_value</code> dan <code>end_value</code> milik dlt, setengah terbuka di kedua sisi — baris yang tepat berada di awal masuk, yang tepat berada di akhir tidak, dan itulah yang membuat slot berurutan tidak berlubang maupun tumpang tindih.</p>
+<p>Incremental dengan <code>end_value</code> <strong>tidak menyentuh state yang dipersistenkan</strong>. Itulah bagian yang penting: menjalankan ulang satu slot bersifat idempoten, dan backfill bulan Maret tidak menggeser kursor yang diandalkan run malam.</p>
+<p>Dua hal yang perlu diketahui sebelum ini berfungsi:</p>
+<ul><li><strong>Kursor harus berupa datetime, bukan string.</strong> dlt tidak akan memaksa kursor <code>text</code> untuk perbandingan dan menolak bergabung dengan scheduler sama sekali, dengan <code>JoinSchedulerError</code> yang tidak jelas mengatakannya. Konversikan pada resource — <code>add_map</code> — atau beri tipe pada <code>initial_value</code> seperti di atas.</li><li><strong>Workflow tanpa jadwal tidak menyerahkan apa pun</strong>, dan dlt lalu melempar <code>ExternalSchedulerNotAvailable</code> alih-alih diam-diam kembali ke kursornya. Jika sebuah pipeline harus bekerja dengan kedua cara, biarkan <code>allow_external_schedulers</code> mati dan serahkan jendelanya sendiri dari <code>run.window()</code>.</li></ul>
+<p>Mendeklarasikan <code>tools: [dlt]</code> pada step adalah hal terpisah, dan hanya menggambar chip di graf — jendela diserahkan dengan atau tanpanya.</p>
+<h2 id="snapshot">Snapshot<a class="anchor" href="#snapshot" aria-label="link">#</a></h2>
+<p>Parameter disimpan <strong>di dalam run</strong>, tidak dibaca dari workflow saat eksekusi. Run membawa input yang memicunya, dan log eksekusi Januari terus menampilkan nilai Januari bahkan setelah default berubah.</p>
+<h2 id="langkah-berikutnya">Langkah berikutnya<a class="anchor" href="#langkah-berikutnya" aria-label="link">#</a></h2>
+<ul><li><a href="/id/docs/configuration/">Konfigurasi</a> — variabel environment proses</li><li><a href="/id/docs/sdk/">SDK</a> — bagaimana fetcher membaca context run</li><li><a href="/id/docs/context/">Konteks antar step</a> — apa yang dipublikasikan sebuah step untuk step berikutnya</li></ul>
+
+      <nav class="pagers" aria-label="Halaman">
+        <a class="pager pager-prev" href="/id/docs/cli/"><span>Sebelumnya</span><strong>CLI</strong></a>
+        <a class="pager pager-next" href="/id/docs/configuration/"><span>Berikutnya</span><strong>Konfigurasi</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/id/docs/parameters.md" target="_blank" rel="noopener">Edit halaman ini di GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="Di halaman ini">
+      <p class="toc-t">Di halaman ini</p>
+      <ul><li class="toc-2"><a href="#mendeklarasikan">Mendeklarasikan</a></li><li class="toc-2"><a href="#daftar-nilai">Daftar nilai</a></li><li class="toc-3"><a href="#sebagai-array-di-dalam-step">Sebagai array, di dalam step</a></li><li class="toc-3"><a href="#di-antarmuka">Di antarmuka</a></li><li class="toc-3"><a href="#di-command-line">Di command line</a></li><li class="toc-2"><a href="#memakainya-di-command">Memakainya di command</a></li><li class="toc-2"><a href="#memberikannya-di-command-line">Memberikannya di command line</a></li><li class="toc-2"><a href="#di-backfill">Di backfill</a></li><li class="toc-2"><a href="#di-antarmuka">Di antarmuka</a></li><li class="toc-2"><a href="#di-environment-step">Di environment step</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#membacanya">Membacanya</a></li><li class="toc-3"><a href="#di-dlt-tidak-ada-yang-perlu-dibaca">Di dlt, tidak ada yang perlu dibaca</a></li><li class="toc-2"><a href="#snapshot">Snapshot</a></li><li class="toc-2"><a href="#langkah-berikutnya">Langkah berikutnya</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/id/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Filosofi yang diterapkan pada infrastruktur data.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>proyek</h2>
+        <ul>
+          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/docs/philosophy/">Prinsip</a></li>
+          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>kode</h2>
+        <ul>
+          <li><a href="/id/docs/">Dokumentasi</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repositori</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Proyek open source oleh <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · dibangun dengan Go · Go gopher oleh Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>
