@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="de" data-docs="/de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Ingestion — Dokumentation</title>
+<meta name="description" content="Ein HTTP-Endpoint, der Daten landet – validieren, identifizieren, batchen, zustellen. Eigenes Image, eigene Version.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/de/docs/ingestion/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/de/docs/ingestion/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/ingestion/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/ingestion/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/ingestion/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/ingestion/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/ingestion/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/ingestion/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/ingestion/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/ingestion/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/ingestion/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/ingestion/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/ingestion/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="de">
+<meta property="og:title" content="Ingestion — Dokumentation">
+<meta property="og:description" content="Ein HTTP-Endpoint, der Daten landet – validieren, identifizieren, batchen, zustellen. Eigenes Image, eigene Version.">
+<meta property="og:url" content="https://brevis.sh/de/docs/ingestion/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Ingestion — Dokumentation">
+<meta name="twitter:description" content="Ein HTTP-Endpoint, der Daten landet – validieren, identifizieren, batchen, zustellen. Eigenes Image, eigene Version.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Ingestion",
+  "description": "Ein HTTP-Endpoint, der Daten landet – validieren, identifizieren, batchen, zustellen. Eigenes Image, eigene Version.",
+  "inLanguage": "de",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Zum Inhalt springen</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/de/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Hauptnavigation">
+      <a href="/de/#ecossistema">Ökosystem</a>
+      <a href="/de/docs/">Dokumentation</a>
+      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Deutsch</span></summary><ul><li><a href="/docs/ingestion/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ingestion/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/ingestion/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ingestion/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ingestion/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ingestion/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ingestion/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Open Source erkunden
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Dokumentationsmenü
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Dokumentation durchsuchen</label>
+        <input type="search" id="q" placeholder="Suchen…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Keine Ergebnisse" hidden></div>
+      <nav class="side-nav" aria-label="Dokumentation">
+        <p class="side-group">Erste Schritte</p><ul class="side-list"><li><a href="/de/docs/ecosystem/">Ökosystem</a></li><li><a href="/de/docs/integrations/">Integrationen</a></li><li><a href="/de/docs/introduction/">Einführung</a></li><li><a href="/de/docs/installation/">Installation</a></li><li><a href="/de/docs/quickstart/">Schnellstart</a></li></ul><p class="side-group">Konzepte</p><ul class="side-list"><li><a href="/de/docs/core/">Core</a></li><li><a href="/de/docs/workflows/">Workflows</a></li><li><a href="/de/docs/scheduler-and-queue/">Scheduler und Queue</a></li><li><a href="/de/docs/pod-per-step/">Pod pro Step</a></li><li><a href="/de/docs/context/">Kontext zwischen Steps</a></li></ul><p class="side-group">Referenz</p><ul class="side-list"><li><a href="/de/docs/cli/">CLI</a></li><li><a href="/de/docs/parameters/">Parameter</a></li><li><a href="/de/docs/configuration/">Konfiguration</a></li><li><a href="/de/docs/runtime/">Step-Laufzeitumgebung</a></li></ul><p class="side-group">SDK und Bibliotheken</p><ul class="side-list"><li><a href="/de/docs/sdk/">Go-SDK</a></li><li><a href="/de/docs/libraries/">Client-Bibliotheken</a></li><li><a href="/de/docs/python/">Python</a></li></ul><p class="side-group">Betrieb</p><ul class="side-list"><li><a href="/de/docs/console/">Console</a></li><li><a href="/de/docs/kubernetes/">Kubernetes</a></li><li><a href="/de/docs/observability/">Observability</a></li><li><a href="/de/docs/white-label/">White Label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/de/docs/ingestion/" aria-current="page">Ingestion</a></li><li><a href="/de/docs/ingestion-sinks/">Ingestion-Sinks</a></li><li><a href="/de/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modellierung in SQL</p><ul class="side-list"><li><a href="/de/docs/sql/">SQL</a></li></ul><p class="side-group">Das Projekt</p><ul class="side-list"><li><a href="/de/docs/philosophy/">Philosophie</a></li><li><a href="/de/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Dokumentation</p>
+      <h1>Ingestion</h1>
+      <p class="doc-desc">Ein HTTP-Endpoint, der Daten landet – validieren, identifizieren, batchen, zustellen. Eigenes Image, eigene Version.</p>
+      <p>Das Ingestion-Gateway ist ein <strong>HTTP-Endpoint, der Daten landet</strong>. Ein Client sendet einen <code>POST</code>, erhält eine <code>202</code>, und was ankam, wird zu einem Datensatz in einem Topic, in einer Tabelle oder in einem Bucket.</p>
+<figure class="doc-figure"><img src="/assets/flow-gateway.svg" width="360" height="514" alt="Der Ablauf des Gateway: Ein POST an /v1/clicks wird dekodiert, erhält seine ingestion_id, wird sofort mit 202 beantwortet und an einen Batch angehängt; ein Worker stellt den Batch an die Sink zu, hier Dateien. Das Gateway hat keine Datenbank." loading="lazy"></figure>
+<p>Es ist <strong>ein anderes Binary, ein anderes Go-Modul, eine andere Version und ein anderes Image</strong>. Die Engine orchestriert und berührt nie Kundendaten; das Gateway tut nichts anderes. Die Nummerierung ist mit Absicht unabhängig: Die Engine steht bei 0.17 und das Gateway bei 0.27, was die wahre Aussage ist.</p>
+<p>Mit der <code>gateway.yaml</code> aus dem Abschnitt unten und dem Schlüssel, den sie in <code>keys_from</code> verlangt:</p>
+<div class="code-block" data-code="docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
+  -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
+  areteacademy/brevis-gateway:0.32.0"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">-p</span> 8080:8080 <span class="t-n">-e</span> BREVIS_INGEST_KEYS=dev-key \
+  <span class="t-n">-v</span> ./gateway.yaml:/etc/<span class="t-k">brevis</span>/gateway.yaml:ro \
+  areteacademy/<span class="t-k">brevis</span>-gateway:0.32.0</code></pre></div>
+<div class="code-block" data-code="2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds &gt;= 40
+2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
+2026/10/09 01:03:01 listening on :8080
+2026/10/09 01:03:01 metrics on :9090/metrics"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds &gt;= 40
+2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
+2026/10/09 01:03:01 listening on :8080
+2026/10/09 01:03:01 metrics on :9090/metrics</code></pre></div>
+<p>Ein <code>POST</code> kommt sofort mit <code>202</code> zurück:</p>
+<div class="code-block" data-code="curl -X POST localhost:8080/v1/clicks -H &#x27;Authorization: Bearer dev-key&#x27; \
+  -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/clicks <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
+  <span class="t-n">-d</span> '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'</code></pre></div>
+<div class="code-block" data-code="{&quot;accepted&quot;:1,&quot;rejected&quot;:null}"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>{"accepted":1,"rejected":null}</code></pre></div>
+<p>Ohne Google-Cloud-Zugangsdaten wird der Batch wiederholt und landet in der Dead Letter – siehe <a href="#wenn-die-sink-verweigert">Wenn die Sink verweigert</a>.</p>
+<p>Das <code>-slim</code>-Image enthält nur die Sinks <code>auto_table</code>, <code>files</code> und <code>postgres</code>; das <code>pubsub</code> dieses Beispiels und die übrigen sind im vollen Image. Ein Slim-Image mit einer Sink, die es nicht enthält, wird beim Start verweigert, mit dem Grund.</p>
+<h2 id="die-datei-ist-der-vertrag">Die Datei ist der Vertrag<a class="anchor" href="#die-datei-ist-der-vertrag" aria-label="link">#</a></h2>
+<p>Es gibt keinen Code zu schreiben außer den Hooks. Streams, Pfade, Formate, Identität, Retry, Ziel und Dead Letter – alles im YAML, und jedes Feld wird verweigert, wenn es sich nicht einhalten lässt.</p>
+<div class="code-block" data-code="name: events_gateway
+
+listen:
+  addr: :8080
+  max_body: 1MiB
+  idle_timeout: 90s                  # the default; it cannot be turned off
+  max_conn_age: 60s                  # off unless set — see below
+  auth:
+    type: bearer
+    keys_from: BREVIS_INGEST_KEYS   # the NAME of the variable, never the keys
+
+metrics:
+  addr: :9090                        # its own port, never the ingest one
+
+streams:
+  - name: clicks
+    path: /v1/clicks
+    format: json                     # json | array | ndjson — declared, never sniffed
+
+    identity:
+      provider: web
+      entity: click
+      source_key: event_id
+      record_ts: occurred_at
+
+    buffer:
+      flush: {every: 1s, records: 500}
+
+    sink:
+      type: pubsub
+      project: acme-prod
+      topic: clicks
+
+    dead_letter:
+      type: files
+      path: /var/dead-letter/"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">name</span>: events_gateway
+
+<span class="t-k">listen</span>:
+  <span class="t-k">addr</span>: :8080
+  <span class="t-k">max_body</span>: 1MiB
+  <span class="t-k">idle_timeout</span>: 90s                  <span class="t-c"># the default; it cannot be turned off</span>
+  <span class="t-k">max_conn_age</span>: 60s                  <span class="t-c"># off unless set — see below</span>
+  <span class="t-k">auth</span>:
+    <span class="t-k">type</span>: bearer
+    <span class="t-k">keys_from</span>: BREVIS_INGEST_KEYS   <span class="t-c"># the NAME of the variable, never the keys</span>
+
+<span class="t-k">metrics</span>:
+  <span class="t-k">addr</span>: :9090                        <span class="t-c"># its own port, never the ingest one</span>
+
+<span class="t-k">streams</span>:
+  - <span class="t-k">name</span>: clicks
+    <span class="t-k">path</span>: /v1/clicks
+    <span class="t-k">format</span>: json                     <span class="t-c"># json | array | ndjson — declared, never sniffed</span>
+
+    <span class="t-k">identity</span>:
+      <span class="t-k">provider</span>: web
+      <span class="t-k">entity</span>: click
+      <span class="t-k">source_key</span>: event_id
+      <span class="t-k">record_ts</span>: occurred_at
+
+    <span class="t-k">buffer</span>:
+      <span class="t-k">flush</span>: {every: 1s, records: 500}
+
+    <span class="t-k">sink</span>:
+      <span class="t-k">type</span>: pubsub
+      <span class="t-k">project</span>: acme-prod
+      <span class="t-k">topic</span>: clicks
+
+    <span class="t-k">dead_letter</span>:
+      <span class="t-k">type</span>: files
+      <span class="t-k">path</span>: /var/dead-letter/</code></pre></div>
+<p><code>format</code> wird deklariert und nie erraten: Raten ist der Weg, auf dem aus einem Batch von tausend eine Zeile wird, die ein Array hält.</p>
+<h2 id="die-ingestion-id-um-die-es-geht">Die <code>ingestion_id</code>, um die es geht<a class="anchor" href="#die-ingestion-id-um-die-es-geht" aria-label="link">#</a></h2>
+<p>Jeder Datensatz verlässt das Gateway mit einer <code>ingestion_id</code>: eine <strong>unveränderliche UUID v5</strong> über <code>provider|entity|source_key|record_ts</code>.</p>
+<p>Es ist <strong>dieselbe Id</strong>, die ein Batch-Fetcher für denselben Datensatz berechnet. Eine Zeile, die das Gateway landet, und eine Zeile, die eine <a href="/de/docs/sdk/">SDK</a>-Pipeline landet, sind <em>eine Zeile</em>, ohne Abgleich dazwischen.</p>
+<p>Zwei praktische Folgen:</p>
+<ul><li><strong>Ein wiederholter <code>POST</code> ist derselbe Datensatz.</strong> Ein Client kann ohne Sorge erneut senden; ein Ziel mit <code>merge</code> absorbiert die Wiederholung, statt eine zweite Zeile zu schreiben.</li><li><strong>Die Formel ist unveränderlich.</strong> Alle vier Felder sind erforderlich, und eines wegzulassen erzeugt eine <em>andere</em> Id statt einer schwächeren. Die Datei verweigert die unvollständige Konfiguration, statt sie zu akzeptieren.</li></ul>
+<p>Ingestion-Werkzeuge bewegen Bytes sehr gut und haben keine Meinung dazu, was ein Datensatz <em>ist</em>. Diese Meinung fügt das Gateway hinzu.</p>
+<h2 id="die-anfrage-wartet-nie-auf-die-sink">Die Anfrage wartet nie auf die Sink<a class="anchor" href="#die-anfrage-wartet-nie-auf-die-sink" aria-label="link">#</a></h2>
+<p>Es dekodiert, führt den Hook aus, berechnet die Identität, hängt an einen Puffer an und gibt zurück. <strong>Das ist alles.</strong> Ein voller Batch geht an einen Worker-Pool, und das Veröffentlichen, das <code>COPY</code>, die Retries und die Dead Letter geschehen alle dort.</p>
+<p>Das ist nicht kosmetisch. Bevor es das gab, führte die Anfrage, die zufällig einen Batch füllte, die Zustellung inline aus – ein Aufrufer von je <code>flush.records</code> zahlte also die volle Round-Trip-Zeit, und bei ausgefallener Sink das gesamte Retry-Fenster. Ein p99, das davon geprägt ist, welcher Aufrufer Pech hatte, ist kein p99, auf das jemand reagieren kann.</p>
+<div class="code-block" data-code="buffer:
+  flush:
+    every: 1s         # age
+    records: 500      # count
+    size: 8MiB        # bytes — whichever is crossed FIRST sends the batch
+    max_age: 30s      # and this one sends it REGARDLESS
+  workers: 4          # batches delivered at once
+  queue: 64           # full batches that may wait for a worker
+  max_records: 10000  # events held in memory before the gateway says no
+  max_bytes: 256MiB   # the same ceiling in bytes"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">buffer</span>:
+  <span class="t-k">flush</span>:
+    <span class="t-k">every</span>: 1s         <span class="t-c"># age</span>
+    <span class="t-k">records</span>: 500      <span class="t-c"># count</span>
+    <span class="t-k">size</span>: 8MiB        <span class="t-c"># bytes — whichever is crossed FIRST sends the batch</span>
+    <span class="t-k">max_age</span>: 30s      <span class="t-c"># and this one sends it REGARDLESS</span>
+  <span class="t-k">workers</span>: 4          <span class="t-c"># batches delivered at once</span>
+  <span class="t-k">queue</span>: 64           <span class="t-c"># full batches that may wait for a worker</span>
+  <span class="t-k">max_records</span>: 10000  <span class="t-c"># events held in memory before the gateway says no</span>
+  <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># the same ceiling in bytes</span></code></pre></div>
+<h3 id="die-flush-uhr-gehört-dem-deployment">Die Flush-Uhr gehört dem Deployment<a class="anchor" href="#die-flush-uhr-gehört-dem-deployment" aria-label="link">#</a></h3>
+<p><code>buffer.flush.every</code> ist ein <code>time.AfterFunc</code> in <strong>jeder Replica</strong>. Die Load-Jobs, die eine Tabelle erhält, sind daher eine Funktion der Replica-Anzahl, nicht des Datenverkehrs:</p>
+<div class="code-block" data-code="jobs / day / table  =  replicas × 86400 / every"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>jobs / day / table  =  replicas × 86400 / every</code></pre></div>
+<p>Bei BigQuery sind gegenüber 1.500 pro Tabelle und Tag <strong>zwei Replicas bei 60s bereits 192 % einer Quote, die sich nicht erhöhen lässt</strong> – bevor ein HPA irgendetwas tut. Und die Richtung ist entgegengesetzt zur Intuition: Das Gateway skaliert für HTTP-Nebenläufigkeit aus, während die Sink Konzentration will.</p>
+<div class="code-block" data-code="buffer:
+  flush:
+    every: 60s
+    max_age: 300s
+    claim: true"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">buffer</span>:
+  <span class="t-k">flush</span>:
+    <span class="t-k">every</span>: 60s
+    <span class="t-k">max_age</span>: 300s
+    <span class="t-k">claim</span>: <span class="t-n">true</span></code></pre></div>
+<p>Mit <code>claim</code> nimmt eine Replica vor dem Flush auf dem Timer ein Set-if-absent für Stream und Fenster vor – und der Timer wacht an der <strong>Fenstergrenze</strong> auf, sodass alle Replicas nach demselben Schlüssel fragen. Ein Flush pro Fenster, gleich welche Replica-Anzahl. Und es stellt sich selbst ein: Eine Replica wartet nur, wenn tatsächlich eine andere konkurriert, sodass das Einskalieren die geringere Latenz wiederherstellt, ohne dass jemand eine Konfiguration bearbeitet.</p>
+<p>Gemessen mit zwei Replicas und einem Redis, 5s-Fenster: <strong>aus 8 Load-Jobs wurden 6, einer pro Fenster, abwechselnd 3/3</strong> – kein Fenster mit zwei.</p>
+<p><strong>Es braucht ein geteiltes Backend.</strong> Mit <code>memory</code> gewinnt jede Replica ihren eigenen Claim, und nichts koordiniert. Und es <strong>verlangt <code>max_age</code></strong>, was die Konfiguration ohne verweigert: Der Claim macht <code>every</code> zu einem Ziel, und ein Ziel ohne Obergrenze ist Latenz ohne Begrenzung.</p>
+<p><strong>Ein nicht erreichbarer Metastore flusht trotzdem.</strong> Koordination zu verlieren kostet Load-Jobs; den Flush zu verweigern hält Daten zurück. Verifiziert durch das Killen von Redis mitten im Lauf: 40 von 40 Events landeten, nichts wurde zurückgehalten.</p>
+<p><strong><code>outcome="unreachable"</code> ist die, die einen Alarm wert ist.</strong> Das Backend ließ sich nicht befragen, der Claim schlug also fail-open fehl: Die Koordination ist aus, und die Load-Jobs vervielfachen sich wieder mit der Replica-Anzahl – still, weil jeder Flush weiterhin wie ein Flush aussieht.</p>
+<p>Und der Claim gibt <strong>Exklusivität, keine Fairness</strong>: Wer zuerst fragt, gewinnt. Ein echter Lauf mit zwei Replicas maß 4/1, keine gleichmäßige Aufteilung. <code>max_age</code> verhindert, dass die Benachteiligte verhungert.</p>
+<p>Mit <code>claim: true</code> und <code>metastore: memory</code> warnt das Gateway <strong>einmal beim Start</strong>: Jede Replica gewinnt ihren eigenen Claim, sodass alles richtig aussieht und nichts koordiniert.</p>
+<h3 id="every-ist-ein-ziel-max-age-ist-ein-versprechen"><code>every</code> ist ein Ziel; <code>max_age</code> ist ein Versprechen<a class="anchor" href="#every-ist-ein-ziel-max-age-ist-ein-versprechen" aria-label="link">#</a></h3>
+<p>Die drei obigen Trigger entscheiden, wann ein Batch zu gehen <strong>versucht</strong>. <code>max_age</code> entscheidet, wann er <strong>unabhängig davon</strong> geht.</p>
+<p>Heute ist der Unterschied wirkungslos, weil nichts das Ziel aufschiebt. Er beginnt zu zählen, sobald die Flush-Uhr nicht mehr pro Prozess läuft: <code>buffer.flush.every</code> ist ein <code>time.AfterFunc</code> in jeder Replica, die Anzahl der Load-Jobs, die eine Tabelle erhält, ist also eine Funktion der <strong>Replica-Anzahl</strong>, nicht des Datenverkehrs – <code>replicas × 86400 / every</code>. Bei BigQuery sind gegenüber 1.500 pro Tabelle und Tag <strong>zwei Replicas bei 60s bereits 192 % der Quote</strong>.</p>
+<p>Sobald eine Replica ein Fenster an eine andere abgeben kann, füllt sie weiter, und <code>max_age</code> verhindert, dass jemand Daten unbegrenzt zurückhält, während er auf seinen Zug wartet.</p>
+<p>Es regelt auch den Drain: Was ein Puffer bei <code>SIGTERM</code> <strong>halten</strong> kann, wird dadurch begrenzt, und das <code>terminationGracePeriodSeconds</code>, das das Gateway beim Start ausgibt, wird davon abgeleitet.</p>
+<p>Eine Obergrenze <strong>unter</strong> dem Ziel wird beim Laden verweigert – sie würde bedeuten, dass das Ziel nie gilt.</p>
+<h3 id="warum-es-einen-größen-trigger-gibt">Warum es einen Größen-Trigger gibt<a class="anchor" href="#warum-es-einen-größen-trigger-gibt" aria-label="link">#</a></h3>
+<p>Die anderen beiden sind <strong>Zählungen</strong>, und eine Zählung kann 500 Events zu 2 KB nicht von 500 zu 2 MB unterscheiden – 1 MB gegen 1 GB, dieselbe Zahl in der Datei. <code>max_records: 10000</code> hat denselben blinden Fleck: 20 MB oder 20 GB, und nichts im YAML könnte sagen, welches.</p>
+<p>Ein Produzent, der anfängt, das ganze Dokument statt seiner Id zu senden, reißt den Pod um, und bevor es das gab, <strong>hätte kein Feld die Grenze ausdrücken können</strong>.</p>
+<p>Die Größe wird an dem gemessen, was <strong>ankam</strong> – nicht an dem, was das Event im Speicher wiegt (eine <code>map[string]any</code> ist ein Mehrfaches ihres JSON) und nicht nach einem Hook, der es aufbläht. Eine Näherung, und die richtige: Sie ist beim Dekodieren kostenlos, sie bewegt sich mit der Payload, und wogegen sie schützt, ist ein Datensatz, der auf das Zehnfache wuchs.</p>
+<p><strong>Bei BigQuery ist <code>size</code> eine Obergrenze, kein Ziel.</strong> Dieses Ziel erlaubt 1.500 Load-Jobs pro Tabelle und Tag, weshalb <code>every</code> eine Untergrenze von 60 Sekunden hat. Aber die Untergrenze regelt den <strong>Timer</strong>: Eine Größe, die alle paar Sekunden feuert, läuft geradewegs daran vorbei und verbraucht dieselbe Quote. Nichts verweigert das beim Laden, weil die Ankunftsrate dort nicht bekannt ist. Stattdessen gibt es Sichtbarkeit:</p>
+<div class="code-block" data-code="brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size</code></pre></div>
+<p>Ein steigendes <code>trigger="size"</code> bei einem BigQuery-Stream sagt Ihnen, dass nicht das Fenster das Batching bestimmt.</p>
+<p>Dieser Zähler gilt pro Stream, und die Quote gilt pro <strong>Tabelle</strong>: Mit <code>auto_table</code> wird eine Route zu vielen Tabellen, und 94 von ihnen, die eine Zahl melden, sagen über keine einzelne etwas. Hinter <code>BREVIS_INGESTION_METRICS</code> gibt es einen, der sie benennt:</p>
+<div class="code-block" data-code="brevis_gateway_table_flushes_total{stream,table,trigger}"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>brevis_gateway_table_flushes_total{stream,table,trigger}</code></pre></div>
+<p>Ein Flush einer Tabelle ist ein Load-Job für sie, dies ist also die Serie, bei der man bei 1.200 der 1.500, die BigQuery erlaubt, alarmieren sollte. Die bedingungslose Hälfte ist eine Zeile beim Start, die sagt, was <code>flush.every</code> pro Tabelle und Tag kostet, bevor ein Event ankommt.</p>
+<p><strong>Es ist begrenzt, nicht fire-and-forget.</strong> Eine Goroutine pro Batch würde aus einem Sink-Ausfall unbegrenzten Speicher machen. Sind die Queue und der Puffer beide voll, lautet die Antwort <strong><code>503</code> mit <code>Retry-After</code></strong>, statt einer <code>202</code> für ein Event ohne Ziel. Ein akzeptiertes Event, das nie zugestellt wird, ist das eine Ergebnis, das es dieser Dienst nicht geben soll.</p>
+<p>Und dieses <code>503</code> ist <strong>sicher zu wiederholen</strong>, auf eine Weise, die fast kein Dienst für sich beanspruchen kann: Die <code>ingestion_id</code> ist eine unveränderliche Funktion des Events selbst, derselbe erneut gesendete Body ist also der <em>gleiche Datensatz</em>.</p>
+<h2 id="eine-verbindung-entscheidet-welche-replica-die-last-bekommt">Eine Verbindung entscheidet, welche Replica die Last bekommt<a class="anchor" href="#eine-verbindung-entscheidet-welche-replica-die-last-bekommt" aria-label="link">#</a></h2>
+<p>Hinter einem Kubernetes-<code>ClusterIP</code>-Service wählt kube-proxy ein Backend <strong>einmal pro TCP-Verbindung</strong>, nicht pro Anfrage. Die meisten Clients halten Verbindungen offen und verwenden sie wieder, sodass ein Produzent mit einer Handvoll davon alles an dieselbe oder zwei Replicas sendet, wie viele auch laufen – und eine Replica, die der HPA hinzufügt, erhält nichts, weil niemand sie anwählt.</p>
+<div class="code-block" data-code="listen:
+  idle_timeout: 90s     # closes a connection nobody came back to
+  max_conn_age: 60s     # after this, the next response asks the client to redial"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">listen</span>:
+  <span class="t-k">idle_timeout</span>: 90s     <span class="t-c"># closes a connection nobody came back to</span>
+  <span class="t-k">max_conn_age</span>: 60s     <span class="t-c"># after this, the next response asks the client to redial</span></code></pre></div>
+<p><strong><code>max_conn_age</code> ist standardmäßig aus</strong>, und das ist Absicht: Wie lange ein Client eine Verbindung halten darf, ist Richtlinie, und sie tauscht einen Handshake im Cluster pro Verbindung und Alter gegen Last, die sich verteilt. Die Anfrage selbst wird immer bedient – der Header geht an die Antwort, nichts wird wiederholt und kein Batch geht verloren.</p>
+<p><strong><code>idle_timeout</code> hat einen Standard und lässt sich nicht abschalten.</strong> Ohne einen zu bedienen heißt, einen File Descriptor pro verlassenem Client zu halten, bis der Prozess neu startet. Setzen Sie einen langen, wenn Sie das wollen; dann ist es eine Zahl, die jemand gewählt hat.</p>
+<p>Die beiden sind unabhängig: Eine Verbindung trifft auf die Grenze, die sie zuerst trifft, und eine Verbindung erreicht das Alter nur, indem sie genutzt wird – also genau der langlebige Produzent, den das Alter neu verteilen soll.</p>
+<h2 id="wenn-die-sink-verweigert">Wenn die Sink verweigert<a class="anchor" href="#wenn-die-sink-verweigert" aria-label="link">#</a></h2>
+<p>Der Batch wird wiederholt – standardmäßig vier Versuche über etwa sieben Sekunden, mit Jitter verdoppelt – und geht dann in die <strong>Dead Letter</strong>, mit dem Grund an jedem Datensatz:</p>
+<div class="code-block" data-code="{
+  &quot;event_id&quot;: &quot;dl-9&quot;,
+  &quot;ingestion_id&quot;: &quot;84aaee4b-66af-5cc0-b97b-6856dec95b25&quot;,
+  &quot;_dead_letter_reason&quot;: &quot;rpc error: code = NotFound desc = Topic not found&quot;,
+  &quot;_dead_letter_sink&quot;: &quot;pubsub:acme-prod/clicks&quot;,
+  &quot;_dead_letter_at&quot;: &quot;2026-09-25T02:02:32Z&quot;
+}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>{
+  "event_id": "dl-<span class="t-n">9</span>",
+  "ingestion_id": "84aaee4b-66af-5cc0-b97b-6856dec95b25",
+  "_dead_letter_reason": "rpc error: code = NotFound desc = Topic not found",
+  "_dead_letter_sink": "pubsub:acme-prod/clicks",
+  "_dead_letter_at": "<span class="t-n">2026</span>-<span class="t-n">09</span>-25T02:<span class="t-n">02</span>:32Z"
+}</code></pre></div>
+<p>Der Grund reist <strong>am Datensatz</strong> und nicht nur in einem Log, denn wer diese Datei später findet, hat die Events und nicht das Log – und <em>Warum ist das hier?</em> ist seine erste Frage.</p>
+<p><strong>Ein Stream ohne <code>dead_letter</code> wird beim Laden verweigert.</strong> Es standardmäßig auf Schweigen zu setzen würde die Entscheidung dorthin legen, wo sie niemand trifft, und ein verweigerter Batch, der nur eine Logzeile ist, verliert Daten still.</p>
+<h2 id="der-hook-ist-go-einkompiliert">Der Hook ist Go, einkompiliert<a class="anchor" href="#der-hook-ist-go-einkompiliert" aria-label="link">#</a></h2>
+<div class="code-block" data-code="hooks := gateway.NewHooks()
+hooks.MustRegister(&quot;enrich_clicks&quot;, enrichClicks)
+gateway.Main(hooks, gateway.WithSinks(sinks))
+
+func enrichClicks(e map[string]any) (map[string]any, error) {
+    host, _ := e[&quot;host&quot;].(string)
+    e[&quot;tenant&quot;] = strings.Split(host, &quot;.&quot;)[0]
+    return e, nil     // returning nil DROPS the event, on purpose
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>hooks := gateway.NewHooks()
+hooks.MustRegister("enrich_clicks", enrichClicks)
+gateway.Main(hooks, gateway.WithSinks(sinks))
+
+<span class="t-k">func</span> enrichClicks(e <span class="t-k">map</span>[string]any) (<span class="t-k">map</span>[string]any, error) {
+    host, _ := e["host"].(string)
+    e["tenant"] = strings.Split(host, ".")[0]
+    <span class="t-k">return</span> e, <span class="t-k">nil</span>     <span class="t-c">// returning nil DROPS the event, on purpose</span>
+}</code></pre></div>
+<p>Das YAML nennt einen Hook; es trägt keinen. Vor der Wahl gemessen: Eine Go-Funktion kostet <strong>93 ns/op</strong> gegenüber 959 bei Starlark und 1.281 bei yaegi, ohne dass dem Binary etwas hinzugefügt wird – und <code>plugin.Open</code> ist gar keine Option, weil es unter <code>CGO_ENABLED=0</code>, wie jedes Artefakt hier gebaut wird, <code>plugin: not implemented</code> zurückgibt.</p>
+<p>Was es kostet, dort gesagt, wo es jemand liest: <strong>Einen Hook hinzuzufügen ist ein Rebuild und ein Deployment, keine Konfigurationsänderung.</strong> Das ist der richtige Tausch, solange die Hooks von den Leuten geschrieben werden, die das Binary ausliefern, und der falsche an dem Tag, an dem ein Kunde einen ohne Release ändern muss.</p>
+<p>Ein Fehler in einem Hook schickt <em>dieses</em> Event auf den Dead-Letter-Pfad und lässt nie den Batch daneben fehlschlagen. Ebenso eine Panic: Sie wird pro Event abgefangen, weil ein fehlerhafter Datensatz keinen Prozess reißen darf, der jeden anderen Stream bedient.</p>
+<h2 id="wenn-ein-event-zu-groß-ist">Wenn ein Event zu groß ist<a class="anchor" href="#wenn-ein-event-zu-groß-ist" aria-label="link">#</a></h2>
+<div class="code-block" data-code="oversize:
+  larger_than: 256KiB
+  archive: {type: files, path: gs://acme-oversize/clicks/}
+  hook: strip_heavy_clicks"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">oversize</span>:
+  <span class="t-k">larger_than</span>: 256KiB
+  <span class="t-k">archive</span>: {type: files, path: gs://acme-oversize/clicks/}
+  <span class="t-k">hook</span>: strip_heavy_clicks</code></pre></div>
+<p>Das Event wird <strong>vollständig</strong> in <code>archive</code> geschrieben, und eine reduzierte Version läuft in den Stream weiter und trägt einen Verweis zurück:</p>
+<div class="code-block" data-code="{
+  &quot;event_id&quot;: &quot;big-1&quot;,
+  &quot;ingestion_id&quot;: &quot;bd8ac083-9796-50f5-bab6-77a4e2e57ad0&quot;,
+  &quot;_oversize&quot;: true,
+  &quot;_oversize_archive&quot;: &quot;files:gs://acme-oversize/clicks/&quot;,
+  &quot;_oversize_bytes&quot;: 2149
+}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>{
+  "event_id": "big-<span class="t-n">1</span>",
+  "ingestion_id": "bd8ac083-<span class="t-n">9796</span>-50f5-bab6-77a4e2e57ad0",
+  "_oversize": <span class="t-n">true</span>,
+  "_oversize_archive": "files:gs://acme-oversize/clicks/",
+  "_oversize_bytes": <span class="t-n">2149</span>
+}</code></pre></div>
+<p>Das ist das <strong>Claim-Check</strong>-Muster, und es schlägt ein schlichtes <code>413</code>, weil ein <code>413</code> das Event verliert – und eine überdimensionierte Payload ist meist die interessanteste, die jemand hat: Es ist die Anfrage mit dem ganzen angehängten Dokument, der Fall, den zu debuggen sich lohnt.</p>
+<p><code>larger_than</code> misst ein einzelnes <strong>Event</strong>, nach dem Hook. <code>listen.max_body</code> ist etwas anderes: Es begrenzt eine ganze <strong>Anfrage</strong> und verweigert mit <code>413</code>, bevor ein Byte geparst wird.</p>
+<h2 id="was-es-zählt">Was es zählt<a class="anchor" href="#was-es-zählt" aria-label="link">#</a></h2>
+<p>Elf Prometheus-Serien, auf <strong>eigenem Port</strong> – nie dem der Ingestion, und diese Regel zählt hier mehr als in der Engine: Der Ingest-Port ist von Konstruktion öffentlich, dort senden Clients ihre <code>POST</code>s, ein <code>/metrics</code> darauf würde jeden Stream-Namen, Pfad und jedes Ziel jedem veröffentlichen, der den Pfad fand. Dieselbe Adresse für beides zu nennen, wird beim Laden verweigert.</p>
+<div class="code-block" data-code="brevis_gateway_events_received_total{stream,format}     counter
+brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
+brevis_gateway_requests_refused_total{stream,reason}    counter  per request: unauthorized|body_too_large|malformed|empty|saturated
+brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_reconciled_total{stream,sink}            counter  landed after the send window; also delivered
+brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
+brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
+brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger} counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
+brevis_gateway_saturated_total{stream}                  counter  the 503s
+brevis_gateway_delivery_seconds{stream,sink}            histogram
+brevis_gateway_buffer_records{stream}                   gauge
+brevis_gateway_queue_batches{stream}                    gauge"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>brevis_gateway_events_received_total{stream,format}     counter
+brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
+brevis_gateway_requests_refused_total{stream,reason}    counter  per request: unauthorized|body_too_large|malformed|empty|saturated
+brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_reconciled_total{stream,sink}            counter  landed after the send window; also delivered
+brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
+brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
+brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger} counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
+brevis_gateway_saturated_total{stream}                  counter  the 503s
+brevis_gateway_delivery_seconds{stream,sink}            histogram
+brevis_gateway_buffer_records{stream}                   gauge
+brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
+<p><code>process_start_time_seconds</code> hat <strong>kein</strong> Präfix <code>brevis_</code>, und das ist Absicht: Collectors suchen genau diesen Namen. Er sagt, wann der Prozess gestartet ist, und ohne ihn verankert ein Collector, der eine Startzeit-Anpassung vornimmt – der OpenTelemetry-Prometheus-Receiver, auf dem Google Managed Prometheus aufbaut –, jede kumulative Serie an ihrem <strong>ersten Scrape</strong> und verbraucht den Wert dieses Scrapes als Basislinie. Das Ergebnis: Jeder Zähler liest zu niedrig, mit richtigen Deltas und falschen Summen.</p>
+<p>Die letzten drei sind die, nach denen niemand fragt, bis der erste Vorfall da war. <code>saturated_total</code> ist die einzige Zahl, die sagt, dass einem Client gesagt wurde, er solle zurückweichen; <code>buffer_records</code> gegenüber <code>buffer.max_records</code> ist die einzige, die es <strong>vorhersagt</strong>.</p>
+<p><code>reason</code> ist eine geschlossene Menge und nie der Fehlertext: Ein Fehler-String trägt einen Tabellennamen, eine Spalte, manchmal eine Zeile, und ein einziger fehlerhafter Client würde pro Anfrage eine neue Serie erzeugen. Der Text bleibt in der Dead Letter, am Datensatz.</p>
+<h2 id="202-nicht-200"><code>202</code>, nicht <code>200</code><a class="anchor" href="#202-nicht-200" aria-label="link">#</a></h2>
+<p>Das Gateway hat die Events <strong>akzeptiert</strong>. Mit <code>durability: memory</code> – der einzigen implementierten Stufe – ist das alles, was es ehrlich behaupten kann. Die Stufe, die eine <code>200</code> verdient, ist die, die sie bereits aufgeschrieben hat, und die gibt es nicht.</p>
+<p><code>disk</code> wird <strong>namentlich</strong> verweigert, nicht akzeptiert und als memory behandelt: Wer <code>disk</code> schreibt, glaubt, seine Events überlebten einen Absturz, und zuzustimmen, ohne zu liefern, ist genau der Fehler, den dieses Feld verhindern soll.</p>
+<p>Was bei einem Shutdown in einem Puffer liegt, wird zugestellt, nicht verworfen – über denselben Weg, den ein voller Batch nimmt, wiederholt und begraben.</p>
+<h2 id="was-es-nicht-tut">Was es nicht tut<a class="anchor" href="#was-es-nicht-tut" aria-label="link">#</a></h2>
+<ul><li><strong>Es erscheint nicht in der Console.</strong> Es teilt keine Datenbank mit der Oberfläche der Engine, es gibt also keine Seite <code>/ingestion</code> – und auch die Schema-Evolution, die <code>auto_table</code> vornimmt, taucht dort nicht auf. Das ist der nächste Schritt, und er ist nicht geschrieben.</li><li><strong>Ein Stream mit einer <code>table</code> entwickelt das Schema nicht weiter.</strong> Wenn Sie die Tabelle nennen, ist der Vertrag der der Tabelle: Ein Feld, das sie nicht hat, wird mit der Meldung verweigert, die es behebt, statt eine Tabelle zu ändern, die jemand geprüft hat. Von selbst eine Spalte wachsen zu lassen ist, was <code>auto_table</code> tut, und das ist der Unterschied zwischen beiden.</li><li><strong>Ein Stream mit einer <code>table</code> legt weder Tabelle noch Index an.</strong> Ein Dienst, der Tabellen anlegt, macht aus einem Tippfehler eine zweite Tabelle, die niemand liest – weshalb das Anlegen nur unter <code>auto_table</code> geschieht, wo <code>naming</code> begrenzt, welche Namen existieren dürfen, und <code>listen.auth</code> zwingend ist.</li><li><strong>Das veröffentlichte Image hat keine Hooks</strong>, was das ehrliche Artefakt für ein Design mit einkompilierten Hooks ist: Es bedient Streams, die kein <code>hook:</code> deklarieren.</li></ul>
+<h2 id="eine-route-n-tabellen">Eine Route, N Tabellen<a class="anchor" href="#eine-route-n-tabellen" aria-label="link">#</a></h2>
+<p><code>auto_table</code> leitet jedes Event in die Tabelle, die der <strong>Envelope</strong> nennt, legt diese Tabelle an, wenn sie fehlt, und lässt eine Spalte wachsen, wenn ein neues Feld auftaucht:</p>
+<div class="code-block" data-code="{&quot;table_name&quot;: &quot;app_orders&quot;, &quot;operation&quot;: &quot;INSERT&quot;, &quot;unique_key&quot;: &quot;id&quot;,
+ &quot;data&quot;: {&quot;id&quot;: &quot;A-1&quot;, &quot;total&quot;: 150, &quot;customer&quot;: {&quot;id&quot;: 7, &quot;uf&quot;: &quot;SP&quot;}}}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>{"table_name": "app_orders", "operation": "INSERT", "unique_key": "id",
+ "data": {"id": "A-<span class="t-n">1</span>", "total": <span class="t-n">150</span>, "customer": {"id": <span class="t-n">7</span>, "uf": "SP"}}}</code></pre></div>
+<p>Steuerfelder oben, der Datensatz innerhalb von <code>data</code>, und sieben <code>brevis_*</code>-Tracking-Spalten in jeder Tabelle. Eine Route, N Tabellen, nichts deklariert.</p>
+<p>Es steht unter <a href="/de/docs/ingestion-sinks/#eine-route-n-tabellen-nichts-deklariert">Ingestion-Sinks</a>.</p>
+<h2 id="wie-es-weitergeht">Wie es weitergeht<a class="anchor" href="#wie-es-weitergeht" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>Wenn Sie ... möchten</th><th>gehen Sie zu</th></tr></thead><tbody><tr><td>die Ziele und wie jedes schreibt</td><td><a href="/de/docs/ingestion-sinks/">Ingestion-Sinks</a></td></tr><tr><td>die <code>ingestion_id</code> von der anderen Seite</td><td><a href="/de/docs/sdk/">Go-SDK</a></td></tr><tr><td>Dashboards und Alarme</td><td><a href="/de/docs/observability/">Observability</a></td></tr></tbody></table></div>
+
+      <nav class="pagers" aria-label="Seiten">
+        <a class="pager pager-prev" href="/de/docs/white-label/"><span>Zurück</span><strong>White Label</strong></a>
+        <a class="pager pager-next" href="/de/docs/ingestion-sinks/"><span>Weiter</span><strong>Ingestion-Sinks</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/de/docs/ingestion.md" target="_blank" rel="noopener">Diese Seite auf GitHub bearbeiten</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="Auf dieser Seite">
+      <p class="toc-t">Auf dieser Seite</p>
+      <ul><li class="toc-2"><a href="#die-datei-ist-der-vertrag">Die Datei ist der Vertrag</a></li><li class="toc-2"><a href="#die-ingestion-id-um-die-es-geht">Die ingestion_id, um die es geht</a></li><li class="toc-2"><a href="#die-anfrage-wartet-nie-auf-die-sink">Die Anfrage wartet nie auf die Sink</a></li><li class="toc-3"><a href="#die-flush-uhr-gehört-dem-deployment">Die Flush-Uhr gehört dem Deployment</a></li><li class="toc-3"><a href="#every-ist-ein-ziel-max-age-ist-ein-versprechen">every ist ein Ziel; max_age ist ein Versprechen</a></li><li class="toc-3"><a href="#warum-es-einen-größen-trigger-gibt">Warum es einen Größen-Trigger gibt</a></li><li class="toc-2"><a href="#eine-verbindung-entscheidet-welche-replica-die-last-bekommt">Eine Verbindung entscheidet, welche Replica die Last bekommt</a></li><li class="toc-2"><a href="#wenn-die-sink-verweigert">Wenn die Sink verweigert</a></li><li class="toc-2"><a href="#der-hook-ist-go-einkompiliert">Der Hook ist Go, einkompiliert</a></li><li class="toc-2"><a href="#wenn-ein-event-zu-groß-ist">Wenn ein Event zu groß ist</a></li><li class="toc-2"><a href="#was-es-zählt">Was es zählt</a></li><li class="toc-2"><a href="#202-nicht-200">202, nicht 200</a></li><li class="toc-2"><a href="#was-es-nicht-tut">Was es nicht tut</a></li><li class="toc-2"><a href="#eine-route-n-tabellen">Eine Route, N Tabellen</a></li><li class="toc-2"><a href="#wie-es-weitergeht">Wie es weitergeht</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/de/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Philosophie, angewandt auf Dateninfrastruktur.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>Projekt</h2>
+        <ul>
+          <li><a href="/de/#ecossistema">Ökosystem</a></li>
+          <li><a href="/de/docs/philosophy/">Prinzipien</a></li>
+          <li><a href="/de/docs/introduction/#offener-code-wählen-sie-wie-sie-mitmachen">Open Source</a></li>
+          <li><a href="/de/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>Code</h2>
+        <ul>
+          <li><a href="/de/docs/">Dokumentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repository</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Ein Open-Source-Projekt von <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · in Go gebaut · Go-Gopher von Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

@@ -1,25 +1,25 @@
 # Core
 
-> O orquestrador: agenda os runs, guarda a fila no Postgres e sobe um pod por etapa — sem nunca tocar o dado.
+> The orchestrator: schedules runs, keeps the queue in Postgres and starts one pod per step — and never touches the data.
 
-*https://brevis.sh/docs/core/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/core/ · brevis.sh docs (en-US)*
 
 ---
 
-O workflow inteiro é um arquivo versionável: revisar um pipeline vira revisar um diff. O Core agenda, enfileira e sobe cada etapa com a própria imagem — e nunca toca o dado.
+The whole workflow is one versioned file: reviewing a pipeline becomes reviewing a diff. The Core schedules, queues and starts each step with its own image — and never touches the data.
 
-![O fluxo do Core: um scheduler e uma fila, guardados no Postgres, sobem um pod por etapa do workflow — prepare, extract, validate e publish. Do Core só saem linhas de controle. O dado vai de uma origem HTTP para o pod extract, que roda o SDK, e de lá para o BigQuery; nenhum dado passa pelo Core.](/assets/flow-core.svg)
+![The Core flow: a scheduler and a queue, kept in Postgres, start one pod per step of the workflow — prepare, extract, validate and publish. Only control lines leave the Core. The data goes from an HTTP source into the extract pod, which runs the SDK, and from there to BigQuery; no data passes through the Core.](/assets/flow-core.svg)
 
-## O que ele faz
+## What it does
 
-- **Agenda.** O scheduler lê a agenda de cada workflow e cria os runs. Ele e a fila são dois laços independentes: um travado não para o outro — [Scheduler e fila](/docs/scheduler-and-queue/index.md).
-- **Enfileira.** A fila fica no Postgres: quem executa reivindica um run pendente, percorre o grafo e registra o estado de cada etapa.
-- **Sobe um pod por etapa**, cada um com a própria imagem — [Pod por passo](/docs/pod-per-step/index.md).
-- **Nunca toca o dado.** Do Core só saem linhas de controle: quem lê e escreve dado é a etapa, com o [SDK](/docs/sdk/index.md) ou o código que for seu.
+- **Schedules.** The scheduler reads each workflow's schedule and creates the runs. It and the queue are two independent loops: one jammed does not stop the other — [Scheduler and queue](/docs/scheduler-and-queue/index.md).
+- **Queues.** The queue lives in Postgres: whoever executes claims a pending run, walks the graph and records each step's state.
+- **Starts one pod per step**, each with its own image — [Pod per step](/docs/pod-per-step/index.md).
+- **Never touches the data.** Only control lines leave the Core: what reads and writes data is the step, with the [SDK](/docs/sdk/index.md) or whatever code is yours.
 
-## Um workflow, de ponta a ponta
+## One workflow, end to end
 
-O workflow é um arquivo YAML. Duas etapas que dependem da mesma rodam em paralelo:
+The workflow is one YAML file. Two steps that depend on the same one run in parallel:
 
 ```yaml
 name: hello
@@ -44,14 +44,14 @@ steps:
     depends_on: [extract, validate]
 ```
 
-Para rodar local, sem fila nem cluster:
+To run it locally, with no queue and no cluster:
 
 ```bash
 docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
   areteacademy/brevis:0.40.0-worker run hello.yaml
 ```
 
-A saída:
+The output:
 
 ```text
 workflow hello (dag, 4 steps) in .
@@ -71,14 +71,14 @@ workflow hello (dag, 4 steps) in .
 workflow hello finished
 ```
 
-A saída real, com a imagem publicada. brevis run executa local, sem fila; quem sobe pods é o scheduler.
+The real output, from the published image. brevis run executes locally, with no queue; pods are started by the scheduler.
 
-## Por onde seguir
+## Where to go next
 
-| se você quer | vá para |
+| if you want | go to |
 |---|---|
-| o formato YAML inteiro | [Workflows](/docs/workflows/index.md) |
-| quem cria e quem executa os runs | [Scheduler e fila](/docs/scheduler-and-queue/index.md) |
-| por que um pod por etapa | [Pod por passo](/docs/pod-per-step/index.md) |
-| o que uma etapa passa à seguinte | [Contexto entre passos](/docs/context/index.md) |
-| subir tudo e ver o grafo na interface | [Quickstart](/docs/quickstart/index.md) |
+| the whole YAML format | [Workflows](/docs/workflows/index.md) |
+| who creates runs and who executes them | [Scheduler and queue](/docs/scheduler-and-queue/index.md) |
+| why one pod per step | [Pod per step](/docs/pod-per-step/index.md) |
+| what a step passes to the next | [Context between steps](/docs/context/index.md) |
+| bring it all up and see the graph in the interface | [Quickstart](/docs/quickstart/index.md) |

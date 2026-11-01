@@ -27,16 +27,34 @@ BASE_URL = "https://brevis.sh"
 
 # O idioma padrão mora na raiz; os demais ganham prefixo. Trocar a ordem aqui
 # troca quem fica em "/" — e nada mais precisa mudar.
-IDIOMAS = ["pt", "en"]
-PADRAO = "pt"
-LOCALE = {"pt": "pt-BR", "en": "en"}
-IDIOMA_NOME = {"pt": "Portuguese", "en": "English"}
+IDIOMAS = ["en", "es", "pt", "fr", "de", "zh", "ja", "ru", "ko", "hi", "id"]
+PADRAO = "en"
+LOCALE = {"en": "en-US", "es": "es", "pt": "pt-BR", "fr": "fr", "de": "de", "zh": "zh-CN",
+          "ja": "ja", "ru": "ru", "ko": "ko", "hi": "hi", "id": "id"}
+IDIOMA_NOME = {"en": "English", "es": "Spanish", "pt": "Portuguese", "fr": "French",
+               "de": "German", "zh": "Simplified Chinese", "ja": "Japanese", "ru": "Russian",
+               "ko": "Korean", "hi": "Hindi", "id": "Indonesian"}
+# Cada idioma no seu próprio nome: é o que o seletor mostra.
+IDIOMA_NATIVO = {"en": "English", "es": "Español", "pt": "Português", "fr": "Français",
+                 "de": "Deutsch", "zh": "简体中文", "ja": "日本語", "ru": "Русский",
+                 "ko": "한국어", "hi": "हिन्दी", "id": "Bahasa Indonesia"}
 
 # O idioma do llms.txt. Não é o PADRÃO do site: a raiz é pt para quem lê, e o
 # llms.txt é para quem processa.
 LLMS = "en"
 
 REPO = "https://github.com/AreteAcademy/brevis"
+
+
+# Quem tem a documentação traduzida (content/<lang>/docs). Os demais ganham a
+# landing e o índice de /docs/ no seu idioma, e os links para uma página da
+# documentação seguem para o inglês: uma tradução que não existe não vira uma
+# cópia em inglês sob outro prefixo.
+DOCS = [l for l in IDIOMAS if (RAIZ / "content" / l / "docs").is_dir()]
+
+
+def prefixo_docs(lang):
+    return prefixo(lang) if lang in DOCS else prefixo(PADRAO)
 
 
 def prefixo(lang):
@@ -444,6 +462,7 @@ def gerar(destino):
         comum = {
             "lang": LOCALE[lang],
             "prefixo": pfx,
+            "prefixo_docs": prefixo_docs(lang),
             "repo": REPO,
             "ano": "2026",
             "alt_landing": alternativas,
@@ -456,12 +475,23 @@ def gerar(destino):
         def seletor(caminho_rel):
             itens = []
             for l in IDIOMAS:
-                href = "%s/%s" % (prefixo(l), caminho_rel) if caminho_rel else (prefixo(l) + "/")
+                rel_l = caminho_rel
+                # Sem a página traduzida, o idioma recebe o índice da documentação.
+                if l not in DOCS and rel_l.startswith("docs/"):
+                    rel_l = "docs/"
+                href = "%s/%s" % (prefixo(l), rel_l) if rel_l else (prefixo(l) + "/")
                 href = re.sub(r"//+", "/", href)
                 atual = ' aria-current="true"' if l == lang else ""
-                itens.append('<a href="%s" hreflang="%s"%s>%s</a>' % (href, LOCALE[l], atual, l.upper()))
-            return '<div class="lang-switch" role="group" aria-label="%s">%s</div>' % (
-                html.escape(s["ui"]["idioma"]), "".join(itens))
+                itens.append('<li><a href="%s" lang="%s" hreflang="%s"%s>%s</a></li>'
+                             % (href, LOCALE[l], LOCALE[l], atual, html.escape(IDIOMA_NATIVO[l])))
+            rotulo = html.escape(s["ui"]["idioma"])
+            return ('<details class="lang-dd"><summary aria-label="%s: %s">'
+                    '<svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" '
+                    'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" '
+                    'd="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>'
+                    '<span>%s</span></summary><ul>%s</ul></details>'
+                    % (rotulo, html.escape(IDIOMA_NATIVO[lang]), html.escape(IDIOMA_NATIVO[lang]),
+                       "".join(itens)))
 
         # ---- landing ----
         corpo = preencher(tpl["landing"], dict(comum, **{
@@ -487,8 +517,10 @@ def gerar(destino):
         # (guardado para o llms.txt, gerado uma vez depois do loop)
         # Sem esta página, /docs/ é um diretório sem index e o servidor
         # responde 403 — e é para /docs/ que o menu aponta.
-        paginas = carregar_docs(lang)
-        paginas_por_idioma[lang] = paginas
+        tem_docs = lang in DOCS
+        paginas = carregar_docs(lang if tem_docs else PADRAO)
+        if tem_docs:
+            paginas_por_idioma[lang] = paginas
         grupos, ordem_g = {}, []
         for pg in paginas:
             if pg["grupo"] not in grupos:
@@ -499,7 +531,7 @@ def gerar(destino):
         for g in ordem_g:
             cartoes = "".join(
                 '<a class="surface" href="%s/docs/%s/"><h3>%s</h3><p>%s</p></a>'
-                % (pfx, pg["slug"], html.escape(pg["titulo"]), html.escape(pg["descricao"]))
+                % (prefixo_docs(lang), pg["slug"], html.escape(pg["titulo"]), html.escape(pg["descricao"]))
                 for pg in grupos[g])
             secoes.append('<h2>%s</h2><div class="surface-grid">%s</div>'
                           % (html.escape(g), cartoes))
@@ -528,7 +560,7 @@ def gerar(destino):
         urls.append(("%s%s/docs/" % (BASE_URL, pfx), 0.9))
 
         # ---- páginas ----
-        for idx, p in enumerate(paginas):
+        for idx, p in enumerate(paginas if tem_docs else []):
             corpo_html, sumario = markdown(p["corpo"], s["ui"])
             # O autor escreve sempre "/docs/x/"; o idioma que não fica na raiz
             # recebe o prefixo aqui, para que a mesma frase sirva aos dois.
@@ -560,7 +592,7 @@ def gerar(destino):
             }))
             alt_pagina = "".join(
                 '<link rel="alternate" hreflang="%s" href="%s%s/%s">' % (LOCALE[l], BASE_URL, prefixo(l), rel)
-                for l in IDIOMAS)
+                for l in DOCS)
             pagina = preencher(tpl["base"], dict(comum, **{
                 "titulo": html.escape("%s — %s" % (p["titulo"], s["ui"]["docs"])),
                 "descricao": html.escape(p["descricao"]),
@@ -619,7 +651,7 @@ def gerar(destino):
             % (html.escape(s["ui"]["erro_titulo"]), html.escape(s["ui"]["erro_texto"]),
                html.escape(s["ui"]["erro_home"]), html.escape(s["ui"]["docs"])))
     escrever(destino, "404.html", preencher(tpl["base"], {
-        "lang": LOCALE[PADRAO], "prefixo": "", "repo": REPO, "ano": "2026",
+        "lang": LOCALE[PADRAO], "prefixo": "", "prefixo_docs": "", "repo": REPO, "ano": "2026",
         "fontes": fontes(),
         "titulo": html.escape(s["ui"]["erro_titulo"]),
         "descricao": html.escape(s["ui"]["erro_texto"]),
@@ -707,7 +739,7 @@ def llms_txt(paginas, lang, pfx):
     traducao = "".join(
         "\nThe same documentation in %s: %s%s/docs/ (append `index.md` likewise).\n"
         % (IDIOMA_NOME[l], BASE_URL, prefixo(l))
-        for l in IDIOMAS if l != lang)
+        for l in DOCS if l != lang)
 
     return """# brevis.sh
 

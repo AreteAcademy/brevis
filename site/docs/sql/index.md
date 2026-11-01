@@ -1,61 +1,61 @@
 # SQL
 
-> Arquivos .sql comuns viram tabelas e views, na ordem de dependência — como uma etapa do workflow ou sozinho.
+> Plain .sql files become tables and views, in dependency order — as a workflow step or on their own.
 
-*https://brevis.sh/docs/sql/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/sql/ · brevis.sh docs (en-US)*
 
 ---
 
-Sem template: um modelo é um arquivo que continua SQL válido, e a ordem vem da leitura do próprio SQL. Postgres e BigQuery, com a mesma suíte de conformidade.
+No templating: a model is a file that stays valid SQL, and the order comes from reading the SQL itself. Postgres and BigQuery, under the same conformance suite.
 
-![O fluxo do SQL: o brevis-sql lê raw.orders, uma tabela que o SDK ou o Gateway pousou. O modelo staging.stg_orders vira uma view sobre ela, e marts.orders uma tabela sobre essa view; a ordem vem da leitura do SQL. Os mesmos modelos rodam no Postgres ou no BigQuery.](/assets/flow-sql.svg)
+![The SQL flow: brevis-sql reads raw.orders, a table the SDK or the Gateway landed. The model staging.stg_orders becomes a view over it, and marts.orders a table over that view; the order comes from reading the SQL. The same models build on Postgres or BigQuery.](/assets/flow-sql.svg)
 
-## Seis comandos
+## Six commands
 
-| comando | o que faz |
+| command | what it does |
 |---|---|
-| `brevis-sql compile` | lê todos os modelos e resolve todas as arestas, **sem se conectar a nada** |
-| `brevis-sql graph` | imprime as arestas inferidas, para que uma errada seja vista e não descoberta |
-| `brevis-sql build` | cria ou substitui cada modelo, na ordem de dependência |
-| `brevis-sql test` | roda os testes de cada modelo; cada um é um SELECT que não pode encontrar nada |
-| `brevis-sql serve` | responde previews e consultas somente-leitura por HTTP, para que um console não precise de credencial de warehouse |
-| `brevis-sql generation bump` | registra que uma tabela foi reconstruída, para que as respostas em cache do `brevis-sql-api` sobre ela fiquem velhas — o `build --generations-from` faz isso para cada modelo que constrói |
+| `brevis-sql compile` | parses every model and resolves every edge, **connecting to nothing** |
+| `brevis-sql graph` | prints the inferred edges, so a wrong one is seen and not discovered |
+| `brevis-sql build` | creates or replaces every model, in dependency order |
+| `brevis-sql test` | runs every model's tests; each is a SELECT that must find nothing |
+| `brevis-sql serve` | answers read-only previews and queries over HTTP, so a console needs no warehouse credential |
+| `brevis-sql generation bump` | records that a table was rebuilt, so `brevis-sql-api`'s cached answers over it go stale — `build --generations-from` does it for every model it builds |
 
-`--select orders+` restringe qualquer um deles a um modelo e a tudo que vem depois dele.
+`--select orders+` narrows any of them to one model and everything downstream of it.
 
 
-## `brevis-sql serve` — ler um warehouse sem credencial
+## `brevis-sql serve` — reading a warehouse without a credential
 
-As telas Data e SQL do console mostram o que aterrissou e o que há dentro. Nenhuma das duas alcança um warehouse: elas perguntam a este serviço, que roda ao lado delas e guarda a credencial que o motor deliberadamente não tem.
+The console's Data and SQL screens show what landed and what is in it. Neither reaches a warehouse: they ask this service, which runs beside them and holds the credential the engine deliberately does not.
 
 ```bash
 brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088
 ```
 
-Um teto não é um orçamento: `--max-bytes` limita uma query, e `--budget` limita a soma por conexão por hora — verificado contra a cotação, para que a recusa venha antes do dinheiro. Ele só limita warehouses que reportam bytes, ou seja BigQuery e não Postgres; o banner de boot diz qual postura está em vigor, inclusive a de não ter nenhuma.
+A ceiling is not a budget: `--max-bytes` bounds one query, and `--budget` bounds the sum per connection per hour — checked against the quote, so a refusal comes before the money is spent. It bounds only warehouses that report bytes, which is BigQuery and not Postgres; the boot banner says which posture is in force, including having none.
 
-**Só o que o arquivo declara é alcançável**, e por padrão nada do que ele faz é escrita: cada statement é classificado antes de rodar, uma leitura que varreria mais que `--max-bytes` é precificada e recusada antes de custar qualquer coisa, e é pedido ao próprio warehouse que recuse escritas. A linha de auditoria carrega um hash do statement e nunca o statement.
+**Only what the file declares is reachable**, and by default nothing it does is a write: every statement is classified before it runs, a read that would scan more than `--max-bytes` is priced and refused before it costs anything, and the warehouse itself is asked to refuse writes. The audit line carries a hash of the statement and never the statement.
 
-**Ele não precisa mais de uma service account própria.** O `brevis-sql build` cria tabelas, então o papel dele escreve — e um serviço que recusasse qualquer papel assim significava uma segunda conta para criar, guardar e rotacionar. O papel deixou de ser a única coisa segurando a linha: o Postgres roda cada statement dentro de uma transação aberta `READ ONLY` — onde `SELECT nextval('s')`, uma escrita que nenhum classificador enxerga por dentro, volta recusada pelo próprio Postgres — e o BigQuery informa que tipo de statement é no mesmo dry run que o precifica, então um `CREATE TABLE` ou um `EXPORT DATA` é recusado pelo veredito do warehouse. Um warehouse que não ofereça nenhum dos dois continua recusando uma credencial que escreve.
+**It no longer needs a service account of its own.** `brevis-sql build` creates tables, so its role can write, and a service that refused any such role meant a second account to create, keep and rotate. The role is no longer the only thing holding the line: Postgres runs each statement inside a transaction opened `READ ONLY` — where `SELECT nextval('s')`, a write no classifier can see inside, comes back refused by Postgres itself — and BigQuery reports what kind of statement it is on the dry run that prices it, so a `CREATE TABLE` or an `EXPORT DATA` is refused on the warehouse's own verdict. A warehouse that can offer neither still refuses a credential that can write.
 
-Fora de `BREVIS_ENV=local` um token é obrigatório e o serviço não sobe sem ele.
+Outside `BREVIS_ENV=local` a token is required and the service will not start without one.
 
-### Um warehouse de desenvolvimento que alguém pode alterar
+### A development warehouse somebody may change
 
 ```bash
 BREVIS_SQL_SERVE_WRITES=warehouse_dev
 ```
 
-Ela **nomeia conexões**. Um serviço alcança vários warehouses, e liberar aquele contra o qual você desenvolve não pode liberar o que está ao lado. Numa conexão nomeada toda camada desce e este serviço fica exatamente tão poderoso quanto a credencial dele — o teto de linhas limita uma tela e o teto de bytes limita dinheiro, e nenhum dos dois limita o que um statement muda.
+It **names connections**. One service reaches several warehouses, and unlocking the one you develop against must not unlock the one beside it. On a named connection every layer stands down and this service is exactly as powerful as its credential — the row ceiling bounds a screen and the byte ceiling bounds money, and neither bounds what a statement changes.
 
-Um token é obrigatório onde quer que ela esteja definida, e `BREVIS_ENV=local` não é exceção. O banner de boot nomeia cada conexão liberada, o console desenha um aviso acima do editor, e `brevis_sql_writable_connection` aparece nas métricas. **Deixe-a indefinida em produção**; nenhum manifest deste repositório a define.
+A token is required wherever it is set, and `BREVIS_ENV=local` is not an exception. The boot banner names every unlocked connection, the console draws a banner above the editor, and `brevis_sql_writable_connection` appears on the metrics. **Leave it unset in production**; no manifest in this repository sets it.
 
-Os tokens podem ser **nomeados**: `BREVIS_SQL_SERVE_TOKEN_CONSOLE=…` declara um chamador chamado `console`, e cada linha de auditoria daquele portador carrega `"caller":"console"`. A identidade é a credencial, e não um cabeçalho que o chamador preenche, então o log não pode dizer nada que o portador daquele token não tenha portado. Um token recusado também deixa uma linha, e nunca registra o que foi apresentado.
+Tokens can be **named**: `BREVIS_SQL_SERVE_TOKEN_CONSOLE=…` declares a caller called `console`, and every audit line that bearer produces carries `"caller":"console"`. Identity is the credential rather than a header a caller fills in, so the log cannot say anything the holder of that token did not hold. A refused token leaves a line too, and never records what was presented.
 
-## Um modelo é um arquivo que continua SQL válido
+## A model is a file that stays valid SQL
 
-A configuração é um comentário de bloco no topo. O arquivo abre no editor com
-realce, roda à mão num console, e `psql -f` o executa.
+The configuration is a leading block comment, so the file opens in an editor
+with highlighting, runs in a console by hand, and `psql -f` executes it.
 
 ```sql
 /* brevis
@@ -68,14 +68,14 @@ tests:
 select * from staging.stg_orders
 ```
 
-**Sem template.** `models/<schema>/<nome>.sql` é `<schema>.<nome>`, e as
-dependências vêm da leitura do próprio SQL, não de uma função que você precisa
-escrever. `brevis-sql graph` imprime o que foi inferido; `depends_on:` no
-cabeçalho é a correção explícita para o caso raro em que ele erra.
+**No templating.** `models/<schema>/<name>.sql` is `<schema>.<name>`, and
+dependencies come from reading the SQL rather than from a function call you
+have to write. `brevis-sql graph` prints what was inferred; `depends_on:` in
+the header is the explicit override for the rare miss.
 
-## Do compile ao test
+## From compile to test
 
-Dois modelos: uma view que limpa `raw.orders`, e uma tabela que depende dela.
+Two models: a view that cleans `raw.orders`, and a table that depends on it.
 
 `models/staging/stg_orders.sql`:
 
@@ -102,7 +102,7 @@ from staging.stg_orders
 group by customer_id
 ```
 
-`compile` e `graph` não se conectam a nada:
+`compile` and `graph` connect to nothing:
 
 ```bash
 docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.6.0 \
@@ -127,7 +127,7 @@ marts.orders
   ├─ staging.stg_orders
 ```
 
-`build` e `test`, contra um Postgres:
+`build` and `test`, against a Postgres:
 
 ```bash
 docker run --rm -v ./project:/project:ro \
@@ -153,11 +153,11 @@ docker run --rm -v ./project:/project:ro \
 2 tests passed on postgres
 ```
 
-A saída real, com a imagem publicada — compile e graph não se conectam a nada. Contra um Postgres, build e test fecham com "2 models built" e "2 tests passed".
+The real output, from the published image — compile and graph connect to nothing. Against a Postgres, build and test end with "2 models built" and "2 tests passed".
 
-### Quando um teste falha
+### When a test fails
 
-Com um pedido sem cliente em `raw.orders`, o `build` passa e o teste `not_null` não. A falha diz o modelo, a coluna, quantas linhas e **a consulta** — que é o que você cola num console para continuar estreitando:
+With an order that has no customer in `raw.orders`, `build` passes and the `not_null` test does not. The failure names the model, the column, how many rows and **the query** — which is the thing you paste into a console and keep narrowing:
 
 ```text
 FAIL  marts.orders                   not_null         customer_id          1 row(s)
@@ -165,60 +165,58 @@ FAIL  marts.orders                   not_null         customer_id          1 row
 brevis-sql: 1 of 2 tests failed
 ```
 
-O processo sai com código 1, e a etapa do workflow falha com ele.
+The process exits with code 1, and the workflow step fails with it.
 
-## Testes são SELECTs que devolvem as linhas que violam
+## Tests are SELECTs that return violating rows
 
-`not_null`, `unique`, `accepted_values`, `relationships`. Zero linhas é sucesso, e não há mais nada a interpretar.
+`not_null`, `unique`, `accepted_values`, `relationships`. Zero rows is a pass, and there is nothing else to interpret.
 
-## Ele diz o que escreveu
+## It says what it wrote
 
-Cada modelo materializado imprime a linha `@brevis:` que o engine do Brevis já
-lê, então ele aparece em `/data` ao lado de todo o resto (veja a saída do
-`build` acima). Uma view não informa contagem de linhas em vez de informar
-zero: ela não guarda nenhuma, e um zero ali seria indistinguível de uma
-tabela que está de fato vazia.
+Every materialized model prints the `@brevis:` line the Brevis engine already
+reads, so it appears on `/data` beside everything else (see `build`'s output
+above). A view reports no row count rather than zero: it holds none, and a
+zero there is indistinguishable from a table that really is empty.
 
-## Dois bancos, uma suíte
+## Two warehouses, one suite
 
-PostgreSQL e BigQuery (`--dialect bigquery`), e os dois rodam a mesma suíte de
-testes — escrita quando havia uma só implementação, para que a segunda não
-pudesse divergir em silêncio.
+PostgreSQL and BigQuery (`--dialect bigquery`), and both run the same suite of
+tests — written while there was a single implementation, so the second could
+not quietly diverge.
 
-O BigQuery autentica com Application Default Credentials: num workload
-identity, é a identidade do próprio pod, e `--dsn-from` nomeia a variável que
-guarda o id do projeto.
+BigQuery authenticates with Application Default Credentials: on a workload
+identity, that is the pod's own identity, and `--dsn-from` names the variable
+holding the project id.
 
 ## 13 MB
 
-Distroless, sem root, sem shell. O cliente oficial do BigQuery tem 31 MB e 526
-pacotes num binário vazio; por isso este fala com o BigQuery pelo endpoint
-REST — cerca de 200 linhas, com um teste para cada jeito de errar em silêncio.
-Um gate no repositório recusa aquele cliente pelo nome, para que a decisão
-sobreviva a uma atualização de dependências de rotina.
+Distroless, nonroot, no shell. The official BigQuery client is 31 MB and 526
+packages in an empty binary, so this talks to BigQuery over its REST endpoint
+instead — about 200 lines, with a test for each way it could be quietly
+wrong. A gate in the repository refuses that client by name, so the decision
+survives a routine dependency bump.
 
-## Verificado contra o dbt
+## Verified against dbt
 
-O jaffle-shop, construído por esta imagem sobre os mesmos dados que o dbt usou:
+jaffle-shop, built by this image on the same seed data dbt used:
 
-|  | resultado |
+|  | result |
 |---|---|
-| linhas e md5 de cada linha, por modelo | **idênticos, 13 de 13** |
-| colunas e tipos, por modelo | **idênticos, 13 de 13** |
-| 13 modelos, primeiro build | 1,56 s |
+| rows and md5 of every row, per model | **identical, 13 of 13** |
+| columns and types, per model | **identical, 13 of 13** |
+| 13 models, first build | 1.56 s |
 
-## O que ele não faz
+## What it does not do
 
-**Nenhuma compatibilidade com o dbt**, e isso é uma decisão, não uma lacuna.
-Cerca de um terço dos modelos de um projeto dbt real não usa nada além de
-`ref`, `source` e `config`; o resto usa macros, e pacotes são template por
-definição. Meia compatibilidade que ninguém consegue prever é pior que
-nenhuma.
+**No dbt compatibility**, and that is a decision rather than a gap. About a
+third of a real dbt project's models use nothing beyond `ref`, `source` and
+`config`; the rest use macros, and packages are templating by design. Half a
+compatibility nobody can predict is worse than none.
 
-## Por onde seguir
+## Where to go next
 
-| se você quer | vá para |
+| if you want | go to |
 |---|---|
-| ver onde o SQL entra entre as quatro peças | [Ecossistema](/docs/ecosystem/index.md) |
-| rodar o brevis-sql como uma etapa agendada | [Core](/docs/core/index.md) |
-| pousar o dado que ele vai modelar | [SDK em Go](/docs/sdk/index.md) ou [Ingestão](/docs/ingestion/index.md) |
+| see where SQL sits among the four pieces | [Ecosystem](/docs/ecosystem/index.md) |
+| run brevis-sql as a scheduled step | [Core](/docs/core/index.md) |
+| land the data it will model | [Go SDK](/docs/sdk/index.md) or [Ingestion](/docs/ingestion/index.md) |

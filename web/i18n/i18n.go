@@ -41,7 +41,7 @@ import (
 
 // Langs are the languages the console speaks, English first: it is the
 // default and the fallback.
-var Langs = []string{"en", "pt-BR", "es"}
+var Langs = []string{"en", "es", "pt-BR", "fr", "de", "zh-CN", "ja", "ru", "ko", "hi", "id"}
 
 //go:embed locales/*.json
 var locales embed.FS

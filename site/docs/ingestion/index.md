@@ -1,23 +1,23 @@
-# Ingestão
+# Ingestion
 
-> Um endpoint HTTP que pousa dados: valida, dá identidade, agrupa e entrega. Sua própria imagem, sua própria versão.
+> An HTTP endpoint that lands data — validate, identify, batch, deliver. Its own image, its own version.
 
-*https://brevis.sh/docs/ingestion/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/ingestion/ · brevis.sh docs (en-US)*
 
 ---
 
-O gateway de ingestão é um **endpoint HTTP que pousa dados**. Um cliente faz
-`POST`, recebe `202`, e o que chegou vira registro num tópico, numa tabela ou
-num bucket.
+The ingestion gateway is an **HTTP endpoint that lands data**. A client `POST`s,
+gets a `202`, and what arrived becomes a record on a topic, in a table, or in a
+bucket.
 
-![O fluxo do Gateway: um POST em /v1/clicks é decodificado, recebe seu ingestion_id, é respondido com 202 na hora e entra num lote; um worker entrega o lote ao destino, aqui arquivos. O Gateway não tem banco de dados.](/assets/flow-gateway.svg)
+![The Gateway flow: a POST to /v1/clicks is decoded, given its ingestion_id, answered with 202 straight away and appended to a batch; a worker delivers the batch to the sink, here files. The Gateway has no database.](/assets/flow-gateway.svg)
 
-Ele é **outro binário, outro módulo Go, outra versão e outra imagem**. O motor
-orquestra e nunca toca no dado do cliente; o gateway não faz outra coisa. A
-numeração é independente de propósito: o motor está em 0.17 e o gateway em 0.27,
-que é a afirmação verdadeira.
+It is **a different binary, a different Go module, a different version and a
+different image**. The engine orchestrates and never touches customer data; the
+gateway does nothing else. The numbering is independent on purpose: the engine
+is at 0.17 and the gateway at 0.27, which is the true statement.
 
-Com o `gateway.yaml` da seção abaixo, e a chave que ele pede em `keys_from`:
+With the `gateway.yaml` from the section below, and the key it asks for in `keys_from`:
 
 ```bash
 docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
@@ -32,7 +32,7 @@ docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
 2026/10/09 01:03:01 metrics on :9090/metrics
 ```
 
-Um `POST` volta `202` na hora:
+A `POST` comes back `202` straight away:
 
 ```bash
 curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
@@ -43,18 +43,18 @@ curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
 {"accepted":1,"rejected":null}
 ```
 
-Sem credenciais do Google Cloud, o lote é tentado de novo e vai para a fila de
-descarte — veja [Quando o destino recusa](#quando-o-destino-recusa).
+With no Google Cloud credentials, the batch is retried and goes to the dead
+letter — see [When the sink refuses](#when-the-sink-refuses).
 
-A imagem `-slim` carrega só os destinos `auto_table`, `files` e `postgres`; o
-`pubsub` deste exemplo e os outros estão na imagem completa. Uma slim com um
-destino que ela não tem é recusada na subida, com o motivo.
+The `-slim` image carries only the `auto_table`, `files` and `postgres` sinks;
+this example's `pubsub` and the others are in the full image. A slim one with a
+sink it does not carry is refused at start, with the reason.
 
-## O arquivo é o contrato
+## The file is the contract
 
-Não há código para escrever, exceto os *hooks*. Streams, caminhos, formatos,
-identidade, retry, destino e fila de descarte — tudo no YAML, e todo campo é
-recusado quando não pode ser honrado.
+There is no code to write except the hooks. Streams, paths, formats, identity,
+retry, destination and dead letter — all in the YAML, and every field refused
+when it cannot be honoured.
 
 ```yaml
 name: events_gateway
@@ -62,19 +62,19 @@ name: events_gateway
 listen:
   addr: :8080
   max_body: 1MiB
-  idle_timeout: 90s                  # o padrão; não pode ser desligado
-  max_conn_age: 60s                  # desligado a menos que você ponha
+  idle_timeout: 90s                  # the default; it cannot be turned off
+  max_conn_age: 60s                  # off unless set — see below
   auth:
     type: bearer
-    keys_from: BREVIS_INGEST_KEYS   # o NOME da variável, nunca as chaves
+    keys_from: BREVIS_INGEST_KEYS   # the NAME of the variable, never the keys
 
 metrics:
-  addr: :9090                        # porta própria, nunca a de ingestão
+  addr: :9090                        # its own port, never the ingest one
 
 streams:
   - name: clicks
     path: /v1/clicks
-    format: json                     # json | array | ndjson — declarado, nunca adivinhado
+    format: json                     # json | array | ndjson — declared, never sniffed
 
     identity:
       provider: web
@@ -95,67 +95,66 @@ streams:
       path: /var/dead-letter/
 ```
 
-`format` é declarado e nunca inferido: adivinhar é como um lote de mil vira uma
-linha contendo um array.
+`format` is declared and never guessed: guessing is how a batch of a thousand
+becomes one row holding an array.
 
-## O `ingestion_id`, que é o ponto
+## The `ingestion_id`, which is the point
 
-Todo registro sai com um `ingestion_id`: um **UUID v5 congelado** sobre
+Every record leaves with an `ingestion_id`: a **frozen UUID v5** over
 `provider|entity|source_key|record_ts`.
 
-É o **mesmo id** que um fetcher em lote calcula para o mesmo registro. Uma linha
-que o gateway grava e uma linha que um pipeline do [SDK](/docs/sdk/index.md) grava são
-*a mesma linha*, sem nenhuma reconciliação entre as duas.
+It is the **same id** a batch fetcher computes for the same record. A row the
+gateway lands and a row an [SDK](/docs/sdk/index.md) pipeline lands are *one row*,
+with no reconciliation between them.
 
-Duas consequências práticas:
+Two practical consequences:
 
-- **Um `POST` repetido é o mesmo registro.** O cliente pode reenviar sem medo;
-  um destino com `merge` absorve a repetição em vez de gravar uma segunda
-  linha.
-- **A fórmula é congelada.** Os quatro campos são obrigatórios, e deixar um de
-  fora produz um id *diferente*, não um id mais fraco. O arquivo recusa a
-  configuração incompleta em vez de aceitá-la.
+- **A retried `POST` is the same record.** A client can send again without fear;
+  a destination with `merge` absorbs the retry instead of writing a second row.
+- **The formula is frozen.** All four fields are required, and leaving one out
+  produces a *different* id rather than a weaker one. The file refuses the
+  incomplete configuration instead of accepting it.
 
-Ferramentas de ingestão movem bytes muito bem e não têm opinião sobre o que um
-registro *é*. Essa opinião é o que o gateway acrescenta.
+Ingestion tools move bytes very well and have no opinion about what a record
+*is*. That opinion is what the gateway adds.
 
-## A requisição não espera o destino
+## The request never waits for the sink
 
-Ela decodifica, roda o hook, calcula a identidade, empilha no buffer e volta.
-**Só isso.** Um lote cheio vai para uma pool de workers, e a publicação, o
-`COPY`, os retries e a fila de descarte acontecem lá.
+It decodes, runs the hook, computes the identity, appends to a buffer and
+returns. **That is all.** A full batch goes to a worker pool, and the publish,
+the `COPY`, the retries and the dead letter all happen there.
 
-Isso não é cosmético. Antes de existir, a requisição que por acaso fechava o
-lote rodava a entrega inline — então um chamador a cada `flush.records` pagava
-a ida e volta inteira, e com o destino fora, a janela inteira de retry. Um p99
-moldado por quem teve azar não é um p99 sobre o qual alguém age.
+This is not cosmetic. Before it existed, the request that happened to fill a
+batch ran the delivery inline — so one caller in every `flush.records` paid the
+full round trip, and when the sink was down, the full retry window. A p99 shaped
+by which caller was unlucky is not a p99 anybody can act on.
 
 ```yaml
 buffer:
   flush:
-    every: 1s         # idade
-    records: 500      # contagem
-    size: 8MiB        # bytes — o que for atingido PRIMEIRO manda o lote
-    max_age: 30s      # e este manda DE QUALQUER JEITO
-  workers: 4          # lotes entregues ao mesmo tempo
-  queue: 64           # lotes cheios esperando um worker
-  max_records: 10000  # eventos em memória antes de o gateway dizer não
-  max_bytes: 256MiB   # o mesmo teto em bytes
+    every: 1s         # age
+    records: 500      # count
+    size: 8MiB        # bytes — whichever is crossed FIRST sends the batch
+    max_age: 30s      # and this one sends it REGARDLESS
+  workers: 4          # batches delivered at once
+  queue: 64           # full batches that may wait for a worker
+  max_records: 10000  # events held in memory before the gateway says no
+  max_bytes: 256MiB   # the same ceiling in bytes
 ```
 
-### O relógio do flush pertence ao deployment
+### The flush clock belongs to the deployment
 
-`buffer.flush.every` é um `time.AfterFunc` em **cada réplica**. Então os load
-jobs que uma tabela recebe são função da contagem de réplicas, não do tráfego:
+`buffer.flush.every` is a `time.AfterFunc` in **every replica**. So the load
+jobs a table receives are a function of replica count, not of traffic:
 
 ```
-jobs / dia / tabela  =  réplicas × 86400 / every
+jobs / day / table  =  replicas × 86400 / every
 ```
 
-No BigQuery, contra 1.500 por tabela por dia, **duas réplicas a 60s já são 192%
-de uma cota que não sobe** — antes de um HPA fazer qualquer coisa. E a direção é
-contraintuitiva: o gateway escala para concorrência HTTP enquanto o destino quer
-concentração.
+On BigQuery, against 1,500 per table per day, **two replicas at 60s is already
+192% of a quota that cannot be raised** — before an HPA does anything. And the
+direction is backwards from intuition: the gateway scales out for HTTP
+concurrency while the sink wants concentration.
 
 ```yaml
 buffer:
@@ -165,145 +164,144 @@ buffer:
     claim: true
 ```
 
-Com `claim`, a réplica pega um *set-if-absent* para o stream e a janela antes de
-descarregar no timer — e o timer acorda na **fronteira da janela**, para todas
-pedirem a mesma chave. Um flush por janela, qualquer que seja a contagem de
-réplicas. E ele se auto-ajusta: uma réplica só espera quando outra está de fato
-competindo, então escalar para baixo devolve a latência menor sem ninguém editar
-config.
+With `claim`, a replica takes a set-if-absent for the stream and the window
+before flushing on the timer — and the timer wakes on the **window boundary**,
+so every replica asks for the same key. One flush per window, whatever the
+replica count. And it self-adjusts: a replica only waits when another is
+actually competing, so scaling in restores the lower latency with nobody
+editing a config.
 
-Medido com duas réplicas e um Redis, janelas de 5s: **8 load jobs viraram 6, uma
-por janela, alternando 3/3** — nenhuma janela com duas.
+Measured with two replicas and one Redis, 5s windows: **8 load jobs became 6,
+one per window, alternating 3/3** — no window with two.
 
-**Precisa de backend compartilhado.** Com `memory` cada réplica ganha o próprio
-claim e nada coordena. E **exige `max_age`**, que o config recusa sem: o claim
-transforma `every` em alvo, e alvo sem teto é latência sem limite.
+**It needs a shared backend.** With `memory` every replica wins its own claim
+and nothing coordinates. And it **requires `max_age`**, which the config
+refuses without: the claim turns `every` into a target, and a target with no
+ceiling is latency with nothing bounding it.
 
-**Metastore fora do ar descarrega assim mesmo.** Perder coordenação custa load
-jobs; recusar o flush segura dado. Verificado derrubando o Redis no meio de uma
-corrida: 40 de 40 eventos pousaram, zero segurados.
+**An unreachable metastore flushes anyway.** Losing coordination costs load
+jobs; refusing to flush holds data. Verified by killing Redis mid-run: 40 of 40
+events landed, nothing held.
 
-**`outcome="unreachable"` é o que merece alerta.** O backend não pôde ser
-consultado, então o claim falhou aberto: a coordenação está desligada e os load
-jobs voltaram a multiplicar por contagem de réplica — em silêncio, porque todo
-flush continua parecendo um flush.
+**`outcome="unreachable"` is the one worth an alert.** The backend could not be
+asked, so the claim failed open: coordination is off and the load jobs are
+multiplying by replica count again — silently, because every flush still looks
+like a flush.
 
-E o claim dá **exclusividade, não justiça**: quem pede primeiro vence. Uma
-corrida real com duas réplicas mediu 4/1, não uma divisão par. É o `max_age` que
-impede a azarada de passar fome.
+And the claim gives **exclusivity, not fairness**: whoever asks first wins. A
+real two-replica run measured 4/1, not an even split. `max_age` is what stops
+the unlucky one starving.
 
-Com `claim: true` e `metastore: memory`, o gateway avisa **uma vez no boot**:
-cada réplica vence o próprio claim, então tudo parece certo e nada coordena.
+With `claim: true` and `metastore: memory` the gateway warns **once at boot**:
+every replica wins its own claim, so everything looks right and nothing
+coordinates.
 
-### `every` é um alvo; `max_age` é uma promessa
+### `every` is a target; `max_age` is a promise
 
-Os três gatilhos acima decidem quando um lote **tenta** sair. O `max_age` decide
-quando ele sai **de qualquer jeito**.
+The three triggers above decide when a batch **tries** to leave. `max_age`
+decides when it leaves **regardless**.
 
-Hoje a diferença é inerte, porque nada adia o alvo. Ela passa a valer quando o
-relógio do flush deixar de ser por processo: `buffer.flush.every` é um
-`time.AfterFunc` em cada réplica, então o número de load jobs que uma tabela
-recebe é função da **contagem de réplicas**, não do tráfego —
-`réplicas × 86400 / every`. No BigQuery, com 1.500 por tabela por dia, **duas
-réplicas a 60s já são 192% da cota**.
+Today the difference is inert, because nothing defers the target. It starts to
+matter once the flush clock stops being per-process: `buffer.flush.every` is a
+`time.AfterFunc` in each replica, so the number of load jobs a table receives is
+a function of **replica count**, not of traffic — `replicas × 86400 / every`. On
+BigQuery, against 1,500 per table per day, **two replicas at 60s is already 192%
+of the quota**.
 
-Quando uma réplica puder ceder a janela para outra, ela continua enchendo — e é
-o `max_age` que garante que ninguém segura dado indefinidamente esperando a vez.
+Once a replica can yield a window to another it keeps filling, and `max_age` is
+what stops anyone holding data indefinitely waiting for a turn.
 
-Ele também resolve o dreno: o que um buffer pode estar **segurando** no
-`SIGTERM` passa a ser limitado por ele, e é dele que sai o
-`terminationGracePeriodSeconds` que o gateway imprime no boot.
+It also settles the drain: what a buffer can be **holding** at `SIGTERM` becomes
+bounded by it, and the `terminationGracePeriodSeconds` the gateway prints at
+boot is derived from it.
 
-Um teto **abaixo** do alvo é recusado no carregamento — significaria que o alvo
-nunca se aplica.
+A ceiling **below** the target is refused at load — it would mean the target
+never applies.
 
-### Por que existe um gatilho de tamanho
+### Why there is a size trigger
 
-Os outros dois são **contagens**, e uma contagem não distingue 500 eventos de
-2 KB de 500 eventos de 2 MB — 1 MB contra 1 GB, o mesmo número no arquivo. O
-`max_records: 10000` tem o mesmo ponto cego: são 20 MB ou 20 GB, e nada no YAML
-conseguia dizer qual.
+The other two are **counts**, and a count cannot tell 500 events of 2 KB from
+500 of 2 MB — 1 MB against 1 GB, the same number in the file. `max_records:
+10000` has the same blind spot: 20 MB or 20 GB, and nothing in the YAML could
+say which.
 
-Um produtor que passa a mandar o documento inteiro em vez do id derruba o pod, e
-antes disso **não existia campo que expressasse o limite**.
+A producer who starts sending the whole document instead of its id takes the pod
+down, and until this existed **no field could have expressed the limit**.
 
-O tamanho é medido no que **chegou** — não no que o evento pesa em memória (um
-`map[string]any` é várias vezes o JSON dele) e não depois de um hook que o
-infle. É uma aproximação, e é a certa: sai de graça no decode, anda junto com o
-payload, e a coisa contra a qual ela protege é um registro que cresceu dez
-vezes.
+Size is measured on what **arrived** — not on what the event weighs in memory (a
+`map[string]any` is several times its JSON) and not after a hook that inflates
+it. An approximation, and the right one: it is free at decode, it moves with the
+payload, and the thing it guards against is a record that grew tenfold.
 
-**No BigQuery `size` é teto, não alvo.** Aquele destino permite 1.500 load jobs
-por tabela por dia — é por isso que `every` tem piso de 60s. Mas o piso governa
-o **timer**: um `size` que dispara a cada poucos segundos passa direto por ele e
-gasta a mesma cota. Nada recusa isso no carregamento, porque a taxa de chegada
-não é conhecível ali. O que existe é visibilidade:
+**On BigQuery `size` is a ceiling, not a target.** That destination allows 1,500
+load jobs per table per day, which is why `every` has a 60-second floor. But the
+floor governs the **timer**: a size that fires every few seconds walks straight
+past it and spends the same quota. Nothing refuses that at load, because the
+arrival rate is not knowable there. What exists instead is visibility:
 
 ```
 brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size
 ```
 
-`trigger="size"` subindo num stream de BigQuery está te dizendo que não é a
-janela que está fazendo o lote.
+`trigger="size"` climbing on a BigQuery stream is telling you the window is not
+what is batching.
 
-Esse contador é por stream, e a cota é por **tabela**: com `auto_table` uma
-rota vira muitas tabelas, e 94 delas reportando um número só não diz nada sobre
-nenhuma. Atrás de `BREVIS_INGESTION_METRICS` existe um que nomeia a tabela:
+That counter is per stream, and the quota is per **table**: with `auto_table`
+one route becomes many tables, and 94 of them reporting one number says nothing
+about any of them. Behind `BREVIS_INGESTION_METRICS` there is one that names it:
 
 ```
 brevis_gateway_table_flushes_total{stream,table,trigger}
 ```
 
-Um flush de uma tabela é um load job dela, então esta é a série para alertar em
-1.200 dos 1.500 que o BigQuery permite. A metade incondicional é uma linha no
-boot, que diz quanto `flush.every` custa por tabela por dia antes de qualquer
-evento chegar.
+One flush of a table is one load job for it, so this is the series to alert on
+at 1,200 of the 1,500 BigQuery allows. The unconditional half is a line at
+boot, which says what `flush.every` costs per table per day before an event
+arrives.
 
-**É limitado, não é "atira e esquece".** Uma goroutine por lote transformaria a
-queda de um destino em memória sem teto. Quando a fila e o buffer estão cheios,
-a resposta é **`503` com `Retry-After`** em vez de um `202` para um evento sem
-lugar. Um evento aceito e nunca entregue é o único desfecho que este serviço
-existe para não ter.
+**It is bounded, not fire-and-forget.** A goroutine per batch would turn a sink
+outage into unbounded memory. When the queue and the buffer are both full, the
+answer is **`503` with `Retry-After`** rather than a `202` for an event with
+nowhere to go. An accepted event that is never delivered is the one outcome this
+service exists to not have.
 
-E esse `503` é **seguro de repetir**, de um jeito que quase nenhum serviço
-consegue afirmar: o `ingestion_id` é função congelada do próprio evento, então
-o mesmo corpo reenviado é o *mesmo registro*.
+And that `503` is **safe to retry**, in a way almost no service can claim: the
+`ingestion_id` is a frozen function of the event itself, so the same body sent
+again is the *same record*.
 
-## Uma conexão decide qual réplica recebe a carga
+## A connection decides which replica gets the load
 
-Atrás de um `ClusterIP` do Kubernetes, o kube-proxy escolhe o backend **uma
-vez por conexão TCP**, não por requisição. A maioria dos clientes mantém
-conexões vivas e as reutiliza, então um produtor com um punhado delas manda
-tudo para as mesmas uma ou duas réplicas, quantas quer que estejam rodando —
-e uma réplica que o HPA adiciona não recebe nada, porque ninguém disca para
-ela.
+Behind a Kubernetes `ClusterIP` Service, kube-proxy picks a backend **once
+per TCP connection**, not per request. Most clients keep connections alive
+and reuse them, so a producer with a handful of them sends everything to the
+same one or two replicas however many are running — and a replica the HPA
+adds receives nothing, because nobody dials it.
 
 ```yaml
 listen:
-  idle_timeout: 90s     # fecha uma conexão a que ninguém voltou
-  max_conn_age: 60s     # depois disso, a próxima resposta pede que o cliente rediscque
+  idle_timeout: 90s     # closes a connection nobody came back to
+  max_conn_age: 60s     # after this, the next response asks the client to redial
 ```
 
-**`max_conn_age` vem desligado**, de propósito: por quanto tempo um cliente
-pode manter uma conexão é política, e troca um handshake dentro do cluster
-por conexão por idade pela carga se espalhando. A requisição é sempre
-servida — o cabeçalho vai na resposta, nada é repetido e nenhum lote se
-perde.
+**`max_conn_age` is off by default**, and that is deliberate: how long a
+client may keep one connection is policy, and it trades one in-cluster
+handshake per connection per age for load that spreads. The request itself is
+always served — the header goes on the response, nothing is retried and no
+batch is lost.
 
-**`idle_timeout` tem padrão e não pode ser desligado.** Servir sem nenhum é
-um descritor de arquivo por cliente abandonado até o processo reiniciar.
-Ponha um valor longo se é isso que você quer; aí é um número que alguém
-escolheu.
+**`idle_timeout` has a default and cannot be turned off.** Serving with none
+is a file descriptor per abandoned client until the process restarts. Set a
+long one if that is what you want; it is then a number somebody chose.
 
-Os dois são independentes: uma conexão encontra o limite que vier primeiro,
-e só chega à idade sendo usada — que é exatamente o produtor de conexão longa
-que a idade existe para reequilibrar.
+The two are independent: a connection meets whichever bound it meets first,
+and a connection only reaches the age by being used — which is exactly the
+long-lived producer the age exists to rebalance.
 
-## Quando o destino recusa
+## When the sink refuses
 
-O lote é tentado de novo — quatro vezes em cerca de sete segundos por padrão,
-dobrando com jitter — e então vai para a **fila de descarte**, com o motivo em
-cada registro:
+The batch is retried — four attempts over roughly seven seconds by default,
+doubling with jitter — and then it goes to the **dead letter**, with the reason
+on every record:
 
 ```json
 {
@@ -315,15 +313,15 @@ cada registro:
 }
 ```
 
-O motivo viaja **no registro** e não só num log, porque quem encontra esse
-arquivo depois tem os eventos e não tem o log — e *por que isto está aqui* é a
-primeira pergunta.
+The reason travels **on the record** and not only in a log, because whoever
+finds that file later has the events and not the log — and *why is this here* is
+their first question.
 
-**Um stream sem `dead_letter` é recusado no carregamento.** Deixar o padrão no
-silêncio colocaria a decisão onde ninguém a toma, e um lote recusado que é só
-uma linha de log é perder dado em silêncio.
+**A stream with no `dead_letter` is refused at load.** Defaulting it to silence
+would put the decision where nobody makes it, and a refused batch that is only a
+log line is losing data quietly.
 
-## O hook é Go, compilado junto
+## The hook is Go, compiled in
 
 ```go
 hooks := gateway.NewHooks()
@@ -333,26 +331,26 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 func enrichClicks(e map[string]any) (map[string]any, error) {
     host, _ := e["host"].(string)
     e["tenant"] = strings.Split(host, ".")[0]
-    return e, nil     // devolver nil DESCARTA o evento, de propósito
+    return e, nil     // returning nil DROPS the event, on purpose
 }
 ```
 
-O YAML nomeia um hook; ele não carrega um. Medido antes de escolher: uma função
-Go custa **93 ns/op**, contra 959 do Starlark e 1.281 do yaegi, sem nada
-acrescentado ao binário — e `plugin.Open` nem é opção, porque sob
-`CGO_ENABLED=0`, que é como todo artefato aqui é compilado, ele devolve
+The YAML names a hook; it does not carry one. Measured before choosing: a Go
+function costs **93 ns/op** against Starlark's 959 and yaegi's 1,281, for
+nothing added to the binary — and `plugin.Open` is not an option at all, because
+under `CGO_ENABLED=0`, which is how every artefact here is built, it returns
 `plugin: not implemented`.
 
-O que isso custa, dito onde alguém vai ler: **acrescentar um hook é recompilar
-e implantar, não mudar configuração.** É a troca certa enquanto os hooks são
-escritos por quem publica o binário, e a errada no dia em que um cliente
-precisar mudar um sem release.
+What it costs, said where somebody will read it: **adding a hook is a rebuild
+and a deploy, not a config change.** That is the right trade while the hooks are
+written by the people who ship the binary, and the wrong one the day a customer
+has to change one without a release.
 
-Um erro no hook manda *aquele* evento para o descarte e nunca derruba o lote ao
-lado. Um `panic` também: ele é recuperado por evento, porque um registro
-malformado não pode derrubar um processo que serve todos os outros streams.
+An error in a hook sends *that* event down the dead-letter path and never fails
+the batch beside it. So does a panic: it is recovered per event, because one
+malformed record must not take down a process serving every other stream.
 
-## Quando o evento é grande demais
+## When an event is too big
 
 ```yaml
 oversize:
@@ -361,8 +359,8 @@ oversize:
   hook: strip_heavy_clicks
 ```
 
-O evento é escrito **inteiro** no `archive`, e uma versão reduzida segue no
-stream carregando o ponteiro de volta:
+The event is written to `archive` **whole**, and a reduced version continues into
+the stream carrying a pointer back:
 
 ```json
 {
@@ -374,105 +372,109 @@ stream carregando o ponteiro de volta:
 }
 ```
 
-É o padrão **Claim Check**, e ele ganha de um `413` seco porque o `413` perde o
-evento — e um payload grande demais costuma ser o mais interessante que alguém
-tem: é a requisição com o documento inteiro anexado, que é o caso que vale
-depurar.
+This is the **Claim Check** pattern, and it beats a flat `413` because a `413`
+loses the event — and an oversized payload is usually the most interesting one
+somebody has: it is the request with the whole document attached, which is the
+case worth debugging.
 
-`larger_than` mede **um evento**, depois do hook. `listen.max_body` é outra
-coisa: limita a **requisição** e recusa com `413` antes de um byte ser lido.
+`larger_than` measures one **event**, after the hook. `listen.max_body` is a
+different thing: it caps a whole **request** and refuses with `413` before a
+byte is parsed.
 
-## O que ele conta
+## What it counts
 
-Onze séries Prometheus, numa **porta própria** — nunca na de ingestão, e essa
-regra pesa mais aqui do que no motor: a porta de ingestão é pública por
-construção, é onde o cliente faz `POST`, então um `/metrics` nela publicaria
-todo nome de stream, caminho e destino para quem encontrasse o path. Declarar o
-mesmo endereço nos dois é recusado no carregamento.
+Eleven Prometheus series, on **its own port** — never the ingest one, and that
+rule matters more here than it does in the engine: the ingest port is public by
+construction, it is where clients `POST`, so a `/metrics` on it would publish
+every stream name, path and destination to whoever found the path. Naming the
+same address for both is refused at load.
 
 ```
-brevis_gateway_events_received_total{stream,format}     contador
-brevis_gateway_events_rejected_total{stream,reason}     contador  por EVENTO, depois do decode
-brevis_gateway_requests_refused_total{stream,reason}    contador  por REQUISIÇÃO: unauthorized|body_too_large|malformed|empty|saturated
-brevis_gateway_batches_total{stream,sink,outcome}       contador  delivered|retried|buried
-brevis_gateway_reconciled_total{stream,sink}            contador  chegou depois da janela de envio; conta também em delivered
-brevis_gateway_flushes_total{stream,trigger}            contador  time|records|size
-brevis_gateway_flush_windows_total{stream,outcome}      contador  won|yielded|ceiling|unreachable
-brevis_gateway_ingested_bytes_total{stream,table}        contador  opt-in
-brevis_gateway_ingested_events_total{stream,table}      contador  opt-in
-brevis_gateway_table_flushes_total{stream,table,trigger}  contador  opt-in
-process_start_time_seconds                              gauge     sem prefixo, de propósito
-brevis_gateway_saturated_total{stream}                  contador  os 503
-brevis_gateway_delivery_seconds{stream,sink}            histograma
+brevis_gateway_events_received_total{stream,format}     counter
+brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
+brevis_gateway_requests_refused_total{stream,reason}    counter  per request: unauthorized|body_too_large|malformed|empty|saturated
+brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_reconciled_total{stream,sink}            counter  landed after the send window; also delivered
+brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
+brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
+brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger} counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
+brevis_gateway_saturated_total{stream}                  counter  the 503s
+brevis_gateway_delivery_seconds{stream,sink}            histogram
 brevis_gateway_buffer_records{stream}                   gauge
 brevis_gateway_queue_batches{stream}                    gauge
 ```
 
-`process_start_time_seconds` **não** leva o prefixo `brevis_`, e isso é
-proposital: coletores procuram exatamente esse nome. Ele diz quando o processo
-começou, e sem ele um coletor que faz ajuste de hora de início — o receptor
-Prometheus do OpenTelemetry, sobre o qual o Google Managed Prometheus é
-construído — ancora cada série cumulativa no **primeiro scrape** e gasta o valor
-dele como linha de base. O resultado é todo contador lendo baixo, com os deltas
-certos e os totais errados.
+`process_start_time_seconds` is **not** prefixed with `brevis_`, and that is
+deliberate: collectors look for exactly that name. It says when the process
+started, and without it a collector that does start-time adjustment — the
+OpenTelemetry Prometheus receiver, which Google Managed Prometheus is built on
+— anchors every cumulative series at its **first scrape** and spends that
+scrape's value as the baseline. The result is every counter reading low, with
+the deltas right and the totals wrong.
 
-As três últimas são as que ninguém pede antes do primeiro incidente.
-`saturated_total` é o único número que diz que um cliente foi mandado esperar;
-`buffer_records` contra `buffer.max_records` é o único que **prevê** isso.
+The last three are the ones nobody asks for until after the first incident.
+`saturated_total` is the only number that says a client was told to back off;
+`buffer_records` against `buffer.max_records` is the only one that **predicts**
+it.
 
-`reason` é um conjunto fechado e nunca o texto do erro: uma string de erro
-carrega nome de tabela, coluna, às vezes linha, e um cliente malformado
-cunharia uma série nova por requisição. O texto fica na fila de descarte, no
-registro.
+`reason` is a closed set and never the error text: an error string carries a
+table name, a column, sometimes a row, and one malformed client would mint a new
+series per request. The text stays in the dead letter, on the record.
 
-## `202`, não `200`
+## `202`, not `200`
 
-O gateway **aceitou** os eventos. Com `durability: memory` — a única camada
-implementada — é tudo o que ele pode afirmar honestamente. A camada que merece
-um `200` é a que já escreveu os eventos em algum lugar, e ela não existe.
+The gateway has **accepted** the events. With `durability: memory` — the only
+tier implemented — that is the whole of what it can honestly claim. The tier
+that earns a `200` is the one that has already written them down, and it does
+not exist.
 
-`disk` é recusado **pelo nome**, não aceito e tratado como memória: quem escreve
-`disk` acredita que seus eventos sobrevivem a uma queda, e concordar sem cumprir
-é exatamente a falha que esse campo existe para impedir.
+`disk` is refused **by name**, not accepted and treated as memory: somebody
+writing `disk` believes their events survive a crash, and agreeing without
+delivering is exactly the failure that field exists to prevent.
 
-O que está no buffer no desligamento é entregue, não descartado — pelo mesmo
-caminho que um lote cheio toma, com retry e descarte.
+What is in a buffer at shutdown is delivered, not dropped — through the same
+path a full batch takes, retried and buried.
 
-## O que ele não faz
+## What it does not do
 
-- **Não aparece no console.** Ele não compartilha banco nenhum com a interface
-  do motor, então não existe página `/ingestion` — nem a evolução de schema que
-  o `auto_table` faz aparece lá. É o próximo passo e ainda não foi escrito.
-- **Um stream com `table` não evolui schema.** Quando você nomeia a tabela, o
-  contrato é dela: um campo que ela não tem é recusado com a mensagem que
-  resolve, em vez de alterar uma tabela que alguém revisou. Crescer uma coluna
-  sozinho é o que o `auto_table` faz, e é a diferença entre os dois.
-- **Um stream com `table` não cria tabela nem índice.** Um serviço que cria
-  tabelas transforma um erro de digitação numa segunda tabela que ninguém está
-  lendo — por isso criar só acontece sob `auto_table`, onde `naming` limita que
-  nome pode existir e `listen.auth` é obrigatório.
-- **A imagem publicada não tem hooks**, que é o artefato honesto para um desenho
-  de hook compilado: ela serve streams que não declaram `hook:`.
+- **It does not appear in the console.** It shares no database with the engine's
+  interface, so there is no `/ingestion` page — and the schema evolution
+  `auto_table` performs does not show up there either. That is the next step and
+  it has not been written.
+- **A stream with a `table` does not evolve schema.** When you name the table,
+  the contract is the table's: a field it does not have is refused with the
+  message that fixes it, rather than altering a table somebody reviewed. Growing
+  a column on its own is what `auto_table` does, and it is the difference
+  between the two.
+- **A stream with a `table` creates no table and no index.** A service that
+  creates tables turns a typo into a second table nobody is reading — which is
+  why creation happens only under `auto_table`, where `naming` bounds which
+  names may exist and `listen.auth` is mandatory.
+- **The published image has no hooks**, which is the honest artefact for a
+  compiled-hook design: it serves streams that declare no `hook:`.
 
-## Uma rota, N tabelas
+## One route, N tables
 
-O `auto_table` roteia cada evento para a tabela que o **envelope** nomeia, cria
-a tabela se ela não existir e cresce uma coluna quando um campo novo aparece:
+`auto_table` routes each event to the table the **envelope** names, creates that
+table if it is absent, and grows a column when a new field turns up:
 
 ```json
 {"table_name": "app_orders", "operation": "INSERT", "unique_key": "id",
  "data": {"id": "A-1", "total": 150, "customer": {"id": 7, "uf": "SP"}}}
 ```
 
-Campos de controle em cima, o registro dentro de `data`, e sete colunas
-`brevis_*` de rastreio em toda tabela. Uma rota, N tabelas, nada declarado.
+Control fields at the top, the record inside `data`, and seven `brevis_*`
+tracking columns on every table. One route, N tables, nothing declared.
 
-Está em [Destinos da ingestão](/docs/ingestion-sinks/#uma-rota-n-tabelas-nada-declarado).
+It is in [Ingestion sinks](/docs/ingestion-sinks/#one-route-n-tables-nothing-declared).
 
-## Por onde seguir
+## Where to go next
 
-| se você quer | vá para |
+| if you want | go to |
 |---|---|
-| a lista de destinos e como cada um escreve | [Destinos da ingestão](/docs/ingestion-sinks/index.md) |
-| entender o `ingestion_id` do outro lado | [SDK em Go](/docs/sdk/index.md) |
-| montar painel e alerta | [Observabilidade](/docs/observability/index.md) |
+| the destinations and how each one writes | [Ingestion sinks](/docs/ingestion-sinks/index.md) |
+| the `ingestion_id` from the other side | [Go SDK](/docs/sdk/index.md) |
+| dashboards and alerts | [Observability](/docs/observability/index.md) |

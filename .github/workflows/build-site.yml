@@ -67,7 +67,7 @@ jobs:
         run: |
           cd site
           if bad=$(grep -o 'href="[^"]*"' index.html 404.html docs/*/index.html \
-                     en/index.html en/docs/*/index.html | grep -E 'href="[0-9]'); then
+                     pt/index.html pt/docs/*/index.html | grep -E 'href="[0-9]'); then
             echo "::error::hrefs starting with a digit, which are relative by accident:"
             echo "$bad"
             exit 1

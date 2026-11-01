@@ -1,66 +1,67 @@
-# Observabilidade
+# Observability
 
-> Métricas Prometheus dos dois processos, o que medir e o que ainda não existe.
+> Prometheus metrics from both processes, what to watch, and what is deliberately absent.
 
-*https://brevis.sh/docs/observability/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/observability/ · brevis.sh docs (en-US)*
 
 ---
 
-O Brevis expõe métricas Prometheus numa porta própria, a partir dos **dois**
-processos.
+Brevis exposes Prometheus metrics on a port of its own, from **both** processes.
 
 ```
 GET http://<pod>:9090/metrics
 ```
 
-A porta vem de `BREVIS_METRICS_ADDR`. Ela é separada da porta HTTP de propósito:
-métricas não passam pela autenticação da interface, e expor as duas no mesmo
-lugar obrigaria a escolher entre um scrape autenticado ou um painel aberto.
+The port comes from `BREVIS_METRICS_ADDR`. It is separate from the HTTP port on
+purpose: metrics do not go through the interface's authentication, and serving
+both from one place would force a choice between an authenticated scrape and an
+open dashboard.
 
-## Dois processos, dois endpoints
+## Two processes, two endpoints
 
-É a parte que a maioria das instalações erra, raspando só a API.
+This is the part most setups get wrong, by scraping only the API.
 
-| | serve | reporta |
+| | serves | reports |
 |---|---|---|
-| `brevis serve` | a interface e a API HTTP | profundidade da fila |
-| `brevis scheduler` | nada por HTTP | profundidade da fila, latência de claim, slots, órfãos, runs, passos |
+| `brevis serve` | the UI and the HTTP API | queue depth |
+| `brevis scheduler` | nothing over HTTP | queue depth, claim latency, slots, orphans, runs, steps |
 
-O scheduler é quem executa, então é dele que vem quase tudo. Um painel montado
-só sobre a API mostra a fila crescendo e **nada** sobre o que a está drenando.
+The scheduler is what executes, so nearly everything comes from it. A dashboard
+built only on the API shows the queue growing and **nothing** about what is
+draining it.
 
-## As métricas que o passo publica
+## The metrics a step publishes
 
-Além do que o engine mede, um passo pode publicar as suas próprias — quantas
-linhas entraram, quantas o fornecedor recusou:
+Beyond what the engine measures, a step can publish its own — how many rows
+landed, how many the vendor rejected:
 
 ```python
 from brevis import metrics
 metrics.set("rows_loaded", 48213)
 ```
 
-Elas aparecem no **mesmo** `/metrics` do scheduler, prefixadas e rotuladas pelo
+They show up on the **same** scheduler `/metrics`, prefixed and labelled by the
 engine:
 
 ```
 brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
 ```
 
-O passo não abre porta: escreve uma linha no stdout e o engine registra — um pod
-que vive quarenta segundos não é raspável. Ver [Python](/docs/python/index.md).
+The step opens no port: it writes a line to stdout and the engine records it — a
+pod that lives forty seconds is not scrapeable. See [Python](/docs/python/index.md).
 
-## O que vigiar
+## What to watch
 
-| sinal | por que |
+| signal | why |
 |---|---|
-| profundidade da fila subindo sem cair | o scheduler morreu, ou `--concurrency` é baixo para a carga |
-| latência de claim crescendo | contenção no banco, ou fila grande demais para o intervalo |
-| órfãos > 0 | runs reivindicados por um processo que morreu antes de terminar |
-| slots não materializados | o laço do scheduler parou, e as agendas param com ele |
+| queue depth rising without falling | the scheduler died, or `--concurrency` is low for the load |
+| claim latency growing | contention on the database, or a queue too large for the interval |
+| orphans > 0 | runs claimed by a process that died before finishing |
+| slots not materialised | the scheduler loop stopped, and schedules stop with it |
 
-Os dois primeiros sozinhos não distinguem "carga alta" de "processo morto" — é
-por isso que os slots importam. Fila subindo **com** slots sendo criados é
-carga; fila subindo **sem** slots é o laço parado.
+The first two alone do not tell "high load" from "dead process" — which is why
+slots matter. A queue rising **with** slots being created is load; a queue rising
+**without** slots is a stopped loop.
 
 ## Kubernetes
 
@@ -73,22 +74,22 @@ ports:
     containerPort: 9090
 ```
 
-Com o Prometheus Operator, um `PodMonitor` por papel — e é preciso mesmo ser um
-por papel, porque os dois Deployments têm labels diferentes e reportam conjuntos
-diferentes.
+With the Prometheus Operator, one `PodMonitor` per role — and it does need to be
+one per role, because the two Deployments carry different labels and report
+different sets.
 
-## O que falta, deliberadamente
+## What is deliberately absent
 
-**Traces.** Não há OpenTelemetry ainda. Um passo executa como pod próprio e o
-que interessa dele — início, fim, tentativa, código de saída, log — já está no
-banco e na tela. O trace útil seria o de dentro do passo, e esse pertence ao
-código do passo, não ao orquestrador.
+**Traces.** There is no OpenTelemetry yet. A step runs as its own pod, and what
+matters about it — start, end, attempt, exit code, log — is already in the
+database and on the screen. The useful trace would be the one inside the step,
+and that belongs to the step's code, not to the orchestrator.
 
-Isso vale enquanto o passo for a unidade. No dia em que um passo chamar outro
-serviço e a pergunta virar "onde os 40 segundos foram", o trace passa a valer o
-que custa.
+That holds while the step is the unit. The day a step calls another service and
+the question becomes "where did the 40 seconds go", the trace starts being worth
+what it costs.
 
-## Próximos passos
+## Next steps
 
-- [Kubernetes](/docs/kubernetes/index.md) — o deploy dos dois processos
-- [Configuração](/docs/configuration/index.md) — `BREVIS_METRICS_ADDR` e o resto
+- [Kubernetes](/docs/kubernetes/index.md) — deploying both processes
+- [Configuration](/docs/configuration/index.md) — `BREVIS_METRICS_ADDR` and the rest

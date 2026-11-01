@@ -1,65 +1,63 @@
 # Quickstart
 
-> Do zero à DAG executando na interface, em quatro passos.
+> From nothing to a live DAG in the interface, in four steps.
 
-*https://brevis.sh/docs/quickstart/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/quickstart/ · brevis.sh docs (en-US)*
 
 ---
 
-Este guia sobe o brevis.sh, publica um workflow e o executa. Ao final você vê o
-grafo com o estado de cada passo ao vivo.
+This guide brings brevis.sh up, publishes a workflow and runs it. At the end you
+see the graph with the live state of every step.
 
-Requisito: um PostgreSQL acessível e a variável `BREVIS_DATABASE_URL`.
+Requirement: a reachable PostgreSQL and the `BREVIS_DATABASE_URL` variable.
 
-## 1. Aplicar o schema
+## 1. Apply the schema
 
 ```bash
 export BREVIS_DATABASE_URL='postgres://brevis:brevis@localhost:5432/brevis?sslmode=disable'
 brevis migrate up
 ```
 
-## 2. Escrever um workflow
+## 2. Write a workflow
 
-Crie `hello.yaml`. Este exemplo usa apenas shell, então roda em qualquer lugar:
+Create `hello.yaml`. This example uses only shell, so it runs anywhere:
 
 ```yaml
 name: hello
 type: dag
-tags: [exemplo]
+tags: [example]
 
 steps:
-  - id: preparar
-    run: sh -c 'echo preparando; sleep 1'
+  - id: prepare
+    run: sh -c 'echo preparing; sleep 1'
 
-  # Os dois seguintes dependem do mesmo passo, então rodam EM PARALELO.
-  - id: extrair
-    run: sh -c 'sleep 2; echo 42 extraidos'
-    depends_on: [preparar]
+  # The next two depend on the same step, so they run IN PARALLEL.
+  - id: extract
+    run: sh -c 'sleep 2; echo 42 extracted'
+    depends_on: [prepare]
 
-  - id: validar
-    run: sh -c 'sleep 1; echo validado'
-    depends_on: [preparar]
+  - id: validate
+    run: sh -c 'sleep 1; echo validated'
+    depends_on: [prepare]
 
-  - id: publicar
-    run: echo publicado
-    depends_on: [extrair, validar]
+  - id: publish
+    run: echo published
+    depends_on: [extract, validate]
 ```
 
-Confira antes de publicar — isto não toca no banco:
+Check it before publishing — this does not touch the database:
 
 ```bash
 brevis validate hello.yaml
 ```
 
-A saída é a do binário, que imprime em inglês:
-
 ```text
   ok    hello                        dag  4 steps, 4 dependencies  (manual)
 ```
 
-## 3. Executar agora, sem fila
+## 3. Run it now, without the queue
 
-O caminho mais curto para ver o grafo funcionando:
+The shortest path to seeing the graph work:
 
 ```bash
 brevis run hello.yaml
@@ -67,35 +65,36 @@ brevis run hello.yaml
 
 ```text
 workflow hello (dag, 4 steps) in .
-  ▶ preparar
-    preparar | preparando
-  ✓ preparar
-  ▶ extrair
-  ▶ validar
-    validar | validado
-  ✓ validar
-    extrair | 42 extraidos
-  ✓ extrair
-  ▶ publicar
-    publicar | publicado
-  ✓ publicar
+  ▶ prepare
+    prepare | preparing
+  ✓ prepare
+  ▶ extract
+  ▶ validate
+    validate | validated
+  ✓ validate
+    extract | 42 extracted
+  ✓ extract
+  ▶ publish
+    publish | published
+  ✓ publish
 
 workflow hello finished
 ```
 
-`extrair` e `validar` começam juntos porque dependem do mesmo passo. O runner
-percorre o grafo por níveis: tudo dentro de um nível roda em paralelo, e o
-nível seguinte só começa quando o anterior fecha inteiro.
+`extract` and `validate` start together because they depend on the same step.
+The runner walks the graph **by levels**: everything within a level runs in
+parallel, and the next level starts only when the previous one closes entirely.
 
-:::note `run` é local por natureza
-`brevis run` só opera com `BREVIS_ENV=local` (vazio conta como local) e executa
-os passos como processos na própria instância — mesmo os que declaram `image:`.
-Quem cria pods é o `scheduler`.
+:::note `run` is local by nature
+`brevis run` only operates with `BREVIS_ENV=local` (empty counts as local) and
+executes steps as processes on the instance itself — even those that declare
+`image:`. Pods are created by the `scheduler`.
 :::
 
-## 4. Publicar e operar
+## 4. Publish and operate
 
-Para que o workflow exista no banco, apareça na interface e siga a agenda:
+So the workflow exists in the database, appears in the interface and follows its
+schedule:
 
 ```bash
 brevis publish hello.yaml
@@ -105,7 +104,7 @@ brevis publish hello.yaml
   published  hello                      (manual)
 ```
 
-Suba a interface e o scheduler em dois terminais:
+Bring up the interface and the scheduler in two terminals:
 
 ```bash
 brevis serve
@@ -115,22 +114,22 @@ brevis serve
 brevis scheduler --interval 5s --concurrency 4
 ```
 
-Abra `http://localhost:8080`, encontre `hello` na lista de workflows e clique em
-▶. O grafo mostra cada passo mudando de estado ao vivo.
+Open `http://localhost:8080`, find `hello` in the workflow list and click ▶. The
+graph shows every step changing state live.
 
-## O que aconteceu
+## What happened
 
 | | |
 |---|---|
-| `migrate up` | criou as tabelas |
-| `validate` | conferiu o YAML sem tocar no banco |
-| `run` | executou na própria instância, sem fila |
-| `publish` | gravou o workflow e a agenda |
-| `serve` | subiu API e interface |
-| `scheduler` | materializou a agenda e executou a fila |
+| `migrate up` | created the tables |
+| `validate` | checked the YAML without touching the database |
+| `run` | executed on the instance itself, no queue |
+| `publish` | stored the workflow and its schedule |
+| `serve` | brought up API and interface |
+| `scheduler` | materialised the schedule and drained the queue |
 
-## Próximos passos
+## Next steps
 
-- [Workflows](/docs/workflows/index.md) — o formato completo do YAML
-- [Parâmetros](/docs/parameters/index.md) — o que muda entre dois disparos
-- [Pod por passo](/docs/pod-per-step/index.md) — como isso vira Kubernetes
+- [Workflows](/docs/workflows/index.md) — the full YAML format
+- [Parameters](/docs/parameters/index.md) — what changes between two runs
+- [Pod per step](/docs/pod-per-step/index.md) — how this becomes Kubernetes

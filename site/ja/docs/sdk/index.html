@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ja" data-docs="/ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Go SDK — ドキュメント</title>
+<meta name="description" content="フェッチャーの書き方 — ソースから抽出し、変換し、宛先にロードします。">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/ja/docs/sdk/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/ja/docs/sdk/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/sdk/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/sdk/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/sdk/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/sdk/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/sdk/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/sdk/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/sdk/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/sdk/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/sdk/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/sdk/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/sdk/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="ja">
+<meta property="og:title" content="Go SDK — ドキュメント">
+<meta property="og:description" content="フェッチャーの書き方 — ソースから抽出し、変換し、宛先にロードします。">
+<meta property="og:url" content="https://brevis.sh/ja/docs/sdk/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Go SDK — ドキュメント">
+<meta name="twitter:description" content="フェッチャーの書き方 — ソースから抽出し、変換し、宛先にロードします。">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Go SDK",
+  "description": "フェッチャーの書き方 — ソースから抽出し、変換し、宛先にロードします。",
+  "inLanguage": "ja",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">本文へスキップ</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/ja/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
+      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/docs/">ドキュメント</a>
+      <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/sdk/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/sdk/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/sdk/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/sdk/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/sdk/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/sdk/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/sdk/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/sdk/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/sdk/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/sdk/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/sdk/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        オープンソースを見る
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="メニューを開く" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    ドキュメントメニュー
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">ドキュメントを検索</label>
+        <input type="search" id="q" placeholder="検索…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="結果なし" hidden></div>
+      <nav class="side-nav" aria-label="ドキュメント">
+        <p class="side-group">はじめに</p><ul class="side-list"><li><a href="/ja/docs/ecosystem/">エコシステム</a></li><li><a href="/ja/docs/integrations/">インテグレーション</a></li><li><a href="/ja/docs/introduction/">はじめに</a></li><li><a href="/ja/docs/installation/">インストール</a></li><li><a href="/ja/docs/quickstart/">クイックスタート</a></li></ul><p class="side-group">基本概念</p><ul class="side-list"><li><a href="/ja/docs/core/">Core</a></li><li><a href="/ja/docs/workflows/">Workflows</a></li><li><a href="/ja/docs/scheduler-and-queue/">スケジューラとキュー</a></li><li><a href="/ja/docs/pod-per-step/">ステップごとの pod</a></li><li><a href="/ja/docs/context/">ステップ間のコンテキスト</a></li></ul><p class="side-group">リファレンス</p><ul class="side-list"><li><a href="/ja/docs/cli/">CLI</a></li><li><a href="/ja/docs/parameters/">パラメータ</a></li><li><a href="/ja/docs/configuration/">設定</a></li><li><a href="/ja/docs/runtime/">ステップのランタイム</a></li></ul><p class="side-group">SDK とライブラリ</p><ul class="side-list"><li><a href="/ja/docs/sdk/" aria-current="page">Go SDK</a></li><li><a href="/ja/docs/libraries/">クライアントライブラリ</a></li><li><a href="/ja/docs/python/">Python</a></li></ul><p class="side-group">運用</p><ul class="side-list"><li><a href="/ja/docs/console/">Console</a></li><li><a href="/ja/docs/kubernetes/">Kubernetes</a></li><li><a href="/ja/docs/observability/">オブザーバビリティ</a></li><li><a href="/ja/docs/white-label/">ホワイトラベル</a></li></ul><p class="side-group">取り込み</p><ul class="side-list"><li><a href="/ja/docs/ingestion/">取り込み</a></li><li><a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></li><li><a href="/ja/docs/benchmarks/">ベンチマーク</a></li></ul><p class="side-group">SQL によるモデリング</p><ul class="side-list"><li><a href="/ja/docs/sql/">SQL</a></li></ul><p class="side-group">プロジェクト</p><ul class="side-list"><li><a href="/ja/docs/philosophy/">哲学</a></li><li><a href="/ja/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">ドキュメント</p>
+      <h1>Go SDK</h1>
+      <p class="doc-desc">フェッチャーの書き方 — ソースから抽出し、変換し、宛先にロードします。</p>
+      <p>ステップの仕事が<strong>データを取得してどこかにロードする</strong>ことなら、Go SDK を使えば、フェッチャー全体を 数行で書けます。エンジンとは別のモジュールで、バージョンも独立しています。</p>
+<div class="code-block" data-code="go get github.com/AreteAcademy/brevis/sdk@latest"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">go</span> get github.com/AreteAcademy/<span class="t-k">brevis</span>/sdk@latest</code></pre></div>
+<p>Go 1.23 以降が必要です。SDK は行を <code>iter.Seq2</code> としてストリーミングします。</p>
+<aside class="admon admon-warning"><p class="admon-t">`v0.1.0` は使わないでください</p><p>存在しないリビジョンを固定した <code>go.mod</code> を含んだまま公開されており、Go モジュールプロキシは 不変です。<code>v0.1.1</code> から始めてください。</p></aside>
+<h2 id="3-つのステップ">3 つのステップ<a class="anchor" href="#3-つのステップ" aria-label="link">#</a></h2>
+<div class="code-block" data-code="import (
+	&quot;github.com/AreteAcademy/brevis/sdk&quot;
+	&quot;github.com/AreteAcademy/brevis/sdk/from&quot;
+	&quot;github.com/AreteAcademy/brevis/sdk/to/bigquery&quot;
+)
+
+rows, err := sdk.Extract(ctx, sdk.Source{
+	From: from.HTTP{URL: &quot;https://api.example.com/v1/events&quot;},
+})
+
+rows = sdk.Transform(rows, sdk.Accept(&quot;id&quot;, &quot;created_at&quot;, &quot;amount&quot;))
+
+res, err := sdk.Load(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: &quot;bronze&quot;, Name: &quot;events&quot;},
+	Columns: []string{&quot;id&quot;, &quot;created_at&quot;, &quot;amount&quot;},
+})"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">import</span> (
+	"github.com/AreteAcademy/brevis/sdk"
+	"github.com/AreteAcademy/brevis/sdk/from"
+	"github.com/AreteAcademy/brevis/sdk/to/bigquery"
+)
+
+rows, <span class="t-k">err</span> := sdk.Extract(ctx, sdk.Source{
+	From: from.HTTP{URL: "https:<span class="t-c">//api.example.com/v1/events"},</span>
+})
+
+rows = sdk.Transform(rows, sdk.Accept("id", "created_at", "amount"))
+
+res, <span class="t-k">err</span> := sdk.Load(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: "bronze", Name: "events"},
+	Columns: []string{"id", "created_at", "amount"},
+})</code></pre></div>
+<p><code>Extract</code> が読み、<code>Transform</code> が整形し、<code>Load</code> が書き込みます。それぞれがシーケンスを受け取って シーケンスを返すので、メモリ上にすべてが一度に展開されることはありません。</p>
+<figure class="doc-figure"><img src="/assets/flow-sdk.svg" width="360" height="514" alt="SDK のフロー: sdk.Extract が from.HTTP で HTTP API から読み取り、sdk.Transform が受け入れたフィールドだけを残し、sdk.Load が行を BigQuery のテーブルに書き込みます。3 つの呼び出しは、あなた自身のステップの中で動きます。" loading="lazy"></figure>
+<h2 id="ドライバは設定ではなく値">ドライバは設定ではなく値<a class="anchor" href="#ドライバは設定ではなく値" aria-label="link">#</a></h2>
+<p><code>from.HTTP</code> は、HTTP ソースが必要とするすべてを持ちます。URL、ヘッダー、リトライ、ページネーション、 そしてレスポンスが何を意味するかです。<code>from.Files</code> はパスとフォーマットを持ちます。どちらも相手の フィールドのために場所を空ける必要がないので、各ドライバが 6 個しか読まない 40 個のオプションを 集めたソース構造体は存在しません。</p>
+<p>これは<strong>何をコンパイルするか</strong>も決めます。Go は、使ったフィールドではなく、インポートした パッケージ単位で依存関係を絞り込みます。</p>
+<div class="table-wrap"><table><thead><tr><th>インポートするもの</th><th>パッケージ数</th><th>AWS</th><th>Google</th></tr></thead><tbody><tr><td><code>sdk</code></td><td>190</td><td>なし</td><td>なし</td></tr><tr><td><code>sdk</code> + <code>from</code></td><td>194</td><td>なし</td><td>なし</td></tr><tr><td><code>sdk</code> + <code>from</code> + <code>to</code>(ファイル)</td><td>195</td><td>なし</td><td>なし</td></tr><tr><td><code>sdk</code> + <code>to/bigquery</code></td><td>456</td><td>なし</td><td><strong>あり</strong></td></tr><tr><td><code>sdk</code> + <code>from</code> + <code>store/s3</code></td><td>265</td><td><strong>あり</strong></td><td>なし</td></tr></tbody></table></div>
+<p>読み書きを含むファイルパイプライン全体が、195 パッケージで、クラウド SDK は 1 つも要りません。 <strong>ベンダー SDK が背後にあるドライバは、独自のパッケージにあります。</strong> BigQuery が <code>to/bigquery</code>、 オブジェクトストアが <code>store/s3</code> と <code>store/gcs</code> なのはそのためです。</p>
+<h2 id="ソースと宛先">ソースと宛先<a class="anchor" href="#ソースと宛先" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>ソース</th><th>パッケージ</th></tr></thead><tbody><tr><td>HTTP</td><td><code>from.HTTP</code></td></tr><tr><td>ファイル(ローカル、S3、GCS)</td><td><code>from.Files</code></td></tr><tr><td>Postgres</td><td><code>from/postgres</code></td></tr><tr><td>MySQL</td><td><code>from/mysql</code></td></tr><tr><td>複数のソース</td><td><code>from.Many</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>宛先</th><th>パッケージ</th></tr></thead><tbody><tr><td>ファイル</td><td><code>to.Files</code></td></tr><tr><td>BigQuery</td><td><code>to/bigquery</code></td></tr><tr><td>Postgres</td><td><code>to/postgres</code></td></tr><tr><td>MySQL</td><td><code>to/mysql</code></td></tr><tr><td>Redshift</td><td><code>to/redshift</code></td></tr><tr><td>Pub/Sub</td><td><code>to/pubsub</code></td></tr></tbody></table></div>
+<p>パスのスキームがバックエンドを決め、<code>Store</code> はドライバの内部で選ばれるのではなく<strong>外から渡されます</strong>。</p>
+<div class="code-block" data-code="from.Files{Path: &quot;s3://bucket/day=1/*.ndjson&quot;, Store: s3.New(client)}
+to.Files{Path: &quot;gs://bucket/landing/&quot;, Store: gcs.New(client)}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>from.Files{Path: "s3:<span class="t-c">//bucket/day=1/*.ndjson", Store: s3.New(client)}</span>
+to.Files{Path: "gs:<span class="t-c">//bucket/landing/", Store: gcs.New(client)}</span></code></pre></div>
+<p>これにより、ローカルファイルだけを扱うプログラムが、AWS や Google のコードを 1 行たりと コンパイルせずに済みます。</p>
+<h3 id="トピックへの公開">トピックへの公開<a class="anchor" href="#トピックへの公開" aria-label="link">#</a></h3>
+<p><code>to/pubsub</code> はテーブルではない唯一の宛先で、使う前に知っておく価値のある形で動作が 異なります。<strong>送るものに何も付け加えません。</strong></p>
+<div class="code-block" data-code="Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: &quot;acme-prod&quot;,
+        Name:    &quot;orders&quot;,
+
+        // Nil is the default, and it means NO attributes at all.
+        Attributes: func(e sdk.Envelope) map[string]string {
+            row, ok := e.Payload.(map[string]any)
+            if !ok {
+                return nil
+            }
+            return map[string]string{&quot;orderId&quot;: fmt.Sprint(row[&quot;order_id&quot;])}
+        },
+    },
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: "acme-prod",
+        Name:    "orders",
+
+        <span class="t-c">// Nil is the default, and it means NO attributes at all.</span>
+        Attributes: <span class="t-k">func</span>(e sdk.Envelope) <span class="t-k">map</span>[string]string {
+            row, ok := e.Payload.(<span class="t-k">map</span>[string]any)
+            <span class="t-k">if</span> !ok {
+                <span class="t-k">return</span> <span class="t-k">nil</span>
+            }
+            <span class="t-k">return</span> <span class="t-k">map</span>[string]string{"orderId": fmt.Sprint(row["order_id"])}
+        },
+    },
+},</code></pre></div>
+<p>サブスクライバは、ペイロードをバイト単位でそのまま受け取り、加えて指定した属性だけを受け取ります。 それ以外は何もありません。<code>ingestion_id</code> も、<code>provider</code> も、いかなる種類のエンベロープもありません。</p>
+<p>これはミニマリズムではなくルールです。テーブルは、それを書き込むパイプラインが作るので、SDK が 列を決めてかまいません。<strong>トピックは違います。</strong> パイプラインより前から存在し、サブスクライバが 先に書かれ、そのフィルタも先に書かれています。勝手に属性を足せば、Brevis が他者の契約を 書き換えることになり、サブスクライバはそれを午前 3 時に知ることになります。</p>
+<p>ここから 3 つのことが導かれます。</p>
+<ul><li><strong>トピックを作ることは決してありません。</strong> トピックを作れるパイプラインは、間違ったトピックも作れます。 しかもタイプミスしたテーブルと違って、誰も気づきません。メッセージはどこかへ行き、 受け取るはずだったサブスクライバは静かなままです。</li><li><strong><code>Schema</code>、<code>Dedup</code>、<code>PartitionBy</code> は拒否され</strong>、オプション名が示されます。これらはテーブルのための ものです。<code>Schema</code> は宛先がテーブルを作る方法で、重複排除には置き換える対象の行が必要で、 パーティションはテーブルの概念です。ここで最も近いのは <code>OrderingKey</code> ですが、これは別物で、 順序どおりに*届く*必要があるメッセージをグループ化します。</li><li><strong>失敗は部分的です。</strong> 公開はトランザクションではないので、48,000 件のメッセージが 31,000 件目で失敗した場合、31,000 件は*配信済み*です。結果は実際に送られたものを報告し、 エラーは、再実行は再配信であると伝えます。サブスクライバは冪等でなければならず、 Pub/Sub はいずれにしても at-least-once です。</li></ul>
+<p>エミュレータに対して実行できる例: <a href="https://github.com/AreteAcademy/brevis/tree/master/examples/13-pubsub" target="_blank" rel="noopener"><code>examples/13-pubsub</code></a>。</p>
+<h2 id="フェッチャー全体">フェッチャー全体<a class="anchor" href="#フェッチャー全体" aria-label="link">#</a></h2>
+<p><code>sdk.Run</code> は、フラグ、<code>-dry-run</code>、ログ、リトライ、ページネーション、来歴、テーブル作成、終了コードを 引き受けます。ファイルに残るのは、そのソース固有のものだけです。</p>
+<div class="code-block" data-code="package main
+
+import (
+	&quot;time&quot;
+
+	&quot;github.com/AreteAcademy/brevis/sdk&quot;
+	&quot;github.com/AreteAcademy/brevis/sdk/from&quot;
+)
+
+func main() {
+	sdk.Run(sdk.Pipeline{
+		Source: sdk.Source{
+			From: from.HTTP{
+				URL:     &quot;https://api.example.com/v1/events&quot;,
+				Timeout: 15 * time.Second,
+			},
+			Guard:  sdk.RejectIf(&quot;error&quot;),
+			Expand: sdk.ArrayAt(&quot;results&quot;),
+		},
+		Target: sdk.Target{
+			Provider: &quot;example&quot;,
+			Entity:   &quot;events&quot;,
+			Key:      sdk.Key(&quot;id&quot;),
+			When:     sdk.Field(&quot;created_at&quot;),
+		},
+	})
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">package</span> main
+
+<span class="t-k">import</span> (
+	"time"
+
+	"github.com/AreteAcademy/brevis/sdk"
+	"github.com/AreteAcademy/brevis/sdk/from"
+)
+
+<span class="t-k">func</span> main() {
+	sdk.Run(sdk.Pipeline{
+		Source: sdk.Source{
+			From: from.HTTP{
+				URL:     "https:<span class="t-c">//api.example.com/v1/events",</span>
+				Timeout: 15 * time.Second,
+			},
+			Guard:  sdk.RejectIf("error"),
+			Expand: sdk.ArrayAt("results"),
+		},
+		Target: sdk.Target{
+			Provider: "example",
+			Entity:   "events",
+			Key:      sdk.Key("id"),
+			When:     sdk.Field("created_at"),
+		},
+	})
+}</code></pre></div>
+<div class="code-block" data-code="go run ./fetcher -dry-run   # extracts, counts rows and errors, writes nothing
+go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">go</span> run ./fetcher <span class="t-n">-dry-run</span>   <span class="t-c"># extracts, counts rows and errors, writes nothing</span>
+<span class="t-k">go</span> run ./fetcher</code></pre></div>
+<h2 id="run-コンテキスト">run コンテキスト<a class="anchor" href="#run-コンテキスト" aria-label="link">#</a></h2>
+<p>フェッチャーが<strong>ワークフローのステップとして</strong>動くとき、エンジンは、そうでなければ知り得ないことを 環境に注入します。これが初回の run かどうか、どのパラメータでディスパッチされたか、どの run かです。 SDK はそれを <code>Pipeline.Run</code> で読み取ります。</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	if p.Run.Params[&quot;load_full&quot;] == &quot;true&quot; {
+		p.Source.From = from.HTTP{URL: base + &quot;?full=1&quot;}
+	}
+	return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+	<span class="t-k">if</span> p.Run.Params["load_full"] == "true" {
+		p.Source.From = from.HTTP{URL: base + "?full=1"}
+	}
+	<span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p>手動で実行した場合、<code>Run</code> はゼロ値で返ります。読むのは任意で、無視しても何のコストもありません。</p>
+<p>履歴がない場合、「これは初回の run か?」への答えは常に<strong>いいえ</strong>です。確信なしにテーブルを作るのは、 作らないよりも悪いからです。</p>
+<h3 id="時計">時計<a class="anchor" href="#時計" aria-label="link">#</a></h3>
+<p><code>p.Run.Auto</code> は、エンジンがこの run について算出したものです。 <a href="/ja/docs/parameters/#自動パラメータ">自動パラメータ</a>を参照してください。<code>Auto.Now()</code> は、 <code>time.Now()</code> の代わりに読むべき時計です。スケジュールされた run ではそれは slot なので、run が遅れても 動かず、3 時間後にリトライされても動きません。</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	if !ok { // no schedule: fall back to a fixed window
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		&quot;?from=&quot; + start.Format(time.RFC3339) +
+		&quot;&amp;to=&quot; + end.Format(time.RFC3339)}
+	return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	<span class="t-k">if</span> !ok { <span class="t-c">// no schedule: fall back to a fixed window</span>
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		"?from=" + start.Format(time.RFC3339) +
+		"&amp;to=" + end.Format(time.RFC3339)}
+	<span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p>手動で実行した場合、<code>Auto.Now()</code> は実際の壁時計*そのもの*で、<code>Window()</code> は <code>false</code> を返すので、 ローカル開発に特別な場合分けは要りません。</p>
+<h2 id="クライアントライブラリと混同しないこと">クライアントライブラリと混同しないこと<a class="anchor" href="#クライアントライブラリと混同しないこと" aria-label="link">#</a></h2>
+<p>この SDK は Go による ETL の仕組みです。ドライバ、ページネーション、来歴、テーブル作成を含みます。 <a href="/ja/docs/libraries/">クライアントライブラリ</a>は別物で、ステップに run コンテキストと時計を渡す薄い クライアントです。現在は Python 用で、後に Node.js と Rust 用が加わります。pandas や dbt を 使うステップが必要とするのは、この SDK ではなく後者です。</p>
+<h2 id="パイプラインを構築するパラメータ">パイプラインを構築するパラメータ<a class="anchor" href="#パイプラインを構築するパラメータ" aria-label="link">#</a></h2>
+<p><code>p.Run.Params</code> はパイプラインの内部で読めますが、パイプラインが<strong>何であるか</strong>を決める値、つまり 状態ごとに 1 つのソース、テナントごとに 1 つのテーブルといったものには遅すぎます。 <code>Pipeline.Flags</code> は <code>Run</code> の内部でパースされるので、同じ理由で遅すぎます。</p>
+<div class="code-block" data-code="func main() {
+	sdk.Run(pipeline(sdk.ParamList(&quot;ufs&quot;)))
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">func</span> main() {
+	sdk.Run(pipeline(sdk.ParamList("ufs")))
+}</code></pre></div>
+<p><code>sdk.Param</code> と <code>sdk.ParamList</code> は、まずエンジンの環境を読み、次に <code>-param name=value</code> を読みます。</p>
+<div class="code-block" data-code="./fetch-stations -param ufs=SP,RJ"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>./fetch-stations <span class="t-n">-param</span> ufs=SP,RJ</code></pre></div>
+<p>環境が優先されます。エンジンの下ではそれが値であり、マニフェストに残ったフラグが、 オペレータが入力したものを上書きしてはならないからです。エンジンがなければフラグがあるものの すべてで、実行のたびに <code>BREVIS_RUN_PARAMS</code> を JSON で書くよりは良い方法です。</p>
+<h2 id="ランディングレイアウト">ランディングレイアウト<a class="anchor" href="#ランディングレイアウト" aria-label="link">#</a></h2>
+<p>パイプラインは、<strong>gateway が着地させるのと同じテーブル</strong>、つまり同じ列と同じ <code>brevis_ingestion_id</code> を着地させられます。そのため両者の選択はデプロイの判断であって、 スキーマの判断ではありません。チームは両方をまとめて読むことができ、マイグレーションなしで 一方から他方に移れます。</p>
+<div class="code-block" data-code="const table = &quot;landing.orders&quot;
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey(&quot;id&quot;))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">const</span> table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})</code></pre></div>
+<p><code>sdk.LandingSchema</code> は 9 つの列です。レイアウトが持つ 8 つと、プロデューサーが持つ 1 つです。 <code>sdk.Landing</code> がそれらを埋め、レコードを丸ごと <code>data</code> に入れます。必要なら自分の列をスキーマに 追加するか、<code>sdk.LandingControlColumns</code> を使ってレコードのフィールドそれぞれに独自の列を 与えてください。</p>
+<h3 id="2-つの形-レコードを丸ごとまたはフィールドごとに-1-列">2 つの形: レコードを丸ごと、またはフィールドごとに 1 列<a class="anchor" href="#2-つの形-レコードを丸ごとまたはフィールドごとに-1-列" aria-label="link">#</a></h3>
+<p>上記は<strong>ドキュメント</strong>形式です。レコードは JSON として <code>data</code> に入り、レコードの中身が何であっても テーブルは同じです。<code>sdk.LandingColumns()</code> を加えると、レコードの各フィールドが独自の列を持ちます。</p>
+<div class="code-block" data-code="sdk.Landing(table, sdk.LandingKey(&quot;source_key&quot;), sdk.LandingColumns())"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())</code></pre></div>
+<p>この場合のテーブルは <code>sdk.LandingControlColumns</code> にあなたの列を足したものです。<code>data</code> を持つ <code>sdk.LandingSchema</code> では<strong>ありません</strong>。</p>
+<div class="code-block" data-code="Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: &quot;source_key&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;series&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;data&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;valor&quot;, Type: sdk.TypeString},
+    ),
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: "source_key", Type: sdk.TypeString},
+        sdk.Column{Name: "series", Type: sdk.TypeString},
+        sdk.Column{Name: "data", Type: sdk.TypeString},
+        sdk.Column{Name: "valor", Type: sdk.TypeString},
+    ),
+}</code></pre></div>
+<p><strong>それらの列は自分で宣言します。</strong> SDK がスキーマを推論することは決してなく、このオプションでも それは変わりません。変わるのは*行*の組み立て方であって、テーブルが何であるかではありません。 gateway が推論するのは、プロデューサーが手持ちのものを何でも送ってくる他人だからです。ここでは パイプラインの作者が形を知っていて、誰かがレビューする差分の中にそれを書き下ろします。</p>
+<p>これは、gateway が <a href="/ja/docs/ingestion-sinks/#2-つの形1-つの契約"><code>shape: columns</code></a> として着地させるのと 同じ形で、同じコードを通ります。列も、値も、<code>brevis_ingestion_id</code> も同じです。</p>
+<p><strong>フィールド名は列名になれるものでなければなりません。</strong> 英字またはアンダースコアで始まり、 その後に英数字とアンダースコアが続く形です。これは 4 つの宛先の中で最も狭い BigQuery のルールなので、 ここを通る名前はどこでも動きます。<code>my-field</code> を持つレコードは、何かが書き込まれる前に、名前を示して 拒否されます。ドキュメント形式にはそのようなルールはありません。ハイフンは JSON のキーとして まったく問題ありません。</p>
+<p><strong>デフォルトではフラット化しません。</strong> ネストされたオブジェクトは、それを保持していたキーの下の <strong>1 つの</strong> <code>JSON</code> 列になります。<code>customer</code> は <code>customer_id</code> と <code>customer_uf</code> ではなく、 <code>{"id": 7, "uf": "SP"}</code> を保持します。配列も <code>JSON</code> です。配列の要素ごとに 1 行が欲しいレコードには、 ソースの <code>Expand</code> に <code>sdk.ArrayAt</code> が必要です。それは <code>Landing</code> より前に実行される、別の名前を持つ 別の操作です。<a href="#ネストされたフィールドごとに-1-列"><code>BREVIS_NORMALIZE_DATA</code></a> は、デプロイ全体について この前半を変更します。配列はどちらの場合でも <code>JSON</code> のままです。</p>
+<div class="code-block" data-code="Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt(&quot;results&quot;)},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},</code></pre></div>
+<p><strong><code>null</code> は <code>NULL</code> のままで、<code>""</code> にはなりません。</strong> null として送られたフィールドと空として 送られたフィールドは別の事実であり、列では後から区別できません。</p>
+<p><strong><code>data</code> はあなたのものになります。</strong> この形式では、レイアウトにその名前の列がないため、<code>data</code> という フィールドを持つプロデューサー(Bacen の系列がまさにそうです)は、自分の値を持つ独自の列を得ます。 <code>document</code> では、彼らのものはレイアウトの JSON 内の 1 つのキーです。</p>
+<h3 id="brevis-プレフィックスは変更できる"><code>brevis_</code> プレフィックスは変更できる<a class="anchor" href="#brevis-プレフィックスは変更できる" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_LANDING_PREFIX=acme"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>BREVIS_LANDING_PREFIX=acme</code></pre></div>
+<p>とすると、レイアウトの 8 つの列は <code>acme_ingestion_id</code>、<code>acme_record_key</code> などになります。 未設定なら、従来どおりの名前です。</p>
+<p><strong>テーブルを作るときに選んでください。後から変えることは、リネームではないからです。</strong> この SDK は列を削除することが決してないため、プレフィックスを切り替えたストリームは 8 つを リネームするのではなく、8 つを追加して 8 つを放棄します。それ以降のすべての行で古いセットが NULL になり、</p>
+<div class="code-block" data-code="qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1</code></pre></div>
+<p>は、もう何も書き込まない列でパーティションを切ることになります。行は届き、ダッシュボードは 横ばいになり、何もログに残りません。</p>
+<p>そのため、すでにあるプレフィックスでレイアウトを持つテーブルは、別のプレフィックスを宣言した ロードを、抽出の前に、両方を示して<strong>拒否</strong>します。新しいテーブルを指定するか、先に 8 つの列を 自分でリネームしてください。</p>
+<p><strong>入力したものは正規化されます。</strong> そのため、間違える綴りは 4 通りではなく 1 通りです。</p>
+<div class="table-wrap"><table><thead><tr><th>設定</th><th>結果</th></tr></thead><tbody><tr><td>未設定、または空白</td><td><code>brevis_</code></td></tr><tr><td><code>_NAME</code></td><td><code>name_</code></td></tr><tr><td><code>_NAME_</code></td><td><code>name_</code></td></tr><tr><td><code>NAME</code></td><td><code>name_</code></td></tr></tbody></table></div>
+<p>両端の <code>_</code> を取り除き、小文字にし、ちょうど 1 つを付けます。2 つの値は推測せずに拒否されます。 アンダースコアのみの値は、<code>ingestion_id</code> が残ってしまうためです。これは、普通のパイプラインすべてで <code>sdk.IngestionID()</code> が書き込む列そのものです。もう 1 つは、列名の先頭になれないものです。 <strong>使えない値を持つプロセスは起動しません。</strong> これが唯一の誠実な結果で、代案は、置き換えようとしていた プレフィックスの名前を持つテーブルができてしまうことだからです。</p>
+<p><strong>これはプロセス単位であり、制限ではなく意図です。</strong> 1 つの gateway のすべてのストリームがそれを 共有するので、2 つの sink が食い違うことはありません。テーブルを宣言するスキーマと、それを埋める トランスフォーマーも食い違いません。</p>
+<p><strong>予約ルールもそれに合わせて移ります。</strong> <code>acme_</code> の下では、<code>acme_region</code> を送るプロデューサーは拒否されます。 制御列を偽造できる人は、本物らしいものを偽造するからです。そして <code>brevis_region</code> は普通のフィールドに なります。</p>
+<p><code>data</code> にプレフィックスが付くことはありません。それはレイアウトの列ではなく、プロデューサーの列だからです。</p>
+<h3 id="ネストされたフィールドごとに-1-列">ネストされたフィールドごとに 1 列<a class="anchor" href="#ネストされたフィールドごとに-1-列" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_NORMALIZE_DATA=true"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>BREVIS_NORMALIZE_DATA=true</code></pre></div>
+<p>とすると、ネストされたオブジェクトのフィールドが、pandas の <code>json_normalize</code> と同様に、独自の列を 持ちます。1 階層だけです。</p>
+<div class="code-block" data-code="data = [
+    {&quot;id&quot;: 1, &quot;name&quot;: {&quot;first&quot;: &quot;Coleen&quot;, &quot;last&quot;: &quot;Volk&quot;}},
+    {&quot;name&quot;: {&quot;given&quot;: &quot;Mark&quot;, &quot;family&quot;: &quot;Regner&quot;}},
+    {&quot;id&quot;: 2, &quot;name&quot;: &quot;Faye Raker&quot;},
+]"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>data = [
+    {"id": 1, "name": {"first": "Coleen", "last": "Volk"}},
+    {"name": {"given": "Mark", "family": "Regner"}},
+    {"id": 2, "name": "Faye Raker"},
+]</code></pre></div>
+<div class="code-block" data-code="id  name_first  name_last  name_given  name_family  name"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>id  name_first  name_last  name_given  name_family  name</code></pre></div>
+<p><strong>最初のテーブルの前に選んでください。列を追加するだけではないからです。</strong> 列をリネームし、 この SDK は列を削除することが決してないため、古い名前は既存の行とともに残り、それ以降のものは 新しい名前に着地します。古い名前に対して誰かが書いたクエリは動き続けますが、新しい行を見なくなります。 リネームは 2 種類起きます。</p>
+<ul><li><code>userName</code> は <code>username</code> になります。ネストの有無は関係ありません</li><li>オブジェクトを保持していた <code>name</code> は、<code>name_first</code> と <code>name_last</code> に置き換わります</li></ul>
+<p>どちらかの形をすでに持つテーブルは、これをオンにしたロードを、抽出の前に、2 つの列を示して <strong>拒否</strong>します。新しいテーブルを指定するか、先に列を自分でリネームしてください。</p>
+<p><strong><code>name</code> はフラット化されたものと丸ごとのものの両方で現れることがあります。</strong> 上の例がそれを 示しています。3 番目のレコードは <code>name</code> を文字列として持つので、テーブルには <code>name_first</code>、 <code>name_last</code>、そして <code>name</code> があります。あるレコードではオブジェクトで、別のレコードではスカラーである フィールドは、両方を生みます。</p>
+<p><strong>1 階層だけで、配列は値です。</strong> <code>{"a": {"b": {"c": 1}}}</code> は、<code>a_b_c</code> ではなく、<code>{"c": 1}</code> を保持する <code>JSON</code> 列の <code>a_b</code> になります。<code>{"a": [1, 2]}</code> は <code>a</code> で、これも <code>JSON</code> です。配列の要素ごとに 1 行が 欲しいレコードには、やはり <code>sdk.ArrayAt</code> が必要です。</p>
+<p><strong>連結して小文字にし、camelCase では分割しません。</strong> <code>userName</code> は <code>user_name</code> ではなく <code>username</code> に なります。もう一方の読み方は、頭字語(<code>HTTPStatus</code>、<code>userID</code>)について合意された答えがなく、 どのライブラリも食い違うからです。</p>
+<p><strong>衝突は解決されず、拒否されます。</strong> <code>{"name_first": 1, "name": {"first": 2}}</code> は 2 つのフィールドから 1 つの列を作ることになり、Go のマップの反復順序はランダム化されています。どちらかを勝たせると、 同じバッチが実行のたびに異なるテーブルになります。拒否のメッセージは両方を示します。</p>
+<p><strong>予約済みプレフィックスは、フィールドではなく列でチェックされます。</strong> そうしないと、 <code>{"brevis": {"stream": "x"}}</code> を送るプロデューサーが、フィールドのチェックが見張っていない扉から <code>brevis_stream</code> を作れてしまいます。この場合は <code>brevis.stream</code> を示して拒否されるので、 フィールドを見つけられます。</p>
+<p><strong>プレフィックスと同様にプロセス単位です。</strong> 理由も同じで、1 つの gateway のすべてのストリームが 共有するため、両方が書き込むかもしれないテーブルについて 2 つの sink が食い違うことはありません。 適用されるのは <code>columns</code> 形式だけです。<code>document</code> ではレコードが丸ごと 1 つの <code>JSON</code> 列に入り、 フラット化先がありません。</p>
+<h3 id="すでに-json-であるテキスト">すでに JSON であるテキスト<a class="anchor" href="#すでに-json-であるテキスト" aria-label="link">#</a></h3>
+<p><code>sdk.TypeJSON</code> と宣言された列は、JSON の<strong>値</strong>、つまりオブジェクト、配列、数値を受け取ります。 BigQuery では行が丸ごとエンコードされるため、Go の <code>string</code> は JSON の文字列リテラルになり、 その列はオブジェクトではなく、オブジェクトの TEXT を保持することになります。</p>
+<div class="code-block" data-code="SELECT JSON_TYPE(payload) ...;            -- &quot;string&quot;, not &quot;object&quot;
+SELECT JSON_VALUE(payload, &#x27;$.a&#x27;) ...;    -- NULL"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">SELECT</span> JSON_TYPE(payload) ...;            <span class="t-c">-- "string", not "object"</span>
+<span class="t-k">SELECT</span> JSON_VALUE(payload, '$.a') ...;    <span class="t-c">-- NULL</span></code></pre></div>
+<p>列の型は正しいのに、中のデータには到達できません。何も失敗しないので、これは 3 つの結果の中で 最悪のものです。<strong>BigQuery の宛先は <code>v0.74.0</code> からこれを拒否し</strong>、列名を示します。</p>
+<p>オブジェクトがあるなら、オブジェクトそのものを渡してください。持っているものがすでに JSON テキスト である場合(別のデータベースから読み出した列や、再パースしたくないレスポンスボディなど)は、 そう明示します。</p>
+<div class="code-block" data-code="row[&quot;payload&quot;] = sdk.JSONText(body)"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>row["payload"] = sdk.JSONText(body)</code></pre></div>
+<p><code>encoding/json</code> 自身の <code>json.RawMessage</code> も同様に動作し、理由も同じです。どちらも、引用符で囲んだ 文字列ではなく、保持している JSON を書き込みます。</p>
+<p><strong>Postgres と MySQL は影響を受けず、拒否もされません。</strong> それらのサーバーは文字列を JSON 列に パースし、以前からそうしています。</p>
+<h3 id="テーブルにないフィールドが現れたとき">テーブルにないフィールドが現れたとき<a class="anchor" href="#テーブルにないフィールドが現れたとき" aria-label="link">#</a></h3>
+<p>プロデューサーがフィールドを追加すると、ロードはそのフィールドを示して止まります。行は何も宣言されて いない列を持っており、それを一度も言及していない宛先に書き込むと、黙って捨てることになるからです。 その拒否はデフォルトでは正しいのですが、ランディングテーブルでは、リーダーを壊し得ない唯一の変更で あり、宛先がそれを行えます。</p>
+<div class="code-block" data-code="postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}</code></pre></div>
+<p>するとバッチがあなたの宣言を<strong>補完</strong>します。バッチが持っていて宣言にないフィールドが列になり、 オブジェクトか配列でない限り <code>STRING</code>、その場合は <code>JSON</code> になります。gateway が <code>shape: columns</code> で 着地させるのと同じルール、同じコードなので、どちらも同じテーブルを生成します。</p>
+<p>ほかに 2 つの値があり、その違いは列がどこから来るかです。</p>
+<div class="table-wrap"><table><thead><tr><th><code>Evolve</code></th><th>追加するもの</th></tr></thead><tbody><tr><td><code>sdk.EvolveNone</code>(デフォルト)</td><td>なし。どんな差異も、両側を示して拒否されます</td></tr><tr><td><code>sdk.EvolveAdditive</code></td><td><strong>宣言</strong>にあってテーブルにない列</td></tr><tr><td><code>sdk.EvolveAdditiveFromPayload</code></td><td>上記に加えて、<strong>バッチ</strong>が持つ列</td></tr></tbody></table></div>
+<p><strong>行うのは <code>ADD COLUMN</code> だけです。</strong> ソースから消えた列は書き込まれなくなりますがテーブルには残り、 リネームも削除もせず、型を狭めることもありません。これは欠陥ではありません。ランディングテーブルは 履歴であり、それを読む誰かを壊し得ない唯一の変更は、null 許容の新しい列だからです。</p>
+<p><strong>宣言を補完するのであって、置き換えるのではありません。</strong> 何も宣言されていなければ、抽出の前に テーブル名を示して拒否されます。ペイロードからテーブル全体を作るのは別の判断であり、SDK はそれを 行いません。ランディングレイアウトでは害が具体的です。<code>brevis_received_at</code> はタイムスタンプではなく テキストになり、<code>brevis_loaded_at</code> は行に載って運ばれないので、エンドツーエンドのレイテンシ計測が 単に欠けることになります。</p>
+<p><strong>SDK は依然として推論しません。</strong> 型はフィールドの形から決まり、値からは決して決まりません。 <code>21129</code> と <code>8.89</code> はどちらも <code>STRING</code> を宣言するので、系列が整数を公開する日にも何も変わりません。 最初のバッチから読み取った型は、このルールが防ごうとしている失敗そのものです。</p>
+<p><strong>そして <code>null</code> は何も決めませんが、行には残ります。</strong> これは別々の 2 つの問いであり、1 つの答えで 済ませたことが v0.77.0 のコストになりました。</p>
+<p>null には形がないので、<strong>スキーマ</strong>が読み取るものはありません。<code>null</code> で届いたフィールドは列を 宣言せず、列は値を持つ最初のレコードから、その値の形で現れます。逆にすると、null は答えがないために <code>STRING</code> になり、その後に最初の配列が来ると、宛先がバッチ全体を拒否します。それを元に戻す <code>STRING</code> から <code>JSON</code> へのマイグレーションもありません。</p>
+<p><strong>行</strong>は、プロデューサーが送ったものを、null も含めて保持します。そうする必要があります。 <code>Target.Schema</code> で宣言した列が空で届いた場合、それは行に存在しなければなりません。さもないと、 宣言を行と比較するチェックが、すでに生成をやめたチェーンを読み、ロードを拒否します。それが v0.77.0 のしたことであり、0.78.0 が元に戻したことです。</p>
+<p>残りは宛先が処理します。バッチのすべてのレコードで null で、テーブルに列がないフィールドは、 どこにも書き込まれず、何も拒否しません。null と存在しないフィールドは同じ <code>NULL</code> に着地するので、 失われるものはありません。</p>
+<p><strong>形が変わるフィールドは、吸収されずに拒否されます。</strong> <code>valor</code> がスカラーとして届いてテキスト列を 作った場合、後から届くオブジェクトは種類の変更であり、バッチは止まります。メッセージにはその列自身の コメントが付くので、誰も宣言していないことがわかります。列をリネームするか、自分でマイグレーション してください。</p>
+<p><strong>BigQuery では、同じ名前の 2 つの綴りは 1 つの列です。</strong> BigQuery は列の大文字小文字を畳み込みます。 あるレコードに <code>nationalID</code>、別のレコードに <code>nationalId</code> を持つバッチは、2 つではなく <strong>1 つ</strong>の列を 宣言し、勝つ綴りはソート順で最初のもの、つまり <code>D</code> が <code>d</code> より前に来るので <code>nationalID</code> です。 最初に到着したものではありません。同じバッチを再生しても、綴りの異なる列を作ってはならないからです。 <code>createdat</code> を宣言する一方でテーブルの列が <code>createdAt</code> である場合も同じ列なので、何も追加されず、 何も拒否されません。</p>
+<p><strong>1 つのレコードが両方の綴りを持つ場合は、両方を示して拒否されます。</strong> 宛先には 1 つの列しかなく、 2 つの値の一方が黙って勝つことになるため、ロードは止まります。<code>Transform</code> でどちらかをリネームするか、 両方を 1 つのフィールドにマッピングしてください。それぞれが片方の綴りを持つ 2 つの*レコード*なら 問題ありません。それは普通の CDC トラフィックであり、このルールが着地させるために存在するものです。</p>
+<p><strong>何もマイグレーションされません。</strong> 大文字小文字だけが異なる 2 つの列をすでに持つテーブルは、 両方を保持します。リネームも削除もされません。</p>
+<p><strong>Postgres と MySQL は畳み込まれません。</strong> 引用符付き識別子はそこでは区別されるため、2 つの綴りは 2 つの列になります。これは意図的で、同じフェッチャーを BigQuery に向けると、それらは 1 つの列に 着地します。</p>
+<p><strong>バッチが作成したすべての列は、テーブルの中でそう明記されます。</strong> Postgres と MySQL ではコメント、 BigQuery ではフィールドの説明として、日付が入ります。</p>
+<div class="code-block" data-code="brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision</code></pre></div>
+<p>半年後、「この列はいつ現れ、誰が決めたのか」に答えられるのは、それだけです。そのころには ログの行はローテーションされて消えています。</p>
+<p><strong>これはモードではありません。</strong> <code>Target.Schema</code> は、テーブルが何であるかをあなたが宣言する ものであることに変わりなく、これは、すでに存在するレイアウトを、自分で入力する代わりに 渡すだけです。使ったからといって SDK の挙動が変わるものは何もなく、独自のスキーマを宣言する パイプラインは影響を受けません。</p>
+<p><strong>テーブル名は一度だけ書いてください。</strong> それは <code>Landing</code> に渡されます。id の 2 番目のスロットだからです。 そして宛先にも渡されます。行の行き先だからです。<strong>この 2 つが一致しているかを確認するものは ありません。</strong> <code>Writer</code> は自分のテーブルを知っていますが、それをログとエラー用の名前である <code>Describe</code> を通してのみ公開しており、それをもとに作った id は、すでに書き込まれたすべての id を ログの文字列に結びつけてしまうからです。両者がずれると、行は正しく着地しますが、id は誰も書き込んで いないテーブルのために生成されたものになります。見た目は問題なく、gateway のものとは一致しません。</p>
+<p><strong>3 つの列は <code>NULL</code> で、それが誠実な答えです。</strong> <code>brevis_stream</code> と <code>brevis_gateway</code> は、パイプラインが 持たないものを指します。<code>brevis_gateway IS NULL</code> が、パイプラインの行と gateway の行を見分ける方法です。 <code>brevis_received_bytes</code> も <code>NULL</code> です。gateway のそれは、エンベロープを含めてワイヤ上に届いたものを 数えますが、レコード自身の JSON は約 30% 小さくなります。2 つの意味を持つ 1 つの列では、両方の経路の 行にまたがる合計が、それぞれがどの割合を占めるかの分だけ間違ってしまいます。<code>length(data)</code> は パイプライン版の答えを正確に返します。</p>
+<p><strong>マージには <code>DedupKey</code> が必要で、それがなければマージはまったく行われません。</strong> どのドライバも、 指示がない限り <code>ingestion_id</code> で照合しますが、このレイアウトの識別列は <code>brevis_ingestion_id</code> です。</p>
+<div class="code-block" data-code="Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}</code></pre></div>
+<p><code>UniqueID</code> は id に UNIQUE 制約を付けるもので、Postgres も MySQL も、それなしではマージを拒否します。 <code>ON CONFLICT</code> に照合する対象がないからです。<code>Schema</code> で宣言されていない <code>DedupKey</code> は、何かが 実行される前に拒否されます。テーブルにない列でのマージは何にも一致せず、何にも一致しないマージは、 一致すべきものすべてに一致するマージと見分けがつかないからです。</p>
+<p><strong>宛先ごとに異なり、現時点では MySQL はできません。</strong> BigQuery には一意制約がなく、宣言を そのまま拒否します。MySQL の <code>string</code> は <code>LONGTEXT</code> で、MySQL は長さなしで <code>LONGTEXT</code> をキーに しないため、マージするランディングテーブルは、そこではそもそも*作成*できません。</p>
+<div class="code-block" data-code="Error 1170 (42000): BLOB/TEXT column &#x27;brevis_ingestion_id&#x27; used in key
+specification without a key length"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length</code></pre></div>
+<p>Postgres は動作します。その <code>string</code> は <code>TEXT</code> だからです。MySQL では、<code>DedupNone</code> で着地させて 下流で現行バージョンを解決するか、<code>CreateSQL</code> と長さ付きの id 列で自分でテーブルを作成してください。</p>
+<p><strong>id は内容アドレス方式です。</strong> 同じレコードはどちらの経路からも同じ id を生成し、変更された レコードは新しい id を生成します。これにより、再実行が重複ではなく何もしない操作になります。</p>
+<h2 id="リファレンス">リファレンス<a class="anchor" href="#リファレンス" aria-label="link">#</a></h2>
+<ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> — 完全な API</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> — 実行可能な 12 個の例</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> — バージョンごとの履歴</li></ul>
+
+      <nav class="pagers" aria-label="ページ">
+        <a class="pager pager-prev" href="/ja/docs/runtime/"><span>前へ</span><strong>ステップのランタイム</strong></a>
+        <a class="pager pager-next" href="/ja/docs/libraries/"><span>次へ</span><strong>クライアントライブラリ</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/ja/docs/sdk.md" target="_blank" rel="noopener">GitHub でこのページを編集</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="このページの内容">
+      <p class="toc-t">このページの内容</p>
+      <ul><li class="toc-2"><a href="#3-つのステップ">3 つのステップ</a></li><li class="toc-2"><a href="#ドライバは設定ではなく値">ドライバは設定ではなく値</a></li><li class="toc-2"><a href="#ソースと宛先">ソースと宛先</a></li><li class="toc-3"><a href="#トピックへの公開">トピックへの公開</a></li><li class="toc-2"><a href="#フェッチャー全体">フェッチャー全体</a></li><li class="toc-2"><a href="#run-コンテキスト">run コンテキスト</a></li><li class="toc-3"><a href="#時計">時計</a></li><li class="toc-2"><a href="#クライアントライブラリと混同しないこと">クライアントライブラリと混同しないこと</a></li><li class="toc-2"><a href="#パイプラインを構築するパラメータ">パイプラインを構築するパラメータ</a></li><li class="toc-2"><a href="#ランディングレイアウト">ランディングレイアウト</a></li><li class="toc-3"><a href="#2-つの形-レコードを丸ごとまたはフィールドごとに-1-列">2 つの形: レコードを丸ごと、またはフィールドごとに 1 列</a></li><li class="toc-3"><a href="#brevis-プレフィックスは変更できる">brevis_ プレフィックスは変更できる</a></li><li class="toc-3"><a href="#ネストされたフィールドごとに-1-列">ネストされたフィールドごとに 1 列</a></li><li class="toc-3"><a href="#すでに-json-であるテキスト">すでに JSON であるテキスト</a></li><li class="toc-3"><a href="#テーブルにないフィールドが現れたとき">テーブルにないフィールドが現れたとき</a></li><li class="toc-2"><a href="#リファレンス">リファレンス</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/ja/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>データインフラに応用された哲学。</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>プロジェクト</h2>
+        <ul>
+          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/docs/philosophy/">原則</a></li>
+          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>コード</h2>
+        <ul>
+          <li><a href="/ja/docs/">ドキュメント</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">リポジトリ</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>オープンソースプロジェクト。制作: <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · Go で構築 · Go gopher: Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

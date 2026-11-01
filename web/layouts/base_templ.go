@@ -1186,7 +1186,7 @@ func langSwitch() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "</summary><form method=\"post\" action=\"/preferences/lang\" data-lang-form class=\"absolute right-0 bottom-full z-20 mb-1 w-40 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-warm\"><input type=\"hidden\" name=\"next\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "</summary><form method=\"post\" action=\"/preferences/lang\" data-lang-form class=\"absolute right-0 bottom-full z-20 mb-1 max-h-[min(24rem,70vh)] w-44 overflow-y-auto rounded-card border border-line bg-surface py-1 shadow-warm\"><input type=\"hidden\" name=\"next\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

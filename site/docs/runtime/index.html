@@ -1,26 +1,26 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en-US" data-docs="">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#141711">
 
-<title>Runtime do passo — Documentação</title>
-<meta name="description" content="O que o passo declara sobre a linguagem e as ferramentas que dirige — e por que quase nunca é preciso declarar.">
+<title>Step runtime — Documentation</title>
+<meta name="description" content="What a step declares about the language and tools it drives — and why you rarely need to.">
 <meta name="author" content="Aretê Academy">
 <link rel="canonical" href="https://brevis.sh/docs/runtime/">
 <link rel="alternate" type="text/markdown" href="https://brevis.sh/docs/runtime/index.md">
-<link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/docs/runtime/"><link rel="alternate" hreflang="en" href="https://brevis.sh/en/docs/runtime/">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/runtime/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/runtime/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/runtime/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/runtime/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/runtime/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/runtime/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/runtime/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/runtime/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/runtime/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/runtime/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/runtime/">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="brevis.sh">
-<meta property="og:locale" content="pt-BR">
-<meta property="og:title" content="Runtime do passo — Documentação">
-<meta property="og:description" content="O que o passo declara sobre a linguagem e as ferramentas que dirige — e por que quase nunca é preciso declarar.">
+<meta property="og:locale" content="en-US">
+<meta property="og:title" content="Step runtime — Documentation">
+<meta property="og:description" content="What a step declares about the language and tools it drives — and why you rarely need to.">
 <meta property="og:url" content="https://brevis.sh/docs/runtime/">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Runtime do passo — Documentação">
-<meta name="twitter:description" content="O que o passo declara sobre a linguagem e as ferramentas que dirige — e por que quase nunca é preciso declarar.">
+<meta name="twitter:title" content="Step runtime — Documentation">
+<meta name="twitter:description" content="What a step declares about the language and tools it drives — and why you rarely need to.">
 
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,9 +34,9 @@
 {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  "headline": "Runtime do passo",
-  "description": "O que o passo declara sobre a linguagem e as ferramentas que dirige — e por que quase nunca é preciso declarar.",
-  "inLanguage": "pt-BR",
+  "headline": "Step runtime",
+  "description": "What a step declares about the language and tools it drives — and why you rarely need to.",
+  "inLanguage": "en-US",
   "isPartOf": {
     "@type": "WebSite",
     "@id": "https://brevis.sh/#site"
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+<a class="skip-link" href="#conteudo">Skip to content</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -83,17 +83,17 @@
       <span>brevis<span class="tld">.sh</span></span>
     </a>
 
-    <nav class="main-nav" id="nav" aria-label="Navegação principal">
-      <a href="/#ecossistema">Ecossistema</a>
-      <a href="/docs/">Documentação</a>
-      <div class="lang-switch" role="group" aria-label="Idioma"><a href="/docs/runtime/" hreflang="pt-BR" aria-current="true">PT</a><a href="/en/docs/runtime/" hreflang="en">EN</a></div>
+    <nav class="main-nav" id="nav" aria-label="Main navigation">
+      <a href="/#ecossistema">Ecosystem</a>
+      <a href="/docs/">Documentation</a>
+      <details class="lang-dd"><summary aria-label="Language: English"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>English</span></summary><ul><li><a href="/docs/runtime/" lang="en-US" hreflang="en-US" aria-current="true">English</a></li><li><a href="/es/docs/runtime/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/runtime/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/runtime/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/runtime/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/runtime/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/runtime/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/runtime/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/runtime/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/runtime/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/runtime/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
-        Explorar open source
+        Explore open source
       </a>
     </nav>
 
-    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="nav">
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
       <svg aria-hidden="true"><use href="#i-menu"></use></svg>
     </button>
   </div>
@@ -102,83 +102,83 @@
 <div class="doc-shell">
   <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
     <svg aria-hidden="true"><use href="#i-menu"></use></svg>
-    Menu da documentação
+    Documentation menu
   </button>
 
   <aside class="side" id="side">
     <div class="side-inner">
       <form class="search" role="search" onsubmit="return false">
         <svg aria-hidden="true"><use href="#i-search"></use></svg>
-        <label class="sr-only" for="q">Buscar na documentação</label>
-        <input type="search" id="q" placeholder="Buscar…" autocomplete="off" spellcheck="false">
+        <label class="sr-only" for="q">Search the documentation</label>
+        <input type="search" id="q" placeholder="Search…" autocomplete="off" spellcheck="false">
       </form>
-      <div class="search-out" id="search-out" data-none="Nada encontrado" hidden></div>
-      <nav class="side-nav" aria-label="Documentação">
-        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/ecosystem/">Ecossistema</a></li><li><a href="/docs/integrations/">Integrações</a></li><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/core/">Core</a></li><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/">Pod por passo</a></li><li><a href="/docs/context/">Contexto entre passos</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li><li><a href="/docs/runtime/" aria-current="page">Runtime do passo</a></li></ul><p class="side-group">SDK e bibliotecas</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li><li><a href="/docs/libraries/">Bibliotecas cliente</a></li><li><a href="/docs/python/">Python</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/console/">Console</a></li><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observabilidade</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul><p class="side-group">Ingestão</p><ul class="side-list"><li><a href="/docs/ingestion/">Ingestão</a></li><li><a href="/docs/ingestion-sinks/">Destinos da ingestão</a></li><li><a href="/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modelagem em SQL</p><ul class="side-list"><li><a href="/docs/sql/">SQL</a></li></ul><p class="side-group">O projeto</p><ul class="side-list"><li><a href="/docs/philosophy/">Filosofia</a></li><li><a href="/docs/faq/">FAQ</a></li></ul>
+      <div class="search-out" id="search-out" data-none="No results" hidden></div>
+      <nav class="side-nav" aria-label="Documentation">
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/docs/ecosystem/">Ecosystem</a></li><li><a href="/docs/integrations/">Integrations</a></li><li><a href="/docs/introduction/">Introduction</a></li><li><a href="/docs/installation/">Installation</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/docs/core/">Core</a></li><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/docs/pod-per-step/">Pod per step</a></li><li><a href="/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parameters</a></li><li><a href="/docs/configuration/">Configuration</a></li><li><a href="/docs/runtime/" aria-current="page">Step runtime</a></li></ul><p class="side-group">SDK and libraries</p><ul class="side-list"><li><a href="/docs/sdk/">Go SDK</a></li><li><a href="/docs/libraries/">Client libraries</a></li><li><a href="/docs/python/">Python</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/docs/console/">Console</a></li><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observability</a></li><li><a href="/docs/white-label/">White label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/docs/ingestion/">Ingestion</a></li><li><a href="/docs/ingestion-sinks/">Ingestion sinks</a></li><li><a href="/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modelling in SQL</p><ul class="side-list"><li><a href="/docs/sql/">SQL</a></li></ul><p class="side-group">The project</p><ul class="side-list"><li><a href="/docs/philosophy/">Philosophy</a></li><li><a href="/docs/faq/">FAQ</a></li></ul>
       </nav>
     </div>
   </aside>
 
   <main class="doc" id="conteudo">
     <article class="doc-body">
-      <p class="doc-kicker">Documentação</p>
-      <h1>Runtime do passo</h1>
-      <p class="doc-desc">O que o passo declara sobre a linguagem e as ferramentas que dirige — e por que quase nunca é preciso declarar.</p>
-      <p>O grafo desenha um selo em cada passo dizendo a linguagem e as ferramentas que ele dirige:</p>
+      <p class="doc-kicker">Documentation</p>
+      <h1>Step runtime</h1>
+      <p class="doc-desc">What a step declares about the language and tools it drives — and why you rarely need to.</p>
+      <p>The graph draws a chip on each step saying its language and the tools it drives:</p>
 <div class="code-block" data-code="┌──────────────────────────────────────┐
 │ ● transform            SDK v0.57.0   │
 │   dbt build --select gold            │
 │   ⬤ Python  ▢ dbt                    │
 │   2m14s · attempt 1                  │
-└──────────────────────────────────────┘"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>┌──────────────────────────────────────┐
+└──────────────────────────────────────┘"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>┌──────────────────────────────────────┐
 │ ● transform            SDK v0.57.0   │
 │   dbt build --select gold            │
 │   ⬤ Python  ▢ dbt                    │
 │   2m14s · attempt 1                  │
 └──────────────────────────────────────┘</code></pre></div>
-<p><strong>Na maior parte dos casos você não escreve nada.</strong> O engine lê <code>run:</code> e <code>image:</code> e deduz.</p>
-<h2 id="quando-declarar">Quando declarar<a class="anchor" href="#quando-declarar" aria-label="link">#</a></h2>
-<p>Dois campos, ambos opcionais, ambos por passo:</p>
+<p><strong>Most of the time you write nothing.</strong> The engine reads <code>run:</code> and <code>image:</code> and works it out.</p>
+<h2 id="when-to-declare-it">When to declare it<a class="anchor" href="#when-to-declare-it" aria-label="link">#</a></h2>
+<p>Two fields, both optional, both per step:</p>
 <div class="code-block" data-code="steps:
   - id: fetch
     run: /opt/brevis/bin/fetch-weather
-    runtime: go            # um binário compilado; o caminho não diz nada
+    runtime: go            # a compiled binary; the path says nothing
 
   - id: transform
     run: dbt build --select gold+
-    tools: [dbt]           # o que ele dirige, não o que ele é"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">steps</span>:
+    tools: [dbt]           # what it drives, not what it is"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">steps</span>:
   - <span class="t-k">id</span>: fetch
     <span class="t-k">run</span>: /opt/brevis/bin/fetch-weather
-    <span class="t-k">runtime</span>: go            <span class="t-c"># um binário compilado; o caminho não diz nada</span>
+    <span class="t-k">runtime</span>: go            <span class="t-c"># a compiled binary; the path says nothing</span>
 
   - <span class="t-k">id</span>: transform
     <span class="t-k">run</span>: dbt build --select gold+
-    <span class="t-k">tools</span>: [dbt]           <span class="t-c"># o que ele dirige, não o que ele é</span></code></pre></div>
-<div class="table-wrap"><table><thead><tr><th>campo</th><th></th></tr></thead><tbody><tr><td><code>runtime</code></td><td>a linguagem do passo: <code>go</code>, <code>python</code>, <code>node</code>, <code>shell</code>…</td></tr><tr><td><code>tools</code></td><td>as ferramentas que o comando dirige: <code>dbt</code>, <code>dlt</code>, <code>spark</code>…</td></tr></tbody></table></div>
-<p>A regra prática: <strong>declare quando a inferência erra.</strong> Um <code>run:</code> que aponta para um binário compilado não tem como dizer que é Go; um wrapper que chama <code>dbt</code> por dentro não tem como dizer que dirige dbt.</p>
-<h2 id="por-que-um-vocabulario-fechado">Por que um vocabulário fechado<a class="anchor" href="#por-que-um-vocabulario-fechado" aria-label="link">#</a></h2>
-<p>Um id fora do vocabulário é <strong>recusado no publish</strong>, nomeando o que é válido. A alternativa seria um selo que renderiza em branco numa tela três dias depois, sem nada para rastrear.</p>
+    <span class="t-k">tools</span>: [dbt]           <span class="t-c"># what it drives, not what it is</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>field</th><th></th></tr></thead><tbody><tr><td><code>runtime</code></td><td>the step's language: <code>go</code>, <code>python</code>, <code>node</code>, <code>shell</code>…</td></tr><tr><td><code>tools</code></td><td>the tools the command drives: <code>dbt</code>, <code>dlt</code>, <code>spark</code>…</td></tr></tbody></table></div>
+<p>The rule of thumb: <strong>declare it when inference gets it wrong.</strong> A <code>run:</code> that points at a compiled binary has no way of saying it is Go; a wrapper that calls <code>dbt</code> internally has no way of saying it drives dbt.</p>
+<h2 id="why-a-closed-vocabulary">Why a closed vocabulary<a class="anchor" href="#why-a-closed-vocabulary" aria-label="link">#</a></h2>
+<p>An id outside the vocabulary is <strong>refused at publish</strong>, naming what is valid. The alternative is a chip that renders blank on a screen three days later, with nothing to trace it to.</p>
 <div class="code-block" data-code="workflow &quot;daily&quot;: step &quot;transform&quot;: `runtime: pyton` is not valid
-  (valid: go, python, node, shell, …)"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>workflow "daily": step "transform": `runtime: pyton` is not valid
+  (valid: go, python, node, shell, …)"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>workflow "daily": step "transform": `runtime: pyton` is not valid
   (valid: go, python, node, shell, …)</code></pre></div>
-<h2 id="o-que-o-selo-serve-para">O que o selo serve para<a class="anchor" href="#o-que-o-selo-serve-para" aria-label="link">#</a></h2>
-<p>Não é decoração. Quando um run falha às 3h da manhã, a primeira pergunta é "o que esse passo executa?", e a resposta costuma estar em outro repositório. O selo põe a resposta no próprio grafo — junto com a versão do SDK que o passo usou, que é o que distingue "quebrou hoje" de "quebrou desde a atualização de terça".</p>
-<h2 id="proximos-passos">Próximos passos<a class="anchor" href="#proximos-passos" aria-label="link">#</a></h2>
-<ul><li><a href="/docs/workflows/">Workflows</a> — todos os campos do passo</li><li><a href="/docs/pod-per-step/">Pod por passo</a> — onde o passo realmente executa</li><li><a href="/docs/observability/">Observabilidade</a> — as métricas que acompanham</li></ul>
+<h2 id="what-the-chip-is-for">What the chip is for<a class="anchor" href="#what-the-chip-is-for" aria-label="link">#</a></h2>
+<p>It is not decoration. When a run fails at 3 a.m., the first question is "what does this step execute?", and the answer usually lives in another repository. The chip puts it on the graph itself — alongside the SDK version the step used, which is what tells "broke today" apart from "broke since Tuesday's bump".</p>
+<h2 id="next-steps">Next steps<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
+<ul><li><a href="/docs/workflows/">Workflows</a> — every step field</li><li><a href="/docs/pod-per-step/">Pod per step</a> — where a step actually runs</li><li><a href="/docs/observability/">Observability</a> — the metrics that go with it</li></ul>
 
-      <nav class="pagers" aria-label="Páginas">
-        <a class="pager pager-prev" href="/docs/configuration/"><span>Anterior</span><strong>Configuração</strong></a>
-        <a class="pager pager-next" href="/docs/sdk/"><span>Próximo</span><strong>SDK em Go</strong></a>
+      <nav class="pagers" aria-label="Pages">
+        <a class="pager pager-prev" href="/docs/configuration/"><span>Previous</span><strong>Configuration</strong></a>
+        <a class="pager pager-next" href="/docs/sdk/"><span>Next</span><strong>Go SDK</strong></a>
       </nav>
 
       <p class="doc-edit">
-        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/pt/docs/runtime.md" target="_blank" rel="noopener">Editar esta página no GitHub</a>
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/en/docs/runtime.md" target="_blank" rel="noopener">Edit this page on GitHub</a>
       </p>
     </article>
 
-    <aside class="toc" aria-label="Nesta página">
-      <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#quando-declarar">Quando declarar</a></li><li class="toc-2"><a href="#por-que-um-vocabulario-fechado">Por que um vocabulário fechado</a></li><li class="toc-2"><a href="#o-que-o-selo-serve-para">O que o selo serve para</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
+    <aside class="toc" aria-label="On this page">
+      <p class="toc-t">On this page</p>
+      <ul><li class="toc-2"><a href="#when-to-declare-it">When to declare it</a></li><li class="toc-2"><a href="#why-a-closed-vocabulary">Why a closed vocabulary</a></li><li class="toc-2"><a href="#what-the-chip-is-for">What the chip is for</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
     </aside>
   </main>
 </div>
@@ -192,24 +192,24 @@
           <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
           <span>brevis<span class="tld">.sh</span></span>
         </a>
-        <p>Filosofia aplicada à infraestrutura de dados.</p>
+        <p>Philosophy applied to data infrastructure.</p>
       </div>
 
       <div class="footer-col">
-        <h2>projeto</h2>
+        <h2>project</h2>
         <ul>
-          <li><a href="/#ecossistema">Ecossistema</a></li>
-          <li><a href="/docs/philosophy/">Princípios</a></li>
-          <li><a href="/docs/introduction/#codigo-aberto-escolha-como-participar">Open source</a></li>
+          <li><a href="/#ecossistema">Ecosystem</a></li>
+          <li><a href="/docs/philosophy/">Principles</a></li>
+          <li><a href="/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/docs/faq/">FAQ</a></li>
         </ul>
       </div>
 
       <div class="footer-col">
-        <h2>código</h2>
+        <h2>code</h2>
         <ul>
-          <li><a href="/docs/">Documentação</a></li>
-          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repositório</a></li>
+          <li><a href="/docs/">Documentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repository</a></li>
           <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
           <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
         </ul>
@@ -217,12 +217,13 @@
     </div>
 
     <div class="footer-bottom">
-      <p>Um projeto open source da <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
-      <p>MIT · construído em Go · Go gopher por Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+      <p>An open source project by <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · built in Go · Go gopher by Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
     </div>
   </div>
 </footer>
 
 <script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
 </body>
 </html>

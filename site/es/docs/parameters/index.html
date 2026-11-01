@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es" data-docs="/es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Parámetros — Documentación</title>
+<meta name="description" content="Lo que cambia entre dos runs del mismo workflow, sin editar el archivo.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/es/docs/parameters/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/es/docs/parameters/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/parameters/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/parameters/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/parameters/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/parameters/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/parameters/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/parameters/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/parameters/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/parameters/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/parameters/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/parameters/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/parameters/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="es">
+<meta property="og:title" content="Parámetros — Documentación">
+<meta property="og:description" content="Lo que cambia entre dos runs del mismo workflow, sin editar el archivo.">
+<meta property="og:url" content="https://brevis.sh/es/docs/parameters/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Parámetros — Documentación">
+<meta name="twitter:description" content="Lo que cambia entre dos runs del mismo workflow, sin editar el archivo.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Parámetros",
+  "description": "Lo que cambia entre dos runs del mismo workflow, sin editar el archivo.",
+  "inLanguage": "es",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Saltar al contenido</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/es/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Navegación principal">
+      <a href="/es/#ecossistema">Ecosistema</a>
+      <a href="/es/docs/">Documentación</a>
+      <details class="lang-dd"><summary aria-label="Idioma: Español"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Español</span></summary><ul><li><a href="/docs/parameters/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/parameters/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/parameters/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/parameters/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/parameters/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/parameters/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/parameters/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/parameters/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/parameters/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/parameters/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/parameters/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Explorar el código abierto
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Menú de documentación
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Buscar en la documentación</label>
+        <input type="search" id="q" placeholder="Buscar…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Sin resultados" hidden></div>
+      <nav class="side-nav" aria-label="Documentación">
+        <p class="side-group">Primeros pasos</p><ul class="side-list"><li><a href="/es/docs/ecosystem/">Ecosistema</a></li><li><a href="/es/docs/integrations/">Integraciones</a></li><li><a href="/es/docs/introduction/">Introducción</a></li><li><a href="/es/docs/installation/">Instalación</a></li><li><a href="/es/docs/quickstart/">Inicio rápido</a></li></ul><p class="side-group">Conceptos</p><ul class="side-list"><li><a href="/es/docs/core/">Core</a></li><li><a href="/es/docs/workflows/">Workflows</a></li><li><a href="/es/docs/scheduler-and-queue/">Scheduler y cola</a></li><li><a href="/es/docs/pod-per-step/">Pod por step</a></li><li><a href="/es/docs/context/">Contexto entre steps</a></li></ul><p class="side-group">Referencia</p><ul class="side-list"><li><a href="/es/docs/cli/">CLI</a></li><li><a href="/es/docs/parameters/" aria-current="page">Parámetros</a></li><li><a href="/es/docs/configuration/">Configuración</a></li><li><a href="/es/docs/runtime/">Runtime del step</a></li></ul><p class="side-group">SDK y bibliotecas</p><ul class="side-list"><li><a href="/es/docs/sdk/">SDK de Go</a></li><li><a href="/es/docs/libraries/">Bibliotecas cliente</a></li><li><a href="/es/docs/python/">Python</a></li></ul><p class="side-group">Operación</p><ul class="side-list"><li><a href="/es/docs/console/">Console</a></li><li><a href="/es/docs/kubernetes/">Kubernetes</a></li><li><a href="/es/docs/observability/">Observabilidad</a></li><li><a href="/es/docs/white-label/">White label</a></li></ul><p class="side-group">Ingesta</p><ul class="side-list"><li><a href="/es/docs/ingestion/">Ingesta</a></li><li><a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></li><li><a href="/es/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modelado en SQL</p><ul class="side-list"><li><a href="/es/docs/sql/">SQL</a></li></ul><p class="side-group">El proyecto</p><ul class="side-list"><li><a href="/es/docs/philosophy/">Filosofía</a></li><li><a href="/es/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Documentación</p>
+      <h1>Parámetros</h1>
+      <p class="doc-desc">Lo que cambia entre dos runs del mismo workflow, sin editar el archivo.</p>
+      <p>Un workflow puede declarar <strong>parámetros de run</strong>: valores que cambian entre dos disparos sin que el archivo cambie.</p>
+<h2 id="declarar">Declarar<a class="anchor" href="#declarar" aria-label="link">#</a></h2>
+<div class="code-block" data-code="params:
+  - name: load_full
+    type: boolean
+    default: &quot;false&quot;
+
+  - name: start_date
+    type: string
+    pattern: &#x27;^\d{4}-\d{2}-\d{2}$&#x27;
+
+steps:
+  - id: run
+    run: dbt build --vars &#x27;{&quot;load_full&quot;:&quot;{{ .load_full }}&quot;}&#x27; --select bronze+"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">params</span>:
+  - <span class="t-k">name</span>: load_full
+    <span class="t-k">type</span>: boolean
+    <span class="t-k">default</span>: "<span class="t-n">false</span>"
+
+  - <span class="t-k">name</span>: start_date
+    <span class="t-k">type</span>: string
+    <span class="t-k">pattern</span>: '^\d{4}-\d{2}-\d{2}$'
+
+<span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: run
+    <span class="t-k">run</span>: dbt build --vars '{"load_full":"{{ .load_full }}"}' --select bronze+</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>campo</th><th></th><th></th></tr></thead><tbody><tr><td><code>name</code></td><td><strong>obligatorio</strong></td><td>el nombre usado en la plantilla y en <code>--param</code></td></tr><tr><td><code>type</code></td><td></td><td><code>string</code>, <code>boolean</code>, <code>integer</code>, o `list</td><td>&lt;type&gt;` para varios valores</td></tr><tr><td><code>default</code></td><td></td><td>se usa cuando el disparo no aporta ningún valor</td></tr><tr><td><code>pattern</code></td><td></td><td>expresión regular que el valor debe cumplir</td></tr><tr><td><code>title</code></td><td></td><td>la etiqueta que muestra el formulario, hasta 60 caracteres; si no, el nombre</td></tr><tr><td><code>group</code></td><td></td><td>agrupa parámetros en el formulario, hasta 60 caracteres</td></tr><tr><td><code>warn</code></td><td></td><td>lo que cuesta un valor distinto del valor por defecto, se muestra bajo el campo, hasta 200 caracteres</td></tr><tr><td><code>uses</code></td><td></td><td>la clave del conector del que trata el parámetro (<code>bigquery</code>, <code>postgres</code>), para mostrar su logo</td></tr></tbody></table></div>
+<p>Un parámetro <strong>sin <code>default</code></strong> es obligatorio: un disparo que lo omite falla antes de ejecutar cualquier step.</p>
+<p><code>title</code>, <code>group</code>, <code>warn</code> y <code>uses</code> son la forma en que el formulario presenta el parámetro, y <strong>ninguno cambia lo que un valor puede ser</strong>. Cada uno es una línea; <code>uses</code> son letras minúsculas, dígitos y <code>-</code>. El publish rechaza cualquier otra cosa, nombrando el parámetro.</p>
+<div class="code-block" data-code="params:
+  - name: load_full
+    type: boolean
+    default: &quot;false&quot;
+    title: Full load
+    group: Load
+    warn: reprocesses the whole table; it costs
+    uses: bigquery"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">params</span>:
+  - <span class="t-k">name</span>: load_full
+    <span class="t-k">type</span>: boolean
+    <span class="t-k">default</span>: "<span class="t-n">false</span>"
+    <span class="t-k">title</span>: Full load
+    <span class="t-k">group</span>: Load
+    <span class="t-k">warn</span>: reprocesses the whole table; it costs
+    <span class="t-k">uses</span>: bigquery</code></pre></div>
+<h2 id="una-lista-de-valores">Una lista de valores<a class="anchor" href="#una-lista-de-valores" aria-label="link">#</a></h2>
+<p><code>list|&lt;type&gt;</code> declara un parámetro que lleva muchos valores: las tablas a cargar, las capas a reconstruir, las ventanas a rellenar:</p>
+<div class="code-block" data-code="params:
+  - name: tables
+    type: list|string
+    default: &quot;users,orders&quot;
+
+  - name: layers
+    type: list|string
+    enum: [bronze, silver, gold]     # an enum restricts each ITEM
+    default: &quot;bronze&quot;
+
+  - name: days
+    type: list|integer
+    default: &quot;1,7,30&quot;"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">params</span>:
+  - <span class="t-k">name</span>: tables
+    <span class="t-k">type</span>: list|string
+    <span class="t-k">default</span>: "users,orders"
+
+  - <span class="t-k">name</span>: layers
+    <span class="t-k">type</span>: list|string
+    <span class="t-k">enum</span>: [bronze, silver, gold]     <span class="t-c"># an enum restricts each ITEM</span>
+    <span class="t-k">default</span>: "bronze"
+
+  - <span class="t-k">name</span>: days
+    <span class="t-k">type</span>: list|integer
+    <span class="t-k">default</span>: "1,7,30"</code></pre></div>
+<p>El elemento puede ser <code>string</code>, <code>integer</code> o <code>boolean</code>. Cada ítem se valida por separado, así que <code>list|integer</code> con <code>1,x,30</code> falla nombrando el <strong>ítem 2</strong> en lugar de el valor completo.</p>
+<p>Es <strong>un único string separado por comas</strong> en todas partes: en la base de datos, en <code>BREVIS_RUN_PARAMS</code> y en el comando. Eso es lo que hace que funcione en un step sin ningún caso especial:</p>
+<div class="code-block" data-code="run: dbt build --select {{ .tables }}      # dbt build --select users,orders"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">run</span>: dbt build --select {{ .tables }}      <span class="t-c"># dbt build --select users,orders</span></code></pre></div>
+<p>y es la razón por la que una coma no puede aparecer dentro de un ítem. Un ítem vacío y uno repetido también se rechazan: una repetición duplica en silencio lo que el step haga por ítem.</p>
+<h3 id="como-arreglo-en-un-step">Como arreglo, en un step<a class="anchor" href="#como-arreglo-en-un-step" aria-label="link">#</a></h3>
+<div class="code-block" data-code="for _, table := range p.Run.ParamList(&quot;tables&quot;) {
+    load(table)
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">for</span> _, table := <span class="t-k">range</span> p.Run.ParamList("tables") {
+    load(table)
+}</code></pre></div>
+<div class="code-block" data-code="from brevis import run
+
+for table in run.param_list(&quot;tables&quot;):
+    load(table)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> run
+
+<span class="t-k">for</span> table <span class="t-k">in</span> run.param_list("tables"):
+    load(table)</code></pre></div>
+<p>Ambos devuelven <code>[]</code> para un parámetro que nadie rellenó, en lugar de una lista con un string vacío: iterar sobre «nada que hacer» no debe hacer nada. Los ítems vuelven como strings —<code>list|integer</code> incluido— porque el step sabe mejor que la biblioteca qué hacer con un número.</p>
+<h3 id="en-la-interfaz">En la interfaz<a class="anchor" href="#en-la-interfaz" aria-label="link">#</a></h3>
+<p>Una lista con <code>enum</code> se muestra como casillas de verificación, que no necesitan JavaScript y que el navegador envía un valor por casilla marcada. Sin <code>enum</code> es un campo de texto cuyos ítems se convierten en chips removibles, y con JavaScript desactivado sigue siendo un campo con <code>users,orders</code>, que es exactamente lo que el servidor espera.</p>
+<h3 id="en-la-linea-de-comandos">En la línea de comandos<a class="anchor" href="#en-la-linea-de-comandos" aria-label="link">#</a></h3>
+<div class="code-block" data-code="brevis run wf.yaml --param tables=events,sessions --param days=1,30"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> tables=events,sessions <span class="t-n">--param</span> days=1,30</code></pre></div>
+<aside class="admon admon-note"><p class="admon-t">Un engine más antiguo no lo leerá</p><p>El tipo se almacena con el workflow, y un engine anterior a esta funcionalidad rechaza <code>list|string</code> en el publish como un tipo desconocido. Hay que actualizar el engine antes de publicar un workflow que use uno.</p></aside>
+<h2 id="usarlo-en-el-comando">Usarlo en el comando<a class="anchor" href="#usarlo-en-el-comando" aria-label="link">#</a></h2>
+<p>El valor entra en <code>run</code> mediante una plantilla, entre llaves dobles con un punto:</p>
+<div class="code-block" data-code="run: ./load.sh --since {{ .start_date }}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">run</span>: ./load.sh --since {{ .start_date }}</code></pre></div>
+<h2 id="pasarlo-por-la-linea-de-comandos">Pasarlo por la línea de comandos<a class="anchor" href="#pasarlo-por-la-linea-de-comandos" aria-label="link">#</a></h2>
+<div class="code-block" data-code="brevis run wf.yaml --param load_full=true
+brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true
+<span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true <span class="t-n">--param</span> start_date=2026-01-01</code></pre></div>
+<p><code>--param</code> es repetible. Una entrada sin <code>=</code> es un <strong>error</strong>:</p>
+<div class="code-block" data-code="erro: --param &quot;load_full&quot;: use chave=valor"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>erro: --param "load_full": use chave=valor</code></pre></div>
+<p>Es deliberado. <code>--param load_full</code>, olvidando el valor, se ejecutaría con el valor por defecto, y el operador creería que el backfill se hizo con el parámetro que pretendía.</p>
+<h2 id="en-un-backfill">En un backfill<a class="anchor" href="#en-un-backfill" aria-label="link">#</a></h2>
+<p>Los valores se aplican a <strong>cada</strong> slot del rango. Este es el caso de uso central: «reprocesar todo enero con <code>load_full=true</code>».</p>
+<div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
+<h2 id="en-la-interfaz">En la interfaz<a class="anchor" href="#en-la-interfaz" aria-label="link">#</a></h2>
+<p>Un workflow con <code>params</code> obtiene un <strong>formulario</strong> en lugar del botón de disparo simple. Los campos vienen de la declaración, y <code>pattern</code> se valida antes del envío.</p>
+<h2 id="en-el-entorno-del-step">En el entorno del step<a class="anchor" href="#en-el-entorno-del-step" aria-label="link">#</a></h2>
+<p>Los parámetros del run también entran en el <strong>entorno</strong> de cada step, con prefijo. Esto existe para que un fetcher escrito con el <a href="/es/docs/sdk/">SDK</a> pueda verlos sin recibir nada como argumento:</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+    if p.Run.Params[&quot;load_full&quot;] == &quot;true&quot; {
+        p.Source.URL += &quot;&amp;full=1&quot;
+    }
+    return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+    <span class="t-k">if</span> p.Run.Params["load_full"] == "true" {
+        p.Source.URL += "&amp;full=1"
+    }
+    <span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<h2 id="parametros-automaticos">Parámetros automáticos<a class="anchor" href="#parametros-automaticos" aria-label="link">#</a></h2>
+<p>Cada run también lleva <strong>parámetros automáticos</strong>: valores que el engine calcula por su cuenta. Nadie los declara, todo run los tiene, y están en la pantalla del run.</p>
+<p>El que importa es <code>adjusted_at</code>, y vale la pena nombrar el bug que elimina. Un fetcher lee <code>now()</code>, resta su ventana y pide al proveedor las últimas dos horas. En un run que arranca a tiempo eso es correcto. En un run que la cola retrasó cuarenta minutos, está mal por cuarenta minutos, y esos cuarenta minutos no pertenecen a <strong>ningún run</strong>, porque el siguiente slot también lee su propio <code>now()</code>. Nada falla; los datos simplemente faltan, y se descubre semanas después.</p>
+<p>Así que el engine entrega un reloj. Se lee <code>adjusted_at</code> donde se habría leído <code>now()</code>:</p>
+<div class="table-wrap"><table><thead><tr><th>param</th><th></th><th></th></tr></thead><tbody><tr><td><code>adjusted_at</code></td><td>siempre</td><td>el reloj que este run debe leer: el slot cuando lo hay, el inicio si no</td></tr><tr><td><code>date</code></td><td>siempre</td><td><code>adjusted_at</code> como <code>YYYY-MM-DD</code>, UTC — la partición, la carpeta, el <code>WHERE</code></td></tr><tr><td><code>delay_seconds</code></td><td>siempre</td><td>cuánto se retrasó este intento respecto de su slot; <code>0</code> en un run manual sin slot</td></tr><tr><td><code>previous_error</code></td><td>siempre</td><td>el run anterior a este no tuvo éxito</td></tr><tr><td><code>scheduled_at</code></td><td>con slot</td><td>el slot que pidió el cron</td></tr><tr><td><code>started_at</code></td><td></td><td>cuándo empezó este intento; un reintento lo mueve</td></tr><tr><td><code>interval_start</code></td><td>con slot</td><td>el slot <strong>anterior</strong></td></tr><tr><td><code>interval_end</code></td><td>con slot</td><td>este slot, <strong>excluido</strong></td></tr><tr><td><code>previous_success_at</code></td><td></td><td>el slot del último run que sí tuvo éxito</td></tr></tbody></table></div>
+<p>Un run tiene slot cuando lo creó la programación, cuando lo creó un backfill, o cuando se disparó a mano <strong>para un slot pasado</strong>: el campo <code>slot</code> del disparo (<code>2026-10-27T04:00:00Z</code>) ejecuta ese slot de nuevo, con los params de ese slot. Un slot que el cron nunca dispara se rechaza, indicando el más cercano anterior.</p>
+<p><strong>Todas las marcas de tiempo aquí son UTC</strong>, escritas como RFC 3339 con una <code>Z</code>, y la pantalla del run también las muestra en UTC, de modo que la página y <code>$BREVIS_AUTO_ADJUSTED_AT</code> nunca discrepan. <code>date</code> es el <strong>día UTC</strong>, que para un workflow cuyo slot cruza la medianoche UTC no es el día local: un <code>0 22 * * *</code> en <code>America/Sao_Paulo</code> tiene un <code>date</code> del día siguiente. El <code>ds</code> de Airflow se comporta igual, por la misma razón: el slot es un instante, y un instante solo tiene un día una vez que se elige una zona horaria.</p>
+<p><code>interval_start</code> e <code>interval_end</code> vienen del <strong>cron</strong>, no del historial: un backfill de un slot de marzo produce la ventana que tuvo marzo, no la ventana que los runs de este workflow describen hoy. Un pipeline que pide <code>[start, end)</code> nunca se solapa y nunca deja huecos, por tarde que se ejecute y por muchas veces que reintente.</p>
+<p>Son un <strong>snapshot</strong>, calculado cuando el run arranca y almacenado en él. <code>previous_error</code> es un hecho sobre el instante en que empezó este run; recalcularlo mañana —después de que el run anterior se reintentara y pasara— respondería una pregunta distinta con el mismo nombre.</p>
+<h3 id="leerlos">Leerlos<a class="anchor" href="#leerlos" aria-label="link">#</a></h3>
+<p>En un step de shell, una variable por valor, de modo que no haya que parsear nada:</p>
+<div class="code-block" data-code="steps:
+  - id: extract
+    run: |
+      curl &quot;https://api.example.com/events?since=$BREVIS_AUTO_INTERVAL_START&amp;until=$BREVIS_AUTO_INTERVAL_END&quot; \
+        &gt; &quot;/data/$BREVIS_AUTO_DATE.json&quot;"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: |
+      curl "https://api.example.com/events?since=$BREVIS_AUTO_INTERVAL_START&amp;until=$BREVIS_AUTO_INTERVAL_END" \
+        &gt; "/data/$BREVIS_AUTO_DATE.json"</code></pre></div>
+<p>El conjunto completo también está en <code>$BREVIS_AUTO_PARAMS</code> como un único objeto JSON, para un step que prefiera parsear una sola vez.</p>
+<p>En Go, el <a href="/es/docs/sdk/">SDK</a> los lee por ti:</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+    start, end, ok := p.Run.Auto.Window()
+    if !ok { // no schedule: fall back to a fixed window
+        start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+    }
+    p.Source.URL += &quot;&amp;from=&quot; + start.Format(time.RFC3339) +
+        &quot;&amp;to=&quot; + end.Format(time.RFC3339)
+    return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+    start, end, ok := p.Run.Auto.Window()
+    <span class="t-k">if</span> !ok { <span class="t-c">// no schedule: fall back to a fixed window</span>
+        start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+    }
+    p.Source.URL += "&amp;from=" + start.Format(time.RFC3339) +
+        "&amp;to=" + end.Format(time.RFC3339)
+    <span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p><code>Auto.Now()</code> es el reloj que se lee en lugar de <code>time.Now()</code>. Fuera del engine —un fetcher que alguien ejecuta a mano— <em>es</em> el reloj de pared, así que no hay que tratar nada como caso especial en el desarrollo local.</p>
+<p>En Python, <code>pip install brevis</code> lee los mismos valores:</p>
+<div class="code-block" data-code="from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f&quot;/data/{run.auto().date}.parquet&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">from</span> datetime <span class="t-k">import</span> timedelta
+<span class="t-k">from</span> brevis <span class="t-k">import</span> run
+
+since, until = run.window() <span class="t-k">or</span> (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
+<p><code>window()</code> devuelve <code>None</code> cuando el workflow no tiene programación, en lugar de un par de tiempos cero: una consulta desde la época selecciona todo, y ese fallo no debe ser silencioso. El <code>or</code> de arriba es todo el fallback.</p>
+<h3 id="en-dlt-no-hay-nada-que-leer">En dlt, no hay nada que leer<a class="anchor" href="#en-dlt-no-hay-nada-que-leer" aria-label="link">#</a></h3>
+<p><a href="https://dlthub.com" target="_blank" rel="noopener">dlt</a> mantiene su propio cursor, en un estado que escribe en el destino. Ese estado solo avanza <strong>hacia adelante</strong>, lo cual está bien hasta que se vuelve a ejecutar un slot antiguo: el cursor sigue diciendo hoy, así que el backfill lee la ventana de hoy, y la respuesta de dlt para eso es descartar el estado.</p>
+<p>La ventana que entrega Brevis viene del cron, así que el run de marzo produce la ventana de marzo por muchas veces que se reintente. dlt la acepta: los nombres son suyos, los lee antes de ponerse a buscar Airflow, y el engine los define en cada run programado:</p>
+<div class="code-block" data-code="@dlt.resource(primary_key=&quot;id&quot;)
+def events(
+    updated_at=dlt.sources.incremental(
+        &quot;updated_at&quot;,
+        initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        allow_external_schedulers=True,   # this line is the whole integration
+    )
+):
+    yield from api.events(since=updated_at.start_value, until=updated_at.end_value)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>@dlt.resource(primary_key="id")
+<span class="t-k">def</span> events(
+    updated_at=dlt.sources.incremental(
+        "updated_at",
+        initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        allow_external_schedulers=<span class="t-k">True</span>,   <span class="t-c"># this line is the whole integration</span>
+    )
+):
+    <span class="t-k">yield</span> <span class="t-k">from</span> api.events(since=updated_at.start_value, until=updated_at.end_value)</code></pre></div>
+<p><code>allow_external_schedulers=True</code> es toda la integración. <code>$DLT_INTERVAL_START</code> y <code>$DLT_INTERVAL_END</code> se convierten en el <code>initial_value</code> y el <code>end_value</code> de dlt, semiabiertos en ambos lados: la fila que está exactamente en el inicio entra, la que está exactamente en el final no, que es lo que hace que slots consecutivos no dejen huecos ni se solapen.</p>
+<p>Un incremental con <code>end_value</code> <strong>no toca el estado persistido</strong>. Esa es la parte que importa: volver a ejecutar un slot es idempotente, y un backfill de marzo no mueve el cursor del que depende el run nocturno.</p>
+<p>Dos cosas que saber antes de que funcione:</p>
+<ul><li><strong>El cursor debe ser un datetime, no un string.</strong> dlt no convierte un cursor <code>text</code> para compararlo y se niega a unirse al scheduler, con un <code>JoinSchedulerError</code> que no lo dice de forma evidente. Hay que convertirlo en el recurso (<code>add_map</code>) o tipar el <code>initial_value</code> como arriba.</li><li><strong>Un workflow sin programación no entrega nada</strong>, y dlt entonces lanza <code>ExternalSchedulerNotAvailable</code> en lugar de volver en silencio a su cursor. Si un pipeline debe funcionar de ambas formas, se deja <code>allow_external_schedulers</code> desactivado y se pasa la ventana manualmente desde <code>run.window()</code>.</li></ul>
+<p>Declarar <code>tools: [dlt]</code> en el step es aparte, y solo dibuja el chip en el grafo: la ventana se entrega de todos modos.</p>
+<h2 id="el-snapshot">El snapshot<a class="anchor" href="#el-snapshot" aria-label="link">#</a></h2>
+<p>Los parámetros se almacenan <strong>en el run</strong>, no se leen del workflow en el momento de la ejecución. El run lleva la entrada con la que se disparó, y el log de una ejecución de enero sigue mostrando los valores de enero incluso después de que cambie el valor por defecto.</p>
+<h2 id="siguientes-pasos">Siguientes pasos<a class="anchor" href="#siguientes-pasos" aria-label="link">#</a></h2>
+<ul><li><a href="/es/docs/configuration/">Configuración</a> — variables de entorno del proceso</li><li><a href="/es/docs/sdk/">SDK</a> — cómo un fetcher lee el contexto del run</li><li><a href="/es/docs/context/">Contexto entre steps</a> — lo que un step publica para el siguiente</li></ul>
+
+      <nav class="pagers" aria-label="Páginas">
+        <a class="pager pager-prev" href="/es/docs/cli/"><span>Anterior</span><strong>CLI</strong></a>
+        <a class="pager pager-next" href="/es/docs/configuration/"><span>Siguiente</span><strong>Configuración</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/es/docs/parameters.md" target="_blank" rel="noopener">Editar esta página en GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="En esta página">
+      <p class="toc-t">En esta página</p>
+      <ul><li class="toc-2"><a href="#declarar">Declarar</a></li><li class="toc-2"><a href="#una-lista-de-valores">Una lista de valores</a></li><li class="toc-3"><a href="#como-arreglo-en-un-step">Como arreglo, en un step</a></li><li class="toc-3"><a href="#en-la-interfaz">En la interfaz</a></li><li class="toc-3"><a href="#en-la-linea-de-comandos">En la línea de comandos</a></li><li class="toc-2"><a href="#usarlo-en-el-comando">Usarlo en el comando</a></li><li class="toc-2"><a href="#pasarlo-por-la-linea-de-comandos">Pasarlo por la línea de comandos</a></li><li class="toc-2"><a href="#en-un-backfill">En un backfill</a></li><li class="toc-2"><a href="#en-la-interfaz">En la interfaz</a></li><li class="toc-2"><a href="#en-el-entorno-del-step">En el entorno del step</a></li><li class="toc-2"><a href="#parametros-automaticos">Parámetros automáticos</a></li><li class="toc-3"><a href="#leerlos">Leerlos</a></li><li class="toc-3"><a href="#en-dlt-no-hay-nada-que-leer">En dlt, no hay nada que leer</a></li><li class="toc-2"><a href="#el-snapshot">El snapshot</a></li><li class="toc-2"><a href="#siguientes-pasos">Siguientes pasos</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/es/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Filosofía aplicada a la infraestructura de datos.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>proyecto</h2>
+        <ul>
+          <li><a href="/es/#ecossistema">Ecosistema</a></li>
+          <li><a href="/es/docs/philosophy/">Principios</a></li>
+          <li><a href="/es/docs/introduction/#codigo-abierto-elige-como-participar">Código abierto</a></li>
+          <li><a href="/es/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>código</h2>
+        <ul>
+          <li><a href="/es/docs/">Documentación</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repositorio</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Un proyecto de código abierto de <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · construido en Go · Go gopher por Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

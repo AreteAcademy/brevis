@@ -79,7 +79,7 @@
   var saida = document.getElementById('search-out');
   if (!campo || !saida) return;
 
-  var idioma = (raiz.lang || 'pt').slice(0, 2);
+  var idioma = (raiz.lang || 'en').slice(0, 2);
   var indice = null;
   var carregando = false;
 

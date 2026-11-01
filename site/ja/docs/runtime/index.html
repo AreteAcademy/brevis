@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja" data-docs="/ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>ステップのランタイム — ドキュメント</title>
+<meta name="description" content="ステップが、使う言語と操作するツールについて宣言するもの — そして、ほとんど宣言が要らない理由。">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/ja/docs/runtime/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/ja/docs/runtime/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/runtime/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/runtime/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/runtime/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/runtime/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/runtime/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/runtime/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/runtime/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/runtime/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/runtime/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/runtime/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/runtime/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="ja">
+<meta property="og:title" content="ステップのランタイム — ドキュメント">
+<meta property="og:description" content="ステップが、使う言語と操作するツールについて宣言するもの — そして、ほとんど宣言が要らない理由。">
+<meta property="og:url" content="https://brevis.sh/ja/docs/runtime/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="ステップのランタイム — ドキュメント">
+<meta name="twitter:description" content="ステップが、使う言語と操作するツールについて宣言するもの — そして、ほとんど宣言が要らない理由。">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "ステップのランタイム",
+  "description": "ステップが、使う言語と操作するツールについて宣言するもの — そして、ほとんど宣言が要らない理由。",
+  "inLanguage": "ja",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">本文へスキップ</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/ja/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
+      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/docs/">ドキュメント</a>
+      <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/runtime/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/runtime/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/runtime/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/runtime/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/runtime/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/runtime/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/runtime/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/runtime/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/runtime/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/runtime/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/runtime/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        オープンソースを見る
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="メニューを開く" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    ドキュメントメニュー
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">ドキュメントを検索</label>
+        <input type="search" id="q" placeholder="検索…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="結果なし" hidden></div>
+      <nav class="side-nav" aria-label="ドキュメント">
+        <p class="side-group">はじめに</p><ul class="side-list"><li><a href="/ja/docs/ecosystem/">エコシステム</a></li><li><a href="/ja/docs/integrations/">インテグレーション</a></li><li><a href="/ja/docs/introduction/">はじめに</a></li><li><a href="/ja/docs/installation/">インストール</a></li><li><a href="/ja/docs/quickstart/">クイックスタート</a></li></ul><p class="side-group">基本概念</p><ul class="side-list"><li><a href="/ja/docs/core/">Core</a></li><li><a href="/ja/docs/workflows/">Workflows</a></li><li><a href="/ja/docs/scheduler-and-queue/">スケジューラとキュー</a></li><li><a href="/ja/docs/pod-per-step/">ステップごとの pod</a></li><li><a href="/ja/docs/context/">ステップ間のコンテキスト</a></li></ul><p class="side-group">リファレンス</p><ul class="side-list"><li><a href="/ja/docs/cli/">CLI</a></li><li><a href="/ja/docs/parameters/">パラメータ</a></li><li><a href="/ja/docs/configuration/">設定</a></li><li><a href="/ja/docs/runtime/" aria-current="page">ステップのランタイム</a></li></ul><p class="side-group">SDK とライブラリ</p><ul class="side-list"><li><a href="/ja/docs/sdk/">Go SDK</a></li><li><a href="/ja/docs/libraries/">クライアントライブラリ</a></li><li><a href="/ja/docs/python/">Python</a></li></ul><p class="side-group">運用</p><ul class="side-list"><li><a href="/ja/docs/console/">Console</a></li><li><a href="/ja/docs/kubernetes/">Kubernetes</a></li><li><a href="/ja/docs/observability/">オブザーバビリティ</a></li><li><a href="/ja/docs/white-label/">ホワイトラベル</a></li></ul><p class="side-group">取り込み</p><ul class="side-list"><li><a href="/ja/docs/ingestion/">取り込み</a></li><li><a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></li><li><a href="/ja/docs/benchmarks/">ベンチマーク</a></li></ul><p class="side-group">SQL によるモデリング</p><ul class="side-list"><li><a href="/ja/docs/sql/">SQL</a></li></ul><p class="side-group">プロジェクト</p><ul class="side-list"><li><a href="/ja/docs/philosophy/">哲学</a></li><li><a href="/ja/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">ドキュメント</p>
+      <h1>ステップのランタイム</h1>
+      <p class="doc-desc">ステップが、使う言語と操作するツールについて宣言するもの — そして、ほとんど宣言が要らない理由。</p>
+      <p>グラフは、各ステップに、その言語と操作するツールを示すチップを描画します。</p>
+<div class="code-block" data-code="┌──────────────────────────────────────┐
+│ ● transform            SDK v0.57.0   │
+│   dbt build --select gold            │
+│   ⬤ Python  ▢ dbt                    │
+│   2m14s · attempt 1                  │
+└──────────────────────────────────────┘"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>┌──────────────────────────────────────┐
+│ ● transform            SDK v0.57.0   │
+│   dbt build --select gold            │
+│   ⬤ Python  ▢ dbt                    │
+│   2m14s · attempt 1                  │
+└──────────────────────────────────────┘</code></pre></div>
+<p><strong>たいていの場合、何も書く必要はありません。</strong> エンジンが <code>run:</code> と <code>image:</code> を読んで 判断します。</p>
+<h2 id="いつ宣言するか">いつ宣言するか<a class="anchor" href="#いつ宣言するか" aria-label="link">#</a></h2>
+<p>フィールドは 2 つで、どちらも任意で、ステップごとに指定します。</p>
+<div class="code-block" data-code="steps:
+  - id: fetch
+    run: /opt/brevis/bin/fetch-weather
+    runtime: go            # a compiled binary; the path says nothing
+
+  - id: transform
+    run: dbt build --select gold+
+    tools: [dbt]           # what it drives, not what it is"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: fetch
+    <span class="t-k">run</span>: /opt/brevis/bin/fetch-weather
+    <span class="t-k">runtime</span>: go            <span class="t-c"># a compiled binary; the path says nothing</span>
+
+  - <span class="t-k">id</span>: transform
+    <span class="t-k">run</span>: dbt build --select gold+
+    <span class="t-k">tools</span>: [dbt]           <span class="t-c"># what it drives, not what it is</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>フィールド</th><th></th></tr></thead><tbody><tr><td><code>runtime</code></td><td>ステップの言語: <code>go</code>、<code>python</code>、<code>node</code>、<code>shell</code>…</td></tr><tr><td><code>tools</code></td><td>コマンドが操作するツール: <code>dbt</code>、<code>dlt</code>、<code>spark</code>…</td></tr></tbody></table></div>
+<p>経験則は、<strong>推論が間違うときに宣言する</strong>ことです。コンパイル済みのバイナリを指す <code>run:</code> には、 それが Go だと伝える手段がありません。内部で <code>dbt</code> を呼び出すラッパーには、dbt を操作していると 伝える手段がありません。</p>
+<h2 id="なぜ閉じた語彙なのか">なぜ閉じた語彙なのか<a class="anchor" href="#なぜ閉じた語彙なのか" aria-label="link">#</a></h2>
+<p>語彙にない id は <strong>publish で拒否され</strong>、有効なものが示されます。代案は、3 日後の画面で空白の まま描画され、原因をたどる手がかりがないチップです。</p>
+<div class="code-block" data-code="workflow &quot;daily&quot;: step &quot;transform&quot;: `runtime: pyton` is not valid
+  (valid: go, python, node, shell, …)"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>workflow "daily": step "transform": `runtime: pyton` is not valid
+  (valid: go, python, node, shell, …)</code></pre></div>
+<h2 id="チップは何のためにあるか">チップは何のためにあるか<a class="anchor" href="#チップは何のためにあるか" aria-label="link">#</a></h2>
+<p>飾りではありません。午前 3 時に run が失敗したとき、最初の疑問は「このステップは何を実行して いるのか?」であり、その答えはたいてい別のリポジトリにあります。チップはそれをグラフ上に 示します。ステップが使った SDK のバージョンと並べて表示されるため、「今日壊れた」と 「火曜日のバージョンアップから壊れている」を区別できます。</p>
+<h2 id="次のステップ">次のステップ<a class="anchor" href="#次のステップ" aria-label="link">#</a></h2>
+<ul><li><a href="/ja/docs/workflows/">Workflows</a> — ステップのすべてのフィールド</li><li><a href="/ja/docs/pod-per-step/">ステップごとの pod</a> — ステップが実際に動く場所</li><li><a href="/ja/docs/observability/">オブザーバビリティ</a> — それに付随するメトリクス</li></ul>
+
+      <nav class="pagers" aria-label="ページ">
+        <a class="pager pager-prev" href="/ja/docs/configuration/"><span>前へ</span><strong>設定</strong></a>
+        <a class="pager pager-next" href="/ja/docs/sdk/"><span>次へ</span><strong>Go SDK</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/ja/docs/runtime.md" target="_blank" rel="noopener">GitHub でこのページを編集</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="このページの内容">
+      <p class="toc-t">このページの内容</p>
+      <ul><li class="toc-2"><a href="#いつ宣言するか">いつ宣言するか</a></li><li class="toc-2"><a href="#なぜ閉じた語彙なのか">なぜ閉じた語彙なのか</a></li><li class="toc-2"><a href="#チップは何のためにあるか">チップは何のためにあるか</a></li><li class="toc-2"><a href="#次のステップ">次のステップ</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/ja/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>データインフラに応用された哲学。</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>プロジェクト</h2>
+        <ul>
+          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/docs/philosophy/">原則</a></li>
+          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>コード</h2>
+        <ul>
+          <li><a href="/ja/docs/">ドキュメント</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">リポジトリ</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>オープンソースプロジェクト。制作: <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · Go で構築 · Go gopher: Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>
