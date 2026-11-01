@@ -69,3 +69,32 @@ func TestRunsAreBucketedByHourOrDay(t *testing.T) {
 		t.Errorf("hours: %d buckets, last %+v, err %v", len(hours), hours[len(hours)-1], err)
 	}
 }
+
+// THE CHART'S WINDOW BOUNDS THE SCAN: a run older than the window lands in no
+// bucket (and the join no longer reads it), and the buckets are UTC days
+// whatever the session's time zone.
+func TestRunsPerIgnoresRunsBeforeTheWindowAndBucketsInUTC(t *testing.T) {
+	pool := insightsDB(t)
+	ctx := context.Background()
+	finished(t, pool, "daily", dom.StatusSuccess, time.Second)
+	old := finished(t, pool, "daily", dom.StatusFailed, time.Second)
+	if _, err := pool.Exec(ctx, `UPDATE runs SET criado_em = now() - interval '40 days' WHERE id = $1`, old); err != nil {
+		t.Fatal(err)
+	}
+	reads := postgres.NewReadRepo(pool)
+
+	days, err := reads.RunsPer(ctx, postgres.ByDay, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ok, failed int
+	for _, d := range days {
+		ok, failed = ok+d.Succeeded, failed+d.Failed
+	}
+	if len(days) != 7 || ok != 1 || failed != 0 {
+		t.Errorf("%d buckets with %d succeeded, %d failed; want 7 with 1 and 0", len(days), ok, failed)
+	}
+	if want := time.Now().UTC().Truncate(24 * time.Hour); !days[6].Start.UTC().Equal(want) {
+		t.Errorf("last bucket starts %s, want the UTC day %s", days[6].Start.UTC(), want)
+	}
+}

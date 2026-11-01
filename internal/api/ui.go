@@ -62,6 +62,8 @@ type Leitura interface {
 	Runs(ctx context.Context, f postgres.RunFilter) ([]postgres.RunSummary, error)
 	CountRuns(ctx context.Context, f postgres.RunFilter) (int, error)
 	CountRunsByState(ctx context.Context, f postgres.RunFilter) (map[string]int, error)
+	// CountRunsInFlight is the sidebar badge's number; it must stay cheap.
+	CountRunsInFlight(ctx context.Context) (int, error)
 	// WorkflowHistory is a workflow's runs with their params, newest first;
 	// with a day, that UTC day's.
 	WorkflowHistory(ctx context.Context, slug string, day *time.Time, limit int) ([]postgres.RunSummary, error)
@@ -133,7 +135,8 @@ type Actions interface {
 
 // UI registers the server-rendered pages and the JSON the React island consumes.
 type UI struct {
-	leitura Leitura
+	leitura  Leitura
+	inFlight func(context.Context) (int, error)
 	// version is what the console runs; updates says if there is newer.
 	version string
 	updates UpdateSource
@@ -311,7 +314,12 @@ func (u *UI) dataTools(target string) bool {
 func NewUI(l Leitura, d Definitions, e RunsChart, a Actions, al AlertsReader,
 	c CatalogReader, m branding.Brand, log *slog.Logger,
 ) *UI {
-	return &UI{leitura: l, defs: d, execs: e, actions: a, alerts: al, catalog: c, brand: m, log: log}
+	u := &UI{leitura: l, defs: d, execs: e, actions: a, alerts: al, catalog: c, brand: m, log: log}
+	if l != nil {
+		// Every page and every open tab's 10 s poll draws the badge.
+		u.inFlight = CachedInFlight(l.CountRunsInFlight, 5*time.Second, time.Now)
+	}
+	return u
 }
 
 // Registrar wires the routes into the mux.
@@ -2063,11 +2071,11 @@ func (u *UI) withRunsBadges(ctx context.Context, r *http.Request) context.Contex
 			ctx = layouts.WithFailing(ctx, len(failing))
 		}
 	}
-	if u.leitura != nil {
-		if counts, err := u.leitura.CountRunsByState(ctx, postgres.RunFilter{}); err != nil {
+	if u.inFlight != nil {
+		if n, err := u.inFlight(ctx); err != nil {
 			u.log.Error("counting the runs in flight", "path", r.URL.Path, "error", err)
 		} else {
-			ctx = layouts.WithRunning(ctx, inFlight(counts))
+			ctx = layouts.WithRunning(ctx, n)
 		}
 	}
 	return ctx
