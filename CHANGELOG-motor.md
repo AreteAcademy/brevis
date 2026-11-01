@@ -27,9 +27,9 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   Portuguese moved to `/pt/`, `/en/*` redirects to `/*`, and the other nine
   languages live at `/es/`, `/fr/`, `/de/`, `/zh/`, `/ja/`, `/ru/`, `/ko/`,
   `/hi/`, `/id/`. The language button is a dropdown.
-- **The documentation is translated only in English and Portuguese.** The
-  other languages have the landing page and the docs index; their links to a
-  documentation page lead to the English one.
+- **The documentation is translated into all eleven languages** (27 pages
+  each, machine-drafted; native review welcome). A language enters the site's
+  docs by having `site/content/<lang>/docs/`.
 
 ### Added: an API's settings are kept when it is published
 
