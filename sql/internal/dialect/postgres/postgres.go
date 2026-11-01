@@ -94,6 +94,13 @@ func (Dialect) Literal(s string) string {
 // ("cannot change name of view column ..."). Dropping it by hand is the way
 // through today; `--full-refresh` is the way through when it exists.
 //
+// A TABLE IS BUILT ASIDE AND SWAPPED IN. `CREATE TABLE ref__new AS` is the
+// slow part and runs first, with nothing locked and the old table still
+// serving; only then do `DROP` of the old and `ALTER ... RENAME` of the new
+// run in one transaction (see SwapTail), so the exclusive lock is held for
+// the rename and a failed build leaves the old table untouched. The first
+// statement clears a `ref__new` a crashed run left behind.
+//
 // A TABLE IS REBUILT, because `CREATE TABLE AS` is the only way to get the
 // new rows and Postgres has no `CREATE OR REPLACE TABLE`. The drop carries no
 // CASCADE either, so a view reading this table blocks the rebuild and
@@ -117,25 +124,12 @@ func (d Dialect) Build(m model.Model, st dialect.State) ([]string, error) {
 		// `--full-refresh` said to pretend so -- and from tomorrow the
 		// table that lands here is what the merge adds to.
 		if st.Rebuild() {
-			if st.Current == dialect.View {
-				out = append(out, "DROP VIEW IF EXISTS "+ref)
-			} else {
-				out = append(out, "DROP TABLE IF EXISTS "+ref)
-			}
-			return append(out, "CREATE TABLE "+ref+" AS\n"+m.SQL), nil
+			return swapIn(m, st, ref), nil
 		}
 		return []string{mergeInto(m, st, ref)}, nil
 
 	case model.Table:
-		// ONE drop, chosen by what is actually there. Emitting both would
-		// mean a statement that can never do anything on either branch, and
-		// a statement that cannot act reads like a rule and is not one.
-		if st.Current == dialect.View {
-			out = append(out, "DROP VIEW IF EXISTS "+ref)
-		} else {
-			out = append(out, "DROP TABLE IF EXISTS "+ref)
-		}
-		out = append(out, "CREATE TABLE "+ref+" AS\n"+m.SQL)
+		return swapIn(m, st, ref), nil
 	default:
 		if st.Current == dialect.Table {
 			out = append(out, "DROP TABLE IF EXISTS "+ref)
@@ -143,6 +137,37 @@ func (d Dialect) Build(m model.Model, st dialect.State) ([]string, error) {
 		out = append(out, "CREATE OR REPLACE VIEW "+ref+" AS\n"+m.SQL)
 	}
 	return out, nil
+}
+
+// swapIn builds the table as ref__new and swaps it for ref.
+//
+// ONE drop, chosen by what is actually there. Emitting both would mean a
+// statement that can never do anything on either branch, and a statement
+// that cannot act reads like a rule and is not one. The drop carries no
+// CASCADE, so a view reading the table blocks the swap and Postgres says
+// which view -- as it did before; the new table is then removed.
+func swapIn(m model.Model, st dialect.State, ref string) []string {
+	next := ref + "__new"
+	drop := "DROP TABLE IF EXISTS " + ref
+	if st.Current == dialect.View {
+		drop = "DROP VIEW IF EXISTS " + ref
+	}
+	return []string{
+		"DROP TABLE IF EXISTS " + next,
+		"CREATE TABLE " + next + " AS\n" + m.SQL,
+		drop,
+		"ALTER TABLE " + next + " RENAME TO " + m.Name,
+	}
+}
+
+// SwapTail is the drop and the rename of a table build, and for the other
+// multi-statement builds (a table turned into a view) all of them. See
+// dialect.Swapper.
+func (Dialect) SwapTail(stmts []string) int {
+	if len(stmts) == 4 {
+		return 2
+	}
+	return len(stmts)
 }
 
 // mergeInto is the incremental write.
