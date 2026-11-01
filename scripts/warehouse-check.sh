@@ -68,8 +68,11 @@ for s in postgres mysql minio redis memcached; do need_service "$s"; done
 # The two that answer over HTTP are polled FROM HERE. A published port is not
 # a listening process, and neither container can probe itself: floci has no
 # shell worth the name and the S3 mock is a bare JRE.
-curl -sf -o /dev/null "http://localhost:9000/" \
-    || fail "the S3 endpoint is not answering on :9000:
+# On the compose's shifted port (BREVIS_S3_PORT): on 9000 this probe passed
+# against a dev server on the host's ::1:9000 while s3mock was up, and so did
+# nothing else. The compose says why the port moved.
+curl -sf -o /dev/null "http://localhost:${BREVIS_S3_PORT:-59000}/" \
+    || fail "the S3 endpoint is not answering on :${BREVIS_S3_PORT:-59000}:
     make warehouse-up"
 
 # AND THE TCP PORTS, for the same reason. `running` is what the two above
@@ -85,7 +88,7 @@ port_open 127.0.0.1:56379 "Redis"
 port_open 127.0.0.1:51211 "memcached"
 port_open 127.0.0.1:55432 "Postgres"
 port_open 127.0.0.1:53306 "MySQL"
-port_open 127.0.0.1:8085  "the Pub/Sub emulator"
+port_open "127.0.0.1:${BREVIS_PUBSUB_PORT:-55085}" "the Pub/Sub emulator"
 # floci too: 19 tests use the EMULATED layer and this run refuses a skip, so
 # "nothing skipped" has to include them. They are not real-warehouse tests --
 # they prove the driver speaks the protocol -- and they run in CI as well.
@@ -95,10 +98,17 @@ curl -sf -o /dev/null "http://localhost:4588/bigquery/v2/projects/floci-local/da
 
 export BREVIS_IT_PG_DSN="postgres://brevis:brevis@localhost:55432/brevis_it"
 export BREVIS_IT_MYSQL_DSN="root:brevis@tcp(localhost:53306)/brevis_it"
-export BREVIS_IT_S3_ENDPOINT="http://localhost:9000"
+# The S3 mock is on a SHIFTED port like the rest (see the compose), and the
+# endpoint stays a hostname: the gateway's path-style test refuses a bare IP,
+# because the SDK switches to path style on its own against one and the test
+# would then prove nothing.
+export BREVIS_IT_S3_ENDPOINT="http://localhost:${BREVIS_S3_PORT:-59000}"
 export BREVIS_IT_S3_KEY="brevis"
 export BREVIS_IT_S3_SECRET="brevis-secret"
-export PUBSUB_EMULATOR_HOST="localhost:8085"
+# The compose publishes the emulator on BREVIS_PUBSUB_PORT (55085, see the
+# Makefile), not on 8085: that moved on 2026-10-09 and this line did not, so
+# two gateway tests waited sixty seconds on a port nothing served.
+export PUBSUB_EMULATOR_HOST="127.0.0.1:${BREVIS_PUBSUB_PORT:-55085}"
 # BREVIS_BIGQUERY_EMULATOR is deliberately NOT exported. It points the SDK's
 # BigQuery client at floci, and `./load/` holds BOTH layers -- so setting it
 # globally sends the REAL-warehouse tests to the emulator, where they
@@ -118,6 +128,10 @@ export BREVIS_GATEWAY_TEST_S3_ENDPOINT="$BREVIS_IT_S3_ENDPOINT"
 # `connection refused` against containers that were up.
 export BREVIS_GATEWAY_TEST_REDIS="127.0.0.1:56379"
 export BREVIS_GATEWAY_TEST_MEMCACHED="127.0.0.1:51211"
+# brevis-sql's generation tests read their own name for the same Redis; CI
+# sets it and this did not, so three of them skipped -- which this run exists
+# to refuse.
+export BREVIS_SQL_IT_REDIS="$BREVIS_GATEWAY_TEST_REDIS"
 export AWS_REGION="us-east-1"
 export AWS_ACCESS_KEY_ID="$BREVIS_IT_S3_KEY"
 export AWS_SECRET_ACCESS_KEY="$BREVIS_IT_S3_SECRET"
