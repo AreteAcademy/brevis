@@ -90,6 +90,13 @@ Both fields are required and neither has a default: no watermark would mean
 rebuilding in full every night while reporting that it had not, and no unique
 key would mean a source that re-emits a row grows a duplicate per run.
 
+An optional `lookback: 2h` (a whole number and `s`, `m`, `h` or `d`) re-reads
+that much history behind the greatest watermark, so a row that ties it but
+committed after the build, or arrives late with an older timestamp, is merged
+instead of lost. The MERGE takes the repeated rows, so the overlap costs a
+re-read and nothing else. Without it the filter is the strict `>`. The
+watermark must be a TIMESTAMP column when a lookback is set.
+
 The new watermark is published for the steps below, on the pipe that already
 carries the landings:
 
@@ -148,9 +155,10 @@ third of a real dbt project's models use nothing beyond `ref`, `source` and
 `config`; the rest use macros, and packages are templating by design. Half a
 compatibility nobody can predict is worse than none.
 
-**No lookback window yet.** A row corrected with yesterday's timestamp is
-behind the watermark and this will not see it. Rebuild with
-`--full-refresh` when that happens.
+**Late rows are lost unless you set a `lookback`.** A row corrected with
+yesterday's timestamp is behind the watermark and the default strict filter
+will not see it: set `lookback` to cover how late rows arrive, or rebuild with
+`--full-refresh`.
 
 ## Verified against dbt
 

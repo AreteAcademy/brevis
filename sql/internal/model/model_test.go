@@ -3,6 +3,7 @@ package model
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 const withHeader = `/* brevis
@@ -204,5 +205,33 @@ func TestTheIncrementalFieldsAreRefusedOnSomethingElse(t *testing.T) {
 		if !strings.Contains(err.Error(), "incremental") {
 			t.Errorf("the refusal does not say what they are for: %v", err)
 		}
+	}
+}
+
+// A LOOKBACK IS A WHOLE NUMBER AND A UNIT, and a bad one is refused by name.
+func TestALookbackIsReadOrRefused(t *testing.T) {
+	read := func(l string) (Model, error) {
+		return Parse("models/silver/orders.sql", []byte("/* brevis\nmaterialized: incremental\n"+
+			"unique_key: [order_id]\nwatermark: updated_at\nlookback: "+l+"\n*/\nselect 1"))
+	}
+	for l, want := range map[string]time.Duration{
+		"30m": 30 * time.Minute, "2h": 2 * time.Hour, "1d": 24 * time.Hour, "45s": 45 * time.Second,
+	} {
+		m, err := read(l)
+		if err != nil || m.Lookback != want {
+			t.Errorf("lookback %s = %v, %v; wanted %v", l, m.Lookback, err, want)
+		}
+	}
+	for _, l := range []string{"0h", "-1h", "1.5h", "1h30m", "h", "2w", "soon", "'1'"} {
+		_, err := read(l)
+		if err == nil || !strings.Contains(err.Error(), "orders.sql") || !strings.Contains(err.Error(), "lookback") {
+			t.Errorf("lookback %s: %v, wanted a refusal naming the model", l, err)
+		}
+	}
+	if m, _ := Parse("models/silver/orders.sql", []byte(incremental)); m.Lookback != 0 {
+		t.Errorf("no lookback written, got %v", m.Lookback)
+	}
+	if _, err := Parse("models/silver/orders.sql", []byte("/* brevis\nmaterialized: table\nlookback: 2h\n*/\nselect 1")); err == nil {
+		t.Error("accepted a lookback on a table")
 	}
 }
