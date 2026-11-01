@@ -146,7 +146,7 @@ var (
 // Load reads an endpoint file and resolves its connection in the registry,
 // and its hooks in hooks -- nil is a binary with none.
 func Load(path string, reg *connections.Registry, hooks *Hooks) (*Config, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) // #nosec G304 -- the operator's own endpoint file
 	if err != nil {
 		return nil, fmt.Errorf("the endpoint file could not be read: %w", err)
 	}
@@ -230,7 +230,7 @@ func Load(path string, reg *connections.Registry, hooks *Hooks) (*Config, error)
 		case e.SQLFile != "":
 			// RELATIVE TO THE FILE, not to wherever the binary was started:
 			// the two travel together, in a ConfigMap or a repository.
-			body, err := os.ReadFile(filepath.Join(dir, e.SQLFile))
+			body, err := os.ReadFile(filepath.Join(dir, e.SQLFile)) // #nosec G304 -- relative to the endpoint file the operator named
 			if err != nil {
 				return nil, fmt.Errorf("endpoint %s: `sql_file` %s could not be read: %w", e.Name, e.SQLFile, err)
 			}

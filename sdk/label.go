@@ -38,7 +38,7 @@ var (
 
 // funcIdentity is a func value's closure record.
 func funcIdentity(fn Transformer) unsafe.Pointer {
-	return *(*unsafe.Pointer)(unsafe.Pointer(&fn))
+	return *(*unsafe.Pointer)(unsafe.Pointer(&fn)) // #nosec G103 -- reads a func value's closure pointer to tell two transformers apart; nothing is written through it
 }
 
 // labeled records what fn does and returns it unchanged. Each of the SDK's

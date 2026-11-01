@@ -3,8 +3,11 @@
 // checkout.
 module quickstart
 
-go 1.23.0
+go 1.26.0
 
 require github.com/AreteAcademy/brevis/sdk v0.51.0
 
-require github.com/google/uuid v1.6.0 // indirect
+require (
+	github.com/google/uuid v1.6.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
+)

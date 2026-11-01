@@ -707,6 +707,16 @@ jobs:
             echo "→ $name"
             ( cd "$dir" && gosec -quiet -no-fail -fmt sarif \
                 -out "$GITHUB_WORKSPACE/gosec-results/$name.sarif" ./... )
+            # A module with NOTHING to report writes no file at all, and the
+            # step below this one then has nothing to upload -- which is also
+            # what keeps the Security tab from learning that its alerts are
+            # gone. An empty report is the honest answer, and uploading it is
+            # what closes them.
+            if [ ! -s "$GITHUB_WORKSPACE/gosec-results/$name.sarif" ]; then
+              echo "  no findings: writing an empty report"
+              printf '%s\n' '{"version":"2.1.0","$schema":"https://json.schemastore.org/sarif-2.1.0.json","runs":[{"tool":{"driver":{"name":"gosec"}},"results":[]}]}' \
+                > "$GITHUB_WORKSPACE/gosec-results/$name.sarif"
+            fi
           done
           wc -l gosec-results/*.sarif
 

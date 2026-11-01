@@ -77,7 +77,7 @@ var dialects = map[string]dialect.Dialect{
 // BigQuery-only, which is what V1 and V2 shipped, and refusing to start
 // without a file nobody has written yet would be a service nobody can run.
 func Load(path string) (*Registry, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) // #nosec G304 -- the operator's own registry file
 	if errors.Is(err, os.ErrNotExist) {
 		return &Registry{}, nil
 	}

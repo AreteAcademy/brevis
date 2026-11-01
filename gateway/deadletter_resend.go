@@ -321,11 +321,11 @@ func (d *deadLetter) writeReceipt(ctx context.Context, rc *receipt) error {
 		return d.store.Create(ctx, d.bucket, d.prefix+resentDir+"/"+name, bytes.NewReader(raw))
 	}
 	dir := filepath.Join(d.path, resentDir)
-	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // beside the dead letter it describes
+	if err := os.MkdirAll(dir, 0o755); err != nil { // #nosec G301 -- beside the dead letter it describes
 		return err
 	}
 	tmp := filepath.Join(dir, "."+name)
-	if err := os.WriteFile(tmp, raw, 0o644); err != nil { //nolint:gosec // a receipt names no credential
+	if err := os.WriteFile(tmp, raw, 0o644); err != nil { // #nosec G306 -- a receipt names no credential
 		return err
 	}
 	return os.Rename(tmp, filepath.Join(dir, name))

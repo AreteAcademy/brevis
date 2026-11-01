@@ -25,7 +25,7 @@ mid-run is a process whose behaviour nobody can reproduce.
 | `BREVIS_LOG_LEVEL` | `info` | |
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | integer; a non-numeric value is a boot error |
 | `BREVIS_DB_MAX_CONNS` | driver default, `max(4, CPUs)` | cap on the Postgres pool of each process; a non-numeric or negative value is a boot error |
-| `BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS` | `30` | the console (`brevis serve`) only: Postgres aborts any of its statements that runs longer, so a runaway list query cannot hold a connection. `0` = off. Sent as a connection startup parameter, so a PgBouncer in transaction mode needs `ignore_startup_parameters = statement_timeout` |
+| `BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS` | `0` (off) | the console (`brevis serve`) only: Postgres aborts any of its statements that runs longer, so a runaway list query cannot hold a connection. `30` is the recommended value wherever the pool accepts startup parameters; it is off by default because a PgBouncer in transaction mode refuses the connection otherwise. Sent as a connection startup parameter, so a PgBouncer in transaction mode needs `ignore_startup_parameters = statement_timeout` |
 | `BREVIS_RETENTION_TRIM_DAYS` | `0` (off) | opt-in scheduled prune, run by `brevis scheduler`: empties the log, phases and output of runs older than this. Same effect as `brevis prune --trim-after`. `0` = the scheduler never prunes |
 | `BREVIS_RETENTION_PURGE_DAYS` | `0` (never) | with the above, also deletes runs older than this. Must be at least the trim value |
 | `BREVIS_RETENTION_INTERVAL_HOURS` | `24` | how often the scheduled prune runs (once at start, then every N hours) |
@@ -43,6 +43,16 @@ mid-run is a process whose behaviour nobody can reproduce.
 | `BREVIS_AUTH_SECRET` | 32+ bytes to sign the session (`openssl rand -base64 48`) |
 
 All three come together, or none does.
+
+| variable | default | |
+|---|---|---|
+| `BREVIS_AUTH_CLIENT_IP_HEADER` | — | header your proxy sets with the client address, e.g. `X-Forwarded-For`. The **last** entry is used (the one your proxy appended). Empty = the connection's address |
+
+Sign-in is throttled per client address (IPv6 by its /64): after three failures
+the address is locked for 2 seconds, doubling up to 15 minutes. **Behind an
+ingress or load balancer, leave the variable empty and every client shares the
+proxy's address, so one person guessing locks everybody out.** Set it only if
+the header is written by a proxy you trust and cannot be forged by the client.
 
 :::danger Half-configured is a boot error
 Whoever filled in the username believes the door is closed. The interface

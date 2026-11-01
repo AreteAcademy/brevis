@@ -2,7 +2,7 @@ package core
 
 import (
 	"context"
-	"crypto/sha1" //nolint:gosec // UUID v5 is defined over SHA-1; this is not a cryptographic use
+	"crypto/sha1" // #nosec G505 -- UUID v5 is defined over SHA-1; this is not a cryptographic use
 	"fmt"
 	"hash"
 	"io"
@@ -99,7 +99,7 @@ func ComputeIngestionIDIn(namespace uuid.UUID, provider, entity, sourceKey, reco
 // uuid.NewSHA1 calls sha1.New() per invocation, and Sum(nil) allocates again:
 // three allocations per record to compute a 20-byte hash. On a load of millions,
 // that is millions of digests created and thrown away.
-var digestos = sync.Pool{New: func() any { return sha1.New() }}
+var digestos = sync.Pool{New: func() any { return sha1.New() }} // #nosec G401 -- UUID v5 is defined over SHA-1; not a cryptographic use
 
 // uuidV5 is the same thing as uuid.NewSHA1, without the allocations.
 //

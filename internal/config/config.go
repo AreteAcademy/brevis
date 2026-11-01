@@ -201,6 +201,8 @@ func Load() (Config, error) {
 			User:   renamed("BREVIS_AUTH_USER", "BREVIS_AUTH_USUARIO"),
 			Hash:   renamed("BREVIS_AUTH_PASSWORD_HASH", "BREVIS_AUTH_SENHA_HASH"),
 			Secret: []byte(renamed("BREVIS_AUTH_SECRET", "BREVIS_AUTH_SEGREDO")),
+			// Empty: throttle logins by the connection's address.
+			ClientIPHeader: os.Getenv("BREVIS_AUTH_CLIENT_IP_HEADER"),
 		},
 		Pods: PodsConfig{
 			Modo:              get("BREVIS_PODS", "auto"),
@@ -219,10 +221,10 @@ func Load() (Config, error) {
 		Hosts:           pares("BREVIS_HOSTS"),
 		HostToken:       os.Getenv("BREVIS_HOST_TOKEN"),
 		ShutdownTimeout: 15 * time.Second,
-		// 30 s is generous for a list query and short enough that a runaway
-		// one cannot hold a connection for good.
-		ConsoleStatementTimeout: 30 * time.Second,
-		RetentionInterval:       24 * time.Hour,
+		// Off by default: it is sent as a startup parameter, which a PgBouncer
+		// in transaction mode refuses, and an upgrade must not stop a console
+		// from coming up over a setting nobody chose. 30 s is recommended.
+		RetentionInterval: 24 * time.Hour,
 	}
 
 	if v := os.Getenv("BREVIS_SHUTDOWN_TIMEOUT_SECONDS"); v != "" {
@@ -237,7 +239,7 @@ func Load() (Config, error) {
 	if c.DBMaxConns, err = envInt("BREVIS_DB_MAX_CONNS", 0); err != nil {
 		return Config{}, err
 	}
-	secs, err := envInt("BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS", 30)
+	secs, err := envInt("BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS", 0)
 	if err != nil {
 		return Config{}, err
 	}

@@ -2135,12 +2135,29 @@ func (u *UI) RegistrarLogin(mux *http.ServeMux, gate *auth.Gate) {
 		target := auth.Target(r.FormValue(auth.NextParam))
 		user := r.FormValue("username")
 
-		if !gate.SignIn(w, user, r.FormValue("password")) {
-			// Logged as a warning, with the attempted username and the origin: a
-			// burst of failures is the only sign somebody is guessing, and
-			// without a log it does not exist. The password never enters
-			// here.
-			u.log.Warn("login refused", "user", user, "origin", r.RemoteAddr)
+		// The origin is the connection's address unless the deployment names a
+		// header its proxy sets (BREVIS_AUTH_CLIENT_IP_HEADER): trusting one
+		// unconditionally would let anyone pick their own key. Without it,
+		// behind a proxy all clients share one lockout.
+		origin := auth.ClientKey(r, gate.Cred.ClientIPHeader)
+
+		out, retry := gate.Attempt(r.Context(), w, origin, user, r.FormValue("password"))
+		if out == auth.Locked || out == auth.Busy {
+			u.log.Warn("login throttled", "origin", origin)
+			w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())+1))
+			w.WriteHeader(http.StatusTooManyRequests)
+			u.render(w, r, pages.Login(pages.LoginData{
+				Target: target,
+				Err:    "Too many attempts. Try again in a moment.",
+			}))
+			return
+		}
+		if out != auth.Signed {
+			// Logged as a warning, with the origin: a burst of failures is the
+			// only sign somebody is guessing, and without a log it does not
+			// exist. Neither the password nor the username enters here: a
+			// password typed in the wrong box would land in the logs.
+			u.log.Warn("login refused", "origin", origin)
 
 			// 200, and not a redirect: the form comes back filled in with the
 			// destination and the error in the same response.
