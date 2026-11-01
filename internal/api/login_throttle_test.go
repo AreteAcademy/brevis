@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -45,14 +46,22 @@ func TestLoginDoesNotRunTheHashBeyondTheSlotsNorForALockedSource(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < 2; i++ {
 		wg.Add(1)
-		go func() { defer wg.Done(); post("10.0.0.1:1000") }()
+		addr := fmt.Sprintf("10.0.0.%d:1000", i+10)
+		go func() { defer wg.Done(); post(addr) }()
 		<-entered
 	}
+	// Each waits ~2 s for a slot, so they run side by side.
+	var excess sync.WaitGroup
 	for i := 0; i < 20; i++ {
-		if code := post("10.0.0.2:1000"); code != http.StatusTooManyRequests {
-			t.Fatalf("excess attempt = %d; expected 429", code)
-		}
+		excess.Add(1)
+		go func() {
+			defer excess.Done()
+			if code := post(fmt.Sprintf("10.0.1.%d:1000", i)); code != http.StatusTooManyRequests {
+				t.Errorf("excess attempt = %d; expected 429", code)
+			}
+		}()
 	}
+	excess.Wait()
 	close(release)
 	wg.Wait()
 	if n := calls.Load(); n != 2 {

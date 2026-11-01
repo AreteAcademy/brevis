@@ -1,6 +1,11 @@
 package auth
 
 import (
+	"context"
+	"net"
+	"net/http"
+	"net/netip"
+	"strings"
 	"sync"
 	"time"
 )
@@ -29,48 +34,114 @@ const (
 	maxSources = 10000
 )
 
+// slotWait is how long an attempt waits for a hash slot before it is Busy:
+// long enough that a burst from a few sources is served in turn, short enough
+// that a flood is not queued forever. A variable so a test can shorten it.
+var slotWait = 2 * time.Second
+
 type failure struct {
 	count int
 	last  time.Time
 	until time.Time // locked until
 }
 
-// Limiter bounds login attempts: a few hashes at a time, and an exponential
-// lockout per source after repeated failures. In memory and per process;
-// shortcut: with several replicas each keeps its own counters, so the
+// Limiter bounds login attempts: a few hashes at a time, one per source, and
+// an exponential lockout per source after repeated failures. In memory and per
+// process; shortcut: with several replicas each keeps its own counters, so the
 // effective limit is multiplied by the replica count -- move to a shared
 // store if Brevis ever runs more than a couple.
 type Limiter struct {
-	mu    sync.Mutex
-	slots chan struct{}
-	fails map[string]*failure
-	now   func() time.Time // injectable for tests
+	mu       sync.Mutex
+	slots    chan struct{}
+	fails    map[string]*failure
+	inflight map[string]bool
+	now      func() time.Time // injectable for tests
 }
 
 func NewLimiter() *Limiter {
 	return &Limiter{
-		slots: make(chan struct{}, hashSlots),
-		fails: map[string]*failure{},
-		now:   time.Now,
+		slots:    make(chan struct{}, hashSlots),
+		fails:    map[string]*failure{},
+		inflight: map[string]bool{},
+		now:      time.Now,
 	}
 }
 
-// Do runs check (the expensive hash) for source unless the source is locked
-// or every slot is busy, and records the result. It never queues: an excess
-// attempt is answered at once. retry is how long a Locked source must wait.
-func (l *Limiter) Do(source string, check func() bool) (out Outcome, retry time.Duration) {
+// ClientKey is the key an attempt is counted under: the address of the client,
+// IPv6 reduced to its /64 (one subscriber holds a whole /64, so rotating inside
+// it must not reset the counters). With header set (BREVIS_AUTH_CLIENT_IP_HEADER,
+// for a deployment behind a proxy we trust) it is the LAST entry of that
+// header -- the one our proxy appended; the first is whatever the client sent.
+// Absent or invalid, it falls back to the connection's own address.
+func ClientKey(r *http.Request, header string) string {
+	if header != "" {
+		if v := strings.Join(r.Header.Values(header), ","); v != "" {
+			if key, ok := ipKey(v[strings.LastIndex(v, ",")+1:]); ok {
+				return key
+			}
+		}
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	if key, ok := ipKey(host); ok {
+		return key
+	}
+	return host
+}
+
+func ipKey(s string) (string, bool) {
+	ip, err := netip.ParseAddr(strings.TrimSpace(s))
+	if err != nil {
+		return "", false
+	}
+	ip = ip.Unmap().WithZone("")
+	if ip.Is6() {
+		return netip.PrefixFrom(ip, 64).Masked().String(), true
+	}
+	return ip.String(), true
+}
+
+// Do runs check (the expensive hash) for source unless the source is locked,
+// already has a hash running, or no slot frees up within slotWait, and records
+// the result. retry is how long a Locked source must wait.
+func (l *Limiter) Do(ctx context.Context, source string, check func() bool) (out Outcome, retry time.Duration) {
 	l.mu.Lock()
 	now := l.now()
-	if f := l.fails[source]; f != nil && now.Before(f.until) {
+	f := l.fails[source]
+	if f != nil && !now.Before(f.until) && now.Sub(f.last) > forget {
+		delete(l.fails, source) // failures decay with time
+		f = nil
+	}
+	if f != nil && now.Before(f.until) {
 		l.mu.Unlock()
 		return Locked, f.until.Sub(now)
 	}
+	if f == nil && len(l.fails) >= maxSources {
+		l.evict(now)
+		if len(l.fails) >= maxSources { // every entry is a live lock: keep them
+			l.mu.Unlock()
+			return Busy, time.Second
+		}
+	}
+	// One hash per source: a few addresses cannot hold every global slot.
+	if l.inflight[source] {
+		l.mu.Unlock()
+		return Busy, time.Second
+	}
+	l.inflight[source] = true
 	l.mu.Unlock()
+	defer func() { l.mu.Lock(); delete(l.inflight, source); l.mu.Unlock() }()
 
+	t := time.NewTimer(slotWait)
+	defer t.Stop()
 	select {
 	case l.slots <- struct{}{}:
 		defer func() { <-l.slots }()
-	default:
+	case <-t.C:
+		return Busy, time.Second
+	case <-ctx.Done():
 		return Busy, time.Second
 	}
 
@@ -83,10 +154,13 @@ func (l *Limiter) Do(source string, check func() bool) (out Outcome, retry time.
 		return Signed, 0
 	}
 	now = l.now()
-	f := l.fails[source]
+	f = l.fails[source]
 	if f == nil {
 		if len(l.fails) >= maxSources {
 			l.evict(now)
+		}
+		if len(l.fails) >= maxSources {
+			return Refused, 0 // not recorded: a live lock is never dropped for it
 		}
 		f = &failure{}
 		l.fails[source] = f
@@ -100,18 +174,20 @@ func (l *Limiter) Do(source string, check func() bool) (out Outcome, retry time.
 	return Refused, 0
 }
 
-// evict makes room: drops the forgotten sources, and if all are recent, an
-// arbitrary one -- bounded memory beats an exact record under an address flood.
+// evict makes room without ever dropping a source that is still locked: the
+// forgotten ones go first, then unlocked ones, arbitrary.
 func (l *Limiter) evict(now time.Time) {
 	for k, f := range l.fails {
-		if now.Sub(f.last) > forget && !now.Before(f.until) {
+		if !now.Before(f.until) && now.Sub(f.last) > forget {
 			delete(l.fails, k)
 		}
 	}
-	for k := range l.fails {
+	for k, f := range l.fails {
 		if len(l.fails) < maxSources {
 			return
 		}
-		delete(l.fails, k)
+		if !now.Before(f.until) {
+			delete(l.fails, k)
+		}
 	}
 }

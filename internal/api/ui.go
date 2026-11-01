@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/url"
 	"slices"
@@ -2128,16 +2127,13 @@ func (u *UI) RegistrarLogin(mux *http.ServeMux, gate *auth.Gate) {
 		target := auth.Target(r.FormValue(auth.NextParam))
 		user := r.FormValue("username")
 
-		// The origin is RemoteAddr: Brevis has no trusted-proxy setting, and
-		// trusting X-Forwarded-For unconditionally would let anyone pick
-		// their own key. Behind an ingress that is the proxy's address, so
-		// all clients share one lockout until such a setting exists.
-		origin, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			origin = r.RemoteAddr
-		}
+		// The origin is the connection's address unless the deployment names a
+		// header its proxy sets (BREVIS_AUTH_CLIENT_IP_HEADER): trusting one
+		// unconditionally would let anyone pick their own key. Without it,
+		// behind a proxy all clients share one lockout.
+		origin := auth.ClientKey(r, gate.Cred.ClientIPHeader)
 
-		out, retry := gate.Attempt(w, origin, user, r.FormValue("password"))
+		out, retry := gate.Attempt(r.Context(), w, origin, user, r.FormValue("password"))
 		if out == auth.Locked || out == auth.Busy {
 			u.log.Warn("login throttled", "origin", origin)
 			w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())+1))

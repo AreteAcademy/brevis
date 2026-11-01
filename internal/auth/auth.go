@@ -116,6 +116,10 @@ type Credential struct {
 	// Secret signs the session cookie. Changing it drops every session, which
 	// is the emergency lever when a leak is suspected.
 	Secret []byte
+
+	// ClientIPHeader names the header a trusted proxy fills with the client
+	// address (see ClientKey); empty uses the connection's address.
+	ClientIPHeader string
 }
 
 // Enabled says whether a credential is configured.
@@ -282,13 +286,13 @@ func (p *Gate) verify(user, password string) bool {
 
 // Attempt is SignIn behind the Limiter, keyed by source (the client address).
 // A Locked or Busy answer did not run the hash.
-func (p *Gate) Attempt(w http.ResponseWriter, source, user, password string) (Outcome, time.Duration) {
+func (p *Gate) Attempt(ctx context.Context, w http.ResponseWriter, source, user, password string) (Outcome, time.Duration) {
 	p.once.Do(func() {
 		if p.Limit == nil {
 			p.Limit = NewLimiter()
 		}
 	})
-	out, retry := p.Limit.Do(source, func() bool { return p.verify(user, password) })
+	out, retry := p.Limit.Do(ctx, source, func() bool { return p.verify(user, password) })
 	if out == Signed {
 		p.setCookie(w)
 	}
