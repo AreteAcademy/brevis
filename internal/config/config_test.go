@@ -294,6 +294,7 @@ func TestHostHandoverIsOnUnlessTurnedOff(t *testing.T) {
 }
 
 func TestLoadPoolAndRetentionSettings(t *testing.T) {
+	t.Setenv("BREVIS_ENV", "local") // an unset one is production, which wants a credential
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://u:p@localhost:5432/db")
 	c, err := Load()
 	if err != nil {
