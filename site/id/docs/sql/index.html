@@ -126,22 +126,22 @@
       <p class="doc-desc">File .sql biasa menjadi tabel dan view, berurutan sesuai dependensi — sebagai step workflow atau berdiri sendiri.</p>
       <p>Tanpa templating: model adalah file yang tetap SQL valid, dan urutannya berasal dari membaca SQL itu sendiri. Postgres dan BigQuery, di bawah suite konformitas yang sama.</p>
 <figure class="doc-figure"><img src="/assets/flow-sql.svg" width="360" height="410" alt="Alur SQL: brevis-sql membaca raw.orders, tabel yang didaratkan SDK atau Gateway. Model staging.stg_orders menjadi view di atasnya, dan marts.orders menjadi tabel di atas view itu; urutannya berasal dari membaca SQL. Model yang sama dibangun di Postgres atau BigQuery." loading="lazy"></figure>
-<h2 id="enam-command">Enam command<a class="anchor" href="#enam-command" aria-label="link">#</a></h2>
+<h2 id="six-commands">Enam command<a class="anchor" href="#six-commands" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>command</th><th>fungsinya</th></tr></thead><tbody><tr><td><code>brevis-sql compile</code></td><td>mem-parse setiap model dan menyelesaikan setiap edge, <strong>tanpa terhubung ke apa pun</strong></td></tr><tr><td><code>brevis-sql graph</code></td><td>mencetak edge yang disimpulkan, agar yang salah terlihat dan tidak ditemukan belakangan</td></tr><tr><td><code>brevis-sql build</code></td><td>membuat atau mengganti setiap model, berurutan sesuai dependensi</td></tr><tr><td><code>brevis-sql test</code></td><td>menjalankan test setiap model; masing-masing adalah SELECT yang tidak boleh menemukan apa-apa</td></tr><tr><td><code>brevis-sql serve</code></td><td>menjawab preview dan query read-only lewat HTTP, sehingga console tidak membutuhkan kredensial warehouse</td></tr><tr><td><code>brevis-sql generation bump</code></td><td>mencatat bahwa sebuah tabel dibangun ulang, sehingga jawaban cache <code>brevis-sql-api</code> atasnya menjadi basi — <code>build --generations-from</code> melakukannya untuk setiap model yang dibangunnya</td></tr></tbody></table></div>
 <p><code>--select orders+</code> mempersempit salah satunya ke satu model dan semua yang ada di hilirnya.</p>
-<h2 id="brevis-sql-serve-membaca-warehouse-tanpa-kredensial"><code>brevis-sql serve</code> — membaca warehouse tanpa kredensial<a class="anchor" href="#brevis-sql-serve-membaca-warehouse-tanpa-kredensial" aria-label="link">#</a></h2>
+<h2 id="brevis-sql-serve-reading-a-warehouse-without-a-credential"><code>brevis-sql serve</code> — membaca warehouse tanpa kredensial<a class="anchor" href="#brevis-sql-serve-reading-a-warehouse-without-a-credential" aria-label="link">#</a></h2>
 <p>Layar Data dan SQL di console menampilkan apa yang mendarat dan apa isinya. Tidak satu pun menjangkau warehouse: mereka bertanya ke layanan ini, yang berjalan di sebelahnya dan memegang kredensial yang sengaja tidak dimiliki engine.</p>
 <div class="code-block" data-code="brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">brevis</span>-sql serve <span class="t-n">--connections</span> <span class="t-k">brevis</span>.yaml <span class="t-n">--addr</span> 127.0.0.1:8088</code></pre></div>
 <p>Batas atas bukanlah anggaran: <code>--max-bytes</code> membatasi satu query, dan <code>--budget</code> membatasi jumlahnya per koneksi per jam — diperiksa terhadap kuotasi, sehingga penolakan datang sebelum uang dibelanjakan. Ia hanya membatasi warehouse yang melaporkan byte, yaitu BigQuery dan bukan Postgres; banner boot menyatakan postur mana yang berlaku, termasuk tidak punya sama sekali.</p>
 <p><strong>Hanya yang dideklarasikan file yang dapat dijangkau</strong>, dan secara default tidak ada yang dilakukannya adalah penulisan: setiap statement diklasifikasikan sebelum berjalan, pembacaan yang akan memindai lebih dari <code>--max-bytes</code> dihargai dan ditolak sebelum berbiaya apa pun, dan warehouse sendiri diminta menolak penulisan. Baris audit membawa hash dari statement dan tidak pernah statement-nya.</p>
 <p><strong>Ia tidak lagi membutuhkan service account sendiri.</strong> <code>brevis-sql build</code> membuat tabel, sehingga role-nya bisa menulis, dan layanan yang menolak role semacam itu berarti akun kedua untuk dibuat, dijaga, dan dirotasi. Role tidak lagi satu-satunya yang menahan garis: Postgres menjalankan setiap statement di dalam transaksi yang dibuka <code>READ ONLY</code> — di mana <code>SELECT nextval('s')</code>, penulisan yang tidak dapat dilihat classifier mana pun, kembali ditolak oleh Postgres sendiri — dan BigQuery melaporkan jenis statement pada dry run yang menghargainya, sehingga <code>CREATE TABLE</code> atau <code>EXPORT DATA</code> ditolak berdasarkan putusan warehouse sendiri. Warehouse yang tidak dapat menawarkan keduanya tetap menolak kredensial yang dapat menulis.</p>
 <p>Di luar <code>BREVIS_ENV=local</code> token wajib ada dan layanan tidak akan start tanpanya.</p>
-<h3 id="warehouse-pengembangan-yang-boleh-diubah-seseorang">Warehouse pengembangan yang boleh diubah seseorang<a class="anchor" href="#warehouse-pengembangan-yang-boleh-diubah-seseorang" aria-label="link">#</a></h3>
+<h3 id="a-development-warehouse-somebody-may-change">Warehouse pengembangan yang boleh diubah seseorang<a class="anchor" href="#a-development-warehouse-somebody-may-change" aria-label="link">#</a></h3>
 <div class="code-block" data-code="BREVIS_SQL_SERVE_WRITES=warehouse_dev"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>BREVIS_SQL_SERVE_WRITES=warehouse_dev</code></pre></div>
 <p>Ia <strong>menyebut koneksi</strong>. Satu layanan menjangkau beberapa warehouse, dan membuka kunci yang Anda kembangkan tidak boleh membuka kunci yang ada di sebelahnya. Pada koneksi yang disebut, setiap lapisan mundur dan layanan ini sekuat kredensialnya — batas baris membatasi satu layar dan batas byte membatasi uang, dan tidak satu pun membatasi apa yang diubah sebuah statement.</p>
 <p>Token wajib di mana pun ia diatur, dan <code>BREVIS_ENV=local</code> bukan pengecualian. Banner boot menyebut setiap koneksi yang dibuka kuncinya, console menggambar banner di atas editor, dan <code>brevis_sql_writable_connection</code> muncul di metrik. <strong>Biarkan tidak diatur di production</strong>; tidak ada manifest di repositori ini yang mengaturnya.</p>
 <p>Token dapat <strong>diberi nama</strong>: <code>BREVIS_SQL_SERVE_TOKEN_CONSOLE=…</code> mendeklarasikan pemanggil bernama <code>console</code>, dan setiap baris audit yang dihasilkan bearer itu membawa <code>"caller":"console"</code>. Identitas adalah kredensialnya dan bukan header yang diisi pemanggil, sehingga log tidak bisa mengatakan apa pun yang tidak dipegang oleh pemegang token itu. Token yang ditolak juga meninggalkan baris, dan tidak pernah mencatat apa yang disajikan.</p>
-<h2 id="model-adalah-file-yang-tetap-sql-valid">Model adalah file yang tetap SQL valid<a class="anchor" href="#model-adalah-file-yang-tetap-sql-valid" aria-label="link">#</a></h2>
+<h2 id="a-model-is-a-file-that-stays-valid-sql">Model adalah file yang tetap SQL valid<a class="anchor" href="#a-model-is-a-file-that-stays-valid-sql" aria-label="link">#</a></h2>
 <p>Konfigurasi adalah komentar blok di awal, sehingga file terbuka di editor dengan syntax highlighting, berjalan di console secara manual, dan <code>psql -f</code> mengeksekusinya.</p>
 <div class="code-block" data-code="/* brevis
 materialized: table
@@ -159,7 +159,7 @@ tests:
 */
 select * from staging.stg_orders</code></pre></div>
 <p><strong>Tanpa templating.</strong> <code>models/&lt;schema&gt;/&lt;name&gt;.sql</code> adalah <code>&lt;schema&gt;.&lt;name&gt;</code>, dan dependensi berasal dari membaca SQL alih-alih dari pemanggilan fungsi yang harus Anda tulis. <code>brevis-sql graph</code> mencetak apa yang disimpulkan; <code>depends_on:</code> di header adalah override eksplisit untuk kasus langka yang terlewat.</p>
-<h2 id="dari-compile-hingga-test">Dari compile hingga test<a class="anchor" href="#dari-compile-hingga-test" aria-label="link">#</a></h2>
+<h2 id="from-compile-to-test">Dari compile hingga test<a class="anchor" href="#from-compile-to-test" aria-label="link">#</a></h2>
 <p>Dua model: view yang membersihkan <code>raw.orders</code>, dan tabel yang bergantung padanya.</p>
 <p><code>models/staging/stg_orders.sql</code>:</p>
 <div class="code-block" data-code="/* brevis
@@ -232,7 +232,7 @@ marts.orders
   test <span class="t-n">--project</span> /project <span class="t-n">--dsn-from</span> BREVIS_SQL_DSN</code></pre></div>
 <div class="code-block" data-code="2 tests passed on postgres"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>2 tests passed on postgres</code></pre></div>
 <p>Output nyata, dari image yang dipublikasikan — compile dan graph tidak terhubung ke apa pun. Terhadap Postgres, build dan test berakhir dengan "2 models built" dan "2 tests passed".</p>
-<h3 id="ketika-test-gagal">Ketika test gagal<a class="anchor" href="#ketika-test-gagal" aria-label="link">#</a></h3>
+<h3 id="when-a-test-fails">Ketika test gagal<a class="anchor" href="#when-a-test-fails" aria-label="link">#</a></h3>
 <p>Dengan order yang tidak punya customer di <code>raw.orders</code>, <code>build</code> lolos dan test <code>not_null</code> tidak. Kegagalan menyebut model, kolom, berapa baris, dan <strong>query-nya</strong> — yang Anda tempel ke console dan terus dipersempit:</p>
 <div class="code-block" data-code="FAIL  marts.orders                   not_null         customer_id          1 row(s)
       SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
@@ -240,21 +240,35 @@ brevis-sql: 1 of 2 tests failed"><div class="code-head"><span class="code-lang">
       SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
 brevis-sql: 1 of 2 tests failed</code></pre></div>
 <p>Proses keluar dengan kode 1, dan step workflow gagal bersamanya.</p>
-<h2 id="test-adalah-select-yang-mengembalikan-baris-pelanggar">Test adalah SELECT yang mengembalikan baris pelanggar<a class="anchor" href="#test-adalah-select-yang-mengembalikan-baris-pelanggar" aria-label="link">#</a></h2>
+<h2 id="an-incremental-model-and-its-lookback">Model inkremental dan lookback-nya<a class="anchor" href="#an-incremental-model-and-its-lookback" aria-label="link">#</a></h2>
+<p><code>materialized: incremental</code> membutuhkan <code>unique_key</code> dan <code>watermark</code>. Setiap build hanya membaca baris di atas watermark terbesar yang sudah ada di target, lalu menggabungkannya berdasarkan kunci dengan MERGE. Filter itu ketat, sehingga baris yang sama dengan watermark tetapi di-commit setelah build, atau yang datang terlambat dengan timestamp lebih lama, tidak terlihat sampai <code>--full-refresh</code>. <code>lookback</code> opsional mengatasinya:</p>
+<div class="code-block" data-code="/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/</code></pre></div>
+<p>Nilainya bilangan bulat diikuti <code>s</code>, <code>m</code>, <code>h</code>, atau <code>d</code>; selain itu ditolak dengan menyebut nama model. Filter menjadi <code>updated_at &gt;= max - 2h</code>, dan MERGE menyerap baris yang berulang. Watermark harus berupa kolom TIMESTAMP saat lookback diatur. Tanpa <code>lookback</code>, SQL tidak berubah.</p>
+<h2 id="tests-are-selects-that-return-violating-rows">Test adalah SELECT yang mengembalikan baris pelanggar<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
 <p><code>not_null</code>, <code>unique</code>, <code>accepted_values</code>, <code>relationships</code>. Nol baris berarti lolos, dan tidak ada lagi yang perlu ditafsirkan.</p>
-<h2 id="ia-menyatakan-apa-yang-ditulisnya">Ia menyatakan apa yang ditulisnya<a class="anchor" href="#ia-menyatakan-apa-yang-ditulisnya" aria-label="link">#</a></h2>
+<h2 id="it-says-what-it-wrote">Ia menyatakan apa yang ditulisnya<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
 <p>Setiap model yang dimaterialisasi mencetak baris <code>@brevis:</code> yang sudah dibaca engine Brevis, sehingga ia tampil di <code>/data</code> berdampingan dengan yang lain (lihat output <code>build</code> di atas). View melaporkan tanpa jumlah baris alih-alih nol: ia tidak menyimpan apa-apa, dan nol di sana tidak dapat dibedakan dari tabel yang memang kosong.</p>
-<h2 id="dua-warehouse-satu-suite">Dua warehouse, satu suite<a class="anchor" href="#dua-warehouse-satu-suite" aria-label="link">#</a></h2>
+<h2 id="two-warehouses-one-suite">Dua warehouse, satu suite<a class="anchor" href="#two-warehouses-one-suite" aria-label="link">#</a></h2>
 <p>PostgreSQL dan BigQuery (<code>--dialect bigquery</code>), dan keduanya menjalankan suite test yang sama — ditulis ketika masih ada satu implementasi, agar yang kedua tidak diam-diam menyimpang.</p>
 <p>BigQuery mengautentikasi dengan Application Default Credentials: pada workload identity, itu adalah identitas pod sendiri, dan <code>--dsn-from</code> menyebut variabel yang menyimpan project id.</p>
 <h2 id="13-mb">13 MB<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
 <p>Distroless, nonroot, tanpa shell. Klien BigQuery resmi berukuran 31 MB dan 526 paket dalam binary kosong, sehingga ini berbicara ke BigQuery lewat endpoint REST- nya — sekitar 200 baris, dengan test untuk setiap cara ia bisa salah secara diam-diam. Sebuah gerbang di repositori menolak klien itu dengan menyebut namanya, sehingga keputusan ini bertahan dari kenaikan dependensi rutin.</p>
-<h2 id="diverifikasi-terhadap-dbt">Diverifikasi terhadap dbt<a class="anchor" href="#diverifikasi-terhadap-dbt" aria-label="link">#</a></h2>
+<h2 id="verified-against-dbt">Diverifikasi terhadap dbt<a class="anchor" href="#verified-against-dbt" aria-label="link">#</a></h2>
 <p>jaffle-shop, dibangun oleh image ini pada data seed yang sama dengan yang dipakai dbt:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>hasil</th></tr></thead><tbody><tr><td>baris dan md5 setiap baris, per model</td><td><strong>identik, 13 dari 13</strong></td></tr><tr><td>kolom dan tipe, per model</td><td><strong>identik, 13 dari 13</strong></td></tr><tr><td>13 model, build pertama</td><td>1,56 d</td></tr></tbody></table></div>
-<h2 id="yang-tidak-dilakukannya">Yang tidak dilakukannya<a class="anchor" href="#yang-tidak-dilakukannya" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-do">Yang tidak dilakukannya<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
 <p><strong>Tidak ada kompatibilitas dbt</strong>, dan itu keputusan, bukan celah. Sekitar sepertiga model dalam proyek dbt yang nyata tidak memakai apa pun selain <code>ref</code>, <code>source</code>, dan <code>config</code>; sisanya memakai macro, dan package adalah templating by design. Setengah kompatibilitas yang tidak dapat diprediksi siapa pun lebih buruk daripada tidak ada.</p>
-<h2 id="ke-mana-selanjutnya">Ke mana selanjutnya<a class="anchor" href="#ke-mana-selanjutnya" aria-label="link">#</a></h2>
+<h2 id="where-to-go-next">Ke mana selanjutnya<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>jika Anda ingin</th><th>buka</th></tr></thead><tbody><tr><td>melihat posisi SQL di antara empat bagian</td><td><a href="/id/docs/ecosystem/">Ekosistem</a></td></tr><tr><td>menjalankan brevis-sql sebagai step terjadwal</td><td><a href="/id/docs/core/">Core</a></td></tr><tr><td>mendaratkan data yang akan dimodelkannya</td><td><a href="/id/docs/sdk/">Go SDK</a> atau <a href="/id/docs/ingestion/">Ingestion</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="Halaman">
@@ -269,7 +283,7 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#enam-command">Enam command</a></li><li class="toc-2"><a href="#brevis-sql-serve-membaca-warehouse-tanpa-kredensial">brevis-sql serve — membaca warehouse tanpa kredensial</a></li><li class="toc-3"><a href="#warehouse-pengembangan-yang-boleh-diubah-seseorang">Warehouse pengembangan yang boleh diubah seseorang</a></li><li class="toc-2"><a href="#model-adalah-file-yang-tetap-sql-valid">Model adalah file yang tetap SQL valid</a></li><li class="toc-2"><a href="#dari-compile-hingga-test">Dari compile hingga test</a></li><li class="toc-3"><a href="#ketika-test-gagal">Ketika test gagal</a></li><li class="toc-2"><a href="#test-adalah-select-yang-mengembalikan-baris-pelanggar">Test adalah SELECT yang mengembalikan baris pelanggar</a></li><li class="toc-2"><a href="#ia-menyatakan-apa-yang-ditulisnya">Ia menyatakan apa yang ditulisnya</a></li><li class="toc-2"><a href="#dua-warehouse-satu-suite">Dua warehouse, satu suite</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#diverifikasi-terhadap-dbt">Diverifikasi terhadap dbt</a></li><li class="toc-2"><a href="#yang-tidak-dilakukannya">Yang tidak dilakukannya</a></li><li class="toc-2"><a href="#ke-mana-selanjutnya">Ke mana selanjutnya</a></li></ul>
+      <ul><li class="toc-2"><a href="#six-commands">Enam command</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve — membaca warehouse tanpa kredensial</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">Warehouse pengembangan yang boleh diubah seseorang</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">Model adalah file yang tetap SQL valid</a></li><li class="toc-2"><a href="#from-compile-to-test">Dari compile hingga test</a></li><li class="toc-3"><a href="#when-a-test-fails">Ketika test gagal</a></li><li class="toc-2"><a href="#an-incremental-model-and-its-lookback">Model inkremental dan lookback-nya</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">Test adalah SELECT yang mengembalikan baris pelanggar</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">Ia menyatakan apa yang ditulisnya</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">Dua warehouse, satu suite</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#verified-against-dbt">Diverifikasi terhadap dbt</a></li><li class="toc-2"><a href="#what-it-does-not-do">Yang tidak dilakukannya</a></li><li class="toc-2"><a href="#where-to-go-next">Ke mana selanjutnya</a></li></ul>
     </aside>
   </main>
 </div>

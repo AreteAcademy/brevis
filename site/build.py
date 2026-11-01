@@ -719,7 +719,11 @@ def gerar(destino):
         **{"i18n." + k: html.escape(v) if isinstance(v, str) else v
            for k, v in s["ui"].items()},
     }))
-    escrever(destino, "search-index.json", json.dumps(indice, ensure_ascii=False, separators=(",", ":")))
+    # UMA ENTRADA POR LINHA. Numa linha só, qualquer página alterada em qualquer
+    # PR mexia no arquivo inteiro e todo merge de documentação conflitava aqui;
+    # linha a linha, dois PRs só conflitam se tocam a mesma página.
+    escrever(destino, "search-index.json",
+             "[\n" + ",\n".join(json.dumps(e, ensure_ascii=False, separators=(",", ":")) for e in indice) + "\n]\n")
     escrever(destino, "sitemap.xml",
              '<?xml version="1.0" encoding="UTF-8"?>\n'
              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'

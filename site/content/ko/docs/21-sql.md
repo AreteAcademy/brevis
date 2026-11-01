@@ -166,6 +166,28 @@ brevis-sql: 1 of 2 tests failed
 
 프로세스는 코드 1로 종료하며, workflow step도 함께 실패합니다.
 
+## 증분 모델과 lookback
+
+`materialized: incremental`에는 `unique_key`와 `watermark`가 필요합니다. 각 build는
+대상에 이미 있는 가장 큰 watermark를 넘는 행만 읽고, 키를 기준으로 MERGE합니다.
+이 필터는 엄격하므로, watermark와 같지만 build 이후에 커밋된 행이나 더 오래된
+타임스탬프로 늦게 도착한 행은 `--full-refresh`를 하기 전까지 보이지 않습니다.
+선택 항목인 `lookback`이 이를 해결합니다.
+
+```sql
+/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/
+```
+
+값은 정수에 `s`, `m`, `h`, `d` 중 하나를 붙인 형태이며, 그 외에는 모델 이름과 함께
+거부됩니다. 필터는 `updated_at >= max - 2h`가 되고, 반복된 행은 MERGE가
+흡수합니다. lookback을 지정하면 watermark는 TIMESTAMP 열이어야 합니다.
+`lookback`이 없으면 SQL은 바뀌지 않습니다.
+
 ## 테스트는 위반 행을 반환하는 SELECT입니다
 
 `not_null`, `unique`, `accepted_values`, `relationships`가 있습니다. 행이 0개면 통과이고, 그 외에 해석할 것은 없습니다.

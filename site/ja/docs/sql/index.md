@@ -189,6 +189,28 @@ brevis-sql: 1 of 2 tests failed
 
 プロセスは終了コード 1 で終了し、ワークフローのステップもそれとともに失敗します。
 
+## インクリメンタルモデルとその lookback
+
+`materialized: incremental` には `unique_key` と `watermark` が必要です。各 build は、
+ターゲットに既にある最大の watermark を超える行だけを読み、キーで MERGE します。
+このフィルターは厳密なので、watermark と同値でも build の後にコミットされた行や、
+古いタイムスタンプで遅れて届いた行は、`--full-refresh` するまで見えません。
+任意の `lookback` がこれを解決します。
+
+```sql
+/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/
+```
+
+値は整数に `s`、`m`、`h`、`d` のいずれかを付けたものです。それ以外はモデル名付きで
+拒否されます。フィルターは `updated_at >= max - 2h` になり、重複した行は MERGE が
+吸収します。lookback を指定する場合、watermark は TIMESTAMP 列でなければなりません。
+`lookback` がなければ SQL は変わりません。
+
 ## テストは、違反する行を返す SELECT
 
 `not_null`、`unique`、`accepted_values`、`relationships`。ゼロ行ならパスで、解釈すべきことはほかにありません。

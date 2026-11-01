@@ -167,6 +167,29 @@ brevis-sql: 1 of 2 tests failed
 
 O processo sai com código 1, e a etapa do workflow falha com ele.
 
+## Um modelo incremental e o seu lookback
+
+`materialized: incremental` precisa de um `unique_key` e de um `watermark`. Cada build
+lê apenas as linhas além do maior watermark que já está no destino e as
+incorpora por chave com MERGE. Esse filtro é estrito, então uma linha que empata com
+o watermark mas é confirmada depois do build, ou que chega atrasada com um
+timestamp mais antigo, não é vista até o `--full-refresh`. Um `lookback`
+opcional resolve isso:
+
+```sql
+/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/
+```
+
+O valor é um número inteiro seguido de `s`, `m`, `h` ou `d`; qualquer outra coisa
+é recusada com o nome do modelo. O filtro passa a ser `updated_at >= max - 2h`, e
+o MERGE absorve as linhas repetidas. O watermark precisa ser uma coluna TIMESTAMP
+quando há um lookback. Sem `lookback` o SQL não muda.
+
 ## Testes são SELECTs que devolvem as linhas que violam
 
 `not_null`, `unique`, `accepted_values`, `relationships`. Zero linhas é sucesso, e não há mais nada a interpretar.
