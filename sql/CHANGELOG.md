@@ -16,6 +16,23 @@ and the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Fixed: a failed `table` rebuild no longer drops the table
+
+- On Postgres, the `DROP` and the `CREATE TABLE AS` of a `table` model (and of
+  `incremental --full-refresh`) run in one transaction, so a failing `CREATE`
+  leaves the old table readable. (A follow-up builds the new table aside and
+  swaps it in by rename, so readers wait only for the rename.)
+
+### Added: `lookback` for incremental models
+
+- An incremental model can set `lookback: 2h` (`30m`, `1d`...): the filter is
+  `w >= max - lookback` instead of `w > max`, so a row that ties the watermark or
+  arrives late is merged instead of lost until a `--full-refresh`. Without it
+  the SQL is byte-identical. The watermark must be a TIMESTAMP column.
+
+
 ## [0.6.0] — 2026-10-14
 
 ### Added: hooks — a before and an after per endpoint

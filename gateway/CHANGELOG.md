@@ -13,6 +13,24 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Fixed: what the audit found in the ingest path
+
+- **The listener bounds reading the body and writing the response in time**
+  (`max(30 s, max_body / 100 KiB/s)`), so a client trickling a body can no
+  longer hold a connection and its buffer for ever.
+- **The memory ceilings count what is queued**: batches in the queue and in a
+  worker stay in `held`/`bytes` until the worker finishes them, and
+  `max_bytes` defaults to 64 MiB (4x `max_body` or 2x `flush.size` when those
+  are larger). **A stream with a slow sink now answers 503 at the stated
+  ceiling, instead of at about four times it**: an operator who tuned
+  `max_records` against the old behaviour will see 503s they did not see before.
+- **A retried multi-table batch no longer rewrites the tables that already
+  landed** (under `write: append` a failure on a later table used to copy the
+  earlier ones up to four times).
+
+
 ## [0.32.0] — 2026-10-25
 
 ### Added: `BREVIS_COMMUNICATION=internal` makes `listen.auth` optional
