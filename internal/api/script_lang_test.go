@@ -23,7 +23,6 @@ func TestThePageHandsTheScriptItsSentences(t *testing.T) {
 		t.Fatalf("the block is not JSON: %v\n%s", err, raw)
 	}
 	for key, want := range map[string]string{
-		"theme.to_dark":      "Mudar para o tema escuro",
 		"copy.done":          "Copiado",
 		"palette.empty":      "Nada encontrado.",
 		"palette.open_run":   "Abrir a execução {id}…",

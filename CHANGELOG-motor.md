@@ -16,6 +16,31 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: the account menu, a folding sidebar, release notes, GitHub's dark
+
+- **The account button fills the sidebar's foot**, and its menu holds the
+  language (the eleven, the current one beside it), the theme, Sign out, and
+  -- under a separator -- Documentation (in the selected language) and the
+  keyboard shortcuts, with the Brevis version last.
+- **Theme is auto, light or dark**, three icons with the chosen one lit; auto
+  (the default) follows the system live. Theme, language and the sidebar's
+  state are kept in `localStorage` and read before the first paint. The
+  language is still drawn by the server from its cookie: when the two
+  disagree the cookie is mended and the page loads again, once per session.
+- **The sidebar folds** to an icon rail (full / short) and names each item in a
+  hint while folded.
+- **The version opens the newest release's notes**, drawn from GitHub, with a
+  Download button. The console reads the repository's releases every 6 hours
+  (a plain GET, nothing sent) and, when one is newer, shows an update icon on
+  the account button and a toast once per version. `BREVIS_UPDATE_CHECK=off`
+  turns the check off; a development build never checks.
+- **The dark theme follows GitHub's dark palette**; the light theme and the
+  lime accent are unchanged. Dialogs blur what is behind them.
+- **Runs' Live switch is green** while it is on, and its dot has a halo that spreads and fades behind it.
+- **Every page has the same header height**: the title sits on the same line
+  whatever the page has beside it (actions, an eyebrow, an intro line), and the
+  content begins the same distance below.
+
 ### Fixed: one colour in `brand.yaml` no longer repaints the console on parchment (#142)
 
 - **A colour the file leaves out is the product's own.** `brand.Default().Theme`
@@ -39,6 +64,7 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   number is zero.
 - **They update without a reload**: every 10 s (a hidden tab asks nothing) the
   console fetches `GET /nav/runs` and swaps the badges in.
+
 ### Added: eleven languages in the console and on the site
 
 - **The console speaks** English (the default), Spanish, Portuguese (BR),

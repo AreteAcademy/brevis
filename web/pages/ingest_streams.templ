@@ -12,7 +12,7 @@ import (
 // refusals go to, inside its stream and never a row of its own.
 templ Streams(v StreamsView) {
 	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "streams.title"), Crumb: i18n.T(ctx, "nav.streams"), Active: "streams", Actions: newStreamButton()}) {
-		<p class="-mt-2 mb-3 max-w-3xl text-[13.5px] text-muted">
+		<p class="mb-3 max-w-3xl text-[13.5px] text-muted">
 			{ i18n.T(ctx, "streams.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "streams.lead.strong") }</strong>{ i18n.T(ctx, "streams.lead.after") }
 		</p>
 		if v.Total > 0 {

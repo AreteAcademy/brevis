@@ -15,7 +15,7 @@ import (
 templ Catalog(v CatalogScreen) {
 	// The crumb is the section's name: "Data / Catalog", not the title again.
 	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "catalog.title"), Crumb: i18n.T(ctx, "nav.catalog"), Active: "catalog"}) {
-		<p class="-mt-2 max-w-3xl text-[13.5px] text-muted">
+		<p class="max-w-3xl text-[13.5px] text-muted">
 			// One line: a break between two pieces is a space.
 			{ i18n.T(ctx, "catalog.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "catalog.lead.strong") }</strong>{ i18n.T(ctx, "catalog.lead.after") }
 		</p>

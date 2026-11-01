@@ -16,7 +16,7 @@ import (
 // that follows the data -- each judged by the tables it reads.
 templ Endpoints(v EndpointsView) {
 	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "endpoints.title"), Crumb: i18n.T(ctx, "nav.endpoints"), Active: "endpoints", Actions: publishEndpointButton()}) {
-		<p class="-mt-2 mb-3 max-w-3xl text-[13.5px] text-muted">
+		<p class="mb-3 max-w-3xl text-[13.5px] text-muted">
 			{ i18n.T(ctx, "endpoints.lead.before") } <strong class="font-medium text-ink">{ i18n.T(ctx, "endpoints.lead.strong") }</strong>{ i18n.T(ctx, "endpoints.lead.after") }
 		</p>
 		if v.Total > 0 {
@@ -289,7 +289,7 @@ templ Endpoint(v EndpointView) {
 		>
 			<div class="flex min-w-0 flex-col gap-3">
 				if v.About != "" {
-					<p class="-mt-1 max-w-3xl text-[13.5px] whitespace-pre-line text-ink-2">{ v.About }</p>
+					<p class="max-w-3xl text-[13.5px] whitespace-pre-line text-ink-2">{ v.About }</p>
 				}
 				if l := v.StaleLine(); l != nil {
 					@endpointStale(*l)

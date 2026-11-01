@@ -26,7 +26,7 @@ func TestTheShellIsDrawnInTheReadersLanguage(t *testing.T) {
 			`aria-label="Monitorar"`, ">Visão geral<", ">Execuções<", ">Tempo real<", ">Cargas batch<",
 			`aria-label="Dados"`, ">Projetos<", "Buscar ou ir para…", "Documentação",
 			`aria-label="Fechar a navegação"`, `aria-label="Abrir a navegação"`,
-			`aria-label="Mudar para o tema claro"`, `aria-label="Atalhos de teclado"`,
+			`aria-label="Tema"`, `aria-label="Automático"`, "Atalhos de teclado",
 			"Ir para Visão geral", `placeholder="Buscar workflows, destinos, endpoints…"`,
 			"A saúde de tudo, o que falhou e o que dispara a seguir",
 			// The palette's footer: each key, then what it does.
@@ -35,7 +35,7 @@ func TestTheShellIsDrawnInTheReadersLanguage(t *testing.T) {
 		"es": {
 			`aria-label="Monitorear"`, ">Resumen<", ">Ejecuciones<", ">Tiempo real<",
 			`aria-label="Datos"`, ">Proyectos<", "Buscar o ir a…", "Documentación",
-			`aria-label="Cambiar al tema claro"`, `aria-label="Atajos de teclado"`, "Ir a Resumen",
+			`aria-label="Tema"`, `aria-label="Automático"`, "Atajos de teclado", "Ir a Resumen",
 		},
 	} {
 		body := shellOf(pageIn(t, ui, "/ingest/loads", lang, "", false))

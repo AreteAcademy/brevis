@@ -15,7 +15,7 @@ import (
 // happened (screen-overview).
 templ Overview(d OverviewData) {
 	@layouts.Base(layouts.Page{Title: i18n.T(ctx, "overview.title"), Active: "overview", Actions: windowToggle(d.Window)}) {
-		<p class="mb-3 -mt-1 max-w-3xl text-[13px] text-muted">{ i18n.T(ctx, "overview.lede") }</p>
+		<p class="mb-3 max-w-3xl text-[13px] text-muted">{ i18n.T(ctx, "overview.lede") }</p>
 		// The section follows itself every ten seconds: a rerun shows as
 		// going, and the item leaves once its workflow passes.
 		<div id="attention" data-live="/overview/attention" data-live-every="10000">
