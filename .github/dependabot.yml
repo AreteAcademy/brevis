@@ -1,134 +1,164 @@
-# Six Go modules, and this file watched one of them.
+# Dependabot: weekly on Monday 09:00 BRT, the same model as the other Zarv
+# repositories. New releases wait out a cooldown (7 days, 14 for majors) before
+# a PR is opened, so a compromised version is usually pulled from the registry
+# before it reaches us.
 #
-# `gateway/go.mod` carried the same old `aws-sdk-go-v2`, `x/mod` and `cpuid`
-# that five open PRs were bumping in `sdk` -- and nothing was ever going to
-# open those PRs, because the gateway was not in this file. The root module,
-# `cmd/brevis-sdk` and `examples` were not either.
+# TWO GROUPS PER ECOSYSTEM. `security` carries the security updates (any
+# non-major is merged by .github/workflows/dependabot-auto-merge.yml once every
+# other check has passed); the other carries the week's minor and patch bumps,
+# merged the same way. A major is never grouped and never merged by a machine.
 #
-# GROUPED, which is the other half. Five directories at five PRs each is
-# twenty-five open pull requests a week into a repository where the previous
-# five sat for twenty-two days. One PR per module per week is a review
-# somebody actually does, and a group that goes red is one investigation
-# rather than five.
-#
-# NO `reviewers` AND NO `assignees`. Both named `AreteAcademy/maintainers`,
-# which is a 404 -- so they had never assigned anybody, and a setting that
-# names something that does not exist is a setting that lies about what the
-# file does.
-#
-# The four `labels` below had the same problem for a different reason:
-# dependabot cannot CREATE a label, and none of these existed in the
-# repository, so every PR it opened came out unlabelled. They exist now. If
-# one is renamed, dependabot goes back to silently applying nothing.
+# Six Go modules and an exporter: a module this file does not name is a module
+# nothing will ever bump. `labels` must already exist in the repository --
+# dependabot cannot create one, and names a PR with nothing if it is renamed.
 version: 2
 updates:
-  # ---- Go modules -------------------------------------------------------
-  # The engine. Its ceiling is engine-weight.sh, which a bump can move.
-  - package-ecosystem: "gomod"
+  - package-ecosystem: github-actions
     directory: "/"
-    schedule: {interval: "weekly", day: "monday", time: "03:00"}
-    open-pull-requests-limit: 3
+    schedule: { interval: weekly, day: monday, time: "09:00", timezone: America/Sao_Paulo }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: ci, include: scope }
+    open-pull-requests-limit: 5
+    labels: ["ci", "github-actions"]
     groups:
-      go:
-        patterns: ["*"]
+      github-actions: { applies-to: version-updates, patterns: ["*"], update-types: [minor, patch] }
+      security: { applies-to: security-updates, patterns: ["*"] }
+
+  # The engine. Its ceiling is engine-weight.sh, which a bump can move.
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule: { interval: weekly, day: monday, time: "09:00", timezone: America/Sao_Paulo }
+    cooldown: { default-days: 7, semver-major-days: 14 }
+    commit-message: { prefix: chore, include: scope }
+    open-pull-requests-limit: 5
     labels: ["dependencies", "go"]
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "indirect"
-    commit-message: {prefix: "chore", include: "scope"}
-    pull-request-branch-name: {separator: "/"}
+    groups:
+      gomod-minor-and-patch: { applies-to: version-updates, update-types: [minor, patch] }
+      security: { applies-to: security-updates, patterns: ["*"] }
 
   # The SDK. Its ceiling is pruning-check.sh.
-  - package-ecosystem: "gomod"
+  - package-ecosystem: gomod
     directory: "/sdk"
-    schedule: {interval: "weekly", day: "monday", time: "03:10"}
-    open-pull-requests-limit: 3
-    groups:
-      go:
-        patterns: ["*"]
+    schedule: { interval: weekly, day: monday, time: "09:00", timezone: America/Sao_Paulo }
+    cooldown: { default-days: 7, semver-major-days: 14 }
+    commit-message: { prefix: chore, include: scope }
+    open-pull-requests-limit: 5
     labels: ["dependencies", "go"]
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "indirect"
-    commit-message: {prefix: "chore", include: "scope"}
-    pull-request-branch-name: {separator: "/"}
+    groups:
+      gomod-minor-and-patch: { applies-to: version-updates, update-types: [minor, patch] }
+      security: { applies-to: security-updates, patterns: ["*"] }
 
   # The gateway: its own module, its own version, its own release.
-  - package-ecosystem: "gomod"
+  - package-ecosystem: gomod
     directory: "/gateway"
-    schedule: {interval: "weekly", day: "monday", time: "03:20"}
-    open-pull-requests-limit: 3
-    groups:
-      go:
-        patterns: ["*"]
+    schedule: { interval: weekly, day: monday, time: "09:00", timezone: America/Sao_Paulo }
+    cooldown: { default-days: 7, semver-major-days: 14 }
+    commit-message: { prefix: chore, include: scope }
+    open-pull-requests-limit: 5
     labels: ["dependencies", "go"]
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "indirect"
-    commit-message: {prefix: "chore", include: "scope"}
-    pull-request-branch-name: {separator: "/"}
+    groups:
+      gomod-minor-and-patch: { applies-to: version-updates, update-types: [minor, patch] }
+      security: { applies-to: security-updates, patterns: ["*"] }
 
   # The CLI. It requires the PUBLISHED SDK on purpose -- `go install
   # pkg@version` refuses a module carrying replace directives -- so a bump
   # here is a bump of what a consumer installs.
-  - package-ecosystem: "gomod"
+  - package-ecosystem: gomod
     directory: "/cmd/brevis-sdk"
-    schedule: {interval: "weekly", day: "monday", time: "03:30"}
-    open-pull-requests-limit: 3
-    groups:
-      go:
-        patterns: ["*"]
+    schedule: { interval: weekly, day: monday, time: "09:00", timezone: America/Sao_Paulo }
+    cooldown: { default-days: 7, semver-major-days: 14 }
+    commit-message: { prefix: chore, include: scope }
+    open-pull-requests-limit: 5
     labels: ["dependencies", "go"]
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "indirect"
-    commit-message: {prefix: "chore", include: "scope"}
-    pull-request-branch-name: {separator: "/"}
+    groups:
+      gomod-minor-and-patch: { applies-to: version-updates, update-types: [minor, patch] }
+      security: { applies-to: security-updates, patterns: ["*"] }
 
   # The examples are a gate on the working tree: CI builds them against
-  # ../sdk, so a breaking change shows up there first. A bump that breaks one
-  # is a bump that would have broken a consumer.
-  - package-ecosystem: "gomod"
+  # ../sdk, so a breaking change shows up there first.
+  - package-ecosystem: gomod
     directory: "/examples"
-    schedule: {interval: "weekly", day: "monday", time: "03:40"}
-    open-pull-requests-limit: 3
-    groups:
-      go:
-        patterns: ["*"]
+    schedule: { interval: weekly, day: monday, time: "09:00", timezone: America/Sao_Paulo }
+    cooldown: { default-days: 7, semver-major-days: 14 }
+    commit-message: { prefix: chore, include: scope }
+    open-pull-requests-limit: 5
     labels: ["dependencies", "go"]
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "indirect"
-    commit-message: {prefix: "chore", include: "scope"}
-    pull-request-branch-name: {separator: "/"}
+    groups:
+      gomod-minor-and-patch: { applies-to: version-updates, update-types: [minor, patch] }
+      security: { applies-to: security-updates, patterns: ["*"] }
 
-  # brevis-sql. ONE REQUIRE, and that is the point of it: the reference
-  # extractor was chosen over candidates needing 4, 70 and 642 non-stdlib
-  # packages. A bump that pulls in a graph is the thing to see in a diff.
-  - package-ecosystem: "gomod"
+  # brevis-sql. ONE REQUIRE, and that is the point of it: a bump that pulls
+  # in a graph is the thing to see in a diff.
+  - package-ecosystem: gomod
     directory: "/sql"
-    schedule: {interval: "weekly", day: "monday", time: "03:50"}
-    open-pull-requests-limit: 3
-    groups:
-      go:
-        patterns: ["*"]
+    schedule: { interval: weekly, day: monday, time: "09:00", timezone: America/Sao_Paulo }
+    cooldown: { default-days: 7, semver-major-days: 14 }
+    commit-message: { prefix: chore, include: scope }
+    open-pull-requests-limit: 5
     labels: ["dependencies", "go"]
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "indirect"
-    commit-message: {prefix: "chore", include: "scope"}
-    pull-request-branch-name: {separator: "/"}
-
-  # ---- GitHub Actions ---------------------------------------------------
-  # One entry covers every workflow. Grouped for the same reason: five
-  # separate bumps is what let actions/checkout reach v4 while the runner
-  # warned about Node 20 on every single run.
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule: {interval: "weekly", day: "monday", time: "04:00"}
-    open-pull-requests-limit: 3
     groups:
-      actions:
-        patterns: ["*"]
-    labels: ["ci", "github-actions"]
-    commit-message: {prefix: "ci", include: "scope"}
+      gomod-minor-and-patch: { applies-to: version-updates, update-types: [minor, patch] }
+      security: { applies-to: security-updates, patterns: ["*"] }
+
+  # The OTLP exporter, a module of its own so its weight never reaches
+  # anybody who does not ask for it.
+  - package-ecosystem: gomod
+    directory: "/sdk/metrics/otelmeter"
+    schedule: { interval: weekly, day: monday, time: "09:00", timezone: America/Sao_Paulo }
+    cooldown: { default-days: 7, semver-major-days: 14 }
+    commit-message: { prefix: chore, include: scope }
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "go"]
+    groups:
+      gomod-minor-and-patch: { applies-to: version-updates, update-types: [minor, patch] }
+      security: { applies-to: security-updates, patterns: ["*"] }
+
+  - package-ecosystem: pip
+    directory: "/lib/python-context"
+    schedule: { interval: weekly, day: monday, time: "09:00", timezone: America/Sao_Paulo }
+    cooldown: { default-days: 7, semver-major-days: 14 }
+    commit-message: { prefix: chore, include: scope }
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      pip-minor-and-patch: { applies-to: version-updates, update-types: [minor, patch] }
+      security: { applies-to: security-updates, patterns: ["*"] }
+
+  # The engine's image, the site's and the examples'.
+  - package-ecosystem: docker
+    directory: "/"
+    schedule: { interval: weekly, day: monday, time: "09:00", timezone: America/Sao_Paulo }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: chore, include: scope }
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      docker: { applies-to: version-updates, patterns: ["*"], update-types: [minor, patch] }
+      security: { applies-to: security-updates, patterns: ["*"] }
+
+  - package-ecosystem: docker
+    directory: "/site"
+    schedule: { interval: weekly, day: monday, time: "09:00", timezone: America/Sao_Paulo }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: chore, include: scope }
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      docker: { applies-to: version-updates, patterns: ["*"], update-types: [minor, patch] }
+      security: { applies-to: security-updates, patterns: ["*"] }
+
+  - package-ecosystem: docker-compose
+    directory: "/"
+    schedule: { interval: weekly, day: monday, time: "09:00", timezone: America/Sao_Paulo }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: chore, include: scope }
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      docker-compose: { applies-to: version-updates, patterns: ["*"], update-types: [minor, patch] }
+      security: { applies-to: security-updates, patterns: ["*"] }
+    # Postgres majors move with the production database; keep local and CI on
+    # the major the product supports.
+    ignore:
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
