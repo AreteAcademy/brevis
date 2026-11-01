@@ -222,7 +222,7 @@ run check "bigquery" \
   "	\"$MODULO/to/bigquery\"" \
   "_ = bigquery.Table{}" \
   "jackc/pgx aws-sdk-go" \
-  540
+  760
 
 # Pub/Sub, and this ceiling has a specific job.
 #
@@ -247,6 +247,21 @@ run check "pubsub" \
   "	\"$MODULO/to/pubsub\"" \
   "_ = pubsub.Topic{}" \
   "jackc/pgx aws-sdk-go" \
-  460
+  530
+
+# THE CEILINGS WERE RAISED ONCE, ON PURPOSE (security): 540 -> 760 and 460 -> 530.
+#
+# `google.golang.org/grpc` below v1.83.1 carries GO-2026-6348 and GO-2026-6061,
+# and the SDK's gRPC is the one these two drivers bring. Moving it is exactly the
+# `go get` the paragraph above describes: `google.golang.org/api` has to move with
+# it (the old one no longer compiles against the new gRPC), and the Google Cloud
+# clients move with that. Measured after the move, linux/amd64, go1.27:
+#
+#     bigquery  540 -> 732   (ceiling 760)
+#     pubsub    460 -> 504   (ceiling 530)
+#
+# What was bought: a gRPC with those two advisories fixed, and protobuf and the
+# AWS event stream with theirs. What it did NOT buy is permission to creep: the
+# new ceilings carry the same ~four percent headroom, not the old twelve.
 
 exit $overall

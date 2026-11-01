@@ -223,7 +223,7 @@ func readToken(path string) (string, error) {
 	if path == "" {
 		return "", nil
 	}
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) // #nosec G304 -- the token file the operator named
 	if err != nil {
 		return "", err
 	}

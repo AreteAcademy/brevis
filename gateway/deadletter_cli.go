@@ -190,7 +190,7 @@ func (d *deadLetter) receiptOutcome(ctx context.Context, name string) (string, e
 
 func (d *deadLetter) open(ctx context.Context, object string) (io.ReadCloser, error) {
 	if d.store == nil {
-		return os.Open(filepath.Join(d.path, object)) //nolint:gosec // the dead letter the config names
+		return os.Open(filepath.Join(d.path, object)) // #nosec G304 -- the dead letter the config names
 	}
 	return d.store.Open(ctx, d.bucket, d.prefix+object)
 }

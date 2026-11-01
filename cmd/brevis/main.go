@@ -203,7 +203,7 @@ func cmdValidate() *cobra.Command {
 			var failures1 int
 			var parsed []wfdom.Workflow
 			for _, a := range files {
-				conteudo, err := os.ReadFile(a)
+				conteudo, err := os.ReadFile(a) // #nosec G304 -- the workflow files the operator named
 				if err != nil {
 					fmt.Printf("  ERROR %s: %v\n", a, err)
 					failures1++
@@ -261,7 +261,7 @@ func avisar(path string, conteudo []byte) {
 func readAll(files []string) ([]wfdom.Workflow, error) {
 	out := make([]wfdom.Workflow, 0, len(files))
 	for _, a := range files {
-		conteudo, err := os.ReadFile(a)
+		conteudo, err := os.ReadFile(a) // #nosec G304 -- the workflow files the operator named
 		if err != nil {
 			return nil, err
 		}

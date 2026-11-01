@@ -626,8 +626,8 @@ type Naming struct {
 // drops events for a reason nobody can see.
 func Load(path string) (*Config, error) {
 	// The operator's own file, named on their own command line.
-	// #nosec G703
-	raw, err := os.ReadFile(path) //nolint:gosec // the operator's own file
+	// #nosec G703 G304 -- the operator's own file
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

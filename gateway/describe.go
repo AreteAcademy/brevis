@@ -160,7 +160,7 @@ func describeMain(args []string, sinks *Sinks, out io.Writer) error {
 		if err := enc.Encode(m); err != nil {
 			return err
 		}
-		return os.WriteFile(*file, buf.Bytes(), 0o644) //nolint:gosec // a manifest names destinations, never credentials
+		return os.WriteFile(*file, buf.Bytes(), 0o644) // #nosec G306 -- a manifest names destinations, never credentials
 	}
 	enc := json.NewEncoder(out)
 	enc.SetIndent("", "  ")

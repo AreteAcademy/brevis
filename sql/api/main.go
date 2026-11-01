@@ -107,7 +107,7 @@ func run(args []string, hooks *Hooks, out, errOut io.Writer) int {
 		// WHOLE OR NOT AT ALL: written beside and renamed, so a publish that
 		// reads the file never reads half of one.
 		tmp := *outFile + ".partial"
-		if err := os.WriteFile(tmp, manifest, 0o644); err != nil {
+		if err := os.WriteFile(tmp, manifest, 0o644); err != nil { // #nosec G306 -- a manifest names variables, never credentials
 			_, _ = fmt.Fprintln(errOut, err)
 			return 1
 		}
