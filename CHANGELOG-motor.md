@@ -46,7 +46,22 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 - **Publish endpoint** says how an endpoint is published rather than asking
   for one: an API's file with a cache, and the two commands that describe
   and publish it, to copy. `#publicar` opens it with no script.
-- Everything is in English, Portuguese and Spanish.
+- **An endpoint's page** opens with back to every endpoint, then `GET`, its
+  API, when it was published and how its data stands, above the path and
+  its description. One serving stale data says so first: why the table is
+  behind, in its writer's words, that it answers with the last good data
+  meanwhile, and the table in the Catalog. **Where the data comes from** is
+  one line per table read: the writer's declared origin, the writer (a link
+  to its load or stream), the table with its state and when it was rebuilt,
+  and the endpoint with its cache. A table the Catalog does not know says
+  so. **Cache**: how long an answer is kept, that it is cleared when a table
+  read is rebuilt, and what holds it -- and **Clear cache**, the
+  `brevis-sql generation bump` command built from what the API published,
+  to copy: the console never touches the cache. An API published before
+  its settings were kept says to publish it again. The tenant note, the
+  parameters (what each accepts in words) and the limits per request.
+- Everything is in English, Portuguese and Spanish, but Try it, which comes
+  next.
 
 ### Changed: Real time, one row per stream
 

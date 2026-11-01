@@ -32,6 +32,10 @@ func endpointsFixture() ([]postgres.PublishedEndpoint, []postgres.CatalogEntry) 
 	return all, catalogFixture()
 }
 
+// regexpPre is a page's code blocks -- files, commands -- which are the
+// same in every language.
+var regexpPre = regexp.MustCompile(`(?s)<pre[^>]*>.*?</pre>`)
+
 func endpointKeys(v EndpointsView) string {
 	var out []string
 	for _, r := range v.Rows {
@@ -122,8 +126,7 @@ func TestTheEndpointsHaveNoEnglishLeft(t *testing.T) {
 	all, entries := endpointsFixture()
 	// Publish endpoint's file and commands are code, the same in every
 	// language.
-	code := regexp.MustCompile(`(?s)<pre[^>]*>.*?</pre>`)
-	page := code.ReplaceAllString(drawIn(t, "pt-BR", Endpoints(BuildEndpoints(all, entries, EndpointFilter{}, catalogNow))), " ")
+	page := regexpPre.ReplaceAllString(drawIn(t, "pt-BR", Endpoints(BuildEndpoints(all, entries, EndpointFilter{}, catalogNow))), " ")
 	text := visibleText(page) + " " +
 		visibleText(drawIn(t, "pt-BR", EndpointsList(BuildEndpoints(nil, nil, EndpointFilter{}, catalogNow)))) + " " +
 		visibleText(drawIn(t, "pt-BR", EndpointsList(BuildEndpoints(all, entries, EndpointFilter{Q: "zzz"}, catalogNow))))

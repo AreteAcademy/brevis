@@ -152,33 +152,14 @@ var freshnessRank = map[string]int{"stale": 0, "fresh": 1, "": 2}
 // match, on the server, so a searched list is a link.
 func BuildEndpoints(all []postgres.PublishedEndpoint, entries []postgres.CatalogEntry, f EndpointFilter, now time.Time) EndpointsView {
 	v := EndpointsView{Filter: f, Now: now}
-	byTarget := map[string]DataRow{}
-	for _, row := range BuildData(entries, now).Rows {
-		byTarget[row.Target] = row
-	}
+	byTarget := judgedTargets(entries, now)
 	apis := map[string]bool{}
 	q := strings.ToLower(strings.TrimSpace(f.Q))
 	if r := []rune(q); len(r) > searchCeiling {
 		q = string(r[:searchCeiling])
 	}
 	for _, e := range all {
-		r := rowOf(e)
-		for i, target := range e.Reads {
-			row, known := byTarget[target]
-			if !known {
-				continue
-			}
-			if i == 0 {
-				read := row
-				r.Read = &read
-			}
-			switch {
-			case row.Status == catalog.Late || row.Status == catalog.Stale:
-				r.Freshness = "stale"
-			case r.Freshness == "":
-				r.Freshness = "fresh"
-			}
-		}
+		r := judgedRow(e, byTarget)
 		v.Total++
 		apis[e.API] = true
 		switch r.Freshness {
@@ -221,11 +202,54 @@ func BuildEndpoints(all []postgres.PublishedEndpoint, entries []postgres.Catalog
 	return v
 }
 
-// EndpointView is one endpoint's page: its contract, as published.
+// judgedTargets is the catalog's rows by destination, each judged as the
+// Catalog judges it.
+func judgedTargets(entries []postgres.CatalogEntry, now time.Time) map[string]DataRow {
+	byTarget := map[string]DataRow{}
+	for _, row := range BuildData(entries, now).Rows {
+		byTarget[row.Target] = row
+	}
+	return byTarget
+}
+
+// judgedRow is an endpoint's row with how its data stands: "stale" when a
+// table it reads is late or stale, "fresh" when the catalog knows one and
+// none is, "" when it knows none. Read is the first table's row.
+func judgedRow(e postgres.PublishedEndpoint, byTarget map[string]DataRow) EndpointRow {
+	r := rowOf(e)
+	for i, target := range e.Reads {
+		row, known := byTarget[target]
+		if !known {
+			continue
+		}
+		if i == 0 {
+			read := row
+			r.Read = &read
+		}
+		switch {
+		case staleStatus(row.Status):
+			r.Freshness = "stale"
+		case r.Freshness == "":
+			r.Freshness = "fresh"
+		}
+	}
+	return r
+}
+
+// staleStatus is a catalog status an endpoint calls stale data.
+func staleStatus(s catalog.Status) bool { return s == catalog.Late || s == catalog.Stale }
+
+// EndpointView is one endpoint's page: its contract, as published, and how
+// the data it reads stands (screen-endpoints T4).
 type EndpointView struct {
 	Row    EndpointRow
 	Params []ParamView
 	Limits catalog.EndpointLimits
+	// Lineage is one line per table read, in the endpoint's order; Manifest
+	// what its API published beside it; Now the page's clock.
+	Lineage  []LineageRow
+	Manifest postgres.APIManifest
+	Now      time.Time
 	// About is the note above the endpoint in its file, if its author marked
 	// one.
 	About string
@@ -240,31 +264,78 @@ type EndpointView struct {
 	RunErr string
 }
 
-// ParamView is one parameter as a caller reads it.
+// ParamView is one parameter as a caller reads it. Accepts is a list the
+// machine writes -- the values, the periods, a date's shape -- and the rest
+// is said in the reader's words from MaxLen, Min and Max.
 type ParamView struct {
 	Name, Type, Accepts, Default, Note string
 	Required                           bool
+	MaxLen                             int
+	Min, Max                           *int64
 }
 
-// BuildEndpoint is the page of one endpoint.
-func BuildEndpoint(e postgres.PublishedEndpoint) EndpointView {
-	v := EndpointView{Row: rowOf(e), Limits: e.Endpoint.Limits, About: e.Endpoint.Notes[""]}
+// LineageRow is one table an endpoint reads, and what is known upstream of
+// it: whether the catalog knows it, how it stands, its best writer -- the one
+// the table's status is -- and where that writer reads, as declared.
+type LineageRow struct {
+	Target   string
+	Known    bool
+	Status   catalog.Status
+	LastWhen *time.Time
+	Writer   *WriterView
+	Source   Source
+}
+
+// Stale says the table is late or stale.
+func (l LineageRow) Stale() bool { return l.Known && staleStatus(l.Status) }
+
+// WriterHref is the writer's page: a stream's, or a load's.
+func (l LineageRow) WriterHref() string {
+	if l.Writer == nil {
+		return ""
+	}
+	if g := l.Writer.Gateway; g != nil {
+		return Stream{Gateway: g.Name, Path: g.Stream}.Href()
+	}
+	return LoadTarget{Workflow: l.Writer.Workflow, Step: l.Writer.Node, URI: l.Target}.Href()
+}
+
+// BuildEndpoint is the page of one endpoint, judged by the catalog's entries
+// (with the writers' configurations attached, for where they read).
+func BuildEndpoint(e postgres.PublishedEndpoint, entries []postgres.CatalogEntry, now time.Time) EndpointView {
+	byTarget := judgedTargets(entries, now)
+	v := EndpointView{Row: judgedRow(e, byTarget), Limits: e.Endpoint.Limits, About: e.Endpoint.Notes[""],
+		Manifest: e.Manifest, Now: now}
+	for _, target := range e.Reads {
+		l := LineageRow{Target: target}
+		if row, known := byTarget[target]; known {
+			l.Known, l.Status, l.LastWhen = true, row.Status, row.LastWhen
+			for i := range row.Writers {
+				if row.Writers[i].Verdict.Status == row.Status {
+					l.Writer = &row.Writers[i]
+					break
+				}
+			}
+			if l.Writer == nil && len(row.Writers) > 0 {
+				l.Writer = &row.Writers[0]
+			}
+			if l.Writer != nil && l.Writer.Gateway == nil {
+				l.Source = SourceOf(l.Writer.Config)
+			}
+		}
+		v.Lineage = append(v.Lineage, l)
+	}
 	for _, p := range e.Endpoint.Params {
-		pv := ParamView{Name: p.Name, Type: p.Type, Required: p.Required, Note: e.Endpoint.Notes["params."+p.Name]}
+		pv := ParamView{Name: p.Name, Type: p.Type, Required: p.Required, Note: e.Endpoint.Notes["params."+p.Name],
+			MaxLen: p.MaxLen, Min: p.Min, Max: p.Max}
 		if p.Default != nil {
 			pv.Default = *p.Default
 		}
 		switch {
 		case len(p.Values) > 0:
 			pv.Accepts = strings.Join(p.Values, ", ")
-		case p.Type == "string" && p.MaxLen > 0:
-			pv.Accepts = fmt.Sprintf("text, at most %d characters", p.MaxLen)
-		case p.Type == "int" && (p.Min != nil || p.Max != nil):
-			pv.Accepts = rangeText(p.Min, p.Max)
 		case p.Type == "date":
 			pv.Accepts = "YYYY-MM-DD"
-		case p.Type == "bool":
-			pv.Accepts = "true or false"
 		case p.Type == "period":
 			pv.Accepts = strings.Join(periods, ", ")
 		}
@@ -273,23 +344,83 @@ func BuildEndpoint(e postgres.PublishedEndpoint) EndpointView {
 	return v
 }
 
-func rangeText(min, max *int64) string {
-	switch {
-	case min != nil && max != nil:
-		return fmt.Sprintf("a whole number from %d to %d", *min, *max)
-	case min != nil:
-		return fmt.Sprintf("a whole number, at least %d", *min)
-	default:
-		return fmt.Sprintf("a whole number, at most %d", *max)
+// StaleLine is the first table read that is late or stale: the one the
+// warning names.
+func (v EndpointView) StaleLine() *LineageRow {
+	for i := range v.Lineage {
+		if v.Lineage[i].Stale() {
+			return &v.Lineage[i]
+		}
 	}
+	return nil
 }
 
-// BytesBilled is the endpoint's byte ceiling in words.
-func (v EndpointView) BytesBilled() string {
+// BumpCommand is Clear cache (D5): the command that clears what the cache
+// holds for the tables this endpoint reads, built from what its API
+// published -- the variable the cache's address is read from and the dialect
+// -- with each table named as a build keys it: no project on BigQuery,
+// lowered on Postgres. A table of another warehouse is not the cache's. ""
+// with no cache on record, or no table it keys.
+func (v EndpointView) BumpCommand() string {
+	c := v.Manifest.Cache
+	if c == nil || c.AddrFrom == "" {
+		return ""
+	}
+	var names []string
+	for _, target := range v.Row.Reads {
+		scheme, rest, ok := strings.Cut(target, "://")
+		if !ok || scheme != v.Manifest.Dialect {
+			continue
+		}
+		parts := strings.Split(strings.Trim(rest, "/"), "/")
+		if len(parts) != 3 {
+			continue
+		}
+		name := parts[1] + "." + parts[2]
+		if scheme == "postgres" {
+			name = strings.ToLower(name)
+		}
+		names = append(names, name)
+	}
+	if len(names) == 0 {
+		return ""
+	}
+	return "brevis-sql generation bump --generations-from " + c.AddrFrom + " --dialect " + v.Manifest.Dialect + " " + strings.Join(names, " ")
+}
+
+// acceptsSaid is what a parameter accepts, in the reader's words.
+func acceptsSaid(ctx context.Context, p ParamView) string {
+	switch {
+	case p.Accepts != "":
+		return p.Accepts
+	case p.Type == "string" && p.MaxLen > 0:
+		return i18n.T(ctx, "endpoint.accepts.text", "n", i18n.Number(ctx, int64(p.MaxLen)))
+	case p.Type == "int" && p.Min != nil && p.Max != nil:
+		return i18n.T(ctx, "endpoint.accepts.range", "min", i18n.Number(ctx, *p.Min), "max", i18n.Number(ctx, *p.Max))
+	case p.Type == "int" && p.Min != nil:
+		return i18n.T(ctx, "endpoint.accepts.min", "min", i18n.Number(ctx, *p.Min))
+	case p.Type == "int" && p.Max != nil:
+		return i18n.T(ctx, "endpoint.accepts.max", "max", i18n.Number(ctx, *p.Max))
+	case p.Type == "bool":
+		return i18n.T(ctx, "endpoint.accepts.bool")
+	}
+	return ""
+}
+
+// bytesBilled is the endpoint's byte ceiling in words.
+func bytesBilled(ctx context.Context, v EndpointView) string {
 	if v.Limits.MaxBytesBilled <= 0 {
-		return "no ceiling"
+		return i18n.T(ctx, "endpoint.limits.no_ceiling")
 	}
 	return bytesText(v.Limits.MaxBytesBilled)
+}
+
+// cacheTypeTitle is a cache's type as its makers write it.
+func cacheTypeTitle(t string) string {
+	if t == "redis" {
+		return "Redis"
+	}
+	return t
 }
 
 // Curl is how to call it, with the key as a placeholder: the console never
@@ -393,21 +524,6 @@ func TryValues(params []catalog.EndpointParam, q url.Values) url.Values {
 		}
 	}
 	return out
-}
-
-// paramsCount is the head of the parameters card: how many, and how many a
-// request must carry.
-func paramsCount(ps []ParamView) string {
-	req := 0
-	for _, p := range ps {
-		if p.Required {
-			req++
-		}
-	}
-	if req == 0 {
-		return fmt.Sprint(len(ps))
-	}
-	return fmt.Sprintf("%d · %d required", len(ps), req)
 }
 
 // thousands writes a count with its thousands separated -- 10,000, not 10000,

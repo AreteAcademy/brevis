@@ -78,9 +78,9 @@ func TestAnEndpointsPageIsItsContract(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("%d", code)
 	}
-	for _, want := range []string{"last_7_days", "asc, desc", "500", "1.0 GB", "10s",
+	for _, want := range []string{"last_7_days", "asc, desc", "500", "1.0 GB", "10 seconds",
 		"Clicks per day, for the dashboard.", "Newest first by default.", "Bearer &lt;key&gt;",
-		"/data/target?u=postgres%3A%2F%2Fanalytics%2Fmarts%2Fclicks_daily", "each key's tenant"} {
+		"/data/target?u=postgres%3A%2F%2Fanalytics%2Fmarts%2Fclicks_daily", "a caller cannot send one"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page lacks %q", want)
 		}
@@ -311,7 +311,7 @@ func TestAnEndpointIsTitledByItsPath(t *testing.T) {
 // the key as a placeholder, never the console's own.
 func TestAnEndpointsLimitsAreNumbersAndItsCurlIsCopyable(t *testing.T) {
 	_, body := get(t, tryUI(t, "http://api.invalid", loggedIn), "/data/endpoints/metrics-api/clicks")
-	limits := body[strings.Index(body, ">Limits<"):]
+	limits := body[strings.Index(body, ">Limits per request<"):]
 	if !strings.Contains(limits[:strings.Index(limits, "</dl>")], "<dt") {
 		t.Error("the limits are not a strip of labelled numbers")
 	}
@@ -468,5 +468,29 @@ func TestTheEndpointsListFiltersByAPIAndState(t *testing.T) {
 	_, stale := get(t, ui, "/data/endpoints?state=stale")
 	if strings.Contains(stale, ">/v1/clicks<") || !strings.Contains(stale, "Nothing matches this filter.") {
 		t.Error("?state=stale drew an endpoint whose data nobody knows to be stale")
+	}
+}
+
+// AN ENDPOINT'S PAGE READS THE CATALOG (screen-endpoints T4): one over a
+// stale table warns and says where its data comes from, writer and all; an
+// API published before its settings were kept says to publish it again.
+func TestAnEndpointsPageReadsTheCatalog(t *testing.T) {
+	f := published()
+	stale := catalog.Endpoint{Name: "vendors", Path: "/v1/vendors", Tenant: "key", Reads: []string{"bigquery://acme/bronze/old"}}
+	f.all = append(f.all, postgres.PublishedEndpoint{API: "metrics-api", Name: "vendors", Path: "/v1/vendors",
+		Tenant: "key", Reads: stale.Reads, Endpoint: stale, PublishedAt: time.Now().Add(-time.Hour),
+		Manifest: postgres.APIManifest{Connection: "warehouse", Dialect: "bigquery",
+			Cache: &catalog.EndpointsCache{Type: "redis", AddrFrom: "CACHE_ADDR", TTL: "6h"}}})
+	ui := dataUI(catalogFake{entries: catalogEntries()}).WithEndpoints(f)
+	_, body := get(t, ui, "/data/endpoints/metrics-api/vendors")
+	for _, want := range []string{"data-stale-warning", "This endpoint is serving stale data", `href="/ingest/loads/vendors/fetch"`,
+		"6 hours", "brevis-sql generation bump --generations-from CACHE_ADDR --dialect bigquery bronze.old"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the stale endpoint's page lacks %q", want)
+		}
+	}
+	_, legacy := get(t, ui, "/data/endpoints/metrics-api/clicks")
+	if strings.Contains(legacy, "data-stale-warning") || !strings.Contains(legacy, "publish the API again") {
+		t.Error("an endpoint over a table the catalog does not know, from an API with no settings on record")
 	}
 }

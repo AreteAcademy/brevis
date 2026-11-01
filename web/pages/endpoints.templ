@@ -263,9 +263,12 @@ templ endpointsHow() {
 	</ol>
 }
 
+// Endpoint is one endpoint's page (screen-endpoints T4): what it is, whether
+// the data it serves is stale and why, where that data comes from, how its
+// answers are cached and how to clear them, and its contract.
 templ Endpoint(v EndpointView) {
 	@layouts.Base(layouts.Page{
-		Title: v.Row.Path, Kicker: "Data", Active: "endpoints", Mono: true,
+		Title: v.Row.Path, Crumb: v.Row.Path, Active: "endpoints", Mono: true,
 		Eyebrow: endpointEyebrow(v),
 	}) {
 		// THE CONTRACT IS THE PAGE, and Try it sits beside it -- after it in
@@ -284,38 +287,41 @@ templ Endpoint(v EndpointView) {
 			}
 		>
 			<div class="flex min-w-0 flex-col gap-3">
-				<div class="flex flex-col gap-3">
-					if v.About != "" {
-						<p class="max-w-3xl text-sm whitespace-pre-line text-ink-2">{ v.About }</p>
+				if v.About != "" {
+					<p class="-mt-1 max-w-3xl text-[13.5px] whitespace-pre-line text-ink-2">{ v.About }</p>
+				}
+				if l := v.StaleLine(); l != nil {
+					@endpointStale(*l)
+				}
+				// WHOSE ROWS A REQUEST READS, said before anything else about
+				// it: the one fact a caller cannot change.
+				<div class="flex max-w-3xl items-start gap-2.5 rounded-card border border-line bg-surface px-3.5 py-3 text-[0.82rem] text-ink-2">
+					if v.Row.Keyed {
+						<span class="mt-0.5 text-ink">
+							@components.Icon("key-round", "h-4 w-4")
+						</span>
+						<span>{ i18n.T(ctx, "endpoint.tenant.key") }</span>
+					} else {
+						<span class="mt-0.5 text-state-running">
+							@components.Icon("info", "h-4 w-4")
+						</span>
+						<span>{ i18n.T(ctx, "endpoint.tenant.none") }</span>
 					}
-					// WHOSE ROWS A REQUEST READS, said before anything else
-					// about it: the one fact a caller cannot change.
-					<div class="flex max-w-3xl items-start gap-2.5 rounded-card border border-line bg-surface px-3.5 py-3 text-[0.82rem] text-ink-2">
-						if v.Row.Keyed {
-							<span class="mt-0.5 text-ink">
-								@components.Icon("key-round", "h-4 w-4")
-							</span>
-							<span>Each request reads as each key's tenant; a caller cannot send one.</span>
-						} else {
-							<span class="mt-0.5 text-state-running">
-								@components.Icon("info", "h-4 w-4")
-							</span>
-							<span>The same rows for every key: its file says the data is not per tenant.</span>
-						}
-					</div>
 				</div>
-				@components.Panel("Parameters", paramsCount(v.Params)) {
+				@endpointLineage(v)
+				@endpointCache(v)
+				@components.Panel(i18n.T(ctx, "endpoints.col.params"), paramsSaid(ctx, v.Row)) {
 					if len(v.Params) == 0 {
-						<p class="px-4 py-3 text-sm text-muted">None. Every request reads the same.</p>
+						<p class="px-4 py-3 text-sm text-muted">{ i18n.T(ctx, "endpoint.params.none") }</p>
 					} else {
 						<div class="overflow-x-auto">
 							<table class="ct w-full text-[0.82rem]">
 								<thead>
 									<tr class="border-b border-line bg-canvas-subtle text-left">
-										@th("Name", "pl-4")
-										@th("Type", "")
-										@th("Accepts", "")
-										@th("Default", "pr-4")
+										@th(i18n.T(ctx, "endpoint.params.name"), "pl-4")
+										@th(i18n.T(ctx, "endpoint.params.type"), "")
+										@th(i18n.T(ctx, "endpoint.params.accepts"), "")
+										@th(i18n.T(ctx, "endpoint.params.default"), "pr-4")
 									</tr>
 								</thead>
 								<tbody class="divide-y divide-line-soft">
@@ -324,14 +330,14 @@ templ Endpoint(v EndpointView) {
 											<td class="px-3 py-2.5 pl-4">
 												<span class="font-mono text-[0.8rem] text-ink">{ p.Name }</span>
 												if p.Required {
-													<span class="ml-1.5 rounded-card bg-state-queued/13 px-1.5 py-px text-[0.68rem] font-medium text-state-queued">required</span>
+													<span class="ml-1.5 rounded-card bg-state-queued/13 px-1.5 py-px text-[0.68rem] font-medium tracking-[0.04em] text-state-queued uppercase">{ i18n.T(ctx, "endpoint.params.required") }</span>
 												}
 												if p.Note != "" {
 													<p class="mt-1 max-w-md text-[0.75rem] whitespace-pre-line text-muted">{ p.Note }</p>
 												}
 											</td>
 											<td class="px-3 py-2.5 font-mono text-[0.75rem] text-muted">{ p.Type }</td>
-											<td class="px-3 py-2.5 text-[0.78rem] text-ink-2">{ p.Accepts }</td>
+											<td class="px-3 py-2.5 text-[0.78rem] text-ink-2">{ acceptsSaid(ctx, p) }</td>
 											<td class="px-3 py-2.5 pr-4 font-mono text-[0.75rem] text-ink">
 												if p.Default == "" {
 													<span class="text-faint">—</span>
@@ -347,30 +353,14 @@ templ Endpoint(v EndpointView) {
 					}
 				}
 				<section>
-					<h2 class="mb-2 text-[0.875rem] font-semibold text-ink">Limits</h2>
+					<h2 class="mb-2 text-[0.875rem] font-semibold text-ink">{ i18n.T(ctx, "endpoint.limits") }</h2>
 					@components.Stats([]components.Stat{
-						{Label: "Timeout", Value: v.Limits.Timeout, Icon: "clock"},
-						{Label: "Rows", Value: thousands(v.Limits.MaxRows), Icon: "rows-3"},
-						{Label: "Bytes billed", Value: v.BytesBilled(), Icon: "hard-drive"},
+						{Label: i18n.T(ctx, "endpoint.limits.timeout"), Value: durationWords(ctx, v.Limits.Timeout), Icon: "clock"},
+						{Label: i18n.T(ctx, "endpoint.limits.rows"), Value: i18n.Number(ctx, int64(v.Limits.MaxRows)), Icon: "rows-3"},
+						{Label: i18n.T(ctx, "endpoint.limits.bytes"), Value: bytesBilled(ctx, v), Icon: "hard-drive"},
 					})
 				</section>
-				@components.Panel("Reads", fmt.Sprint(len(v.Row.Reads))) {
-					<ul class="divide-y divide-line-soft">
-						for _, t := range v.Row.Reads {
-							<li class="flex flex-wrap items-center gap-2.5 px-4 py-2.5">
-								@components.Icon("database", "h-3.5 w-3.5 text-muted")
-								{{ where, what := SplitTarget(t) }}
-								<a href={ templ.SafeURL(TargetHref(t)) } class="min-w-0 flex-1 font-mono text-[0.78rem] break-all hover:underline"><span class="text-faint">{ where }</span><span class="text-ink">{ what }</span></a>
-								if layouts.HasSQL(ctx) {
-									@components.ButtonLink(components.ButtonSecondary, components.SizeSmall, "/sql?target="+url.QueryEscape(t)) {
-										Open in SQL
-									}
-								}
-							</li>
-						}
-					</ul>
-				}
-				@components.Panel("Call it", "") {
+				@components.Panel(i18n.T(ctx, "endpoint.call"), "") {
 					<div class="p-4">
 						@components.CodeBlock("endpoint-curl", v.Curl(), curlAttrs(v))
 					</div>
@@ -389,28 +379,159 @@ templ Endpoint(v EndpointView) {
 	}
 }
 
-// endpointEyebrow is what the endpoint is, above its path: the method, the
-// API that serves it, when it was published.
+// endpointEyebrow is the line above the path: back to every endpoint, then
+// what it is -- the method, its API, when it was published, how its data
+// stands.
 templ endpointEyebrow(v EndpointView) {
+	<a href="/data/endpoints" class="text-[0.75rem] text-muted hover:text-ink">&larr; { i18n.T(ctx, "endpoint.back") }</a>
+	<span class="text-faint">·</span>
 	@components.MethodPill("GET")
 	<span class="font-mono text-[0.75rem] text-ink-2">{ v.Row.API }</span>
-	<span class="text-[0.72rem] text-muted">published { components.When(&v.Row.PublishedAt) }</span>
+	<span class="text-[0.72rem] text-muted">{ i18n.T(ctx, "endpoint.published", "when", i18n.Since(ctx, v.Now, v.Row.PublishedAt)) }</span>
+	if v.Row.Freshness != "" {
+		@endpointFreshness(v.Row.Freshness)
+	}
 }
 
-templ readBy(refs []EndpointRef) {
-	if len(refs) > 0 {
-		@components.Panel("Read by", fmt.Sprint(len(refs))) {
-			<ul class="divide-y divide-line-soft">
-				for _, e := range refs {
-					<li class="flex flex-wrap items-center gap-1.5 px-4 py-2.5">
-						@components.MethodPill("GET")
-						<a href={ templ.SafeURL(e.Href) } class="font-mono text-[0.78rem] text-ink hover:underline">{ e.Path }</a>
-						<span class="text-[0.72rem] text-muted">· { e.API }</span>
-					</li>
-				}
-			</ul>
+// endpointStale is the warning on an endpoint serving stale data: why the
+// table is behind, in its writer's words, that the endpoint answers with the
+// last good data meanwhile, and the table in the Catalog.
+templ endpointStale(l LineageRow) {
+	<section data-stale-warning role="note" class="max-w-3xl rounded-card border border-state-queued/40 bg-state-queued/8 px-4 py-3 text-[13px]">
+		<p class="flex items-center gap-2 font-semibold text-state-queued">
+			@components.FreshnessMark("stale")
+			{ i18n.T(ctx, "endpoint.stale.title") }
+		</p>
+		if l.Writer != nil {
+			if why := l.Writer.Reason(ctx); why != "" {
+				<p class="mt-1.5 text-ink-2">{ why }</p>
+			}
 		}
+		<p class="mt-1 text-muted">{ i18n.T(ctx, "endpoint.stale.serves") }</p>
+		<a href={ templ.SafeURL(TargetHref(l.Target)) } class="mt-2 inline-block text-[12.5px] text-ink underline decoration-line-strong underline-offset-2 hover:decoration-ink">{ i18n.T(ctx, "endpoint.stale.catalog") } &rarr;</a>
+	</section>
+}
+
+// endpointLineage is where the data comes from: per table read, the
+// writer's declared origin, the writer, the table and this endpoint, in four
+// columns that stack on a narrow screen. A step nothing is known of is a
+// dash, so the columns line up; a table the catalog does not know says so.
+templ endpointLineage(v EndpointView) {
+	@components.Panel(i18n.T(ctx, "endpoint.lineage"), fmt.Sprint(len(v.Lineage))) {
+		<ul id="lineage" class="divide-y divide-line-soft">
+			for _, l := range v.Lineage {
+				<li class="grid grid-cols-1 gap-3 px-4 py-3 text-[12.5px] min-[1100px]:grid-cols-[minmax(0,1fr)_1rem_minmax(0,1fr)_1rem_minmax(0,1.3fr)_1rem_minmax(0,1fr)] min-[1100px]:gap-2">
+					@lineageStep(i18n.T(ctx, "endpoint.lineage.origin")) {
+						if l.Writer != nil && l.Writer.Gateway != nil {
+							<p class="truncate font-mono text-ink-2">POST { l.Writer.Gateway.Stream }</p>
+							<p class="text-[11.5px] text-muted">{ i18n.T(ctx, "loads.source.http") }</p>
+						} else if l.Source.Kind != "" {
+							<p class="truncate text-ink-2">{ originLabel(ctx, l.Source) }</p>
+							if l.Source.Where != "" {
+								<p class="truncate font-mono text-[11.5px] text-muted" title={ l.Source.Where }>{ l.Source.Where }</p>
+							}
+						} else {
+							<p class="text-faint">—</p>
+						}
+					}
+					@lineageArrow()
+					@lineageStep(i18n.T(ctx, "endpoint.lineage.writer")) {
+						if l.Writer != nil {
+							<a href={ templ.SafeURL(l.WriterHref()) } class="block truncate font-mono text-ink hover:underline" title={ writerName(l.Writer.CatalogWriter) }>{ writerName(l.Writer.CatalogWriter) }</a>
+						} else {
+							<p class="text-faint">—</p>
+						}
+					}
+					@lineageArrow()
+					@lineageStep(i18n.T(ctx, "endpoint.lineage.table")) {
+						{{ where, what := splitDestination(l.Target) }}
+						<a href={ templ.SafeURL(TargetHref(l.Target)) } class="flex min-w-0 items-center gap-1.5 font-mono hover:underline" title={ l.Target }>
+							@components.Logo(kindLogo(kindOf(l.Target)), 16)
+							<span class="truncate text-faint">{ where }</span><span class="shrink-0 text-ink">{ what }</span>
+						</a>
+						if l.Known {
+							<p class="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-muted">
+								@components.Freshness(string(l.Status))
+								if l.LastWhen != nil {
+									<span>· { i18n.T(ctx, "endpoint.lineage.rebuilt", "when", i18n.Since(ctx, v.Now, *l.LastWhen)) }</span>
+								}
+							</p>
+						} else {
+							<p class="mt-0.5 text-[11.5px] text-faint">{ i18n.T(ctx, "endpoint.lineage.unknown") }</p>
+						}
+						if layouts.HasSQL(ctx) {
+							<a href={ templ.SafeURL("/sql?target=" + url.QueryEscape(l.Target)) } class="mt-0.5 inline-block text-[11.5px] text-muted underline decoration-line-strong underline-offset-2 hover:text-ink">{ i18n.T(ctx, "endpoint.lineage.sql") }</a>
+						}
+					}
+					@lineageArrow()
+					@lineageStep(i18n.T(ctx, "endpoint.lineage.endpoint")) {
+						<p class="truncate font-mono text-ink">GET { v.Row.Path }</p>
+						if c := v.Manifest.Cache; c != nil {
+							<p class="text-[11.5px] text-muted">{ i18n.T(ctx, "endpoint.lineage.cache", "ttl", durationWords(ctx, c.TTL)) }</p>
+						}
+					}
+				</li>
+			}
+		</ul>
 	}
+}
+
+// lineageStep is one step of a lineage line: a small label over its lines.
+templ lineageStep(label string) {
+	<div class="min-w-0">
+		<p class="mb-0.5 text-[10.5px] font-medium tracking-[0.08em] text-faint uppercase">{ label }</p>
+		{ children... }
+	</div>
+}
+
+// lineageArrow joins two steps; on a narrow screen the steps stack and the
+// order says it.
+templ lineageArrow() {
+	<span aria-hidden="true" class="hidden pt-4 text-center text-faint min-[1100px]:block">&rarr;</span>
+}
+
+// endpointCache is the cache card: how long an answer is kept, what clears
+// it, what holds it, and Clear cache -- a command to copy, since the console
+// never touches the cache itself. With no cache on record it says why.
+templ endpointCache(v EndpointView) {
+	<section id="cache" class="overflow-hidden rounded-card border border-line bg-surface">
+		<header class="flex h-[38px] items-center gap-2 border-b border-line-soft pr-3 pl-3.5">
+			<h2 class="text-[13px] font-semibold text-ink">{ i18n.T(ctx, "endpoints.col.cache") }</h2>
+		</header>
+		if c := v.Manifest.Cache; c != nil {
+			<dl class="grid grid-cols-1 gap-px bg-line-soft min-[720px]:grid-cols-3">
+				<div class="bg-surface px-4 py-3">
+					<dt class="text-[11.5px] text-muted">{ i18n.T(ctx, "endpoint.cache.ttl") }</dt>
+					<dd class="mt-0.5 text-[15px] font-semibold text-ink">{ durationWords(ctx, c.TTL) }</dd>
+					<dd class="text-[11.5px] text-faint">{ i18n.T(ctx, "endpoint.cache.ttl.hint") }</dd>
+				</div>
+				<div class="bg-surface px-4 py-3">
+					<dt class="text-[11.5px] text-muted">{ i18n.T(ctx, "endpoint.cache.cleared") }</dt>
+					<dd class="mt-0.5 text-[15px] font-semibold text-ink">{ i18n.T(ctx, "endpoint.cache.cleared.value") }</dd>
+					<dd class="truncate font-mono text-[11.5px] text-faint" title={ strings.Join(v.Row.Reads, "\n") }>{ strings.Join(v.Row.Reads, " · ") }</dd>
+				</div>
+				<div class="bg-surface px-4 py-3">
+					<dt class="text-[11.5px] text-muted">{ i18n.T(ctx, "endpoint.cache.type") }</dt>
+					<dd class="mt-0.5 text-[15px] font-semibold text-ink">{ cacheTypeTitle(c.Type) }</dd>
+					<dd class="font-mono text-[11.5px] text-faint">{ c.AddrFrom }</dd>
+				</div>
+			</dl>
+			<div class="space-y-3 border-t border-line-soft px-4 py-3 text-[12.5px]">
+				<p class="text-muted">{ i18n.T(ctx, "endpoint.cache.explain") }</p>
+				if cmd := v.BumpCommand(); cmd != "" {
+					<div>
+						<p class="mb-1.5 font-medium text-ink">{ i18n.T(ctx, "endpoint.cache.clear") }</p>
+						@components.CodeBlock("endpoint-bump", cmd, nil)
+						<p class="mt-1.5 text-muted">{ i18n.T(ctx, "endpoint.cache.clear.when") }</p>
+					</div>
+				}
+			</div>
+		} else if v.Manifest.Connection == "" {
+			<p class="px-4 py-3 text-[12.5px] text-muted">{ i18n.T(ctx, "endpoint.cache.unknown") }</p>
+		} else {
+			<p class="px-4 py-3 text-[12.5px] text-muted">{ i18n.T(ctx, "endpoint.cache.none") }</p>
+		}
+	</section>
 }
 
 templ tryIt(v EndpointView) {

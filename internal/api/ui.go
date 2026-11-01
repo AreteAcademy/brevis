@@ -482,7 +482,20 @@ func (u *UI) dataEndpoint(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	v := pages.BuildEndpoint(e)
+	var entries []postgres.CatalogEntry
+	if u.catalog != nil {
+		if entries, err = u.catalog.Catalog(r.Context()); err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		steps, err := u.catalog.StepConfigs(r.Context())
+		if err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		pages.AttachStepConfigs(entries, steps)
+	}
+	v := pages.BuildEndpoint(e, entries, time.Now())
 	v.CanRun = u.callsProtected && u.calls != nil && u.calls.Configured(e.API)
 	if v.CanRun {
 		q := r.URL.Query()
