@@ -60,6 +60,9 @@
         },
         "existingSecret": {
           "type": "string"
+        },
+        "clientIPHeader": {
+          "type": "string"
         }
       },
       "additionalProperties": false

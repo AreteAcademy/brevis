@@ -29,6 +29,10 @@ const (
 	freeFailures = 3
 	baseLock     = 2 * time.Second
 	maxLock      = 15 * time.Minute
+	// SharedKeyMaxLock caps the lockout when every client may share one key
+	// (no trusted client-IP header): a guesser must not be able to keep the
+	// operator out of the console for 15 minutes at a time.
+	SharedKeyMaxLock = 30 * time.Second
 	// forget is how long a source's failures are remembered.
 	forget     = 15 * time.Minute
 	maxSources = 10000
@@ -56,6 +60,8 @@ type Limiter struct {
 	fails    map[string]*failure
 	inflight map[string]bool
 	now      func() time.Time // injectable for tests
+	// MaxLock caps one lockout; zero is 15 minutes.
+	MaxLock time.Duration
 }
 
 func NewLimiter() *Limiter {
@@ -169,7 +175,11 @@ func (l *Limiter) Do(ctx context.Context, source string, check func() bool) (out
 	f.last = now
 	if f.count > freeFailures {
 		d := baseLock << min(f.count-freeFailures-1, 20)
-		f.until = now.Add(min(d, maxLock))
+		ceiling := l.MaxLock
+		if ceiling == 0 {
+			ceiling = maxLock
+		}
+		f.until = now.Add(min(d, ceiling))
 	}
 	return Refused, 0
 }

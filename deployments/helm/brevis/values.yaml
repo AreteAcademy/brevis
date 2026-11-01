@@ -50,6 +50,11 @@ auth:
   secret: ""
   # Or bring all three in a Secret with keys: user, passwordHash, secret.
   existingSecret: ""
+  # Header the proxy fills with the client address, read by the login throttle
+  # (the LAST entry). Empty = X-Forwarded-For when api.ingress.enabled (the
+  # ingress controller appends the real client last), else the connection's
+  # address. Set it only if the proxy in front overwrites or appends to it.
+  clientIPHeader: ""
 
 env: prod
 logLevel: info
