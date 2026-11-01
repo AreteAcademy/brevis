@@ -294,8 +294,10 @@
     hinted = null;
   }
 
-  // Folded to its icons, the sidebar names each one: the NAME, where an open
-  // sidebar's hint is the sentence about what the section is for.
+  // The sidebar's hints belong to the folded sidebar: with the labels showing,
+  // a tooltip repeats what is already read, so an open sidebar draws none --
+  // folded to its icons, each one is NAMED. The update icon on the account
+  // button is the exception: it has no label, in either state.
   function folded() { return document.documentElement.dataset.navMode === "short"; }
   function hintText(el) {
     if (folded() && el.dataset.name && el.closest(".app-sidebar")) return el.dataset.name;
@@ -305,8 +307,8 @@
     if (!e.target || typeof e.target.closest !== "function") return null;
     var el = e.target.closest("[data-tip], [data-name]");
     if (!el) return null;
-    if (el.hasAttribute("data-tip")) return el;
-    return folded() && el.closest(".app-sidebar") ? el : null;
+    if (!el.closest(".app-sidebar") || el.hasAttribute("data-update-icon")) return el.hasAttribute("data-tip") ? el : null;
+    return folded() ? el : null;
   }
 
   document.addEventListener("mouseover", function (e) {
