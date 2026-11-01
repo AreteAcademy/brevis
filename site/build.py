@@ -479,10 +479,11 @@ def gerar(destino):
 
     # Os ids dos títulos de cada página, em inglês: as outras línguas usam
     # estes (ver markdown()).
-    ids_en = {}
+    ids_en, niveis_en = {}, {}
     for pg in carregar_docs(PADRAO):
         _, sm = markdown(pg["corpo"], i18n[PADRAO]["ui"])
         ids_en[pg["slug"]] = [h["id"] for h in sm]
+        niveis_en[pg["slug"]] = [h["n"] for h in sm]
 
     for lang in IDIOMAS:
         s = i18n[lang]
@@ -601,9 +602,18 @@ def gerar(destino):
                 # id after the difference would point at its neighbour. It keeps
                 # its own ids until the translation catches up.
                 _, previo = markdown(p["corpo"], s["ui"])
+                niveis = [h["n"] for h in previo]
                 if len(previo) != len(ids):
                     print("aviso: %s/%s tem %d títulos h2/h3 e o inglês %d; fica com ids próprios até a tradução alcançar"
                           % (lang, p["slug"], len(previo), len(ids)), file=sys.stderr)
+                    ids = None
+                elif niveis != niveis_en[p["slug"]]:
+                    # O mesmo número de títulos, em outra ordem: casar por
+                    # posição apontaria cada âncora para a seção vizinha. A
+                    # sequência de níveis (h2/h3) é o que uma tradução
+                    # preserva e uma reordenação quase nunca.
+                    print("aviso: %s/%s tem os títulos h2/h3 em outra ordem que o inglês; fica com ids próprios"
+                          % (lang, p["slug"]), file=sys.stderr)
                     ids = None
             corpo_html, sumario = markdown(p["corpo"], s["ui"], ids)
             # O autor escreve sempre "/docs/x/"; o idioma que não fica na raiz
