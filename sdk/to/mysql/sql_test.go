@@ -13,21 +13,44 @@ import (
 // and
 // cost v0.12.0 because it was built inside a method that held a client.
 func TestInsertSQLNamesTheColumns(t *testing.T) {
-	got := InsertSQL("pedidos", []string{"ingestion_id", "valor"}, 2, false)
+	got := InsertSQL("pedidos", []string{"ingestion_id", "valor"}, 2, "")
 	expected := "INSERT INTO `pedidos` (`ingestion_id`, `valor`) VALUES (?,?), (?,?)"
 	if got != expected {
 		t.Errorf("SQL:\n  got  %s\n  want %s", got, expected)
 	}
 }
 
-// TestInsertSQLIgnoresOnDedup: INSERT IGNORE is MySQL's dedup.
-func TestInsertSQLIgnoresOnDedup(t *testing.T) {
-	got := InsertSQL("t", []string{"a"}, 1, true)
-	if !strings.HasPrefix(got, "INSERT IGNORE INTO") {
-		t.Errorf("dedup nao virou INSERT IGNORE:\n%s", got)
+// TestInsertSQLDedupIgnoresOnlyDuplicates: the dedup is a no-op ON DUPLICATE KEY
+// UPDATE, never INSERT IGNORE, which would also swallow truncation, NOT NULL and
+// bad-date errors.
+func TestInsertSQLDedupIgnoresOnlyDuplicates(t *testing.T) {
+	got := InsertSQL("t", []string{"a", "ingestion_id"}, 1, "ingestion_id")
+	want := "INSERT INTO `t` (`a`, `ingestion_id`) VALUES (?,?) ON DUPLICATE KEY UPDATE `ingestion_id` = `ingestion_id`"
+	if got != want {
+		t.Errorf("SQL:\n  got  %s\n  want %s", got, want)
 	}
-	if semDedup := InsertSQL("t", []string{"a"}, 1, false); strings.Contains(semDedup, "IGNORE") {
-		t.Errorf("sem dedup virou IGNORE:\n%s", semDedup)
+	if strings.Contains(got, "IGNORE") {
+		t.Errorf("INSERT IGNORE hides every row error:\n%s", got)
+	}
+	if plain := InsertSQL("t", []string{"a"}, 1, ""); strings.Contains(plain, "DUPLICATE") {
+		t.Errorf("without dedup there must be no ON DUPLICATE KEY:\n%s", plain)
+	}
+}
+
+// TestBatchSizeStaysUnderThePlaceholderLimit: 1000 rows x 100 columns is 100000
+// placeholders, over MySQL's 65535.
+func TestBatchSizeStaysUnderThePlaceholderLimit(t *testing.T) {
+	for _, c := range []struct{ configured, columns, want int }{
+		{0, 1, defaultBatch},
+		{0, 100, 655},
+		{1000, 65, 1000},
+		{1000, 66, 992},
+		{10, 100, 10},
+		{0, 70000, 1},
+	} {
+		if got := batchSize(c.configured, c.columns); got != c.want {
+			t.Errorf("batchSize(%d, %d) = %d, want %d", c.configured, c.columns, got, c.want)
+		}
 	}
 }
 
@@ -54,7 +77,7 @@ func TestQuoteEscapesABacktick(t *testing.T) {
 
 // TestInsertSQLReservedWord: a column called `order` is legitimate.
 func TestInsertSQLReservedWord(t *testing.T) {
-	got := InsertSQL("t", []string{core.MetadataID, "order"}, 1, false)
+	got := InsertSQL("t", []string{core.MetadataID, "order"}, 1, "")
 	if !strings.Contains(got, "`order`") {
 		t.Errorf("palavra reservada sem crase:\n%s", got)
 	}

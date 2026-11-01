@@ -173,6 +173,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		return fail(err)
 	}
 
+	var dedupKey string // empty: no dedup
 	if res.Dedup == core.DedupMerge {
 		key, err := core.DedupKeyOf(opt)
 		if err != nil {
@@ -181,9 +182,10 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		if err := checkUniqueIndex(ctx, db, database, table, key); err != nil {
 			return fail(err)
 		}
+		dedupKey = key
 	}
 
-	count, err := t.insert(ctx, db, columns, types, envelopes, res.Dedup == core.DedupMerge)
+	count, err := t.insert(ctx, db, columns, types, envelopes, dedupKey)
 	res.RowsLoaded = count
 	res.RowsIgnored = int64(len(envelopes)) - count
 	if res.Dedup != core.DedupMerge {
@@ -197,11 +199,8 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 // The SQL is built once per batch and reused; the arguments go in a reused
 // slice. Building the string per row would cost one concatenation per record,
 // which on a load of hundreds of thousands is the dominant cost.
-func (t Table) insert(ctx context.Context, db *sql.DB, columns []string, types map[string]string, envelopes []core.Envelope, ignore bool) (int64, error) {
-	size := t.BatchSize
-	if size <= 0 {
-		size = defaultBatch
-	}
+func (t Table) insert(ctx context.Context, db *sql.DB, columns []string, types map[string]string, envelopes []core.Envelope, dedupKey string) (int64, error) {
+	size := batchSize(t.BatchSize, len(columns))
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -231,7 +230,7 @@ func (t Table) insert(ctx context.Context, db *sql.DB, columns []string, types m
 			}
 		}
 
-		tag, err := tx.ExecContext(ctx, InsertSQL(t.Name, columns, len(block), ignore), args...)
+		tag, err := tx.ExecContext(ctx, InsertSQL(t.Name, columns, len(block), dedupKey), args...)
 		if err != nil {
 			return total, fmt.Errorf("mysql: insert into %s: %w", t.Name, err)
 		}
@@ -254,10 +253,14 @@ func (t Table) insert(ctx context.Context, db *sql.DB, columns []string, types m
 // never seen by a test -- that is how BigQuery's MERGE shipped with a
 // positional match and cost v0.12.0. The columns are NAMED, always.
 //
-// `ignore` becomes INSERT IGNORE, which is MySQL's dedup: with a unique index
-// on ingestion_id, a repeated row is discarded rather than taking the batch
-// down.
-func InsertSQL(table string, columns []string, rows int, ignore bool) string {
+// A non-empty `dedupKey` appends ON DUPLICATE KEY UPDATE key = key, which is
+// MySQL's dedup: with a unique index on that column, a repeated row is
+// discarded rather than taking the batch down. It is a real no-op (nothing is
+// rewritten, so RowsAffected stays 0 for a duplicate) and, unlike INSERT
+// IGNORE, it swallows ONLY duplicate keys: a value too long, a NULL in a NOT
+// NULL column or a bad date still fails the load under strict sql_mode (the
+// default since MySQL 5.7) instead of being truncated or zeroed in silence.
+func InsertSQL(table string, columns []string, rows int, dedupKey string) string {
 	names := make([]string, len(columns))
 	for i, c := range columns {
 		names[i] = quote(c)
@@ -269,12 +272,28 @@ func InsertSQL(table string, columns []string, rows int, ignore bool) string {
 		values[i] = oneRow
 	}
 
-	verb := "INSERT"
-	if ignore {
-		verb = "INSERT IGNORE"
+	sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
+		qualify(table), strings.Join(names, ", "), strings.Join(values, ", "))
+	if dedupKey != "" {
+		sql += fmt.Sprintf(" ON DUPLICATE KEY UPDATE %s = %s", quote(dedupKey), quote(dedupKey))
 	}
-	return fmt.Sprintf("%s INTO %s (%s) VALUES %s",
-		verb, qualify(table), strings.Join(names, ", "), strings.Join(values, ", "))
+	return sql
+}
+
+// maxPlaceholders is MySQL's limit of placeholders in one prepared statement.
+const maxPlaceholders = 65535
+
+// batchSize caps the rows per statement so rows x columns stays under
+// maxPlaceholders: 1000 rows of a 100-column table would be refused.
+func batchSize(configured, columns int) int {
+	size := configured
+	if size <= 0 {
+		size = defaultBatch
+	}
+	if columns > 0 {
+		size = min(size, maxPlaceholders/columns)
+	}
+	return max(size, 1)
 }
 
 // quote uses a backtick, which is MySQL's delimiter. A column called `order` is
@@ -342,7 +361,7 @@ func checkUniqueIndex(ctx context.Context, db *sql.DB, database, table, key stri
 	}
 	if n == 0 {
 		return fmt.Errorf("dedup needs a unique index on %s, and %s does not have one -- "+
-			"without it INSERT IGNORE has nothing to match and every run would insert "+
+			"without it the dedup has nothing to match and every run would insert "+
 			"duplicates. This driver does not create indexes, because a loader that can "+
 			"create one can lock a production table: "+
 			"CREATE UNIQUE INDEX idx_%s ON %s (%s)",
