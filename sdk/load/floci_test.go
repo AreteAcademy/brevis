@@ -144,62 +144,142 @@ func TestIntegrationBigQueryCreatesWhatWasDeclared(t *testing.T) {
 	}
 }
 
-// A write does NOT reach BigQuery through this emulator, and the test says so
-// out loud rather than leaving somebody to find out.
-//
-// The SDK writes only through load jobs -- inline, or staged through GCS above
-// the threshold -- and floci implements neither. The refusal has two shapes
-// depending on which door is knocked on, and both mean the same thing:
-//
-//	POST /bigquery/v2/projects/{p}/jobs
-//	  400 {"message":"Only QUERY jobs are supported by the floci BigQuery emulator"}
-//
-//	POST /upload/bigquery/v2/projects/{p}/jobs?uploadType=multipart
-//	  405, empty body -- no route at all
-//
-// The Go client takes the SECOND for an inline load, which is why this asserts
-// only that the load failed. Pinning a message would make the test brittle
-// about which door the client library chose, and that is not the property
-// worth holding.
-//
-// So every assertion about a ROW belongs to the real-dataset job. This test
-// exists to FAIL the day that stops being true: when floci gains load jobs,
-// somebody reads this comment and moves the write assertions down a layer.
-// Without it, "the emulator covers BigQuery" becomes folklore.
-func TestIntegrationBigQueryStillRefusesLoadJobs(t *testing.T) {
+// floci runs load jobs, so the row-level write assertions run in CI on every
+// push. They keep the meaning of their real-dataset twins in integration_test.go
+// (TestIntegrationInlineStrategy, TestIntegrationMergeDoesNotDouble,
+// TestIntegrationANullInAJSONColumnIsSQLNull); the real dataset stays the
+// authority for quota, DDL concurrency and how JSON is stored.
+func flociCount(t *testing.T, l *Loader) int64 {
+	t.Helper()
+	q := l.bq.Query(fmt.Sprintf("SELECT COUNT(*) AS n FROM `%s.%s.%s`",
+		l.cfg.ProjectID, l.cfg.Dataset, l.cfg.Table))
+	it, err := q.Read(context.Background())
+	if err != nil {
+		t.Fatalf("count query: %v", err)
+	}
+	var row struct{ N int64 }
+	if err := it.Next(&row); err != nil {
+		t.Fatalf("read count: %v", err)
+	}
+	return row.N
+}
+
+func flociItConfig() *core.LoadConfig {
+	return &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true,
+		Schema:  itSchema(),
+		Columns: []string{"ingestion_id", "ingestion_loaded_at", "amount", "label"},
+	}
+}
+
+// A small batch goes inline and every row lands.
+func TestIntegrationBigQueryInlineLoadLandsEveryRow(t *testing.T) {
+	l := flociLoader(t, flociItConfig())
+	flociDataset(t, l, "inline")
+
+	const rows = 3
+	result, err := l.Load(context.Background(), withIngestion(rows)...)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if result.Strategy != "inline" {
+		t.Errorf("Strategy = %q, want inline", result.Strategy)
+	}
+	if result.Format != "ndjson" {
+		t.Errorf("Format = %q, want the format actually written", result.Format)
+	}
+	if got := flociCount(t, l); got != rows {
+		t.Errorf("Loaded %d rows, table has %d", rows, got)
+	}
+}
+
+// Load the same batch twice and the count must not double.
+func TestIntegrationBigQueryMergeDoesNotDouble(t *testing.T) {
+	cfg := flociItConfig()
+	cfg.Dedup = core.DedupMerge
+	l := flociLoader(t, cfg)
+	flociDataset(t, l, "merge")
+	ctx := context.Background()
+
+	batch := withIngestion(24)
+	first, err := l.Load(ctx, batch...)
+	if err != nil {
+		t.Fatalf("first load: %v", err)
+	}
+	if first.RowsLoaded != 24 {
+		t.Errorf("the first load wrote %d rows, expected 24", first.RowsLoaded)
+	}
+	second, err := l.Load(ctx, batch...)
+	if err != nil {
+		t.Fatalf("second load: %v", err)
+	}
+	if second.RowsLoaded != 0 {
+		t.Errorf("the second load wrote %d rows; the merge should have ignored them all", second.RowsLoaded)
+	}
+	if second.RowsIgnored != 24 {
+		t.Errorf("RowsIgnored = %d, expected 24", second.RowsIgnored)
+	}
+	if second.Dedup != core.DedupMerge {
+		t.Errorf("the result must say which dedup ran: %q", second.Dedup)
+	}
+	if got := flociCount(t, l); got != 24 {
+		t.Errorf("after loading the same batch twice the table has %d rows, expected 24", got)
+	}
+}
+
+// A null in a JSON column lands as SQL NULL. [#42]
+func TestIntegrationBigQueryANullInAJSONColumnIsSQLNull(t *testing.T) {
 	cfg := &core.LoadConfig{
-		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
-		PartitionBy: "ts",
+		ProjectID: "floci-local", CreateTable: true,
 		Schema: core.Schema{
-			{Name: "brevis_ingestion_id", Type: core.TypeString, Required: true},
-			{Name: "ts", Type: core.TypeTimestamp, Required: true},
+			{Name: "ingestion_id", Type: core.TypeString},
+			{Name: "ingestion_loaded_at", Type: core.TypeTimestamp},
 			{Name: "id", Type: core.TypeString},
+			{Name: "j", Type: core.TypeJSON},
 		},
-		Columns: []string{"brevis_ingestion_id", "ts", "id"},
 	}
 	l := flociLoader(t, cfg)
-	flociDataset(t, l, "rows")
+	flociDataset(t, l, "jsonnull")
 
-	// The row carries every declared column, so CheckRow passes and the load
-	// job is what fails. Without this the test would be measuring the
-	// declaration check and reporting it as the emulator's limit.
-	_, err := l.Load(context.Background(), core.Envelope{
-		Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t",
-		Payload: map[string]any{
-			"brevis_ingestion_id": "6b5a…",
-			"ts":                  "2026-09-26T10:00:00Z",
-			"id":                  "A-1",
-		},
-	})
-	if err == nil {
-		t.Fatal("the emulator accepted a load job. If floci implements them now, " +
-			"this is the good news: move the row-level assertions off the " +
-			"real-dataset job and onto this one, and delete this test")
+	if _, err := l.Load(context.Background(),
+		core.Envelope{Provider: "p", Entity: "e", SourceKey: "1", RecordTS: "2026-01-01T00:00:00Z",
+			Payload: withIngestionOnRow(map[string]any{"id": "1", "j": map[string]any{"a": 1}})},
+		core.Envelope{Provider: "p", Entity: "e", SourceKey: "2", RecordTS: "2026-01-01T00:00:00Z",
+			Payload: withIngestionOnRow(map[string]any{"id": "2", "j": nil})},
+	); err != nil {
+		t.Fatalf("load: %v", err)
 	}
-	// Logged rather than asserted: the SHAPE of the refusal belongs to floci
-	// and to whichever route the client library picked, and neither is ours
-	// to pin. What is ours is that the write did not happen.
-	t.Logf("the emulator refused the load, as expected: %v", err)
+
+	q := l.bq.Query(fmt.Sprintf(
+		"select id, j is null as sql_null, to_json_string(j) as text from `%s.%s.%s` order by id",
+		l.cfg.ProjectID, l.cfg.Dataset, l.cfg.Table))
+	it, err := q.Read(context.Background())
+	if err != nil {
+		t.Fatalf("reading back: %v", err)
+	}
+	seen := 0
+	for {
+		var row []bigquery.Value
+		if err := it.Next(&row); err != nil {
+			break
+		}
+		seen++
+		id, sqlNull, text := row[0], row[1], row[2]
+		switch id {
+		case "1":
+			if sqlNull == true {
+				t.Errorf("the row with a value lost it: %v", text)
+			}
+		case "2":
+			if sqlNull != true {
+				t.Errorf("a null in a JSON column is still a JSON null, not SQL NULL: "+
+					"j IS NULL=%v, to_json_string=%v", sqlNull, text)
+			}
+		}
+	}
+	if seen != 2 {
+		t.Errorf("read %d rows, wanted 2", seen)
+	}
 }
 
 // Additive evolution on BigQuery: the declaration grows a column and the

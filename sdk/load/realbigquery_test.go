@@ -18,7 +18,7 @@ import (
 //
 // It exists because of #43. The whole fix rests on a premise the emulated
 // layer cannot test: that BigQuery FOLDS COLUMN CASE on a load job. floci
-// runs queries on DuckDB and refuses load jobs outright, by design, so the
+// runs queries on DuckDB and cannot fold column case like the service, so the
 // one thing that had to be true was the one thing nothing here could check
 // -- and the premise arrived as a reporter's measurement, which is not the
 // same as a measurement.
@@ -269,8 +269,8 @@ func TestAgainstRealBigQueryADeclarationInAnotherCaseLoads(t *testing.T) {
 // writes. Naming jobs by their content would make a reload into a recreated
 // table a "success" that wrote nothing.
 //
-// No emulator can say this: floci refuses load jobs altogether (see
-// docker-compose.drivers.yml).
+// No emulator can say this: floci does not implement BigQuery's job-ID
+// idempotency (see docker-compose.drivers.yml).
 func TestAgainstRealBigQueryTheSameBatchLoadsOnce(t *testing.T) {
 	ctx, client, env := realBigQuery(t)
 

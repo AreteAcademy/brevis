@@ -884,8 +884,8 @@ func TestClusterByStillChecksTheRowsUnderAutodetect(t *testing.T) {
 // the field, nothing creates a column for it, and nothing should write it.
 //
 // AT THE WIRE and not at a function: the bytes are what BigQuery reads, and
-// the same measurement is what made the JSON-string bug decidable. floci
-// refuses load jobs, so this is the half that can be asserted at all.
+// the same measurement is what made the JSON-string bug decidable. the
+// bytes are what is decidable without any warehouse.
 func TestEncodeRowsDropsANullNothingDeclares(t *testing.T) {
 	declared := []string{"id", "declared_empty"}
 	data, err := EncodeRows([]core.Envelope{{Payload: map[string]any{

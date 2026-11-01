@@ -23,9 +23,9 @@ import (
 // *Loader it never used, so nothing could reach these bytes without a client;
 // it is a pure function now.
 //
-// NOT testable through the emulator: floci refuses load jobs with a 405, so
-// "write a row and read JSON_TYPE back" cannot run there. The wire is where
-// this is decidable without a warehouse.
+// The emulator stores JSON as text, so "write a row and read JSON_TYPE back"
+// proves nothing there. The wire is where this is decidable without a
+// warehouse.
 func TestAJSONColumnReceivesJSONAndNotAStringOfIt(t *testing.T) {
 	const table = "bronze.repro"
 	record := map[string]any{

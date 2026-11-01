@@ -84,12 +84,12 @@ docker compose -f docker-compose.drivers.yml --profile all up -d
 | `PATCH` a column onto a table | ✅ — `auto_table`'s evolution |
 | `insertAll` | ✅ |
 | queries | ✅, but only with `/var/run/docker.sock` mounted |
-| **load jobs** | ❌ — `/jobs` answers `Only QUERY jobs are supported`, and the upload route the Go client actually uses answers `405` |
+| **load jobs** | ✅ — rows land and can be queried back |
 
-The SDK writes to BigQuery **only** through load jobs. So floci can exercise
-every line of `auto_table` that turns a payload into DDL, and **not one Brevis
-write**. That is still the half with no local test today, and it is worth
-having — but a green suite against floci does not mean BigQuery works.
+The SDK writes to BigQuery **only** through load jobs, so floci now exercises
+the write path as well as the DDL `auto_table` produces. What it cannot say is
+how the real service behaves (quota, DDL concurrency, JSON storage, column-case
+folding), so a green suite against floci does not mean BigQuery works.
 
 **floci leaves an orphan.** Queries run in a sibling container that floci
 starts through the docker socket, so `compose down` does not remove it —

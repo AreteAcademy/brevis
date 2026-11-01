@@ -7,8 +7,8 @@
 # secrets is a standing target through every third-party action the workflow
 # pulls; the only project on hand holds a client's real medallion datasets,
 # which is not a thing to hand a test runner; and the emulator already covers
-# the protocol. What the emulator CANNOT cover is the write path -- floci
-# refuses load jobs by design, and a load job is how the SDK writes.
+# the protocol. What the emulator CANNOT cover is the real service's
+# behavior: quota, DDL concurrency, JSON storage, column-case folding.
 #
 # So CI keeps the emulator and says so, in `Say what did not run`:
 #
@@ -86,7 +86,7 @@ port_open 127.0.0.1:51211 "memcached"
 port_open 127.0.0.1:55432 "Postgres"
 port_open 127.0.0.1:53306 "MySQL"
 port_open 127.0.0.1:8085  "the Pub/Sub emulator"
-# floci too: 16 tests use the EMULATED layer and this run refuses a skip, so
+# floci too: 19 tests use the EMULATED layer and this run refuses a skip, so
 # "nothing skipped" has to include them. They are not real-warehouse tests --
 # they prove the driver speaks the protocol -- and they run in CI as well.
 curl -sf -o /dev/null "http://localhost:4588/bigquery/v2/projects/floci-local/datasets" \
@@ -101,8 +101,8 @@ export BREVIS_IT_S3_SECRET="brevis-secret"
 export PUBSUB_EMULATOR_HOST="localhost:8085"
 # BREVIS_BIGQUERY_EMULATOR is deliberately NOT exported. It points the SDK's
 # BigQuery client at floci, and `./load/` holds BOTH layers -- so setting it
-# globally sends the REAL-warehouse tests to the emulator, where sixteen of
-# them fail on a load job floci refuses by design. CI avoids it by running
+# globally sends the REAL-warehouse tests to the emulator, where they
+# would run against floci's behavior instead of the real service's. CI avoids it by running
 # the two in separate steps; so does this, below.
 EMULATOR="http://localhost:4588"
 export BREVIS_SQL_IT_DSN="$BREVIS_IT_PG_DSN"
