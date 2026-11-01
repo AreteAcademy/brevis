@@ -26,7 +26,10 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 - **`govulncheck` is clean in every module.** `golang.org/x/net` (four
   advisories), `google.golang.org/grpc` and `protobuf`, the AWS SDK's S3 and
   event-stream packages, `pgx` and OpenTelemetry's SDK are on fixed versions,
-  with `google.golang.org/api` and the Google Cloud clients moved to match.
+  with `google.golang.org/api` and the Google Cloud clients moved to match. The
+  SDK's bigquery and pubsub package ceilings (`pruning-check.sh`) were raised
+  once for it, 540 -> 760 and 460 -> 530: that gRPC does not compile against the
+  old `api`, so the whole Google stack moves with it.
 
 ### Changed: the Runs badges, red then blue, and they follow
 
