@@ -622,14 +622,20 @@ a.chip:focus-visible .ico {
 
 .lang-dd {
   position: relative;
+  /* A flex box, so the item has the summary's own height and no line box of
+     the body's 16px type around it: that strut put it half a pixel off the
+     links beside it. */
+  display: flex;
+  align-items: center;
 }
 
 /* The language is a MENU ITEM: the same type, colour and hover as the links
    beside it (`.main-nav a`), with a caret to say it opens. */
 .lang-dd summary {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.4rem;
+  line-height: 1.7;
   font-size: 0.9rem;
   color: var(--text-dim);
   cursor: pointer;
