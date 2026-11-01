@@ -142,6 +142,24 @@ func Build(ctx context.Context, d dialect.Dialect, conn dialect.Conn,
 		if err != nil {
 			return res, err
 		}
+		// A DROP AND ITS CREATE ARE ONE UNIT where the warehouse can make
+		// them one (dialect.Atomic): otherwise a CREATE that fails or runs
+		// long leaves the old table gone for whatever reads it.
+		if at, ok := conn.(dialect.Atomic); ok && len(stmts) > 1 {
+			if failed, err := at.ExecAtomic(ctx, stmts); err != nil {
+				return res, fmt.Errorf("%s: the warehouse refused this:\n%s\n\n%w", ref, stmts[failed], err)
+			}
+			stmts = nil
+		}
+		// A DROP AND ITS CREATE ARE ONE UNIT where the warehouse can make
+		// them one (dialect.Atomic): otherwise a CREATE that fails or runs
+		// long leaves the old table gone for whatever reads it.
+		if at, ok := conn.(dialect.Atomic); ok && len(stmts) > 1 {
+			if failed, err := at.ExecAtomic(ctx, stmts); err != nil {
+				return res, fmt.Errorf("%s: the warehouse refused this:\n%s\n\n%w", ref, stmts[failed], err)
+			}
+			stmts = nil
+		}
 		for _, s := range stmts {
 			if err := conn.Exec(ctx, s); err != nil {
 				// NAMED BY MODEL, and the statement with it. The server's own
