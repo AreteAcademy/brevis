@@ -1606,15 +1606,20 @@ a.chip:focus-visible .ico {
   min-height: 40px;
 }
 
+/* ONE COLOUR FOR ALL: each mark is the company's own file, and a strip of five
+   palettes is five logos competing. Greyscale keeps the shape and drops the
+   brand's colour; the hover brings the strip's text colour back. */
 .user-logo img {
   width: auto;
-  opacity: 0.72;
-  transition: opacity 0.2s ease;
+  filter: grayscale(1) contrast(0.9);
+  opacity: 0.7;
+  transition: opacity 0.2s ease, filter 0.2s ease;
 }
 
 .user-logo:hover img,
 .user-logo:focus-visible img {
   opacity: 1;
+  filter: grayscale(1);
 }
 
 /* A mark with a ground of its own is a tile: rounded, like the favicon it is. */
