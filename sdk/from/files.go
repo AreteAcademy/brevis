@@ -248,7 +248,7 @@ func (f Files) open(ctx context.Context, loc core.Location, key string) (io.Read
 	if loc.Scheme != "" {
 		return f.Store.Open(ctx, loc.Bucket, key)
 	}
-	return os.Open(key) //nolint:gosec // the path is the fetcher's own
+	return os.Open(key) // #nosec G304 -- the path is the fetcher's own
 }
 
 // errStopped signals that the consumer broke out of the range loop.

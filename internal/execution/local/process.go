@@ -115,7 +115,7 @@ func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-
 
 	// `sh -c` because the YAML declares a shell line ("python fetch.py"), not an
 	// argv. Accepting the line is the point of `run:`.
-	cmd := exec.CommandContext(ctx, p.shell, "-c", t.Command)
+	cmd := exec.CommandContext(ctx, p.shell, "-c", t.Command) // #nosec G204 -- `sh -c` because the YAML declares a shell line; accepting it is the point of `run:`
 	cmd.Dir = t.WorkDir
 	// Its own process group, and the context kills the whole group: the shell
 	// AND whatever it spawned, as the agent does. Killing only the shell left
@@ -208,7 +208,7 @@ func readPublished(path string) string {
 	if path == "" {
 		return ""
 	}
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) // #nosec G304 -- the path the step was told to publish to
 	if err != nil {
 		return ""
 	}

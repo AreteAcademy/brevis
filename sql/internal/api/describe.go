@@ -78,7 +78,7 @@ type ManifestLimits struct {
 // targets come from the registry's declarations, which is why it runs where
 // the API's credentials do not -- in a publish Job, beside the gateway's.
 func Describe(path string, cfg *Config, reg *connections.Registry) ([]byte, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) // #nosec G304 -- the operator's own endpoint file
 	if err != nil {
 		return nil, err
 	}

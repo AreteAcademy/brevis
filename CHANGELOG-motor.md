@@ -16,6 +16,18 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Security: the scan's findings, and the vulnerable dependencies
+
+- **`gosec` reads `#nosec`, not `//nolint:gosec`.** Twenty-seven findings were
+  intentional (a CLI that reads the files an operator names, an agent that
+  runs the command it is sent, UUID v5's SHA-1) and already carried a
+  `//nolint` the scan does not honour. Each now says `#nosec Gxxx` and why;
+  `gosec` reports none in the four modules.
+- **`govulncheck` is clean in every module.** `golang.org/x/net` (four
+  advisories), `google.golang.org/grpc` and `protobuf`, the AWS SDK's S3 and
+  event-stream packages, `pgx` and OpenTelemetry's SDK are on fixed versions,
+  with `google.golang.org/api` and the Google Cloud clients moved to match.
+
 ### Added: an API's settings are kept when it is published
 
 - **`brevis endpoints publish` keeps the API's own settings** beside its

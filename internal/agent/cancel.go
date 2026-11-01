@@ -73,7 +73,7 @@ func (a *Agent) cancelFromState(execID string) error {
 			"between restarts (--state-dir is unset), so there is nothing left to stop. "+
 			"The process may still be running", execID)
 	}
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) // #nosec G304 -- a file in this agent's own state directory
 	if err != nil {
 		// Nothing to stop is the ordinary case: the step finished and the file
 		// was removed. Reporting success here is honest -- what was asked for

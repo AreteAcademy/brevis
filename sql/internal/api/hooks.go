@@ -376,7 +376,7 @@ func hashExecutable() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- this binary's own path, from os.Executable
 	if err != nil {
 		return "", err
 	}

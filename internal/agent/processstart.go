@@ -31,7 +31,7 @@ func processStart(pid int) (time.Time, error) {
 	if pid <= 0 {
 		return time.Time{}, fmt.Errorf("pid %d is not a process", pid)
 	}
-	out, err := exec.Command("ps", "-o", "lstart=", "-p", fmt.Sprint(pid)).Output()
+	out, err := exec.Command("ps", "-o", "lstart=", "-p", fmt.Sprint(pid)).Output() // #nosec G204 -- ps with a pid that is an int
 	if err != nil {
 		// `ps` exits non-zero when the pid is gone, which is not an error to
 		// report: a process that no longer exists gives a cancel exactly what

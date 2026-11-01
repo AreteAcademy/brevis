@@ -142,7 +142,7 @@ func Load(path string) (Brand, error) {
 	if path == "" {
 		return m, nil
 	}
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(path) // #nosec G304 -- the operator's own brand file
 	if os.IsNotExist(err) {
 		return m, nil
 	}

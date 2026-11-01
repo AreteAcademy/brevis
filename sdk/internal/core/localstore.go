@@ -59,7 +59,7 @@ func (LocalStore) List(_ context.Context, bucket, prefix string) ([]string, erro
 
 func (LocalStore) Open(_ context.Context, bucket, key string) (io.ReadCloser, error) {
 	p := filepath.Join("/"+bucket, key)
-	f, err := os.Open(p) //nolint:gosec // the path is the installation's own
+	f, err := os.Open(p) // #nosec G304 -- the path is the installation's own
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, fmt.Errorf("opening %s: %w", p, ErrNotExist)
