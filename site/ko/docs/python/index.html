@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko" data-docs="/ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Python — 문서</title>
+<meta name="description" content="pip install brevis — step 간 컨텍스트, run의 시계, 파이프라인 고유의 메트릭을 의존성 없이 제공합니다.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/ko/docs/python/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/ko/docs/python/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/python/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/python/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/python/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/python/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/python/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/python/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/python/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/python/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/python/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/python/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/python/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="ko">
+<meta property="og:title" content="Python — 문서">
+<meta property="og:description" content="pip install brevis — step 간 컨텍스트, run의 시계, 파이프라인 고유의 메트릭을 의존성 없이 제공합니다.">
+<meta property="og:url" content="https://brevis.sh/ko/docs/python/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Python — 문서">
+<meta name="twitter:description" content="pip install brevis — step 간 컨텍스트, run의 시계, 파이프라인 고유의 메트릭을 의존성 없이 제공합니다.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Python",
+  "description": "pip install brevis — step 간 컨텍스트, run의 시계, 파이프라인 고유의 메트릭을 의존성 없이 제공합니다.",
+  "inLanguage": "ko",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/ko/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="주 내비게이션">
+      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/docs/">문서</a>
+      <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/python/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/python/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/python/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/python/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/python/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/python/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/python/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/python/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/python/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/python/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/python/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        오픈 소스 둘러보기
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    문서 메뉴
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">문서 검색</label>
+        <input type="search" id="q" placeholder="검색…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="결과 없음" hidden></div>
+      <nav class="side-nav" aria-label="문서">
+        <p class="side-group">시작하기</p><ul class="side-list"><li><a href="/ko/docs/ecosystem/">에코시스템</a></li><li><a href="/ko/docs/integrations/">통합</a></li><li><a href="/ko/docs/introduction/">소개</a></li><li><a href="/ko/docs/installation/">설치</a></li><li><a href="/ko/docs/quickstart/">빠른 시작</a></li></ul><p class="side-group">개념</p><ul class="side-list"><li><a href="/ko/docs/core/">Core</a></li><li><a href="/ko/docs/workflows/">Workflows</a></li><li><a href="/ko/docs/scheduler-and-queue/">스케줄러와 큐</a></li><li><a href="/ko/docs/pod-per-step/">step당 pod 하나</a></li><li><a href="/ko/docs/context/">step 간 컨텍스트</a></li></ul><p class="side-group">레퍼런스</p><ul class="side-list"><li><a href="/ko/docs/cli/">CLI</a></li><li><a href="/ko/docs/parameters/">매개변수</a></li><li><a href="/ko/docs/configuration/">구성</a></li><li><a href="/ko/docs/runtime/">step 런타임</a></li></ul><p class="side-group">SDK와 라이브러리</p><ul class="side-list"><li><a href="/ko/docs/sdk/">Go SDK</a></li><li><a href="/ko/docs/libraries/">클라이언트 라이브러리</a></li><li><a href="/ko/docs/python/" aria-current="page">Python</a></li></ul><p class="side-group">운영</p><ul class="side-list"><li><a href="/ko/docs/console/">Console</a></li><li><a href="/ko/docs/kubernetes/">Kubernetes</a></li><li><a href="/ko/docs/observability/">관측성</a></li><li><a href="/ko/docs/white-label/">화이트 라벨</a></li></ul><p class="side-group">수집</p><ul class="side-list"><li><a href="/ko/docs/ingestion/">수집</a></li><li><a href="/ko/docs/ingestion-sinks/">수집 sink</a></li><li><a href="/ko/docs/benchmarks/">벤치마크</a></li></ul><p class="side-group">SQL 모델링</p><ul class="side-list"><li><a href="/ko/docs/sql/">SQL</a></li></ul><p class="side-group">프로젝트</p><ul class="side-list"><li><a href="/ko/docs/philosophy/">철학</a></li><li><a href="/ko/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">문서</p>
+      <h1>Python</h1>
+      <p class="doc-desc">pip install brevis — step 간 컨텍스트, run의 시계, 파이프라인 고유의 메트릭을 의존성 없이 제공합니다.</p>
+      <div class="code-block" data-code="pip install brevis"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>pip install <span class="t-k">brevis</span></code></pre></div>
+<div class="code-block" data-code="from brevis import context, metrics, run
+
+bucket = context.get(&quot;extract.bucket&quot;)
+since, until = run.window()          # the window this run covers
+
+context.set(rows=48213, watermark=&quot;2026-09-07T03:00:00Z&quot;)
+metrics.set(&quot;rows_loaded&quot;, 48213)    # reaches the engine&#x27;s /metrics"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> context, metrics, run
+
+bucket = context.get("extract.bucket")
+since, until = run.window()          <span class="t-c"># the window this run covers</span>
+
+context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
+metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
+<p><strong>의존성은 영원히 없습니다.</strong> 환경 변수 하나를 읽고, 파일 하나를 쓰고, stdout에 한 줄을 출력합니다. Python 3.9 이상이 필요합니다.</p>
+<p>Go SDK의 포팅이 아닙니다. 드라이버도, 페이지네이션도, ingestion id도 없습니다. 팀이 pandas, Polars, dbt를 그대로 쓰면서도 오케스트레이터가 존재하는 이유를 얻게 하려고 존재합니다.</p>
+<h2 id="컨텍스트-읽기">컨텍스트 읽기<a class="anchor" href="#컨텍스트-읽기" aria-label="link">#</a></h2>
+<p>키는 항상 그것을 게시한 step으로 한정됩니다.</p>
+<div class="code-block" data-code="context.get(&quot;extract.bucket&quot;)            # the value
+context.get(&quot;extract.nope&quot;, default=0)   # absent is not an error
+context.of(&quot;extract&quot;)                    # everything that step published
+context.published()                      # what THIS step has published so far"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>context.get("extract.bucket")            <span class="t-c"># the value</span>
+context.get("extract.nope", default=0)   <span class="t-c"># absent is not an error</span>
+context.of("extract")                    <span class="t-c"># everything that step published</span>
+context.published()                      <span class="t-c"># what THIS step has published so far</span></code></pre></div>
+<p>step 없는 <code>context.get("bucket")</code>은 <strong>거부되며</strong>, 해당 키를 게시한 step들을 명시합니다. step은 서로 격리되어 있어서 <code>extract</code>와 <code>transform</code>이 모두 <code>bucket</code>을 게시해도 어느 쪽도 잃지 않는데, 접두사 없는 키는 두 step이 게시하는 순간 이를 무너뜨립니다. 검색해서 하나를 고르는 것은 우연에 의한 우선순위이며, 조용히 틀어지기 전까지만 동작합니다.</p>
+<p>이 step이 의존하지 않는 step을 읽으면 오류이며, 메시지가 해결 방법을 알려 줍니다.</p>
+<h2 id="쓰기">쓰기<a class="anchor" href="#쓰기" aria-label="link">#</a></h2>
+<div class="code-block" data-code="context.set(name=&quot;Daniel&quot;)
+context.set(label=&quot;Name&quot;)
+# both survive: {&quot;name&quot;: &quot;Daniel&quot;, &quot;label&quot;: &quot;Name&quot;}"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>context.set(name="Daniel")
+context.set(label="Name")
+<span class="t-c"># both survive: {"name": "Daniel", "label": "Name"}</span></code></pre></div>
+<p>호출은 <strong>병합됩니다</strong>. 같은 키를 두 번 쓰면 마지막 쓰기가 유지되고, 다른 키는 첫 번째 값을 건드리지 않습니다. <strong>step 인자는 없습니다.</strong> 프로세스가 쓸 수 있는 네임스페이스는 자기 것뿐이며, 그래서 격리가 규칙이 아니라 구조로 보장됩니다.</p>
+<p>프로세스가 종료될 때까지 디스크에는 아무것도 기록되지 않으므로, 강제로 죽은 step은 아무것도 게시하지 않습니다. 이것이 올바른 동작입니다. 충돌한 step의 출력은 끝나지 않은 작업을 기술하기 때문입니다.</p>
+<h2 id="이-run이-읽어야-할-시계">이 run이 읽어야 할 시계<a class="anchor" href="#이-run이-읽어야-할-시계" aria-label="link">#</a></h2>
+<p>모든 run은 <strong>자동 매개변수</strong>도 가집니다. 엔진이 스스로 계산하는 값입니다. 아무도 선언하지 않고, 모든 run에 존재하며, 파이프라인이 그렇지 않으면 <code>datetime.now()</code>로 답했을 질문에 답합니다.</p>
+<div class="code-block" data-code="from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f&quot;/data/{run.auto().date}.parquet&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">from</span> datetime <span class="t-k">import</span> timedelta
+<span class="t-k">from</span> brevis <span class="t-k">import</span> run
+
+since, until = run.window() <span class="t-k">or</span> (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
+<aside class="admon admon-warning"><p class="admon-t">`datetime.now()`를 쓰지 않는 이유</p><p><code>run.now()</code>는 스케줄된 run에서 <strong>slot</strong>입니다. <code>datetime.now()</code>를 읽고 두 시간을 빼는 fetcher는 정시에 시작한 run에서는 맞고 큐 때문에 지연된 run에서는 40분이 틀리며, 그 40분은 <strong>어떤 run에도</strong> 속하지 않습니다. 다음 slot도 자기 <code>now()</code>를 읽기 때문입니다. 아무것도 실패하지 않고, 빈틈은 몇 주 뒤에야 발견됩니다.</p></aside>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>run.now()</code></td><td>시계: slot 또는 run이 시작된 시각</td></tr><tr><td><code>run.window()</code></td><td><code>(start, end)</code>, end는 미포함. 또는 <code>None</code></td></tr><tr><td><code>run.auto()</code></td><td>자동 매개변수. 아래를 참고하세요</td></tr><tr><td><code>run.context()</code></td><td>id, 시도, 트리거, 매개변수, auto</td></tr><tr><td><code>run.params()</code> · <code>run.param(name)</code></td><td>workflow에 선언된 매개변수</td></tr><tr><td><code>run.map_index()</code> · <code>run.map_value()</code></td><td><code>for_each:</code> 아래의 인스턴스</td></tr></tbody></table></div>
+<p><code>window()</code>는 이력이 아니라 <strong>cron</strong>에서 나옵니다. 3월 slot의 backfill은 3월에 있었던 윈도우를 만듭니다. <code>[start, end)</code>를 요청하면 run이 아무리 늦어도 아무리 자주 재시도해도 겹치거나 비는 구간이 없습니다.</p>
+<p>workflow에 스케줄이 없으면 0 시각 쌍이 아니라 <code>None</code>을 반환합니다. 에포크부터의 쿼리는 모든 것을 선택하며, 그 실패는 조용해서는 안 되기 때문입니다. 위의 <code>or</code>가 폴백의 전부입니다.</p>
+<h3 id="자동-매개변수">자동 매개변수<a class="anchor" href="#자동-매개변수" aria-label="link">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th>필드</th><th></th></tr></thead><tbody><tr><td><code>date</code></td><td><code>"2026-09-08"</code> — 파티션, 폴더, <code>WHERE</code></td></tr><tr><td><code>adjusted_at</code></td><td><code>now()</code> 대신 읽을 시계</td></tr><tr><td><code>scheduled_at</code></td><td>cron이 요청한 slot. 수동 run에서는 <code>None</code></td></tr><tr><td><code>started_at</code></td><td><strong>이번 시도</strong>가 시작된 시각. 재시도하면 달라집니다</td></tr><tr><td><code>delay_seconds</code></td><td>이번 시도가 얼마나 늦었는지. 음수가 되지 않습니다</td></tr><tr><td><code>interval_start</code> · <code>interval_end</code></td><td>윈도우, end는 미포함</td></tr><tr><td><code>previous_error</code></td><td>직전 run이 성공하지 못했는지</td></tr><tr><td><code>previous_success_at</code></td><td>마지막으로 <strong>성공한</strong> run의 slot. <code>previous_error</code>를 실행 가능한 정보로 만들어 줍니다</td></tr></tbody></table></div>
+<p>스크립트를 손으로 실행하면 <code>run.now()</code>는 <strong>실제</strong> 벽시계이고 <code>window()</code>는 <code>None</code>이므로 로컬 개발을 위해 작성할 분기가 없습니다.</p>
+<h2 id="매핑된-step의-인스턴스-하나">매핑된 step의 인스턴스 하나<a class="anchor" href="#매핑된-step의-인스턴스-하나" aria-label="link">#</a></h2>
+<p><a href="/ko/docs/workflows/"><code>for_each:</code></a> 아래에서 엔진은 요소마다 프로세스 하나를 실행하고 각 프로세스에 어떤 요소를 받았는지 알려 줍니다.</p>
+<div class="code-block" data-code="partition = run.map_value()
+if partition is None:
+    raise SystemExit(&quot;this step is meant to run under `for_each:`&quot;)
+
+load(f&quot;/data/{partition}.csv&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>partition = run.map_value()
+<span class="t-k">if</span> partition <span class="t-k">is</span> <span class="t-k">None</span>:
+    <span class="t-k">raise</span> SystemExit("this step <span class="t-k">is</span> meant to run under `for_each:`")
+
+load(f"/data/{partition}.csv")</code></pre></div>
+<p>JSON 문자열은 <strong>따옴표 없이</strong> 전달됩니다. <code>["2026-01"]</code>에 대한 <code>for_each</code>는 step에 <code>"2026-01"</code>이 아니라 <code>2026-01</code>을 넘깁니다. 객체, 숫자, 목록 등 그 외의 값은 JSON 그대로 전달되므로 <code>json.loads(run.map_value())</code>를 사용하세요.</p>
+<p>매핑되지 않은 step에서는 둘 다 <code>None</code>입니다. <code>-1</code>이나 <code>""</code>이 아니라 <code>None</code>인 이유는 sentinel은 결국 누군가 산술을 하게 될 숫자이고, 빈 문자열은 빈 문자열 <em>그 자체인</em> 요소와 구별되지 않기 때문입니다.</p>
+<p>매핑된 step은 다운스트림에 <strong>컨텍스트를 게시하지 않습니다</strong>. 인스턴스 네 개가 키 하나를 공유할 수 없기 때문입니다. 무언가를 넘겨야 하는 step은 파일을 쓰거나, 그다음 step이 적재된 것을 셉니다.</p>
+<h2 id="파이프라인만-아는-메트릭">파이프라인만 아는 메트릭<a class="anchor" href="#파이프라인만-아는-메트릭" aria-label="link">#</a></h2>
+<p>엔진은 볼 수 있는 것, 즉 소요 시간, 시도 횟수, 큐 깊이를 이미 측정합니다. 엔진이 알 방법이 없는 것은 적재된 행 수, 벤더가 거부한 행 수, 버려진 바이트 수입니다. 이것은 step이 알고 있고 라이브러리가 전달합니다.</p>
+<div class="code-block" data-code="from brevis import metrics
+
+metrics.set(&quot;rows_loaded&quot;, 48213)          # a gauge: the last value wins
+metrics.inc(&quot;vendor_rejected_total&quot;)       # a counter: it adds up
+metrics.inc(&quot;bytes_discarded_total&quot;, 4096)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> metrics
+
+metrics.set("rows_loaded", 48213)          <span class="t-c"># a gauge: the last value wins</span>
+metrics.inc("vendor_rejected_total")       <span class="t-c"># a counter: it adds up</span>
+metrics.inc("bytes_discarded_total", 4096)</code></pre></div>
+<p>메트릭은 workflow와 step이 레이블로 붙은 채 스케줄러의 포트에 있는 <strong>엔진의</strong> <code>/metrics</code>로 나옵니다.</p>
+<div class="code-block" data-code="brevis_step_rows_loaded{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 48213
+brevis_step_vendor_rejected_total{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 5"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
+brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>metrics.set(name, value)</code></td><td>게이지. step이 종료된 뒤에도 다음 run이 다른 값을 쓸 때까지 값이 유지됩니다</td></tr><tr><td><code>metrics.inc(name, by=1)</code></td><td>카운터. step과 run에 걸쳐 합산됩니다</td></tr></tbody></table></div>
+<h3 id="포트를-열지-않는-이유">포트를 열지 않는 이유<a class="anchor" href="#포트를-열지-않는-이유" aria-label="link">#</a></h3>
+<p><strong>step은 수집 대상이 될 수 없기</strong> 때문입니다. <code>:9090</code>은 스케줄러와 API의 것이며, 안정적인 주소를 가진 오래 실행되는 프로세스로 15초에서 60초마다 수집됩니다. step은 자기만의 pod에서 시작해 40초 동안 실행되고 종료됩니다. 그 step이 연 포트는 한 번도 수집되지 않거나 운 좋게 한 번 수집될 것입니다.</p>
+<p>알려진 해법은 세 가지입니다. Pushgateway(운영해야 하는 구성 요소이며, 누군가 삭제하기 전까지 시리즈가 남습니다), OTLP 컬렉터(구성 요소 <strong>이면서</strong> 이 라이브러리의 의존성이 되는데, 이 라이브러리는 의존성이 없고 앞으로도 갖지 않습니다), 또는 <strong>오케스트레이터</strong>가 전달하게 하는 것입니다. Brevis는 이미 모든 step의 stdout에서 <code>@brevis:</code> 라인을 읽고 있으며, SDK의 단계가 그래프에 도달하는 방식이 바로 이것이고, 미터와 Prometheus 엔드포인트도 이미 가지고 있습니다.</p>
+<p>그래서 라이브러리는 <strong>stdout에 한 줄</strong>을 쓰고 나머지는 엔진이 합니다. 엔진은 자기가 무엇을 실행하고 있었는지 알기 때문에 메트릭은 workflow와 step 레이블이 붙은 채 공짜로 도착합니다. Pushgateway를 거치면 이 라이브러리가 직접 레이블을 붙여야 하고 틀리게 됩니다.</p>
+<p>쓰기는 <code>print(flush=True)</code>인데, 엔진이 그 파이프를 <strong>실시간으로</strong> 읽기 때문입니다. 버퍼링된 라인은 프로세스가 종료될 때 도착하며, 한 시간 동안 실행되는 step에서는 한 시간 늦고 강제 종료된 step에서는 영영 도착하지 않습니다.</p>
+<h3 id="메트릭이-거부하는-것">메트릭이 거부하는 것<a class="anchor" href="#메트릭이-거부하는-것" aria-label="link">#</a></h3>
+<p><strong>유효하지 않은 이름은 즉시 거부됩니다.</strong> Prometheus는 문자, 숫자, 밑줄을 허용하며 첫 글자는 숫자일 수 없습니다. 거부되는 이름은 깨진 메트릭을 만들지 않고, <strong>파싱을 거부하는</strong> 노출 결과를 만들어 <strong>스크레이프 전체</strong>와 다른 모든 메트릭을 잃게 합니다. 그래서 <code>rows-loaded</code>는 아무도 쓰지 않은 이름으로 도착하는 대신 실수가 일어난 이곳에서 <code>MetricError</code>를 발생시킵니다.</p>
+<div class="table-wrap"><table><thead><tr><th>거부되는 것</th><th>이유</th></tr></thead><tbody><tr><td><code>rows-loaded</code>, <code>rows loaded</code>, <code>2rows</code></td><td>Prometheus가 파싱하지 못하며 스크레이프 전체가 사라집니다</td></tr><tr><td><code>metrics.set("ok", True)</code></td><td>Python에서 <code>bool</code>은 <code>int</code>이고, <code>1</code>을 보고하는 것은 그 사실을 알아야 의미가 통하는 숫자입니다. 상태가 아니라 개수나 소요 시간을 보고하세요</td></tr><tr><td><code>metrics.inc("x", -1)</code></td><td>카운터는 증가만 합니다. 모든 <code>rate()</code>가 이를 가정하며, 문제는 몇 주 뒤 그래프에서 나타납니다</td></tr></tbody></table></div>
+<p>스크립트를 손으로 실행해도 라인은 stdout으로 나가며 본래의 모습으로 읽힙니다. 아무것도 수집하지 않고 아무것도 실패하지 않습니다. 노트북에서 <code>context.set()</code>을 호출했을 때와 같습니다.</p>
+<h2 id="거부하는-것">거부하는 것<a class="anchor" href="#거부하는-것" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>이유</th></tr></thead><tbody><tr><td>4096바이트 초과</td><td>플랫폼은 거부하지 않고 <strong>잘라 내므로</strong>, 너무 큰 객체는 반으로 잘려 도착하고 다운스트림에서 "아무것도 게시하지 않음"으로 읽힙니다</td></tr><tr><td>JSON이 아닌 값</td><td><code>datetime</code>은 직렬화하는 쪽에 따라 <code>"..."</code>이 되거나 사라집니다. 오류는 키를 명시하며 <code>.isoformat()</code>을 제안합니다</td></tr><tr><td>문자열이 아닌 키</td><td><code>{1: "x"}</code>는 <code>{"1": "x"}</code>로 돌아와 조회가 실패합니다</td></tr></tbody></table></div>
+<p>상한은 우리가 아니라 플랫폼의 숫자입니다. "작업 간 컨텍스트" 기능은 모두 같은 방식으로 실패합니다. 누군가 <strong>컨텍스트</strong>만 들어맞는 곳에 <strong>데이터</strong>를 넣기 때문입니다. 4킬로바이트면 워터마크, 개수, 파티션 목록을 담을 수 있습니다. 참조를 게시하고 행은 있던 곳에 두세요.</p>
+<aside class="admon admon-danger"><p class="admon-t">시크릿 저장소가 아닙니다</p><p>게시된 모든 것은 run을 볼 수 있는 누구에게나 보입니다. pod의 상태와 run 이력에 들어 있기 때문입니다. 서명된 URL이 아니라 경로를 게시하세요.</p></aside>
+<h2 id="손으로-실행하기">손으로 실행하기<a class="anchor" href="#손으로-실행하기" aria-label="link">#</a></h2>
+<p>Brevis 밖에는 입력이 없고 출력을 읽는 곳도 없습니다. <code>get()</code>은 기본값을 반환하고, <code>set()</code>은 받아서 버리며, 라이브러리는 이를 INFO 레벨로 한 번 알려 줍니다. <strong>예외를 발생시키지 않습니다</strong>. 손으로 실행할 수 없는 스크립트는 개발할 수 없기 때문입니다. 검증은 그대로 실행되므로, 노트북에서 동작하는 값은 운영 환경에서도 동작합니다.</p>
+<h2 id="step-테스트하기">step 테스트하기<a class="anchor" href="#step-테스트하기" aria-label="link">#</a></h2>
+<p>계약 전체가 환경 변수 두 개이므로 모킹할 것이 없습니다.</p>
+<div class="code-block" data-code="def test_my_step(monkeypatch, tmp_path):
+    monkeypatch.setenv(&quot;BREVIS_INPUT&quot;, &#x27;{&quot;extract&quot;: {&quot;rows&quot;: 42}}&#x27;)
+    monkeypatch.setenv(&quot;BREVIS_OUTPUT&quot;, str(tmp_path / &quot;out&quot;))
+    assert context.get(&quot;extract.rows&quot;) == 42"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">def</span> test_my_step(monkeypatch, tmp_path):
+    monkeypatch.setenv("BREVIS_INPUT", '{"extract": {"rows": 42}}')
+    monkeypatch.setenv("BREVIS_OUTPUT", str(tmp_path / "out"))
+    <span class="t-k">assert</span> context.get("extract.rows") == 42</code></pre></div>
+<h2 id="버전">버전<a class="anchor" href="#버전" aria-label="link">#</a></h2>
+<p>라이브러리는 엔진 및 Go SDK와 별개로 독립적인 버전을 가집니다.</p>
+<aside class="admon admon-warning"><p class="admon-t">`0.2.0`은 사용하지 마세요</p><p>PyPI에 wheel만 배포되었습니다. <code>0.2.1</code>은 같은 코드이며 완전합니다.</p></aside>
+<p><code>brevis.run</code>이 읽을 것이 있으려면 엔진이 <strong><code>v0.9.0</code> 이상</strong>이어야 합니다. 이전 엔진에서는 모든 필드가 비어 있고 <code>run.now()</code>는 벽시계가 되며, 엔진 밖에서의 동작과 같습니다.</p>
+<h2 id="다음-단계">다음 단계<a class="anchor" href="#다음-단계" aria-label="link">#</a></h2>
+<ul><li><a href="/ko/docs/libraries/">클라이언트 라이브러리</a> — 계약과 다른 언어</li><li><a href="/ko/docs/context/">step 간 컨텍스트</a> — 개념</li><li><a href="/ko/docs/parameters/">매개변수</a> — 선언하는 매개변수</li></ul>
+
+      <nav class="pagers" aria-label="페이지">
+        <a class="pager pager-prev" href="/ko/docs/libraries/"><span>이전</span><strong>클라이언트 라이브러리</strong></a>
+        <a class="pager pager-next" href="/ko/docs/console/"><span>다음</span><strong>Console</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/ko/docs/python.md" target="_blank" rel="noopener">GitHub에서 이 페이지 편집</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="이 페이지에서">
+      <p class="toc-t">이 페이지에서</p>
+      <ul><li class="toc-2"><a href="#컨텍스트-읽기">컨텍스트 읽기</a></li><li class="toc-2"><a href="#쓰기">쓰기</a></li><li class="toc-2"><a href="#이-run이-읽어야-할-시계">이 run이 읽어야 할 시계</a></li><li class="toc-3"><a href="#자동-매개변수">자동 매개변수</a></li><li class="toc-2"><a href="#매핑된-step의-인스턴스-하나">매핑된 step의 인스턴스 하나</a></li><li class="toc-2"><a href="#파이프라인만-아는-메트릭">파이프라인만 아는 메트릭</a></li><li class="toc-3"><a href="#포트를-열지-않는-이유">포트를 열지 않는 이유</a></li><li class="toc-3"><a href="#메트릭이-거부하는-것">메트릭이 거부하는 것</a></li><li class="toc-2"><a href="#거부하는-것">거부하는 것</a></li><li class="toc-2"><a href="#손으로-실행하기">손으로 실행하기</a></li><li class="toc-2"><a href="#step-테스트하기">step 테스트하기</a></li><li class="toc-2"><a href="#버전">버전</a></li><li class="toc-2"><a href="#다음-단계">다음 단계</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/ko/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>데이터 인프라에 적용한 철학.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>프로젝트</h2>
+        <ul>
+          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/docs/philosophy/">원칙</a></li>
+          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>코드</h2>
+        <ul>
+          <li><a href="/ko/docs/">문서</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">저장소</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>오픈 소스 프로젝트 제작: <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · Go로 제작 · Go 고퍼: Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

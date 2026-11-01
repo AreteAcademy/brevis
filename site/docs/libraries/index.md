@@ -1,30 +1,30 @@
-# Bibliotecas cliente
+# Client libraries
 
-> Como um passo em qualquer linguagem lê o contexto e o relógio do run — e quais linguagens já têm biblioteca.
+> How a step in any language reads the context and the run's clock — and which languages already have a library.
 
-*https://brevis.sh/docs/libraries/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/libraries/ · brevis.sh docs (en-US)*
 
 ---
 
-Um passo precisa de duas coisas do orquestrador: **o que o passo anterior
-publicou** e **que relógio este run deve ler**. As bibliotecas cliente entregam
-essas duas, e nada além.
+A step needs two things from the orchestrator: **what the previous step
+published** and **which clock this run should read**. The client libraries hand
+over those two, and nothing else.
 
-## O contrato vem antes das bibliotecas
+## The contract comes before the libraries
 
-O que o engine define são **duas variáveis de ambiente e um arquivo**:
+What the engine defines is **two environment variables and a file**:
 
 | | |
 |---|---|
-| `BREVIS_INPUT` | `{"<id do passo>": {…}}` — o que as dependências publicaram |
-| `BREVIS_OUTPUT` | um caminho onde escrever **um** objeto JSON |
+| `BREVIS_INPUT` | `{"<step id>": {…}}` — what this step's dependencies published |
+| `BREVIS_OUTPUT` | a path to write **one** JSON object to |
 
-Mais as variáveis do run e os parâmetros automáticos, todas de leitura:
-`BREVIS_RUN_*` e `BREVIS_AUTO_*`. Em Kubernetes o `BREVIS_OUTPUT` é
-`/dev/termination-log`, que o engine já lê para obter o código de saída.
+Plus the run's variables and the auto parameters, all read-only: `BREVIS_RUN_*`
+and `BREVIS_AUTO_*`. Under Kubernetes `BREVIS_OUTPUT` is
+`/dev/termination-log`, which the engine already reads to get the exit code.
 
-Então **não há chamada de API, não há token e não há porta**. Um passo em
-qualquer linguagem participa com um parse de JSON e uma escrita em arquivo:
+So there is **no API call, no token and no port**. A step in any language takes
+part with a JSON parse and a file write:
 
 ```bash
 window=$(jq -r '.extract.watermark' <<< "$BREVIS_INPUT")
@@ -32,85 +32,85 @@ window=$(jq -r '.extract.watermark' <<< "$BREVIS_INPUT")
 jq -n --arg n "$(date -Is)" '{published_at: $n}' > "$BREVIS_OUTPUT"
 ```
 
-Uma biblioteca aqui não abre capacidade nova — ela poupa a validação, o
-tratamento de ausência e as mensagens de erro que valem a pena não reescrever.
+A library here opens no new capability — it saves you the validation, the
+absent-value handling and the error messages that are worth not rewriting.
 
-## Quais existem
+## Which ones exist
 
-| linguagem | | |
+| language | | |
 |---|---|---|
-| **Python** | `pip install brevis` | [disponível](/docs/python/index.md) — `0.2.1` no PyPI |
-| **Go** | `brevis/sdk/context` | disponível, dentro do módulo do SDK |
-| **Node.js** | — | planejado |
-| **Rust** | — | planejado |
-| qualquer outra | as variáveis acima | hoje |
+| **Python** | `pip install brevis` | [available](/docs/python/index.md) — `0.2.1` on PyPI |
+| **Go** | `brevis/sdk/context` | available, inside the SDK module |
+| **Node.js** | — | planned |
+| **Rust** | — | planned |
+| anything else | the variables above | today |
 
-:::note Go não fica em `lib/`
-O suporte a contexto em Go vive no módulo `sdk/` que o projeto já publica, como
-subpacote que se poda a nada para quem não o importa. Um `lib/go-context` seria
-um segundo módulo Go para um pacote que já tem módulo.
+:::note Go does not live in `lib/`
+Go's context support lives in the `sdk/` module the project already publishes,
+as a subpackage that prunes to nothing for anyone not importing it. A
+`lib/go-context` would mean a second Go module for a package that has one.
 
-A regra é **uma pasta por linguagem que ainda não tenha artefato publicado**.
+The rule is **one directory per language that does not already have a published
+artifact**.
 :::
 
-Cada biblioteca é um artefato separado, com versão e tag próprias: uma correção
-no cliente Python não força uma release do engine.
+Each library is a separate artifact with its own version and tag: a fix in the
+Python client does not force an engine release.
 
-## O que elas são, e o que não são
+## What they are, and what they are not
 
-São **clientes finos sobre o contrato**, não ports do SDK em Go.
+They are **thin clients over the contract**, not ports of the Go SDK.
 
-Um port da maquinaria de ETL do SDK — drivers, paginação, checkpoints, ids de
-ingestão — não pertence a este lugar e provavelmente a lugar nenhum: toda
-linguagem que isso miraria já tem ferramenta melhor para aquilo, e o trabalho do
-Brevis é executá-las. É por isso que a biblioteca Python existe para que um time
-use pandas, Polars ou dbt e ainda receba a única coisa que um orquestrador tem
-para dar.
+A port of the SDK's ETL machinery — drivers, pagination, checkpoints, ingestion
+ids — does not belong here and probably nowhere: every language this would
+target already has better tools for that, and Brevis's job is to run them. Which
+is why the Python library exists so that a team can use pandas, Polars or dbt
+and still get the one thing an orchestrator is for.
 
-## Métricas
+## Metrics
 
-A biblioteca **emite** métricas, e o engine é quem as expõe:
+The library **emits** metrics, and the engine is what exposes them:
 
 ```python
 from brevis import metrics
 
-metrics.set("rows_loaded", 48213)      # gauge: a última escrita vence
-metrics.inc("vendor_rejected_total")   # counter: soma
+metrics.set("rows_loaded", 48213)      # a gauge: the last value wins
+metrics.inc("vendor_rejected_total")   # a counter: it adds up
 ```
 
-Elas saem no `/metrics` **do engine**, na porta do scheduler, rotuladas com o
-workflow e o passo — ver [Observabilidade](/docs/observability/index.md).
+They come out of the **engine's** `/metrics`, on the scheduler's port, labelled
+with the workflow and the step — see [Observability](/docs/observability/index.md).
 
-**Isso não abre porta, e não poderia.** Um passo roda no próprio pod por
-quarenta segundos e sai; uma porta que ele abrisse seria raspada nunca, ou uma
-vez por sorte. Então a linha vai para o stdout — o mesmo pipe que o engine já lê
-para desenhar as fases de um pipeline — e o engine registra. Nada a instalar,
-nada a operar, e os rótulos são do engine porque um passo não sabe o slug do
-próprio workflow.
+**This does not open a port, and it could not.** A step runs in its own pod for
+forty seconds and exits; a port it opened would be scraped never, or once by
+luck. So the line goes to stdout — the same pipe the engine already reads to
+draw a pipeline's phases — and the engine records it. Nothing to install,
+nothing to operate, and the labels are the engine's because a step cannot know
+its own workflow slug.
 
-Os detalhes da API estão em [Python](/docs/python/#metricas-que-so-o-seu-pipeline-conhece).
+The API details are in [Python](/docs/python/#metrics-only-your-pipeline-knows).
 
-## Escrevendo um cliente para outra linguagem
+## Writing a client for another language
 
-Se você for implementar Node.js ou Rust antes de nós, o que um cliente precisa
-acertar — e o que a implementação em Python já aprendeu na prática:
+If you get to Node.js or Rust before we do, here is what a client has to get
+right — and what the Python implementation already learned the hard way:
 
-1. **Chave qualificada pelo passo.** `get("bucket")` sem o passo tem de ser
-   recusado. Dois passos podem publicar `bucket`, e escolher um por busca é
-   precedência por acidente.
-2. **Mesclar as escritas.** Duas chamadas com chaves diferentes preservam as
-   duas; a mesma chave duas vezes mantém a última.
-3. **Gravar só na saída do processo.** Um passo que morre de forma abrupta não
-   publica nada — o que está certo, porque a saída de um passo que quebrou
-   descrevia trabalho que não terminou.
-4. **Recusar acima de 4096 bytes.** A plataforma **trunca** em vez de recusar,
-   e um objeto cortado ao meio chega como JSON inválido para o passo seguinte.
-5. **Funcionar fora do Brevis.** Sem `BREVIS_INPUT`, `get()` devolve o padrão e
-   `set()` aceita e descarta, sem erro: um script que não roda à mão não pode
-   ser desenvolvido.
+1. **Keys qualified by step.** `get("bucket")` with no step must be refused. Two
+   steps may publish `bucket`, and picking one by search is precedence by
+   accident.
+2. **Merge the writes.** Two calls with different keys keep both; the same key
+   twice keeps the last.
+3. **Flush only on process exit.** A step that dies hard publishes nothing —
+   which is correct, because a crashed step's output described work that did not
+   finish.
+4. **Refuse above 4096 bytes.** The platform **truncates** rather than refuses,
+   and an object cut in half arrives as invalid JSON for the next step.
+5. **Work outside Brevis.** With no `BREVIS_INPUT`, `get()` returns the default
+   and `set()` accepts and discards, without raising: a script that cannot be
+   run by hand cannot be developed.
 
-## Próximos passos
+## Next steps
 
-- [Python](/docs/python/index.md) — a API completa
-- [Contexto entre passos](/docs/context/index.md) — o conceito e o teto de 4096 bytes
-- [Parâmetros](/docs/parameters/index.md) — os declarados e os automáticos
+- [Python](/docs/python/index.md) — the complete API
+- [Context between steps](/docs/context/index.md) — the concept and the 4096-byte ceiling
+- [Parameters](/docs/parameters/index.md) — the declared ones and the automatic ones

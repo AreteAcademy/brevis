@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko" data-docs="/ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>CLI — 문서</title>
+<meta name="description" content="엔진의 하위 명령 열두 개와 각각의 플래그, 인자, 요구 사항입니다.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/ko/docs/cli/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/ko/docs/cli/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/cli/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/cli/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/cli/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/cli/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/cli/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/cli/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/cli/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/cli/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/cli/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/cli/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/cli/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="ko">
+<meta property="og:title" content="CLI — 문서">
+<meta property="og:description" content="엔진의 하위 명령 열두 개와 각각의 플래그, 인자, 요구 사항입니다.">
+<meta property="og:url" content="https://brevis.sh/ko/docs/cli/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CLI — 문서">
+<meta name="twitter:description" content="엔진의 하위 명령 열두 개와 각각의 플래그, 인자, 요구 사항입니다.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "CLI",
+  "description": "엔진의 하위 명령 열두 개와 각각의 플래그, 인자, 요구 사항입니다.",
+  "inLanguage": "ko",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/ko/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="주 내비게이션">
+      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/docs/">문서</a>
+      <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/cli/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/cli/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/cli/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/cli/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/cli/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/cli/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/cli/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/cli/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/cli/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/cli/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/cli/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        오픈 소스 둘러보기
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    문서 메뉴
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">문서 검색</label>
+        <input type="search" id="q" placeholder="검색…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="결과 없음" hidden></div>
+      <nav class="side-nav" aria-label="문서">
+        <p class="side-group">시작하기</p><ul class="side-list"><li><a href="/ko/docs/ecosystem/">에코시스템</a></li><li><a href="/ko/docs/integrations/">통합</a></li><li><a href="/ko/docs/introduction/">소개</a></li><li><a href="/ko/docs/installation/">설치</a></li><li><a href="/ko/docs/quickstart/">빠른 시작</a></li></ul><p class="side-group">개념</p><ul class="side-list"><li><a href="/ko/docs/core/">Core</a></li><li><a href="/ko/docs/workflows/">Workflows</a></li><li><a href="/ko/docs/scheduler-and-queue/">스케줄러와 큐</a></li><li><a href="/ko/docs/pod-per-step/">step당 pod 하나</a></li><li><a href="/ko/docs/context/">step 간 컨텍스트</a></li></ul><p class="side-group">레퍼런스</p><ul class="side-list"><li><a href="/ko/docs/cli/" aria-current="page">CLI</a></li><li><a href="/ko/docs/parameters/">매개변수</a></li><li><a href="/ko/docs/configuration/">구성</a></li><li><a href="/ko/docs/runtime/">step 런타임</a></li></ul><p class="side-group">SDK와 라이브러리</p><ul class="side-list"><li><a href="/ko/docs/sdk/">Go SDK</a></li><li><a href="/ko/docs/libraries/">클라이언트 라이브러리</a></li><li><a href="/ko/docs/python/">Python</a></li></ul><p class="side-group">운영</p><ul class="side-list"><li><a href="/ko/docs/console/">Console</a></li><li><a href="/ko/docs/kubernetes/">Kubernetes</a></li><li><a href="/ko/docs/observability/">관측성</a></li><li><a href="/ko/docs/white-label/">화이트 라벨</a></li></ul><p class="side-group">수집</p><ul class="side-list"><li><a href="/ko/docs/ingestion/">수집</a></li><li><a href="/ko/docs/ingestion-sinks/">수집 sink</a></li><li><a href="/ko/docs/benchmarks/">벤치마크</a></li></ul><p class="side-group">SQL 모델링</p><ul class="side-list"><li><a href="/ko/docs/sql/">SQL</a></li></ul><p class="side-group">프로젝트</p><ul class="side-list"><li><a href="/ko/docs/philosophy/">철학</a></li><li><a href="/ko/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">문서</p>
+      <h1>CLI</h1>
+      <p class="doc-desc">엔진의 하위 명령 열두 개와 각각의 플래그, 인자, 요구 사항입니다.</p>
+      <p>엔진은 여러 바이너리가 아니라 하위 명령을 가진 바이너리 하나입니다. API, 스케줄러, worker는 같은 시스템의 역할이며, 바이너리가 하나이면 버전, 이미지, 빌드 경로도 하나로 유지됩니다.</p>
+<div class="code-block" data-code="brevis [command] [flags]"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>brevis [command] [flags]</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>명령</th><th>데이터베이스</th><th><code>local</code> 외 환경의 자격 증명</th><th>역할</th></tr></thead><tbody><tr><td><a href="#serve"><code>serve</code></a></td><td><strong>필요</strong></td><td><strong>필수</strong></td><td>API + 인터페이스</td></tr><tr><td><a href="#scheduler"><code>scheduler</code></a></td><td><strong>필요</strong></td><td><strong>필수</strong></td><td>두 루프 모두</td></tr><tr><td><a href="#migrate"><code>migrate</code></a></td><td><strong>필요</strong></td><td><strong>필수</strong></td><td>스키마</td></tr><tr><td><a href="#publish"><code>publish</code></a></td><td><strong>필요</strong></td><td><strong>필수</strong></td><td>workflow와 스케줄 저장</td></tr><tr><td><a href="#backfill"><code>backfill</code></a></td><td><strong>필요</strong></td><td><strong>필수</strong></td><td>구간 재처리</td></tr><tr><td><a href="#cancel"><code>cancel</code></a></td><td><strong>필요</strong></td><td><strong>필수</strong></td><td>run 중지</td></tr><tr><td><a href="#run"><code>run</code></a></td><td>불필요</td><td>—</td><td>인스턴스 자체에서 즉시 실행</td></tr><tr><td><a href="#validate"><code>validate</code></a></td><td>불필요</td><td>—</td><td>workflow YAML 검증</td></tr><tr><td><a href="#brand"><code>brand</code></a></td><td>불필요</td><td>—</td><td>브랜딩 YAML 검증</td></tr><tr><td><a href="#hash"><code>hash</code></a></td><td>불필요</td><td>—</td><td>비밀번호 해시 생성</td></tr><tr><td><a href="#version"><code>version</code></a></td><td>불필요</td><td>—</td><td>버전, 커밋, 빌드</td></tr></tbody></table></div>
+<p>앞의 여섯 개는 구성을 로드하며, <code>BREVIS_DATABASE_URL</code>이 없으면 <strong>부팅 시 실패</strong>합니다. 나머지 다섯 개는 그렇지 않으며, 그래서 Postgres가 없는 CI에서도 <code>validate</code>가 동작합니다.</p>
+<p>같은 여섯 개는 자격 증명 규칙도 따릅니다. <code>BREVIS_ENV</code>가 <code>local</code>이 아닌 경우 인증 변수 세 개 없이 시작하면 <strong>부팅 오류</strong>입니다.</p>
+<hr>
+<h2 id="serve">serve<a class="anchor" href="#serve" aria-label="link">#</a></h2>
+<p>HTTP API와 인터페이스를 띄웁니다. 플래그는 없으며 모든 것이 환경에서 옵니다.</p>
+<div class="code-block" data-code="brevis serve"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> serve</code></pre></div>
+<p><code>SIGINT</code>/<code>SIGTERM</code>에서 정상 종료하므로, 배포가 처리 중인 요청을 끊지 않습니다. 이 프로세스는 <strong>스케줄을 구체화하지 않습니다</strong>. 그러려면 <code>brevis scheduler</code>가 함께 실행되어야 합니다.</p>
+<p><code>api</code> 이미지(distroless, 셸 없음)의 <code>CMD</code>입니다.</p>
+<hr>
+<h2 id="scheduler">scheduler<a class="anchor" href="#scheduler" aria-label="link">#</a></h2>
+<p>두 루프를 모두 실행합니다. 스케줄러는 스케줄을 run으로 구체화하고, 디스패처는 큐에서 가져와 실행합니다.</p>
+<div class="code-block" data-code="brevis scheduler --interval 5s --concurrency 4 --max-pods 10"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--interval</span> 5s <span class="t-n">--concurrency</span> 4 <span class="t-n">--max-pods</span> 10</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>플래그</th><th>타입</th><th>기본값</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td>duration</td><td><code>10s</code></td><td>주기 사이의 간격</td></tr><tr><td><code>--concurrency</code></td><td>int</td><td><code>5</code></td><td>동시에 실행되는 <strong>run</strong> 수</td></tr><tr><td><code>--max-pods</code></td><td>int</td><td><code>5</code></td><td>동시에 실행되는 <strong>step</strong>의 전체 수</td></tr></tbody></table></div>
+<p><code>worker</code> 이미지(<code>run:</code> step에 셸이 필요하므로 셸이 있는 alpine)의 <code>CMD</code>입니다.</p>
+<hr>
+<h2 id="alert">alert<a class="anchor" href="#alert" aria-label="link">#</a></h2>
+<p>스케줄러가 기록한 알림을 전달합니다. <code>serve</code>, <code>scheduler</code>와 나란히 동작하는 세 번째 프로세스입니다.</p>
+<div class="code-block" data-code="brevis alert --interval 1s --max-attempts 6"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> alert <span class="t-n">--interval</span> 1s <span class="t-n">--max-attempts</span> 6</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>플래그</th><th>타입</th><th>기본값</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td>duration</td><td><code>1s</code></td><td>전달 주기 사이의 간격</td></tr><tr><td><code>--max-attempts</code></td><td>int</td><td><code>6</code></td><td>알림을 미전달로 기록하기 전까지의 시도 횟수</td></tr></tbody></table></div>
+<p><strong>이 프로세스가 존재하는 이유는 알림이 기록되는 위치 때문이지, 전달이 별도 프로세스를 가질 만해서가 아닙니다.</strong> 스케줄러는 알림을 그 근거가 되는 실패와 같은 트랜잭션에 기록합니다. run의 시도 횟수가 소진되어 알림이 존재하거나, 둘 다 일어나지 않았거나 둘 중 하나입니다. 그 뒤에는 누군가 그 테이블을 비워야 하고, 그 주체는 Slack 장애와 자기 자신의 재시작을 모두 견뎌야 합니다. 이 프로세스가 생기기 전에는 웹훅이 실패하면 로그 한 줄만 남고 알림은 그냥 사라졌습니다.</p>
+<p>채널(<code>BREVIS_SLACK_WEBHOOK</code>)이 구성되지 않으면 시작을 거부합니다. 전달할 곳이 없는 전달 프로세스는 아웃박스가 채워지는 속도만큼 빠르게 "미전달"로 비워 버리는데, 그 행은 Slack이 거부한 것과 똑같아 보입니다.</p>
+<p>포기한 알림은 <strong>보존됩니다</strong>. "발생, 미전달, 4회 시도, Slack에서 403"이 중요한 행입니다. 누군가 오지 않을 메시지를 기다리고 있는 경우이기 때문입니다.</p>
+<p><code>worker</code> 이미지의 <code>CMD</code>입니다.</p>
+<hr>
+<h2 id="report">report<a class="anchor" href="#report" aria-label="link">#</a></h2>
+<p>실행된 작업의 주기적 요약을 보냅니다.</p>
+<div class="code-block" data-code="brevis report --window 168h              # sends it
+brevis report --window 168h --dry-run    # prints it, sends nothing"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> report <span class="t-n">--window</span> 168h              <span class="t-c"># sends it</span>
+<span class="t-k">brevis</span> report <span class="t-n">--window</span> 168h <span class="t-n">--dry-run</span>    <span class="t-c"># prints it, sends nothing</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>플래그</th><th>타입</th><th>기본값</th><th></th></tr></thead><tbody><tr><td><code>--window</code></td><td>duration</td><td><code>168h</code></td><td>얼마나 거슬러 볼지</td></tr><tr><td><code>--dry-run</code></td><td>bool</td><td><code>false</code></td><td>보내지 않고 출력</td></tr></tbody></table></div>
+<p>루프가 아니라 <strong>명령</strong>이며, 이것이 리포트와 알림의 차이입니다. CronJob에서 실행되므로 새 루프도, 새 상태도, 리더 선출도 없습니다. 클러스터에는 이미 스케줄러가 있기 때문입니다. <code>--dry-run</code>은 주간 메시지가 말했을 내용을 읽어 보면서 그 메시지를 신뢰하게 되는 방법입니다.</p>
+<p>알림 아웃박스를 거치지 <strong>않습니다</strong>. 둘은 전달 채널만 공유하고 그 외에는 아무것도 공유하지 않습니다. 알림을 잃는 것은 아무도 모르는 장애이고, 한 주의 요약을 놓치는 것은 다음 주의 요약이 대신합니다.</p>
+<p>메시지에는 run 수, 성공, 실패, 가장 많이 실패한 파이프라인, 가장 오래 걸린 파이프라인, SDK가 보고한 행 수와 바이트 수가 담깁니다. CPU나 메모리는 담지 <strong>않으며</strong> 0으로 출력하지도 않습니다. 엔진은 이를 수집하지 않으며, 메시지는 그 값이 실제로 어디에 있는지 알려 줍니다.</p>
+<p>비어 있는 구간은 100%라고 보고하지 않고 비어 있다고 말합니다. 아무것도 없는 상태에서 나온 성공률은 리포트가 출력할 수 있는 가장 안심되는 숫자이면서 가장 사실과 먼 숫자입니다. 빈 한 주는 대개 스케줄러가 멈춰 있었다는 뜻입니다.</p>
+<p><code>deployments/kubernetes/report.yaml</code>이 매주 실행합니다.</p>
+<hr>
+<h2 id="migrate">migrate<a class="anchor" href="#migrate" aria-label="link">#</a></h2>
+<div class="code-block" data-code="brevis migrate up      # applies what is missing
+brevis migrate down    # reverts the last one
+brevis migrate status  # shows the state"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> migrate up      <span class="t-c"># applies what is missing</span>
+<span class="t-k">brevis</span> migrate down    <span class="t-c"># reverts the last one</span>
+<span class="t-k">brevis</span> migrate status  <span class="t-c"># shows the state</span></code></pre></div>
+<p>인자를 정확히 하나 받습니다. 마이그레이션은 바이너리에 내장되어 있고 별도의 하위 명령으로 적용됩니다. <strong><code>serve</code>는 스키마를 절대 변경하지 않습니다</strong>.</p>
+<hr>
+<h2 id="validate">validate<a class="anchor" href="#validate" aria-label="link">#</a></h2>
+<p>workflow 파일을 하나 이상 검증합니다. 파일 <strong>또는 디렉터리</strong>를 받습니다.</p>
+<div class="code-block" data-code="brevis validate examples/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> validate examples/</code></pre></div>
+<div class="code-block" data-code="  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
+  ok    hello                        dag  4 steps, 4 dependencias  (manual)"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
+  ok    hello                        dag  4 steps, 4 dependencias  (manual)</code></pre></div>
+<p>데이터베이스를 건드리지 않고 서버도 시작하지 않으므로 에디터와 CI에서 실행됩니다. 0이 아닌 코드로 종료하며 실패 건수를 셉니다.</p>
+<hr>
+<h2 id="run">run<a class="anchor" href="#run" aria-label="link">#</a></h2>
+<p>workflow를 <strong>인스턴스 자체에서 즉시</strong> 실행합니다. 큐도, 데이터베이스도, 스케줄러도 없습니다.</p>
+<div class="code-block" data-code="brevis run examples/hello.yaml
+brevis run wf.yaml --param load_full=true --retries 3 --timeout 5m"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> run examples/hello.yaml
+<span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true <span class="t-n">--retries</span> 3 <span class="t-n">--timeout</span> 5m</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>플래그</th><th>타입</th><th>기본값</th><th></th></tr></thead><tbody><tr><td><code>--param</code></td><td>반복 가능</td><td>—</td><td>선언된 매개변수에 대한 <code>key=value</code></td></tr><tr><td><code>--workdir</code></td><td>string</td><td>파일이 있는 디렉터리</td><td>step의 작업 디렉터리</td></tr><tr><td><code>--retries</code></td><td>int</td><td><code>1</code></td><td>step당 시도 횟수(<code>1</code> = 재시도 없음)</td></tr><tr><td><code>--timeout</code></td><td>duration</td><td><code>0</code></td><td>step당 타임아웃(<code>0</code> = 제한 없음)</td></tr></tbody></table></div>
+<p><code>=</code> 없는 <code>--param</code>은 경고가 아니라 <strong>오류</strong>입니다. 값을 빠뜨린 <code>--param load_full</code>이 기본값으로 실행되면 운영자는 값이 적용되었다고 믿게 될 것입니다.</p>
+<aside class="admon admon-warning"><p class="admon-t">네 가지 제약</p><p><code>run</code>은 <code>BREVIS_ENV=local</code>에서만 동작합니다. <code>image:</code>가 있는 step은 인스턴스 자체에서 실행되며 그렇다고 알려 줍니다. Go 작업 레지스트리가 없으므로 등록되지 않은 작업에 대한 <code>action:</code>은 사용 가능한 작업을 명시하며 실패합니다. 그리고 <code>run</code>은 <code>BREVIS_HOSTS</code>를 읽지 않으므로 <code>host:</code>가 있는 step은 여기서 전혀 실행할 수 없습니다. 변수를 설정해도 host를 명시하며 실패합니다.</p></aside>
+<hr>
+<h2 id="publish">publish<a class="anchor" href="#publish" aria-label="link">#</a></h2>
+<p>workflow와 그 스케줄을 데이터베이스에 저장합니다. 파일 또는 디렉터리를 받습니다.</p>
+<div class="code-block" data-code="brevis publish examples/hello.yaml
+brevis publish workflows/ --project acme --prune"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> publish examples/hello.yaml
+<span class="t-k">brevis</span> publish workflows/ <span class="t-n">--project</span> acme <span class="t-n">--prune</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>플래그</th><th>타입</th><th>기본값</th><th></th></tr></thead><tbody><tr><td><code>--project</code></td><td>string</td><td><code>default</code></td><td>프로젝트 slug</td></tr><tr><td><code>--prune</code></td><td>bool</td><td><code>false</code></td><td>목록에 없는 workflow를 프로젝트에서 제거</td></tr></tbody></table></div>
+<p><code>--prune</code>을 쓰더라도 제거된 workflow의 이력은 보존됩니다.</p>
+<hr>
+<h2 id="backfill">backfill<a class="anchor" href="#backfill" aria-label="link">#</a></h2>
+<p>이미 게시된 workflow의 과거 slot을 구체화합니다. <strong>큐에 넣을 뿐 실행하지 않습니다.</strong></p>
+<div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>플래그</th><th></th><th></th></tr></thead><tbody><tr><td><code>--from</code></td><td><strong>필수</strong></td><td>시작 날짜, <code>YYYY-MM-DD</code></td></tr><tr><td><code>--to</code></td><td><strong>필수</strong></td><td>종료 날짜, <code>YYYY-MM-DD</code></td></tr><tr><td><code>--param</code></td><td></td><td>구간 내 <strong>모든</strong> slot에 적용됩니다</td></tr></tbody></table></div>
+<p><code>--to</code>는 그날 하루 전체를 포함합니다. 내부적으로 종료 시각이 해당 날짜의 <code>23:59:59</code>가 됩니다.</p>
+<hr>
+<h2 id="cancel">cancel<a class="anchor" href="#cancel" aria-label="link">#</a></h2>
+<p>아직 대기 중이거나 실행 중인 run을 취소합니다. 이벤트 피드에는 취소한 주체로 <code>cli</code>가 표시됩니다.</p>
+<div class="code-block" data-code="brevis cancel 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> cancel 3f1c9a52-6d0e-4b7a-9c41-2b8e5d7f0a13</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>응답</th><th>일어난 일</th></tr></thead><tbody><tr><td><code>canceled</code></td><td>run이 큐에서 대기 중이었고, 큐를 떠났으며 실행되지 않습니다</td></tr><tr><td><code>cancel requested</code></td><td>run이 실행 중이며, 디스패처가 <code>--cancel-poll</code>(2초) 안에 step을 중지합니다</td></tr><tr><td><code>already ended: &lt;status&gt;</code></td><td>run이 이미 끝났으며 아무것도 바뀌지 않습니다</td></tr></tbody></table></div>
+<p>취소된 run은 재시도되지 않습니다. 존재하지 않는 id는 오류입니다.</p>
+<hr>
+<h2 id="gateway">gateway<a class="anchor" href="#gateway" aria-label="link">#</a></h2>
+<p>gateway가 <code>/data</code>에 나타나는 방식입니다. gateway의 구성이 의도적인 행위로 게시되며, 트래픽은 절대 게시되지 않고 런타임에도 게시되지 않습니다.</p>
+<div class="code-block" data-code="gateway describe gateway.yaml &gt; manifest.json   # the gateway&#x27;s own binary
+brevis gateway publish manifest.json
+brevis gateway unpublish events_gateway"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>gateway describe gateway.yaml &gt; manifest.json   <span class="t-c"># the gateway's own binary</span>
+<span class="t-k">brevis</span> gateway publish manifest.json
+<span class="t-k">brevis</span> gateway unpublish events_gateway</code></pre></div>
+<p><code>publish</code>는 아무것도 쓰기 전에 manifest 전체를 검사하여 첫 번째 문제의 stream과 역할을 명시하고, 해당 gateway의 목적지를 한 트랜잭션으로 교체합니다. <code>unpublish</code>는 폐기된 gateway를 제거하며, 그 이름으로 게시된 gateway가 없으면 오류입니다.</p>
+<p><code>brevis-sql-api</code>가 Data → Endpoints에 나타나는 방식입니다. 각 엔드포인트가 받고 읽는 것이 의도적인 행위로 게시되며, 트래픽은 절대 게시되지 않습니다.</p>
+<div class="code-block" data-code="brevis-sql-api describe --config api.yaml --out manifest.json   # the API&#x27;s own binary
+brevis endpoints publish manifest.json
+brevis endpoints unpublish metrics-api"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span>-sql-api describe <span class="t-n">--config</span> api.yaml <span class="t-n">--out</span> manifest.json   <span class="t-c"># the API's own binary</span>
+<span class="t-k">brevis</span> endpoints publish manifest.json
+<span class="t-k">brevis</span> endpoints unpublish metrics-api</code></pre></div>
+<p><code>publish</code>는 아무것도 쓰기 전에 manifest 전체를 검사하고 해당 API의 엔드포인트를 한 트랜잭션으로 교체합니다. 자격 증명처럼 보이는 이름, 기본값, 메모가 있으면 전체를 거부합니다.</p>
+<p><code>brevis publish</code>의 모드가 아니라 별도의 명령인 이유는 workflow와 gateway의 집합 의미론이 다르기 때문입니다. <code>publish --prune</code>이 gateway의 행에 닿는 일은 절대 있어서는 안 됩니다.</p>
+<hr>
+<h2 id="prune">prune<a class="anchor" href="#prune" aria-label="link">#</a></h2>
+<p>보존 정책을 적용합니다. Brevis에서 무언가를 삭제하는 <strong>유일한</strong> 기능이며, 스스로 실행되지 않고 운영자가 스케줄링합니다.</p>
+<div class="code-block" data-code="brevis prune --dry-run          # what would go, changing nothing
+brevis prune
+brevis prune --purge-after 0    # trim only, never delete a run"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> prune <span class="t-n">--dry-run</span>          <span class="t-c"># what would go, changing nothing</span>
+<span class="t-k">brevis</span> prune
+<span class="t-k">brevis</span> prune <span class="t-n">--purge-after</span> 0    <span class="t-c"># trim only, never delete a run</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>플래그</th><th>기본값</th><th></th></tr></thead><tbody><tr><td><code>--trim-after</code></td><td><code>720h</code></td><td>로그, 단계, 게시된 출력을 비웁니다</td></tr><tr><td><code>--purge-after</code></td><td><code>8760h</code></td><td>run을 완전히 삭제합니다. <code>0</code>이면 삭제하지 않습니다</td></tr></tbody></table></div>
+<hr>
+<h2 id="brand">brand<a class="anchor" href="#brand" aria-label="link">#</a></h2>
+<p>서버를 시작하지 않고 브랜딩 파일을 검증합니다.</p>
+<div class="code-block" data-code="brevis brand brand.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> brand brand.yaml</code></pre></div>
+<div class="code-block" data-code="  ok    Brevis · Orquestração
+        logo      /assets/logo.svg  (simbolo embutido)
+        destaque  #aa8450
+        Powered by Brevis"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>  ok    Brevis · Orquestração
+        logo      /assets/logo.svg  (simbolo embutido)
+        destaque  #aa8450
+        Powered by Brevis</code></pre></div>
+<p>부팅 시와 동작이 다른 점이 하나 있습니다. <strong>파일이 없으면 오류입니다.</strong> <code>serve</code>에서는 파일이 없다는 것이 "기본 아이덴티티를 사용"한다는 뜻이지만, 경로를 검증해 달라고 요청한 사람은 그 경로가 없다는 사실을 알려 주기를 기대합니다.</p>
+<hr>
+<h2 id="hash">hash<a class="anchor" href="#hash" aria-label="link">#</a></h2>
+<p><code>BREVIS_AUTH_PASSWORD_HASH</code> 값을 생성합니다.</p>
+<div class="code-block" data-code="brevis hash"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> hash</code></pre></div>
+<p>비밀번호는 인자가 아니라 터미널에서 <strong>에코 없이</strong> 읽습니다. 인자는 어떤 프로세스의 <code>ps</code>에도 나타나고 셸 히스토리에 남기 때문입니다. 12자보다 짧은 비밀번호는 거부합니다.</p>
+<p>해시만 <strong>stdout</strong>으로, 레이블은 <strong>stderr</strong>로 출력되므로 <code>brevis hash &gt; hash.txt</code>는 중요한 것만 저장합니다.</p>
+<hr>
+<h2 id="version">version<a class="anchor" href="#version" aria-label="link">#</a></h2>
+<div class="code-block" data-code="brevis version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> version</code></pre></div>
+<div class="code-block" data-code="brevis 0.11.2
+  commit  bb832ff
+  build   2026-09-05T12:00:00Z
+  go      go1.25.7 darwin/arm64"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>brevis 0.11.2
+  commit  bb832ff
+  build   2026-09-05T12:00:00Z
+  go      go1.25.7 darwin/arm64</code></pre></div>
+<p><code>go build</code>로 직접 빌드하면 커밋과 날짜 없이 <code>brevis dev</code>를 출력합니다. 누군가 이상한 동작을 보고할 때 이것을 릴리스 산출물과 구별하는 일이 중요합니다.</p>
+
+      <nav class="pagers" aria-label="페이지">
+        <a class="pager pager-prev" href="/ko/docs/context/"><span>이전</span><strong>step 간 컨텍스트</strong></a>
+        <a class="pager pager-next" href="/ko/docs/parameters/"><span>다음</span><strong>매개변수</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/ko/docs/cli.md" target="_blank" rel="noopener">GitHub에서 이 페이지 편집</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="이 페이지에서">
+      <p class="toc-t">이 페이지에서</p>
+      <ul><li class="toc-2"><a href="#serve">serve</a></li><li class="toc-2"><a href="#scheduler">scheduler</a></li><li class="toc-2"><a href="#alert">alert</a></li><li class="toc-2"><a href="#report">report</a></li><li class="toc-2"><a href="#migrate">migrate</a></li><li class="toc-2"><a href="#validate">validate</a></li><li class="toc-2"><a href="#run">run</a></li><li class="toc-2"><a href="#publish">publish</a></li><li class="toc-2"><a href="#backfill">backfill</a></li><li class="toc-2"><a href="#cancel">cancel</a></li><li class="toc-2"><a href="#gateway">gateway</a></li><li class="toc-2"><a href="#prune">prune</a></li><li class="toc-2"><a href="#brand">brand</a></li><li class="toc-2"><a href="#hash">hash</a></li><li class="toc-2"><a href="#version">version</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/ko/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>데이터 인프라에 적용한 철학.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>프로젝트</h2>
+        <ul>
+          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/docs/philosophy/">원칙</a></li>
+          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>코드</h2>
+        <ul>
+          <li><a href="/ko/docs/">문서</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">저장소</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>오픈 소스 프로젝트 제작: <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · Go로 제작 · Go 고퍼: Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

@@ -1,13 +1,13 @@
-# Contexto entre passos
+# Context between steps
 
-> O que um passo diz ao seguinte — duas variáveis de ambiente e um arquivo.
+> What one step tells the next — two environment variables and a file.
 
-*https://brevis.sh/docs/context/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/context/ · brevis.sh docs (en-US)*
 
 ---
 
-Um passo publica valores; os passos que dependem dele leem. É tudo o que o
-recurso faz.
+A step publishes values; the steps that depend on it read them. That is all the
+feature does.
 
 ```yaml
 steps:
@@ -31,19 +31,18 @@ from brevis import context
 bucket = context.get("extract.bucket")
 ```
 
-A chave é sempre `<id do passo>.<nome>`. Um passo lê o que **suas dependências**
-publicaram, e nada além.
+The key is always `<step id>.<name>`. A step reads what **its own dependencies**
+published, and nothing else.
 
-:::note O que isto não é
-Não é fila de mensagens, não é estado entre execuções e não é lugar para
-guardar dados. É o bilhete que um passo deixa para o próximo — um caminho, uma
-marca d'água, uma contagem.
+:::note What this is not
+Not a message queue, not state between runs, and not a place to put data. It is
+the note one step leaves for the next — a path, a watermark, a count.
 :::
 
-## Qualquer linguagem, sem biblioteca
+## Any language, no library required
 
-O contrato são **duas variáveis de ambiente e um arquivo**, então um passo sem
-SDK nenhum participa:
+The contract is **two environment variables and a file**, so a step with no SDK
+at all takes part:
 
 ```bash
 window=$(jq -r '.extract.watermark' <<< "$BREVIS_INPUT")
@@ -53,49 +52,50 @@ jq -n --arg n "$(date -Is)" '{published_at: $n}' > "$BREVIS_OUTPUT"
 
 | | |
 |---|---|
-| `BREVIS_INPUT` | `{"<id do passo>": {…}}` — o que as dependências publicaram |
-| `BREVIS_OUTPUT` | um caminho onde escrever **um** objeto JSON |
+| `BREVIS_INPUT` | `{"<step id>": {…}}` — what this step's dependencies published |
+| `BREVIS_OUTPUT` | a path to write **one** JSON object to |
 
-Em Kubernetes esse caminho é `/dev/termination-log`, que o engine já lê para
-obter o código de saída. Então **não há chamada de API, não há token e não há
-porta** — e uma biblioteca para isso é um parse de JSON e uma escrita em
-arquivo.
+Under Kubernetes that path is `/dev/termination-log`, which the engine already
+reads to get the exit code. So there is **no API call, no token and no port** —
+and a library for it is a JSON parse and a file write.
 
-| linguagem | |
+| language | |
 |---|---|
-| Python | [`pip install brevis`](/docs/python/index.md) — traz também `brevis.run`, com os [parâmetros automáticos](/docs/parameters/index.md) |
-| Go | `sdk/context`, parte do módulo do SDK, sem dependência |
-| qualquer outra | as duas variáveis acima |
+| Python | [`pip install brevis`](/docs/python/index.md) — it also carries `brevis.run`, with the [auto parameters](/docs/parameters/index.md) |
+| Go | `sdk/context`, part of the SDK module, depends on nothing |
+| anything else | the two variables above |
 
-## Isolamento
+## Isolation
 
-Nenhum passo pode sobrescrever o que outro publicou. As chaves são prefixadas
-pelo id de quem escreveu, e o engine — não o passo — decide esse prefixo. Dois
-passos que publicam `bucket` produzem `extract.bucket` e `load.bucket`, e
-nenhum dos dois some.
+No step can overwrite what another published. Keys are prefixed with the id of
+whoever wrote them, and the engine — not the step — decides that prefix. Two
+steps publishing `bucket` produce `extract.bucket` and `load.bucket`, and
+neither disappears.
 
-## O teto de 4096 bytes
+## The 4096-byte ceiling
 
-O que um passo publica cabe em **4096 bytes**. O limite não é arbitrário: em
-Kubernetes o transporte é o `/dev/termination-log`, e é o que o kubelet aceita.
+What a step publishes fits in **4096 bytes**. The limit is not arbitrary: under
+Kubernetes the transport is `/dev/termination-log`, and that is what the kubelet
+accepts.
 
-Passar do teto é **erro do passo**, com a mensagem dizendo quantos bytes foram
-escritos. A alternativa seria truncar — e um JSON truncado é um JSON inválido,
-descoberto pelo passo seguinte, que não tem como saber que a culpa não é dele.
+Going over is a **step error**, with the message saying how many bytes were
+written. The alternative would be truncation — and truncated JSON is invalid
+JSON, discovered by the next step, which has no way of knowing the fault is not
+its own.
 
-Se o valor não cabe, ele não é contexto: escreva num bucket e publique o
-caminho.
+If a value does not fit, it is not context: write it to a bucket and publish the
+path.
 
-## Retries e execuções retomadas
+## Retries and resumed runs
 
-Numa nova tentativa, o passo publica de novo e o valor anterior é substituído.
-Um passo que já tinha sucesso não re-executa nem republica — o que ele disse
-continua valendo para os que dependem dele.
+On a new attempt the step publishes again and the previous value is replaced. A
+step that already succeeded neither re-runs nor republishes — what it said still
+holds for those that depend on it.
 
-## Rodando um passo à mão
+## Running a step by hand
 
-As duas variáveis são o contrato inteiro, então reproduzir uma execução é
-exportá-las:
+The two variables are the entire contract, so reproducing a run is exporting
+them:
 
 ```bash
 export BREVIS_INPUT='{"extract":{"bucket":"s3://landing/2026-09-07"}}'
@@ -104,8 +104,8 @@ python transform.py
 cat /tmp/out.json
 ```
 
-## Próximos passos
+## Next steps
 
-- [Parâmetros](/docs/parameters/index.md) — o que muda entre dois disparos, e os automáticos
-- [Runtime do passo](/docs/runtime/index.md) — o que o passo declara sobre onde executa
-- [Python](/docs/python/index.md) — a biblioteca cliente, e as outras linguagens
+- [Parameters](/docs/parameters/index.md) — what changes between runs, and the automatic ones
+- [Step runtime](/docs/runtime/index.md) — what a step declares about where it runs
+- [Python](/docs/python/index.md) — the client library, and the other languages

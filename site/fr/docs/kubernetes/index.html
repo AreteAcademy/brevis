@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="fr" data-docs="/fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Kubernetes — Documentation</title>
+<meta name="description" content="Comment déployer le moteur, avec quelles permissions, et ce qu&#x27;il faut vérifier ensuite.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/fr/docs/kubernetes/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/fr/docs/kubernetes/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/kubernetes/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/kubernetes/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/kubernetes/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/kubernetes/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/kubernetes/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/kubernetes/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/kubernetes/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/kubernetes/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/kubernetes/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/kubernetes/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/kubernetes/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="fr">
+<meta property="og:title" content="Kubernetes — Documentation">
+<meta property="og:description" content="Comment déployer le moteur, avec quelles permissions, et ce qu&#x27;il faut vérifier ensuite.">
+<meta property="og:url" content="https://brevis.sh/fr/docs/kubernetes/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubernetes — Documentation">
+<meta name="twitter:description" content="Comment déployer le moteur, avec quelles permissions, et ce qu&#x27;il faut vérifier ensuite.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Kubernetes",
+  "description": "Comment déployer le moteur, avec quelles permissions, et ce qu'il faut vérifier ensuite.",
+  "inLanguage": "fr",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Aller au contenu</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/fr/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Navigation principale">
+      <a href="/fr/#ecossistema">Écosystème</a>
+      <a href="/fr/docs/">Documentation</a>
+      <details class="lang-dd"><summary aria-label="Langue: Français"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Français</span></summary><ul><li><a href="/docs/kubernetes/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/kubernetes/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/kubernetes/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/kubernetes/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/kubernetes/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/kubernetes/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/kubernetes/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/kubernetes/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/kubernetes/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/kubernetes/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/kubernetes/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Explorer l&#x27;open source
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Menu de la documentation
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Rechercher dans la documentation</label>
+        <input type="search" id="q" placeholder="Rechercher…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Aucun résultat" hidden></div>
+      <nav class="side-nav" aria-label="Documentation">
+        <p class="side-group">Prise en main</p><ul class="side-list"><li><a href="/fr/docs/ecosystem/">Écosystème</a></li><li><a href="/fr/docs/integrations/">Intégrations</a></li><li><a href="/fr/docs/introduction/">Introduction</a></li><li><a href="/fr/docs/installation/">Installation</a></li><li><a href="/fr/docs/quickstart/">Démarrage rapide</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/fr/docs/core/">Core</a></li><li><a href="/fr/docs/workflows/">Workflows</a></li><li><a href="/fr/docs/scheduler-and-queue/">Scheduler et file</a></li><li><a href="/fr/docs/pod-per-step/">Un pod par step</a></li><li><a href="/fr/docs/context/">Contexte entre steps</a></li></ul><p class="side-group">Référence</p><ul class="side-list"><li><a href="/fr/docs/cli/">CLI</a></li><li><a href="/fr/docs/parameters/">Paramètres</a></li><li><a href="/fr/docs/configuration/">Configuration</a></li><li><a href="/fr/docs/runtime/">Runtime d&#x27;un step</a></li></ul><p class="side-group">SDK et bibliothèques</p><ul class="side-list"><li><a href="/fr/docs/sdk/">SDK Go</a></li><li><a href="/fr/docs/libraries/">Bibliothèques clientes</a></li><li><a href="/fr/docs/python/">Python</a></li></ul><p class="side-group">Exploitation</p><ul class="side-list"><li><a href="/fr/docs/console/">Console</a></li><li><a href="/fr/docs/kubernetes/" aria-current="page">Kubernetes</a></li><li><a href="/fr/docs/observability/">Observabilité</a></li><li><a href="/fr/docs/white-label/">Marque blanche</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/fr/docs/ingestion/">Ingestion</a></li><li><a href="/fr/docs/ingestion-sinks/">Sinks d&#x27;ingestion</a></li><li><a href="/fr/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modélisation en SQL</p><ul class="side-list"><li><a href="/fr/docs/sql/">SQL</a></li></ul><p class="side-group">Le projet</p><ul class="side-list"><li><a href="/fr/docs/philosophy/">Philosophie</a></li><li><a href="/fr/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Documentation</p>
+      <h1>Kubernetes</h1>
+      <p class="doc-desc">Comment déployer le moteur, avec quelles permissions, et ce qu&#x27;il faut vérifier ensuite.</p>
+      <p>Une installation type comprend <strong>deux Deployments</strong> du même binaire — l'API et le scheduler — plus un Postgres.</p>
+<h2 id="linstaller-avec-helm">L'installer avec Helm<a class="anchor" href="#linstaller-avec-helm" aria-label="link">#</a></h2>
+<p>Le chart se trouve dans le dépôt, à <code>deployments/helm/brevis</code>. Quatre valeurs sont requises et tout le reste a une valeur par défaut fonctionnelle :</p>
+<div class="code-block" data-code="helm install brevis ./deployments/helm/brevis \
+  --namespace data --create-namespace \
+  --set database.url=&quot;postgres://brevis:pw@postgres/brevis?sslmode=require&quot; \
+  --set auth.user=admin \
+  --set auth.passwordHash=&quot;$(brevis hash)&quot; \
+  --set auth.secret=&quot;$(openssl rand -base64 48)&quot;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>helm install <span class="t-k">brevis</span> ./deployments/helm/<span class="t-k">brevis</span> \
+  <span class="t-n">--namespace</span> data <span class="t-n">--create-namespace</span> \
+  <span class="t-n">--set</span> database.url="postgres://<span class="t-k">brevis</span>:pw@postgres/<span class="t-k">brevis</span>?sslmode=require" \
+  <span class="t-n">--set</span> auth.user=admin \
+  <span class="t-n">--set</span> auth.passwordHash="$(<span class="t-k">brevis</span> hash)" \
+  <span class="t-n">--set</span> auth.secret="$(openssl rand <span class="t-n">-base64</span> 48)"</code></pre></div>
+<p>C'est toute l'installation : les migrations s'exécutent d'abord comme hook, les deux Deployments démarrent chacun avec la bonne image, et le scheduler reçoit un ServiceAccount autorisé à créer des pods tandis que les pods de tâches en reçoivent un qui ne peut rien faire.</p>
+<p>Pour accéder à l'interface :</p>
+<div class="code-block" data-code="helm upgrade brevis ./deployments/helm/brevis --reuse-values \
+  --set api.ingress.enabled=true \
+  --set api.ingress.host=brevis.example.com \
+  --set api.ingress.tls.enabled=true \
+  --set api.ingress.tls.secretName=brevis-tls"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>helm upgrade <span class="t-k">brevis</span> ./deployments/helm/<span class="t-k">brevis</span> <span class="t-n">--reuse-values</span> \
+  <span class="t-n">--set</span> api.ingress.enabled=true \
+  <span class="t-n">--set</span> api.ingress.host=<span class="t-k">brevis</span>.example.com \
+  <span class="t-n">--set</span> api.ingress.tls.enabled=true \
+  <span class="t-n">--set</span> api.ingress.tls.secretName=<span class="t-k">brevis</span>-tls</code></pre></div>
+<p>En production, gardez la chaîne de connexion hors de la release : mettez-la dans un Secret et passez <code>--set database.existingSecret=brevis-db</code>. Passée en ligne, elle atterrit dans le manifeste stocké de la release, que peut lire quiconque peut lire les Secrets de ce namespace.</p>
+<p><code>helm show values ./deployments/helm/brevis</code> liste chaque valeur avec sa raison à côté.</p>
+<h3 id="ce-que-le-chart-refuse">Ce que le chart refuse<a class="anchor" href="#ce-que-le-chart-refuse" aria-label="link">#</a></h3>
+<p>Tout ce qu'il ne peut pas rendre sûr échoue au moment du rendu, avec un message qui dit ce qui casserait — pas à 3 h du matin, dans un run qui a produit des lignes en double :</p>
+<div class="table-wrap"><table><thead><tr><th>refusé</th><th>parce que</th></tr></thead><tbody><tr><td><code>scheduler.replicas</code>, sous quelque forme que ce soit</td><td>deux matérialiseraient les mêmes slots. <code>FOR UPDATE SKIP LOCKED</code> les empêche de réclamer le même élément de la file ; rien ne les empêche de créer le même run planifié, et un <code>dbt build</code> s'exécuterait deux fois sur une même fenêtre sans que rien n'échoue</td></tr><tr><td>un identifiant manquant hors de <code>local</code></td><td>le moteur refuse de démarrer sans, donc le chart vous livrerait un CrashLoopBackOff</td></tr><tr><td><code>auth.secret</code> de moins de 32 octets</td><td>il signe le cookie de session, et le moteur impose le même minimum</td></tr><tr><td>un Ingress sans <code>host</code></td><td>il correspondrait à toutes les requêtes atteignant le contrôleur — dans un cluster partagé, répondant pour le nom d'hôte de quelqu'un d'autre</td></tr><tr><td><code>alerts.enabled</code> sans webhook</td><td>le pod viderait l'outbox et ne livrerait nulle part, ce qui est pire que de ne pas tourner : l'échec paraît alors annoncé</td></tr><tr><td>une valeur que le chart ne définit pas</td><td>une faute de frappe dans <code>--set</code> ne fait sinon rien, en silence</td></tr></tbody></table></div>
+<p><code>.github/scripts/helm-check.sh</code> vérifie tout cela sur la sortie rendue, plus les invariants ci-dessus — un seul scheduler, <code>pods/log</code> présent, les migrations en premier, le port des métriques hors du Service.</p>
+<h2 id="sans-helm">Sans Helm<a class="anchor" href="#sans-helm" aria-label="link">#</a></h2>
+<p>Sept manifestes se trouvent dans <code>deployments/kubernetes/</code>, prêts pour <code>kubectl apply -f</code> après avoir modifié le namespace et le tag de l'image :</p>
+<div class="code-block" data-code="kubectl apply -f deployments/kubernetes/rbac.yaml
+kubectl apply -f deployments/kubernetes/api.yaml
+kubectl apply -f deployments/kubernetes/scheduler.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/rbac.yaml
+<span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/api.yaml
+<span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/scheduler.yaml</code></pre></div>
+<p>Ils portent les mêmes décisions que le chart, avec le raisonnement en commentaires, et <code>alert.yaml</code>, <code>report.yaml</code> et <code>publish-job.yaml</code> en plus. Les sections ci-dessous détaillent le contenu de chacun.</p>
+<h2 id="les-deux-roles">Les deux rôles<a class="anchor" href="#les-deux-roles" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>rôle</th><th>commande</th><th>image</th><th>réplicas</th></tr></thead><tbody><tr><td>API + interface</td><td><code>serve</code></td><td><code>:0.11.2</code> (distroless)</td><td>autant que vous voulez</td></tr><tr><td>scheduler + file</td><td><code>scheduler</code></td><td><code>:0.11.2-worker</code> (alpine)</td><td><strong>un</strong></td></tr></tbody></table></div>
+<p>L'API est distroless parce qu'elle ne fait que servir du HTTP : elle n'exécute rien, donc n'a pas besoin de shell. Le worker est alpine parce que les steps <code>run:</code> en ont besoin.</p>
+<aside class="admon admon-warning"><p class="admon-t">Un seul réplica du scheduler</p><p>Deux processus qui matérialisent la même planification créent des runs en double. Si vous avez besoin de disponibilité, utilisez <code>replicas: 1</code> avec <code>strategy: Recreate</code>.</p></aside>
+<h2 id="migrations">Migrations<a class="anchor" href="#migrations" aria-label="link">#</a></h2>
+<p>Exécutez-les comme un Job avant le déploiement, jamais au démarrage de <code>serve</code> :</p>
+<div class="code-block" data-code="apiVersion: batch/v1
+kind: Job
+metadata:
+  name: brevis-migrate
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: areteacademy/brevis:0.40.0
+          args: [&quot;migrate&quot;, &quot;up&quot;]
+          envFrom:
+            - secretRef: {name: brevis-db}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">apiVersion</span>: batch/v1
+<span class="t-k">kind</span>: Job
+<span class="t-k">metadata</span>:
+  <span class="t-k">name</span>: brevis-migrate
+<span class="t-k">spec</span>:
+  <span class="t-k">template</span>:
+    <span class="t-k">spec</span>:
+      <span class="t-k">restartPolicy</span>: Never
+      <span class="t-k">containers</span>:
+        - <span class="t-k">name</span>: migrate
+          <span class="t-k">image</span>: areteacademy/brevis:0.40.0
+          <span class="t-k">args</span>: ["migrate", "up"]
+          <span class="t-k">envFrom</span>:
+            - <span class="t-k">secretRef</span>: {name: brevis-db}</code></pre></div>
+<h2 id="deployment-de-lapi">Deployment de l'API<a class="anchor" href="#deployment-de-lapi" aria-label="link">#</a></h2>
+<div class="code-block" data-code="apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brevis-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: brevis-api}
+  template:
+    metadata:
+      labels: {app: brevis-api}
+    spec:
+      serviceAccountName: brevis
+      containers:
+        - name: api
+          image: areteacademy/brevis:0.40.0
+          args: [&quot;serve&quot;]
+          ports: [{containerPort: 8080}]
+          envFrom:
+            - secretRef: {name: brevis-db}
+            - secretRef: {name: brevis-auth}
+          env:
+            - name: BREVIS_ENV
+              value: production
+          livenessProbe:
+            httpGet: {path: /health, port: 8080}
+          readinessProbe:
+            httpGet: {path: /ready, port: 8080}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 256Mi}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">apiVersion</span>: apps/v1
+<span class="t-k">kind</span>: Deployment
+<span class="t-k">metadata</span>:
+  <span class="t-k">name</span>: brevis-api
+<span class="t-k">spec</span>:
+  <span class="t-k">replicas</span>: 2
+  <span class="t-k">selector</span>:
+    <span class="t-k">matchLabels</span>: {app: brevis-api}
+  <span class="t-k">template</span>:
+    <span class="t-k">metadata</span>:
+      <span class="t-k">labels</span>: {app: brevis-api}
+    <span class="t-k">spec</span>:
+      <span class="t-k">serviceAccountName</span>: brevis
+      <span class="t-k">containers</span>:
+        - <span class="t-k">name</span>: api
+          <span class="t-k">image</span>: areteacademy/brevis:0.40.0
+          <span class="t-k">args</span>: ["serve"]
+          <span class="t-k">ports</span>: [{containerPort: 8080}]
+          <span class="t-k">envFrom</span>:
+            - <span class="t-k">secretRef</span>: {name: brevis-db}
+            - <span class="t-k">secretRef</span>: {name: brevis-auth}
+          <span class="t-k">env</span>:
+            - <span class="t-k">name</span>: BREVIS_ENV
+              <span class="t-k">value</span>: production
+          <span class="t-k">livenessProbe</span>:
+            <span class="t-k">httpGet</span>: {path: /health, port: 8080}
+          <span class="t-k">readinessProbe</span>:
+            <span class="t-k">httpGet</span>: {path: /ready, port: 8080}
+          <span class="t-k">resources</span>:
+            <span class="t-k">requests</span>: {cpu: 100m, memory: 128Mi}
+            <span class="t-k">limits</span>: {memory: 256Mi}</code></pre></div>
+<aside class="admon admon-note"><p class="admon-t">Pourquoi les deux sondes diffèrent</p><p><code>/health</code> n'interroge <strong>pas</strong> la base de données ; <code>/ready</code> le fait, et nomme la dépendance qui a échoué. Si la liveness dépendait de Postgres, une vacillation de la base ferait <strong>tuer</strong> les pods de l'API par Kubernetes au lieu de simplement les retirer du load balancer — et la reprise serait plus lente précisément quand le système est déjà sous tension.</p></aside>
+<h2 id="deployment-du-scheduler">Deployment du scheduler<a class="anchor" href="#deployment-du-scheduler" aria-label="link">#</a></h2>
+<div class="code-block" data-code="apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brevis-scheduler
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: brevis-scheduler}
+  template:
+    metadata:
+      labels: {app: brevis-scheduler}
+    spec:
+      serviceAccountName: brevis
+      containers:
+        - name: scheduler
+          image: areteacademy/brevis:0.40.0-worker
+          args: [&quot;scheduler&quot;, &quot;--interval&quot;, &quot;10s&quot;, &quot;--concurrency&quot;, &quot;5&quot;, &quot;--max-pods&quot;, &quot;10&quot;]
+          envFrom:
+            - secretRef: {name: brevis-db}
+            - secretRef: {name: brevis-auth}
+          env:
+            - name: BREVIS_ENV
+              value: production
+            - name: BREVIS_PODS
+              value: &quot;on&quot;
+            - name: BREVIS_POD_NAMESPACE
+              value: data
+            - name: BREVIS_POD_SERVICE_ACCOUNT
+              value: brevis-runner
+            - name: BREVIS_POD_ENV_FROM_SECRETS
+              value: bigquery-cred"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">apiVersion</span>: apps/v1
+<span class="t-k">kind</span>: Deployment
+<span class="t-k">metadata</span>:
+  <span class="t-k">name</span>: brevis-scheduler
+<span class="t-k">spec</span>:
+  <span class="t-k">replicas</span>: 1
+  <span class="t-k">strategy</span>: {type: Recreate}
+  <span class="t-k">selector</span>:
+    <span class="t-k">matchLabels</span>: {app: brevis-scheduler}
+  <span class="t-k">template</span>:
+    <span class="t-k">metadata</span>:
+      <span class="t-k">labels</span>: {app: brevis-scheduler}
+    <span class="t-k">spec</span>:
+      <span class="t-k">serviceAccountName</span>: brevis
+      <span class="t-k">containers</span>:
+        - <span class="t-k">name</span>: scheduler
+          <span class="t-k">image</span>: areteacademy/brevis:0.40.0-worker
+          <span class="t-k">args</span>: ["scheduler", "--interval", "10s", "--concurrency", "5", "--max-pods", "10"]
+          <span class="t-k">envFrom</span>:
+            - <span class="t-k">secretRef</span>: {name: brevis-db}
+            - <span class="t-k">secretRef</span>: {name: brevis-auth}
+          <span class="t-k">env</span>:
+            - <span class="t-k">name</span>: BREVIS_ENV
+              <span class="t-k">value</span>: production
+            - <span class="t-k">name</span>: BREVIS_PODS
+              <span class="t-k">value</span>: "on"
+            - <span class="t-k">name</span>: BREVIS_POD_NAMESPACE
+              <span class="t-k">value</span>: data
+            - <span class="t-k">name</span>: BREVIS_POD_SERVICE_ACCOUNT
+              <span class="t-k">value</span>: brevis-runner
+            - <span class="t-k">name</span>: BREVIS_POD_ENV_FROM_SECRETS
+              <span class="t-k">value</span>: bigquery-cred</code></pre></div>
+<p><code>BREVIS_PODS=on</code> <strong>exige</strong> un cluster : sans compte de service monté, le démarrage échoue au lieu de retomber silencieusement sur l'exécution locale.</p>
+<h2 id="permissions">Permissions<a class="anchor" href="#permissions" aria-label="link">#</a></h2>
+<p>Le scheduler crée, surveille et supprime des pods dans le namespace d'exécution. Rien de plus :</p>
+<div class="code-block" data-code="apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: brevis-runner
+  namespace: data
+rules:
+  - apiGroups: [&quot;&quot;]
+    resources: [&quot;pods&quot;]
+    verbs: [&quot;create&quot;, &quot;get&quot;, &quot;list&quot;, &quot;watch&quot;, &quot;delete&quot;]
+  - apiGroups: [&quot;&quot;]
+    resources: [&quot;pods/log&quot;]
+    verbs: [&quot;get&quot;]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">apiVersion</span>: rbac.authorization.k8s.io/v1
+<span class="t-k">kind</span>: Role
+<span class="t-k">metadata</span>:
+  <span class="t-k">name</span>: brevis-runner
+  <span class="t-k">namespace</span>: data
+<span class="t-k">rules</span>:
+  - <span class="t-k">apiGroups</span>: [""]
+    <span class="t-k">resources</span>: ["pods"]
+    <span class="t-k">verbs</span>: ["create", "get", "list", "watch", "delete"]
+  - <span class="t-k">apiGroups</span>: [""]
+    <span class="t-k">resources</span>: ["pods/log"]
+    <span class="t-k">verbs</span>: ["get"]</code></pre></div>
+<p><code>pods/log</code> est ce qui permet de suivre la sortie d'un step jusque dans l'interface. Sans lui, le run fonctionne et le log reste vide.</p>
+<h2 id="après-le-deploiement">Après le déploiement<a class="anchor" href="#après-le-deploiement" aria-label="link">#</a></h2>
+<div class="code-block" data-code="kubectl -n data get pods -l app=brevis-api
+kubectl -n data exec deploy/brevis-api -- brevis version
+curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">kubectl</span> <span class="t-n">-n</span> data get pods <span class="t-n">-l</span> app=<span class="t-k">brevis</span>-api
+<span class="t-k">kubectl</span> <span class="t-n">-n</span> data exec deploy/<span class="t-k">brevis</span>-api -- <span class="t-k">brevis</span> version
+<span class="t-k">curl</span> <span class="t-n">-fsS</span> https://<span class="t-k">brevis</span>.example.com/ready</code></pre></div>
+<p>Déclenchez un workflow simple depuis l'interface et confirmez que le pod du step apparaît puis disparaît :</p>
+<div class="code-block" data-code="kubectl -n data get pods -w"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">kubectl</span> <span class="t-n">-n</span> data get pods <span class="t-n">-w</span></code></pre></div>
+<h2 id="quand-un-step-reste-en-pending">Quand un step reste en Pending<a class="anchor" href="#quand-un-step-reste-en-pending" aria-label="link">#</a></h2>
+<p>C'est presque toujours l'une de ces trois causes :</p>
+<div class="table-wrap"><table><thead><tr><th>cause</th><th>comment la confirmer</th></tr></thead><tbody><tr><td>taint sans toleration</td><td><code>kubectl describe pod</code> affiche <code>node(s) had untolerated taint</code></td></tr><tr><td><code>nodeSelector</code> sans nœud</td><td><code>describe</code> affiche <code>didn't match Pod's node affinity</code></td></tr><tr><td>ressource indisponible</td><td><code>describe</code> affiche <code>Insufficient cpu</code> ou <code>memory</code></td></tr></tbody></table></div>
+<p>Pour inspecter le pod d'un step en échec plutôt que le regarder disparaître :</p>
+<div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
+<p>Laissez-le désactivé en production — les pods arrêtés consomment du quota.</p>
+<h2 id="etapes-suivantes">Étapes suivantes<a class="anchor" href="#etapes-suivantes" aria-label="link">#</a></h2>
+<ul><li><a href="/fr/docs/pod-per-step/">Un pod par step</a> — le modèle d'exécution</li><li><a href="/fr/docs/configuration/">Configuration</a> — toutes les variables <code>BREVIS_POD_*</code></li><li><a href="/fr/docs/observability/">Observabilité</a> — quoi scruter, et depuis quel processus</li></ul>
+
+      <nav class="pagers" aria-label="Pages">
+        <a class="pager pager-prev" href="/fr/docs/console/"><span>Précédent</span><strong>Console</strong></a>
+        <a class="pager pager-next" href="/fr/docs/observability/"><span>Suivant</span><strong>Observabilité</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/fr/docs/kubernetes.md" target="_blank" rel="noopener">Modifier cette page sur GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="Sur cette page">
+      <p class="toc-t">Sur cette page</p>
+      <ul><li class="toc-2"><a href="#linstaller-avec-helm">L&#x27;installer avec Helm</a></li><li class="toc-3"><a href="#ce-que-le-chart-refuse">Ce que le chart refuse</a></li><li class="toc-2"><a href="#sans-helm">Sans Helm</a></li><li class="toc-2"><a href="#les-deux-roles">Les deux rôles</a></li><li class="toc-2"><a href="#migrations">Migrations</a></li><li class="toc-2"><a href="#deployment-de-lapi">Deployment de l&#x27;API</a></li><li class="toc-2"><a href="#deployment-du-scheduler">Deployment du scheduler</a></li><li class="toc-2"><a href="#permissions">Permissions</a></li><li class="toc-2"><a href="#après-le-deploiement">Après le déploiement</a></li><li class="toc-2"><a href="#quand-un-step-reste-en-pending">Quand un step reste en Pending</a></li><li class="toc-2"><a href="#etapes-suivantes">Étapes suivantes</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/fr/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>La philosophie appliquée à l&#x27;infrastructure de données.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>projet</h2>
+        <ul>
+          <li><a href="/fr/#ecossistema">Écosystème</a></li>
+          <li><a href="/fr/docs/philosophy/">Principes</a></li>
+          <li><a href="/fr/docs/introduction/#code-ouvert-choisissez-comment-participer">Open source</a></li>
+          <li><a href="/fr/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>code</h2>
+        <ul>
+          <li><a href="/fr/docs/">Documentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Dépôt</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Un projet open source de <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · construit en Go · Gopher Go par Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

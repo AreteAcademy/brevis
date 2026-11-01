@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko" data-docs="/ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>구성 — 문서</title>
+<meta name="description" content="모든 환경 변수의 기본값, 형식, 누락되었을 때의 동작입니다.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/ko/docs/configuration/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/ko/docs/configuration/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/configuration/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/configuration/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/configuration/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/configuration/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/configuration/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/configuration/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/configuration/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/configuration/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/configuration/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/configuration/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/configuration/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="ko">
+<meta property="og:title" content="구성 — 문서">
+<meta property="og:description" content="모든 환경 변수의 기본값, 형식, 누락되었을 때의 동작입니다.">
+<meta property="og:url" content="https://brevis.sh/ko/docs/configuration/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="구성 — 문서">
+<meta name="twitter:description" content="모든 환경 변수의 기본값, 형식, 누락되었을 때의 동작입니다.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "구성",
+  "description": "모든 환경 변수의 기본값, 형식, 누락되었을 때의 동작입니다.",
+  "inLanguage": "ko",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/ko/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="주 내비게이션">
+      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/docs/">문서</a>
+      <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/configuration/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/configuration/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/configuration/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/configuration/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/configuration/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/configuration/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/configuration/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/configuration/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/configuration/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/configuration/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/configuration/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        오픈 소스 둘러보기
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    문서 메뉴
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">문서 검색</label>
+        <input type="search" id="q" placeholder="검색…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="결과 없음" hidden></div>
+      <nav class="side-nav" aria-label="문서">
+        <p class="side-group">시작하기</p><ul class="side-list"><li><a href="/ko/docs/ecosystem/">에코시스템</a></li><li><a href="/ko/docs/integrations/">통합</a></li><li><a href="/ko/docs/introduction/">소개</a></li><li><a href="/ko/docs/installation/">설치</a></li><li><a href="/ko/docs/quickstart/">빠른 시작</a></li></ul><p class="side-group">개념</p><ul class="side-list"><li><a href="/ko/docs/core/">Core</a></li><li><a href="/ko/docs/workflows/">Workflows</a></li><li><a href="/ko/docs/scheduler-and-queue/">스케줄러와 큐</a></li><li><a href="/ko/docs/pod-per-step/">step당 pod 하나</a></li><li><a href="/ko/docs/context/">step 간 컨텍스트</a></li></ul><p class="side-group">레퍼런스</p><ul class="side-list"><li><a href="/ko/docs/cli/">CLI</a></li><li><a href="/ko/docs/parameters/">매개변수</a></li><li><a href="/ko/docs/configuration/" aria-current="page">구성</a></li><li><a href="/ko/docs/runtime/">step 런타임</a></li></ul><p class="side-group">SDK와 라이브러리</p><ul class="side-list"><li><a href="/ko/docs/sdk/">Go SDK</a></li><li><a href="/ko/docs/libraries/">클라이언트 라이브러리</a></li><li><a href="/ko/docs/python/">Python</a></li></ul><p class="side-group">운영</p><ul class="side-list"><li><a href="/ko/docs/console/">Console</a></li><li><a href="/ko/docs/kubernetes/">Kubernetes</a></li><li><a href="/ko/docs/observability/">관측성</a></li><li><a href="/ko/docs/white-label/">화이트 라벨</a></li></ul><p class="side-group">수집</p><ul class="side-list"><li><a href="/ko/docs/ingestion/">수집</a></li><li><a href="/ko/docs/ingestion-sinks/">수집 sink</a></li><li><a href="/ko/docs/benchmarks/">벤치마크</a></li></ul><p class="side-group">SQL 모델링</p><ul class="side-list"><li><a href="/ko/docs/sql/">SQL</a></li></ul><p class="side-group">프로젝트</p><ul class="side-list"><li><a href="/ko/docs/philosophy/">철학</a></li><li><a href="/ko/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">문서</p>
+      <h1>구성</h1>
+      <p class="doc-desc">모든 환경 변수의 기본값, 형식, 누락되었을 때의 동작입니다.</p>
+      <p>모든 구성은 <strong>환경</strong>에서 오며 부팅 시 한 번 읽습니다. 그 이후에는 어떤 것도 환경을 참조하지 않습니다. 실행 도중 구성이 바뀌는 프로세스는 동작을 아무도 재현할 수 없는 프로세스이기 때문입니다.</p>
+<h2 id="필수">필수<a class="anchor" href="#필수" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>변수</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_DATABASE_URL</code></td><td>Postgres. 데이터베이스를 사용하는 하위 명령 다섯 개에서 누락되면 <strong>부팅 오류</strong>입니다</td></tr></tbody></table></div>
+<h2 id="프로세스">프로세스<a class="anchor" href="#프로세스" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>변수</th><th>기본값</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_ENV</code></td><td><code>local</code></td><td><code>local</code>은 텍스트로 로그를 남기고 인터페이스를 열어 둡니다. 그 외의 값은 자격 증명이 필요하며 JSON으로 로그를 남깁니다</td></tr><tr><td><code>BREVIS_HTTP_ADDR</code></td><td><code>:8080</code></td><td>수신 주소</td></tr><tr><td><code>BREVIS_LOG_LEVEL</code></td><td><code>info</code></td><td></td></tr><tr><td><code>BREVIS_SHUTDOWN_TIMEOUT_SECONDS</code></td><td><code>15</code></td><td>정수. 숫자가 아닌 값은 부팅 오류입니다</td></tr><tr><td><code>BREVIS_BRAND_FILE</code></td><td><code>brand.yaml</code></td><td>브랜딩. 없으면 기본값을 사용합니다</td></tr><tr><td><code>BREVIS_UI_URL</code></td><td>—</td><td>알림에 들어가는 run 링크의 기준 주소</td></tr><tr><td><code>BREVIS_METRICS_ADDR</code></td><td>—</td><td>Prometheus 메트릭 포트. 비어 있으면 노출하지 않습니다. <a href="/ko/docs/observability/">관측성</a>을 참고하세요</td></tr><tr><td><code>BREVIS_SLACK_WEBHOOK</code></td><td>—</td><td>실패 알림의 목적지. 비어 있으면 아무에게도 알리지 않습니다</td></tr></tbody></table></div>
+<h2 id="인증">인증<a class="anchor" href="#인증" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>변수</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_AUTH_USER</code></td><td>인터페이스 사용자</td></tr><tr><td><code>BREVIS_AUTH_PASSWORD_HASH</code></td><td><code>brevis hash</code>로 생성한 <code>pbkdf2-sha256$…</code> 해시</td></tr><tr><td><code>BREVIS_AUTH_SECRET</code></td><td>세션 서명용 32바이트 이상(<code>openssl rand -base64 48</code>)</td></tr></tbody></table></div>
+<p>세 변수는 함께 설정하거나 모두 설정하지 않아야 합니다.</p>
+<aside class="admon admon-danger"><p class="admon-t">일부만 구성하면 부팅 오류입니다</p><p>사용자 이름을 채운 사람은 문이 잠겼다고 믿습니다. 인터페이스는 파이프라인을 트리거합니다. <code>POST /workflows/&lt;slug&gt;/trigger</code>는 웨어하우스에 쓰는 <code>dbt build</code>를 실행합니다. 인터넷에 열려 있다면 웨어하우스의 리모컨이 되며, 로그 경고로는 그 믿음을 바로잡을 수 없습니다. 정상 동작하는 프로세스의 로그를 읽는 사람은 없기 때문입니다.</p></aside>
+<p><code>BREVIS_ENV=local</code>이 아닌 환경에서는 자격 증명 없이 시작하는 것이 거부됩니다.</p>
+<div class="code-block" data-code="error: BREVIS_ENV=production requires a credential: set BREVIS_AUTH_USER,
+BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and BREVIS_AUTH_SECRET"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>error: BREVIS_ENV=production requires a credential: set BREVIS_AUTH_USER,
+BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and BREVIS_AUTH_SECRET</code></pre></div>
+<aside class="admon admon-note"><p class="admon-t">이전 이름도 여전히 동작합니다</p><p>2026-09-10에 변수 네 개의 이름이 바뀌었으며, 프로젝트의 운영자 쪽에서 마지막 포르투갈어 이름이 사라진 때입니다. 대상은 <code>BREVIS_AUTH_USUARIO</code>, <code>BREVIS_AUTH_SENHA_HASH</code>, <code>BREVIS_AUTH_SEGREDO</code>, <code>BREVIS_POD_MANTER_EM_FALHA</code>입니다. 이전 이름을 설정한 설치 환경은 계속 동작하며 새 이름을 알려 주는 경고를 로그에 남깁니다.</p>
+<p>새 이름을 추가하고, 배포한 다음, 이전 이름을 제거하세요. 둘 다 설정되어 있으면 새 이름이 우선합니다. 이전 이름은 메이저 버전에서 사라집니다.</p>
+<p>SDK에서는 <code>BREVIS_SDK_LIMITE_INLINE</code>이 같은 규칙으로 <code>BREVIS_SDK_INLINE_LIMIT</code>이 되었습니다.</p></aside>
+<h2 id="작업-환경">작업 환경<a class="anchor" href="#작업-환경" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>변수</th><th>기본값</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TASK_ENV</code></td><td>비어 있음</td><td>각 step이 받는 것</td></tr></tbody></table></div>
+<p>작업은 오케스트레이터의 환경을 상속하지 <strong>않습니다</strong>. 이유는 구체적입니다. 프로세스는 Postgres 사용자 이름과 비밀번호가 담긴 <code>BREVIS_DATABASE_URL</code>을 가지고 있고, workflow는 다른 사람이 작성한 임의의 명령입니다. 상속하면 모든 파이프라인의 모든 step에 데이터베이스 자격 증명을 건네주게 됩니다.</p>
+<p>작업에 필요한 것은 선언합니다.</p>
+<div class="code-block" data-code="BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE   # forwards these two from the process
+BREVIS_TASK_ENV=STAGE=prod                # sets a literal
+BREVIS_TASK_ENV=&#x27;*&#x27;                       # forwards everything EXCEPT BREVIS_*"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE   <span class="t-c"># forwards these two from the process</span>
+BREVIS_TASK_ENV=STAGE=prod                <span class="t-c"># sets a literal</span>
+BREVIS_TASK_ENV='*'                       <span class="t-c"># forwards everything EXCEPT BREVIS_*</span></code></pre></div>
+<p><code>PATH</code>와 <code>HOME</code>은 항상 포함됩니다. <code>PATH</code>가 없으면 어떤 명령도 해석되지 않고, 그 오류는 아무것도 설명하지 않는 "not found"가 되기 때문입니다.</p>
+<p>없는 이름은 빈 문자열이 <strong>되지 않습니다</strong>. <code>GOOGLE_PROJECT_ID=""</code>는 변수가 없는 것보다 더 나쁜 메시지와 함께 dbt를 실패시킬 것입니다.</p>
+<h2 id="kubernetes">Kubernetes<a class="anchor" href="#kubernetes" aria-label="link">#</a></h2>
+<p>workflow가 아니라 <strong>설치 환경</strong>이 내리는 결정입니다.</p>
+<div class="table-wrap"><table><thead><tr><th>변수</th><th>기본값</th><th>형식</th></tr></thead><tbody><tr><td><code>BREVIS_PODS</code></td><td><code>auto</code></td><td><code>auto</code>, <code>on</code>, <code>off</code>. 그 외는 부팅 오류입니다</td></tr><tr><td><code>BREVIS_POD_NAMESPACE</code></td><td>클러스터의 네임스페이스</td><td></td></tr><tr><td><code>BREVIS_POD_SERVICE_ACCOUNT</code></td><td>—</td><td></td></tr><tr><td><code>BREVIS_POD_PULL_SECRETS</code></td><td>—</td><td>쉼표로 구분한 목록</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_SECRETS</code></td><td>—</td><td>쉼표로 구분한 목록</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_CONFIGMAPS</code></td><td>—</td><td>쉼표로 구분한 목록</td></tr><tr><td><code>BREVIS_POD_ALLOWED_SECRETS</code></td><td>—</td><td>쉼표로 구분한 목록</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PATH</code></td><td>—</td><td>pod에 마운트되는 경로</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PVC</code></td><td>—</td><td>자격 증명을 담은 PVC</td></tr><tr><td><code>BREVIS_POD_NODE_SELECTOR</code></td><td>—</td><td><code>key=value,other=value</code></td></tr><tr><td><code>BREVIS_POD_TOLERATIONS</code></td><td>—</td><td><code>key=value:effect,…</code>. <code>Equal</code> 연산자만 허용합니다</td></tr><tr><td><code>BREVIS_POD_KEEP_ON_FAILURE</code></td><td><code>false</code></td><td><code>true</code>이면 점검을 위해 pod를 남겨 둡니다</td></tr></tbody></table></div>
+<p>목록에서 빈 항목은 무시됩니다. <code>a,,b</code>는 오타이고, 빈 시크릿 이름은 서버가 pod 전체를 거부하게 만들기 때문입니다.</p>
+<h2 id="테스트">테스트<a class="anchor" href="#테스트" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>변수</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TEST_DATABASE_URL</code></td><td>통합 테스트용 데이터베이스. 없으면 테스트를 건너뜁니다</td></tr></tbody></table></div>
+<h2 id="헬스-엔드포인트">헬스 엔드포인트<a class="anchor" href="#헬스-엔드포인트" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>GET /health</code></td><td>liveness — 데이터베이스를 조회하지 <strong>않습니다</strong></td></tr><tr><td><code>GET /ready</code></td><td>readiness — 조회하며 실패한 의존 대상을 명시합니다</td></tr></tbody></table></div>
+<p>분리는 의도된 것입니다. 외부 서비스에 의존하는 liveness 프로브는 데이터베이스가 흔들릴 때 로드 밸런서에서 빼기만 하는 것이 아니라 Kubernetes가 <strong>pod를 죽이게</strong> 만듭니다.</p>
+<h2 id="전체-예시">전체 예시<a class="anchor" href="#전체-예시" aria-label="link">#</a></h2>
+<div class="code-block" data-code="# required
+export BREVIS_DATABASE_URL=&#x27;postgres://brevis:secret@db:5432/brevis?sslmode=require&#x27;
+
+# production requires credentials
+export BREVIS_ENV=production
+export BREVIS_AUTH_USER=operator
+export BREVIS_AUTH_PASSWORD_HASH=&quot;$(brevis hash &lt; password.txt)&quot;
+export BREVIS_AUTH_SECRET=&quot;$(openssl rand -base64 48)&quot;
+
+# what the tasks need, and nothing more
+export BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE,DBT_KEYFILE
+
+# pods
+export BREVIS_PODS=on
+export BREVIS_POD_NAMESPACE=data
+export BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
+export BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred
+
+# alerts
+export BREVIS_SLACK_WEBHOOK=&#x27;https://hooks.slack.com/services/...&#x27;
+export BREVIS_UI_URL=&#x27;https://brevis.example.com&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-c"># required</span>
+export BREVIS_DATABASE_URL='postgres://<span class="t-k">brevis</span>:secret@db:5432/<span class="t-k">brevis</span>?sslmode=require'
+
+<span class="t-c"># production requires credentials</span>
+export BREVIS_ENV=production
+export BREVIS_AUTH_USER=operator
+export BREVIS_AUTH_PASSWORD_HASH="$(<span class="t-k">brevis</span> hash &lt; password.txt)"
+export BREVIS_AUTH_SECRET="$(openssl rand <span class="t-n">-base64</span> 48)"
+
+<span class="t-c"># what the tasks need, and nothing more</span>
+export BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE,DBT_KEYFILE
+
+<span class="t-c"># pods</span>
+export BREVIS_PODS=on
+export BREVIS_POD_NAMESPACE=data
+export BREVIS_POD_SERVICE_ACCOUNT=<span class="t-k">brevis</span>-runner
+export BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred
+
+<span class="t-c"># alerts</span>
+export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
+export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code></pre></div>
+
+      <nav class="pagers" aria-label="페이지">
+        <a class="pager pager-prev" href="/ko/docs/parameters/"><span>이전</span><strong>매개변수</strong></a>
+        <a class="pager pager-next" href="/ko/docs/runtime/"><span>다음</span><strong>step 런타임</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/ko/docs/configuration.md" target="_blank" rel="noopener">GitHub에서 이 페이지 편집</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="이 페이지에서">
+      <p class="toc-t">이 페이지에서</p>
+      <ul><li class="toc-2"><a href="#필수">필수</a></li><li class="toc-2"><a href="#프로세스">프로세스</a></li><li class="toc-2"><a href="#인증">인증</a></li><li class="toc-2"><a href="#작업-환경">작업 환경</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#테스트">테스트</a></li><li class="toc-2"><a href="#헬스-엔드포인트">헬스 엔드포인트</a></li><li class="toc-2"><a href="#전체-예시">전체 예시</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/ko/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>데이터 인프라에 적용한 철학.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>프로젝트</h2>
+        <ul>
+          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/docs/philosophy/">원칙</a></li>
+          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>코드</h2>
+        <ul>
+          <li><a href="/ko/docs/">문서</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">저장소</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>오픈 소스 프로젝트 제작: <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · Go로 제작 · Go 고퍼: Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

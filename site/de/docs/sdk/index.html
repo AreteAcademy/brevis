@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="de" data-docs="/de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Go-SDK — Dokumentation</title>
+<meta name="description" content="Einen Fetcher schreiben – aus einer Quelle extrahieren, transformieren und in ein Ziel laden.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/de/docs/sdk/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/de/docs/sdk/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/sdk/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/sdk/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/sdk/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/sdk/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/sdk/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/sdk/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/sdk/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/sdk/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/sdk/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/sdk/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/sdk/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="de">
+<meta property="og:title" content="Go-SDK — Dokumentation">
+<meta property="og:description" content="Einen Fetcher schreiben – aus einer Quelle extrahieren, transformieren und in ein Ziel laden.">
+<meta property="og:url" content="https://brevis.sh/de/docs/sdk/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Go-SDK — Dokumentation">
+<meta name="twitter:description" content="Einen Fetcher schreiben – aus einer Quelle extrahieren, transformieren und in ein Ziel laden.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Go-SDK",
+  "description": "Einen Fetcher schreiben – aus einer Quelle extrahieren, transformieren und in ein Ziel laden.",
+  "inLanguage": "de",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Zum Inhalt springen</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/de/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Hauptnavigation">
+      <a href="/de/#ecossistema">Ökosystem</a>
+      <a href="/de/docs/">Dokumentation</a>
+      <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Deutsch</span></summary><ul><li><a href="/docs/sdk/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/sdk/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/sdk/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/sdk/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/sdk/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/sdk/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/sdk/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/sdk/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/sdk/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/sdk/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/sdk/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Open Source erkunden
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Menü öffnen" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Dokumentationsmenü
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Dokumentation durchsuchen</label>
+        <input type="search" id="q" placeholder="Suchen…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Keine Ergebnisse" hidden></div>
+      <nav class="side-nav" aria-label="Dokumentation">
+        <p class="side-group">Erste Schritte</p><ul class="side-list"><li><a href="/de/docs/ecosystem/">Ökosystem</a></li><li><a href="/de/docs/integrations/">Integrationen</a></li><li><a href="/de/docs/introduction/">Einführung</a></li><li><a href="/de/docs/installation/">Installation</a></li><li><a href="/de/docs/quickstart/">Schnellstart</a></li></ul><p class="side-group">Konzepte</p><ul class="side-list"><li><a href="/de/docs/core/">Core</a></li><li><a href="/de/docs/workflows/">Workflows</a></li><li><a href="/de/docs/scheduler-and-queue/">Scheduler und Queue</a></li><li><a href="/de/docs/pod-per-step/">Pod pro Step</a></li><li><a href="/de/docs/context/">Kontext zwischen Steps</a></li></ul><p class="side-group">Referenz</p><ul class="side-list"><li><a href="/de/docs/cli/">CLI</a></li><li><a href="/de/docs/parameters/">Parameter</a></li><li><a href="/de/docs/configuration/">Konfiguration</a></li><li><a href="/de/docs/runtime/">Step-Laufzeitumgebung</a></li></ul><p class="side-group">SDK und Bibliotheken</p><ul class="side-list"><li><a href="/de/docs/sdk/" aria-current="page">Go-SDK</a></li><li><a href="/de/docs/libraries/">Client-Bibliotheken</a></li><li><a href="/de/docs/python/">Python</a></li></ul><p class="side-group">Betrieb</p><ul class="side-list"><li><a href="/de/docs/console/">Console</a></li><li><a href="/de/docs/kubernetes/">Kubernetes</a></li><li><a href="/de/docs/observability/">Observability</a></li><li><a href="/de/docs/white-label/">White Label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/de/docs/ingestion/">Ingestion</a></li><li><a href="/de/docs/ingestion-sinks/">Ingestion-Sinks</a></li><li><a href="/de/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modellierung in SQL</p><ul class="side-list"><li><a href="/de/docs/sql/">SQL</a></li></ul><p class="side-group">Das Projekt</p><ul class="side-list"><li><a href="/de/docs/philosophy/">Philosophie</a></li><li><a href="/de/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Dokumentation</p>
+      <h1>Go-SDK</h1>
+      <p class="doc-desc">Einen Fetcher schreiben – aus einer Quelle extrahieren, transformieren und in ein Ziel laden.</p>
+      <p>Wenn die Aufgabe eines Steps darin besteht, <strong>Daten abzurufen und irgendwohin zu laden</strong>, gibt Ihnen das Go-SDK den ganzen Fetcher in wenigen Zeilen. Es ist ein eigenes Modul, unabhängig von der Engine versioniert.</p>
+<div class="code-block" data-code="go get github.com/AreteAcademy/brevis/sdk@latest"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">go</span> get github.com/AreteAcademy/<span class="t-k">brevis</span>/sdk@latest</code></pre></div>
+<p>Erfordert Go 1.23 oder neuer – das SDK streamt Zeilen als <code>iter.Seq2</code>.</p>
+<aside class="admon admon-warning"><p class="admon-t">Verwenden Sie nicht `v0.1.0`</p><p>Sie wurde mit einer <code>go.mod</code> ausgeliefert, die eine Revision festschreibt, die nicht existiert, und der Go-Modul-Proxy ist unveränderlich. Beginnen Sie bei <code>v0.1.1</code>.</p></aside>
+<h2 id="drei-schritte">Drei Schritte<a class="anchor" href="#drei-schritte" aria-label="link">#</a></h2>
+<div class="code-block" data-code="import (
+	&quot;github.com/AreteAcademy/brevis/sdk&quot;
+	&quot;github.com/AreteAcademy/brevis/sdk/from&quot;
+	&quot;github.com/AreteAcademy/brevis/sdk/to/bigquery&quot;
+)
+
+rows, err := sdk.Extract(ctx, sdk.Source{
+	From: from.HTTP{URL: &quot;https://api.example.com/v1/events&quot;},
+})
+
+rows = sdk.Transform(rows, sdk.Accept(&quot;id&quot;, &quot;created_at&quot;, &quot;amount&quot;))
+
+res, err := sdk.Load(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: &quot;bronze&quot;, Name: &quot;events&quot;},
+	Columns: []string{&quot;id&quot;, &quot;created_at&quot;, &quot;amount&quot;},
+})"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">import</span> (
+	"github.com/AreteAcademy/brevis/sdk"
+	"github.com/AreteAcademy/brevis/sdk/from"
+	"github.com/AreteAcademy/brevis/sdk/to/bigquery"
+)
+
+rows, <span class="t-k">err</span> := sdk.Extract(ctx, sdk.Source{
+	From: from.HTTP{URL: "https:<span class="t-c">//api.example.com/v1/events"},</span>
+})
+
+rows = sdk.Transform(rows, sdk.Accept("id", "created_at", "amount"))
+
+res, <span class="t-k">err</span> := sdk.Load(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: "bronze", Name: "events"},
+	Columns: []string{"id", "created_at", "amount"},
+})</code></pre></div>
+<p><code>Extract</code> liest, <code>Transform</code> formt um, <code>Load</code> schreibt. Jedes nimmt eine Sequenz entgegen und gibt eine zurück – nichts wird auf einmal im Speicher materialisiert.</p>
+<figure class="doc-figure"><img src="/assets/flow-sdk.svg" width="360" height="514" alt="Der Ablauf des SDK: sdk.Extract liest mit from.HTTP aus einer HTTP-API, sdk.Transform behält die akzeptierten Felder, und sdk.Load schreibt die Zeilen in eine BigQuery-Tabelle. Die drei Aufrufe laufen innerhalb Ihres eigenen Steps." loading="lazy"></figure>
+<h2 id="der-treiber-ist-ein-wert-keine-einstellung">Der Treiber ist ein Wert, keine Einstellung<a class="anchor" href="#der-treiber-ist-ein-wert-keine-einstellung" aria-label="link">#</a></h2>
+<p><code>from.HTTP</code> trägt alles, was eine HTTP-Quelle braucht: URL, Header, Retry, Paginierung und was eine Antwort bedeutet. <code>from.Files</code> trägt einen Pfad und ein Format. Keines muss Platz für die Felder des anderen schaffen, es gibt also kein Quell-Struct, das vierzig Optionen sammelt, von denen jeder Treiber sechs liest.</p>
+<p>Er entscheidet auch, <strong>was Sie kompilieren</strong>. Go beschneidet Abhängigkeiten nach importiertem Paket, nie nach verwendetem Feld:</p>
+<div class="table-wrap"><table><thead><tr><th>Was Sie importieren</th><th>Pakete</th><th>AWS</th><th>Google</th></tr></thead><tbody><tr><td><code>sdk</code></td><td>190</td><td>nein</td><td>nein</td></tr><tr><td><code>sdk</code> + <code>from</code></td><td>194</td><td>nein</td><td>nein</td></tr><tr><td><code>sdk</code> + <code>from</code> + <code>to</code> (Dateien)</td><td>195</td><td>nein</td><td>nein</td></tr><tr><td><code>sdk</code> + <code>to/bigquery</code></td><td>456</td><td>nein</td><td><strong>ja</strong></td></tr><tr><td><code>sdk</code> + <code>from</code> + <code>store/s3</code></td><td>265</td><td><strong>ja</strong></td><td>nein</td></tr></tbody></table></div>
+<p>Eine ganze Datei-Pipeline – Lesen und Schreiben – kostet 195 Pakete und gar kein Cloud-SDK. <strong>Ein Treiber mit einem Anbieter-SDK dahinter lebt in einem eigenen Paket</strong>, weshalb BigQuery <code>to/bigquery</code> heißt und die Objektspeicher <code>store/s3</code> und <code>store/gcs</code>.</p>
+<h2 id="quellen-und-ziele">Quellen und Ziele<a class="anchor" href="#quellen-und-ziele" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>Quelle</th><th>Paket</th></tr></thead><tbody><tr><td>HTTP</td><td><code>from.HTTP</code></td></tr><tr><td>Dateien (lokal, S3, GCS)</td><td><code>from.Files</code></td></tr><tr><td>Postgres</td><td><code>from/postgres</code></td></tr><tr><td>MySQL</td><td><code>from/mysql</code></td></tr><tr><td>mehrere Quellen</td><td><code>from.Many</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Ziel</th><th>Paket</th></tr></thead><tbody><tr><td>Dateien</td><td><code>to.Files</code></td></tr><tr><td>BigQuery</td><td><code>to/bigquery</code></td></tr><tr><td>Postgres</td><td><code>to/postgres</code></td></tr><tr><td>MySQL</td><td><code>to/mysql</code></td></tr><tr><td>Redshift</td><td><code>to/redshift</code></td></tr><tr><td>Pub/Sub</td><td><code>to/pubsub</code></td></tr></tbody></table></div>
+<p>Das Pfadschema bestimmt das Backend, und der <code>Store</code> wird <strong>hineingereicht</strong>, statt im Treiber gewählt zu werden:</p>
+<div class="code-block" data-code="from.Files{Path: &quot;s3://bucket/day=1/*.ndjson&quot;, Store: s3.New(client)}
+to.Files{Path: &quot;gs://bucket/landing/&quot;, Store: gcs.New(client)}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>from.Files{Path: "s3:<span class="t-c">//bucket/day=1/*.ndjson", Store: s3.New(client)}</span>
+to.Files{Path: "gs:<span class="t-c">//bucket/landing/", Store: gcs.New(client)}</span></code></pre></div>
+<p>Das ist es, was ein Programm mit lokalen Dateien davon abhält, eine einzige Zeile AWS- oder Google-Code zu kompilieren.</p>
+<h3 id="an-ein-topic-veröffentlichen">An ein Topic veröffentlichen<a class="anchor" href="#an-ein-topic-veröffentlichen" aria-label="link">#</a></h3>
+<p><code>to/pubsub</code> ist das eine Ziel, das keine Tabelle ist, und es verhält sich auf eine Weise anders, die man vor der Nutzung kennen sollte: <strong>Es fügt dem, was es sendet, nichts hinzu.</strong></p>
+<div class="code-block" data-code="Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: &quot;acme-prod&quot;,
+        Name:    &quot;orders&quot;,
+
+        // Nil is the default, and it means NO attributes at all.
+        Attributes: func(e sdk.Envelope) map[string]string {
+            row, ok := e.Payload.(map[string]any)
+            if !ok {
+                return nil
+            }
+            return map[string]string{&quot;orderId&quot;: fmt.Sprint(row[&quot;order_id&quot;])}
+        },
+    },
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: "acme-prod",
+        Name:    "orders",
+
+        <span class="t-c">// Nil is the default, and it means NO attributes at all.</span>
+        Attributes: <span class="t-k">func</span>(e sdk.Envelope) <span class="t-k">map</span>[string]string {
+            row, ok := e.Payload.(<span class="t-k">map</span>[string]any)
+            <span class="t-k">if</span> !ok {
+                <span class="t-k">return</span> <span class="t-k">nil</span>
+            }
+            <span class="t-k">return</span> <span class="t-k">map</span>[string]string{"orderId": fmt.Sprint(row["order_id"])}
+        },
+    },
+},</code></pre></div>
+<p>Ein Subscriber erhält Ihre Payload, Byte für Byte, plus genau die Attribute, die Sie benannt haben. Sonst nichts – keine <code>ingestion_id</code>, kein <code>provider</code>, keinen Envelope irgendeiner Art.</p>
+<p>Das ist eine Regel und kein Minimalismus. Eine Tabelle wird von der Pipeline angelegt, die sie schreibt, das SDK darf also entscheiden, was ihre Spalten sind. <strong>Ein Topic nicht</strong>: Es existiert, bevor Ihre Pipeline existiert, seine Subscriber wurden zuerst geschrieben und ihre Filter ebenfalls. Ein von selbst hinzugefügtes Attribut wäre Brevis, das den Vertrag eines anderen ändert, und der Subscriber würde es um drei Uhr nachts herausfinden.</p>
+<p>Daraus folgen drei Dinge:</p>
+<ul><li><strong>Es legt nie ein Topic an.</strong> Eine Pipeline, die eines anlegen kann, kann das falsche anlegen, und anders als bei einer falsch geschriebenen Tabelle bemerkt das niemand – die Nachrichten gehen irgendwohin, und der Subscriber, der sie hätte erhalten sollen, bleibt still.</li><li><strong><code>Schema</code>, <code>Dedup</code> und <code>PartitionBy</code> werden verweigert</strong>, wobei die Option genannt wird. Sie existieren für Tabellen: Ein <code>Schema</code> ist die Art, wie ein Ziel eine anlegt, Deduplizierung braucht eine Zeile zum Ersetzen, eine Partition ist eine Idee der Tabelle. Das Nächste hier ist <code>OrderingKey</code>, was etwas anderes ist – es gruppiert Nachrichten, die in Reihenfolge <em>ankommen</em> müssen.</li><li><strong>Ein Fehler ist partiell.</strong> Veröffentlichen ist nicht transaktional, sodass 48.000 Nachrichten, die bei 31.000 fehlschlagen, 31.000 <em>zugestellt</em> haben. Das Ergebnis meldet, was tatsächlich ging, und der Fehler sagt, dass ein erneuter Lauf eine Neuzustellung ist – der Subscriber muss idempotent sein, und Pub/Sub ist ohnehin at-least-once.</li></ul>
+<p>Lauffähig, gegen den Emulator: <a href="https://github.com/AreteAcademy/brevis/tree/master/examples/13-pubsub" target="_blank" rel="noopener"><code>examples/13-pubsub</code></a>.</p>
+<h2 id="ein-ganzer-fetcher">Ein ganzer Fetcher<a class="anchor" href="#ein-ganzer-fetcher" aria-label="link">#</a></h2>
+<p><code>sdk.Run</code> kümmert sich um Flags, <code>-dry-run</code>, Logging, Retry, Paginierung, Provenienz, Tabellenanlage und den Exit-Code. In der Datei bleibt nur, was für diese Quelle spezifisch ist:</p>
+<div class="code-block" data-code="package main
+
+import (
+	&quot;time&quot;
+
+	&quot;github.com/AreteAcademy/brevis/sdk&quot;
+	&quot;github.com/AreteAcademy/brevis/sdk/from&quot;
+)
+
+func main() {
+	sdk.Run(sdk.Pipeline{
+		Source: sdk.Source{
+			From: from.HTTP{
+				URL:     &quot;https://api.example.com/v1/events&quot;,
+				Timeout: 15 * time.Second,
+			},
+			Guard:  sdk.RejectIf(&quot;error&quot;),
+			Expand: sdk.ArrayAt(&quot;results&quot;),
+		},
+		Target: sdk.Target{
+			Provider: &quot;example&quot;,
+			Entity:   &quot;events&quot;,
+			Key:      sdk.Key(&quot;id&quot;),
+			When:     sdk.Field(&quot;created_at&quot;),
+		},
+	})
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">package</span> main
+
+<span class="t-k">import</span> (
+	"time"
+
+	"github.com/AreteAcademy/brevis/sdk"
+	"github.com/AreteAcademy/brevis/sdk/from"
+)
+
+<span class="t-k">func</span> main() {
+	sdk.Run(sdk.Pipeline{
+		Source: sdk.Source{
+			From: from.HTTP{
+				URL:     "https:<span class="t-c">//api.example.com/v1/events",</span>
+				Timeout: 15 * time.Second,
+			},
+			Guard:  sdk.RejectIf("error"),
+			Expand: sdk.ArrayAt("results"),
+		},
+		Target: sdk.Target{
+			Provider: "example",
+			Entity:   "events",
+			Key:      sdk.Key("id"),
+			When:     sdk.Field("created_at"),
+		},
+	})
+}</code></pre></div>
+<div class="code-block" data-code="go run ./fetcher -dry-run   # extracts, counts rows and errors, writes nothing
+go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">go</span> run ./fetcher <span class="t-n">-dry-run</span>   <span class="t-c"># extracts, counts rows and errors, writes nothing</span>
+<span class="t-k">go</span> run ./fetcher</code></pre></div>
+<h2 id="der-run-kontext">Der Run-Kontext<a class="anchor" href="#der-run-kontext" aria-label="link">#</a></h2>
+<p>Wenn der Fetcher <strong>als Workflow-Step</strong> läuft, injiziert die Engine in die Umgebung, was er sonst nicht wissen könnte: ob dies der erste Run ist, mit welchen Parametern er gestartet wurde, welcher Run es ist. Das SDK liest das in <code>Pipeline.Run</code>:</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	if p.Run.Params[&quot;load_full&quot;] == &quot;true&quot; {
+		p.Source.From = from.HTTP{URL: base + &quot;?full=1&quot;}
+	}
+	return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+	<span class="t-k">if</span> p.Run.Params["load_full"] == "true" {
+		p.Source.From = from.HTTP{URL: base + "?full=1"}
+	}
+	<span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p>Von Hand gestartet, kommt <code>Run</code> genullt zurück – es zu lesen ist optional, und es zu ignorieren kostet nichts.</p>
+<p>Ohne Historie lautet die Antwort auf „Ist das der erste Run?“ immer <strong>nein</strong>: Eine Tabelle ohne Gewissheit anzulegen ist schlimmer, als sie nicht anzulegen.</p>
+<h3 id="die-uhr">Die Uhr<a class="anchor" href="#die-uhr" aria-label="link">#</a></h3>
+<p><code>p.Run.Auto</code> ist das, was die Engine über diesen Run ermittelt hat – die <a href="/de/docs/parameters/#auto-parameter">Auto-Parameter</a>. <code>Auto.Now()</code> ist die Uhr, die statt <code>time.Now()</code> zu lesen ist: Bei einem geplanten Run ist es der Slot, er bewegt sich also nicht, wenn der Run spät dran ist, und nicht, wenn der Run drei Stunden später wiederholt wird.</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	if !ok { // no schedule: fall back to a fixed window
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		&quot;?from=&quot; + start.Format(time.RFC3339) +
+		&quot;&amp;to=&quot; + end.Format(time.RFC3339)}
+	return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	<span class="t-k">if</span> !ok { <span class="t-c">// no schedule: fall back to a fixed window</span>
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		"?from=" + start.Format(time.RFC3339) +
+		"&amp;to=" + end.Format(time.RFC3339)}
+	<span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p>Von Hand gestartet, <em>ist</em> <code>Auto.Now()</code> die Wanduhr, und <code>Window()</code> liefert <code>false</code>, sodass die lokale Entwicklung keinen Sonderfall braucht.</p>
+<h2 id="nicht-mit-den-client-bibliotheken-zu-verwechseln">Nicht mit den Client-Bibliotheken zu verwechseln<a class="anchor" href="#nicht-mit-den-client-bibliotheken-zu-verwechseln" aria-label="link">#</a></h2>
+<p>Dieses SDK ist ETL-Maschinerie in Go: Treiber, Paginierung, Provenienz, Tabellenanlage. Die <a href="/de/docs/libraries/">Client-Bibliotheken</a> sind etwas anderes – schlanke Clients, die einem Step den Run-Kontext und die Uhr reichen, heute in Python und später in Node.js und Rust. Ein Step mit pandas oder dbt will Letztere, nicht dieses.</p>
+<h2 id="parameter-die-die-pipeline-aufbauen">Parameter, die die Pipeline aufbauen<a class="anchor" href="#parameter-die-die-pipeline-aufbauen" aria-label="link">#</a></h2>
+<p><code>p.Run.Params</code> ist innerhalb der Pipeline lesbar, und das ist zu spät für einen Wert, der entscheidet, was die Pipeline <strong>ist</strong> – eine Quelle pro Bundesstaat, eine Tabelle pro Mandant. <code>Pipeline.Flags</code> wird innerhalb von <code>Run</code> geparst und ist daher aus demselben Grund zu spät.</p>
+<div class="code-block" data-code="func main() {
+	sdk.Run(pipeline(sdk.ParamList(&quot;ufs&quot;)))
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">func</span> main() {
+	sdk.Run(pipeline(sdk.ParamList("ufs")))
+}</code></pre></div>
+<p><code>sdk.Param</code> und <code>sdk.ParamList</code> lesen zuerst die Umgebung der Engine und zweitens <code>-param name=value</code>:</p>
+<div class="code-block" data-code="./fetch-stations -param ufs=SP,RJ"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>./fetch-stations <span class="t-n">-param</span> ufs=SP,RJ</code></pre></div>
+<p>Die Umgebung gewinnt – unter der Engine ist sie der Wert, und ein in einem Manifest zurückgelassenes Flag darf nicht überschreiben, was der Operator eingegeben hat. Ohne Engine ist das Flag das, was da ist, und das ist besser, als bei jedem Run <code>BREVIS_RUN_PARAMS</code> als JSON zu schreiben.</p>
+<h2 id="das-landing-layout">Das Landing-Layout<a class="anchor" href="#das-landing-layout" aria-label="link">#</a></h2>
+<p>Eine Pipeline kann <strong>dieselbe Tabelle landen, die ein Gateway landet</strong> – dieselben Spalten und dieselbe <code>brevis_ingestion_id</code> –, sodass die Wahl zwischen beiden eine Deployment-Entscheidung ist und keine Schema-Entscheidung. Ein Team kann beide zusammen lesen und von einem zum anderen wechseln, ohne Migration.</p>
+<div class="code-block" data-code="const table = &quot;landing.orders&quot;
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey(&quot;id&quot;))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">const</span> table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})</code></pre></div>
+<p><code>sdk.LandingSchema</code> sind neun Spalten: die acht, die das Layout besitzt, und die eine, die der Produzent besitzt. <code>sdk.Landing</code> füllt sie und legt den Datensatz vollständig in <code>data</code> ab. Hängen Sie eigene Spalten an das Schema an, wenn Sie möchten, oder nehmen Sie <code>sdk.LandingControlColumns</code> und geben Sie den Feldern des Datensatzes eigene Spalten.</p>
+<h3 id="zwei-formen-der-datensatz-als-ganzes-oder-eine-spalte-pro-feld">Zwei Formen: der Datensatz als Ganzes oder eine Spalte pro Feld<a class="anchor" href="#zwei-formen-der-datensatz-als-ganzes-oder-eine-spalte-pro-feld" aria-label="link">#</a></h3>
+<p>Oben steht die <strong>document</strong>-Form – der Datensatz geht als JSON in <code>data</code>, und die Tabelle ist dieselbe, was auch immer der Datensatz enthält. Fügen Sie <code>sdk.LandingColumns()</code> hinzu, und jedes Feld des Datensatzes erhält eine eigene Spalte:</p>
+<div class="code-block" data-code="sdk.Landing(table, sdk.LandingKey(&quot;source_key&quot;), sdk.LandingColumns())"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())</code></pre></div>
+<p>Die Tabelle besteht dann aus <code>sdk.LandingControlColumns</code> plus Ihren Spalten – <strong>nicht</strong> aus <code>sdk.LandingSchema</code>, das <code>data</code> trägt:</p>
+<div class="code-block" data-code="Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: &quot;source_key&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;series&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;data&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;valor&quot;, Type: sdk.TypeString},
+    ),
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: "source_key", Type: sdk.TypeString},
+        sdk.Column{Name: "series", Type: sdk.TypeString},
+        sdk.Column{Name: "data", Type: sdk.TypeString},
+        sdk.Column{Name: "valor", Type: sdk.TypeString},
+    ),
+}</code></pre></div>
+<p><strong>Diese Spalten deklarieren Sie.</strong> Das SDK leitet nie ein Schema ab, und diese Option ändert das nicht: Sie bestimmt, wie die <em>Zeile</em> gebaut wird, nie, was die Tabelle ist. Ein Gateway leitet ab, weil sein Produzent ein Fremder ist, der postet, was er hat; hier kennt der Autor der Pipeline die Form und schreibt sie auf, in einem Diff, den jemand prüft.</p>
+<p>Es ist dieselbe Form, die ein Gateway als <a href="/de/docs/ingestion-sinks/#zwei-formen-ein-vertrag"><code>shape: columns</code></a> landet, über denselben Code – dieselben Spalten, dieselben Werte, dieselbe <code>brevis_ingestion_id</code>.</p>
+<p><strong>Ein Feldname muss ein Spaltenname sein können</strong>: ein Buchstabe oder Unterstrich, dann Buchstaben, Ziffern und Unterstriche. Das ist die Regel von BigQuery, der engsten der vier Zieltechnologien, sodass ein hier durchgehender Name überall funktioniert. Ein Datensatz mit <code>my-field</code> wird namentlich verweigert, bevor etwas geschrieben wird. Die document-Form hat keine solche Regel – ein Bindestrich ist ein völlig gültiger JSON-Schlüssel.</p>
+<p><strong>Standardmäßig wird nicht abgeflacht.</strong> Ein verschachteltes Objekt wird zu EINER <code>JSON</code>-Spalte unter dem Schlüssel, der es hielt: <code>customer</code> enthält <code>{"id": 7, "uf": "SP"}</code>, nicht <code>customer_id</code> und <code>customer_uf</code>. Auch ein Array ist <code>JSON</code>. Ein Datensatz, der eine Zeile <em>pro Array-Element</em> will, will <code>sdk.ArrayAt</code> im <code>Expand</code> der Quelle – das läuft vor <code>Landing</code> und ist eine andere Operation mit einem anderen Namen. <a href="#eine-spalte-pro-verschachteltem-feld"><code>BREVIS_NORMALIZE_DATA</code></a> ändert die erste Hälfte davon für ein ganzes Deployment; ein Array bleibt in beiden Fällen <code>JSON</code>:</p>
+<div class="code-block" data-code="Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt(&quot;results&quot;)},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},</code></pre></div>
+<p><strong><code>null</code> bleibt <code>NULL</code></strong>, nie <code>""</code>. Ein als null gesendetes Feld und ein leer gesendetes Feld sind verschiedene Tatsachen, und eine Spalte kann sie hinterher nicht unterscheiden.</p>
+<p><strong><code>data</code> wird Ihr eigenes.</strong> In dieser Form hat das Layout keine Spalte dieses Namens, sodass ein Produzent mit einem Feld namens <code>data</code> – genau das, was die Bacen-Reihe sendet – eine eigene Spalte mit seinem eigenen Wert erhält. Unter <code>document</code> ist seines ein Schlüssel innerhalb des JSON des Layouts.</p>
+<h3 id="das-präfix-brevis-können-sie-ändern">Das Präfix <code>brevis_</code> können Sie ändern<a class="anchor" href="#das-präfix-brevis-können-sie-ändern" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_LANDING_PREFIX=acme"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>BREVIS_LANDING_PREFIX=acme</code></pre></div>
+<p>und die acht Spalten des Layouts werden zu <code>acme_ingestion_id</code>, <code>acme_record_key</code> und den übrigen. Ohne Angabe sind sie, was sie immer waren.</p>
+<p><strong>Wählen Sie es, wenn die Tabelle angelegt wird, denn es später zu ändern ist keine Umbenennung.</strong> Nichts in diesem SDK löscht je eine Spalte, ein Stream, der das Präfix wechselt, benennt also nicht acht um – er fügt acht hinzu und verlässt acht. Jede Zeile danach hat NULLs im alten Satz, und</p>
+<div class="code-block" data-code="qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1</code></pre></div>
+<p>partitioniert über eine Spalte, die nichts mehr schreibt. Zeilen kommen an, das Dashboard wird flach, und nichts loggt irgendetwas.</p>
+<p>Eine Tabelle, die das Layout bereits unter einem Präfix trägt, <strong>verweigert</strong> daher einen Load, der ein anderes deklariert, vor dem Extract und unter Nennung beider. Richten Sie ihn auf eine neue Tabelle, oder benennen Sie die acht Spalten zuerst selbst um.</p>
+<p><strong>Was Sie eintippen, wird normalisiert</strong>, sodass es eine Schreibweise gibt, bei der man sich irren kann, statt vier:</p>
+<div class="table-wrap"><table><thead><tr><th>Sie setzen</th><th>Sie erhalten</th></tr></thead><tbody><tr><td>nichts, oder leer</td><td><code>brevis_</code></td></tr><tr><td><code>_NAME</code></td><td><code>name_</code></td></tr><tr><td><code>_NAME_</code></td><td><code>name_</code></td></tr><tr><td><code>NAME</code></td><td><code>name_</code></td></tr></tbody></table></div>
+<p>An beiden Enden <code>_</code> abschneiden, kleinschreiben, genau eines anfügen. Zwei Werte werden verweigert, statt sie zu erraten: nur Unterstriche und sonst nichts, weil das <code>ingestion_id</code> übrig ließe – genau die Spalte, die <code>sdk.IngestionID()</code> für jede gewöhnliche Pipeline schreibt –, und alles, was nicht mit einem Spaltennamen beginnen kann. <strong>Ein Prozess mit einem unbrauchbaren Wert startet nicht</strong>, was das einzig ehrliche Ergebnis ist: Die Alternative sind Tabellen, die nach dem Präfix benannt sind, das Sie ersetzen wollten.</p>
+<p><strong>Es gilt pro PROZESS, und das ist der Punkt und keine Einschränkung.</strong> Jeder Stream in einem Gateway teilt es, zwei Sinks können sich also nicht widersprechen – ebenso wenig wie das Schema, das eine Tabelle deklariert, und der Transformer, der sie füllt.</p>
+<p><strong>Die Regel zu reservierten Namen wandert mit.</strong> Unter <code>acme_</code> wird ein Produzent, der <code>acme_region</code> sendet, verweigert, weil jemand, der eine Steuerspalte fälschen kann, eine echt aussehende fälscht. Und <code>brevis_region</code> wird ein gewöhnliches Feld.</p>
+<p><code>data</code> trägt nie das Präfix. Es ist die Spalte des Produzenten, nicht die des Layouts.</p>
+<h3 id="eine-spalte-pro-verschachteltem-feld">Eine Spalte pro verschachteltem Feld<a class="anchor" href="#eine-spalte-pro-verschachteltem-feld" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_NORMALIZE_DATA=true"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>BREVIS_NORMALIZE_DATA=true</code></pre></div>
+<p>und die Felder eines verschachtelten Objekts erhalten eigene Spalten, wie es <code>json_normalize</code> von pandas tut – eine Ebene:</p>
+<div class="code-block" data-code="data = [
+    {&quot;id&quot;: 1, &quot;name&quot;: {&quot;first&quot;: &quot;Coleen&quot;, &quot;last&quot;: &quot;Volk&quot;}},
+    {&quot;name&quot;: {&quot;given&quot;: &quot;Mark&quot;, &quot;family&quot;: &quot;Regner&quot;}},
+    {&quot;id&quot;: 2, &quot;name&quot;: &quot;Faye Raker&quot;},
+]"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>data = [
+    {"id": 1, "name": {"first": "Coleen", "last": "Volk"}},
+    {"name": {"given": "Mark", "family": "Regner"}},
+    {"id": 2, "name": "Faye Raker"},
+]</code></pre></div>
+<div class="code-block" data-code="id  name_first  name_last  name_given  name_family  name"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>id  name_first  name_last  name_given  name_family  name</code></pre></div>
+<p><strong>Wählen Sie es vor der ersten Tabelle, denn es FÜGT nicht nur Spalten hinzu.</strong> Es benennt sie um, und nichts in diesem SDK löscht je eine – der alte Name bleibt also bei den Zeilen, die schon darin liegen, während alles danach im neuen landet, und die Abfrage, die jemand dagegen geschrieben hat, läuft weiter und sieht keine neuen Zeilen mehr. Zwei Umbenennungen geschehen:</p>
+<ul><li><code>userName</code> wird zu <code>username</code>, ob etwas verschachtelt ist oder nicht</li><li><code>name</code>, das Objekte hielt, wird durch <code>name_first</code> und <code>name_last</code> ersetzt</li></ul>
+<p>Eine Tabelle, die bereits eine der beiden Formen trägt, <strong>verweigert</strong> einen Load mit eingeschalteter Option, vor dem Extract und unter Nennung beider Spalten. Richten Sie ihn auf eine neue Tabelle, oder benennen Sie die Spalten zuerst selbst um.</p>
+<p><strong><code>name</code> kann sowohl abgeflacht als auch ganz vorkommen</strong>, und das Beispiel oben zeigt es: Der dritte Datensatz trägt <code>name</code> als String, die Tabelle hat also <code>name_first</code>, <code>name_last</code> UND <code>name</code>. Ein Feld, das in einem Datensatz ein Objekt und in einem anderen ein Skalar ist, erzeugt beides.</p>
+<p><strong>Eine Ebene, und Arrays sind Werte.</strong> <code>{"a": {"b": {"c": 1}}}</code> ergibt <code>a_b</code> mit <code>{"c": 1}</code> – eine <code>JSON</code>-Spalte, nicht <code>a_b_c</code>. <code>{"a": [1, 2]}</code> ergibt <code>a</code>, ebenfalls <code>JSON</code>. Ein Datensatz, der eine Zeile pro Array-Element will, will weiterhin <code>sdk.ArrayAt</code>.</p>
+<p><strong>Verbunden und kleingeschrieben, nicht nach camelCase getrennt.</strong> <code>userName</code> wird zu <code>username</code> und nicht zu <code>user_name</code>, weil die andere Lesart bei Akronymen – <code>HTTPStatus</code>, <code>userID</code> – keine vereinbarte Antwort hat und jede Bibliothek anders verfährt.</p>
+<p><strong>Eine Kollision wird verweigert, nie aufgelöst.</strong> <code>{"name_first": 1, "name": {"first": 2}}</code> würde aus zwei Feldern eine Spalte machen, und die Map-Iteration von Go ist randomisiert: Einen gewinnen zu lassen gäbe demselben Batch in einem anderen Lauf eine andere Tabelle. Die Verweigerung nennt beide.</p>
+<p><strong>Das reservierte Präfix wird an der Spalte geprüft, nicht am Feld.</strong> Ein Produzent, der <code>{"brevis": {"stream": "x"}}</code> sendet, würde sonst <code>brevis_stream</code> durch eine Tür erzeugen, die die Feldprüfung nicht bewacht. Es wird verweigert und nennt <code>brevis.stream</code>, damit das Feld auffindbar ist.</p>
+<p><strong>Es gilt pro PROZESS</strong>, wie das Präfix, und aus demselben Grund: Jeder Stream in einem Gateway teilt es, zwei Sinks können sich also nicht über eine Tabelle widersprechen, die beide schreiben könnten. Es gilt nur für die <code>columns</code>-Form – unter <code>document</code> geht der Datensatz ganz in eine <code>JSON</code>-Spalte, und es gibt nichts, in das man abflachen könnte.</p>
+<h3 id="text-der-bereits-json-ist">Text, der bereits JSON ist<a class="anchor" href="#text-der-bereits-json-ist" aria-label="link">#</a></h3>
+<p>Eine als <code>sdk.TypeJSON</code> deklarierte Spalte erhält einen JSON-<strong>Wert</strong> – ein Objekt, ein Array, eine Zahl. Bei BigQuery wird die Zeile als Ganzes kodiert, sodass ein Go-<code>string</code> dort zu einem JSON-String-Literal wird und die Spalte am Ende den TEXT Ihres Objekts hält statt des Objekts:</p>
+<div class="code-block" data-code="SELECT JSON_TYPE(payload) ...;            -- &quot;string&quot;, not &quot;object&quot;
+SELECT JSON_VALUE(payload, &#x27;$.a&#x27;) ...;    -- NULL"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">SELECT</span> JSON_TYPE(payload) ...;            <span class="t-c">-- "string", not "object"</span>
+<span class="t-k">SELECT</span> JSON_VALUE(payload, '$.a') ...;    <span class="t-c">-- NULL</span></code></pre></div>
+<p>Die Spalte hat den richtigen Typ, und die Daten darin sind nicht erreichbar, was das Schlimmste der drei Ergebnisse ist, weil nichts fehlschlägt. <strong>Das BigQuery-Ziel verweigert es</strong> ab <code>v0.74.0</code> und nennt die Spalte.</p>
+<p>Übergeben Sie das Objekt selbst, wo Sie eines haben. Wo das, was Sie halten, bereits JSON-Text ist – eine aus einer anderen Datenbank gelesene Spalte, ein Antwortkörper, den Sie nicht neu parsen wollen –, sagen Sie es:</p>
+<div class="code-block" data-code="row[&quot;payload&quot;] = sdk.JSONText(body)"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>row["payload"] = sdk.JSONText(body)</code></pre></div>
+<p><code>json.RawMessage</code> aus <code>encoding/json</code> funktioniert ebenfalls, aus demselben Grund: Beide schreiben das JSON, das sie halten, statt eines zitierten Strings davon.</p>
+<p><strong>Postgres und MySQL sind nicht betroffen und werden nicht verweigert.</strong> Ihr Server parst einen String in eine JSON-Spalte, und hat es immer getan.</p>
+<h3 id="wenn-ein-feld-auftaucht-das-die-tabelle-nicht-hat">Wenn ein Feld auftaucht, das die Tabelle nicht hat<a class="anchor" href="#wenn-ein-feld-auftaucht-das-die-tabelle-nicht-hat" aria-label="link">#</a></h3>
+<p>Ein Produzent fügt ein Feld hinzu, und der Load stoppt und nennt es: Die Zeile trägt eine Spalte, die nichts deklariert hat, und sie in ein Ziel zu schreiben, das sie nie erwähnt hat, würde sie still verwerfen. Diese Verweigerung ist standardmäßig richtig – aber bei einer Landing-Tabelle ist es die eine Änderung, die keinen Leser brechen kann, und das Ziel kann sie vornehmen:</p>
+<div class="code-block" data-code="postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}</code></pre></div>
+<p>Der Batch <strong>vervollständigt</strong> dann Ihre Deklaration: Ein Feld, das er trägt und die Deklaration nicht, wird zu einer Spalte, <code>STRING</code>, außer das Feld ist ein Objekt oder ein Array, dann <code>JSON</code>. Es ist dieselbe Regel und derselbe Code, mit dem ein Gateway <code>shape: columns</code> landet, beide erzeugen also dieselbe Tabelle.</p>
+<p>Zwei weitere Werte, und der Unterschied zwischen ihnen ist, woher die Spalte kommt:</p>
+<div class="table-wrap"><table><thead><tr><th><code>Evolve</code></th><th>fügt hinzu</th></tr></thead><tbody><tr><td><code>sdk.EvolveNone</code> (Standard)</td><td>nichts. Jeder Unterschied wird verweigert, beide Seiten werden genannt</td></tr><tr><td><code>sdk.EvolveAdditive</code></td><td>eine Spalte, die Ihre <strong>Deklaration</strong> hat und die Tabelle nicht</td></tr><tr><td><code>sdk.EvolveAdditiveFromPayload</code></td><td>das, plus eine Spalte, die der <strong>Batch</strong> trägt</td></tr></tbody></table></div>
+<p><strong>Immer nur <code>ADD COLUMN</code>.</strong> Eine Spalte, die aus der Quelle verschwindet, wird nicht mehr geschrieben und bleibt in der Tabelle; nichts wird umbenannt, nichts gelöscht, und kein Typ wird je verengt. Das ist keine Lücke – eine Landing-Tabelle ist Historie, und die eine Änderung, die niemanden brechen kann, der sie liest, ist eine neue Spalte, die NULL zulässt.</p>
+<p><strong>Es vervollständigt eine Deklaration; es ersetzt keine.</strong> Ohne Deklaration wird es vor dem Extract verweigert, unter Nennung der Tabelle: Eine ganze Tabelle aus einer Payload anzulegen ist eine andere Entscheidung, und das SDK trifft sie nicht. Beim Landing-Layout wäre der Schaden konkret – <code>brevis_received_at</code> käme als Text statt als Zeitstempel heraus, und <code>brevis_loaded_at</code> reist gar nicht in der Zeile, sodass die Ende-zu-Ende-Latenzmessung schlicht fehlte.</p>
+<p><strong>Das SDK leitet weiterhin nicht ab.</strong> Der Typ stammt aus der FORM des Feldes, nie aus seinem Wert: <code>21129</code> und <code>8.89</code> deklarieren beide <code>STRING</code>, sodass sich an dem Tag, an dem die Reihe eine ganze Zahl veröffentlicht, nichts ändert. Ein aus dem ersten Batch gelesener Typ ist der Fehler, den diese Regel verhindern soll.</p>
+<p><strong>Und ein <code>null</code> entscheidet nichts – bleibt aber in der Zeile.</strong> Das sind zwei verschiedene Fragen, und sie mit einer Antwort zu beantworten, kostete v0.77.0.</p>
+<p>Ein Null hat keine Form, das <strong>Schema</strong> hat also nichts zu lesen: Ein Feld, das als <code>null</code> ankommt, deklariert keine Spalte, und die Spalte erscheint ab dem ersten Datensatz, der einen WERT trägt, mit der Form, die dieser Wert hat. Andersherum würde ein Null mangels Antwort zu <code>STRING</code>, und das erste Array danach ließe das Ziel den ganzen Batch verweigern – ohne eine Migration von <code>STRING</code> zu <code>JSON</code>, die das rückgängig machte.</p>
+<p>Die <strong>Zeile</strong> trägt, was der Produzent gesendet hat, Null eingeschlossen. Sie muss: Eine Spalte, die Sie in <code>Target.Schema</code> DEKLARIERT haben und die leer ankam, muss in der Zeile sein, sonst liest die Prüfung, die die Deklaration dagegen vergleicht, eine Kette, die sie nicht mehr erzeugt – und verweigert den Load. Das tat v0.77.0, und 0.78.0 machte es rückgängig.</p>
+<p>Den Rest regelt das Ziel: Ein Feld, das in JEDEM Datensatz des Batches null ist und keine Spalte in der Tabelle hat, wird nirgends geschrieben und verweigert nichts. Ein Null und ein fehlendes Feld landen als dasselbe <code>NULL</code>, es geht also nichts verloren.</p>
+<p><strong>Ein Feld, das seine Form ändert, wird verweigert, nicht aufgenommen.</strong> Kam <code>valor</code> als Skalar an und machte eine Textspalte, ist ein später eintreffendes Objekt ein Wechsel der Art, und der Batch stoppt – mit dem eigenen Kommentar der Spalte in der Meldung, damit Sie sehen, dass niemand es deklariert hat. Benennen Sie die Spalte um, oder migrieren Sie sie selbst.</p>
+<p><strong>Bei BigQuery sind zwei Schreibweisen eines Namens eine Spalte.</strong> BigQuery faltet die Groß- und Kleinschreibung von Spalten: Ein Batch, der in einem Datensatz <code>nationalID</code> und in einem anderen <code>nationalId</code> trägt, deklariert <strong>eine</strong> Spalte, nicht zwei, und die Schreibweise, die gewinnt, ist die erste in sortierter Reihenfolge – <code>nationalID</code>, weil <code>D</code> vor <code>d</code> sortiert. Nicht die zuerst eingetroffene: Derselbe wiederholte Batch darf keine anders geschriebene Spalte erzeugen. Eine Deklaration, die <code>createdat</code> sagt, gegen eine Tabelle, deren Spalte <code>createdAt</code> heißt, ist ebenfalls dieselbe Spalte, sodass nichts hinzugefügt und nichts verweigert wird.</p>
+<p><strong>Ein Datensatz, der beide Schreibweisen trägt, wird unter Nennung beider verweigert.</strong> Das Ziel hat eine Spalte, und einer der beiden Werte würde still gewinnen, also stoppt der Load: Benennen Sie eine davon in <code>Transform</code> um, oder bilden Sie beide auf ein einziges Feld ab. Zwei <em>Datensätze</em>, die je eine Schreibweise tragen, sind in Ordnung – das ist gewöhnlicher CDC-Verkehr, und ihn zu landen ist, wofür diese Regel existiert.</p>
+<p><strong>Nichts wird migriert.</strong> Eine Tabelle, die bereits zwei Spalten hat, die sich nur in der Groß- und Kleinschreibung unterscheiden, behält beide; keine wird umbenannt und keine gelöscht.</p>
+<p><strong>Postgres und MySQL falten nicht.</strong> Ein gequoteter Bezeichner ist dort eigen, zwei Schreibweisen sind also zwei Spalten – mit Absicht, und derselbe Fetcher auf BigQuery gerichtet landet sie in einer.</p>
+<p><strong>Jede Spalte, die ein Batch angelegt hat, sagt das in der Tabelle.</strong> Ein Kommentar bei Postgres und MySQL, eine Feldbeschreibung bei BigQuery, mit dem Datum:</p>
+<div class="code-block" data-code="brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision</code></pre></div>
+<p>Sechs Monate später ist das das Einzige, was noch „Wann ist diese Spalte aufgetaucht, und wer hat das entschieden?“ beantwortet. Eine Logzeile ist bis dahin rotiert.</p>
+<p><strong>Es ist kein Modus.</strong> <code>Target.Schema</code> bleibt Ihre Deklaration dessen, was die Tabelle ist – das hier reicht Ihnen ein bereits existierendes Layout, statt Sie es tippen zu lassen. Nichts im SDK verhält sich anders, weil Sie es benutzt haben, und eine Pipeline, die ihr eigenes Schema deklariert, ist unberührt.</p>
+<p><strong>Schreiben Sie den Tabellennamen einmal.</strong> Er geht an <code>Landing</code>, weil er der zweite Slot der Id ist, und an das Ziel, weil dort die Zeilen hingehen. <strong>Nichts prüft, ob beide übereinstimmen</strong>: Der <code>Writer</code> kennt seine eigene Tabelle, legt sie aber nur über <code>Describe</code> offen, den Namen für Logs und Fehler, und eine darauf gebaute Id würde jede bereits geschriebene Id an einen Log-String binden. Bringen Sie beide aus dem Takt, landen die Zeilen korrekt, mit Ids, die für eine Tabelle geprägt sind, in die niemand schrieb. Sie sehen gut aus. Sie stimmen nicht mit denen des Gateways überein.</p>
+<p><strong>Drei Spalten sind <code>NULL</code>, und das ist die ehrliche Antwort.</strong> <code>brevis_stream</code> und <code>brevis_gateway</code> benennen Dinge, die eine Pipeline nicht hat – <code>brevis_gateway IS NULL</code> ist, wie man die Zeile einer Pipeline von der eines Gateways unterscheidet. <code>brevis_received_bytes</code> ist ebenfalls <code>NULL</code>: Die des Gateways zählt, was über die Leitung ankam, Envelope eingeschlossen, und das eigene JSON des Datensatzes ist etwa 30 % kleiner. Eine Spalte mit zwei Bedeutungen würde eine Summe über Zeilen beider Wege um den jeweiligen Anteil verfälschen. <code>length(data)</code> beantwortet die Version der Pipeline exakt.</p>
+<p><strong>Zusammenführen braucht <code>DedupKey</code>, und ohne ihn gibt es gar kein Merge.</strong> Jeder Treiber gleicht auf <code>ingestion_id</code> ab, sofern nichts anderes gesagt wird, und die Identitätsspalte dieses Layouts ist <code>brevis_ingestion_id</code>:</p>
+<div class="code-block" data-code="Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}</code></pre></div>
+<p><code>UniqueID</code> setzt die UNIQUE-Constraint auf die Id, und Postgres und MySQL verweigern beide das Zusammenführen ohne eine – <code>ON CONFLICT</code> hat nichts, worauf es abgleichen kann. Ein <code>DedupKey</code>, den Ihr <code>Schema</code> nicht deklariert, wird vor dem Start verweigert, weil ein Merge auf eine Spalte, die die Tabelle nicht hat, nichts trifft, und ein Merge, der nichts trifft, sieht genau so aus wie einer, der alles trifft, was er soll.</p>
+<p><strong>Pro Ziel, und heute kann MySQL es nicht.</strong> BigQuery hat keine Unique-Constraints und verweigert die Deklaration rundheraus. Das <code>string</code> von MySQL ist <code>LONGTEXT</code>, und MySQL indiziert ein <code>LONGTEXT</code> nicht ohne Länge – eine zusammenführende Landing-Tabelle lässt sich dort also gar nicht <em>anlegen</em>:</p>
+<div class="code-block" data-code="Error 1170 (42000): BLOB/TEXT column &#x27;brevis_ingestion_id&#x27; used in key
+specification without a key length"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length</code></pre></div>
+<p>Postgres funktioniert, weil sein <code>string</code> <code>TEXT</code> ist. Landen Sie bei MySQL mit <code>DedupNone</code> und lösen Sie die aktuelle Version nachgelagert auf, oder legen Sie die Tabelle selbst mit <code>CreateSQL</code> und einer Id-Spalte mit Länge an.</p>
+<p><strong>Die Id ist inhaltsadressiert.</strong> Derselbe Datensatz erzeugt über beide Wege dieselbe Id, und ein geänderter Datensatz erzeugt eine neue – wodurch ein erneuter Lauf ein No-op statt eines Duplikats ist.</p>
+<h2 id="referenz">Referenz<a class="anchor" href="#referenz" aria-label="link">#</a></h2>
+<ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> – die vollständige API</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> – zwölf lauffähige Beispiele</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> – Historie Version für Version</li></ul>
+
+      <nav class="pagers" aria-label="Seiten">
+        <a class="pager pager-prev" href="/de/docs/runtime/"><span>Zurück</span><strong>Step-Laufzeitumgebung</strong></a>
+        <a class="pager pager-next" href="/de/docs/libraries/"><span>Weiter</span><strong>Client-Bibliotheken</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/de/docs/sdk.md" target="_blank" rel="noopener">Diese Seite auf GitHub bearbeiten</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="Auf dieser Seite">
+      <p class="toc-t">Auf dieser Seite</p>
+      <ul><li class="toc-2"><a href="#drei-schritte">Drei Schritte</a></li><li class="toc-2"><a href="#der-treiber-ist-ein-wert-keine-einstellung">Der Treiber ist ein Wert, keine Einstellung</a></li><li class="toc-2"><a href="#quellen-und-ziele">Quellen und Ziele</a></li><li class="toc-3"><a href="#an-ein-topic-veröffentlichen">An ein Topic veröffentlichen</a></li><li class="toc-2"><a href="#ein-ganzer-fetcher">Ein ganzer Fetcher</a></li><li class="toc-2"><a href="#der-run-kontext">Der Run-Kontext</a></li><li class="toc-3"><a href="#die-uhr">Die Uhr</a></li><li class="toc-2"><a href="#nicht-mit-den-client-bibliotheken-zu-verwechseln">Nicht mit den Client-Bibliotheken zu verwechseln</a></li><li class="toc-2"><a href="#parameter-die-die-pipeline-aufbauen">Parameter, die die Pipeline aufbauen</a></li><li class="toc-2"><a href="#das-landing-layout">Das Landing-Layout</a></li><li class="toc-3"><a href="#zwei-formen-der-datensatz-als-ganzes-oder-eine-spalte-pro-feld">Zwei Formen: der Datensatz als Ganzes oder eine Spalte pro Feld</a></li><li class="toc-3"><a href="#das-präfix-brevis-können-sie-ändern">Das Präfix brevis_ können Sie ändern</a></li><li class="toc-3"><a href="#eine-spalte-pro-verschachteltem-feld">Eine Spalte pro verschachteltem Feld</a></li><li class="toc-3"><a href="#text-der-bereits-json-ist">Text, der bereits JSON ist</a></li><li class="toc-3"><a href="#wenn-ein-feld-auftaucht-das-die-tabelle-nicht-hat">Wenn ein Feld auftaucht, das die Tabelle nicht hat</a></li><li class="toc-2"><a href="#referenz">Referenz</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/de/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Philosophie, angewandt auf Dateninfrastruktur.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>Projekt</h2>
+        <ul>
+          <li><a href="/de/#ecossistema">Ökosystem</a></li>
+          <li><a href="/de/docs/philosophy/">Prinzipien</a></li>
+          <li><a href="/de/docs/introduction/#offener-code-wählen-sie-wie-sie-mitmachen">Open Source</a></li>
+          <li><a href="/de/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>Code</h2>
+        <ul>
+          <li><a href="/de/docs/">Dokumentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repository</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Ein Open-Source-Projekt von <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · in Go gebaut · Go-Gopher von Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

@@ -1,56 +1,55 @@
 # Console
 
-> A interface web do Core: o que está rodando, o que vai rodar, e o que aconteceu com cada execução.
+> The Core's web interface: what is running, what will run, and what happened to each run.
 
-*https://brevis.sh/docs/console/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/console/ · brevis.sh docs (en-US)*
 
 ---
 
-A interface vem no binário — não é um serviço à parte para instalar e manter. Taxa de sucesso, duração média, a fila, o histórico de tentativas e a agenda das próximas execuções.
+The interface ships in the binary — not a separate service to install and keep alive. Success rate, average duration, the queue, the attempt history and the schedule of what comes next.
 
-O console sobe com `brevis serve`, na mesma porta da API HTTP
-(`BREVIS_HTTP_ADDR`, `:8080` por padrão). No
-[Quickstart](/docs/quickstart/index.md) ele abre em `localhost:8080`.
+The console comes up with `brevis serve`, on the same port as the HTTP API
+(`BREVIS_HTTP_ADDR`, `:8080` by default). In the [Quickstart](/docs/quickstart/index.md) it opens at `localhost:8080`.
 
-As telas abaixo são recriadas em SVG a partir do console, com dados de
-exemplo — nunca capturas: o console de verdade opera dados de clientes em produção.
+The screens below are recreated in SVG from the console, with sample data —
+never screenshots: the real console operates customer data in production.
 
-## Visão geral
+## Overview
 
-![O painel do Brevis na tela de visão geral: taxa de sucesso de 94,2% em 344 execuções, gráfico de execuções por hora com a duração média, anel de distribuição, o que está em progresso e as próximas execuções agendadas.](/assets/console.svg)
+![The Brevis console on the overview screen: a 94.2 per cent success rate over 344 runs, a bar chart of runs per hour with average duration, a distribution ring, what is in progress, and the next scheduled runs.](/assets/console.svg)
 
-Visão geral com métricas e gráficos. Taxa de sucesso, duração média, o que está em progresso e as próximas execuções agendadas, numa tela.
+An overview with metrics and charts. Success rate, average duration, what is in progress and the next scheduled runs, on one screen.
 
 ## Workflows
 
-![A lista de workflows: busca, filtros por estado e por tag, e doze workflows com o botão de pausa, a expressão cron, a próxima e a última execução, tags e um botão para disparar cada um.](/assets/console-workflows.svg)
+![The workflow list: search, filters by state and by tag, and twelve workflows with a pause toggle, the cron expression, the next and last run, tags, and a button to run each one now.](/assets/console-workflows.svg)
 
-Lista de workflows com busca, filtros, pausa e disparo. Cada linha traz o cron, a próxima e a última execução e as tags.
+A workflow list with search, filters, pause and run. Each row carries the cron, the next and the last run, and the tags.
 
-## Um workflow
+## One workflow
 
-![A página de um workflow: os quatro passos, as três dependências, o cron e as tags; um formulário para executar com parâmetros; 96,1% de sucesso em 176 execuções; o DAG com o estado de cada passo; e um calendário de um ano em que cada quadrado é um dia, com a cor do pior resultado daquele dia.](/assets/console-workflow.svg)
+![One workflow's page: its four steps, three dependencies, cron and tags; a form to run it with parameters; a 96.1 per cent success rate over 176 runs; the DAG with each step's state; and a calendar of a year where each square is a day, coloured by that day's worst outcome.](/assets/console-workflow.svg)
 
-Os passos e as dependências, um formulário para executar com parâmetros, o DAG com o estado de cada passo e um calendário de um ano, em que cada dia tem a cor do pior resultado dele.
+The steps and dependencies, a form to run with parameters, the DAG with each step's state, and a year calendar where each day takes the colour of its worst result.
 
-## Execuções
+## Runs
 
-![O histórico de execuções: 1.284 runs com o estado, o workflow, o disparo, o slot a que pertencem, a duração e quando foram criados. Alguns mostram em que tentativa tiveram sucesso.](/assets/console-runs.svg)
+![The run history: 1,284 runs with their state, workflow, trigger, the slot they belong to, how long each took and when it was created. Some show which attempt succeeded.](/assets/console-runs.svg)
 
-Histórico de execuções, com a tentativa de cada uma. Estado, workflow, disparo, o slot a que a execução pertence, duração e quando foi criada.
+Run history, with each one's attempt. State, workflow, trigger, the slot the run belongs to, duration and when it was created.
 
-## Uma execução
+## One run
 
-![Uma execução concluída: o estado, o disparo e o slot; o grafo com o comando, a imagem e a duração de cada passo; os nove auto params que o engine calcula para toda execução — o relógio a ler em vez de now(), a data da partição, o atraso da tentativa e a janela que ela cobre; e a saída de cada passo.](/assets/console-run.svg)
+![A finished run: its state, trigger and slot; the graph with each step's command, image and duration; the nine auto params the engine works out for every run — the clock to read instead of now(), the partition date, how late the attempt started and the window it covers; and each step's output.](/assets/console-run.svg)
 
-A DAG de um run ao vivo, e os auto params que o engine calculou para ele. O grafo com o comando, a imagem e a duração de cada passo, e a saída de cada um.
+A run's DAG live, and the auto params the engine worked out for it. The graph with each step's command, image and duration, and each step's output.
 
-## Projetos
+## Projects
 
-![Dois projetos, analytics e platform, cada um dando namespace aos seus workflows — os dois podem ter um daily_ingest sem colidir.](/assets/console-projects.svg)
+![Two projects, analytics and platform, each namespacing its own workflows — both can have a daily_ingest without colliding.](/assets/console-projects.svg)
 
-Projetos, para dois times não colidirem no mesmo nome. Cada projeto dá namespace aos seus workflows: dois podem ter um `daily_ingest`.
+Projects, so two teams do not collide on one name. Each project namespaces its workflows: two can each have a `daily_ingest`.
 
-## Vem no binário
+## It ships in the binary
 
-Fontes e bundles servidos do binário — funciona sem internet.
+Fonts and bundles served from the binary — works with no internet.

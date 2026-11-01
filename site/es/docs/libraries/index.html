@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es" data-docs="/es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Bibliotecas cliente — Documentación</title>
+<meta name="description" content="Cómo un step en cualquier lenguaje lee el contexto y el reloj del run, y qué lenguajes ya tienen una biblioteca.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/es/docs/libraries/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/es/docs/libraries/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/libraries/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/libraries/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/libraries/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/libraries/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/libraries/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/libraries/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/libraries/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/libraries/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/libraries/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/libraries/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/libraries/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="es">
+<meta property="og:title" content="Bibliotecas cliente — Documentación">
+<meta property="og:description" content="Cómo un step en cualquier lenguaje lee el contexto y el reloj del run, y qué lenguajes ya tienen una biblioteca.">
+<meta property="og:url" content="https://brevis.sh/es/docs/libraries/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Bibliotecas cliente — Documentación">
+<meta name="twitter:description" content="Cómo un step en cualquier lenguaje lee el contexto y el reloj del run, y qué lenguajes ya tienen una biblioteca.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Bibliotecas cliente",
+  "description": "Cómo un step en cualquier lenguaje lee el contexto y el reloj del run, y qué lenguajes ya tienen una biblioteca.",
+  "inLanguage": "es",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Saltar al contenido</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/es/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Navegación principal">
+      <a href="/es/#ecossistema">Ecosistema</a>
+      <a href="/es/docs/">Documentación</a>
+      <details class="lang-dd"><summary aria-label="Idioma: Español"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Español</span></summary><ul><li><a href="/docs/libraries/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/libraries/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/libraries/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/libraries/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/libraries/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/libraries/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/libraries/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/libraries/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/libraries/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/libraries/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/libraries/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Explorar el código abierto
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Menú de documentación
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Buscar en la documentación</label>
+        <input type="search" id="q" placeholder="Buscar…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Sin resultados" hidden></div>
+      <nav class="side-nav" aria-label="Documentación">
+        <p class="side-group">Primeros pasos</p><ul class="side-list"><li><a href="/es/docs/ecosystem/">Ecosistema</a></li><li><a href="/es/docs/integrations/">Integraciones</a></li><li><a href="/es/docs/introduction/">Introducción</a></li><li><a href="/es/docs/installation/">Instalación</a></li><li><a href="/es/docs/quickstart/">Inicio rápido</a></li></ul><p class="side-group">Conceptos</p><ul class="side-list"><li><a href="/es/docs/core/">Core</a></li><li><a href="/es/docs/workflows/">Workflows</a></li><li><a href="/es/docs/scheduler-and-queue/">Scheduler y cola</a></li><li><a href="/es/docs/pod-per-step/">Pod por step</a></li><li><a href="/es/docs/context/">Contexto entre steps</a></li></ul><p class="side-group">Referencia</p><ul class="side-list"><li><a href="/es/docs/cli/">CLI</a></li><li><a href="/es/docs/parameters/">Parámetros</a></li><li><a href="/es/docs/configuration/">Configuración</a></li><li><a href="/es/docs/runtime/">Runtime del step</a></li></ul><p class="side-group">SDK y bibliotecas</p><ul class="side-list"><li><a href="/es/docs/sdk/">SDK de Go</a></li><li><a href="/es/docs/libraries/" aria-current="page">Bibliotecas cliente</a></li><li><a href="/es/docs/python/">Python</a></li></ul><p class="side-group">Operación</p><ul class="side-list"><li><a href="/es/docs/console/">Console</a></li><li><a href="/es/docs/kubernetes/">Kubernetes</a></li><li><a href="/es/docs/observability/">Observabilidad</a></li><li><a href="/es/docs/white-label/">White label</a></li></ul><p class="side-group">Ingesta</p><ul class="side-list"><li><a href="/es/docs/ingestion/">Ingesta</a></li><li><a href="/es/docs/ingestion-sinks/">Sinks de ingesta</a></li><li><a href="/es/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modelado en SQL</p><ul class="side-list"><li><a href="/es/docs/sql/">SQL</a></li></ul><p class="side-group">El proyecto</p><ul class="side-list"><li><a href="/es/docs/philosophy/">Filosofía</a></li><li><a href="/es/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Documentación</p>
+      <h1>Bibliotecas cliente</h1>
+      <p class="doc-desc">Cómo un step en cualquier lenguaje lee el contexto y el reloj del run, y qué lenguajes ya tienen una biblioteca.</p>
+      <p>Un step necesita dos cosas del orquestador: <strong>lo que publicó el step anterior</strong> y <strong>qué reloj debe leer este run</strong>. Las bibliotecas cliente entregan esas dos, y nada más.</p>
+<h2 id="el-contrato-viene-antes-que-las-bibliotecas">El contrato viene antes que las bibliotecas<a class="anchor" href="#el-contrato-viene-antes-que-las-bibliotecas" aria-label="link">#</a></h2>
+<p>Lo que el engine define son <strong>dos variables de entorno y un archivo</strong>:</p>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>BREVIS_INPUT</code></td><td><code>{"&lt;step id&gt;": {…}}</code> — lo que publicaron las dependencias de este step</td></tr><tr><td><code>BREVIS_OUTPUT</code></td><td>una ruta donde escribir <strong>un</strong> objeto JSON</td></tr></tbody></table></div>
+<p>Más las variables del run y los parámetros automáticos, todos de solo lectura: <code>BREVIS_RUN_*</code> y <code>BREVIS_AUTO_*</code>. En Kubernetes, <code>BREVIS_OUTPUT</code> es <code>/dev/termination-log</code>, que el engine ya lee para obtener el código de salida.</p>
+<p>Así que <strong>no hay llamada a una API, ni token, ni puerto</strong>. Un step en cualquier lenguaje participa con un parseo de JSON y una escritura de archivo:</p>
+<div class="code-block" data-code="window=$(jq -r &#x27;.extract.watermark&#x27; &lt;&lt;&lt; &quot;$BREVIS_INPUT&quot;)
+./publish --until &quot;$window&quot;
+jq -n --arg n &quot;$(date -Is)&quot; &#x27;{published_at: $n}&#x27; &gt; &quot;$BREVIS_OUTPUT&quot;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>window=$(jq <span class="t-n">-r</span> '.extract.watermark' &lt;&lt;&lt; "$BREVIS_INPUT")
+./publish <span class="t-n">--until</span> "$window"
+jq <span class="t-n">-n</span> <span class="t-n">--arg</span> n "$(date <span class="t-n">-Is</span>)" '{published_at: $n}' &gt; "$BREVIS_OUTPUT"</code></pre></div>
+<p>Una biblioteca aquí no abre ninguna capacidad nueva: ahorra la validación, el manejo de valores ausentes y los mensajes de error que conviene no reescribir.</p>
+<h2 id="cuales-existen">Cuáles existen<a class="anchor" href="#cuales-existen" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>lenguaje</th><th></th><th></th></tr></thead><tbody><tr><td><strong>Python</strong></td><td><code>pip install brevis</code></td><td><a href="/es/docs/python/">disponible</a> — <code>0.2.1</code> en PyPI</td></tr><tr><td><strong>Go</strong></td><td><code>brevis/sdk/context</code></td><td>disponible, dentro del módulo del SDK</td></tr><tr><td><strong>Node.js</strong></td><td>—</td><td>planificada</td></tr><tr><td><strong>Rust</strong></td><td>—</td><td>planificada</td></tr><tr><td>cualquier otro</td><td>las variables de arriba</td><td>hoy</td></tr></tbody></table></div>
+<aside class="admon admon-note"><p class="admon-t">Go no vive en `lib/`</p><p>El soporte de contexto de Go vive en el módulo <code>sdk/</code> que el proyecto ya publica, como un subpaquete que se poda a nada para quien no lo importa. Un <code>lib/go-context</code> implicaría un segundo módulo de Go para un paquete que ya tiene uno.</p>
+<p>La regla es <strong>un directorio por lenguaje que aún no tiene un artefacto publicado</strong>.</p></aside>
+<p>Cada biblioteca es un artefacto separado con su propia versión y tag: una corrección en el cliente de Python no obliga a una release del engine.</p>
+<h2 id="que-son-y-que-no-son">Qué son, y qué no son<a class="anchor" href="#que-son-y-que-no-son" aria-label="link">#</a></h2>
+<p>Son <strong>clientes delgados sobre el contrato</strong>, no ports del SDK de Go.</p>
+<p>Un port de la maquinaria ETL del SDK —drivers, paginación, checkpoints, ids de ingesta— no pertenece aquí y probablemente a ningún lado: todos los lenguajes a los que apuntaría ya tienen mejores herramientas para eso, y el trabajo de Brevis es ejecutarlas. Por eso la biblioteca de Python existe: para que un equipo pueda usar pandas, Polars o dbt y aun así obtener lo único para lo que sirve un orquestador.</p>
+<h2 id="metricas">Métricas<a class="anchor" href="#metricas" aria-label="link">#</a></h2>
+<p>La biblioteca <strong>emite</strong> métricas, y el engine las expone:</p>
+<div class="code-block" data-code="from brevis import metrics
+
+metrics.set(&quot;rows_loaded&quot;, 48213)      # a gauge: the last value wins
+metrics.inc(&quot;vendor_rejected_total&quot;)   # a counter: it adds up"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> metrics
+
+metrics.set("rows_loaded", 48213)      <span class="t-c"># a gauge: the last value wins</span>
+metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up</span></code></pre></div>
+<p>Salen del <code>/metrics</code> <strong>del engine</strong>, en el puerto del scheduler, etiquetadas con el workflow y el step — ver <a href="/es/docs/observability/">Observabilidad</a>.</p>
+<p><strong>Esto no abre un puerto, y no podría.</strong> Un step corre en su propio pod durante cuarenta segundos y termina; un puerto que abriera nunca sería consultado, o lo sería una vez por suerte. Así que la línea va a stdout —el mismo canal que el engine ya lee para dibujar las fases de un pipeline— y el engine la registra. Nada que instalar, nada que operar, y las etiquetas son las del engine porque un step no puede conocer el slug de su propio workflow.</p>
+<p>Los detalles de la API están en <a href="/es/docs/python/#metricas-que-solo-tu-pipeline-conoce">Python</a>.</p>
+<h2 id="escribir-un-cliente-para-otro-lenguaje">Escribir un cliente para otro lenguaje<a class="anchor" href="#escribir-un-cliente-para-otro-lenguaje" aria-label="link">#</a></h2>
+<p>Si llegas a Node.js o Rust antes que nosotros, esto es lo que un cliente tiene que hacer bien, y lo que la implementación de Python ya aprendió por las malas:</p>
+<ol><li><strong>Claves calificadas por step.</strong> <code>get("bucket")</code> sin step debe rechazarse. Dos steps pueden publicar <code>bucket</code>, y elegir uno por búsqueda es precedencia por accidente.</li><li><strong>Combinar las escrituras.</strong> Dos llamadas con claves distintas conservan ambas; la misma clave dos veces conserva la última.</li><li><strong>Volcar solo al salir el proceso.</strong> Un step que muere de golpe no publica nada, lo cual es correcto, porque la salida de un step que falló describía trabajo que no terminó.</li><li><strong>Rechazar por encima de 4096 bytes.</strong> La plataforma <strong>trunca</strong> en lugar de rechazar, y un objeto cortado por la mitad llega como JSON inválido al siguiente step.</li><li><strong>Funcionar fuera de Brevis.</strong> Sin <code>BREVIS_INPUT</code>, <code>get()</code> devuelve el valor por defecto y <code>set()</code> acepta y descarta, sin lanzar excepción: un script que no puede ejecutarse a mano no puede desarrollarse.</li></ol>
+<h2 id="siguientes-pasos">Siguientes pasos<a class="anchor" href="#siguientes-pasos" aria-label="link">#</a></h2>
+<ul><li><a href="/es/docs/python/">Python</a> — la API completa</li><li><a href="/es/docs/context/">Contexto entre steps</a> — el concepto y el techo de 4096 bytes</li><li><a href="/es/docs/parameters/">Parámetros</a> — los declarados y los automáticos</li></ul>
+
+      <nav class="pagers" aria-label="Páginas">
+        <a class="pager pager-prev" href="/es/docs/sdk/"><span>Anterior</span><strong>SDK de Go</strong></a>
+        <a class="pager pager-next" href="/es/docs/python/"><span>Siguiente</span><strong>Python</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/es/docs/libraries.md" target="_blank" rel="noopener">Editar esta página en GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="En esta página">
+      <p class="toc-t">En esta página</p>
+      <ul><li class="toc-2"><a href="#el-contrato-viene-antes-que-las-bibliotecas">El contrato viene antes que las bibliotecas</a></li><li class="toc-2"><a href="#cuales-existen">Cuáles existen</a></li><li class="toc-2"><a href="#que-son-y-que-no-son">Qué son, y qué no son</a></li><li class="toc-2"><a href="#metricas">Métricas</a></li><li class="toc-2"><a href="#escribir-un-cliente-para-otro-lenguaje">Escribir un cliente para otro lenguaje</a></li><li class="toc-2"><a href="#siguientes-pasos">Siguientes pasos</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/es/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Filosofía aplicada a la infraestructura de datos.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>proyecto</h2>
+        <ul>
+          <li><a href="/es/#ecossistema">Ecosistema</a></li>
+          <li><a href="/es/docs/philosophy/">Principios</a></li>
+          <li><a href="/es/docs/introduction/#codigo-abierto-elige-como-participar">Código abierto</a></li>
+          <li><a href="/es/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>código</h2>
+        <ul>
+          <li><a href="/es/docs/">Documentación</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repositorio</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Un proyecto de código abierto de <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · construido en Go · Go gopher por Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

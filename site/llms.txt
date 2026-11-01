@@ -31,61 +31,79 @@ The fourth piece, also versioned on its own, is **SQL**
 built into tables and views in the order their references imply, on Postgres
 or BigQuery — `brevis-sql compile`, `graph`, `build` and `test`. No templating.
 
-The same documentation in Portuguese: https://brevis.sh/docs/ (append `index.md` likewise).
+The same documentation in Spanish: https://brevis.sh/es/docs/ (append `index.md` likewise).
+
+The same documentation in Portuguese: https://brevis.sh/pt/docs/ (append `index.md` likewise).
+
+The same documentation in French: https://brevis.sh/fr/docs/ (append `index.md` likewise).
+
+The same documentation in German: https://brevis.sh/de/docs/ (append `index.md` likewise).
+
+The same documentation in Simplified Chinese: https://brevis.sh/zh/docs/ (append `index.md` likewise).
+
+The same documentation in Japanese: https://brevis.sh/ja/docs/ (append `index.md` likewise).
+
+The same documentation in Russian: https://brevis.sh/ru/docs/ (append `index.md` likewise).
+
+The same documentation in Korean: https://brevis.sh/ko/docs/ (append `index.md` likewise).
+
+The same documentation in Hindi: https://brevis.sh/hi/docs/ (append `index.md` likewise).
+
+The same documentation in Indonesian: https://brevis.sh/id/docs/ (append `index.md` likewise).
 
 ## Start here
 
-- [Ecosystem](https://brevis.sh/en/docs/ecosystem/index.md): The four brevis.sh pieces, what each one does, and where the data goes through.
-- [Integrations](https://brevis.sh/en/docs/integrations/index.md): What connects to what: where data comes from, where it lands, where it is modelled and where it all runs.
-- [Introduction](https://brevis.sh/en/docs/introduction/index.md): What brevis.sh is, the problem it solves, and when it is not the right choice.
-- [Installation](https://brevis.sh/en/docs/installation/index.md): How to get the binary, what it requires, and how to confirm the install is correct.
-- [Quickstart](https://brevis.sh/en/docs/quickstart/index.md): From nothing to a live DAG in the interface, in four steps.
+- [Ecosystem](https://brevis.sh/docs/ecosystem/index.md): The four brevis.sh pieces, what each one does, and where the data goes through.
+- [Integrations](https://brevis.sh/docs/integrations/index.md): What connects to what: where data comes from, where it lands, where it is modelled and where it all runs.
+- [Introduction](https://brevis.sh/docs/introduction/index.md): What brevis.sh is, the problem it solves, and when it is not the right choice.
+- [Installation](https://brevis.sh/docs/installation/index.md): How to get the binary, what it requires, and how to confirm the install is correct.
+- [Quickstart](https://brevis.sh/docs/quickstart/index.md): From nothing to a live DAG in the interface, in four steps.
 
 ## Building a workflow
 
-- [Workflows](https://brevis.sh/en/docs/workflows/index.md): The complete YAML format — steps, dependencies, images, resources and schedule.
-- [Parameters](https://brevis.sh/en/docs/parameters/index.md): What changes between two runs of the same workflow, without editing the file.
-- [Step runtime](https://brevis.sh/en/docs/runtime/index.md): What a step declares about the language and tools it drives — and why you rarely need to.
-- [Context between steps](https://brevis.sh/en/docs/context/index.md): What one step tells the next — two environment variables and a file.
+- [Workflows](https://brevis.sh/docs/workflows/index.md): The complete YAML format — steps, dependencies, images, resources and schedule.
+- [Parameters](https://brevis.sh/docs/parameters/index.md): What changes between two runs of the same workflow, without editing the file.
+- [Step runtime](https://brevis.sh/docs/runtime/index.md): What a step declares about the language and tools it drives — and why you rarely need to.
+- [Context between steps](https://brevis.sh/docs/context/index.md): What one step tells the next — two environment variables and a file.
 
 ## How it executes
 
-- [Core](https://brevis.sh/en/docs/core/index.md): The orchestrator: schedules runs, keeps the queue in Postgres and starts one pod per step — and never touches the data.
-- [Scheduler and queue](https://brevis.sh/en/docs/scheduler-and-queue/index.md): Two independent loops — who creates runs, who executes them, and why they are separate.
-- [Pod per step](https://brevis.sh/en/docs/pod-per-step/index.md): Why each step runs in its own pod, and what that changes in cost and isolation.
+- [Core](https://brevis.sh/docs/core/index.md): The orchestrator: schedules runs, keeps the queue in Postgres and starts one pod per step — and never touches the data.
+- [Scheduler and queue](https://brevis.sh/docs/scheduler-and-queue/index.md): Two independent loops — who creates runs, who executes them, and why they are separate.
+- [Pod per step](https://brevis.sh/docs/pod-per-step/index.md): Why each step runs in its own pod, and what that changes in cost and isolation.
 
 ## Command line and configuration
 
-- [CLI](https://brevis.sh/en/docs/cli/index.md): The engine's twelve subcommands, with flags, arguments and what each one requires.
-- [Configuration](https://brevis.sh/en/docs/configuration/index.md): Every environment variable, with default, format and what happens when it is missing.
+- [CLI](https://brevis.sh/docs/cli/index.md): The engine's twelve subcommands, with flags, arguments and what each one requires.
+- [Configuration](https://brevis.sh/docs/configuration/index.md): Every environment variable, with default, format and what happens when it is missing.
 
 ## Writing a step in code
 
-- [Go SDK](https://brevis.sh/en/docs/sdk/index.md): Writing a fetcher — extract from a source, transform, and load into a destination.
-- [Client libraries](https://brevis.sh/en/docs/libraries/index.md): How a step in any language reads the context and the run's clock — and which languages already have a library.
-- [Python](https://brevis.sh/en/docs/python/index.md): pip install brevis — context between steps, the run's clock and your pipeline's own metrics, with no dependencies at all.
+- [Go SDK](https://brevis.sh/docs/sdk/index.md): Writing a fetcher — extract from a source, transform, and load into a destination.
+- [Client libraries](https://brevis.sh/docs/libraries/index.md): How a step in any language reads the context and the run's clock — and which languages already have a library.
+- [Python](https://brevis.sh/docs/python/index.md): pip install brevis — context between steps, the run's clock and your pipeline's own metrics, with no dependencies at all.
 
 ## Receiving data over HTTP
 
-- [Ingestion](https://brevis.sh/en/docs/ingestion/index.md): An HTTP endpoint that lands data — validate, identify, batch, deliver. Its own image, its own version.
-- [Ingestion sinks](https://brevis.sh/en/docs/ingestion-sinks/index.md): The six destinations, how each database writes a record, and why the image carries only what you use.
-- [Benchmarks](https://brevis.sh/en/docs/benchmarks/index.md): How we measure the gateway, what the numbers say, and the three witnesses that have to agree.
+- [Ingestion](https://brevis.sh/docs/ingestion/index.md): An HTTP endpoint that lands data — validate, identify, batch, deliver. Its own image, its own version.
+- [Ingestion sinks](https://brevis.sh/docs/ingestion-sinks/index.md): The six destinations, how each database writes a record, and why the image carries only what you use.
+- [Benchmarks](https://brevis.sh/docs/benchmarks/index.md): How we measure the gateway, what the numbers say, and the three witnesses that have to agree.
 
 ## Modelling in SQL
 
-- [SQL](https://brevis.sh/en/docs/sql/index.md): Plain .sql files become tables and views, in dependency order — as a workflow step or on their own.
+- [SQL](https://brevis.sh/docs/sql/index.md): Plain .sql files become tables and views, in dependency order — as a workflow step or on their own.
 
 ## Running it in production
 
-- [Console](https://brevis.sh/en/docs/console/index.md): The Core's web interface: what is running, what will run, and what happened to each run.
-- [Kubernetes](https://brevis.sh/en/docs/kubernetes/index.md): How to deploy the engine, with what permissions, and what to check afterwards.
-- [Observability](https://brevis.sh/en/docs/observability/index.md): Prometheus metrics from both processes, what to watch, and what is deliberately absent.
-- [White label](https://brevis.sh/en/docs/white-label/index.md): Changing the interface's title, motto, logo and palette through one YAML file.
+- [Console](https://brevis.sh/docs/console/index.md): The Core's web interface: what is running, what will run, and what happened to each run.
+- [Kubernetes](https://brevis.sh/docs/kubernetes/index.md): How to deploy the engine, with what permissions, and what to check afterwards.
+- [Observability](https://brevis.sh/docs/observability/index.md): Prometheus metrics from both processes, what to watch, and what is deliberately absent.
+- [White label](https://brevis.sh/docs/white-label/index.md): Changing the interface's title, motto, logo and palette through one YAML file.
 
 ## The project
 
-- [Philosophy](https://brevis.sh/en/docs/philosophy/index.md): Where brevis.sh comes from: Seneca, Aretê Academy, and what that decides in the code.
-- [FAQ](https://brevis.sh/en/docs/faq/index.md): The questions that come first, with short answers and where to go next.
+- [Philosophy](https://brevis.sh/docs/philosophy/index.md): Where brevis.sh comes from: Seneca, Aretê Academy, and what that decides in the code.
+- [FAQ](https://brevis.sh/docs/faq/index.md): The questions that come first, with short answers and where to go next.
 
 ## Optional
 

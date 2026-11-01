@@ -1,27 +1,27 @@
-# SDK em Go
+# Go SDK
 
-> Escrever um fetcher — extrair de uma origem, transformar e carregar num destino.
+> Writing a fetcher — extract from a source, transform, and load into a destination.
 
-*https://brevis.sh/docs/sdk/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/sdk/ · brevis.sh docs (en-US)*
 
 ---
 
-Quando o trabalho de um passo é **buscar dados e carregá-los em algum lugar**, o
-SDK em Go entrega o fetcher inteiro em poucas linhas. Ele é um módulo à parte,
-versionado independentemente do engine.
+When a step's job is to **fetch data and load it somewhere**, the Go SDK gives
+you the whole fetcher in a few lines. It is a separate module, versioned
+independently from the engine.
 
 ```bash
 go get github.com/AreteAcademy/brevis/sdk@latest
 ```
 
-Requer Go 1.23 ou mais novo — o SDK entrega linhas como `iter.Seq2`.
+Requires Go 1.23 or newer — the SDK streams rows as `iter.Seq2`.
 
-:::warning Não use a `v0.1.0`
-Ela saiu com um `go.mod` apontando para uma revisão que não existe, e o proxy de
-módulos do Go é imutável. Comece na `v0.1.1`.
+:::warning Do not use `v0.1.0`
+It shipped a `go.mod` pinning a revision that does not exist, and the Go module
+proxy is immutable. Start at `v0.1.1`.
 :::
 
-## Três passos
+## Three steps
 
 ```go
 import (
@@ -30,80 +30,81 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/to/bigquery"
 )
 
-dados, err := sdk.Extract(ctx, sdk.Source{
-	From: from.HTTP{URL: "https://api.exemplo.com/v1/eventos"},
+rows, err := sdk.Extract(ctx, sdk.Source{
+	From: from.HTTP{URL: "https://api.example.com/v1/events"},
 })
 
-dados = sdk.Transform(dados, sdk.Accept("id", "criado_em", "valor"))
+rows = sdk.Transform(rows, sdk.Accept("id", "created_at", "amount"))
 
-res, err := sdk.Load(ctx, dados, sdk.Target{
-	To:      bigquery.Table{Dataset: "bronze", Name: "eventos"},
-	Columns: []string{"id", "criado_em", "valor"},
+res, err := sdk.Load(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: "bronze", Name: "events"},
+	Columns: []string{"id", "created_at", "amount"},
 })
 ```
 
-`Extract` lê, `Transform` reformata, `Load` escreve. Cada um recebe e devolve
-uma sequência — nada é materializado em memória de uma vez.
+`Extract` reads, `Transform` reshapes, `Load` writes. Each takes and returns a
+sequence — nothing is materialised in memory all at once.
 
-![O fluxo do SDK: sdk.Extract lê de uma API HTTP com from.HTTP, sdk.Transform mantém os campos aceitos e sdk.Load grava as linhas numa tabela do BigQuery. As três chamadas rodam dentro da sua própria etapa.](/assets/flow-sdk.svg)
+![The SDK flow: sdk.Extract reads from an HTTP API with from.HTTP, sdk.Transform keeps the accepted fields and sdk.Load writes the rows to a BigQuery table. The three calls run inside your own step.](/assets/flow-sdk.svg)
 
-## O driver é um valor, não uma configuração
+## The driver is a value, not a setting
 
-`from.HTTP` carrega tudo que uma origem HTTP precisa: URL, cabeçalhos, retry,
-paginação e o que uma resposta significa. `from.Files` carrega um caminho e um
-formato. Nenhum precisa abrir espaço para os campos do outro, então não existe
-uma struct de origem com quarenta opções das quais cada driver lê seis.
+`from.HTTP` carries everything an HTTP source needs: URL, headers, retry,
+pagination, and what a response means. `from.Files` carries a path and a format.
+Neither has to make room for the other's fields, so there is no source struct
+collecting forty options of which each driver reads six.
 
-Isso também decide **o que você compila**. Go poda dependências por pacote
-importado, nunca por campo usado:
+It also decides **what you compile**. Go prunes dependencies by package
+imported, never by field used:
 
-| o que você importa | pacotes | AWS | Google |
+| what you import | packages | AWS | Google |
 |---|---|---|---|
-| `sdk` | 190 | não | não |
-| `sdk` + `from` | 194 | não | não |
-| `sdk` + `from` + `to` (arquivos) | 195 | não | não |
-| `sdk` + `to/bigquery` | 456 | não | **sim** |
-| `sdk` + `from` + `store/s3` | 265 | **sim** | não |
+| `sdk` | 190 | no | no |
+| `sdk` + `from` | 194 | no | no |
+| `sdk` + `from` + `to` (files) | 195 | no | no |
+| `sdk` + `to/bigquery` | 456 | no | **yes** |
+| `sdk` + `from` + `store/s3` | 265 | **yes** | no |
 
-Um pipeline inteiro de arquivos — ler e escrever — custa 195 pacotes e nenhum
-SDK de nuvem. **Um driver com SDK de fornecedor atrás vive no próprio pacote**,
-que é por que BigQuery é `to/bigquery` e os object stores são `store/s3` e
+A whole file pipeline — read and write — costs 195 packages and no cloud SDK at
+all. **A driver with a vendor SDK behind it lives in its own package**, which is
+why BigQuery is `to/bigquery` and the object stores are `store/s3` and
 `store/gcs`.
 
-## Origens e destinos
+## Sources and destinations
 
-| origem | pacote |
+| source | package |
 |---|---|
 | HTTP | `from.HTTP` |
-| arquivos (local, S3, GCS) | `from.Files` |
+| files (local, S3, GCS) | `from.Files` |
 | Postgres | `from/postgres` |
 | MySQL | `from/mysql` |
-| várias origens | `from.Many` |
+| several sources | `from.Many` |
 
-| destino | pacote |
+| destination | package |
 |---|---|
-| arquivos | `to.Files` |
+| files | `to.Files` |
 | BigQuery | `to/bigquery` |
 | Postgres | `to/postgres` |
 | MySQL | `to/mysql` |
 | Redshift | `to/redshift` |
 | Pub/Sub | `to/pubsub` |
 
-O esquema do caminho decide o backend, e o `Store` é **passado** em vez de
-escolhido dentro do driver:
+The path scheme decides the backend, and the `Store` is **passed in** rather
+than chosen inside the driver:
 
 ```go
-from.Files{Path: "s3://bucket/dia=1/*.ndjson", Store: s3.New(cliente)}
-to.Files{Path: "gs://bucket/landing/", Store: gcs.New(cliente)}
+from.Files{Path: "s3://bucket/day=1/*.ndjson", Store: s3.New(client)}
+to.Files{Path: "gs://bucket/landing/", Store: gcs.New(client)}
 ```
 
-É isso que faz um programa de arquivos locais não compilar uma linha da AWS nem
-do Google.
+That is what keeps a local-files program from compiling a single line of AWS or
+Google code.
 
-### Publicar num tópico
+### Publishing to a topic
 
-O `to/pubsub` é o único destino que não é uma tabela, e ele se comporta de um
-jeito que vale saber antes de usar: **não acrescenta nada ao que envia.**
+`to/pubsub` is the one destination that is not a table, and it behaves
+differently in a way worth knowing before you use it: **it adds nothing to what
+it sends.**
 
 ```go
 Target: sdk.Target{
@@ -111,7 +112,7 @@ Target: sdk.Target{
         Project: "acme-prod",
         Name:    "orders",
 
-        // Nulo é o padrão, e significa NENHUM atributo.
+        // Nil is the default, and it means NO attributes at all.
         Attributes: func(e sdk.Envelope) map[string]string {
             row, ok := e.Payload.(map[string]any)
             if !ok {
@@ -123,40 +124,40 @@ Target: sdk.Target{
 },
 ```
 
-Quem assina recebe o seu payload, byte por byte, mais exatamente os atributos
-que você nomeou. Nada além disso — sem `ingestion_id`, sem `provider`, sem
-envelope de espécie alguma.
+A subscriber receives your payload, byte for byte, plus exactly the attributes
+you named. Nothing else — no `ingestion_id`, no `provider`, no envelope of any
+kind.
 
-Isso é uma regra, não minimalismo. Uma tabela é criada pelo pipeline que escreve
-nela, então o SDK pode decidir as colunas dela. **Um tópico não**: ele existe
-antes do seu pipeline, os assinantes dele foram escritos antes e os filtros
-deles também. Um atributo acrescentado por conta própria seria o Brevis editando
-o contrato de outra pessoa, e quem assina descobriria às três da manhã.
+That is a rule and not a minimalism. A table is created by the pipeline that
+writes it, so the SDK may decide what its columns are. **A topic is not**: it
+exists before your pipeline does, its subscribers were written first and their
+filters were written first. An attribute added on its own would be Brevis
+editing somebody else's contract, and the subscriber would find out at three in
+the morning.
 
-Daí decorrem três coisas:
+Three things follow from it:
 
-- **Ele nunca cria um tópico.** Um pipeline que pode criar um pode criar o
-  errado, e diferente de uma tabela com nome torto ninguém percebe — as
-  mensagens vão para algum lugar, e o assinante que deveria recebê-las fica
-  quieto.
-- **`Schema`, `Dedup` e `PartitionBy` são recusados**, nomeando a opção. Eles
-  existem para tabelas: um `Schema` é como um destino cria a dele, deduplicar
-  precisa de uma linha para substituir, e partição é ideia de tabela. O parente
-  aqui é o `OrderingKey`, que é outra coisa — ele agrupa mensagens que precisam
-  *chegar* em ordem.
-- **A falha é parcial.** Publicar não é transacional: 48 mil mensagens que
-  falham em 31 mil *entregaram* 31 mil. O resultado informa o que de fato foi, e
-  o erro diz que reexecutar é reentregar — quem assina precisa ser idempotente,
-  e o Pub/Sub é at-least-once de qualquer forma.
+- **It never creates a topic.** A pipeline that can create one can create the
+  wrong one, and unlike a mistyped table nobody notices — the messages go
+  somewhere and the subscriber that should have received them stays quiet.
+- **`Schema`, `Dedup` and `PartitionBy` are refused**, naming the option. They
+  exist for tables: a `Schema` is how a destination creates one, deduplication
+  needs a row to replace, a partition is a table's idea. The nearest thing here
+  is `OrderingKey`, which is a different one — it groups messages that must
+  *arrive* in order.
+- **A failure is partial.** Publishing is not transactional, so 48,000 messages
+  that fail at 31,000 have *delivered* 31,000. The result reports what actually
+  went, and the error says a re-run is a re-delivery — the subscriber has to be
+  idempotent, and Pub/Sub is at-least-once anyway.
 
-Executável, contra o emulador:
+Runnable, against the emulator:
 [`examples/13-pubsub`](https://github.com/AreteAcademy/brevis/tree/master/examples/13-pubsub).
 
-## Um fetcher inteiro
+## A whole fetcher
 
-`sdk.Run` toma conta de flags, `-dry-run`, logging, retry, paginação,
-procedência, criação de tabela e código de saída. O que sobra no arquivo é só o
-que é específico daquela fonte:
+`sdk.Run` takes care of flags, `-dry-run`, logging, retry, pagination,
+provenance, table creation and the exit code. What is left in the file is only
+what is specific to that source:
 
 ```go
 package main
@@ -172,15 +173,15 @@ func main() {
 	sdk.Run(sdk.Pipeline{
 		Source: sdk.Source{
 			From: from.HTTP{
-				URL:     "https://api.exemplo.com/v1/eventos",
+				URL:     "https://api.example.com/v1/events",
 				Timeout: 15 * time.Second,
 			},
 			Guard:  sdk.RejectIf("error"),
 			Expand: sdk.ArrayAt("results"),
 		},
 		Target: sdk.Target{
-			Provider: "exemplo",
-			Entity:   "eventos",
+			Provider: "example",
+			Entity:   "events",
 			Key:      sdk.Key("id"),
 			When:     sdk.Field("created_at"),
 		},
@@ -189,15 +190,16 @@ func main() {
 ```
 
 ```bash
-go run ./fetcher -dry-run   # extrai, conta linhas e erros, não escreve
+go run ./fetcher -dry-run   # extracts, counts rows and errors, writes nothing
 go run ./fetcher
 ```
 
-## O contexto do run
+## The run context
 
-Quando o fetcher roda **como passo de um workflow**, o engine injeta no ambiente
-o que ele não teria como saber: se é a primeira execução, com que parâmetros foi
-disparado, qual run é. O SDK lê isso em `Pipeline.Run`:
+When the fetcher runs **as a workflow step**, the engine injects into the
+environment what it could not otherwise know: whether this is the first run,
+which parameters it was dispatched with, which run it is. The SDK reads that in
+`Pipeline.Run`:
 
 ```go
 Before: func(ctx context.Context, p *sdk.Pipeline) error {
@@ -208,22 +210,24 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 },
 ```
 
-Rodando à mão, `Run` vem zerado — ler é opcional, e ignorá-lo não custa nada.
+Run by hand, `Run` comes back zeroed — reading it is optional, and ignoring it
+costs nothing.
 
-Sem histórico, a resposta para "é a primeira execução?" é sempre **não**: criar
-tabela sem certeza é pior do que não criar.
+With no history, the answer to "is this the first run?" is always **no**:
+creating a table without certainty is worse than not creating it.
 
-### O relógio
+### The clock
 
-`p.Run.Auto` é o que o motor descobriu sobre este run — os
-[auto params](/docs/parameters/#auto-params). `Auto.Now()` é o relógio a ler no
-lugar de `time.Now()`: num run agendado ele é o slot, então não se move quando o
-run atrasa nem quando o run é retentado três horas depois.
+`p.Run.Auto` is what the engine worked out about this run — the
+[auto params](/docs/parameters/#auto-params). `Auto.Now()` is the clock to read
+instead of `time.Now()`: on a scheduled run it is the slot, so it does not move
+when the run is late and does not move when the run is retried three hours
+later.
 
 ```go
 Before: func(ctx context.Context, p *sdk.Pipeline) error {
 	start, end, ok := p.Run.Auto.Window()
-	if !ok { // sem agendamento: cai para uma janela fixa
+	if !ok { // no schedule: fall back to a fixed window
 		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
 	}
 	p.Source.From = from.HTTP{URL: base +
@@ -233,23 +237,23 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 },
 ```
 
-Rodando à mão, `Auto.Now()` *é* o relógio de parede e `Window()` devolve
-`false`, então o desenvolvimento local não precisa de caso especial.
+Run by hand, `Auto.Now()` *is* the wall clock and `Window()` returns `false`, so
+local development needs no special case.
 
-## Não confunda com as bibliotecas cliente
+## Not to be confused with the client libraries
 
-Este SDK é maquinaria de ETL em Go: drivers, paginação, procedência,
-criação de tabela. As [bibliotecas cliente](/docs/libraries/index.md) são outra
-coisa — clientes finos que dão a um passo o contexto e o relógio do run,
-em Python hoje e em Node.js e Rust depois. Um passo que usa pandas ou dbt
-quer a segunda, não este.
+This SDK is ETL machinery in Go: drivers, pagination, provenance, table
+creation. The [client libraries](/docs/libraries/index.md) are a different thing —
+thin clients that hand a step the run context and clock, in Python today
+and in Node.js and Rust later. A step using pandas or dbt wants the
+second, not this.
 
-## Parâmetros que montam a pipeline
+## Parameters that build the pipeline
 
-`p.Run.Params` é legível dentro da pipeline, o que é tarde demais para um valor
-que decide o que a pipeline **é** — uma source por estado, uma tabela por
-cliente. `Pipeline.Flags` é parseado dentro do `Run`, então é tarde pelo mesmo
-motivo.
+`p.Run.Params` is readable inside the pipeline, which is too late for a value
+that decides what the pipeline **is** — one source per state, one table per
+tenant. `Pipeline.Flags` is parsed inside `Run`, so it is too late for the same
+reason.
 
 ```go
 func main() {
@@ -257,24 +261,23 @@ func main() {
 }
 ```
 
-`sdk.Param` e `sdk.ParamList` leem primeiro o ambiente do engine e depois
-`-param nome=valor`:
+`sdk.Param` and `sdk.ParamList` read the engine's environment first and
+`-param name=value` second:
 
 ```bash
 ./fetch-stations -param ufs=SP,RJ
 ```
 
-O ambiente ganha — sob o engine ele é o valor, e uma flag esquecida num
-manifesto não pode sobrepor o que o operador digitou. Sem engine, a flag é o que
-existe, o que é melhor do que escrever `BREVIS_RUN_PARAMS` como JSON a cada
-execução.
+The environment wins — under the engine it is the value, and a flag left in a
+manifest must not override what the operator typed. With no engine the flag is
+what there is, which beats writing `BREVIS_RUN_PARAMS` as JSON on every run.
 
-## O layout de aterrissagem
+## The landing layout
 
-Uma pipeline pode aterrissar **a mesma tabela que um gateway aterrissa** — as
-mesmas colunas e o mesmo `brevis_ingestion_id` — de modo que escolher entre os
-dois vira decisão de implantação e não de esquema. Dá para ler os dois juntos,
-e para migrar de um ao outro sem migração de dados.
+A pipeline can land the **same table a gateway lands** — the same columns and
+the same `brevis_ingestion_id` — so choosing between the two is a deployment
+decision and not a schema decision. A team can read both together, and move
+from one to the other without a migration.
 
 ```go
 const table = "landing.orders"
@@ -289,23 +292,24 @@ sdk.Run(sdk.Pipeline{
 })
 ```
 
-`sdk.LandingSchema` são nove colunas: as oito do layout e a do produtor.
-`sdk.Landing` preenche essas colunas e põe o registro inteiro em `data`.
-Acrescente colunas suas ao esquema se quiser, ou pegue
-`sdk.LandingControlColumns` e dê colunas próprias aos campos do registro.
+`sdk.LandingSchema` is nine columns: the eight the layout owns and the one
+the producer does. `sdk.Landing` fills them and puts the record, whole, in
+`data`. Append your own columns to the schema if you want them, or take
+`sdk.LandingControlColumns` and give the record's fields columns of their
+own.
 
-### Duas formas: o registro inteiro, ou uma coluna por campo
+### Two shapes: the record whole, or one column per field
 
-O que está acima é a forma **document** — o registro vai para `data` como
-JSON, e a tabela é a mesma qualquer que seja o registro. Acrescente
-`sdk.LandingColumns()` e cada campo do registro ganha uma coluna própria:
+What is above is the **document** shape — the record goes into `data` as JSON,
+and the table is the same one whatever the record holds. Add
+`sdk.LandingColumns()` and each field of the record gets a column of its own:
 
 ```go
 sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())
 ```
 
-A tabela passa a ser `sdk.LandingControlColumns` mais as suas colunas — **não**
-`sdk.LandingSchema`, que carrega o `data`:
+The table is then `sdk.LandingControlColumns` plus your columns — **not**
+`sdk.LandingSchema`, which carries `data`:
 
 ```go
 Target{
@@ -319,105 +323,104 @@ Target{
 }
 ```
 
-**As colunas são você que declara.** O SDK nunca infere um esquema, e esta
-opção não muda isso: ela decide como a *linha* é montada, nunca o que a tabela
-é. Um gateway infere porque o produtor dele é um estranho que posta o que tem;
-aqui quem escreve a pipeline conhece o formato e o escreve, num diff que
-alguém revisa.
+**You declare those columns.** The SDK never infers a schema, and this option
+does not change that: it decides how the *row* is built, never what the table
+is. A gateway infers because its producer is a stranger who posts whatever
+they have; here the pipeline's author knows the shape and writes it down, in
+a diff somebody reviews.
 
-É a mesma forma que um gateway aterrissa como
-[`shape: columns`](/docs/ingestion-sinks/#duas-formas-um-contrato), pelo mesmo
-código — mesmas colunas, mesmos valores, mesmo `brevis_ingestion_id`.
+It is the same shape a gateway lands as
+[`shape: columns`](/docs/ingestion-sinks/#two-shapes-one-contract), through the
+same code — same columns, same values, same `brevis_ingestion_id`.
 
-**O nome do campo precisa poder ser nome de coluna**: letra ou sublinhado, e
-depois letras, dígitos e sublinhados. É a regra do BigQuery, a mais estreita
-dos quatro destinos, então um nome que passa aqui funciona em qualquer um. Um
-registro com `meu-campo` é recusado pelo nome, antes de qualquer escrita. A
-forma `document` não tem essa regra — um hífen é uma chave JSON perfeitamente
-válida.
+**A field name has to be able to be a column name**: a letter or underscore,
+then letters, digits and underscores. That is BigQuery's rule, the narrowest
+of the four destinations, so a name that passes here works everywhere. A
+record carrying `my-field` is refused by name, before anything is written. The
+document shape has no such rule — a hyphen is a perfectly good JSON key.
 
-**Não achata, por padrão.** Um objeto aninhado vira UMA coluna `JSON` sob a chave que o
-continha: `customer` guarda `{"id": 7, "uf": "SP"}`, e não `customer_id` e
-`customer_uf`. Um array também é `JSON`. Um registro que quer uma linha *por
-elemento do array* quer o `sdk.ArrayAt` no `Expand` da fonte — ele roda antes
-do `Landing`, e é outra operação com outro nome. O
-[`BREVIS_NORMALIZE_DATA`](#uma-coluna-por-campo-aninhado) muda a primeira
-metade disso para um deployment inteiro; array continua `JSON` dos dois
-jeitos:
+**It does not flatten, by default.** A nested object becomes ONE `JSON` column under the
+key that held it: `customer` holds `{"id": 7, "uf": "SP"}`, not `customer_id`
+and `customer_uf`. An array is `JSON` too. A record that wants one row *per
+array element* wants `sdk.ArrayAt` in the source's `Expand` — it runs before
+`Landing`, and it is a different operation with a different name.
+[`BREVIS_NORMALIZE_DATA`](#one-column-per-nested-field) changes the first half
+of that for a whole deployment; an array stays `JSON` either way:
 
 ```go
 Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},
 ```
 
-**`null` continua `NULL`**, nunca `""`. Um campo enviado como null e um campo
-enviado vazio são fatos diferentes, e depois a coluna não sabe distinguir.
+**`null` stays `NULL`**, never `""`. A field sent as null and a field sent
+empty are different facts, and a column cannot tell them apart afterwards.
 
-**O `data` passa a ser seu.** Nesta forma o layout não tem coluna com esse
-nome, então um produtor com um campo chamado `data` — que é exatamente o que a
-série do Bacen manda — ganha uma coluna própria com o valor dele. No
-`document`, o dele é uma chave dentro do JSON do layout.
+**`data` becomes yours.** In this shape the layout has no column by that name,
+so a producer with a field called `data` — which is exactly what the Bacen
+series sends — gets a column of their own with their own value in it. Under
+`document` theirs is one key inside the layout's JSON.
 
-### O prefixo `brevis_` é seu para trocar
+### The `brevis_` prefix is yours to change
 
 ```
 BREVIS_LANDING_PREFIX=acme
 ```
 
-e as oito colunas do layout viram `acme_ingestion_id`, `acme_record_key` e as
-demais. Sem a variável, elas são o que sempre foram.
+and the layout's eight columns become `acme_ingestion_id`, `acme_record_key`
+and the rest. Unset, they are what they have always been.
 
-**Escolha na criação da tabela, porque trocar depois não é renomear.** Nada
-neste SDK remove coluna, então um stream que troca de prefixo não renomeia
-oito — ele acrescenta oito e abandona oito. Toda linha dali em diante fica com
-NULL no conjunto antigo, e
+**Choose it when the table is created, because changing it later is not a
+rename.** Nothing in this SDK ever drops a column, so a stream that switches
+prefix does not rename eight — it adds eight and abandons eight. Every row
+after that has NULLs in the old set, and
 
 ```sql
 qualify row_number() over (partition by brevis_record_key
                            order by brevis_received_at desc) = 1
 ```
 
-particiona numa coluna que ninguém mais escreve. As linhas chegam, o painel
-fica plano, e nada vai para o log.
+partitions on a column nothing writes any more. Rows arrive, the dashboard
+goes flat, and nothing logs anything.
 
-Por isso uma tabela que já carrega o layout sob um prefixo **recusa** uma carga
-declarando outro, antes do extract, nomeando os dois. Aponte para uma tabela
-nova, ou renomeie as oito colunas você mesmo antes.
+So a table that already carries the layout under one prefix **refuses** a load
+declaring another, before the extract, naming both. Point it at a new table,
+or rename the eight columns yourself first.
 
-**O que você digitar é normalizado**, então há uma grafia para errar em vez de
-quatro:
+**Whatever you type is normalised**, so there is one spelling to get wrong
+instead of four:
 
-| você põe | você recebe |
+| you set | you get |
 |---|---|
-| nada, ou vazio | `brevis_` |
+| nothing, or blank | `brevis_` |
 | `_NAME` | `name_` |
 | `_NAME_` | `name_` |
 | `NAME` | `name_` |
 
-Tira `_` das duas pontas, minúsculo, acrescenta exatamente um. Dois valores são
-recusados em vez de adivinhados: só underscores, porque sobraria
-`ingestion_id` — exatamente a coluna que o `sdk.IngestionID()` escreve em toda
-pipeline comum — e qualquer coisa que não possa começar um nome de coluna. **Um
-processo com valor inutilizável não sobe**, que é o único desfecho honesto: a
-alternativa é tabela batizada com o prefixo que você estava substituindo.
+Trim `_` from both ends, lower-case, add exactly one. Two values are refused
+rather than guessed at: underscores and nothing else, because it would leave
+`ingestion_id` — exactly the column `sdk.IngestionID()` writes for every
+ordinary pipeline — and anything that cannot begin a column name. **A process
+with an unusable value does not start**, which is the only honest outcome: the
+alternative is tables named after the prefix you were replacing.
 
-**É por PROCESSO, e isso é o objetivo e não uma limitação.** Todo stream de um
-gateway compartilha, então dois sinks não conseguem divergir — nem o esquema
-que declara a tabela e o transformer que a preenche.
+**It is per PROCESS, and that is the point rather than a limitation.** Every
+stream in one gateway shares it, so two sinks cannot disagree — and neither
+can the schema that declares a table and the transformer that fills it.
 
-**A regra reservada vai junto.** Sob `acme_`, um produtor mandando
-`acme_region` é recusado, porque quem consegue forjar coluna de controle forja
-uma que parece real. E `brevis_region` vira campo comum.
+**The reserved rule moves with it.** Under `acme_`, a producer sending
+`acme_region` is refused, because somebody who can forge a control column
+forges a real-looking one. And `brevis_region` becomes an ordinary field.
 
-O `data` nunca leva o prefixo. É a coluna do produtor, não do layout.
+`data` never carries the prefix. It is the producer's column, not the
+layout's.
 
-### Uma coluna por campo aninhado
+### One column per nested field
 
 ```
 BREVIS_NORMALIZE_DATA=true
 ```
 
-e os campos de um objeto aninhado ganham colunas próprias, como o
-`json_normalize` do pandas faz — um nível:
+and a nested object's fields get columns of their own, the way pandas'
+`json_normalize` does — one level:
 
 ```python
 data = [
@@ -431,204 +434,206 @@ data = [
 id  name_first  name_last  name_given  name_family  name
 ```
 
-**Escolha antes da primeira tabela, porque isso não só ACRESCENTA coluna.**
-Ele renomeia, e nada neste SDK remove uma — então o nome antigo fica com as
-linhas que já estavam nele enquanto tudo depois cai no novo, e a consulta que
-alguém escreveu continua rodando e para de ver linha nova. São duas
-renomeações:
+**Pick it before the first table, because it does not only ADD columns.** It
+renames them, and nothing in this SDK ever drops one — so the old name stays
+with the rows already in it while everything after lands in the new one, and
+the query somebody wrote against it keeps running and stops seeing new rows.
+Two renames happen:
 
-- `userName` vira `username`, tendo aninhamento ou não
-- `name`, que guardava objetos, é substituído por `name_first` e `name_last`
+- `userName` becomes `username`, whether or not anything is nested
+- `name`, which held objects, is replaced by `name_first` and `name_last`
 
-Uma tabela que já carrega qualquer uma das formas **recusa** uma carga com
-isso ligado, antes do extract, nomeando as duas colunas. Aponte para uma
-tabela nova, ou renomeie as colunas você mesmo antes.
+A table already carrying either shape **refuses** a load with this on, before
+the extract, naming both columns. Point it at a new table, or rename the
+columns yourself first.
 
-**O `name` pode aparecer achatado E inteiro**, e o exemplo acima mostra: o
-terceiro registro traz `name` como string, então a tabela tem `name_first`,
-`name_last` **e** `name`. Um campo que é objeto num registro e escalar noutro
-produz os dois.
+**`name` can appear both flattened and whole**, and the example above shows
+it: the third record carries `name` as a string, so the table has
+`name_first`, `name_last` AND `name`. A field that is an object in one record
+and a scalar in another produces both.
 
-**Um nível, e array é valor.** `{"a": {"b": {"c": 1}}}` vira `a_b` guardando
-`{"c": 1}` — uma coluna `JSON`, não `a_b_c`. `{"a": [1, 2]}` vira `a`, também
-`JSON`. Um registro que quer uma linha por elemento do array continua querendo
-o `sdk.ArrayAt`.
+**One level, and arrays are values.** `{"a": {"b": {"c": 1}}}` is `a_b`
+holding `{"c": 1}` — a `JSON` column, not `a_b_c`. `{"a": [1, 2]}` is `a`,
+also `JSON`. A record that wants one row per array element still wants
+`sdk.ArrayAt`.
 
-**Juntado e minúsculo, sem quebrar camelCase.** `userName` vira `username` e
-não `user_name`, porque a outra leitura não tem resposta acordada para
-acrônimos — `HTTPStatus`, `userID` — e toda biblioteca discorda.
+**Joined and lower-cased, not split on camelCase.** `userName` becomes
+`username` and not `user_name`, because the other reading has no agreed
+answer for acronyms — `HTTPStatus`, `userID` — and every library disagrees
+about them.
 
-**Colisão é recusada, nunca resolvida.** `{"name_first": 1, "name": {"first":
-2}}` faria uma coluna de dois campos, e a iteração de map em Go é aleatória:
-deixar um vencer daria a mesma remessa com tabela diferente em dias
-diferentes. A recusa nomeia os dois.
+**A collision is refused, never resolved.** `{"name_first": 1, "name":
+{"first": 2}}` would make one column from two fields, and Go's map iteration
+is randomised: letting one win would give the same batch a different table on
+a different run. The refusal names both.
 
-**O prefixo reservado é checado na coluna, não no campo.** Um produtor
-mandando `{"brevis": {"stream": "x"}}` faria `brevis_stream` por uma porta que
-a checagem de campo não vigia. É recusado, nomeando `brevis.stream` para ele
-achar o campo.
+**The reserved prefix is checked on the column, not the field.** A producer
+sending `{"brevis": {"stream": "x"}}` would otherwise make `brevis_stream`
+through a door the field check does not watch. It is refused, naming
+`brevis.stream` so they can find the field.
 
-**É por PROCESSO**, como o prefixo e pelo mesmo motivo: todo stream de um
-gateway compartilha, então dois sinks não conseguem divergir sobre uma tabela
-em que os dois podem escrever. Vale só para a forma `columns` — no `document`
-o registro vai inteiro para uma coluna `JSON` e não há o que achatar.
+**It is per PROCESS**, like the prefix, and for the same reason: every stream
+in one gateway shares it, so two sinks cannot disagree about a table they
+might both write to. It applies to the `columns` shape only — under
+`document` the record goes whole into one `JSON` column and there is nothing
+to flatten into.
 
-### Texto que já é JSON
+### Text that is already JSON
 
-Uma coluna declarada `sdk.TypeJSON` recebe um **valor** JSON — um objeto, um
-array, um número. No BigQuery a linha é codificada inteira, então uma `string`
-Go ali vira um literal de string JSON e a coluna acaba guardando o TEXTO do
-seu objeto em vez do objeto:
+A column declared `sdk.TypeJSON` receives a JSON **value** — an object, an
+array, a number. On BigQuery the row is encoded whole, so a Go `string` there
+becomes a JSON string literal and the column ends up holding the TEXT of your
+object rather than the object:
 
 ```sql
-SELECT JSON_TYPE(payload) ...;            -- "string", e não "object"
+SELECT JSON_TYPE(payload) ...;            -- "string", not "object"
 SELECT JSON_VALUE(payload, '$.a') ...;    -- NULL
 ```
 
-A coluna é do tipo certo e o dado dentro dela é inalcançável — o pior dos três
-desfechos, porque nada falha. **O destino BigQuery recusa isso** desde a
-`v0.74.0`, nomeando a coluna.
+The column is the right type and the data in it is unreachable, which is the
+worst of the three outcomes because nothing fails. **The BigQuery destination
+refuses it** from `v0.74.0`, naming the column.
 
-Passe o objeto quando você tem um. Quando o que você tem já é texto JSON — uma
-coluna lida de outro banco, um corpo de resposta que você não quer reparsear —
-diga isso:
+Pass the object itself where you have one. Where what you hold is already
+JSON text — a column read out of another database, a response body you do not
+want to re-parse — say so:
 
 ```go
 row["payload"] = sdk.JSONText(body)
 ```
 
-O `json.RawMessage` da própria `encoding/json` também serve, e pelo mesmo
-motivo: os dois escrevem o JSON que carregam em vez de uma string com aspas
-dele.
+`encoding/json`'s own `json.RawMessage` works too, and for the same reason:
+both write the JSON they hold instead of a quoted string of it.
 
-**Postgres e MySQL não são afetados e não são recusados.** O servidor deles
-parseia uma string numa coluna JSON, e sempre parseou.
+**Postgres and MySQL are not affected and are not refused.** Their server
+parses a string into a JSON column, and always has.
 
-### Quando aparece um campo que a tabela não tem
+### When a field the table does not have shows up
 
-O produtor acrescenta um campo e a carga para, nomeando-o: a linha traz uma
-coluna que ninguém declarou, e escrevê-la num destino que nunca ouviu falar
-dela seria descartá-la em silêncio. Essa recusa é o certo por padrão — mas
-numa tabela de landing ela é a única mudança que não quebra quem lê, e o
-destino pode fazê-la:
+A producer adds a field and the load stops, naming it: the row carries a
+column nothing declared, and writing it to a destination that never mentioned
+it would drop it in silence. That refusal is right by default — but on a
+landing table it is the one change that cannot break a reader, and the
+destination can make it:
 
 ```go
 postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}
 ```
 
-O lote passa a **completar** a sua declaração: um campo que ele traz e a
-declaração não tem vira coluna, `STRING` a menos que o campo seja objeto ou
-array, e aí `JSON`. É a mesma regra e o mesmo código com que um gateway
-aterrissa o `shape: columns`, então os dois produzem a mesma tabela.
+The batch then **completes** your declaration: a field it carries and the
+declaration does not becomes a column, `STRING` unless the field is an object
+or an array, and then `JSON`. It is the same rule and the same code a gateway
+lands `shape: columns` with, so both produce the same table.
 
-Os outros dois valores, e a diferença entre eles é de onde a coluna vem:
+Two other values, and the difference between them is where the column comes
+from:
 
-| `Evolve` | acrescenta |
+| `Evolve` | adds |
 |---|---|
-| `sdk.EvolveNone` (padrão) | nada. Qualquer diferença é recusada, nomeando os dois lados |
-| `sdk.EvolveAdditive` | uma coluna que a sua **declaração** tem e a tabela não |
-| `sdk.EvolveAdditiveFromPayload` | isso, mais uma coluna que o **lote** traz |
+| `sdk.EvolveNone` (default) | nothing. Any difference is refused, naming both sides |
+| `sdk.EvolveAdditive` | a column your **declaration** has and the table does not |
+| `sdk.EvolveAdditiveFromPayload` | that, plus a column the **batch** carries |
 
-**Sempre e só `ADD COLUMN`.** Uma coluna que some da origem para de ser
-escrita e continua na tabela; nada é renomeado, nada é removido, e nenhum tipo
-é estreitado. Isso não é uma falta — uma tabela de landing é histórico, e a
-única alteração que não quebra quem a lê é uma coluna nova anulável.
+**Only ever `ADD COLUMN`.** A column that disappears from the source stops
+being written and stays in the table; nothing renames, nothing drops, and no
+type is ever narrowed. That is not a gap — a landing table is history, and the
+one alteration that cannot break somebody reading it is a new nullable column.
 
-**Ele completa uma declaração; não substitui uma.** Sem nada declarado, é
-recusado antes do extract, nomeando a tabela: criar uma tabela inteira a
-partir de um payload é outra decisão, e o SDK não a toma. No layout de landing
-o dano seria concreto — o `brevis_received_at` sairia como texto em vez de
-timestamp, e o `brevis_loaded_at` nunca viaja na linha, então a medição de
-latência ponta a ponta simplesmente não existiria.
+**It completes a declaration; it does not replace one.** With nothing declared
+it is refused before the extract, naming the table: creating a whole table
+from a payload is a different decision, and the SDK does not make it. On the
+landing layout the harm would be concrete — `brevis_received_at` would come
+out as text instead of a timestamp, and `brevis_loaded_at` never travels in
+the row at all, so the end-to-end latency measurement would simply be missing.
 
-**O SDK continua sem inferir.** O tipo vem da FORMA do campo, nunca do valor:
-`21129` e `8.89` declaram os dois `STRING`, então no dia em que a série
-publicar um número inteiro nada muda. Tipo lido do primeiro lote é justamente
-a falha que essa regra existe para evitar.
+**The SDK still does not infer.** The type comes from the field's SHAPE, never
+from its value: `21129` and `8.89` both declare `STRING`, so the day the
+series publishes a whole number nothing changes. A type read off the first
+batch is the failure this rule exists to prevent.
 
-**E um `null` não decide nada — mas continua na linha.** São duas perguntas
-diferentes, e confundi-las custou a v0.77.0.
+**And a `null` decides nothing — but it stays in the row.** Those are two
+different questions, and answering them with one answer cost v0.77.0.
 
-Um nulo não tem forma, então o **schema** não tem o que ler: um campo que chega
-`null` não declara coluna nenhuma, e a coluna aparece no primeiro registro que
-traz um VALOR, com a forma que esse valor tem. Se fosse o contrário, o nulo
-viraria `STRING` por falta de opção e o primeiro array depois dele faria o
-destino recusar o lote inteiro — e não existe migração de `STRING` para `JSON`
-para desfazer.
+A null has no shape, so the **schema** has nothing to read: a field that
+arrives `null` declares no column, and the column appears from the first record
+that carries a VALUE, with the shape that value has. The other way round, a
+null would become `STRING` for want of an answer, and the first array after it
+would have the destination refuse the whole batch — with no `STRING` to `JSON`
+migration to undo it.
 
-A **linha** carrega o que o produtor mandou, nulo incluído. Ela tem de carregar:
-uma coluna que você DECLAROU em `Target.Schema` e que chegou vazia precisa estar
-lá, ou a checagem que compara a declaração com a linha a lê como uma cadeia que
-parou de produzi-la — e recusa a carga. Foi o que a v0.77.0 fez, e a v0.78.0
-desfez.
+The **row** carries what the producer sent, null included. It has to: a column
+you DECLARED in `Target.Schema` that arrived empty must be in the row, or the
+check that compares the declaration against it reads a chain that has stopped
+producing it — and refuses the load. That is what v0.77.0 did, and what 0.78.0
+undid.
 
-O destino resolve o resto: um campo nulo em TODOS os registros do lote e sem
-coluna na tabela não é escrito em lugar nenhum e não recusa nada. Um nulo e um
-campo ausente gravam o mesmo `NULL`, então nada se perde.
+The destination settles the rest: a field null in EVERY record of the batch,
+with no column in the table, is written nowhere and refuses nothing. A null and
+an absent field land the same `NULL`, so nothing is lost.
 
-**Um campo que muda de forma é recusado, não absorvido.** Se `valor` chegou
-escalar e fez uma coluna de texto, um objeto chegando depois é mudança de
-tipo e o lote para — com o comentário da própria coluna na mensagem, para você
-ver que ninguém a declarou. Renomeie a coluna, ou migre você mesmo.
+**A field that changes shape is refused, not absorbed.** If `valor` arrived as
+a scalar and made a text column, an object arriving later is a change of kind
+and the batch stops — with the column's own comment in the message, so you can
+see nobody declared it. Rename the column, or migrate it yourself.
 
-**No BigQuery, duas grafias de um nome são uma coluna.** O BigQuery dobra a
-caixa dos nomes de coluna: um lote que traz `nationalID` num registro e
-`nationalId` noutro declara **uma** coluna, não duas, e a grafia que vence é a
-primeira em ordem alfabética — `nationalID`, porque `D` vem antes de `d`. Não
-a primeira a chegar: o mesmo lote reprocessado não pode criar uma coluna
-escrita de outro jeito. Uma declaração que diz `createdat` contra uma tabela
-cuja coluna é `createdAt` também é a mesma coluna, então nada é adicionado e
-nada é recusado.
+**On BigQuery, two spellings of one name are one column.** BigQuery folds
+column case: a batch carrying `nationalID` in one record and `nationalId` in
+another declares **one** column, not two, and the spelling that wins is the
+first in sorted order — `nationalID`, because `D` sorts before `d`. Not the
+first to arrive: the same batch replayed must not create a differently-spelled
+column. A declaration that says `createdat` against a table whose column is
+`createdAt` is the same column too, so nothing is added and nothing is
+refused.
 
-**Um registro que carrega as duas grafias é recusado, nomeando as duas.** O
-destino tem uma coluna e um dos dois valores venceria em silêncio, então a
-carga para: renomeie uma delas no `Transform`, ou mapeie as duas para um único
-campo. Dois *registros* cada um com uma grafia estão certos — é tráfego de CDC
-comum, e é justamente o que esta regra existe para pousar.
+**One record carrying both spellings is refused, naming both.** The
+destination has one column and one of the two values would silently win, so
+the load stops: rename one of them in `Transform`, or map both onto a single
+field. Two *records* each carrying one spelling are fine — that is ordinary
+CDC traffic, and it is what this rule exists to land.
 
-**Nada é migrado.** Uma tabela que já tem duas colunas diferindo só na caixa
-mantém as duas; nenhuma coluna é renomeada e nenhuma é removida.
+**Nothing is migrated.** A table that already has two columns differing only
+in case keeps both; no column is renamed and none is dropped.
 
-**Postgres e MySQL não dobram.** Um identificador entre aspas é distinto neles,
-então duas grafias são duas colunas — de propósito, e o mesmo fetcher apontado
-para o BigQuery vai pousar as duas em uma.
+**Postgres and MySQL are not folded.** A quoted identifier is distinct there,
+so two spellings are two columns — on purpose, and the same fetcher pointed at
+BigQuery will land them in one.
 
-**Toda coluna que um lote criou diz isso, na tabela.** Um comentário no
-Postgres e no MySQL, uma descrição de campo no BigQuery, com a data:
+**Every column a batch created says so, in the table.** A comment on Postgres
+and MySQL, a field description on BigQuery, carrying the date:
 
 ```
 brevis: added from a batch on 2026-09-29; the type is the landing rule
 (scalar text, object and array json), not a decision
 ```
 
-Seis meses depois é a única coisa que ainda responde "quando essa coluna
-apareceu, e quem decidiu". Uma linha de log já rotacionou.
+Six months later that is the only thing left that answers "when did this
+column appear, and who decided it". A log line has rotated by then.
 
-**Não é um modo.** `Target.Schema` continua sendo você declarando o que a
-tabela é — isso entrega um layout que já existe em vez de fazer você digitá-lo.
-Nada no SDK se comporta de outro jeito por você ter usado, e uma pipeline que
-declara o esquema dela não é afetada.
+**It is not a mode.** `Target.Schema` is still you declaring what the table
+is — this hands you a layout that already exists instead of making you type
+it. Nothing in the SDK behaves differently because you used it, and a
+pipeline that declares its own schema is unaffected.
 
-**Escreva o nome da tabela uma vez.** Ele vai para o `Landing`, porque é o
-segundo campo do id, e para o destino, porque é onde as linhas vão. **Nada
-verifica que os dois concordam**: o `Writer` conhece a própria tabela mas só a
-expõe pelo `Describe`, que é o nome para logs e erros, e um id construído
-sobre isso amarraria todo id já escrito a uma string de log. Deixe os dois
-divergirem e as linhas aterrissam certas com ids cunhados para uma tabela em
-que ninguém escreveu. Vão parecer corretas. Não vão bater com as do gateway.
+**Write the table name once.** It goes to `Landing`, because it is the second
+slot of the id, and to the destination, because that is where the rows go.
+**Nothing checks that the two agree**: the `Writer` knows its own table but
+exposes it only through `Describe`, which is the name for logs and errors,
+and an id built on that would tie every id already written to a log string.
+Get them out of step and the rows land correctly with ids minted for a table
+nobody wrote to. They will look fine. They will not match the gateway's.
 
-**Três colunas ficam `NULL`, e é a resposta honesta.** `brevis_stream` e
-`brevis_gateway` nomeiam coisas que uma pipeline não tem —
-`brevis_gateway IS NULL` é como se distingue a linha de uma pipeline da de um
-gateway. `brevis_received_bytes` também fica `NULL`: o número do gateway conta
-o que chegou no fio, envelope incluído, e o JSON do registro é uns 30% menor.
-Uma coluna com dois sentidos faria uma soma entre linhas dos dois caminhos
-errar por quanto veio de onde. `length(data)` responde a versão da pipeline
-exatamente.
+**Three columns are `NULL`, and that is the honest answer.** `brevis_stream`
+and `brevis_gateway` name things a pipeline does not have —
+`brevis_gateway IS NULL` is how you tell a pipeline's row from a gateway's.
+`brevis_received_bytes` is `NULL` too: the gateway's counts what arrived on
+the wire, envelope included, and the record's own JSON is around 30% smaller.
+One column with two meanings would make a sum across rows from both paths
+wrong by whatever share came from which. `length(data)` answers the
+pipeline's version exactly.
 
-**Merge precisa de `DedupKey`, e sem ele não há merge nenhum.** Todo driver
-casa por `ingestion_id` salvo instrução contrária, e a coluna de identidade
-deste layout é `brevis_ingestion_id`:
+**Merging needs `DedupKey`, and without it there is no merge at all.** Every
+driver matches on `ingestion_id` unless told otherwise, and this layout's
+identity column is `brevis_ingestion_id`:
 
 ```go
 Target{
@@ -639,32 +644,32 @@ Target{
 }
 ```
 
-`UniqueID` é o que põe a constraint UNIQUE no id, e Postgres e MySQL recusam
-fazer merge sem uma — o `ON CONFLICT` não teria com o que casar. Um `DedupKey`
-que seu `Schema` não declara é recusado antes de qualquer coisa rodar: um merge
-numa coluna que a tabela não tem não casa nada, e um merge que não casa nada
-parece exatamente um que casa tudo que deveria.
+`UniqueID` is what puts the UNIQUE constraint on the id, and Postgres and
+MySQL both refuse to merge without one — `ON CONFLICT` has nothing to match.
+A `DedupKey` your `Schema` does not declare is refused before anything runs,
+because a merge on a column the table lacks matches nothing, and a merge
+matching nothing looks exactly like one matching everything it should.
 
-**Depende do destino, e hoje o MySQL não consegue.** O BigQuery não tem
-constraints UNIQUE e recusa a declaração. No MySQL, `string` é `LONGTEXT`, e o
-MySQL não indexa um `LONGTEXT` sem comprimento — então uma tabela de
-aterrissagem com merge não pode nem ser *criada* lá:
+**Per destination, and today MySQL cannot.** BigQuery has no unique
+constraints and refuses the declaration outright. MySQL's `string` is
+`LONGTEXT`, and MySQL will not key a `LONGTEXT` without a length — so a
+merging landing table cannot be *created* there at all:
 
 ```
 Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
 specification without a key length
 ```
 
-O Postgres funciona porque lá `string` é `TEXT`. No MySQL, aterrisse com
-`DedupNone` e resolva a versão corrente adiante, ou crie a tabela você mesmo
-com `CreateSQL` e um id dimensionado.
+Postgres works, because its `string` is `TEXT`. On MySQL, land with
+`DedupNone` and resolve the current version downstream, or create the table
+yourself with `CreateSQL` and a sized id column.
 
-**O id é endereçado por conteúdo.** O mesmo registro produz o mesmo id nos dois
-caminhos, e um registro alterado produz um novo — que é o que faz uma
-reexecução ser um no-op em vez de duplicata.
+**The id is content-addressed.** The same record produces the same id from
+either path, and a changed record produces a new one — which is what lets a
+re-run be a no-op instead of a duplicate.
 
-## Referência
+## Reference
 
-- [pkg.go.dev](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk) — a API completa
-- [`examples/`](https://github.com/AreteAcademy/brevis/tree/master/examples) — doze exemplos executáveis
-- [`CHANGELOG.md`](https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md) — histórico versão a versão
+- [pkg.go.dev](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk) — the complete API
+- [`examples/`](https://github.com/AreteAcademy/brevis/tree/master/examples) — twelve runnable examples
+- [`CHANGELOG.md`](https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md) — version-by-version history

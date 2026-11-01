@@ -1,52 +1,52 @@
-# Ecossistema
+# Ecosystem
 
-> As quatro peças do brevis.sh, o que cada uma faz, e por onde o dado passa.
+> The four brevis.sh pieces, what each one does, and where the data goes through.
 
-*https://brevis.sh/docs/ecosystem/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/ecosystem/ · brevis.sh docs (en-US)*
 
 ---
 
-O Core agenda, enfileira e observa — e nunca toca o dado. Quem toca é o SDK, que busca; o Gateway, que recebe; e o SQL, que modela onde o dado já pousou.
+The Core schedules, queues and watches — and never touches the data. What touches it is the SDK, which fetches; the Gateway, which receives; and SQL, which models where the data has already landed.
 
-## As quatro peças
+## The four pieces
 
-| peça | o que faz | como chega | guia |
+| piece | what it does | how you get it | guide |
 |---|---|---|---|
-| **Core** | Agenda, enfileira e sobe um pod por etapa. Nunca toca o dado. | `areteacademy/brevis` | [Core](/docs/core/index.md) |
-| **SDK** | Biblioteca Go que extrai, molda e carrega, dentro da sua etapa. | `go get github.com/AreteAcademy/brevis/sdk` | [SDK em Go](/docs/sdk/index.md) |
-| **Gateway** | Recebe HTTP POST, responde 202 e grava em lote. Sem banco próprio. | `areteacademy/brevis-gateway` | [Ingestão](/docs/ingestion/index.md) |
-| **SQL** | Arquivos .sql viram tabelas e views, em ordem de dependência. | `areteacademy/brevis-sql` | [SQL](/docs/sql/index.md) |
+| **Core** | Schedules, queues and starts one pod per step. Never touches the data. | `areteacademy/brevis` | [Core](/docs/core/index.md) |
+| **SDK** | A Go library that extracts, shapes and loads, inside your step. | `go get github.com/AreteAcademy/brevis/sdk` | [Go SDK](/docs/sdk/index.md) |
+| **Gateway** | Takes HTTP POST, answers 202 and writes in batches. No database of its own. | `areteacademy/brevis-gateway` | [Ingestion](/docs/ingestion/index.md) |
+| **SQL** | Plain .sql files become tables and views, in dependency order. | `areteacademy/brevis-sql` | [SQL](/docs/sql/index.md) |
 
-## Plano de controle, plano de dados
+## Control plane, data plane
 
-O **plano de controle** é o Core: ele decide quando cada etapa roda, guarda a
-fila e o estado no Postgres e sobe um pod por etapa. O dado nunca passa por
-ele.
+The **control plane** is the Core: it decides when each step runs, keeps the
+queue and the state in Postgres and starts one pod per step. The data never
+goes through it.
 
-O **plano de dados** são as outras três peças. O dado vem de uma API, de um
-banco ou de arquivos e chega ao destino por um de dois caminhos: o **SDK
-busca**, dentro de uma etapa sua, ou o dado **chega ao Gateway** por HTTP,
-vindo de webhooks e apps. O destino é uma tabela, um tópico ou arquivos num
-bucket. Depois que o dado pousou, o **SQL** modela as tabelas ali mesmo, no
-banco onde ele pousou.
+The **data plane** is the other three pieces. Data comes from an API, a
+database or files and reaches its destination one of two ways: the **SDK
+fetches** it, inside a step of yours, or it is **pushed to the Gateway** over
+HTTP, from webhooks and apps. The destination is a table, a topic or files in
+a bucket. Once the data has landed, **SQL** models the tables right there, in
+the database it landed in.
 
-### Ao redor
+### Around it
 
-Três peças de apoio:
+Three supporting pieces:
 
-- **[Console](/docs/console/index.md)** — a interface web do Core
-- **[agent](/docs/pod-per-step/#onde-cada-passo-roda)** — roda a etapa num cluster que já é seu
-- **[`brevis` para Python](/docs/python/index.md)** — contexto de execução para etapas em Python
+- **[Console](/docs/console/index.md)** — the web interface over the Core
+- **[agent](/docs/pod-per-step/#where-each-step-runs)** — runs a step in a cluster you already have
+- **[`brevis` for Python](/docs/python/index.md)** — run context for Python steps
 
-## Usar só uma peça
+## Using only one piece
 
-Pode. Cada peça tem módulo, versão e imagem próprios: o SDK é uma biblioteca Go que roda em qualquer programa, o Gateway sobe sozinho com um YAML e sem banco, e o brevis-sql roda como um container. O Core orquestra as outras quando você quer — não é pré-requisito de nenhuma.
+Yes. Each piece has its own module, version and image: the SDK is a Go library that runs in any program, the Gateway starts on its own with a YAML file and no database, and brevis-sql runs as a container. The Core orchestrates the others when you want it to — it is a prerequisite for none of them.
 
-## A mesma linha
+## The same row
 
-Um pedido que o SDK busca e um pedido que chega ao Gateway pousam na mesma tabela, com o mesmo brevis_ingestion_id. Escolher entre os dois vira decisão de deploy, não de schema.
+An order the SDK fetches and an order that arrives at the Gateway land in the same table, with the same brevis_ingestion_id. Choosing between the two becomes a deployment decision, not a schema one.
 
-Pelo SDK, com `sdk.Landing` (detalhes em [O layout de aterrissagem](/docs/sdk/#o-layout-de-aterrissagem)):
+Through the SDK, with `sdk.Landing` (details in [The landing layout](/docs/sdk/#the-landing-layout)):
 
 ```go
 sdk.Execute(ctx, &sdk.Pipeline{
@@ -59,7 +59,7 @@ sdk.Execute(ctx, &sdk.Pipeline{
 }, nil)
 ```
 
-Pelo Gateway, um POST em `/v1/tables` (detalhes em [Uma rota, N tabelas](/docs/ingestion/#uma-rota-n-tabelas)):
+Through the Gateway, a POST to `/v1/tables` (details in [One route, N tables](/docs/ingestion/#one-route-n-tables)):
 
 ```bash
 curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \
@@ -67,15 +67,15 @@ curl -X POST localhost:8080/v1/tables -H 'Authorization: Bearer dev-key' \
          "data":{"id":"A-1","customer":"acme.example.com","total":150}}'
 ```
 
-A resposta:
+The answer:
 
 ```text
 {"accepted":1,"rejected":null}  202
 ```
 
-O que ficou em `app_orders`:
+What landed in `app_orders`:
 
-| coluna | pelo SDK | pelo Gateway |
+| column | through the SDK | through the Gateway |
 |---|---|---|
 | `brevis_ingestion_id` | `af5e2a31-fa3c-576c-a0c8-a91517e51149` | `af5e2a31-fa3c-576c-a0c8-a91517e51149` |
 | `brevis_record_key` | `A-1` | `A-1` |
@@ -83,4 +83,4 @@ O que ficou em `app_orders`:
 | `brevis_gateway` | `NULL` | `acme_gateway` |
 | `data` | `{"id": "A-1", "total": 150, "customer": "acme.example.com"}` | `{"id": "A-1", "total": 150, "customer": "acme.example.com"}` |
 
-Saída real: os dois caminhos rodaram contra o mesmo Postgres local, com as imagens e o SDK publicados. A única diferença é quem escreveu — brevis_gateway fica vazio na linha do SDK.
+Real output: both paths ran against the same local Postgres, with the published images and SDK. The only difference is who wrote it — brevis_gateway is empty on the SDK’s row.

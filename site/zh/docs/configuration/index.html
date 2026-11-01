@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-docs="/zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>配置 — 文档</title>
+<meta name="description" content="所有环境变量，包括默认值、格式，以及缺失时会发生什么。">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/zh/docs/configuration/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/zh/docs/configuration/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/configuration/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/configuration/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/configuration/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/configuration/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/configuration/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/configuration/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/configuration/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/configuration/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/configuration/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/configuration/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/configuration/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:title" content="配置 — 文档">
+<meta property="og:description" content="所有环境变量，包括默认值、格式，以及缺失时会发生什么。">
+<meta property="og:url" content="https://brevis.sh/zh/docs/configuration/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="配置 — 文档">
+<meta name="twitter:description" content="所有环境变量，包括默认值、格式，以及缺失时会发生什么。">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "配置",
+  "description": "所有环境变量，包括默认值、格式，以及缺失时会发生什么。",
+  "inLanguage": "zh-CN",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">跳到正文</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/zh/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="主导航">
+      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/docs/">文档</a>
+      <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/configuration/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/configuration/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/configuration/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/configuration/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/configuration/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/configuration/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/configuration/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/configuration/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/configuration/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/configuration/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/configuration/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        探索开源项目
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="打开菜单" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    文档菜单
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">搜索文档</label>
+        <input type="search" id="q" placeholder="搜索…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="无结果" hidden></div>
+      <nav class="side-nav" aria-label="文档">
+        <p class="side-group">入门</p><ul class="side-list"><li><a href="/zh/docs/ecosystem/">生态</a></li><li><a href="/zh/docs/integrations/">集成</a></li><li><a href="/zh/docs/introduction/">简介</a></li><li><a href="/zh/docs/installation/">安装</a></li><li><a href="/zh/docs/quickstart/">快速开始</a></li></ul><p class="side-group">概念</p><ul class="side-list"><li><a href="/zh/docs/core/">Core</a></li><li><a href="/zh/docs/workflows/">Workflows</a></li><li><a href="/zh/docs/scheduler-and-queue/">调度器与队列</a></li><li><a href="/zh/docs/pod-per-step/">每个 step 一个 pod</a></li><li><a href="/zh/docs/context/">step 之间的上下文</a></li></ul><p class="side-group">参考</p><ul class="side-list"><li><a href="/zh/docs/cli/">CLI</a></li><li><a href="/zh/docs/parameters/">参数</a></li><li><a href="/zh/docs/configuration/" aria-current="page">配置</a></li><li><a href="/zh/docs/runtime/">step 运行时</a></li></ul><p class="side-group">SDK 与库</p><ul class="side-list"><li><a href="/zh/docs/sdk/">Go SDK</a></li><li><a href="/zh/docs/libraries/">客户端库</a></li><li><a href="/zh/docs/python/">Python</a></li></ul><p class="side-group">运维</p><ul class="side-list"><li><a href="/zh/docs/console/">Console</a></li><li><a href="/zh/docs/kubernetes/">Kubernetes</a></li><li><a href="/zh/docs/observability/">可观测性</a></li><li><a href="/zh/docs/white-label/">白标</a></li></ul><p class="side-group">摄取</p><ul class="side-list"><li><a href="/zh/docs/ingestion/">摄取</a></li><li><a href="/zh/docs/ingestion-sinks/">摄取 sink</a></li><li><a href="/zh/docs/benchmarks/">基准测试</a></li></ul><p class="side-group">用 SQL 建模</p><ul class="side-list"><li><a href="/zh/docs/sql/">SQL</a></li></ul><p class="side-group">项目</p><ul class="side-list"><li><a href="/zh/docs/philosophy/">理念</a></li><li><a href="/zh/docs/faq/">常见问题</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">文档</p>
+      <h1>配置</h1>
+      <p class="doc-desc">所有环境变量，包括默认值、格式，以及缺失时会发生什么。</p>
+      <p>所有配置都来自<strong>环境变量</strong>，在启动时读取一次。之后不会再查询环境：配置在运行中途发生变化的进程，其行为是没有人能够复现的。</p>
+<h2 id="必需">必需<a class="anchor" href="#必需" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>变量</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_DATABASE_URL</code></td><td>Postgres。缺失 = 使用数据库的五个子命令出现<strong>启动错误</strong></td></tr></tbody></table></div>
+<h2 id="进程">进程<a class="anchor" href="#进程" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>变量</th><th>默认值</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_ENV</code></td><td><code>local</code></td><td><code>local</code> 以文本格式记录日志并让界面保持开放；其他任何值都需要凭据，并以 JSON 记录日志</td></tr><tr><td><code>BREVIS_HTTP_ADDR</code></td><td><code>:8080</code></td><td>监听地址</td></tr><tr><td><code>BREVIS_LOG_LEVEL</code></td><td><code>info</code></td><td></td></tr><tr><td><code>BREVIS_SHUTDOWN_TIMEOUT_SECONDS</code></td><td><code>15</code></td><td>整数；非数字的值会导致启动错误</td></tr><tr><td><code>BREVIS_BRAND_FILE</code></td><td><code>brand.yaml</code></td><td>品牌；缺失 = 默认</td></tr><tr><td><code>BREVIS_UI_URL</code></td><td>—</td><td>告警中 run 链接的基础地址</td></tr><tr><td><code>BREVIS_METRICS_ADDR</code></td><td>—</td><td>Prometheus 指标端口；为空 = 不暴露。见<a href="/zh/docs/observability/">可观测性</a></td></tr><tr><td><code>BREVIS_SLACK_WEBHOOK</code></td><td>—</td><td>失败告警的目的地。为空 = 没有人会收到通知</td></tr></tbody></table></div>
+<h2 id="认证">认证<a class="anchor" href="#认证" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>变量</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_AUTH_USER</code></td><td>界面用户</td></tr><tr><td><code>BREVIS_AUTH_PASSWORD_HASH</code></td><td>由 <code>brevis hash</code> 生成的 <code>pbkdf2-sha256$…</code> 哈希</td></tr><tr><td><code>BREVIS_AUTH_SECRET</code></td><td>用于签署会话的 32 字节以上内容（<code>openssl rand -base64 48</code>）</td></tr></tbody></table></div>
+<p>三者要么全部提供，要么全部不提供。</p>
+<aside class="admon admon-danger"><p class="admon-t">只配置一半是启动错误</p><p>填写了用户名的人，会以为门已经关上了。界面可以触发 pipeline：<code>POST /workflows/&lt;slug&gt;/trigger</code> 会运行一个写入数据仓库的 <code>dbt build</code>。如果暴露在互联网上，它就是数据仓库的遥控器，而一条日志警告无法消除这种误以为，因为没有人会去读一个正常运行的进程的日志。</p></aside>
+<p>在 <code>BREVIS_ENV=local</code> 之外，没有凭据就启动会被拒绝：</p>
+<div class="code-block" data-code="error: BREVIS_ENV=production requires a credential: set BREVIS_AUTH_USER,
+BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and BREVIS_AUTH_SECRET"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>error: BREVIS_ENV=production requires a credential: set BREVIS_AUTH_USER,
+BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and BREVIS_AUTH_SECRET</code></pre></div>
+<aside class="admon admon-note"><p class="admon-t">旧名称仍然有效</p><p>有四个变量在 2026-09-10 被重命名，当时最后几个葡萄牙语名称从项目面向操作者的一侧移除了：<code>BREVIS_AUTH_USUARIO</code>、<code>BREVIS_AUTH_SENHA_HASH</code>、<code>BREVIS_AUTH_SEGREDO</code> 和 <code>BREVIS_POD_MANTER_EM_FALHA</code>。设置了旧名称的安装环境仍可继续工作，并会记录一条指出新名称的警告。</p>
+<p>先添加新名称，部署，然后再删除旧名称；两者同时设置时，新名称优先。旧名称会在下一个主版本中移除。</p>
+<p>在 SDK 中，<code>BREVIS_SDK_LIMITE_INLINE</code> 按同样的规则变成了 <code>BREVIS_SDK_INLINE_LIMIT</code>。</p></aside>
+<h2 id="任务环境">任务环境<a class="anchor" href="#任务环境" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>变量</th><th>默认值</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TASK_ENV</code></td><td>空</td><td>每个 step 接收到的内容</td></tr></tbody></table></div>
+<p>任务<strong>不会</strong>继承编排器的环境。原因很具体：该进程带有 <code>BREVIS_DATABASE_URL</code>，其中包含 Postgres 的用户名和密码，而 workflow 是别人写的任意命令，继承就等于把数据库凭据交给每条 pipeline 的每个 step。</p>
+<p>任务需要什么，需要显式声明：</p>
+<div class="code-block" data-code="BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE   # forwards these two from the process
+BREVIS_TASK_ENV=STAGE=prod                # sets a literal
+BREVIS_TASK_ENV=&#x27;*&#x27;                       # forwards everything EXCEPT BREVIS_*"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE   <span class="t-c"># forwards these two from the process</span>
+BREVIS_TASK_ENV=STAGE=prod                <span class="t-c"># sets a literal</span>
+BREVIS_TASK_ENV='*'                       <span class="t-c"># forwards everything EXCEPT BREVIS_*</span></code></pre></div>
+<p><code>PATH</code> 和 <code>HOME</code> 始终包含在内：没有 <code>PATH</code>，任何命令都无法解析，而错误只会是一句什么都解释不了的“not found”。</p>
+<p>缺失的名称<strong>不会</strong>变成空字符串：<code>GOOGLE_PROJECT_ID=""</code> 会让 dbt 以比变量缺失更糟糕的信息失败。</p>
+<h2 id="kubernetes">Kubernetes<a class="anchor" href="#kubernetes" aria-label="link">#</a></h2>
+<p>这些是<strong>安装</strong>层面的决定，而不是 workflow 层面的。</p>
+<div class="table-wrap"><table><thead><tr><th>变量</th><th>默认值</th><th>格式</th></tr></thead><tbody><tr><td><code>BREVIS_PODS</code></td><td><code>auto</code></td><td><code>auto</code>、<code>on</code> 或 <code>off</code>；其他任何值都是启动错误</td></tr><tr><td><code>BREVIS_POD_NAMESPACE</code></td><td>集群的命名空间</td><td></td></tr><tr><td><code>BREVIS_POD_SERVICE_ACCOUNT</code></td><td>—</td><td></td></tr><tr><td><code>BREVIS_POD_PULL_SECRETS</code></td><td>—</td><td>以逗号分隔的列表</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_SECRETS</code></td><td>—</td><td>以逗号分隔的列表</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_CONFIGMAPS</code></td><td>—</td><td>以逗号分隔的列表</td></tr><tr><td><code>BREVIS_POD_ALLOWED_SECRETS</code></td><td>—</td><td>以逗号分隔的列表</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PATH</code></td><td>—</td><td>挂载在 pod 中的路径</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PVC</code></td><td>—</td><td>保存凭据的 PVC</td></tr><tr><td><code>BREVIS_POD_NODE_SELECTOR</code></td><td>—</td><td><code>key=value,other=value</code></td></tr><tr><td><code>BREVIS_POD_TOLERATIONS</code></td><td>—</td><td><code>key=value:effect,…</code>；仅支持 <code>Equal</code> 运算符</td></tr><tr><td><code>BREVIS_POD_KEEP_ON_FAILURE</code></td><td><code>false</code></td><td><code>true</code> 会保留 pod 以便检查</td></tr></tbody></table></div>
+<p>在列表中，空条目会被忽略：<code>a,,b</code> 是笔误，而空的 secret 名称会导致服务器拒绝整个 pod。</p>
+<h2 id="测试">测试<a class="anchor" href="#测试" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>变量</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TEST_DATABASE_URL</code></td><td>集成测试使用的数据库；没有它时，这些测试会被跳过</td></tr></tbody></table></div>
+<h2 id="健康检查端点">健康检查端点<a class="anchor" href="#健康检查端点" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>GET /health</code></td><td>存活探针：<strong>不</strong>查询数据库</td></tr><tr><td><code>GET /ready</code></td><td>就绪探针：会查询，并指出失败的依赖</td></tr></tbody></table></div>
+<p>这种分离是有意的：依赖外部服务的存活探针，会在数据库出现波动时让 Kubernetes <strong>杀掉 pod</strong>，而不是仅仅把它从负载均衡器中摘除。</p>
+<h2 id="完整示例">完整示例<a class="anchor" href="#完整示例" aria-label="link">#</a></h2>
+<div class="code-block" data-code="# required
+export BREVIS_DATABASE_URL=&#x27;postgres://brevis:secret@db:5432/brevis?sslmode=require&#x27;
+
+# production requires credentials
+export BREVIS_ENV=production
+export BREVIS_AUTH_USER=operator
+export BREVIS_AUTH_PASSWORD_HASH=&quot;$(brevis hash &lt; password.txt)&quot;
+export BREVIS_AUTH_SECRET=&quot;$(openssl rand -base64 48)&quot;
+
+# what the tasks need, and nothing more
+export BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE,DBT_KEYFILE
+
+# pods
+export BREVIS_PODS=on
+export BREVIS_POD_NAMESPACE=data
+export BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
+export BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred
+
+# alerts
+export BREVIS_SLACK_WEBHOOK=&#x27;https://hooks.slack.com/services/...&#x27;
+export BREVIS_UI_URL=&#x27;https://brevis.example.com&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-c"># required</span>
+export BREVIS_DATABASE_URL='postgres://<span class="t-k">brevis</span>:secret@db:5432/<span class="t-k">brevis</span>?sslmode=require'
+
+<span class="t-c"># production requires credentials</span>
+export BREVIS_ENV=production
+export BREVIS_AUTH_USER=operator
+export BREVIS_AUTH_PASSWORD_HASH="$(<span class="t-k">brevis</span> hash &lt; password.txt)"
+export BREVIS_AUTH_SECRET="$(openssl rand <span class="t-n">-base64</span> 48)"
+
+<span class="t-c"># what the tasks need, and nothing more</span>
+export BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE,DBT_KEYFILE
+
+<span class="t-c"># pods</span>
+export BREVIS_PODS=on
+export BREVIS_POD_NAMESPACE=data
+export BREVIS_POD_SERVICE_ACCOUNT=<span class="t-k">brevis</span>-runner
+export BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred
+
+<span class="t-c"># alerts</span>
+export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
+export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code></pre></div>
+
+      <nav class="pagers" aria-label="页面">
+        <a class="pager pager-prev" href="/zh/docs/parameters/"><span>上一页</span><strong>参数</strong></a>
+        <a class="pager pager-next" href="/zh/docs/runtime/"><span>下一页</span><strong>step 运行时</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/zh/docs/configuration.md" target="_blank" rel="noopener">在 GitHub 上编辑此页</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="本页内容">
+      <p class="toc-t">本页内容</p>
+      <ul><li class="toc-2"><a href="#必需">必需</a></li><li class="toc-2"><a href="#进程">进程</a></li><li class="toc-2"><a href="#认证">认证</a></li><li class="toc-2"><a href="#任务环境">任务环境</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#测试">测试</a></li><li class="toc-2"><a href="#健康检查端点">健康检查端点</a></li><li class="toc-2"><a href="#完整示例">完整示例</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/zh/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>哲学，应用于数据基础设施。</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>项目</h2>
+        <ul>
+          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/docs/philosophy/">原则</a></li>
+          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>代码</h2>
+        <ul>
+          <li><a href="/zh/docs/">文档</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">仓库</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>一个开源项目，作者： <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · 使用 Go 构建 · Go gopher 由 Renée French 绘制, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

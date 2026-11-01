@@ -1,32 +1,32 @@
-# Filosofia
+# Philosophy
 
-> De onde vem o brevis.sh: Sêneca, a Aretê Academy, e o que isso decide no código.
+> Where brevis.sh comes from: Seneca, Aretê Academy, and what that decides in the code.
 
-*https://brevis.sh/docs/philosophy/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/philosophy/ · brevis.sh docs (en-US)*
 
 ---
 
-O brevis.sh nasce no grupo Aretê Academy: disciplina, propósito e excelência aplicados à construção de software.
+brevis.sh is born inside Aretê Academy: discipline, purpose and excellence applied to building software.
 
 ## De brevitate vitae
 
-> Não é que temos pouco tempo. É que perdemos muito dele.
+> It is not that we have little time, but that we lose much of it.
 
-A máxima de Sêneca guia a pergunta por trás do brevis.sh: quais complexidades realmente merecem o tempo de uma equipe? Cada workflow executa em pods isolados para que falhas, versões e dependências tenham limites claros.
+Seneca's maxim guides the question behind brevis.sh: which complexities truly deserve a team's time? Every workflow runs in isolated pods so that failures, versions and dependencies have clear boundaries.
 
-Quatro escolhas do runtime saem dessa pergunta:
+Four choices in the runtime come out of that question:
 
-- **imagem por etapa** — Cada passo declara o runtime de que precisa. Trocar a versão de um não obriga a mexer nos outros.
-- **logs por execução** — A saída pertence ao run que a produziu. Investigar uma falha não é reconstruir um contexto perdido.
-- **retries persistentes** — A tentativa sobrevive ao processo. Uma reinicialização não apaga o que já se sabia sobre o trabalho.
-- **isolamento de dependências** — O que uma etapa carrega não vaza para as vizinhas. Limite claro é o que torna a falha legível.
+- **image per step** — Each step declares the runtime it needs. Bumping one version doesn't force you to touch the others.
+- **logs per run** — Output belongs to the run that produced it. Investigating a failure isn't rebuilding a lost context.
+- **persistent retries** — The attempt outlives the process. A restart doesn't erase what was already known about the work.
+- **dependency isolation** — What one step carries doesn't leak into its neighbours. A clear boundary is what makes a failure legible.
 
-## A proposta do projeto
+## What the project proposes
 
-Entre *filosofia sem prática* e *tecnologia sem direção*, **clareza para fazer o que importa.**
+Between *philosophy without practice* and *technology without direction*, **clarity to do what matters.**
 
-## Ferramentas moldam a forma como pensamos.
+## Tools shape the way we think.
 
-> “Código sustentável não é apenas código que continua rodando. É código que deixa espaço para as pessoas raciocinarem.” — Filosofia aplicada ao software
+> “Sustainable code is not merely code that keeps running. It is code that leaves room for people to reason.” — Philosophy applied to software
 
-> “A clareza não é o oposto da sofisticação. É o critério que impede a sofisticação de se tornar ruído.” — Open source por princípio
+> “Clarity is not the opposite of sophistication. It is the criterion that keeps sophistication from becoming noise.” — Open source by principle

@@ -1,42 +1,42 @@
-# Introdução
+# Introduction
 
-> O que é o brevis.sh, que problema ele resolve e quando ele não é a escolha certa.
+> What brevis.sh is, the problem it solves, and when it is not the right choice.
 
-*https://brevis.sh/docs/introduction/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/introduction/ · brevis.sh docs (en-US)*
 
 ---
 
-O brevis.sh é um **runtime de orquestração de dados escrito em Go**. Um binário
-único reúne o que normalmente exige quatro ferramentas: transformação
-declarativa, orquestração de workflows, fila persistente, scheduler e uma
-interface para operar tudo isso.
+brevis.sh is a **data orchestration runtime written in Go**. A single binary
+brings together what normally takes four tools: declarative transformation,
+workflow orchestration, a persistent queue, a scheduler, and an interface to
+operate all of it.
 
-Ele é open source sob licença MIT, e o projeto nasce na
+It is open source under the MIT licence, and the project is born at
 [Aretê Academy](https://areteacademy.com.br/).
 
-## O problema
+## The problem
 
-Uma stack de dados comum reúne uma ferramenta de transformação, uma de
-orquestração, uma fila e uma interface. Cada peça é boa no que faz — e a
-integração entre elas vira trabalho permanente: quatro versionamentos, quatro
-formas de configurar, quatro lugares para olhar quando algo falha.
+A common data stack combines a transformation tool, an orchestrator, a queue and
+an interface. Each piece is good at what it does — and the integration between
+them becomes permanent work: four versioning schemes, four ways to configure,
+four places to look when something fails.
 
-Esse custo não aparece num diagrama de arquitetura. Aparece no tempo que a
-equipe gasta mantendo a cola entre as peças em vez de trabalhar no domínio que
-só ela conhece.
+That cost never shows up in an architecture diagram. It shows up in the time a
+team spends maintaining the glue instead of working on the domain only they
+know.
 
-## A proposta
+## The proposal
 
-Um artefato, com o subcomando que o papel exige:
+One artefact, with the subcommand the role requires:
 
 ```bash
 brevis serve        # API + interface
-brevis scheduler    # materializa agendas e executa a fila
-brevis run wf.yaml  # executa agora, sem banco
+brevis scheduler    # materialises schedules and drains the queue
+brevis run wf.yaml  # runs now, no database
 ```
 
-O workflow é um arquivo YAML versionado. Revisar um pipeline vira revisar um
-diff, não uma sessão de cliques.
+A workflow is a versioned YAML file. Reviewing a pipeline becomes reviewing a
+diff, not a clicking session.
 
 ```yaml
 name: ingest
@@ -44,105 +44,105 @@ schedule: "0 5 * * *"
 
 steps:
   - id: bronze
-    image: registry.exemplo/dbt:1.10.3
+    image: registry.example/dbt:1.10.3
     run: dbt build --select bronze+
 
-  - id: notificar
-    image: ghcr.io/exemplo/notify:0.3
-    run: /notify --canal dados
+  - id: notify
+    image: ghcr.io/example/notify:0.3
+    run: /notify --channel data
     depends_on: [bronze]
 ```
 
-## O que o torna diferente
+## What makes it different
 
-**Cada passo executa em seu próprio pod, com sua própria imagem.** Não existe
-worker genérico esperando trabalho: é o trabalho que traz o seu runtime. Um
-passo de `dbt` sobe com a imagem de dbt; um fetcher em Go ao lado sobe com 5,8
-MB e 32Mi de memória, em vez de herdar o tamanho do maior vizinho.
+**Every step runs in its own pod, with its own image.** There is no generic
+worker waiting for work: the work brings its own runtime. A `dbt` step comes up
+with the dbt image; a Go fetcher next to it comes up with 5.8 MB and 32Mi of
+memory, instead of inheriting the size of its largest neighbour.
 
-**O scheduler cria os runs; a fila os executa.** São dois laços independentes,
-e essa separação é deliberada: um pode cair sem interromper o outro, e
-reprocessar um mês passado não depende do relógio.
+**The scheduler creates runs; the queue executes them.** Two independent loops,
+and that separation is deliberate: one can go down without interrupting the
+other, and reprocessing a past month does not depend on the clock.
 
-**A validação não precisa de banco.** `brevis validate` roda na CI junto com os
-testes, então um erro de YAML falha no pull request e não no cluster.
+**Validation needs no database.** `brevis validate` runs in CI alongside the
+tests, so a YAML error fails in the pull request and not in the cluster.
 
-## Três peças, e elas são separadas de propósito
+## Three pieces, separate on purpose
 
-| peça | o que é | versão |
+| piece | what it is | version |
 |---|---|---|
-| **motor** | `brevis`, o binário deste texto: orquestra, agenda, executa e opera | `0.15` |
-| **SDK** | um módulo Go para escrever o passo que extrai e carrega | `0.66` |
-| **gateway** | um endpoint HTTP que pousa dado que *chega*, em vez de ir buscá-lo | `0.8` |
+| **engine** | `brevis`, the binary this page is about: orchestrates, schedules, executes and operates | `0.15` |
+| **SDK** | a Go module for writing the step that extracts and loads | `0.66` |
+| **gateway** | an HTTP endpoint that lands data which *arrives*, instead of going to fetch it | `0.8` |
 
-As versões são independentes porque as maturidades são. Numerar o gateway como
-`0.15.3` porque o motor está lá alegaria uma maturidade que ele não tem, e
-versão não se despublica.
+The versions are independent because the maturities are. Numbering the gateway
+`0.15.3` because the engine is there would claim a maturity it does not have,
+and a version cannot be un-published.
 
-O que costura as três é um número: o `ingestion_id`, um UUID v5 congelado sobre
-`provider|entity|source_key|record_ts`. Uma linha que o [gateway](/docs/ingestion/index.md)
-grava e uma linha que um fetcher do [SDK](/docs/sdk/index.md) grava para o mesmo registro
-são *a mesma linha*, sem nenhuma reconciliação entre as duas.
+What stitches the three together is a number: the `ingestion_id`, a frozen UUID
+v5 over `provider|entity|source_key|record_ts`. A row the
+[gateway](/docs/ingestion/index.md) lands and a row an [SDK](/docs/sdk/index.md) fetcher
+lands for the same record are *one row*, with no reconciliation between them.
 
-## Quando o brevis.sh não é a escolha
+## When brevis.sh is not the choice
 
-Documentar o que uma ferramenta não faz poupa mais tempo do que documentar o
-que ela faz:
+Documenting what a tool does not do saves more time than documenting what it
+does:
 
-- **Você já opera Airflow ou Dagster e está satisfeito.** A migração custa mais
-  do que a economia de operar um binário a menos.
-- **Seus workflows não são de dados.** O brevis.sh assume DAGs de transformação
-  e carga; um orquestrador de propósito geral serve melhor.
-- **Você precisa de um catálogo de operadores prontos.** Aqui um passo é uma
-  imagem e um comando. Isso é simples e é limitado — não há centenas de
-  integrações prontas para arrastar.
-- **Sua equipe não usa Kubernetes nem pretende usar.** O modo local funciona,
-  mas o desenho supõe pods.
+- **You already run Airflow or Dagster and you are happy.** Migrating costs more
+  than the saving of operating one fewer binary.
+- **Your workflows are not about data.** brevis.sh assumes DAGs of
+  transformation and load; a general-purpose orchestrator serves you better.
+- **You need a catalogue of ready-made operators.** Here a step is an image and
+  a command. That is simple, and it is limited — there are no hundreds of
+  integrations to drag in.
+- **Your team does not use Kubernetes and does not intend to.** Local mode
+  works, but the design assumes pods.
 
-## Código aberto. Escolha como participar.
+## Open code. Choose how to take part.
 
-O brevis.sh é 100% open source. Sem licenças proprietárias, sem edição limitada, sem bloqueios para usar o que você constrói.
+brevis.sh is 100% open source. No proprietary licences, no limited edition, no locks on what you build.
 
-### 100% aberto
+### 100% open
 
-*código · licença open source*
+*code · open source licence*
 
-Leia, use, adapte e melhore o runtime na sua própria operação. Runtime completo · Código auditável · Contribuições abertas.
+Read, use, adapt and improve the runtime in your own operation. Complete runtime · Auditable code · Open contributions.
 
-[Ver repositório](https://github.com/AreteAcademy/brevis)
+[View repository](https://github.com/AreteAcademy/brevis)
 
-### Construa junto
+### Build together
 
-*comunidade · issues abertas* · **Caminho principal**
+*community · open issues* · **Main path**
 
-Participe das conversas que definem o que o projeto se torna. Issues e propostas · Troca entre pares · Roadmap público.
+Take part in the conversations that decide what the project becomes. Issues and proposals · Peer exchange · Public roadmap.
 
-[Acompanhar projeto](https://github.com/AreteAcademy/brevis/issues)
+[Follow the project](https://github.com/AreteAcademy/brevis/issues)
 
-### Aprenda fundo
+### Learn deeply
 
-*aretê · tecnologia com propósito*
+*aretê · technology with purpose*
 
-Conheça a escola que conecta pensamento filosófico e engenharia de software. Conteúdo autoral · Formação contínua · Canal aberto.
+Meet the school that connects philosophical thinking and software engineering. Original content · Continuous learning · Open channel.
 
-[Conhecer a Aretê](https://areteacademy.com.br/)
+[Visit Aretê](https://areteacademy.com.br/)
 
-## Por onde seguir
+## Where to go next
 
-| se você quer | vá para |
+| if you want | go to |
 |---|---|
-| instalar e ver rodando | [Instalação](/docs/installation/index.md) e [Quickstart](/docs/quickstart/index.md) |
-| entender o formato do workflow | [Workflows](/docs/workflows/index.md) |
-| entender a arquitetura | [Scheduler e fila](/docs/scheduler-and-queue/index.md) |
-| a lista de comandos e flags | [CLI](/docs/cli/index.md) |
-| escrever um fetcher em Go | [SDK](/docs/sdk/index.md) |
-| passar um valor de um passo ao seguinte | [Contexto entre passos](/docs/context/index.md) |
-| escrever um passo em Python | [Bibliotecas cliente](/docs/libraries/index.md) |
-| receber dado por HTTP em vez de ir buscar | [Ingestão](/docs/ingestion/index.md) |
-| montar painel e alerta | [Observabilidade](/docs/observability/index.md) |
+| install and see it running | [Installation](/docs/installation/index.md) and [Quickstart](/docs/quickstart/index.md) |
+| understand the workflow format | [Workflows](/docs/workflows/index.md) |
+| understand the architecture | [Scheduler and queue](/docs/scheduler-and-queue/index.md) |
+| the list of commands and flags | [CLI](/docs/cli/index.md) |
+| write a fetcher in Go | [SDK](/docs/sdk/index.md) |
+| pass a value from one step to the next | [Context between steps](/docs/context/index.md) |
+| write a step in Python | [Client libraries](/docs/libraries/index.md) |
+| receive data over HTTP instead of fetching it | [Ingestion](/docs/ingestion/index.md) |
+| build dashboards and alerts | [Observability](/docs/observability/index.md) |
 
-:::note O nome
-*Brevis* é latim para "curto, breve" — a raiz de *brevidade*. Vem de
-**De Brevitate Vitae**, de Sêneca: não é que temos pouco tempo, é que perdemos
-muito dele.
+:::note About the name
+*Brevis* is Latin for "short, brief" — the root of *brevity*. It comes from
+Seneca's **De Brevitate Vitae**: it is not that we have little time, but that we
+lose much of it.
 :::

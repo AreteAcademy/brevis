@@ -1,134 +1,135 @@
-# Pod por passo
+# Pod per step
 
-> Por que cada etapa executa em seu próprio pod, e o que isso muda em custo e isolamento.
+> Why each step runs in its own pod, and what that changes in cost and isolation.
 
-*https://brevis.sh/docs/pod-per-step/ · brevis.sh docs (pt-BR)*
+*https://brevis.sh/docs/pod-per-step/ · brevis.sh docs (en-US)*
 
 ---
 
-Em Kubernetes, **cada passo de um workflow vira um pod** com a imagem declarada
-naquele passo. Não há worker genérico esperando trabalho: é o trabalho que traz
-o seu runtime.
+On Kubernetes, **each workflow step becomes a pod** with the image declared in
+that step. There is no generic worker waiting for work: the work brings its own
+runtime.
 
-![Diagrama: o Core do brevis.sh sobe um pod por passo — extract em Go, prepare em Python, load em Go e transform em dbt. Os passos trocam contexto entre si, e o SDK é quem lê e escreve esse contexto.](/assets/execution.svg)
+![Diagram: the Core starts one pod per step — extract on Go, prepare on Python, load on Go and transform on dbt. Steps pass context to one another, and the SDK is what reads and writes it.](/assets/execution.svg)
 
 ```
 scheduler                          cluster
 ─────────                          ───────
-percorre o grafo
-  para cada passo pronto:
-    monta o Pod  ──────────────►  Pod: imagem do passo, comando do passo
-    acompanha o status  ◄───────  Pending → Running → Succeeded/Failed
-    segue o log         ◄───────  stdout do container
-    lê o exit code      ◄───────  containerStatuses[0].terminated
-    apaga o pod  ──────────────►  (some)
+walks the graph
+  for each ready step:
+    builds the Pod  ───────────►  Pod: the step's image, the step's command
+    follows status      ◄───────  Pending → Running → Succeeded/Failed
+    follows the log     ◄───────  container stdout
+    reads the exit code ◄───────  containerStatuses[0].terminated
+    deletes the pod ───────────►  (gone)
 ```
 
-## O que isso muda
+## What this changes
 
-Um worker monolítico obriga a imagem a conter tudo que qualquer passo possa
-precisar. Na prática:
+A monolithic worker forces the image to contain everything any step might need.
+In practice:
 
-| | imagem única | pod por passo |
+| | single image | pod per step |
 |---|---|---|
-| passo de dbt | 1,9 GB · 1Gi de RAM | 1,9 GB · 1Gi de RAM |
-| fetcher em Go ao lado | **1,9 GB · 1Gi** | **12 MB · 32Mi** |
-| trocar a versão do dbt | rebuild de tudo | uma linha no YAML daquele workflow |
-| um passo que vaza memória | derruba o worker e os vizinhos | morre sozinho |
+| dbt step | 1.9 GB · 1Gi RAM | 1.9 GB · 1Gi RAM |
+| Go fetcher next to it | **1.9 GB · 1Gi** | **12 MB · 32Mi** |
+| bumping the dbt version | rebuild everything | one line in that workflow's YAML |
+| a step that leaks memory | takes the worker and its neighbours down | dies alone |
 
-O terceiro item é o menos óbvio e o mais caro no dia a dia: com imagem única,
-subir o dbt de 1.10 para 1.11 num pipeline obriga a subir em todos.
+The third row is the least obvious and the most expensive day to day: with a
+single image, moving dbt from 1.10 to 1.11 in one pipeline forces the move in
+all of them.
 
-## Imagens por papel
+## Images by role
 
-As imagens são por **papel**, não por projeto. Tudo que sobra numa imagem é
-baixado por todo nó que rodar aquele passo:
+Images are per **role**, not per project. Everything left over in an image is
+pulled by every node that runs that step:
 
-| papel | tamanho | partida a frio |
+| role | size | cold start |
 |---|---|---|
-| **Go** | **5,8 MB** | 0,18 s |
-| **Python** | **118 MB** | 0,54 s |
-| **dbt** | **620 MB** | 3,3 s |
+| **Go** | **5.8 MB** | 0.18 s |
+| **Python** | **118 MB** | 0.54 s |
+| **dbt** | **620 MB** | 3.3 s |
 
-Antes: uma imagem única de **1,87 GB** para tudo.
+Before: a single 1.87 GB image for everything.
 
-No caso do dbt, o `dbt parse` roda no build e o `target/partial_parse.msgpack`
-viaja na imagem — **2,68 s a menos por pod**, em toda invocação.
+For dbt, `dbt parse` runs at build time and `target/partial_parse.msgpack`
+travels in the image — **2.68 s less per pod**, on every invocation.
 
-## Onde cada passo roda
+## Where each step runs
 
-A decisão é tomada uma vez, no boot, e depende de `BREVIS_PODS` e de haver
-cluster:
+The decision is made once, at boot, and depends on `BREVIS_PODS` and on whether
+there is a cluster:
 
-| `BREVIS_PODS` | com cluster | sem cluster |
+| `BREVIS_PODS` | with cluster | without cluster |
 |---|---|---|
-| `auto` (padrão) | passo com `image:` vira pod | tudo em processo local, com aviso no log |
-| `on` | passo com `image:` vira pod | **erro de boot** |
-| `off` | tudo em processo local | tudo em processo local |
+| `auto` (default) | a step with `image:` becomes a pod | everything as local processes, with a log warning |
+| `on` | a step with `image:` becomes a pod | **boot error** |
+| `off` | everything as local processes | everything as local processes |
 
-**Um passo com `host:` não passa por nada disso.** Ele é checado antes do pod e
-antes do processo, e vai para uma máquina que já está de pé — `BREVIS_PODS` não
-se aplica a ele, e ele nunca cai para processo local. Isso é deliberado:
-`image:` degrada para execução local com aviso porque container e processo são
-o mesmo comando em dois invólucros, e um host não é. É onde está a licença, ou
-a GPU, ou o dado.
+**A step with `host:` passes through none of this.** It is checked before the
+pod and before the process, and goes to a machine that is already running —
+`BREVIS_PODS` does not apply to it, and it never falls back to a local process.
+That is deliberate: `image:` degrades to local execution with a warning because
+a container and a process are the same command in two wrappers, and a host is
+not. It is where the licence lives, or the GPU, or the data.
 
-`auto` é o padrão porque o mesmo binário roda nos dois lugares: no laptop não há
-service account montada e ele cai para processo local; no cluster há, e ele
-passa a criar pods.
+`auto` is the default because the same binary runs in both places: on a laptop
+there is no service account mounted and it falls back to local processes; in a
+cluster there is, and it starts creating pods.
 
-`on` existe para o deploy que **não pode** silenciosamente virar execução local.
-Ali, ficar sem cluster tem de ser erro de boot.
+`on` exists for the deployment that **must not** silently become local
+execution. There, having no cluster has to be a boot error.
 
-:::warning `brevis run` não cria pods
-O comando `run` monta apenas o executor de processo. Um passo com `image:`
-executa na própria instância — e avisa. Silenciar faria parecer que o passo
-rodou na imagem declarada, que é o tipo de engano que só aparece quando o
-resultado já está errado.
+:::warning `brevis run` creates no pods
+The `run` command builds only the process executor. A step with `image:` runs on
+the instance itself — and says so. Staying silent would make it look like the
+step ran on the declared image, which is the kind of mistake that only surfaces
+once the result is already wrong.
 :::
 
-## Identidade e credenciais
+## Identity and credentials
 
-Com que identidade os pods sobem é decisão da **instalação**, não do workflow —
-um pipeline não deve poder escolher a service account com que roda. Por isso
-vem do ambiente:
+Which identity pods come up with is an **installation** decision, not a workflow
+one — a pipeline must not be able to choose the service account it runs as. So
+it comes from the environment:
 
 ```bash
-BREVIS_POD_NAMESPACE=dados
+BREVIS_POD_NAMESPACE=data
 BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
 BREVIS_POD_PULL_SECRETS=registry-cred
 BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred,api-tokens
 ```
 
-Em modo pod, o ambiente da task vem dos Secrets do cluster — não de
+In pod mode the task environment comes from cluster Secrets — not from
 `BREVIS_TASK_ENV`.
 
-## Node selector e tolerações
+## Node selector and tolerations
 
 ```bash
 BREVIS_POD_NODE_SELECTOR='kubernetes.io/arch=arm64'
-BREVIS_POD_TOLERATIONS='dedicated=dados:NoSchedule'
+BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'
 ```
 
-Só o operador `Equal` é aceito nas tolerações: `Exists` toleraria **qualquer**
-taint com aquela chave, amplo demais para uma decisão vinda de variável de
-ambiente.
+Only the `Equal` operator is accepted in tolerations: `Exists` would tolerate
+**any** taint with that key, too broad for a decision coming from an environment
+variable.
 
-Uma toleração malformada é **ignorada** em vez de virar erro de boot — ela deixa
-o pod `Pending`, que é visível, enquanto recusar o boot pararia também os
-workflows que não precisam daquele pool.
+A malformed toleration is **ignored** rather than made a boot error — it leaves
+the pod `Pending`, which is visible, whereas refusing to boot would also stop
+the workflows that do not need that pool.
 
-## Depurando uma falha
+## Debugging a failure
 
 ```bash
 BREVIS_POD_KEEP_ON_FAILURE=true
 ```
 
-Mantém o pod que falhou para inspeção com `kubectl logs` e `kubectl describe`.
-Deixe desligado em produção: pods parados consomem cota do cluster.
+Keeps the failed pod around for `kubectl logs` and `kubectl describe`. Leave it
+off in production: stopped pods consume cluster quota.
 
-## Próximos passos
+## Next steps
 
-- [Kubernetes](/docs/kubernetes/index.md) — o deploy completo
-- [Configuração](/docs/configuration/index.md) — todas as variáveis `BREVIS_POD_*`
-- [Observabilidade](/docs/observability/index.md) — as métricas dos dois processos
+- [Kubernetes](/docs/kubernetes/index.md) — the full deployment
+- [Configuration](/docs/configuration/index.md) — every `BREVIS_POD_*` variable
+- [Observability](/docs/observability/index.md) — metrics from both processes

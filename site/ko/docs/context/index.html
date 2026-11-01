@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko" data-docs="/ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>step 간 컨텍스트 — 문서</title>
+<meta name="description" content="한 step이 다음 step에 전달하는 것으로, 환경 변수 두 개와 파일 하나입니다.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/ko/docs/context/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/ko/docs/context/index.md">
+<link rel="alternate" hreflang="en-US" href="https://brevis.sh/docs/context/"><link rel="alternate" hreflang="es" href="https://brevis.sh/es/docs/context/"><link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/pt/docs/context/"><link rel="alternate" hreflang="fr" href="https://brevis.sh/fr/docs/context/"><link rel="alternate" hreflang="de" href="https://brevis.sh/de/docs/context/"><link rel="alternate" hreflang="zh-CN" href="https://brevis.sh/zh/docs/context/"><link rel="alternate" hreflang="ja" href="https://brevis.sh/ja/docs/context/"><link rel="alternate" hreflang="ru" href="https://brevis.sh/ru/docs/context/"><link rel="alternate" hreflang="ko" href="https://brevis.sh/ko/docs/context/"><link rel="alternate" hreflang="hi" href="https://brevis.sh/hi/docs/context/"><link rel="alternate" hreflang="id" href="https://brevis.sh/id/docs/context/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="ko">
+<meta property="og:title" content="step 간 컨텍스트 — 문서">
+<meta property="og:description" content="한 step이 다음 step에 전달하는 것으로, 환경 변수 두 개와 파일 하나입니다.">
+<meta property="og:url" content="https://brevis.sh/ko/docs/context/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="step 간 컨텍스트 — 문서">
+<meta name="twitter:description" content="한 step이 다음 step에 전달하는 것으로, 환경 변수 두 개와 파일 하나입니다.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "step 간 컨텍스트",
+  "description": "한 step이 다음 step에 전달하는 것으로, 환경 변수 두 개와 파일 하나입니다.",
+  "inLanguage": "ko",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/ko/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="주 내비게이션">
+      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/docs/">문서</a>
+      <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/context/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/context/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/context/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/context/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/context/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/context/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/context/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/context/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/context/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/context/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/context/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        오픈 소스 둘러보기
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="메뉴 열기" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    문서 메뉴
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">문서 검색</label>
+        <input type="search" id="q" placeholder="검색…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="결과 없음" hidden></div>
+      <nav class="side-nav" aria-label="문서">
+        <p class="side-group">시작하기</p><ul class="side-list"><li><a href="/ko/docs/ecosystem/">에코시스템</a></li><li><a href="/ko/docs/integrations/">통합</a></li><li><a href="/ko/docs/introduction/">소개</a></li><li><a href="/ko/docs/installation/">설치</a></li><li><a href="/ko/docs/quickstart/">빠른 시작</a></li></ul><p class="side-group">개념</p><ul class="side-list"><li><a href="/ko/docs/core/">Core</a></li><li><a href="/ko/docs/workflows/">Workflows</a></li><li><a href="/ko/docs/scheduler-and-queue/">스케줄러와 큐</a></li><li><a href="/ko/docs/pod-per-step/">step당 pod 하나</a></li><li><a href="/ko/docs/context/" aria-current="page">step 간 컨텍스트</a></li></ul><p class="side-group">레퍼런스</p><ul class="side-list"><li><a href="/ko/docs/cli/">CLI</a></li><li><a href="/ko/docs/parameters/">매개변수</a></li><li><a href="/ko/docs/configuration/">구성</a></li><li><a href="/ko/docs/runtime/">step 런타임</a></li></ul><p class="side-group">SDK와 라이브러리</p><ul class="side-list"><li><a href="/ko/docs/sdk/">Go SDK</a></li><li><a href="/ko/docs/libraries/">클라이언트 라이브러리</a></li><li><a href="/ko/docs/python/">Python</a></li></ul><p class="side-group">운영</p><ul class="side-list"><li><a href="/ko/docs/console/">Console</a></li><li><a href="/ko/docs/kubernetes/">Kubernetes</a></li><li><a href="/ko/docs/observability/">관측성</a></li><li><a href="/ko/docs/white-label/">화이트 라벨</a></li></ul><p class="side-group">수집</p><ul class="side-list"><li><a href="/ko/docs/ingestion/">수집</a></li><li><a href="/ko/docs/ingestion-sinks/">수집 sink</a></li><li><a href="/ko/docs/benchmarks/">벤치마크</a></li></ul><p class="side-group">SQL 모델링</p><ul class="side-list"><li><a href="/ko/docs/sql/">SQL</a></li></ul><p class="side-group">프로젝트</p><ul class="side-list"><li><a href="/ko/docs/philosophy/">철학</a></li><li><a href="/ko/docs/faq/">FAQ</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">문서</p>
+      <h1>step 간 컨텍스트</h1>
+      <p class="doc-desc">한 step이 다음 step에 전달하는 것으로, 환경 변수 두 개와 파일 하나입니다.</p>
+      <p>step은 값을 게시하고, 그 step에 의존하는 step들이 그 값을 읽습니다. 이 기능이 하는 일은 그것이 전부입니다.</p>
+<div class="code-block" data-code="steps:
+  - id: extract
+    run: python fetch.py
+
+  - id: transform
+    run: python transform.py
+    depends_on: [extract]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: python fetch.py
+
+  - <span class="t-k">id</span>: transform
+    <span class="t-k">run</span>: python transform.py
+    <span class="t-k">depends_on</span>: [extract]</code></pre></div>
+<div class="code-block" data-code="# extract
+from brevis import context
+context.set(bucket=&quot;s3://landing/2026-09-07&quot;, rows=48213)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-c"># extract</span>
+<span class="t-k">from</span> brevis <span class="t-k">import</span> context
+context.set(bucket="s3://landing/2026-09-07", rows=48213)</code></pre></div>
+<div class="code-block" data-code="# transform
+from brevis import context
+bucket = context.get(&quot;extract.bucket&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-c"># transform</span>
+<span class="t-k">from</span> brevis <span class="t-k">import</span> context
+bucket = context.get("extract.bucket")</code></pre></div>
+<p>키는 항상 <code>&lt;step id&gt;.&lt;name&gt;</code> 형식입니다. step은 <strong>자신이 의존하는 step들</strong>이 게시한 것만 읽을 수 있고, 그 외에는 아무것도 읽을 수 없습니다.</p>
+<aside class="admon admon-note"><p class="admon-t">이 기능이 아닌 것</p><p>메시지 큐도, run 사이의 상태도, 데이터를 두는 곳도 아닙니다. 한 step이 다음 step에게 남기는 메모이며, 경로나 워터마크, 개수 같은 것입니다.</p></aside>
+<h2 id="어떤-언어든-라이브러리는-필요-없습니다">어떤 언어든 라이브러리는 필요 없습니다<a class="anchor" href="#어떤-언어든-라이브러리는-필요-없습니다" aria-label="link">#</a></h2>
+<p>계약은 <strong>환경 변수 두 개와 파일 하나</strong>이므로, SDK가 전혀 없는 step도 참여할 수 있습니다.</p>
+<div class="code-block" data-code="window=$(jq -r &#x27;.extract.watermark&#x27; &lt;&lt;&lt; &quot;$BREVIS_INPUT&quot;)
+./publish --until &quot;$window&quot;
+jq -n --arg n &quot;$(date -Is)&quot; &#x27;{published_at: $n}&#x27; &gt; &quot;$BREVIS_OUTPUT&quot;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>window=$(jq <span class="t-n">-r</span> '.extract.watermark' &lt;&lt;&lt; "$BREVIS_INPUT")
+./publish <span class="t-n">--until</span> "$window"
+jq <span class="t-n">-n</span> <span class="t-n">--arg</span> n "$(date <span class="t-n">-Is</span>)" '{published_at: $n}' &gt; "$BREVIS_OUTPUT"</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>BREVIS_INPUT</code></td><td><code>{"&lt;step id&gt;": {…}}</code> — 이 step이 의존하는 step들이 게시한 것</td></tr><tr><td><code>BREVIS_OUTPUT</code></td><td>JSON 객체 <strong>하나</strong>를 쓸 경로</td></tr></tbody></table></div>
+<p>Kubernetes에서 이 경로는 <code>/dev/termination-log</code>이며, 엔진은 종료 코드를 얻기 위해 이미 이 파일을 읽습니다. 따라서 <strong>API 호출도, 토큰도, 포트도 없고</strong>, 이를 위한 라이브러리는 JSON 파싱과 파일 쓰기가 전부입니다.</p>
+<div class="table-wrap"><table><thead><tr><th>언어</th><th></th></tr></thead><tbody><tr><td>Python</td><td><a href="/ko/docs/python/"><code>pip install brevis</code></a> — <a href="/ko/docs/parameters/">자동 매개변수</a>를 제공하는 <code>brevis.run</code>도 포함합니다</td></tr><tr><td>Go</td><td><code>sdk/context</code>는 SDK 모듈에 속하며 다른 어떤 것에도 의존하지 않습니다</td></tr><tr><td>그 외 모든 언어</td><td>위의 두 변수</td></tr></tbody></table></div>
+<h2 id="격리">격리<a class="anchor" href="#격리" aria-label="link">#</a></h2>
+<p>어떤 step도 다른 step이 게시한 것을 덮어쓸 수 없습니다. 키에는 작성한 step의 id가 접두사로 붙고, 그 접두사는 step이 아니라 엔진이 결정합니다. 두 step이 <code>bucket</code>을 게시하면 <code>extract.bucket</code>과 <code>load.bucket</code>이 만들어지고, 어느 쪽도 사라지지 않습니다.</p>
+<h2 id="4096바이트-상한">4096바이트 상한<a class="anchor" href="#4096바이트-상한" aria-label="link">#</a></h2>
+<p>step이 게시하는 내용은 <strong>4096바이트</strong> 안에 들어가야 합니다. 이 한계는 임의로 정한 것이 아닙니다. Kubernetes에서 전송 수단이 <code>/dev/termination-log</code>이고, kubelet이 허용하는 크기가 그것이기 때문입니다.</p>
+<p>상한을 넘기면 <strong>step 오류</strong>가 되며, 메시지에 몇 바이트를 썼는지 표시됩니다. 대안은 잘라 내는 것인데, 잘린 JSON은 유효하지 않은 JSON이고 다음 step이 이를 발견하게 됩니다. 그 step은 결함이 자기 탓이 아니라는 것을 알 방법이 없습니다.</p>
+<p>값이 들어가지 않는다면 그것은 컨텍스트가 아닙니다. 버킷에 쓰고 경로를 게시하세요.</p>
+<h2 id="재시도와-재개된-run">재시도와 재개된 run<a class="anchor" href="#재시도와-재개된-run" aria-label="link">#</a></h2>
+<p>새 시도에서는 step이 다시 게시하며 이전 값이 대체됩니다. 이미 성공한 step은 다시 실행되지도 다시 게시하지도 않으며, 그 step이 말한 내용은 의존하는 step들에게 계속 유효합니다.</p>
+<h2 id="step을-수동으로-실행하기">step을 수동으로 실행하기<a class="anchor" href="#step을-수동으로-실행하기" aria-label="link">#</a></h2>
+<p>계약의 전부가 변수 두 개이므로, run을 재현하려면 그 변수를 내보내기만 하면 됩니다.</p>
+<div class="code-block" data-code="export BREVIS_INPUT=&#x27;{&quot;extract&quot;:{&quot;bucket&quot;:&quot;s3://landing/2026-09-07&quot;}}&#x27;
+export BREVIS_OUTPUT=/tmp/out.json
+python transform.py
+cat /tmp/out.json"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>export BREVIS_INPUT='{"extract":{"bucket":"s3://landing/2026-09-07"}}'
+export BREVIS_OUTPUT=/tmp/out.json
+python transform.py
+cat /tmp/out.json</code></pre></div>
+<h2 id="다음-단계">다음 단계<a class="anchor" href="#다음-단계" aria-label="link">#</a></h2>
+<ul><li><a href="/ko/docs/parameters/">매개변수</a> — run 사이에 달라지는 것과 자동 매개변수</li><li><a href="/ko/docs/runtime/">step 런타임</a> — step이 실행 위치에 대해 선언하는 것</li><li><a href="/ko/docs/python/">Python</a> — 클라이언트 라이브러리와 다른 언어</li></ul>
+
+      <nav class="pagers" aria-label="페이지">
+        <a class="pager pager-prev" href="/ko/docs/pod-per-step/"><span>이전</span><strong>step당 pod 하나</strong></a>
+        <a class="pager pager-next" href="/ko/docs/cli/"><span>다음</span><strong>CLI</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/ko/docs/context.md" target="_blank" rel="noopener">GitHub에서 이 페이지 편집</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="이 페이지에서">
+      <p class="toc-t">이 페이지에서</p>
+      <ul><li class="toc-2"><a href="#어떤-언어든-라이브러리는-필요-없습니다">어떤 언어든 라이브러리는 필요 없습니다</a></li><li class="toc-2"><a href="#격리">격리</a></li><li class="toc-2"><a href="#4096바이트-상한">4096바이트 상한</a></li><li class="toc-2"><a href="#재시도와-재개된-run">재시도와 재개된 run</a></li><li class="toc-2"><a href="#step을-수동으로-실행하기">step을 수동으로 실행하기</a></li><li class="toc-2"><a href="#다음-단계">다음 단계</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/ko/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>데이터 인프라에 적용한 철학.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>프로젝트</h2>
+        <ul>
+          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/docs/philosophy/">원칙</a></li>
+          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/faq/">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>코드</h2>
+        <ul>
+          <li><a href="/ko/docs/">문서</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">저장소</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>오픈 소스 프로젝트 제작: <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · Go로 제작 · Go 고퍼: Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+<script src="/js/lang.js" defer></script>
+</body>
+</html>

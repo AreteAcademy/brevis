@@ -1,0 +1,84 @@
+# Core
+
+> Der Orchestrator: plant Runs, hält die Queue in Postgres und startet einen Pod pro Step – und berührt die Daten nie.
+
+*https://brevis.sh/de/docs/core/ · brevis.sh docs (de)*
+
+---
+
+Der gesamte Workflow ist eine versionierte Datei: Eine Pipeline zu prüfen heißt, einen Diff zu prüfen. Der Core plant, reiht ein und startet jeden Step mit seinem eigenen Image – und berührt die Daten nie.
+
+![Der Ablauf des Core: ein Scheduler und eine Queue, in Postgres gehalten, starten einen Pod pro Step des Workflows – prepare, extract, validate und publish. Nur Steuerlinien verlassen den Core. Die Daten gehen von einer HTTP-Quelle in den extract-Pod, der das SDK ausführt, und von dort nach BigQuery; keine Daten laufen durch den Core.](/assets/flow-core.svg)
+
+## Was er tut
+
+- **Plant.** Der Scheduler liest den Zeitplan jedes Workflows und erzeugt die Runs. Er und die Queue sind zwei unabhängige Schleifen: Ist die eine blockiert, hält das die andere nicht an – [Scheduler und Queue](/de/docs/scheduler-and-queue/index.md).
+- **Reiht ein.** Die Queue lebt in Postgres: Wer ausführt, beansprucht einen wartenden Run, durchläuft den Graphen und hält den Zustand jedes Steps fest.
+- **Startet einen Pod pro Step**, jeden mit seinem eigenen Image – [Pod pro Step](/de/docs/pod-per-step/index.md).
+- **Berührt die Daten nie.** Nur Steuerlinien verlassen den Core: Was Daten liest und schreibt, ist der Step, mit dem [SDK](/de/docs/sdk/index.md) oder mit Ihrem eigenen Code.
+
+## Ein Workflow, von Anfang bis Ende
+
+Der Workflow ist eine YAML-Datei. Zwei Steps, die vom selben Step abhängen, laufen parallel:
+
+```yaml
+name: hello
+type: dag
+tags: [example]
+
+steps:
+  - id: prepare
+    run: sh -c 'echo preparing; sleep 1'
+
+  # The next two depend on the same step, so they run IN PARALLEL.
+  - id: extract
+    run: sh -c 'sleep 2; echo 42 extracted'
+    depends_on: [prepare]
+
+  - id: validate
+    run: sh -c 'sleep 1; echo validated'
+    depends_on: [prepare]
+
+  - id: publish
+    run: echo published
+    depends_on: [extract, validate]
+```
+
+Um ihn lokal auszuführen, ohne Queue und ohne Cluster:
+
+```bash
+docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
+  areteacademy/brevis:0.40.0-worker run hello.yaml
+```
+
+Die Ausgabe:
+
+```text
+workflow hello (dag, 4 steps) in .
+  ▶ prepare
+    prepare | preparing
+  ✓ prepare
+  ▶ validate
+  ▶ extract
+    validate | validated
+  ✓ validate
+    extract | 42 extracted
+  ✓ extract
+  ▶ publish
+    publish | published
+  ✓ publish
+
+workflow hello finished
+```
+
+Die echte Ausgabe, vom veröffentlichten Image. brevis run führt lokal aus, ohne Queue; Pods startet der Scheduler.
+
+## Wie es weitergeht
+
+| Wenn Sie ... möchten | gehen Sie zu |
+|---|---|
+| das gesamte YAML-Format | [Workflows](/de/docs/workflows/index.md) |
+| wer Runs erzeugt und wer sie ausführt | [Scheduler und Queue](/de/docs/scheduler-and-queue/index.md) |
+| warum ein Pod pro Step | [Pod pro Step](/de/docs/pod-per-step/index.md) |
+| was ein Step an den nächsten weitergibt | [Kontext zwischen Steps](/de/docs/context/index.md) |
+| alles hochfahren und den Graphen in der Oberfläche sehen | [Schnellstart](/de/docs/quickstart/index.md) |
