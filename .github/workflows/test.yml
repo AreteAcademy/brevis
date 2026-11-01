@@ -326,7 +326,7 @@ jobs:
         run: |
           docker run -d --name floci -p 4588:4588 \
             -v /var/run/docker.sock:/var/run/docker.sock \
-            floci/floci-gcp:nightly-09252026
+            floci/floci-gcp:nightly-10252026
           for i in $(seq 1 60); do
             if curl -sf -o /dev/null "http://localhost:4588/bigquery/v2/projects/floci-local/datasets"; then
               break
