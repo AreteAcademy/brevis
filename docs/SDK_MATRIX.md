@@ -87,7 +87,7 @@ itself.
 |---|---|---|---|---|
 | `bigquery.Table` | `MERGE` | **yes**, BigQuery infers the types | yes | transformers |
 | `postgres.Table` | `ON CONFLICT DO NOTHING` | **does not exist** — the table has to exist | yes | transformers |
-| `mysql.Table` | `INSERT IGNORE` | **does not exist** | yes | transformers |
+| `mysql.Table` | `INSERT ... ON DUPLICATE KEY UPDATE` | **does not exist** | yes | transformers |
 | `redshift.Table` | `MERGE … WHEN NOT MATCHED` | **does not exist** | yes | transformers |
 | `to.Files` | **refused**, naming `Dedup` | **does not exist** | yes | transformers |
 | `pubsub.Topic` | **refused**, naming `Dedup` | **does not exist** — the topic exists already | yes | **none by default** |
@@ -172,7 +172,7 @@ inverse — pgx's path types every value, and `database/sql`'s passes `any` alon
 |---|---|---|---|---|---|
 | `Columns` (the declaration) | yes | yes | yes | yes | yes |
 | the two ingestion columns | from `Transform`; `NOT NULL` when declared | from `Transform` | from `Transform` | from `Transform` | from `Transform` |
-| `Dedup: DedupMerge` | yes, through `MERGE` | **refused** | `ON CONFLICT` | `INSERT IGNORE` | `MERGE` |
+| `Dedup: DedupMerge` | yes, through `MERGE` | **refused** | `ON CONFLICT` | `INSERT ... ON DUPLICATE KEY UPDATE` | `MERGE` |
 | creating the destination | `CreateTable`, `CreateSQL` | creates the directory | **no** | **no** | **no** |
 | partitioning | by day on `ingestion_loaded_at` | `PartitionBy` becomes `field=value/` | not applicable | not applicable | not applicable |
 | clustering | `ClusterBy` | not applicable | not applicable | not applicable | not applicable |
@@ -191,7 +191,7 @@ inverse — pgx's path types every value, and `database/sql`'s passes `any` alon
 | Parquet on `to.Files` | **error** — it would drag Arrow in for somebody who only wanted a file |
 | `Records` + `DataKey` | **error** — both say where the records are |
 | a cloud `Path` with no `Store`, or a `Store` for another scheme | **error** naming both sides |
-| `DedupMerge` with no unique index on Postgres/MySQL | **error** — `ON CONFLICT`/`INSERT IGNORE` would have nothing to match, and every run would insert duplicates |
+| `DedupMerge` with no unique index on Postgres/MySQL | **error** — `ON CONFLICT`/`INSERT ... ON DUPLICATE KEY UPDATE` would have nothing to match, and every run would insert duplicates |
 | an access key instead of `IAMRole` on Redshift | **error** — the key would end up in the cluster's query log |
 
 ### `bigquery.Table`, point by point

@@ -183,7 +183,7 @@ What the driver does is honour `WriteOptions.Columns`, which names them.
 |---|---|
 | BigQuery | `MERGE ... WHEN NOT MATCHED THEN INSERT (cols) VALUES (...)` |
 | Postgres | staging + `INSERT ... ON CONFLICT (ingestion_id) DO NOTHING` |
-| MySQL | `INSERT IGNORE`, with a unique index on `ingestion_id` |
+| MySQL | `INSERT ... ON DUPLICATE KEY UPDATE`, with a unique index on `ingestion_id` |
 | Redshift | `COPY` into staging + `MERGE`, with the columns **named** |
 | Files | not supported — an error saying so |
 
