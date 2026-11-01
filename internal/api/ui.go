@@ -796,7 +796,7 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 		// body was a way to ask `serve` what it has been configured with,
 		// one guess at a time, with the catalog never consulted.
 		if v.Target != "" && !v.Knows(v.Target) {
-			v.Err, v.Target = pages.Unknown, ""
+			v.ErrKey, v.Target = "sql.err.unknown", ""
 		}
 
 		// WHAT IS OPEN IN THE TREE, and what was just clicked.
@@ -810,7 +810,7 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 		// `schema.name` with no connection in it, so carrying it across
 		// would ask the new warehouse for the old one's relation.
 		if want := r.PostFormValue("connect"); want != "" && v.Knows(want) {
-			v.Target, v.Err = want, ""
+			v.Target, v.ErrKey = want, ""
 			r.PostForm.Set("open", "")
 		}
 
@@ -832,9 +832,14 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 			res, err := u.preview.Query(r.Context(), v.Target, v.Statement, queryRows)
 			switch {
 			case errors.Is(err, sqlserve.ErrNoConnection):
-				v.Err = pages.NoConnectionFor(v.Target)
+				v.ErrKey, v.ErrArg = "sql.err.no_connection", pages.ConnectionOf(v.Target)
 			case err != nil:
-				v.Err = err.Error()
+				var refused *sqlserve.Refused
+				if errors.As(err, &refused) {
+					v.Refused = refused.Why
+				} else {
+					v.Err = err.Error()
+				}
 			default:
 				v.Result = &res
 			}

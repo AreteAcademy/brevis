@@ -1,6 +1,8 @@
 package api_test
 
 import (
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -91,5 +93,22 @@ func TestAQueryStillDrawsItsGrid(t *testing.T) {
 	}
 	if !strings.Contains(body, "<table") {
 		t.Error("a query drew no grid")
+	}
+}
+
+// A REFUSAL AT RUN IS TITLED BY THE CONSOLE (screen-sql T3): the service
+// says no without saying why, so the console says "refused" once, shows the
+// service's sentence as it came, and where writes run -- and History records
+// it as a failure.
+func TestARefusalAtRunIsTitledByTheConsole(t *testing.T) {
+	w, ui := browsing(t)
+	w.status["/v1/query"] = http.StatusBadRequest
+	w.query = `{"error":"this service only reads, and this is a DELETE statement"}`
+	_, body := submit(t, ui, url.Values{"target": {probeTarget}, "q": {"DELETE FROM sales.daily"}}, true)
+	for _, want := range []string{"Refused by the SQL service", "this service only reads, and this is a DELETE statement",
+		`href="/workflows"`, `data-outcome="failed"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the refusal lacks %s: %s", want, body)
+		}
 	}
 }

@@ -3,7 +3,6 @@ package pages
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"slices"
 	"strings"
 
@@ -37,7 +36,12 @@ type SQLView struct {
 	Preloaded bool
 
 	Result *sqlserve.Result
-	Err    string
+	// Refused is the service declining the statement, in its own words; the
+	// page titles it (screen-sql T3). ErrKey is a failure the console words
+	// itself, with ErrArg filling it; Err any other failure, as it came.
+	Refused        string
+	ErrKey, ErrArg string
+	Err            string
 
 	// Tree is what the chosen connection holds, grouped by schema. Empty
 	// when the warehouse cannot say -- the capability is optional and a
@@ -257,22 +261,18 @@ func BuildSQL(entries []postgres.CatalogEntry) SQLView {
 	return v
 }
 
-// Note is the line under the grid: what came back, what it cost, how long.
-func (v SQLView) Note() string {
+// Note is the line over the grid: what came back, what it read, how long --
+// "2 rows · 91.9 MB read · 523 ms" -- in the reader's words and numbers.
+func (v SQLView) Note(ctx context.Context) string {
 	if v.Result == nil {
 		return ""
 	}
 	if v.Result.Wrote {
-		return v.Changed() + " · " + v.Cost()
+		return v.Changed(ctx) + " · " + v.Cost(ctx)
 	}
-	n := len(v.Result.Rows)
-	rows := "rows"
-	if n == 1 {
-		rows = "row"
-	}
-	note := fmt.Sprintf("%d %s · %s", n, rows, v.Cost())
+	note := i18n.N(ctx, "sql.result.rows", len(v.Result.Rows)) + " · " + v.Cost(ctx)
 	if v.Result.Truncated {
-		note += " — there are more"
+		note += " " + i18n.T(ctx, "sql.result.more")
 	}
 	return note
 }
@@ -283,40 +283,35 @@ func (v SQLView) Note() string {
 // same sentence with a different number, and both are a COUNT. "no rows to
 // count" is not a count at all -- a CREATE TABLE changed nothing and did not
 // fail, and printing zero for it reads as a failure to whoever ran it.
-//
-// The plural is spelled out because every count gets it wrong once, and a
-// screen that says "1 rows" is a screen somebody stops reading carefully.
-func (v SQLView) Changed() string {
+func (v SQLView) Changed(ctx context.Context) string {
 	if v.Result == nil || !v.Result.Wrote {
 		return ""
 	}
 	if v.Result.Changed == nil {
-		return "ran — no rows to count"
+		return i18n.T(ctx, "sql.result.uncounted")
 	}
-	n := *v.Result.Changed
-	if n == 1 {
-		return "1 row changed"
-	}
-	return fmt.Sprintf("%d rows changed", n)
+	return i18n.N(ctx, "sql.result.changed", int(*v.Result.Changed))
 }
 
-// Cost is what the statement spent, in the words the screen already uses.
+// Cost is what the statement spent: "91.9 MB read · 523 ms".
 //
-// ONE FORMATTER, TWO READERS. The Recent rail lists the same figures, and
-// it is built in the browser -- so the alternative was a second `bytesText`
-// in JavaScript. Two rounders disagree eventually, and the day they do, the
-// rail says "2 KB" under a grid that says "2.0 KB" and somebody stops
-// trusting both.
-func (v SQLView) Cost() string {
+// ONE FORMATTER, TWO READERS. History lists the same figures, and it is
+// built in the browser -- so the alternative was a second `bytesText` in
+// JavaScript. Two rounders disagree eventually.
+func (v SQLView) Cost(ctx context.Context) string {
 	if v.Result == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s scanned · %d ms", bytesText(v.Result.Bytes), v.Result.Millis)
+	return i18n.T(ctx, "sql.result.read", "bytes", bytesSaid(ctx, v.Result.Bytes)) + " · " +
+		i18n.Number(ctx, v.Result.Millis) + " ms"
 }
 
 // Ran says something happened, which is the difference between a screen
 // waiting for a first query and one showing the second.
-func (v SQLView) Ran() bool { return v.Result != nil || v.Err != "" }
+func (v SQLView) Ran() bool { return v.Result != nil || v.failed() }
+
+// failed says the statement came back with no answer, for whatever reason.
+func (v SQLView) failed() bool { return v.Err != "" || v.Refused != "" || v.ErrKey != "" }
 
 // Outcome is what the Recent rail records.
 //
@@ -327,7 +322,7 @@ func (v SQLView) Outcome() string {
 	if v.Result != nil {
 		return "ok"
 	}
-	if v.Err != "" {
+	if v.failed() {
 		return "failed"
 	}
 	return ""
@@ -349,15 +344,17 @@ func (v SQLView) Knows(target string) bool {
 	return false
 }
 
-// Unknown is what the screen says when a body named something the catalog
-// does not list.
-//
-// IT DOES NOT REPEAT WHAT WAS SENT. The string came from the request, and a
-// page that echoes a request back is a page that has to be right about
-// escaping forever. templ escapes it today; this does not need templ to be
-// right.
-const Unknown = "That is not a destination this console knows. " +
-	"The catalog lists what Brevis has written, and nothing else can be queried here."
+// ConnectionOf is the connection a destination lives on, as `serve` reads
+// it: the first segment after the scheme -- what a missing `brevis.yaml`
+// entry is named by.
+func ConnectionOf(target string) string {
+	_, rest, ok := strings.Cut(target, "://")
+	if !ok {
+		return target
+	}
+	first, _, _ := strings.Cut(rest, "/")
+	return first
+}
 
 // JSON is the result as the service sent it, for the tab of that name.
 //

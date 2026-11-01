@@ -41,6 +41,14 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   this statement", with the service's own sentence after it -- the service
   does not say why it refused, so the console does not guess. A warehouse
   that does not price says so in the reader's words.
+- **The answer is three tabs: Results, JSON and History N.** History is what
+  was the Recent rail beside the grid -- the same list, still kept only in
+  this browser, now a tab. The figures over the grid ("100 rows · 91.9 MB
+  read · 523 ms — there are more"), the pager, Running and Cancel, the empty
+  answer and the console's own failures are in the reader's language. A
+  statement the service refuses at Run is titled "Refused by the SQL
+  service", with its sentence and the way to Workflows.
+- The whole SQL screen is in every language the console speaks.
 
 ### Security: the scan's findings, and the vulnerable dependencies
 

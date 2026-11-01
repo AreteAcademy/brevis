@@ -368,18 +368,12 @@
     var editor = recall("editor");
     if (editor) bench.style.setProperty("--editor", editor);
     if (recall("rail-collapsed") === "true") fold(bench, "rail", true);
-    if (recall("recent-collapsed") === "true") fold(bench, "recent", true);
 
     document.addEventListener("click", function (ev) {
       if (!ev.target.closest) return;
       if (ev.target.closest("[data-rail-toggle]")) {
         ev.preventDefault();
         fold(bench, "rail", bench.getAttribute("data-rail-collapsed") !== "true");
-        return;
-      }
-      if (ev.target.closest("[data-recent-toggle]")) {
-        ev.preventDefault();
-        fold(bench, "recent", bench.getAttribute("data-recent-collapsed") !== "true");
       }
     });
 
@@ -398,10 +392,8 @@
     });
   }
 
-  // ONE FOLD FOR TWO RAILS. The object tree and the Recent rail collapse the
-  // same way -- an attribute on the workbench, the ARIA on every control
-  // that drives it, and a line in storage -- and writing it twice is how the
-  // second one quietly stops remembering.
+  // THE FOLD: an attribute on the workbench, the ARIA on every control that
+  // drives it, and a line in storage. The object tree is the one rail left.
   function fold(bench, which, shut) {
     bench.setAttribute("data-" + which + "-collapsed", shut ? "true" : "false");
     bench.querySelectorAll("[data-" + which + "-toggle]").forEach(function (b) {
@@ -473,25 +465,36 @@
     return document.querySelector("[data-answer]") || document;
   }
 
+  // THE TABS ARE OVER THE ANSWER AND OUTLIVE IT (screen-sql T3): Results
+  // and JSON switch the panels inside whatever answer is drawn; History hides
+  // the answer and shows the list kept in this browser.
   function wireResultTabs() {
     document.addEventListener("click", function (ev) {
-      var tab = ev.target.closest ? ev.target.closest("[data-tab]") : null;
+      var tab = ev.target.closest ? ev.target.closest("[data-results-tabs] [data-tab]") : null;
       if (!tab) return;
       ev.preventDefault();
-      var root = tab.closest("[data-answer]") || document;
-      var want = tab.getAttribute("data-tab");
-      root.querySelectorAll("[data-tab]").forEach(function (t) {
-        t.setAttribute("aria-selected", t.getAttribute("data-tab") === want ? "true" : "false");
-      });
-      root.querySelectorAll("[data-panel]").forEach(function (p) {
-        p.hidden = p.getAttribute("data-panel") !== want;
-      });
-      // THE PAGER BELONGS TO THE GRID. On the JSON tab there is one block
-      // of text and nothing to page through, so offering the control would
-      // be offering a control that does nothing.
-      var panel = root.querySelector("[data-pager]");
-      if (panel) panel.hidden = want !== "results" || pagerRows(root).length <= perPage(panel);
+      showTab(tab.getAttribute("data-tab"));
     });
+  }
+
+  function showTab(want) {
+    document.querySelectorAll("[data-results-tabs] [data-tab]").forEach(function (t) {
+      t.setAttribute("aria-selected", t.getAttribute("data-tab") === want ? "true" : "false");
+    });
+    var root = answer();
+    // NOT `history`: that name is the browser's address-bar API, which this
+    // file never touches, and a test holds it to that by its name.
+    var kept = document.querySelector('[data-panel="history"]');
+    if (kept) kept.hidden = want !== "history";
+    if (root !== document) root.hidden = want === "history";
+    root.querySelectorAll("[data-panel]").forEach(function (p) {
+      if (p.getAttribute("data-panel") !== "history") p.hidden = p.getAttribute("data-panel") !== want;
+    });
+    // THE PAGER BELONGS TO THE GRID. On the JSON tab there is one block
+    // of text and nothing to page through, so offering the control would
+    // be offering a control that does nothing.
+    var panel = root.querySelector("[data-pager]");
+    if (panel) panel.hidden = want !== "results" || pagerRows(root).length <= perPage(panel);
   }
 
   function perPage(panel) {
@@ -522,7 +525,10 @@
       // THE TOTAL COMES FROM THE SERVER, carrying its own `+` when a limit
       // cut the answer. The rule for that lives in Go, where a test can read
       // it; this only prints what it was handed.
-      if (range) range.textContent = from + "\u2013" + to + " of " + panel.getAttribute("data-total");
+      // AND THE WORDS ARE THE PAGE'S: "{from}–{to} of {total}" in the
+      // reader's language, filled here.
+      if (range) range.textContent = (panel.getAttribute("data-range") || "{from}\u2013{to} / {total}")
+        .replace("{from}", from).replace("{to}", to).replace("{total}", panel.getAttribute("data-total"));
       var prev = panel.querySelector("[data-pager-prev]");
       var next = panel.querySelector("[data-pager-next]");
       if (prev) prev.disabled = at === 0;
@@ -664,6 +670,9 @@
         pane.innerHTML = html;
         wirePager(pane);
         addRecent(pane, statement);
+        // A NEW ANSWER IS SHOWN: whatever tab was open, the run is what
+        // somebody pressed for.
+        showTab("results");
       })
       .catch(function (err) {
         // CANCELLED IS NOT FAILED. Aborting closes the request, which
@@ -957,6 +966,8 @@
       ol.appendChild(node);
     });
     if (empty) empty.hidden = list.length > 0;
+    var count = document.querySelector("[data-history-count]");
+    if (count) count.textContent = String(list.length);
   }
 
   // THE COST LINE: WHAT THIS WOULD PROCESS, BEFORE ANYBODY PRESSES RUN.

@@ -302,7 +302,7 @@ func TestTheEmptyAnswerSaysHowToRun(t *testing.T) {
 	_, body := get(t, ui, "/sql")
 	pane := body[strings.Index(body, "data-answer"):]
 	pane = pane[:strings.Index(pane, "data-running-template")]
-	if !strings.Contains(pane, "Run a query") || !strings.Contains(pane, "⌘↵") {
+	if !strings.Contains(pane, "No query run yet") || !strings.Contains(pane, "⌘↵") {
 		t.Errorf("the empty answer does not say how to run: %.300s", pane)
 	}
 }
