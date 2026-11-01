@@ -169,7 +169,7 @@ services:
   # auto_table turns a payload into.
   floci:
     profiles: [gcp, all]
-    image: floci/floci-gcp:nightly-09252026
+    image: floci/floci-gcp:nightly-10252026
     ports:
       - "4588:4588"
     volumes:
