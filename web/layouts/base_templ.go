@@ -768,7 +768,7 @@ func sidebar(active string, brand branding.Brand) templ.Component {
 			templ_7745c5c3_Var27 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "<aside id=\"app-sidebar\" class=\"app-sidebar flex h-full w-[236px] shrink-0 flex-col border-r border-line-soft bg-canvas-subtle\"><div class=\"flex h-13 shrink-0 items-center border-b border-line-soft pr-2\"><a href=\"/\" data-name=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "<aside id=\"app-sidebar\" class=\"app-sidebar flex h-full w-[236px] shrink-0 flex-col border-r border-line-soft bg-canvas-subtle\"><div class=\"sb-head flex h-13 shrink-0 items-center border-b border-line-soft pr-2\"><a href=\"/\" data-name=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

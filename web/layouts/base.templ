@@ -338,7 +338,7 @@ templ accountMenu(operator string, brand branding.Brand) {
 // while the page beside it crossfades.
 templ sidebar(active string, brand branding.Brand) {
 	<aside id="app-sidebar" class="app-sidebar flex h-full w-[236px] shrink-0 flex-col border-r border-line-soft bg-canvas-subtle">
-		<div class="flex h-13 shrink-0 items-center border-b border-line-soft pr-2">
+		<div class="sb-head flex h-13 shrink-0 items-center border-b border-line-soft pr-2">
 		<a href="/" data-name={ brand.Title } class="sb-item flex min-w-0 flex-1 items-center gap-2.5 px-4">
 			if brand.Logo == branding.DefaultLogo {
 				// Inline, so the symbol inherits the theme's colour.

@@ -1794,6 +1794,11 @@ tr[data-paused] > td[data-fade] {
     gap: 0;
     padding-inline: 0;
   }
+  /* The logo is centred in the rail like the icons under it: the row's right
+     padding only makes room for the drawer's close button, which is not here. */
+  html[data-nav-mode="short"] .app-sidebar .sb-head {
+    padding-right: 0;
+  }
   /* The project and the search are boxed when open; folded they are icons like
      the rest, with no frame. */
   html[data-nav-mode="short"] .app-sidebar [data-project-switcher],
