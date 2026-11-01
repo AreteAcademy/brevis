@@ -135,9 +135,10 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM gcr.io/distroless/static-debian12:nonroot AS api
 ARG VERSION=dev
 ARG COMMIT=""
+ARG SOURCE=https://github.com/brevis-sh/brevis
 LABEL org.opencontainers.image.title="Brevis" \
       org.opencontainers.image.description="A data orchestration and transformation engine" \
-      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.source="${SOURCE}" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.licenses="MIT"
@@ -158,9 +159,10 @@ CMD ["serve"]
 FROM gcr.io/distroless/static-debian12:nonroot AS sql
 ARG VERSION=dev
 ARG COMMIT=""
+ARG SOURCE=https://github.com/brevis-sh/brevis
 LABEL org.opencontainers.image.title="brevis-sql" \
       org.opencontainers.image.description="Plain .sql models become tables and views, in dependency order" \
-      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.source="${SOURCE}" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.licenses="MIT"
@@ -175,9 +177,10 @@ CMD ["compile"]
 FROM gcr.io/distroless/static-debian12:nonroot AS sql-api
 ARG VERSION=dev
 ARG COMMIT=""
+ARG SOURCE=https://github.com/brevis-sh/brevis
 LABEL org.opencontainers.image.title="brevis-sql-api" \
       org.opencontainers.image.description="Declared, read-only SQL served over HTTP, cached until the data changes" \
-      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.source="${SOURCE}" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.licenses="MIT"
@@ -194,9 +197,10 @@ CMD ["serve", "--config", "/etc/brevis/api.yaml", "--connections", "/etc/brevis/
 FROM alpine:3.24 AS worker
 ARG VERSION=dev
 ARG COMMIT=""
+ARG SOURCE=https://github.com/brevis-sh/brevis
 LABEL org.opencontainers.image.title="Brevis worker" \
       org.opencontainers.image.description="Brevis with a shell, for running a workflow's steps" \
-      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.source="${SOURCE}" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.licenses="MIT"
@@ -221,9 +225,10 @@ CMD ["scheduler"]
 FROM alpine:3.24 AS agent
 ARG VERSION=dev
 ARG COMMIT=""
+ARG SOURCE=https://github.com/brevis-sh/brevis
 LABEL org.opencontainers.image.title="Brevis agent" \
       org.opencontainers.image.description="Runs Brevis steps on a host the engine does not manage" \
-      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.source="${SOURCE}" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.licenses="MIT"
@@ -248,9 +253,10 @@ ENTRYPOINT ["/sbin/tini", "--", "brevis-agent"]
 FROM gcr.io/distroless/static-debian12:nonroot AS gateway
 ARG VERSION=dev
 ARG COMMIT=""
+ARG SOURCE=https://github.com/brevis-sh/brevis
 LABEL org.opencontainers.image.title="Brevis gateway" \
       org.opencontainers.image.description="An HTTP endpoint that lands data" \
-      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.source="${SOURCE}" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.licenses="MIT"
@@ -339,9 +345,10 @@ ENTRYPOINT ["brevis-sql-api"]
 FROM gcr.io/distroless/static-debian12:nonroot AS gateway-slim
 ARG VERSION=dev
 ARG COMMIT=""
+ARG SOURCE=https://github.com/brevis-sh/brevis
 LABEL org.opencontainers.image.title="Brevis gateway (slim)" \
       org.opencontainers.image.description="An HTTP endpoint that lands data: Postgres and a local dead letter" \
-      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.source="${SOURCE}" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.licenses="MIT"

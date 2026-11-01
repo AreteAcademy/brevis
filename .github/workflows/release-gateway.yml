@@ -207,6 +207,7 @@ jobs:
           tags: ${{ env.IMAGE }}:${{ steps.v.outputs.version }},${{ env.IMAGE }}:latest
           build-args: |
             VERSION=${{ steps.v.outputs.version }}
+            SOURCE=${{ github.server_url }}/${{ github.repository }}
             COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -229,6 +230,7 @@ jobs:
           tags: ${{ env.IMAGE }}:${{ steps.v.outputs.version }}-slim
           build-args: |
             VERSION=${{ steps.v.outputs.version }}
+            SOURCE=${{ github.server_url }}/${{ github.repository }}
             COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

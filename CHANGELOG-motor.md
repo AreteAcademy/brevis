@@ -16,6 +16,19 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Fixed: the images name the repository they were built from
+
+- Every image's `org.opencontainers.image.source` label -- the link Docker
+  Hub, GitHub and scanners follow back to the code -- said
+  `https://github.com/AreteAcademy/brevis`, written by hand seven times. The
+  repository moved to `brevis-sh` on 2026-11-01. The label is now the
+  `SOURCE` build argument, which the release workflows set to the repository
+  that ran them, defaulting to `https://github.com/brevis-sh/brevis` for a
+  local build.
+- `image-labels-check.sh` refuses a source written into a label, and a
+  release build that passes `VERSION` without `SOURCE`.
+- The images already published keep the old link, which GitHub redirects.
+
 ### Fixed: the site's ten translations were never published
 
 - `brevis.sh/pt/`, `/es/`, `/fr/`, `/de/`, `/zh/`, `/ja/`, `/ru/`, `/ko/`,
