@@ -10,6 +10,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/auth"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -61,7 +62,13 @@ func NewServerAutenticado(log *slog.Logger, checkers map[string]Checker, ui *UI,
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	rec := &gravador{ResponseWriter: w, status: http.StatusOK}
-	if s.gate != nil {
+	h := rec.Header()
+	h.Set("X-Frame-Options", "DENY") // the console must not be framed: clickjacking Run/Cancel
+	h.Set("Referrer-Policy", "same-origin")
+	h.Set("X-Content-Type-Options", "nosniff")
+	if crossSite(r) {
+		http.Error(rec, "cross-site request refused", http.StatusForbidden)
+	} else if s.gate != nil {
 		s.gate.ServeHTTP(rec, r)
 	} else {
 		s.mux.ServeHTTP(rec, r)
@@ -70,6 +77,32 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.log.Info("http",
 		"method", r.Method, "path", r.URL.Path,
 		"status", rec.status, "duration_ms", time.Since(start).Milliseconds())
+}
+
+// crossSite reports a request a page on another origin made the browser send.
+// SameSite=Lax alone does not stop it: an open console (no auth) answers any
+// origin, Lax sends the cookie on a cross-site top-level GET, and a sibling
+// subdomain is same-site. It covers the state-changing methods and the one GET
+// that spends money ("Try it", run=1). Requests without Sec-Fetch-Site and
+// Origin (curl, API clients, old browsers) pass: only a browser can be tricked.
+func crossSite(r *http.Request) bool {
+	unsafe := r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions
+	if !unsafe && r.URL.Query().Get("run") != "1" {
+		return false
+	}
+	switch r.Header.Get("Sec-Fetch-Site") {
+	case "":
+	case "same-origin", "none":
+		return false
+	default:
+		return true
+	}
+	o := r.Header.Get("Origin")
+	if o == "" {
+		return false
+	}
+	u, err := url.Parse(o)
+	return err != nil || u.Host != r.Host
 }
 
 // HTTPServer returns the configured server. The timeouts exist because
