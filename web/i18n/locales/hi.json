@@ -472,6 +472,10 @@
     "one": "{count} Workflows विफल हो रहा",
     "other": "{count} Workflows विफल हो रहे"
   },
+  "nav.runs.running": {
+    "one": "{count} रन जारी है",
+    "other": "{count} रन जारी हैं"
+  },
   "nav.runs.tip": "workflow का हर बार चलना: समय, पैरामीटर और लॉग",
   "nav.sql": "SQL",
   "nav.sql.tip": "Postgres और BigQuery पर query करें, केवल-पढ़ने के लिए",

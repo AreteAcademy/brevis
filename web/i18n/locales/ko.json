@@ -472,6 +472,10 @@
     "one": "실패 중인 workflows {count}개",
     "other": "실패 중인 workflows {count}개"
   },
+  "nav.runs.running": {
+    "one": "실행 {count}개 진행 중",
+    "other": "실행 {count}개 진행 중"
+  },
   "nav.runs.tip": "workflow가 실행된 모든 기록: 시간, 매개변수, 로그",
   "nav.sql": "SQL",
   "nav.sql.tip": "Postgres와 BigQuery를 읽기 전용으로 쿼리",

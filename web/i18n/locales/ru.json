@@ -472,6 +472,10 @@
     "one": "{count} Workflows падает",
     "other": "Workflows, которые падают: {count}"
   },
+  "nav.runs.running": {
+    "one": "{count} запуск выполняется",
+    "other": "Выполняется запусков: {count}"
+  },
   "nav.runs.tip": "Каждый запуск workflow: время, параметры и логи",
   "nav.sql": "SQL",
   "nav.sql.tip": "Запросы к Postgres и BigQuery, только чтение",

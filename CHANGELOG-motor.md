@@ -16,6 +16,13 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: the Runs badges, red then blue, and they follow
+
+- **The sidebar's Runs link carries two badges**: workflows failing (red) and
+  runs in flight -- running, queued, retrying -- (blue). Each is gone when its
+  number is zero.
+- **They update without a reload**: every 10 s (a hidden tab asks nothing) the
+  console fetches `GET /nav/runs` and swaps the badges in.
 ### Added: eleven languages in the console and on the site
 
 - **The console speaks** English (the default), Spanish, Portuguese (BR),

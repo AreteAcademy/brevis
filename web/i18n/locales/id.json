@@ -472,6 +472,10 @@
     "one": "{count} workflows gagal",
     "other": "{count} workflows gagal"
   },
+  "nav.runs.running": {
+    "one": "{count} eksekusi berjalan",
+    "other": "{count} eksekusi berjalan"
+  },
   "nav.runs.tip": "Setiap kali workflow berjalan: waktu, parameter, dan log",
   "nav.sql": "SQL",
   "nav.sql.tip": "Query Postgres dan BigQuery, read-only",

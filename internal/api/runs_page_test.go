@@ -41,7 +41,8 @@ func (f runsReads) CountRuns(context.Context, postgres.RunFilter) (int, error) {
 	return len(f.runs), nil
 }
 func (f runsReads) CountRunsByState(_ context.Context, q postgres.RunFilter) (map[string]int, error) {
-	if f.asked != nil {
+	// The sidebar badge counts with no filter at all; only the list's is recorded.
+	if f.asked != nil && q.Workflow != "" {
 		*f.asked = q
 	}
 	return f.counts, nil

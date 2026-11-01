@@ -79,6 +79,8 @@ templ NavBadge(kind, text string) {
 			<span class="st st-mark st-pulse text-state-success" aria-hidden="true"></span>
 			{ text }
 		</span>
+	} else if kind == "run" {
+		<span class="nav-badge nav-badge-run">{ text }</span>
 	} else {
 		<span class="nav-badge nav-badge-fail">{ text }</span>
 	}
