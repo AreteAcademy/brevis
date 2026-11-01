@@ -42,12 +42,25 @@ func attention(ctx context.Context) int {
 type failingKey struct{}
 
 // WithFailing carries how many workflows are failing now, for the Runs
-// section's badge. Absent is none, and none draws no badge.
+// section's red badge. Absent is none, and none draws no badge.
 func WithFailing(ctx context.Context, n int) context.Context {
 	return context.WithValue(ctx, failingKey{}, n)
 }
 
 func failing(ctx context.Context) int {
 	n, _ := ctx.Value(failingKey{}).(int)
+	return n
+}
+
+type runningKey struct{}
+
+// WithRunning carries how many runs are in flight now, for the Runs
+// section's badge. Absent is none, and none draws no badge.
+func WithRunning(ctx context.Context, n int) context.Context {
+	return context.WithValue(ctx, runningKey{}, n)
+}
+
+func running(ctx context.Context) int {
+	n, _ := ctx.Value(runningKey{}).(int)
 	return n
 }

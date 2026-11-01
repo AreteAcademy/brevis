@@ -35,32 +35,65 @@ func runsLink(t *testing.T, body string) string {
 	return body[i : i+strings.Index(body[i:], "</a>")]
 }
 
-// THE RUNS SECTION SAYS HOW MANY WORKFLOWS ARE FAILING, so a broken one is
-// seen from any page -- in the reader's language, with its plural, and read
-// out as a sentence rather than a bare number.
-func TestTheRunsSectionCountsTheWorkflowsFailing(t *testing.T) {
+type runsFake struct {
+	api.Leitura
+	counts map[string]int
+	err    error
+}
+
+func (r runsFake) CountRunsByState(context.Context, postgres.RunFilter) (map[string]int, error) {
+	return r.counts, r.err
+}
+
+func withRuns(r runsFake) *api.UI {
+	return api.NewUI(r, nil, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.DiscardHandler)).WithEndpoints(endpointsFake{})
+}
+
+// THE BADGES, RED THEN BLUE: workflows failing, runs in flight -- each alone
+// when the other is zero, in the reader's language, and fresh from /nav/runs
+// for the sidebar to swap in without a reload.
+func TestTheRunsBadgesAreFailingThenRunningAndHaveAFragment(t *testing.T) {
+	ui := withRuns(runsFake{counts: map[string]int{"running": 2, "queued": 1}}).WithFailing(failingFake{n: 4})
+	link := runsLink(t, pageIn(t, ui, "/ingest/loads", "pt-BR", "", false))
+	red, blue := strings.Index(link, "nav-badge-fail"), strings.Index(link, "nav-badge-run")
+	if red < 0 || blue < red || !strings.Contains(link, "4 workflows falhando") || !strings.Contains(link, "3 execuções em andamento") || !strings.Contains(link, "data-nav-runs") {
+		t.Errorf("the Runs link = %s; want red (4 failing) then blue (3 running), inside data-nav-runs", link)
+	}
+	code, frag := get(t, ui, "/nav/runs")
+	if code != 200 || strings.Index(frag, "nav-badge-fail") < 0 || strings.Index(frag, "nav-badge-run") < strings.Index(frag, "nav-badge-fail") {
+		t.Errorf("/nav/runs = %d %s; want both badges, red first", code, frag)
+	}
+	_, none := get(t, withRuns(runsFake{}), "/nav/runs")
+	if strings.Contains(none, "nav-badge") {
+		t.Errorf("/nav/runs with nothing to say = %s", none)
+	}
+}
+
+// THE RUNS SECTION SAYS HOW MANY RUNS ARE IN FLIGHT, in blue, so work under
+// way is seen from any page -- in the reader's language, with its plural,
+// and read out as a sentence rather than a bare number. Running, queued and
+// retrying all count; finished ones do not.
+func TestTheRunsSectionCountsTheRunsInFlight(t *testing.T) {
 	for _, c := range []struct {
 		lang string
-		n    int
 		say  string
 	}{
-		{"", 2, "2 workflows failing"},
-		{"", 1, "1 workflow failing"},
-		{"pt-BR", 3, "3 workflows falhando"},
-		{"es", 1, "1 workflow fallando"},
+		{"", "3 runs in progress"},
+		{"pt-BR", "3 execuções em andamento"},
+		{"es", "3 ejecuciones en curso"},
 	} {
-		ui := dataUI(catalogFake{}).WithEndpoints(endpointsFake{}).WithFailing(failingFake{n: c.n})
+		ui := withRuns(runsFake{counts: map[string]int{"running": 1, "queued": 1, "retrying": 1, "failed": 9, "success": 40}})
 		link := runsLink(t, pageIn(t, ui, "/ingest/loads", c.lang, "", false))
-		if !strings.Contains(link, "nav-badge-fail") || !strings.Contains(link, c.say) {
-			t.Errorf("%s with %d failing: the Runs link = %s; want a badge saying %q", c.lang, c.n, link, c.say)
+		if !strings.Contains(link, "nav-badge-run") || strings.Contains(link, "nav-badge-fail") || !strings.Contains(link, c.say) {
+			t.Errorf("%s: the Runs link = %s; want a blue badge saying %q", c.lang, link, c.say)
 		}
 	}
 }
 
-// NOTHING FAILING, NO BADGE -- and none on a console with no reader at all.
-func TestNoBadgeWhenNothingFailsOrNothingCanTell(t *testing.T) {
+// NOTHING IN FLIGHT, NO BADGE -- and none on a console with no reader at all.
+func TestNoBadgeWhenNothingRunsOrNothingCanTell(t *testing.T) {
 	for name, ui := range map[string]*api.UI{
-		"zero":      dataUI(catalogFake{}).WithEndpoints(endpointsFake{}).WithFailing(failingFake{}),
+		"zero":      withRuns(runsFake{counts: map[string]int{"failed": 4}}),
 		"no reader": dataUI(catalogFake{}).WithEndpoints(endpointsFake{}),
 	} {
 		if link := runsLink(t, pageIn(t, ui, "/ingest/loads", "", "", false)); strings.Contains(link, "nav-badge") {
@@ -73,8 +106,8 @@ func TestNoBadgeWhenNothingFailsOrNothingCanTell(t *testing.T) {
 // read, the error goes to the log and the page is drawn without it.
 func TestABadgeThatCannotBeReadIsLoggedAndLeftOut(t *testing.T) {
 	var logged bytes.Buffer
-	ui := api.NewUI(nil, nil, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.NewTextHandler(&logged, nil))).
-		WithEndpoints(endpointsFake{}).WithFailing(failingFake{n: 2, err: errors.New("connection refused")})
+	ui := api.NewUI(runsFake{err: errors.New("connection refused")}, nil, nil, nil, nil, catalogFake{}, branding.Default(), slog.New(slog.NewTextHandler(&logged, nil))).
+		WithEndpoints(endpointsFake{})
 	code, body := get(t, ui, "/ingest/loads")
 	if code != 200 || strings.Contains(runsLink(t, body), "nav-badge") {
 		t.Errorf("the page = %d with Runs link %s; want 200 and no badge", code, runsLink(t, body))

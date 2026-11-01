@@ -460,6 +460,42 @@
   document.querySelectorAll("[data-live]").forEach(follow);
 
   // ------------------------------------------------------------------
+  // The sidebar's Runs badges (`[data-nav-runs]`)
+  //
+  // Drawn with the page, and so as old as the page: a run that starts, or a
+  // workflow that breaks, while somebody reads another screen never showed.
+  // Every 10 s the server's own badges are fetched and swapped in; a hidden
+  // tab asks nothing and catches up when it comes back.
+  // ------------------------------------------------------------------
+  (function () {
+    var NAV_RUNS = 10000;
+    var host = document.querySelector("[data-nav-runs]");
+    if (!host) return;
+    function refresh() {
+      if (document.hidden) return;
+      fetch("/nav/runs", { headers: { Accept: "text/html" } })
+        .then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.text();
+        })
+        .then(function (html) {
+          var now = document.querySelector("[data-nav-runs]");
+          if (now && now._badges !== html) {
+            now.innerHTML = html;
+            now._badges = html;
+          }
+        })
+        .catch(function () {
+          // Decoration: the badges keep what they showed until the next try.
+        });
+    }
+    setInterval(refresh, NAV_RUNS);
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) refresh();
+    });
+  })();
+
+  // ------------------------------------------------------------------
   // A list that follows itself (`[data-live-list]`)
   //
   // The Runs list's "Live" switch. On, every 5 s the same URL is fetched with
