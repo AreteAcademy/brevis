@@ -48,7 +48,7 @@ func TestNothingScriptOnlyIsRevealedAfterThePaint(t *testing.T) {
 		{"Copy destination", "/ingest/loads/orders_sync/load", `data-copy="#load-uri"`, load},
 		{"the stream's tab bar", "/ingest/streams/edge/v1/clicks", "data-hash-tabs-bar", stream},
 		{"the workbench's tabs", "/sql", "data-tabs", sql},
-		{"the recent rail", "/sql", `id="recent"`, sql},
+		{"the answer's tabs", "/sql", "data-results-tabs", sql},
 		{"Copy statement", "/sql", "data-copy-statement", sql},
 	} {
 		_, body := get(t, c.ui, c.path)

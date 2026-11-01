@@ -91,7 +91,7 @@ func TestTheEditorSaysWhichHalfItCanComplete(t *testing.T) {
 	_, ui := browsing(t)
 	_, body := get(t, ui, "/sql")
 
-	const said = "Columns complete for relations you have opened"
+	const said = "Columns complete for the tables you have opened"
 	if n := strings.Count(body, said); n != 1 {
 		t.Errorf("the limitation is on the screen %d times, and it is stated exactly once", n)
 	}

@@ -16,6 +16,40 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: the SQL console, its tree
+
+- **The connection is a picker at the top of the tree**, with its logo,
+  instead of one root per connection; choosing one opens its tables. With no
+  script it is a form (`/sql?connection=`). Redshift and MySQL destinations,
+  which `brevis-sql serve` has no dialect for, are offered disabled with the
+  reason, and the console no longer opens on one.
+- **A table is its first look**: clicking it opens its columns and puts
+  `SELECT * … LIMIT 100` in the editor -- in the open tab when it is empty, in
+  a new one when somebody has written there. `/sql?target=` (what the Catalog,
+  Loads, Streams and Endpoints link to) does the same for its table, and runs
+  nothing; the statement is built from a destination the catalog knows, so a
+  statement still never travels in a link.
+- "Filter tables" over the chosen connection's listing. The tree is in every
+  language the console speaks.
+- **The editor and its bar** speak the reader's language: the tabs ("Query
+  N", stored as their number, so a tab saved before reads in today's
+  language), Run with ⌘↵, the connection with its logo and a link to the
+  connections (the Catalog, until there is a Connections screen), Copy, and
+  "Reads only" with the way to Workflows, where writes run.
+- **The estimate** says "Will process 273.9 MB" in the reader's number
+  format. A refusal is titled "Will be refused: the SQL service does not run
+  this statement", with the service's own sentence after it -- the service
+  does not say why it refused, so the console does not guess. A warehouse
+  that does not price says so in the reader's words.
+- **The answer is three tabs: Results, JSON and History N.** History is what
+  was the Recent rail beside the grid -- the same list, still kept only in
+  this browser, now a tab. The figures over the grid ("100 rows · 91.9 MB
+  read · 523 ms — there are more"), the pager, Running and Cancel, the empty
+  answer and the console's own failures are in the reader's language. A
+  statement the service refuses at Run is titled "Refused by the SQL
+  service", with its sentence and the way to Workflows.
+- The whole SQL screen is in every language the console speaks.
+
 ### Changed: an unset `BREVIS_ENV` is `production` (breaking)
 
 - **A console that forgets `BREVIS_ENV` now refuses to start without a

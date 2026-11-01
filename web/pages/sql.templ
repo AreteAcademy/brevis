@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/AreteAcademy/brevis/web/layouts"
 )
 
@@ -47,10 +48,7 @@ var editorAssets = layouts.Island{
 templ SQL(v SQLView) {
 	@layouts.Base(layouts.Page{Title: "SQL", Kicker: "Workbench", Active: "sql", Island: editorAssets, Fill: true, Status: sqlStatus(v)}) {
 		if v.Empty() {
-			<p class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm text-muted">
-				Nothing here can be queried yet. A destination shows up once a pipeline
-				lands in a table — a bucket and a topic have no columns to read.
-			</p>
+			<p class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ i18n.T(ctx, "sql.empty.catalog") }</p>
 		} else {
 			// THREE ZONES, AND THE TWO THINGS BETWEEN THEM CAN BE DRAGGED.
 			//
@@ -70,7 +68,7 @@ templ SQL(v SQLView) {
 					data-rail-toggle
 					aria-expanded="true"
 					aria-controls="objects"
-					aria-label="Show the object tree"
+					aria-label={ i18n.T(ctx, "sql.tree.show") }
 					class="workbench-rail-show self-start rounded-card px-1 py-1 text-muted hover:bg-surface-2 hover:text-ink"
 				>&#8677;</button>
 				<div
@@ -79,7 +77,7 @@ templ SQL(v SQLView) {
 					data-min="180"
 					role="separator"
 					aria-orientation="vertical"
-					aria-label="Resize the object tree"
+					aria-label={ i18n.T(ctx, "sql.tree.resize") }
 					tabindex="0"
 				></div>
 				<div class="workbench-main">
@@ -117,20 +115,21 @@ templ SQL(v SQLView) {
 								data-writable
 								class="workbench-writable shrink-0 rounded px-2 py-1 text-[0.7rem]"
 							>
-								Statements here can <strong>change data</strong> on this connection — it was unlocked deliberately.
+								{ i18n.T(ctx, "sql.writable.before") } <strong>{ i18n.T(ctx, "sql.writable.strong") }</strong> { i18n.T(ctx, "sql.writable.after") }
 							</p>
 						}
 						<div
 							class="workbench-tabs flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line-soft pb-1"
 							data-tabs
 							role="tablist"
-							aria-label="Open statements"
+							aria-label={ i18n.T(ctx, "sql.tabs.label") }
+							data-tab-name={ i18n.T(ctx, "sql.tabs.name", "n", "{n}") }
 							data-js
 						>
 							<button
 								type="button"
 								data-tab-new
-								aria-label="New statement"
+								aria-label={ i18n.T(ctx, "sql.tabs.new") }
 								class="shrink-0 rounded-card px-2 py-1 text-sm text-muted hover:bg-surface-2 hover:text-ink"
 							>+</button>
 						</div>
@@ -146,7 +145,7 @@ templ SQL(v SQLView) {
 								<button
 									type="button"
 									data-tab-close
-									aria-label="Close this statement"
+									aria-label={ i18n.T(ctx, "sql.tabs.close") }
 									class="shrink-0 text-xs text-muted hover:text-ink"
 								>&#215;</button>
 							</span>
@@ -168,7 +167,7 @@ templ SQL(v SQLView) {
 								// this screen spends on nothing else.
 								@components.Button(components.ButtonAccent, components.SizeRegular, templ.Attributes{"type": "submit", "data-run": true}) {
 									@components.Icon("play", "h-3.5 w-3.5")
-									Run
+									{ i18n.T(ctx, "sql.run") }
 								}
 								// AND THE KEY THAT DOES IT. Ctrl-Enter and Cmd-Enter
 								// have run the query since the editor island landed,
@@ -178,10 +177,13 @@ templ SQL(v SQLView) {
 								// the answer to "against what"; with the picker gone,
 								// the button has to carry it, or choosing a connection
 								// in the tree becomes an invisible change.
+								// WITH ITS LOGO, and a way to every connection: the
+								// Catalog, until the Connections screen exists.
 								if on := v.Running(); on != "" {
 									<span class="flex min-w-0 items-center gap-1.5 text-muted">
-										@components.Icon("database", "h-3.5 w-3.5")
+										@components.Logo(kindLogo(kindOf(on)), 16)
 										<span class="truncate font-mono text-xs" data-running-on>{ on }</span>
+										<a href="/data" class="shrink-0 text-xs text-muted underline decoration-line-strong underline-offset-2 hover:text-ink">{ i18n.T(ctx, "sql.connections") }</a>
 									</span>
 								}
 								// COPY IS THE EDITOR'S TEXT, which only the island
@@ -189,16 +191,19 @@ templ SQL(v SQLView) {
 								// as somebody types -- so it is hidden until the
 								// island can drive it.
 								<span class="ml-auto" data-js>
-									@components.Button(components.ButtonSecondary, components.SizeSmall, templ.Attributes{"data-copy-statement": true}) {
+									@components.Button(components.ButtonSecondary, components.SizeSmall, templ.Attributes{"data-copy-statement": true, "data-copied-label": i18n.T(ctx, "sql.copied")}) {
 										@components.Icon("copy", "h-3.5 w-3.5")
-										Copy
+										{ i18n.T(ctx, "sql.copy") }
 									}
 								</span>
 							</div>
-							<label for="q" class="sr-only">SQL to run on this warehouse</label>
+							<label for="q" class="sr-only">{ i18n.T(ctx, "sql.editor.label") }</label>
 							<textarea
 								id="q"
 								name="q"
+								if v.Preloaded {
+									data-preloaded
+								}
 								rows="10"
 								spellcheck="false"
 								placeholder="SELECT * FROM dataset.table WHERE day = CURRENT_DATE()"
@@ -211,7 +216,8 @@ templ SQL(v SQLView) {
 							// says the opposite and both cannot be true.
 							if !v.Writable {
 								<p class="shrink-0 text-[0.7rem] text-muted">
-									Reads only. The service refuses anything else, and stops a query that would scan too much.
+									{ i18n.T(ctx, "sql.readonly") }
+									<a href="/workflows" class="underline decoration-line-strong underline-offset-2 hover:text-ink">{ i18n.T(ctx, "sql.readonly.link") }</a>
 								</p>
 							}
 							// AND WHAT THE COMPLETION KNOWS, SAID ONCE.
@@ -224,7 +230,7 @@ templ SQL(v SQLView) {
 							// somebody concludes a column does not exist.
 							<p class="shrink-0 text-[0.7rem] text-muted">
 								<kbd class="rounded border border-line px-1 py-0.5 font-mono">Ctrl+Space</kbd>
-								completes names. Columns complete for relations you have opened in the tree.
+								{ i18n.T(ctx, "sql.editor.complete") }
 							</p>
 							// THE COST LINE, EMPTY UNTIL SOMETHING FILLS IT.
 							//
@@ -252,17 +258,31 @@ templ SQL(v SQLView) {
 						data-min="120"
 						role="separator"
 						aria-orientation="horizontal"
-						aria-label="Resize the editor"
+						aria-label={ i18n.T(ctx, "sql.editor.resize") }
 						tabindex="0"
 					></div>
 					<section class="workbench-results" data-pane="results">
-						@recent()
+						// THREE TABS OVER THE ANSWER, AND THEY OUTLIVE IT
+						// (screen-sql T3). Results and JSON switch the panels a
+						// run draws; History is the list that was the Recent
+						// rail, kept in this browser. A run swaps the answer and
+						// not these. Without the island there is one view, the
+						// grid, so the strip is the island's.
+						<div class="flex shrink-0 items-center gap-1 border-b border-line-soft" role="tablist" aria-label={ i18n.T(ctx, "sql.result.tabs") } data-results-tabs data-js>
+							<button type="button" role="tab" data-tab="results" aria-selected="true" class="results-tab px-3 py-1.5 text-xs text-muted">{ i18n.T(ctx, "sql.result.tab.results") }</button>
+							<button type="button" role="tab" data-tab="json" aria-selected="false" class="results-tab px-3 py-1.5 text-xs text-muted">JSON</button>
+							<button type="button" role="tab" data-tab="history" aria-selected="false" class="results-tab px-3 py-1.5 text-xs text-muted">
+								{ i18n.T(ctx, "sql.result.tab.history") }
+								<span data-history-count class="ml-1 text-faint tabular-nums">0</span>
+							</button>
+						</div>
 						// MARKED, because the island wires the answer from this
 						// node and not from the document: a run that replaces
 						// the pane hands it the new one.
 						<div class="workbench-answer" data-answer>
 							@SQLAnswer(v)
 						</div>
+						@history()
 						// WHAT A RUN SAYS WHILE IT IS RUNNING, cloned into the
 						// pane by the island once a Run has taken 120ms. Here
 						// and not in sql.js because Tailwind reads templates:
@@ -275,8 +295,8 @@ templ SQL(v SQLView) {
 						<template data-running-template>
 							<div data-running role="status" class="mb-3 flex items-center gap-3 rounded-card border border-line bg-surface-2 px-3 py-2 text-[0.8rem] text-ink">
 								<span class="h-2 w-2 shrink-0 animate-pulse rounded-full bg-state-running"></span>
-								<span>Running <span class="text-muted">·</span> <span data-running-elapsed class="tabular-nums">0.1 s</span></span>
-								<button type="button" data-stop class="ml-auto inline-flex h-7 items-center rounded-card border border-line bg-surface px-2.5 text-[0.78rem] font-medium text-ink transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong">Cancel</button>
+								<span>{ i18n.T(ctx, "sql.running") } <span class="text-muted">·</span> <span data-running-elapsed class="tabular-nums">0.1 s</span></span>
+								<button type="button" data-stop class="ml-auto inline-flex h-7 items-center rounded-card border border-line bg-surface px-2.5 text-[0.78rem] font-medium text-ink transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong">{ i18n.T(ctx, "sql.cancel") }</button>
 							</div>
 						</template>
 					</section>
@@ -295,18 +315,32 @@ templ SQL(v SQLView) {
 // exactly this and nothing around it -- so the island swaps in the same
 // markup a reload would have drawn.
 templ SQLAnswer(v SQLView) {
-	// WHAT JUST HAPPENED, AS DATA. The rail is built in the
-	// browser and needs the outcome and the cost; the
-	// sentence under the grid is for a person. Parsing that
-	// sentence back out in JavaScript would break the day
-	// somebody rewords it.
+	// WHAT JUST HAPPENED, AS DATA. History is built in the browser and
+	// needs the outcome and the cost; the sentence over the grid is for a
+	// person. Parsing that sentence back out in JavaScript would break the
+	// day somebody rewords it.
 	//
 	// NOT `data-run`: that is already the Run button.
 	if v.Ran() {
-		<p data-outcome={ v.Outcome() } data-cost={ v.Cost() } hidden></p>
+		<p data-outcome={ v.Outcome() } data-cost={ v.Cost(ctx) } hidden></p>
 	}
-	if v.Err != "" {
-		<p class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.Err }</p>
+	if v.Refused != "" {
+		// THE SERVICE SAID NO, and does not say why -- a write, a scan over
+		// the ceiling, a spent budget come back alike. One title of the
+		// console's own, the service's sentence as it came, and where
+		// writes do run.
+		<div data-refused class="max-w-3xl rounded-card border border-state-failed/40 px-4 py-3 text-sm">
+			<p class="font-medium text-state-failed">{ i18n.T(ctx, "sql.err.refused") }</p>
+			<p class="mt-1 text-ink-2">{ v.Refused }</p>
+			<a href="/workflows" class="mt-2 inline-block text-xs text-muted underline decoration-line-strong underline-offset-2 hover:text-ink">{ i18n.T(ctx, "sql.readonly.link") }</a>
+		</div>
+	} else if v.ErrKey != "" {
+		<p class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ i18n.T(ctx, v.ErrKey, "connection", v.ErrArg) }</p>
+	} else if v.Err != "" {
+		<div class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm">
+			<p class="font-medium text-ink">{ i18n.T(ctx, "sql.err.failed") }</p>
+			<p class="mt-1 text-muted">{ v.Err }</p>
+		</div>
 	} else if v.Result != nil {
 		@results(v)
 	} else {
@@ -316,68 +350,40 @@ templ SQLAnswer(v SQLView) {
 			<span class="flex h-9 w-9 items-center justify-center rounded-full border border-line text-muted">
 				@components.Icon("play", "h-4 w-4")
 			</span>
-			<p class="text-sm font-medium text-ink">Run a query</p>
-			<p class="flex items-center gap-1.5 text-[0.75rem] text-muted">
-				Nothing has run yet. The answer appears here.
+			<p class="text-sm font-medium text-ink">{ i18n.T(ctx, "sql.result.none") }</p>
+			<p class="flex max-w-md items-center gap-1.5 text-[0.75rem] text-muted">
+				{ i18n.T(ctx, "sql.result.none.how") }
 				@components.Kbd("⌘↵")
 			</p>
 		</div>
 	}
 }
 
-// recent is the rail of what has been run, and all of it lives in the
-// browser.
+// history is what has been run, and all of it lives in the browser: the
+// third tab over the answer (screen-sql T3), which was the Recent rail.
 //
 // THE BOUNDARY IS CONSOLE 2.0'S, RESTATED WITH ITS COST: saved queries live
 // in the BROWSER until there is a user model. The statements are on that
 // machine, in that browser; a second browser starts empty and clearing site
 // data empties this. A server store would need a user model, and without one
-// it is a shared mutable list with no owner -- every operator reading every
-// other operator's drafts.
+// it is a shared mutable list with no owner.
 //
 // WHAT IS STORED IS SQL TEXT. That is said out loud because it is a decision
 // and not an accident: nothing writes a statement to the server's disk, to a
-// metric or to a URL. The browser already keeps what somebody typed into a
-// form; this keeps it on purpose.
-//
-// HIDDEN UNTIL THE ISLAND RUNS, and emptier than the tab strip without it:
-// what it lists has no server to come from.
-templ recent() {
-	<aside
-		id="recent"
-		class="workbench-recent text-xs"
+// metric or to a URL.
+templ history() {
+	<div
+		id="history"
+		class="workbench-history min-h-0 flex-1 overflow-auto py-2 text-xs"
+		data-panel="history"
 		data-recent
 		data-recent-keep="20"
-		aria-label="Recent statements"
-		data-js
+		hidden
 	>
-		<div class="mb-2 flex items-center justify-between gap-2">
-			<p class="text-[11.5px] font-medium text-muted">Recent</p>
-			<button
-				type="button"
-				data-recent-toggle
-				aria-expanded="true"
-				aria-controls="recent"
-				aria-label="Collapse the recent statements"
-				class="rounded-card px-1 py-0.5 text-muted hover:bg-surface-2 hover:text-ink"
-			>&#8676;</button>
-		</div>
 		<ol data-recent-list class="space-y-0.5"></ol>
-		<p data-recent-empty class="px-2 text-[0.7rem] text-muted">
-			Nothing yet. What you run shows up here — in this browser, on this machine.
-		</p>
-	</aside>
-	// AND THE WAY BACK, OUTSIDE WHAT IT HIDES. W2 learned this on the object
-	// tree: a collapsed rail is `display: none`, so the only control that
-	// could undo it would have gone with it.
-	<button
-		type="button"
-		data-recent-toggle
-		aria-expanded="true"
-		aria-controls="recent"
-		aria-label="Show the recent statements"
-		class="workbench-recent-show self-start rounded-card px-1 py-1 text-muted hover:bg-surface-2 hover:text-ink"
-	>&#8677;</button>
+		<p data-recent-empty class="px-2 text-[0.75rem] text-muted">{ i18n.T(ctx, "sql.history.empty") }</p>
+		<p class="mt-2 px-2 text-[0.7rem] text-faint">{ i18n.T(ctx, "sql.history.where") }</p>
+	</div>
 	<template data-recent-template>
 		<li>
 			<button
@@ -387,13 +393,12 @@ templ recent() {
 			>
 				<span class="flex items-center gap-1.5">
 					// BOTH OUTCOMES ARE DRAWN HERE AND ONE IS HIDDEN, rather
-					// than a class the island assembles. A class name built by
+					// than a class the island assembles: a class built by
 					// concatenating strings in JavaScript is a class Tailwind
-					// never sees in a source file and never emits -- the colour
-					// would simply not exist.
+					// never sees and never emits.
 					<span data-recent-outcome class="shrink-0 text-[0.7rem]">
-						<span data-recent-ok class="text-state-success" hidden>ok</span>
-						<span data-recent-failed class="text-state-failed" hidden>failed</span>
+						<span data-recent-ok class="text-state-success" hidden>{ i18n.T(ctx, "sql.history.ok") }</span>
+						<span data-recent-failed class="text-state-failed" hidden>{ i18n.T(ctx, "sql.history.failed") }</span>
 					</span>
 					<span data-recent-cost class="truncate text-[0.7rem] text-muted"></span>
 				</span>
@@ -403,20 +408,22 @@ templ recent() {
 	</template>
 }
 
-// tree is every connection the catalog knows, and what the open one holds.
+// tree is the connection picker and what the chosen connection holds
+// (screen-sql T1).
 //
-// THE HALF A PICKER CANNOT GIVE: a picker says which warehouse, and this
-// says what is IN it -- including the relations nothing landed on, which is
-// the whole reason somebody opens a workbench instead of a destination page.
+// A PICKER AND ONE TREE, the handoff's shape, chosen by the owner over the
+// roots it replaced. It is a GET form of its own (`?connection=`), so with no
+// script choosing a connection is a page; the island submits it on change,
+// and the open statements survive in the tabs' storage. The connections this
+// console cannot read are offered disabled, with the reason under them.
 //
 // A <details> per schema and not a script: the browser gives the open state,
-// the keyboard and the ARIA for free, which is the same choice the account
-// menu made.
+// the keyboard and the ARIA for free.
 templ tree(v SQLView) {
 	if len(v.Targets) > 0 {
 		<aside id="objects" class="workbench-rail border-r border-line-soft pr-3 text-xs" data-rail>
 			<div class="mb-2 flex items-center justify-between gap-2">
-				<p class="text-[11.5px] font-medium text-muted">Objects</p>
+				<p class="text-[11.5px] font-medium text-muted">{ i18n.T(ctx, "sql.tree.title") }</p>
 				// COLLAPSING IS A CONTROL, not a drag to zero. A rail dragged
 				// to nothing is a rail with no handle left to drag back.
 				<button
@@ -424,49 +431,48 @@ templ tree(v SQLView) {
 					data-rail-toggle
 					aria-expanded="true"
 					aria-controls="objects"
-					aria-label="Collapse the object tree"
+					aria-label={ i18n.T(ctx, "sql.tree.collapse") }
 					class="rounded-card px-1 py-0.5 text-muted hover:bg-surface-2 hover:text-ink"
 				>&#8676;</button>
 			</div>
-			// THE SEARCH FILTERS WHAT IS LOADED, and the island says so when
-			// that is less than everything. Without the island it is an
+			<form method="get" action="/sql" data-connection-pick class="mb-2">
+				<label class="flex items-center gap-2 rounded-card border border-line bg-surface px-2 py-1">
+					if on := v.Running(); on != "" {
+						@components.Logo(kindLogo(kindOf(on)), 16)
+					}
+					<span class="sr-only">{ i18n.T(ctx, "sql.tree.connection") }</span>
+					<select name="connection" class="min-w-0 flex-1 bg-transparent py-0.5 font-mono text-xs text-ink focus:outline-none">
+						for _, w := range v.Warehouses() {
+							if !Queryable(w.Target) {
+								<option value={ w.Target } disabled>{ warehouseLabel(ctx, w) }</option>
+							} else if v.Active(w) {
+								<option value={ w.Target } selected>{ warehouseLabel(ctx, w) }</option>
+							} else {
+								<option value={ w.Target }>{ warehouseLabel(ctx, w) }</option>
+							}
+						}
+					</select>
+				</label>
+				<button type="submit" data-no-js class="mt-1 rounded-card border border-line px-2 py-0.5 text-[0.7rem] text-ink hover:bg-surface-2">{ i18n.T(ctx, "sql.tree.open") }</button>
+				if kinds := v.Unreadable(); len(kinds) > 0 {
+					<p class="mt-1 px-1 text-[0.7rem] text-muted">{ i18n.T(ctx, "sql.tree.unreadable", "kinds", unreadableSaid(ctx, kinds)) }</p>
+				}
+			</form>
+			// THE SEARCH FILTERS WHAT IS LOADED: the chosen connection's
+			// listing, which is on the page. Without the island it is an
 			// ordinary field that does nothing, so it is marked rather than
 			// drawn eagerly: `data-tree-search` is what the script looks for.
 			<input
 				type="search"
 				data-tree-search
-				placeholder="Search this tree"
-				aria-label="Search the objects in this tree"
+				placeholder={ i18n.T(ctx, "sql.tree.filter") }
+				aria-label={ i18n.T(ctx, "sql.tree.filter") }
 				class="mb-2 w-full rounded-card border border-line bg-surface px-2 py-1 text-xs text-ink placeholder:text-muted"
 			/>
-			<p data-tree-unsearched hidden class="mb-2 px-2 text-[0.7rem] text-muted"></p>
-			for _, w := range v.Warehouses() {
-				<div class="mb-1" data-connection={ w.Name } data-loaded={ loaded(v, w) }>
-					// A SUBMIT, like the relation's own button: without a
-					// script, opening a connection is a round trip, because
-					// the listing is not on the page yet. With one, the
-					// island answers the click and nothing reloads.
-					<button
-						type="submit"
-						form="workbench"
-						name="connect"
-						value={ w.Target }
-						aria-expanded={ expanded(v, w) }
-						class="flex w-full items-center gap-1 rounded-card px-2 py-1 text-left font-mono text-ink hover:bg-surface-2"
-					>
-						<span class="shrink-0 text-muted" data-arrow>
-							if v.Active(w) {
-								&#9662;
-							} else {
-								&#9656;
-							}
-						</span>
-						<span class="truncate">{ w.Name }</span>
-					</button>
-					<div data-objects={ w.Target } class="pl-2">
-						if v.Active(w) {
-							@Objects(v.Branch())
-						}
+			if on := v.Running(); on != "" {
+				<div data-connection={ on }>
+					<div data-objects={ v.Target }>
+						@Objects(v.Branch())
 					</div>
 				</div>
 			}
@@ -489,13 +495,15 @@ templ Objects(b Branch) {
 			</summary>
 			for _, t := range s.Tables {
 				<div data-relation={ s.Name + "." + t }>
-					// `data-insert` is what the island reads to put the
-					// name in the editor. Without the island it is still
-					// a readable list, which is the point of putting the
-					// name in the text rather than only in an attribute.
+					// THE TABLE IS ITS FIRST LOOK: the island puts this SELECT
+					// in the editor -- in the open tab when it is empty, in a
+					// new one when it is not -- and opens the columns. Without
+					// the island it is still a readable list, which is the
+					// point of putting the name in the text.
 					<button
 						type="button"
-						data-insert={ s.Name + "." + t }
+						data-select={ selectOf(s.Name, t) }
+						data-relation-name={ s.Name + "." + t }
 						class="flex w-full items-center gap-1.5 rounded-card px-2 py-1 pl-5 text-left font-mono text-muted hover:bg-surface-2 hover:text-ink"
 					>
 						// The span truncates, not the button: a flex row
@@ -528,9 +536,9 @@ templ Objects(b Branch) {
 						class="block w-full rounded-card px-2 py-0.5 pl-[2.375rem] text-left text-[0.7rem] text-muted hover:text-ink"
 					>
 						if b.Open == s.Name+"."+t {
-							&#8722; columns
+							&#8722; { i18n.T(ctx, "sql.tree.columns") }
 						} else {
-							+ columns
+							+ { i18n.T(ctx, "sql.tree.columns") }
 						}
 					</button>
 					<div data-columns={ s.Name + "." + t }>
@@ -543,7 +551,7 @@ templ Objects(b Branch) {
 		</details>
 	}
 	if b.Cut {
-		<p class="mt-2 px-2 text-[0.7rem] text-muted">Showing part of this warehouse — there are more.</p>
+		<p class="mt-2 px-2 text-[0.7rem] text-muted">{ i18n.T(ctx, "sql.tree.cut") }</p>
 	}
 }
 
@@ -588,7 +596,7 @@ templ Columns(cols []sqlserve.Column) {
 			</li>
 		}
 		if len(cols) == 0 {
-			<li class="px-2 py-0.5 text-[0.7rem] text-muted">This warehouse does not say.</li>
+			<li class="px-2 py-0.5 text-[0.7rem] text-muted">{ i18n.T(ctx, "sql.tree.no_columns") }</li>
 		}
 	</ul>
 }
@@ -605,47 +613,35 @@ templ Columns(cols []sqlserve.Column) {
 // THE SENTENCE IS THE SERVICE'S OWN, carried through unchanged. The ceiling
 // refuses with the same words at Run, and a console that reworded them would
 // drift from what actually happens.
+//
+// THE REFUSAL HAS ONE TITLE (screen-sql T2): the service does not say WHY it
+// refused -- a write and a query over the ceiling come back alike, with no
+// code -- and the console neither reads the SQL nor matches the sentence, so
+// it titles every refusal the same and shows the sentence under it. A
+// warehouse that does not price is a fact about the warehouse, said in the
+// reader's words.
 templ Cost(p sqlserve.Price) {
 	if p.State == "priced" {
-		<span data-cost-state="priced">
-			This query will process <strong class="font-medium text-ink">{ bytesText(p.Bytes) }</strong> when run.
-		</span>
+		<span data-cost-state="priced">{ i18n.T(ctx, "sql.cost.priced") } <strong class="font-medium text-ink">{ bytesSaid(ctx, p.Bytes) }</strong></span>
 	} else if p.State == "unpriced" {
-		<span data-cost-state="unpriced">{ p.Why }</span>
+		<span data-cost-state="unpriced">{ i18n.T(ctx, "sql.cost.unpriced") }</span>
 	} else {
-		<span data-cost-state="refused" class="text-state-failed">{ p.Why }</span>
+		<span data-cost-state="refused" class="text-state-failed"><strong class="font-medium">{ i18n.T(ctx, "sql.cost.refused") }</strong> { p.Why }</span>
 	}
 }
 
-// results is the answer: two tabs, a grid and a pager.
+// results is the answer: its figures and CSV, the grid and the JSON -- the
+// tabs over the answer choose between the two -- and a pager.
 //
-// TWO TABS, AND THE REFERENCE'S OTHER FOUR ARE NOT DRAWN. BigQuery's panel
-// offers Job information, Visualization, Execution details and Execution
-// graph. Those are its JOB MODEL, which `serve` does not have -- drawing
-// them would be four promises this console cannot keep, and an empty tab is
-// worse than an absent one because somebody clicks it.
+// TWO VIEWS OF IT, AND THE REFERENCE'S OTHER FOUR ARE NOT DRAWN. BigQuery's
+// panel offers Job information, Visualization, Execution details and
+// Execution graph. Those are its JOB MODEL, which `serve` does not have.
 templ results(v SQLView) {
 	<div class="flex h-full min-h-0 flex-col">
-		<div class="flex shrink-0 items-center gap-1 border-b border-line-soft" role="tablist" aria-label="How to read the answer">
-			<button
-				type="button"
-				role="tab"
-				data-tab="results"
-				aria-selected="true"
-				class="results-tab px-3 py-1.5 text-xs text-muted"
-			>Results</button>
-			<button
-				type="button"
-				role="tab"
-				data-tab="json"
-				aria-selected="false"
-				class="results-tab px-3 py-1.5 text-xs text-muted"
-			>JSON</button>
-			// MARKED, because a test comparing the rail's figures with this
-			// sentence has to find THIS sentence. Searching the document for
-			// the figures finds the attribute the rail reads, which is the
-			// same string and proves nothing.
-			<p data-note class="ml-auto pr-1 text-[0.7rem] text-muted">{ v.Note() }</p>
+		<div class="flex shrink-0 items-center gap-2 px-1 py-1">
+			// MARKED, because a test comparing History's figures with this
+			// sentence has to find THIS sentence.
+			<p data-note class="ml-auto text-[0.7rem] text-muted">{ v.Note(ctx) }</p>
 			// THE ANSWER, TAKEN AWAY: CSV built in the browser from the JSON
 			// panel below, so no second query and no route. Hidden until the
 			// island can drive it, and absent for a write, whose answer is a
@@ -661,14 +657,9 @@ templ results(v SQLView) {
 		</div>
 		<div class="min-h-0 flex-1 overflow-auto" data-panel="results">
 			if v.Result.Wrote {
-				// A WRITE GETS A SENTENCE AND NOT A GRID.
-				//
-				// The service answers a write with no columns and no rows,
-				// and the grid draws that as a table with no headings and
-				// "No rows." under them -- which reads as "it found nothing"
-				// for a statement that was never looking. An absent table is
+				// A WRITE GETS A SENTENCE AND NOT A GRID: an absent table is
 				// nothing to interpret; an empty one is.
-				<p data-changed class="px-3 py-4 text-sm text-ink">{ v.Changed() }</p>
+				<p data-changed class="px-3 py-4 text-sm text-ink">{ v.Changed(ctx) }</p>
 			} else {
 				@resultGrid(v.Result.Columns, v.Result.Rows)
 			}
@@ -677,21 +668,19 @@ templ results(v SQLView) {
 			<pre class="p-2 font-mono text-[0.7rem] whitespace-pre text-ink">{ v.JSON() }</pre>
 		</div>
 		// THE PAGER IS AN ENHANCEMENT, AND IT IS HIDDEN UNTIL SOMETHING CAN
-		// DRIVE IT.
-		//
-		// It pages over rows that have already arrived: no second query, no
-		// link, no form. Without the island every row is on the page, which
-		// is what this screen did before -- rather than a row of buttons
-		// that do nothing, which is the shape this console refuses.
+		// DRIVE IT: it pages over rows that already arrived, no second query.
+		// The range's words are the page's (`data-range`); the island fills
+		// the numbers.
 		<div
 			class="flex shrink-0 items-center justify-end gap-2 border-t border-line-soft px-2 py-1 text-[0.7rem] text-muted"
 			data-pager
 			data-total={ Total(len(v.Result.Rows), v.Result.Truncated) }
 			data-per-page="50"
+			data-range={ i18n.T(ctx, "sql.pager.range", "from", "{from}", "to", "{to}", "total", "{total}") }
 			hidden
 		>
 			<label class="flex items-center gap-1">
-				Rows per page
+				{ i18n.T(ctx, "sql.pager.size") }
 				<select data-per-page-pick class="rounded border border-line bg-surface px-1 py-0.5 text-[0.7rem] text-ink">
 					<option value="50">50</option>
 					<option value="100">100</option>
@@ -699,8 +688,8 @@ templ results(v SQLView) {
 				</select>
 			</label>
 			<span data-pager-range class="tabular-nums"></span>
-			<button type="button" data-pager-prev aria-label="Previous page" class="rounded px-1.5 py-0.5 hover:bg-surface-2 hover:text-ink">&#8249;</button>
-			<button type="button" data-pager-next aria-label="Next page" class="rounded px-1.5 py-0.5 hover:bg-surface-2 hover:text-ink">&#8250;</button>
+			<button type="button" data-pager-prev aria-label={ i18n.T(ctx, "sql.pager.prev") } class="rounded px-1.5 py-0.5 hover:bg-surface-2 hover:text-ink">&#8249;</button>
+			<button type="button" data-pager-next aria-label={ i18n.T(ctx, "sql.pager.next") } class="rounded px-1.5 py-0.5 hover:bg-surface-2 hover:text-ink">&#8250;</button>
 		</div>
 	</div>
 }
@@ -770,6 +759,6 @@ func sqlStatus(v SQLView) templ.Component {
 templ writesAllowed() {
 	<span data-mode="write" class="inline-flex items-center gap-1.5 rounded-card bg-state-queued/13 px-2 py-0.5 text-xs font-medium text-state-queued">
 		@components.Icon("triangle-alert", "h-3.5 w-3.5")
-		Writes allowed
+		{ i18n.T(ctx, "sql.writes.allowed") }
 	</span>
 }

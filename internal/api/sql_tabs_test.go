@@ -41,39 +41,35 @@ func TestTheTabStripWaitsForTheIsland(t *testing.T) {
 	}
 }
 
-// THE RECENT RAIL IS THE SAME, and it is emptier still without the island:
-// what it lists lives in `localStorage`, so a browser with no script has
-// nothing to put in it.
-func TestTheRecentRailWaitsForTheIsland(t *testing.T) {
+// HISTORY WAITS FOR THE ISLAND TOO (screen-sql T3): what it lists lives in
+// `localStorage`, so it is a panel behind a tab, and the tabs over the answer
+// are the island's -- a browser with no script sees the grid and nothing it
+// could never fill.
+func TestHistoryWaitsForTheIsland(t *testing.T) {
 	_, ui := browsing(t)
 	_, body := get(t, ui, "/sql")
 
-	rail := tag(body, "data-recent-keep")
-	if rail == "" {
-		t.Fatal("there is no Recent rail on the screen")
+	panel := tag(body, "data-recent-keep")
+	if panel == "" {
+		t.Fatal("there is no History on the screen")
 	}
-	if !strings.Contains(rail, "data-js") {
-		t.Errorf("an empty rail is drawn for a browser that can never fill it: %s", rail)
+	if !strings.Contains(panel, `data-panel="history"`) || !strings.Contains(panel, " hidden") {
+		t.Errorf("History is not a panel behind a tab: %s", panel)
 	}
-	// THE CAP COMES FROM THE MARKUP, like the grips' `data-min`. A number
-	// that lived only in the island is a number the next person changes
-	// without the page saying what it is.
-	if !strings.Contains(rail, `data-recent-keep="20"`) {
-		t.Errorf("the rail does not say how much it keeps: %s", rail)
+	if strip := tag(body, "data-results-tabs"); !strings.Contains(strip, "data-js") {
+		t.Errorf("the tab that opens History is drawn for a browser that cannot fill it: %s", strip)
+	}
+	// THE CAP COMES FROM THE MARKUP, like the grips' `data-min`.
+	if !strings.Contains(panel, `data-recent-keep="20"`) {
+		t.Errorf("History does not say how much it keeps: %s", panel)
 	}
 	if !strings.Contains(body, "<template data-recent-template") {
 		t.Error("the island has no entry markup to clone")
 	}
-	for _, slot := range []string{"data-recent-outcome", "data-recent-cost", "data-recent-text"} {
+	for _, slot := range []string{"data-recent-outcome", "data-recent-cost", "data-recent-text", "data-history-count"} {
 		if !strings.Contains(body, slot) {
 			t.Errorf("an entry has nowhere to put %s", slot)
 		}
-	}
-	// AND A WAY BACK THAT IS NOT INSIDE WHAT IT HIDES. W2 learned this on
-	// the object tree: a collapsed rail is `display: none`, so a control
-	// that lived in it goes with it.
-	if !strings.Contains(body, "workbench-recent-show") {
-		t.Error("collapsing the Recent rail would leave no way to open it")
 	}
 }
 
