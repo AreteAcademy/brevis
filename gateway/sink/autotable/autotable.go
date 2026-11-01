@@ -93,7 +93,7 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	r := &router{build: b, names: n, unique: unique, merging: merging, shape: sh, folds: folds,
 		stream: b.Stream, gateway: b.Gateway,
 		meta: &coordinator{store: b.Meta, stream: b.Stream, ttl: ttl},
-		made: map[string]gateway.Sinker{}, charged: map[string]bool{}, now: time.Now}
+		made: map[string]gateway.Sinker{}, charged: map[string]bool{}, landed: map[string]time.Time{}, now: time.Now}
 	if _, err := r.open(b.Ctx, probeTable, nil); err != nil {
 		return nil, err
 	}
@@ -155,6 +155,60 @@ type router struct {
 	// The limit is a circuit breaker against a producer inventing NAMES. One
 	// name retrying is not that, however many times it retries.
 	charged map[string]bool
+
+	// landed is the tables of a MULTI-table batch that this process already
+	// wrote, keyed by batch key + table, with the time they did. `pipe.send`
+	// retries the WHOLE batch when a later table fails (ErrClaimed while
+	// another replica runs DDL, a row error), so without it each attempt wrote
+	// the earlier tables again: under `write: append` nothing matches on a key
+	// and a batch came out up to `attempts` times over. Guarded by mu.
+	landed map[string]time.Time
+}
+
+// landedTTL outlives a pipe's retries, which all happen inside one send
+// timeout; landedMax bounds the memory a busy gateway can spend on it.
+const (
+	landedTTL = 10 * time.Minute
+	landedMax = 4096
+)
+
+func landedKey(ctx context.Context, table string) string {
+	return gateway.BatchKeyOf(ctx) + "\x00" + table
+}
+
+// wasWritten says whether this batch's rows for table already landed. A ctx
+// with no batch key (a direct caller) never matches: nothing to tell batches
+// apart by.
+func (r *router) wasWritten(ctx context.Context, table string) bool {
+	if gateway.BatchKeyOf(ctx) == "" {
+		return false
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	at, ok := r.landed[landedKey(ctx, table)]
+	return ok && r.now().Sub(at) < landedTTL
+}
+
+func (r *router) markWritten(ctx context.Context, table string) {
+	if gateway.BatchKeyOf(ctx) == "" {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	now := r.now()
+	if len(r.landed) >= landedMax {
+		for k, at := range r.landed {
+			if now.Sub(at) >= landedTTL {
+				delete(r.landed, k)
+			}
+		}
+		// shortcut: still full means a burst of live batches; start over
+		// (a retry may rewrite once) rather than track recency.
+		if len(r.landed) >= landedMax {
+			clear(r.landed)
+		}
+	}
+	r.landed[landedKey(ctx, table)] = now
 }
 
 func (r *router) Describe() string {
@@ -251,6 +305,14 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 	var ranOut error
 	failed := map[string]tableFailure{}
 	for i, table := range tables {
+		// Written by an earlier attempt of this same batch: a retry must not
+		// write it again (append would duplicate it). A single-table batch
+		// never lands without succeeding, so it never gets here.
+		if len(tables) > 1 && r.wasWritten(ctx, table) {
+			wrote += int64(len(groups[table]))
+			continue
+		}
+
 		// On the CALLER's context, not the share. What sinkFor does is build a
 		// sink and then CACHE it -- `r.made[key] = s` -- and a built sink
 		// keeps what it was constructed with, down to the object-store client
@@ -271,6 +333,9 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 		wrote += n
 		if err == nil {
 			r.meta.learn(ctx, table, true)
+			if len(tables) > 1 {
+				r.markWritten(ctx, table)
+			}
 			continue
 		}
 

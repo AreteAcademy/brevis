@@ -103,6 +103,7 @@ func Run(t *testing.T, d dialect.Dialect, dsn string) {
 	t.Run("a duplicate key in the source does not fail the build", h.incrementalDeduplicates)
 	t.Run("a full refresh rebuilds and forgets the watermark", h.incrementalFullRefresh)
 	t.Run("an incremental model replaces a view of that name", h.incrementalReplacesAView)
+	t.Run("a lookback takes a late row the strict filter loses", h.incrementalLookback)
 }
 
 type harness struct {
@@ -906,5 +907,38 @@ func (h *harness) incrementalReplacesAView(t *testing.T) {
 	h.runModel(t, m, false)
 	if got := h.kindOf(t, "inc_v"); got != dialect.Table {
 		t.Errorf("it is still a %q", got)
+	}
+}
+
+// A LOOKBACK TAKES THE ROW THE STRICT FILTER LOSES: one that ties the target's
+// greatest watermark but committed after the build, and one that arrives late
+// with an older timestamp. Without it both stay out until a full refresh.
+func (h *harness) incrementalLookback(t *testing.T) {
+	h.build(t, "inc_lb_src", model.Table, rows(
+		row(1, "a", "2026-01-01 10:00:00"),
+		row(2, "b", "2026-01-01 09:30:00"),
+	))
+	build := func(lookback time.Duration) {
+		h.runModel(t, model.Model{
+			Schema: h.schema, Name: "inc_lb", Materialised: model.Incremental,
+			UniqueKey: []string{"k"}, Watermark: "w", Lookback: lookback,
+			SQL: "SELECT k, v, w FROM " + h.schema + ".inc_lb_src",
+		}, false)
+	}
+	build(0)
+	h.build(t, "inc_lb_src", model.Table, rows(
+		row(1, "a", "2026-01-01 10:00:00"),
+		row(2, "b", "2026-01-01 09:30:00"),
+		row(3, "tied", "2026-01-01 10:00:00"),
+		row(4, "late", "2026-01-01 09:45:00"),
+		row(5, "too old", "2026-01-01 05:00:00"),
+	))
+	build(0)
+	if n := h.countOf(t, "inc_lb"); n != 2 {
+		t.Fatalf("%d rows without a lookback, wanted 2 -- the strict filter should lose both", n)
+	}
+	build(time.Hour)
+	if n := h.countOf(t, "inc_lb"); n != 4 {
+		t.Errorf("%d rows with a one hour lookback, wanted 4: the tied and the late row, not the one outside the window", n)
 	}
 }

@@ -391,9 +391,18 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 		// done with: released, it would be claimed and refused again with no
 		// wait in between, forever.
 		d.log.Warn("could not mark running", "run", it.RunID, "error", err)
-		if r, gerr := d.repo.Get(ctx, it.RunID); gerr == nil && r.Status.Terminal() {
-			_ = d.queue.Done(ctx, it)
-			return
+		if r, gerr := d.repo.Get(ctx, it.RunID); gerr == nil {
+			if r.Status.Terminal() {
+				_ = d.queue.Done(ctx, it)
+				return
+			}
+			// `failed` and `retrying` are not terminal, so a bookkeeping that
+			// died halfway lands here: released with no delay, the item would be
+			// claimed and refused every tick. Finish the failure instead.
+			if r.Status == dom.StatusFailed || r.Status == dom.StatusRetrying {
+				d.fail(ctx, it, err)
+				return
+			}
 		}
 		_ = d.queue.Release(ctx, it, 0)
 		return
@@ -455,7 +464,11 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 
 	if err == nil {
 		if err := d.repo.Transicionar(done, it.RunID, dom.StatusSuccess); err != nil {
+			// The item stays claimed: deleting it would leave the run `running`
+			// with nothing in the queue to ever move it. The sweep finds it
+			// instead, after Visibility.
 			d.log.Error("marking success", "run", it.RunID, "error", err)
+			return
 		}
 		// The queue item is released BEFORE the run is measured. Measuring is
 		// bookkeeping and it costs a query; leaving an item claimed while it
@@ -726,49 +739,80 @@ func settle() (context.Context, context.CancelFunc) {
 }
 
 // fail decides between a retry and giving up.
+//
+// It is IDEMPOTENT: the orphan sweep runs it again on a run whose last
+// bookkeeping died halfway, so it starts from the run's current status and
+// does only what is left. And no error below deletes the item: Done is for a
+// run that has ended. A write that fails leaves the item claimed (the sweep
+// retries it after Visibility) -- deleting it stranded the run for good,
+// `failed` with no retry or `queued` with no item.
 func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
-	_ = d.repo.RecordError(ctx, it.RunID, cause.Error())
-	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusFailed); err != nil {
-		d.log.Error("marking failed", "run", it.RunID, "error", err)
-		_ = d.queue.Done(ctx, it)
-		return
-	}
-
-	// The attempt and the alert are one write. The alert is raised HERE, on the
-	// last attempt only: warning on every attempt would turn a run that
-	// recovers on its second try into two alerts and a silence, and a channel
-	// that cries wolf stops being read.
-	attempt, gaveUp, err := d.repo.Attempt(ctx, it.RunID, d.cfg.MaxAttempts,
-		d.raise(ctx, it.RunID, cause))
+	run, err := d.repo.Get(ctx, it.RunID)
 	if err != nil {
-		d.log.Error("spending the attempt", "run", it.RunID, "error", err)
-		_ = d.queue.Done(ctx, it)
+		d.log.Error("reading the run to fail it", "run", it.RunID, "error", err)
 		return
 	}
+	attempt := run.Attempt
 
-	if gaveUp {
-		// Exhausted: leaves the queue and stays FAILED, which is not terminal in
-		// the state machine but is the end of this run.
-		d.log.Warn("out of attempts", "run", it.RunID, "attempts", attempt)
-		d.measure(ctx, it.RunID, dom.StatusFailed)
-		_ = d.queue.Done(ctx, it)
+	switch run.Status {
+	case dom.StatusSuccess, dom.StatusCanceled:
+		_ = d.queue.Done(ctx, it) // it ended, and so does its item
 		return
+	case dom.StatusQueued:
+		// The retry is fully recorded; only handing the item back is missing.
+		d.handBack(ctx, it, attempt)
+		return
+	case dom.StatusRetrying:
+		// The attempt is spent already; only the requeue is missing.
+	case dom.StatusFailed:
+		// Marked failed, but the attempt was not spent (its transaction rolled
+		// back, alert included): spend it now. The first error stays the run's.
+	default:
+		_ = d.repo.RecordError(ctx, it.RunID, cause.Error())
+		if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusFailed); err != nil {
+			d.log.Error("marking failed", "run", it.RunID, "error", err)
+			return
+		}
 	}
 
-	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusRetrying); err != nil {
-		d.log.Error("marking retrying", "run", it.RunID, "error", err)
-		_ = d.queue.Done(ctx, it)
-		return
+	if run.Status != dom.StatusRetrying {
+		// The attempt and the alert are one write. The alert is raised HERE, on
+		// the last attempt only: warning on every attempt would turn a run that
+		// recovers on its second try into two alerts and a silence, and a channel
+		// that cries wolf stops being read.
+		var gaveUp bool
+		attempt, gaveUp, err = d.repo.Attempt(ctx, it.RunID, d.cfg.MaxAttempts,
+			d.raise(ctx, it.RunID, cause))
+		if err != nil {
+			d.log.Error("spending the attempt", "run", it.RunID, "error", err)
+			return
+		}
+		if gaveUp {
+			// Exhausted: leaves the queue and stays FAILED, which is not terminal in
+			// the state machine but is the end of this run.
+			d.log.Warn("out of attempts", "run", it.RunID, "attempts", attempt)
+			d.measure(ctx, it.RunID, dom.StatusFailed)
+			_ = d.queue.Done(ctx, it)
+			return
+		}
+		if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusRetrying); err != nil {
+			d.log.Error("marking retrying", "run", it.RunID, "error", err)
+			return
+		}
 	}
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusQueued); err != nil {
 		d.log.Error("requeuing", "run", it.RunID, "error", err)
-		_ = d.queue.Done(ctx, it)
 		return
 	}
+	d.handBack(ctx, it, attempt)
+}
 
-	// Exponential backoff, capped. The item returns to the queue delayed, not
-	// at once: an instant retry against a dependency that is down only burns
-	// the queue.
+// handBack returns a requeued run's item to the queue.
+//
+// Exponential backoff, capped. The item returns to the queue delayed, not
+// at once: an instant retry against a dependency that is down only burns
+// the queue.
+func (d *Dispatcher) handBack(ctx context.Context, it queue.Item, attempt int) {
 	atraso := d.backoff(attempt)
 	d.log.Info("requeued", "run", it.RunID, "attempt", attempt, "delay", atraso)
 	if err := d.queue.Release(ctx, it, atraso); err != nil {

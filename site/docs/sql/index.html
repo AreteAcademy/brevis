@@ -240,6 +240,20 @@ brevis-sql: 1 of 2 tests failed"><div class="code-head"><span class="code-lang">
       SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
 brevis-sql: 1 of 2 tests failed</code></pre></div>
 <p>The process exits with code 1, and the workflow step fails with it.</p>
+<h2 id="an-incremental-model-and-its-lookback">An incremental model and its lookback<a class="anchor" href="#an-incremental-model-and-its-lookback" aria-label="link">#</a></h2>
+<p><code>materialized: incremental</code> needs a <code>unique_key</code> and a <code>watermark</code>. Each build reads only the rows past the greatest watermark already in the target and MERGEs them by key. That filter is strict, so a row that ties the watermark but commits after the build, or arrives late with an older timestamp, is not seen until <code>--full-refresh</code>. An optional <code>lookback</code> fixes that:</p>
+<div class="code-block" data-code="/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/</code></pre></div>
+<p>The value is a whole number and <code>s</code>, <code>m</code>, <code>h</code> or <code>d</code>; anything else is refused with the model's name. The filter becomes <code>updated_at &gt;= max - 2h</code>, and the MERGE absorbs the repeated rows. The watermark must be a TIMESTAMP column when a lookback is set. Without <code>lookback</code> the SQL is unchanged.</p>
 <h2 id="tests-are-selects-that-return-violating-rows">Tests are SELECTs that return violating rows<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
 <p><code>not_null</code>, <code>unique</code>, <code>accepted_values</code>, <code>relationships</code>. Zero rows is a pass, and there is nothing else to interpret.</p>
 <h2 id="it-says-what-it-wrote">It says what it wrote<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
@@ -269,7 +283,7 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#six-commands">Six commands</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve — reading a warehouse without a credential</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">A development warehouse somebody may change</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">A model is a file that stays valid SQL</a></li><li class="toc-2"><a href="#from-compile-to-test">From compile to test</a></li><li class="toc-3"><a href="#when-a-test-fails">When a test fails</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">Tests are SELECTs that return violating rows</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">It says what it wrote</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">Two warehouses, one suite</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#verified-against-dbt">Verified against dbt</a></li><li class="toc-2"><a href="#what-it-does-not-do">What it does not do</a></li><li class="toc-2"><a href="#where-to-go-next">Where to go next</a></li></ul>
+      <ul><li class="toc-2"><a href="#six-commands">Six commands</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve — reading a warehouse without a credential</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">A development warehouse somebody may change</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">A model is a file that stays valid SQL</a></li><li class="toc-2"><a href="#from-compile-to-test">From compile to test</a></li><li class="toc-3"><a href="#when-a-test-fails">When a test fails</a></li><li class="toc-2"><a href="#an-incremental-model-and-its-lookback">An incremental model and its lookback</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">Tests are SELECTs that return violating rows</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">It says what it wrote</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">Two warehouses, one suite</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#verified-against-dbt">Verified against dbt</a></li><li class="toc-2"><a href="#what-it-does-not-do">What it does not do</a></li><li class="toc-2"><a href="#where-to-go-next">Where to go next</a></li></ul>
     </aside>
   </main>
 </div>

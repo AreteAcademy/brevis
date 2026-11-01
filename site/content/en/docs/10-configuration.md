@@ -20,7 +20,7 @@ mid-run is a process whose behaviour nobody can reproduce.
 
 | variable | default | |
 |---|---|---|
-| `BREVIS_ENV` | `local` | `local` logs in text and leaves the interface open; anything else requires credentials and logs JSON |
+| `BREVIS_ENV` | `production` | `local` logs in text and leaves the interface open; anything else, including unset, requires credentials and logs JSON. Set `BREVIS_ENV=local` for development |
 | `BREVIS_HTTP_ADDR` | `:8080` | listen address |
 | `BREVIS_LOG_LEVEL` | `info` | |
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | integer; a non-numeric value is a boot error |

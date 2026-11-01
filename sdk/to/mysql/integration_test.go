@@ -163,7 +163,32 @@ func TestIntegrationDedupLoadsTheSameBatchTwice(t *testing.T) {
 	}
 }
 
-// TestIntegrationDedupWithoutAnIndexRefuses: with no unique index, INSERT IGNORE
+// TestIntegrationDedupDoesNotHideATooLongValue: INSERT IGNORE truncated a value
+// longer than the column and counted the row as loaded; now only duplicates are
+// ignored and anything else fails the load (strict sql_mode, the server default).
+func TestIntegrationDedupDoesNotHideATooLongValue(t *testing.T) {
+	db := open(t)
+	name := table(t, db, "ingestion_id VARCHAR(36) NOT NULL, provider VARCHAR(5)")
+	if _, err := db.Exec(fmt.Sprintf("CREATE UNIQUE INDEX u ON %s (ingestion_id)", name)); err != nil {
+		t.Fatal(err)
+	}
+
+	target := tomy.Table{DSN: dsn(t), Name: name}
+	l := []sdk.Envelope{{Payload: map[string]any{"ingestion_id": "a", "provider": "far too long"}}}
+	_, err := target.Write(context.Background(), l, sdk.WriteOptions{Dedup: sdk.DedupMerge})
+	if err == nil {
+		t.Fatal("a value longer than the column was accepted")
+	}
+	var n int
+	if err := db.QueryRow("SELECT count(*) FROM " + name).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("the table has %d rows after a refused load", n)
+	}
+}
+
+// TestIntegrationDedupWithoutAnIndexRefuses: with no unique index, the dedup
 // has
 // nothing to match and every run would insert duplicates.
 func TestIntegrationDedupWithoutAnIndexRefuses(t *testing.T) {

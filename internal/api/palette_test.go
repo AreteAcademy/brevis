@@ -88,6 +88,7 @@ func (f readsFake) Runs(context.Context, postgres.RunFilter) ([]postgres.RunSumm
 	return nil, nil
 }
 func (f readsFake) CountRuns(context.Context, postgres.RunFilter) (int, error) { return 0, nil }
+func (f readsFake) CountRunsInFlight(context.Context) (int, error)             { return 0, nil }
 func (f readsFake) CountRunsByState(context.Context, postgres.RunFilter) (map[string]int, error) {
 	return nil, nil
 }
