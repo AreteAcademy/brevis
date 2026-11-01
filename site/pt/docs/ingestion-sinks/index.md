@@ -72,22 +72,22 @@ impedir, então a configuração diz isso em vez de fazer aquilo.
 ## Cada um com o que só é verdade dele
 
 ```yaml
-# Postgres: nome qualificado pelo schema, e a tabela precisa existir.
+# Postgres: schema-qualified name, and the table has to exist.
 sink: {type: postgres, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
 
-# MySQL: não tem COPY, então a vazão fica uma ordem abaixo do Postgres no
-# mesmo hardware. Agrupe lotes maiores aqui.
+# MySQL: no COPY, so throughput is an order below Postgres on the same
+# hardware. Flush wider here.
 sink: {type: mysql, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
 
-# BigQuery: sem dsn_from. Ele autentica com a credencial do próprio pod, que é
-# para isso que existe workload identity. O nome não tem pontos — o projeto e o
-# dataset são campos próprios.
+# BigQuery: no dsn_from. It authenticates with the pod's own credentials, which
+# is what a workload identity is for. The name has no dots — the project and
+# the dataset are their own fields.
 sink: {type: bigquery, project: acme-prod, dataset: landing, table: clicks, write: merge}
 
-# Redshift: dois saltos, não um. Ele é colunar, um INSERT linha a linha paga o
-# custo de um bloco, e a única carga viável é COPY do S3. Então todo lote vira
-# um objeto no prefixo de preparo e depois um COPY — um stream com flush de um
-# segundo escreve 86.400 objetos por dia. Agrupe muito mais aqui.
+# Redshift: two hops, not one. It is columnar, a row-by-row INSERT pays the cost
+# of a block, and the only workable load is COPY from S3. So every batch becomes
+# an object in the staging prefix and then a COPY — a stream flushing every
+# second writes 86,400 objects a day. Flush much wider here.
 sink:
   type: redshift
   dsn_from: BREVIS_RS_DSN
@@ -198,14 +198,14 @@ O corpo é um **envelope**: campos de controle em cima, o registro dentro de
 ```json
 {
   "table_name": "app_orders",
-  "description": "Pedidos do app",
+  "description": "App orders",
   "operation": "INSERT",
   "unique_key": "id",
   "data": {
     "id": "A-1",
     "total": 150,
     "customer": {"id": 7, "uf": "SP"},
-    "items": [{"sku": "X", "qtd": 2}]
+    "items": [{"sku": "X", "qty": 2}]
   }
 }
 ```
@@ -268,7 +268,7 @@ gravando.
 Estas oito são **do SDK**, não deste sink: `sdk.LandingSchema` as declara e
 `sdk.LandingID` cunha a identidade, então uma pipeline pode aterrissar a mesma
 tabela com os mesmos ids. Uma definição só, porque duas derivam. Veja
-[o layout de aterrissagem do SDK](/pt/docs/sdk/#o-layout-de-aterrissagem).
+[o layout de aterrissagem do SDK](/pt/docs/sdk/#the-landing-layout).
 
 **`brevis_` é reservado.** Um `data` carregando qualquer chave com esse prefixo é
 recusado **por evento** — senão um produtor forja um campo de controle, e um
@@ -304,8 +304,8 @@ Ele responde o que as métricas **estruturalmente não alcançam**. Toda série
 "qual tabela está crescendo, e desde quando" não tinha resposta em lugar nenhum.
 
 ```sql
-select date(brevis_received_at) dia,
-       count(*) eventos,
+select date(brevis_received_at) day,
+       count(*) events,
        sum(brevis_received_bytes)/1e9 gb
 from app_orders
 group by 1 order by 1 desc
@@ -354,7 +354,7 @@ produtor é o mesmo dos dois jeitos — o envelope nunca muda. O que muda é a c
 da tabela, que é decisão de quem opera e não de quem produz.
 
 ```yaml
-shape: document   # padrão
+shape: document   # the default
 shape: columns
 ```
 
@@ -375,7 +375,7 @@ Com **`columns`**, cada campo do registro ganha uma coluna:
 
 ```
  id   | total | customer              | items
- A-1  | 150   | {"id": 7, "uf": "SP"} | [{"qtd": 2, "sku": "X"}]
+ A-1  | 150   | {"id": 7, "uf": "SP"} | [{"qty": 2, "sku": "X"}]
 ```
 
 **Escalar vira `STRING`, objeto e array viram `JSON`, e não há inferência em
@@ -413,13 +413,13 @@ tabela nasce lá e quebra no dia em que alguém aponta um stream para o BigQuery
 
 As duas formas têm equivalente no SDK, e é o mesmo código, não um código
 parecido: `sdk.Landing(table, sdk.LandingKey("id"))` aterrissa `document`, e
-acrescentar [`sdk.LandingColumns()`](/pt/docs/sdk/#duas-formas-o-registro-inteiro-ou-uma-coluna-por-campo)
+acrescentar [`sdk.LandingColumns()`](/pt/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field)
 aterrissa `columns`. Mesmas colunas, mesmos valores, mesmo
 `brevis_ingestion_id` — então um stream muda de gateway para pipeline sem
 migração, e os dois podem ser lidos como uma tabela só.
 
 A pipeline cresce a mesma coluna do mesmo jeito: ponha
-[`Evolve: sdk.EvolveAdditiveFromPayload`](/pt/docs/sdk/#quando-aparece-um-campo-que-a-tabela-nao-tem)
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/pt/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)
 no destino e um campo que o lote traz vira coluna, por esta regra, por este
 código.
 
@@ -433,14 +433,14 @@ um produtor mandando `acme_region` é recusado e `brevis_region` é campo comum.
 **Escolha antes de a primeira tabela nascer.** Trocar depois acrescenta oito
 colunas e abandona oito — nada remove coluna — então uma tabela que já carrega
 o layout sob um prefixo recusa uma carga declarando outro. A
-[página do SDK](/pt/docs/sdk/#o-prefixo-brevis-e-seu-para-trocar) tem a
+[página do SDK](/pt/docs/sdk/#the-brevis-prefix-is-yours-to-change) tem a
 normalização e a saída.
 
 **Os campos de um objeto aninhado podem ganhar colunas próprias.**
 `BREVIS_NORMALIZE_DATA=true` no processo do gateway achata um nível —
 `{"name": {"first": "x"}}` aterrissa como `name_first` — e todo stream
 compartilha, então dois sinks não conseguem divergir sobre uma tabela em que
-os dois podem escrever. A [página do SDK](/pt/docs/sdk/#uma-coluna-por-campo-aninhado)
+os dois podem escrever. A [página do SDK](/pt/docs/sdk/#one-column-per-nested-field)
 diz o que isso renomeia, que é a metade para ler antes de ligar.
 
 **No BigQuery, `nationalID` e `nationalId` são uma coluna.** O BigQuery dobra
@@ -470,7 +470,7 @@ caminho de escrita: nenhum modo upsert, nenhum lock, nenhum delete.
 ### A identidade não tem relógio
 
 ```
-brevis_ingestion_id = uuid5(auto_table | tabela | data[unique_key] | sha256(canônico(data)))
+brevis_ingestion_id = uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))
 ```
 
 Não há `occurred_at` na fórmula, e isso é deliberado: a chegada virou
@@ -479,8 +479,8 @@ entrega. Uma identidade com ele dentro faria de cada reentrega um evento novo, e
 o `merge` pararia de absorver qualquer coisa.
 
 ```
-mesmo registro, mesmo conteúdo, duas vezes  →  mesmo id, o merge absorve
-mesmo registro, conteúdo mudou              →  id diferente, as duas versões pousam
+same record, same content, twice  →  same id, merge absorbs
+same record, content changed      →  a different id, both versions land
 ```
 
 A ressalva é a documentada: dois eventos genuinamente distintos com `data`
@@ -543,7 +543,7 @@ Um nome fora das regras é recusado **por evento**, na resposta, e todo evento
 bem formado da mesma requisição pousa assim mesmo:
 
 ```json
-{"accepted": 0, "rejected": ["event 0: the table name \"pedidos\" does not match ^(app|svc)_[a-z0-9_]{2,40}$"]}
+{"accepted": 0, "rejected": ["event 0: the table name \"orders\" does not match ^(app|svc)_[a-z0-9_]{2,40}$"]}
 ```
 
 Por evento e não por lote, de propósito. Recusar na hora da escrita derrubaria o

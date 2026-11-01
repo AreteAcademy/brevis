@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+<a class="skip-link" href="#content">본문으로 건너뛰기</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="주 내비게이션">
-      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/#ecosystem">에코시스템</a>
       <a href="/ko/docs/">문서</a>
       <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/libraries/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/libraries/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/libraries/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/libraries/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/libraries/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/libraries/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/libraries/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/libraries/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/libraries/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/libraries/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/libraries/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">문서</p>
       <h1>클라이언트 라이브러리</h1>
       <p class="doc-desc">어떤 언어의 step이든 컨텍스트와 run의 시계를 읽는 방법과, 이미 라이브러리가 있는 언어입니다.</p>
       <p>step이 오케스트레이터에게 필요로 하는 것은 두 가지입니다. <strong>이전 step이 게시한 것</strong>과 <strong>이 run이 읽어야 할 시계</strong>입니다. 클라이언트 라이브러리는 이 두 가지만 건네주고 다른 것은 하지 않습니다.</p>
-<h2 id="라이브러리보다-계약이-먼저입니다">라이브러리보다 계약이 먼저입니다<a class="anchor" href="#라이브러리보다-계약이-먼저입니다" aria-label="link">#</a></h2>
+<h2 id="the-contract-comes-before-the-libraries">라이브러리보다 계약이 먼저입니다<a class="anchor" href="#the-contract-comes-before-the-libraries" aria-label="link">#</a></h2>
 <p>엔진이 정의하는 것은 <strong>환경 변수 두 개와 파일 하나</strong>입니다.</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>BREVIS_INPUT</code></td><td><code>{"&lt;step id&gt;": {…}}</code> — 이 step이 의존하는 step들이 게시한 것</td></tr><tr><td><code>BREVIS_OUTPUT</code></td><td>JSON 객체 <strong>하나</strong>를 쓸 경로</td></tr></tbody></table></div>
 <p>여기에 run 변수와 자동 매개변수가 더해지며 모두 읽기 전용입니다. <code>BREVIS_RUN_*</code>와 <code>BREVIS_AUTO_*</code>입니다. Kubernetes에서 <code>BREVIS_OUTPUT</code>은 <code>/dev/termination-log</code>이며, 엔진은 종료 코드를 얻기 위해 이미 이 파일을 읽습니다.</p>
@@ -136,15 +136,15 @@ jq -n --arg n &quot;$(date -Is)&quot; &#x27;{published_at: $n}&#x27; &gt; &quot;
 ./publish <span class="t-n">--until</span> "$window"
 jq <span class="t-n">-n</span> <span class="t-n">--arg</span> n "$(date <span class="t-n">-Is</span>)" '{published_at: $n}' &gt; "$BREVIS_OUTPUT"</code></pre></div>
 <p>여기서 라이브러리는 새로운 기능을 열어 주지 않습니다. 다시 작성하지 않는 편이 나은 검증, 값이 없을 때의 처리, 오류 메시지를 대신해 줄 뿐입니다.</p>
-<h2 id="어떤-라이브러리가-있나">어떤 라이브러리가 있나<a class="anchor" href="#어떤-라이브러리가-있나" aria-label="link">#</a></h2>
+<h2 id="which-ones-exist">어떤 라이브러리가 있나<a class="anchor" href="#which-ones-exist" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>언어</th><th></th><th></th></tr></thead><tbody><tr><td><strong>Python</strong></td><td><code>pip install brevis</code></td><td><a href="/ko/docs/python/">제공 중</a> — PyPI의 <code>0.2.1</code></td></tr><tr><td><strong>Go</strong></td><td><code>brevis/sdk/context</code></td><td>제공 중, SDK 모듈 안에 있습니다</td></tr><tr><td><strong>Node.js</strong></td><td>—</td><td>계획 중</td></tr><tr><td><strong>Rust</strong></td><td>—</td><td>계획 중</td></tr><tr><td>그 외 모든 언어</td><td>위의 변수</td><td>지금 바로</td></tr></tbody></table></div>
 <aside class="admon admon-note"><p class="admon-t">Go는 `lib/`에 없습니다</p><p>Go의 컨텍스트 지원은 프로젝트가 이미 게시하는 <code>sdk/</code> 모듈 안에 하위 패키지로 있으며, 가져오지 않는 사람에게는 아무것도 남지 않도록 정리됩니다. <code>lib/go-context</code>를 만들면 패키지 하나를 위해 두 번째 Go 모듈이 필요해집니다.</p>
 <p>규칙은 <strong>이미 게시된 산출물이 없는 언어마다 디렉터리 하나</strong>입니다.</p></aside>
 <p>각 라이브러리는 자체 버전과 태그를 가진 별도의 산출물입니다. Python 클라이언트를 고친다고 엔진 릴리스가 필요하지는 않습니다.</p>
-<h2 id="라이브러리가-무엇이고-무엇이-아닌가">라이브러리가 무엇이고 무엇이 아닌가<a class="anchor" href="#라이브러리가-무엇이고-무엇이-아닌가" aria-label="link">#</a></h2>
+<h2 id="what-they-are-and-what-they-are-not">라이브러리가 무엇이고 무엇이 아닌가<a class="anchor" href="#what-they-are-and-what-they-are-not" aria-label="link">#</a></h2>
 <p>라이브러리는 계약 위의 <strong>얇은 클라이언트</strong>이며, Go SDK의 포팅이 아닙니다.</p>
 <p>SDK의 ETL 기능, 즉 드라이버, 페이지네이션, 체크포인트, ingestion id를 포팅하는 것은 여기에 맞지 않으며 아마 어디에도 맞지 않습니다. 이 포팅이 겨냥하는 모든 언어에는 이미 그 일에 더 나은 도구가 있고, Brevis의 역할은 그것들을 실행하는 것입니다. Python 라이브러리가 존재하는 이유도 팀이 pandas, Polars, dbt를 그대로 쓰면서 오케스트레이터가 존재하는 핵심 기능 하나를 얻게 하기 위해서입니다.</p>
-<h2 id="메트릭">메트릭<a class="anchor" href="#메트릭" aria-label="link">#</a></h2>
+<h2 id="metrics">메트릭<a class="anchor" href="#metrics" aria-label="link">#</a></h2>
 <p>라이브러리는 메트릭을 <strong>내보내고</strong>, 노출하는 것은 엔진입니다.</p>
 <div class="code-block" data-code="from brevis import metrics
 
@@ -155,11 +155,11 @@ metrics.set("rows_loaded", 48213)      <span class="t-c"># a gauge: the last val
 metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up</span></code></pre></div>
 <p>메트릭은 workflow와 step이 레이블로 붙은 채 스케줄러의 포트에 있는 <strong>엔진의</strong> <code>/metrics</code>로 나옵니다. <a href="/ko/docs/observability/">관측성</a>을 참고하세요.</p>
 <p><strong>포트를 열지 않으며, 열 수도 없습니다.</strong> step은 자기만의 pod에서 40초 동안 실행되고 종료됩니다. 그 step이 연 포트는 한 번도 수집되지 않거나 운 좋게 한 번 수집될 것입니다. 그래서 해당 라인은 stdout으로 가고, 이는 엔진이 파이프라인의 단계를 그리려고 이미 읽고 있는 바로 그 파이프이며 엔진이 이를 기록합니다. 설치할 것도 운영할 것도 없고, step은 자기 workflow slug를 알 수 없으므로 레이블은 엔진의 것입니다.</p>
-<p>API 세부 사항은 <a href="/ko/docs/python/#파이프라인만-아는-메트릭">Python</a>에 있습니다.</p>
-<h2 id="다른-언어용-클라이언트-작성하기">다른 언어용 클라이언트 작성하기<a class="anchor" href="#다른-언어용-클라이언트-작성하기" aria-label="link">#</a></h2>
+<p>API 세부 사항은 <a href="/ko/docs/python/#metrics-only-your-pipeline-knows">Python</a>에 있습니다.</p>
+<h2 id="writing-a-client-for-another-language">다른 언어용 클라이언트 작성하기<a class="anchor" href="#writing-a-client-for-another-language" aria-label="link">#</a></h2>
 <p>우리보다 먼저 Node.js나 Rust에 도달했다면, 클라이언트가 올바르게 처리해야 하는 것과 Python 구현이 이미 어렵게 배운 것은 다음과 같습니다.</p>
 <ol><li><strong>step으로 한정된 키.</strong> step 없는 <code>get("bucket")</code>은 거부되어야 합니다. 두 step이 <code>bucket</code>을 게시할 수 있으며, 검색으로 하나를 고르는 것은 우연에 의한 우선순위입니다.</li><li><strong>쓰기를 병합합니다.</strong> 서로 다른 키로 두 번 호출하면 둘 다 유지되고, 같은 키로 두 번 호출하면 마지막 것이 유지됩니다.</li><li><strong>프로세스 종료 시에만 flush합니다.</strong> 강제로 죽은 step은 아무것도 게시하지 않으며, 이것이 올바른 동작입니다. 충돌한 step의 출력은 끝나지 않은 작업을 기술하기 때문입니다.</li><li><strong>4096바이트를 넘으면 거부합니다.</strong> 플랫폼은 거부하지 않고 <strong>잘라 내며</strong>, 반으로 잘린 객체는 다음 step에 유효하지 않은 JSON으로 도착합니다.</li><li><strong>Brevis 밖에서도 동작해야 합니다.</strong> <code>BREVIS_INPUT</code>이 없으면 <code>get()</code>은 기본값을 반환하고 <code>set()</code>은 예외를 일으키지 않고 받아서 버립니다. 손으로 실행할 수 없는 스크립트는 개발할 수 없기 때문입니다.</li></ol>
-<h2 id="다음-단계">다음 단계<a class="anchor" href="#다음-단계" aria-label="link">#</a></h2>
+<h2 id="next-steps">다음 단계<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ko/docs/python/">Python</a> — 전체 API</li><li><a href="/ko/docs/context/">step 간 컨텍스트</a> — 개념과 4096바이트 상한</li><li><a href="/ko/docs/parameters/">매개변수</a> — 선언하는 매개변수와 자동 매개변수</li></ul>
 
       <nav class="pagers" aria-label="페이지">
@@ -174,7 +174,7 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
 
     <aside class="toc" aria-label="이 페이지에서">
       <p class="toc-t">이 페이지에서</p>
-      <ul><li class="toc-2"><a href="#라이브러리보다-계약이-먼저입니다">라이브러리보다 계약이 먼저입니다</a></li><li class="toc-2"><a href="#어떤-라이브러리가-있나">어떤 라이브러리가 있나</a></li><li class="toc-2"><a href="#라이브러리가-무엇이고-무엇이-아닌가">라이브러리가 무엇이고 무엇이 아닌가</a></li><li class="toc-2"><a href="#메트릭">메트릭</a></li><li class="toc-2"><a href="#다른-언어용-클라이언트-작성하기">다른 언어용 클라이언트 작성하기</a></li><li class="toc-2"><a href="#다음-단계">다음 단계</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-contract-comes-before-the-libraries">라이브러리보다 계약이 먼저입니다</a></li><li class="toc-2"><a href="#which-ones-exist">어떤 라이브러리가 있나</a></li><li class="toc-2"><a href="#what-they-are-and-what-they-are-not">라이브러리가 무엇이고 무엇이 아닌가</a></li><li class="toc-2"><a href="#metrics">메트릭</a></li><li class="toc-2"><a href="#writing-a-client-for-another-language">다른 언어용 클라이언트 작성하기</a></li><li class="toc-2"><a href="#next-steps">다음 단계</a></li></ul>
     </aside>
   </main>
 </div>
@@ -194,9 +194,9 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
       <div class="footer-col">
         <h2>프로젝트</h2>
         <ul>
-          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/#ecosystem">에코시스템</a></li>
           <li><a href="/ko/docs/philosophy/">원칙</a></li>
-          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/introduction/#open-code-choose-how-to-take-part">오픈 소스</a></li>
           <li><a href="/ko/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -219,7 +219,7 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

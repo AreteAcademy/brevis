@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
       <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/python/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/python/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/python/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/python/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/python/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/python/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/python/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/python/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/python/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/python/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/python/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>Python</h1>
@@ -140,7 +140,7 @@ context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
 <p><strong>依存関係は一切ありません。</strong> 環境変数を 1 つ読み、ファイルを 1 つ書き、stdout に 1 行出力するだけです。 Python 3.9 以降が必要です。</p>
 <p>Go SDK の移植ではありません。ドライバも、ページネーションも、ingestion id もありません。 チームが pandas、Polars、dbt を使いながら、オーケストレータの存在意義であるものを得られるように するために存在します。</p>
-<h2 id="コンテキストを読む">コンテキストを読む<a class="anchor" href="#コンテキストを読む" aria-label="link">#</a></h2>
+<h2 id="reading-context">コンテキストを読む<a class="anchor" href="#reading-context" aria-label="link">#</a></h2>
 <p>キーは常に、それを公開したステップで修飾されます。</p>
 <div class="code-block" data-code="context.get(&quot;extract.bucket&quot;)            # the value
 context.get(&quot;extract.nope&quot;, default=0)   # absent is not an error
@@ -151,7 +151,7 @@ context.of("extract")                    <span class="t-c"># everything that ste
 context.published()                      <span class="t-c"># what THIS step has published so far</span></code></pre></div>
 <p>ステップなしの <code>context.get("bucket")</code> は<strong>拒否され</strong>、それを公開したステップが示されます。ステップは 分離されており、<code>extract</code> と <code>transform</code> の両方が、どちらも失うことなく <code>bucket</code> を公開できます。 キー単体では、2 つが公開した瞬間にその分離が失われます。検索して 1 つを選ぶのは偶然による優先順位で、 黙って動かなくなるまでは動きます。</p>
 <p>このステップが依存していないステップを読むとエラーになり、メッセージが修正方法を指し示します。</p>
-<h2 id="書き込む">書き込む<a class="anchor" href="#書き込む" aria-label="link">#</a></h2>
+<h2 id="writing">書き込む<a class="anchor" href="#writing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="context.set(name=&quot;Daniel&quot;)
 context.set(label=&quot;Name&quot;)
 # both survive: {&quot;name&quot;: &quot;Daniel&quot;, &quot;label&quot;: &quot;Name&quot;}"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>context.set(name="Daniel")
@@ -159,7 +159,7 @@ context.set(label="Name")
 <span class="t-c"># both survive: {"name": "Daniel", "label": "Name"}</span></code></pre></div>
 <p>呼び出しは<strong>マージ</strong>されます。同じキーの 2 回の書き込みは最後のものを保持し、異なるキーは最初のものに 影響しません。<strong>ステップの引数はありません。</strong> プロセスが書き込める名前空間は自分のものだけで、 これによって分離がルールではなく構造的なものになります。</p>
 <p>プロセスが終了するまでディスクには何も届かないので、強制終了したステップは何も公開しません。 それは正しい動作です。クラッシュしたステップの出力は、終わっていない仕事を記述しているからです。</p>
-<h2 id="この-run-が読むべき時計">この run が読むべき時計<a class="anchor" href="#この-run-が読むべき時計" aria-label="link">#</a></h2>
+<h2 id="the-clock-this-run-should-read">この run が読むべき時計<a class="anchor" href="#the-clock-this-run-should-read" aria-label="link">#</a></h2>
 <p>すべての run は<strong>自動パラメータ</strong>も持ちます。エンジンが自分で算出する値です。誰も宣言しておらず、 すべての run が持ち、パイプラインがそうでなければ <code>datetime.now()</code> で答える問いに答えます。</p>
 <div class="code-block" data-code="from datetime import timedelta
 from brevis import run
@@ -176,10 +176,10 @@ df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>run.now()</code></td><td>時計。slot、または run が始まった時刻</td></tr><tr><td><code>run.window()</code></td><td><code>(start, end)</code>(end は含まない)、または <code>None</code></td></tr><tr><td><code>run.auto()</code></td><td>後述の自動パラメータ</td></tr><tr><td><code>run.context()</code></td><td>id、試行回数、トリガー、パラメータ、auto</td></tr><tr><td><code>run.params()</code> · <code>run.param(name)</code></td><td>ワークフローで宣言されたパラメータ</td></tr><tr><td><code>run.map_index()</code> · <code>run.map_value()</code></td><td><code>for_each:</code> におけるインスタンス</td></tr></tbody></table></div>
 <p><code>window()</code> は履歴ではなく <strong>cron</strong> から決まります。3 月の slot の backfill は、3 月が持っていた ウィンドウを生成します。<code>[start, end)</code> を要求すれば、run がどれだけ遅れても、どれだけ頻繁に リトライしても、重複も隙間も生じません。</p>
 <p>ワークフローにスケジュールがない場合は、ゼロ時刻のペアではなく <code>None</code> を返します。エポックからの クエリはすべてを選択してしまい、その失敗は黙って起きてはならないからです。上の <code>or</code> が フォールバックのすべてです。</p>
-<h3 id="自動パラメータ">自動パラメータ<a class="anchor" href="#自動パラメータ" aria-label="link">#</a></h3>
+<h3 id="the-auto-parameters">自動パラメータ<a class="anchor" href="#the-auto-parameters" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th>フィールド</th><th></th></tr></thead><tbody><tr><td><code>date</code></td><td><code>"2026-09-08"</code> — パーティション、フォルダ、<code>WHERE</code> に使う</td></tr><tr><td><code>adjusted_at</code></td><td><code>now()</code> の代わりに読む時計</td></tr><tr><td><code>scheduled_at</code></td><td>cron が要求した slot。手動 run では <code>None</code></td></tr><tr><td><code>started_at</code></td><td><strong>この試行</strong>が始まった時刻。リトライで動く</td></tr><tr><td><code>delay_seconds</code></td><td>この試行がどれだけ遅れたか。負にはならない</td></tr><tr><td><code>interval_start</code> · <code>interval_end</code></td><td>ウィンドウ(end は含まない)</td></tr><tr><td><code>previous_error</code></td><td>この run の前の run が成功しなかった</td></tr><tr><td><code>previous_success_at</code></td><td>最後に<strong>成功した</strong> run の slot — <code>previous_error</code> を行動に結びつけるもの</td></tr></tbody></table></div>
 <p>スクリプトを手動で実行すると、<code>run.now()</code> は壁時計<strong>そのもの</strong>で、<code>window()</code> は <code>None</code> なので、 ローカル開発のために書く分岐はありません。</p>
-<h2 id="マップされたステップの-1-つのインスタンス">マップされたステップの 1 つのインスタンス<a class="anchor" href="#マップされたステップの-1-つのインスタンス" aria-label="link">#</a></h2>
+<h2 id="one-instance-of-a-mapped-step">マップされたステップの 1 つのインスタンス<a class="anchor" href="#one-instance-of-a-mapped-step" aria-label="link">#</a></h2>
 <p><a href="/ja/docs/workflows/"><code>for_each:</code></a> の下では、エンジンは要素ごとに 1 つのプロセスを実行し、 それぞれにどの要素を受け取ったかを伝えます。</p>
 <div class="code-block" data-code="partition = run.map_value()
 if partition is None:
@@ -193,7 +193,7 @@ load(f"/data/{partition}.csv")</code></pre></div>
 <p>JSON の文字列は<strong>引用符なし</strong>で届きます。<code>["2026-01"]</code> に対する <code>for_each</code> は、ステップに <code>"2026-01"</code> ではなく <code>2026-01</code> を渡します。それ以外(オブジェクト、数値、リスト)は JSON として届くので、 <code>json.loads(run.map_value())</code> を使います。</p>
 <p>マップされていないステップでは、どちらも <code>None</code> です。<code>-1</code> や <code>""</code> ではなく <code>None</code> なのは、 センチネル値は誰かがいずれ算術演算を行う数値であり、空文字列は、空文字列*である*要素と 区別がつかないからです。</p>
 <p>マップされたステップは、下流に<strong>コンテキストを公開しません</strong>。4 つのインスタンスで 1 つのキーを 共有することはできないからです。何かを渡す必要があるステップは、ファイルに書くか、その後のステップが 着地したものを数えます。</p>
-<h2 id="パイプラインだけが知るメトリクス">パイプラインだけが知るメトリクス<a class="anchor" href="#パイプラインだけが知るメトリクス" aria-label="link">#</a></h2>
+<h2 id="metrics-only-your-pipeline-knows">パイプラインだけが知るメトリクス<a class="anchor" href="#metrics-only-your-pipeline-knows" aria-label="link">#</a></h2>
 <p>エンジンは、見えるものをすでに計測しています。所要時間、試行回数、キューの深さです。エンジンが 知る手段を持たないのは、何行が着地したか、ベンダーが何行を拒否したか、何バイトが破棄されたかです。 それを知っているのはステップであり、ライブラリがそれを運びます。</p>
 <div class="code-block" data-code="from brevis import metrics
 
@@ -209,22 +209,22 @@ metrics.inc("bytes_discarded_total", 4096)</code></pre></div>
 brevis_step_vendor_rejected_total{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 5"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
 brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>metrics.set(name, value)</code></td><td>ゲージ。ステップの終了後も、次の run が別の値を書くまで値は残ります</td></tr><tr><td><code>metrics.inc(name, by=1)</code></td><td>カウンタ。ステップをまたいで、run をまたいで加算されます</td></tr></tbody></table></div>
-<h3 id="ポートを開かない理由">ポートを開かない理由<a class="anchor" href="#ポートを開かない理由" aria-label="link">#</a></h3>
+<h3 id="why-this-does-not-open-a-port">ポートを開かない理由<a class="anchor" href="#why-this-does-not-open-a-port" aria-label="link">#</a></h3>
 <p><strong>ステップはスクレイプできない</strong>からです。<code>:9090</code> はスケジューラと API のものであり、 安定したアドレスを持つ長寿命のプロセスで、15 秒から 60 秒ごとにスクレイプされます。ステップは専用の pod で起動し、40 秒動いて終了します。開いたポートがスクレイプされることは決してないか、 運よく一度あるだけです。</p>
 <p>これに対する既知の答えは 3 つあります。Pushgateway(運用するコンポーネントが増え、誰かが削除するまで 系列が残る)、OTLP コレクタ(コンポーネント<strong>と</strong>このライブラリへの依存の両方が増える。このライブラリには 依存がなく、今後も持たない)、あるいは<strong>オーケストレータ</strong>に運ばせることです。Brevis はすでに すべてのステップの stdout を読んで <code>@brevis:</code> の行を探しており(SDK のフェーズがグラフに届くのは そのためです)、メーターと Prometheus エンドポイントもすでに持っています。</p>
 <p>そこで、ライブラリは <strong>stdout に 1 行</strong>書き、残りはエンジンが行います。メトリクスは、エンジンが 何を実行していたかを知っているため、ワークフローとステップのラベル付きで無料で届きます。Pushgateway 経由では、このライブラリが自分でラベルを付けなければならず、それを間違えるでしょう。</p>
 <p>書き込みは <code>print(flush=True)</code> です。エンジンがそのパイプを<strong>リアルタイムで</strong>読むからです。 バッファされた行はプロセスの終了時に届きます。1 時間動くステップでは 1 時間遅れになり、 kill されたステップでは決して届きません。</p>
-<h3 id="メトリクスが拒否するもの">メトリクスが拒否するもの<a class="anchor" href="#メトリクスが拒否するもの" aria-label="link">#</a></h3>
+<h3 id="what-a-metric-refuses">メトリクスが拒否するもの<a class="anchor" href="#what-a-metric-refuses" aria-label="link">#</a></h3>
 <p><strong>無効な名前は、はっきりと拒否されます。</strong> Prometheus は英字、数字、アンダースコアを受け付け、 先頭の文字は数字にできません。拒否される名前は壊れたメトリクスを作るのではなく、Prometheus が <strong>パースを拒否する</strong>出力を作り、<strong>スクレイプ全体</strong>が失われ、他のすべてのメトリクスも一緒に失われます。 そのため <code>rows-loaded</code> は、誰も書いていない名前で届くのではなく、間違いが起きたここで <code>MetricError</code> を発生させます。</p>
 <div class="table-wrap"><table><thead><tr><th>拒否されるもの</th><th>理由</th></tr></thead><tbody><tr><td><code>rows-loaded</code>、<code>rows loaded</code>、<code>2rows</code></td><td>Prometheus がパースせず、スクレイプ全体が失われる</td></tr><tr><td><code>metrics.set("ok", True)</code></td><td>Python では <code>bool</code> は <code>int</code> であり、<code>1</code> を報告することは、それを知っているかどうかで意味が決まる数値になる。状態ではなく、件数や所要時間を報告する</td></tr><tr><td><code>metrics.inc("x", -1)</code></td><td>カウンタは増えるだけ。それに対するすべての <code>rate()</code> がそれを前提としており、破綻は数週間後にグラフに現れる</td></tr></tbody></table></div>
 <p>スクリプトを手動で実行しても、その行は stdout に出力され、それ自体として読めます。何も収集せず、 何も失敗しません。ノート PC での <code>context.set()</code> と同じです。</p>
-<h2 id="拒否するもの">拒否するもの<a class="anchor" href="#拒否するもの" aria-label="link">#</a></h2>
+<h2 id="what-it-refuses">拒否するもの<a class="anchor" href="#what-it-refuses" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>理由</th></tr></thead><tbody><tr><td>4096 バイト超</td><td>プラットフォームは拒否せず<strong>切り詰める</strong>ため、大きすぎるオブジェクトは半分に切られて届き、下流では「何も公開されなかった」と読める</td></tr><tr><td>JSON ではない値</td><td><code>datetime</code> は、誰がシリアライズするかによって <code>"..."</code> になったり消えたりする。エラーはキーを示し、<code>.isoformat()</code> を提案する</td></tr><tr><td>文字列ではないキー</td><td><code>{1: "x"}</code> は <code>{"1": "x"}</code> として戻り、検索が外れる</td></tr></tbody></table></div>
 <p>上限はプラットフォームの数値であり、私たちのものではありません。「タスク間のコンテキスト」を提供する 機能はどれも同じ失敗をします。コンテキストしか収まらない場所に、誰かが<strong>データ</strong>を置いてしまうのです。 4 キロバイトに入るのは、ウォーターマーク、件数、パーティションのリストです。参照を公開し、 行はあるべき場所に残してください。</p>
 <aside class="admon admon-danger"><p class="admon-t">これはシークレットストアではありません</p><p>公開されたものはすべて、その run を見られる人なら誰でも見えます。pod のステータスにも run の履歴にも 含まれます。署名付き URL ではなく、パスを公開してください。</p></aside>
-<h2 id="手動で実行する">手動で実行する<a class="anchor" href="#手動で実行する" aria-label="link">#</a></h2>
+<h2 id="running-it-by-hand">手動で実行する<a class="anchor" href="#running-it-by-hand" aria-label="link">#</a></h2>
 <p>Brevis の外には入力がなく、出力を読むものもありません。<code>get()</code> はデフォルト値を返し、<code>set()</code> は 受け取って破棄し、ライブラリはそれを一度だけ INFO で伝えます。<strong>例外は発生しません</strong>。手動で 実行できないスクリプトは開発できないからです。検証は引き続き実行されるので、ノート PC で動く値は 本番でも動きます。</p>
-<h2 id="ステップのテスト">ステップのテスト<a class="anchor" href="#ステップのテスト" aria-label="link">#</a></h2>
+<h2 id="testing-your-step">ステップのテスト<a class="anchor" href="#testing-your-step" aria-label="link">#</a></h2>
 <p>契約全体が 2 つの環境変数なので、モックするものは何もありません。</p>
 <div class="code-block" data-code="def test_my_step(monkeypatch, tmp_path):
     monkeypatch.setenv(&quot;BREVIS_INPUT&quot;, &#x27;{&quot;extract&quot;: {&quot;rows&quot;: 42}}&#x27;)
@@ -233,11 +233,11 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
     monkeypatch.setenv("BREVIS_INPUT", '{"extract": {"rows": 42}}')
     monkeypatch.setenv("BREVIS_OUTPUT", str(tmp_path / "out"))
     <span class="t-k">assert</span> context.get("extract.rows") == 42</code></pre></div>
-<h2 id="バージョン">バージョン<a class="anchor" href="#バージョン" aria-label="link">#</a></h2>
+<h2 id="versions">バージョン<a class="anchor" href="#versions" aria-label="link">#</a></h2>
 <p>ライブラリは、エンジンや Go SDK とは別に、独自にバージョン管理されます。</p>
 <aside class="admon admon-warning"><p class="admon-t">`0.2.0` は使わないでください</p><p>PyPI にホイールのみで公開されてしまいました。<code>0.2.1</code> は同じコードで、完全な状態です。</p></aside>
 <p><code>brevis.run</code> が読むものを得るには、<strong><code>v0.9.0</code> 以降</strong>のエンジンが必要です。それより古いエンジンでは すべてのフィールドが空で、<code>run.now()</code> は壁時計になります。エンジンの外での動作と同じです。</p>
-<h2 id="次のステップ">次のステップ<a class="anchor" href="#次のステップ" aria-label="link">#</a></h2>
+<h2 id="next-steps">次のステップ<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ja/docs/libraries/">クライアントライブラリ</a> — 契約とその他の言語</li><li><a href="/ja/docs/context/">ステップ間のコンテキスト</a> — 概念</li><li><a href="/ja/docs/parameters/">パラメータ</a> — 宣言するもの</li></ul>
 
       <nav class="pagers" aria-label="ページ">
@@ -252,7 +252,7 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#コンテキストを読む">コンテキストを読む</a></li><li class="toc-2"><a href="#書き込む">書き込む</a></li><li class="toc-2"><a href="#この-run-が読むべき時計">この run が読むべき時計</a></li><li class="toc-3"><a href="#自動パラメータ">自動パラメータ</a></li><li class="toc-2"><a href="#マップされたステップの-1-つのインスタンス">マップされたステップの 1 つのインスタンス</a></li><li class="toc-2"><a href="#パイプラインだけが知るメトリクス">パイプラインだけが知るメトリクス</a></li><li class="toc-3"><a href="#ポートを開かない理由">ポートを開かない理由</a></li><li class="toc-3"><a href="#メトリクスが拒否するもの">メトリクスが拒否するもの</a></li><li class="toc-2"><a href="#拒否するもの">拒否するもの</a></li><li class="toc-2"><a href="#手動で実行する">手動で実行する</a></li><li class="toc-2"><a href="#ステップのテスト">ステップのテスト</a></li><li class="toc-2"><a href="#バージョン">バージョン</a></li><li class="toc-2"><a href="#次のステップ">次のステップ</a></li></ul>
+      <ul><li class="toc-2"><a href="#reading-context">コンテキストを読む</a></li><li class="toc-2"><a href="#writing">書き込む</a></li><li class="toc-2"><a href="#the-clock-this-run-should-read">この run が読むべき時計</a></li><li class="toc-3"><a href="#the-auto-parameters">自動パラメータ</a></li><li class="toc-2"><a href="#one-instance-of-a-mapped-step">マップされたステップの 1 つのインスタンス</a></li><li class="toc-2"><a href="#metrics-only-your-pipeline-knows">パイプラインだけが知るメトリクス</a></li><li class="toc-3"><a href="#why-this-does-not-open-a-port">ポートを開かない理由</a></li><li class="toc-3"><a href="#what-a-metric-refuses">メトリクスが拒否するもの</a></li><li class="toc-2"><a href="#what-it-refuses">拒否するもの</a></li><li class="toc-2"><a href="#running-it-by-hand">手動で実行する</a></li><li class="toc-2"><a href="#testing-your-step">ステップのテスト</a></li><li class="toc-2"><a href="#versions">バージョン</a></li><li class="toc-2"><a href="#next-steps">次のステップ</a></li></ul>
     </aside>
   </main>
 </div>
@@ -272,9 +272,9 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -297,7 +297,7 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

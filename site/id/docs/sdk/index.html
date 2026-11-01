@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+<a class="skip-link" href="#content">Lewati ke konten</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigasi utama">
-      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/#ecosystem">Ekosistem</a>
       <a href="/id/docs/">Dokumentasi</a>
       <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/sdk/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/sdk/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/sdk/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/sdk/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/sdk/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/sdk/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/sdk/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/sdk/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/sdk/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/sdk/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/sdk/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentasi</p>
       <h1>Go SDK</h1>
@@ -128,7 +128,7 @@
 <div class="code-block" data-code="go get github.com/AreteAcademy/brevis/sdk@latest"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">go</span> get github.com/AreteAcademy/<span class="t-k">brevis</span>/sdk@latest</code></pre></div>
 <p>Membutuhkan Go 1.23 atau lebih baru — SDK men-stream baris sebagai <code>iter.Seq2</code>.</p>
 <aside class="admon admon-warning"><p class="admon-t">Jangan gunakan `v0.1.0`</p><p>Versi itu dikirim dengan <code>go.mod</code> yang menyematkan revisi yang tidak ada, dan proxy modul Go bersifat immutable. Mulailah dari <code>v0.1.1</code>.</p></aside>
-<h2 id="tiga-langkah">Tiga langkah<a class="anchor" href="#tiga-langkah" aria-label="link">#</a></h2>
+<h2 id="three-steps">Tiga langkah<a class="anchor" href="#three-steps" aria-label="link">#</a></h2>
 <div class="code-block" data-code="import (
 	&quot;github.com/AreteAcademy/brevis/sdk&quot;
 	&quot;github.com/AreteAcademy/brevis/sdk/from&quot;
@@ -162,12 +162,12 @@ res, <span class="t-k">err</span> := sdk.Load(ctx, rows, sdk.Target{
 })</code></pre></div>
 <p><code>Extract</code> membaca, <code>Transform</code> membentuk ulang, <code>Load</code> menulis. Masing-masing menerima dan mengembalikan sebuah sequence — tidak ada yang dimaterialisasi sekaligus di memori.</p>
 <figure class="doc-figure"><img src="/assets/flow-sdk.svg" width="360" height="514" alt="Alur SDK: sdk.Extract membaca dari API HTTP dengan from.HTTP, sdk.Transform mempertahankan field yang diterima, dan sdk.Load menulis baris ke tabel BigQuery. Ketiga pemanggilan berjalan di dalam step Anda sendiri." loading="lazy"></figure>
-<h2 id="driver-adalah-nilai-bukan-pengaturan">Driver adalah nilai, bukan pengaturan<a class="anchor" href="#driver-adalah-nilai-bukan-pengaturan" aria-label="link">#</a></h2>
+<h2 id="the-driver-is-a-value-not-a-setting">Driver adalah nilai, bukan pengaturan<a class="anchor" href="#the-driver-is-a-value-not-a-setting" aria-label="link">#</a></h2>
 <p><code>from.HTTP</code> membawa semua yang dibutuhkan sumber HTTP: URL, header, retry, pagination, dan arti sebuah respons. <code>from.Files</code> membawa path dan format. Keduanya tidak perlu memberi ruang bagi field yang lain, sehingga tidak ada struct source yang mengumpulkan empat puluh opsi yang masing-masing driver hanya membaca enam.</p>
 <p>Ia juga menentukan <strong>apa yang Anda kompilasi</strong>. Go memangkas dependensi per paket yang diimpor, tidak pernah per field yang dipakai:</p>
 <div class="table-wrap"><table><thead><tr><th>yang Anda impor</th><th>paket</th><th>AWS</th><th>Google</th></tr></thead><tbody><tr><td><code>sdk</code></td><td>190</td><td>tidak</td><td>tidak</td></tr><tr><td><code>sdk</code> + <code>from</code></td><td>194</td><td>tidak</td><td>tidak</td></tr><tr><td><code>sdk</code> + <code>from</code> + <code>to</code> (file)</td><td>195</td><td>tidak</td><td>tidak</td></tr><tr><td><code>sdk</code> + <code>to/bigquery</code></td><td>456</td><td>tidak</td><td><strong>ya</strong></td></tr><tr><td><code>sdk</code> + <code>from</code> + <code>store/s3</code></td><td>265</td><td><strong>ya</strong></td><td>tidak</td></tr></tbody></table></div>
 <p>Seluruh pipeline file — baca dan tulis — berbiaya 195 paket dan tanpa SDK cloud sama sekali. <strong>Driver yang di belakangnya ada SDK vendor berada di paketnya sendiri</strong>, itulah sebabnya BigQuery adalah <code>to/bigquery</code> dan object store adalah <code>store/s3</code> dan <code>store/gcs</code>.</p>
-<h2 id="sumber-dan-tujuan">Sumber dan tujuan<a class="anchor" href="#sumber-dan-tujuan" aria-label="link">#</a></h2>
+<h2 id="sources-and-destinations">Sumber dan tujuan<a class="anchor" href="#sources-and-destinations" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>sumber</th><th>paket</th></tr></thead><tbody><tr><td>HTTP</td><td><code>from.HTTP</code></td></tr><tr><td>file (lokal, S3, GCS)</td><td><code>from.Files</code></td></tr><tr><td>Postgres</td><td><code>from/postgres</code></td></tr><tr><td>MySQL</td><td><code>from/mysql</code></td></tr><tr><td>beberapa sumber</td><td><code>from.Many</code></td></tr></tbody></table></div>
 <div class="table-wrap"><table><thead><tr><th>tujuan</th><th>paket</th></tr></thead><tbody><tr><td>file</td><td><code>to.Files</code></td></tr><tr><td>BigQuery</td><td><code>to/bigquery</code></td></tr><tr><td>Postgres</td><td><code>to/postgres</code></td></tr><tr><td>MySQL</td><td><code>to/mysql</code></td></tr><tr><td>Redshift</td><td><code>to/redshift</code></td></tr><tr><td>Pub/Sub</td><td><code>to/pubsub</code></td></tr></tbody></table></div>
 <p>Skema path menentukan backend, dan <code>Store</code> <strong>diteruskan dari luar</strong> alih-alih dipilih di dalam driver:</p>
@@ -175,7 +175,7 @@ res, <span class="t-k">err</span> := sdk.Load(ctx, rows, sdk.Target{
 to.Files{Path: &quot;gs://bucket/landing/&quot;, Store: gcs.New(client)}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>from.Files{Path: "s3:<span class="t-c">//bucket/day=1/*.ndjson", Store: s3.New(client)}</span>
 to.Files{Path: "gs:<span class="t-c">//bucket/landing/", Store: gcs.New(client)}</span></code></pre></div>
 <p>Itulah yang menjaga program file lokal dari mengompilasi satu baris pun kode AWS atau Google.</p>
-<h3 id="memublikasikan-ke-topik">Memublikasikan ke topik<a class="anchor" href="#memublikasikan-ke-topik" aria-label="link">#</a></h3>
+<h3 id="publishing-to-a-topic">Memublikasikan ke topik<a class="anchor" href="#publishing-to-a-topic" aria-label="link">#</a></h3>
 <p><code>to/pubsub</code> adalah satu-satunya tujuan yang bukan tabel, dan perilakunya berbeda dengan cara yang layak diketahui sebelum Anda memakainya: <strong>ia tidak menambahkan apa pun pada yang dikirimnya.</strong></p>
 <div class="code-block" data-code="Target: sdk.Target{
     To: pubsub.Topic{
@@ -211,7 +211,7 @@ to.Files{Path: "gs:<span class="t-c">//bucket/landing/", Store: gcs.New(client)}
 <p>Tiga hal mengikuti dari sini:</p>
 <ul><li><strong>Ia tidak pernah membuat topik.</strong> Pipeline yang bisa membuatnya bisa membuat yang salah, dan tidak seperti tabel yang salah ketik, tidak ada yang menyadarinya — pesan pergi ke suatu tempat dan subscriber yang seharusnya menerimanya tetap diam.</li><li><strong><code>Schema</code>, <code>Dedup</code>, dan <code>PartitionBy</code> ditolak</strong>, dengan menyebut opsinya. Semuanya ada untuk tabel: <code>Schema</code> adalah cara tujuan membuatnya, deduplikasi membutuhkan baris untuk diganti, partisi adalah gagasan tabel. Yang terdekat di sini adalah <code>OrderingKey</code>, yang berbeda — ia mengelompokkan pesan yang harus <em>tiba</em> berurutan.</li><li><strong>Kegagalan bersifat parsial.</strong> Publikasi tidak transaksional, sehingga 48.000 pesan yang gagal pada 31.000 telah <em>mengirimkan</em> 31.000. Hasilnya melaporkan apa yang benar-benar terkirim, dan error menyatakan bahwa menjalankan ulang berarti pengiriman ulang — subscriber harus idempoten, dan Pub/Sub memang at-least-once.</li></ul>
 <p>Dapat dijalankan, terhadap emulator: <a href="https://github.com/AreteAcademy/brevis/tree/master/examples/13-pubsub" target="_blank" rel="noopener"><code>examples/13-pubsub</code></a>.</p>
-<h2 id="fetcher-utuh">Fetcher utuh<a class="anchor" href="#fetcher-utuh" aria-label="link">#</a></h2>
+<h2 id="a-whole-fetcher">Fetcher utuh<a class="anchor" href="#a-whole-fetcher" aria-label="link">#</a></h2>
 <p><code>sdk.Run</code> mengurus flag, <code>-dry-run</code>, logging, retry, pagination, provenance, pembuatan tabel, dan exit code. Yang tersisa di file hanyalah yang spesifik untuk sumber itu:</p>
 <div class="code-block" data-code="package main
 
@@ -269,7 +269,7 @@ func main() {
 <div class="code-block" data-code="go run ./fetcher -dry-run   # extracts, counts rows and errors, writes nothing
 go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">go</span> run ./fetcher <span class="t-n">-dry-run</span>   <span class="t-c"># extracts, counts rows and errors, writes nothing</span>
 <span class="t-k">go</span> run ./fetcher</code></pre></div>
-<h2 id="context-run">Context run<a class="anchor" href="#context-run" aria-label="link">#</a></h2>
+<h2 id="the-run-context">Context run<a class="anchor" href="#the-run-context" aria-label="link">#</a></h2>
 <p>Ketika fetcher berjalan <strong>sebagai step workflow</strong>, engine menyuntikkan ke environment apa yang tidak dapat diketahuinya dengan cara lain: apakah ini run pertama, dengan parameter apa ia dikirim, run yang mana ini. SDK membacanya di <code>Pipeline.Run</code>:</p>
 <div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
 	if p.Run.Params[&quot;load_full&quot;] == &quot;true&quot; {
@@ -284,7 +284,7 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 },</code></pre></div>
 <p>Dijalankan secara manual, <code>Run</code> kembali bernilai nol — membacanya opsional, dan mengabaikannya tidak berbiaya apa pun.</p>
 <p>Tanpa riwayat, jawaban atas "apakah ini run pertama?" selalu <strong>tidak</strong>: membuat tabel tanpa kepastian lebih buruk daripada tidak membuatnya.</p>
-<h3 id="jam">Jam<a class="anchor" href="#jam" aria-label="link">#</a></h3>
+<h3 id="the-clock">Jam<a class="anchor" href="#the-clock" aria-label="link">#</a></h3>
 <p><code>p.Run.Auto</code> adalah apa yang dihitung engine tentang run ini — <a href="/id/docs/parameters/#auto-params">auto params</a>. <code>Auto.Now()</code> adalah jam yang dibaca sebagai pengganti <code>time.Now()</code>: pada run terjadwal ia adalah slot-nya, sehingga tidak bergeser ketika run terlambat dan tidak bergeser ketika run di-retry tiga jam kemudian.</p>
 <div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
 	start, end, ok := p.Run.Auto.Window()
@@ -306,9 +306,9 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 	<span class="t-k">return</span> <span class="t-k">nil</span>
 },</code></pre></div>
 <p>Dijalankan secara manual, <code>Auto.Now()</code> <em>adalah</em> jam dinding dan <code>Window()</code> mengembalikan <code>false</code>, sehingga pengembangan lokal tidak membutuhkan kasus khusus.</p>
-<h2 id="jangan-dikacaukan-dengan-pustaka-klien">Jangan dikacaukan dengan pustaka klien<a class="anchor" href="#jangan-dikacaukan-dengan-pustaka-klien" aria-label="link">#</a></h2>
+<h2 id="not-to-be-confused-with-the-client-libraries">Jangan dikacaukan dengan pustaka klien<a class="anchor" href="#not-to-be-confused-with-the-client-libraries" aria-label="link">#</a></h2>
 <p>SDK ini adalah mesin ETL dalam Go: driver, pagination, provenance, pembuatan tabel. <a href="/id/docs/libraries/">Pustaka klien</a> adalah hal yang berbeda — klien tipis yang menyerahkan context run dan jam kepada step, di Python saat ini dan di Node.js dan Rust nanti. Step yang memakai pandas atau dbt menginginkan yang kedua, bukan ini.</p>
-<h2 id="parameter-yang-membangun-pipeline">Parameter yang membangun pipeline<a class="anchor" href="#parameter-yang-membangun-pipeline" aria-label="link">#</a></h2>
+<h2 id="parameters-that-build-the-pipeline">Parameter yang membangun pipeline<a class="anchor" href="#parameters-that-build-the-pipeline" aria-label="link">#</a></h2>
 <p><code>p.Run.Params</code> dapat dibaca di dalam pipeline, yang terlambat untuk nilai yang menentukan pipeline itu <strong>apa</strong> — satu sumber per negara bagian, satu tabel per tenant. <code>Pipeline.Flags</code> diparse di dalam <code>Run</code>, sehingga terlambat dengan alasan yang sama.</p>
 <div class="code-block" data-code="func main() {
 	sdk.Run(pipeline(sdk.ParamList(&quot;ufs&quot;)))
@@ -318,7 +318,7 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 <p><code>sdk.Param</code> dan <code>sdk.ParamList</code> membaca environment engine terlebih dahulu dan <code>-param name=value</code> kedua:</p>
 <div class="code-block" data-code="./fetch-stations -param ufs=SP,RJ"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>./fetch-stations <span class="t-n">-param</span> ufs=SP,RJ</code></pre></div>
 <p>Environment menang — di bawah engine ia adalah nilainya, dan flag yang tertinggal di manifest tidak boleh menimpa apa yang diketik operator. Tanpa engine, flag adalah yang ada, yang lebih baik daripada menulis <code>BREVIS_RUN_PARAMS</code> sebagai JSON pada setiap run.</p>
-<h2 id="layout-landing">Layout landing<a class="anchor" href="#layout-landing" aria-label="link">#</a></h2>
+<h2 id="the-landing-layout">Layout landing<a class="anchor" href="#the-landing-layout" aria-label="link">#</a></h2>
 <p>Sebuah pipeline dapat mendaratkan <strong>tabel yang sama dengan yang didaratkan gateway</strong> — kolom yang sama dan <code>brevis_ingestion_id</code> yang sama — sehingga memilih di antara keduanya adalah keputusan deployment dan bukan keputusan skema. Tim dapat membaca keduanya sekaligus, dan berpindah dari satu ke yang lain tanpa migrasi.</p>
 <div class="code-block" data-code="const table = &quot;landing.orders&quot;
 
@@ -340,7 +340,7 @@ sdk.Run(sdk.Pipeline{
     },
 })</code></pre></div>
 <p><code>sdk.LandingSchema</code> terdiri dari sembilan kolom: delapan yang dimiliki layout dan satu milik produser. <code>sdk.Landing</code> mengisinya dan menaruh record, utuh, di <code>data</code>. Tambahkan kolom Anda sendiri ke skema jika mau, atau ambil <code>sdk.LandingControlColumns</code> dan beri field record kolomnya masing-masing.</p>
-<h3 id="dua-bentuk-record-utuh-atau-satu-kolom-per-field">Dua bentuk: record utuh, atau satu kolom per field<a class="anchor" href="#dua-bentuk-record-utuh-atau-satu-kolom-per-field" aria-label="link">#</a></h3>
+<h3 id="two-shapes-the-record-whole-or-one-column-per-field">Dua bentuk: record utuh, atau satu kolom per field<a class="anchor" href="#two-shapes-the-record-whole-or-one-column-per-field" aria-label="link">#</a></h3>
 <p>Yang di atas adalah bentuk <strong>document</strong> — record masuk ke <code>data</code> sebagai JSON, dan tabelnya sama apa pun isi record. Tambahkan <code>sdk.LandingColumns()</code> dan setiap field record mendapat kolomnya sendiri:</p>
 <div class="code-block" data-code="sdk.Landing(table, sdk.LandingKey(&quot;source_key&quot;), sdk.LandingColumns())"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())</code></pre></div>
 <p>Tabel itu kemudian adalah <code>sdk.LandingControlColumns</code> ditambah kolom Anda — <strong>bukan</strong> <code>sdk.LandingSchema</code>, yang membawa <code>data</code>:</p>
@@ -362,13 +362,13 @@ sdk.Run(sdk.Pipeline{
     ),
 }</code></pre></div>
 <p><strong>Anda yang mendeklarasikan kolom-kolom itu.</strong> SDK tidak pernah menyimpulkan skema, dan opsi ini tidak mengubahnya: ia menentukan bagaimana <em>baris</em> dibangun, tidak pernah seperti apa tabelnya. Gateway menyimpulkan karena produsernya adalah orang asing yang mengirim apa pun yang mereka punya; di sini penulis pipeline tahu bentuknya dan menuliskannya, dalam diff yang direview seseorang.</p>
-<p>Ini bentuk yang sama dengan yang didaratkan gateway sebagai <a href="/id/docs/ingestion-sinks/#dua-bentuk-satu-kontrak"><code>shape: columns</code></a>, lewat kode yang sama — kolom yang sama, nilai yang sama, <code>brevis_ingestion_id</code> yang sama.</p>
+<p>Ini bentuk yang sama dengan yang didaratkan gateway sebagai <a href="/id/docs/ingestion-sinks/#two-shapes-one-contract"><code>shape: columns</code></a>, lewat kode yang sama — kolom yang sama, nilai yang sama, <code>brevis_ingestion_id</code> yang sama.</p>
 <p><strong>Nama field harus bisa menjadi nama kolom</strong>: huruf atau underscore, lalu huruf, angka, dan underscore. Itu aturan BigQuery, yang tersempit dari keempat tujuan, sehingga nama yang lolos di sini berfungsi di mana saja. Record yang membawa <code>my-field</code> ditolak dengan menyebut namanya, sebelum apa pun ditulis. Bentuk document tidak punya aturan itu — tanda hubung adalah key JSON yang sah.</p>
-<p><strong>Secara default ia tidak meratakan.</strong> Objek bersarang menjadi SATU kolom <code>JSON</code> di bawah key yang memegangnya: <code>customer</code> berisi <code>{"id": 7, "uf": "SP"}</code>, bukan <code>customer_id</code> dan <code>customer_uf</code>. Array juga <code>JSON</code>. Record yang menginginkan satu baris <em>per elemen array</em> membutuhkan <code>sdk.ArrayAt</code> di <code>Expand</code> milik source — ia berjalan sebelum <code>Landing</code>, dan merupakan operasi lain dengan nama lain. <a href="#satu-kolom-per-field-bersarang"><code>BREVIS_NORMALIZE_DATA</code></a> mengubah paruh pertama itu untuk seluruh deployment; array tetap <code>JSON</code> dengan cara apa pun:</p>
+<p><strong>Secara default ia tidak meratakan.</strong> Objek bersarang menjadi SATU kolom <code>JSON</code> di bawah key yang memegangnya: <code>customer</code> berisi <code>{"id": 7, "uf": "SP"}</code>, bukan <code>customer_id</code> dan <code>customer_uf</code>. Array juga <code>JSON</code>. Record yang menginginkan satu baris <em>per elemen array</em> membutuhkan <code>sdk.ArrayAt</code> di <code>Expand</code> milik source — ia berjalan sebelum <code>Landing</code>, dan merupakan operasi lain dengan nama lain. <a href="#one-column-per-nested-field"><code>BREVIS_NORMALIZE_DATA</code></a> mengubah paruh pertama itu untuk seluruh deployment; array tetap <code>JSON</code> dengan cara apa pun:</p>
 <div class="code-block" data-code="Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt(&quot;results&quot;)},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},</code></pre></div>
 <p><strong><code>null</code> tetap <code>NULL</code></strong>, tidak pernah <code>""</code>. Field yang dikirim null dan field yang dikirim kosong adalah fakta yang berbeda, dan kolom tidak dapat membedakannya sesudahnya.</p>
 <p><strong><code>data</code> menjadi milik Anda.</strong> Dalam bentuk ini layout tidak punya kolom dengan nama itu, sehingga produser dengan field bernama <code>data</code> — persis yang dikirim seri Bacen — mendapat kolom miliknya sendiri dengan nilainya sendiri. Di bawah <code>document</code>, miliknya adalah satu key di dalam JSON layout.</p>
-<h3 id="prefiks-brevis-dapat-anda-ubah">Prefiks <code>brevis_</code> dapat Anda ubah<a class="anchor" href="#prefiks-brevis-dapat-anda-ubah" aria-label="link">#</a></h3>
+<h3 id="the-brevis-prefix-is-yours-to-change">Prefiks <code>brevis_</code> dapat Anda ubah<a class="anchor" href="#the-brevis-prefix-is-yours-to-change" aria-label="link">#</a></h3>
 <div class="code-block" data-code="BREVIS_LANDING_PREFIX=acme"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>BREVIS_LANDING_PREFIX=acme</code></pre></div>
 <p>dan delapan kolom layout menjadi <code>acme_ingestion_id</code>, <code>acme_record_key</code>, dan seterusnya. Bila tidak diatur, ia tetap seperti yang selalu ada.</p>
 <p><strong>Pilih saat tabel dibuat, karena mengubahnya kemudian bukanlah rename.</strong> Tidak ada apa pun di SDK ini yang pernah menghapus kolom, sehingga stream yang berganti prefiks tidak me-rename delapan — ia menambah delapan dan meninggalkan delapan. Setiap baris sesudahnya memiliki NULL pada set lama, dan</p>
@@ -383,7 +383,7 @@ sdk.Run(sdk.Pipeline{
 <p><strong>Ia berlaku per PROSES, dan itu intinya, bukan keterbatasan.</strong> Setiap stream dalam satu gateway berbagi nilai itu, sehingga dua sink tidak bisa berselisih — begitu pula skema yang mendeklarasikan tabel dan transformer yang mengisinya.</p>
 <p><strong>Aturan reserved ikut berpindah.</strong> Di bawah <code>acme_</code>, produser yang mengirim <code>acme_region</code> ditolak, karena orang yang bisa memalsukan kolom kontrol akan memalsukan yang tampak asli. Dan <code>brevis_region</code> menjadi field biasa.</p>
 <p><code>data</code> tidak pernah membawa prefiks. Itu kolom milik produser, bukan milik layout.</p>
-<h3 id="satu-kolom-per-field-bersarang">Satu kolom per field bersarang<a class="anchor" href="#satu-kolom-per-field-bersarang" aria-label="link">#</a></h3>
+<h3 id="one-column-per-nested-field">Satu kolom per field bersarang<a class="anchor" href="#one-column-per-nested-field" aria-label="link">#</a></h3>
 <div class="code-block" data-code="BREVIS_NORMALIZE_DATA=true"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>BREVIS_NORMALIZE_DATA=true</code></pre></div>
 <p>dan field dari objek bersarang mendapat kolomnya sendiri, seperti <code>json_normalize</code> milik pandas — satu level:</p>
 <div class="code-block" data-code="data = [
@@ -405,7 +405,7 @@ sdk.Run(sdk.Pipeline{
 <p><strong>Tabrakan ditolak, tidak pernah diselesaikan.</strong> <code>{"name_first": 1, "name": {"first": 2}}</code> akan membuat satu kolom dari dua field, dan iterasi map di Go diacak: membiarkan salah satunya menang akan memberi batch yang sama tabel yang berbeda pada run yang berbeda. Penolakan menyebut keduanya.</p>
 <p><strong>Prefiks reserved diperiksa pada kolom, bukan field.</strong> Produser yang mengirim <code>{"brevis": {"stream": "x"}}</code> akan membuat <code>brevis_stream</code> lewat pintu yang tidak dijaga pemeriksaan field. Itu ditolak, dengan menyebut <code>brevis.stream</code> agar mereka dapat menemukan field-nya.</p>
 <p><strong>Ia berlaku per PROSES</strong>, seperti prefiks, dan dengan alasan yang sama: setiap stream dalam satu gateway berbagi nilai itu, sehingga dua sink tidak bisa berselisih tentang tabel yang mungkin sama-sama mereka tulis. Ia hanya berlaku untuk bentuk <code>columns</code> — di bawah <code>document</code> record masuk utuh ke satu kolom <code>JSON</code> dan tidak ada yang bisa diratakan.</p>
-<h3 id="teks-yang-sudah-berupa-json">Teks yang sudah berupa JSON<a class="anchor" href="#teks-yang-sudah-berupa-json" aria-label="link">#</a></h3>
+<h3 id="text-that-is-already-json">Teks yang sudah berupa JSON<a class="anchor" href="#text-that-is-already-json" aria-label="link">#</a></h3>
 <p>Kolom yang dideklarasikan <code>sdk.TypeJSON</code> menerima <strong>nilai</strong> JSON — objek, array, angka. Di BigQuery baris di-encode utuh, sehingga <code>string</code> Go di sana menjadi literal string JSON dan kolom akhirnya berisi TEKS objek Anda alih-alih objeknya:</p>
 <div class="code-block" data-code="SELECT JSON_TYPE(payload) ...;            -- &quot;string&quot;, not &quot;object&quot;
 SELECT JSON_VALUE(payload, &#x27;$.a&#x27;) ...;    -- NULL"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">SELECT</span> JSON_TYPE(payload) ...;            <span class="t-c">-- "string", not "object"</span>
@@ -415,7 +415,7 @@ SELECT JSON_VALUE(payload, &#x27;$.a&#x27;) ...;    -- NULL"><div class="code-he
 <div class="code-block" data-code="row[&quot;payload&quot;] = sdk.JSONText(body)"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>row["payload"] = sdk.JSONText(body)</code></pre></div>
 <p><code>json.RawMessage</code> dari <code>encoding/json</code> juga berfungsi, dengan alasan yang sama: keduanya menulis JSON yang mereka pegang alih-alih string berkutip darinya.</p>
 <p><strong>Postgres dan MySQL tidak terpengaruh dan tidak ditolak.</strong> Server mereka mem-parse string menjadi kolom JSON, dan selalu begitu.</p>
-<h3 id="ketika-muncul-field-yang-tidak-dimiliki-tabel">Ketika muncul field yang tidak dimiliki tabel<a class="anchor" href="#ketika-muncul-field-yang-tidak-dimiliki-tabel" aria-label="link">#</a></h3>
+<h3 id="when-a-field-the-table-does-not-have-shows-up">Ketika muncul field yang tidak dimiliki tabel<a class="anchor" href="#when-a-field-the-table-does-not-have-shows-up" aria-label="link">#</a></h3>
 <p>Produser menambahkan field dan load berhenti, menyebut namanya: baris membawa kolom yang tidak dideklarasikan siapa pun, dan menulisnya ke tujuan yang tidak pernah menyebutnya akan membuangnya secara diam-diam. Penolakan itu benar secara default — tetapi pada tabel landing itu adalah satu-satunya perubahan yang tidak dapat merusak pembaca, dan tujuan dapat melakukannya:</p>
 <div class="code-block" data-code="postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}</code></pre></div>
 <p>Batch kemudian <strong>melengkapi</strong> deklarasi Anda: field yang dibawanya dan tidak dideklarasikan menjadi kolom, <code>STRING</code> kecuali field itu objek atau array, lalu <code>JSON</code>. Itu aturan yang sama dan kode yang sama yang dipakai gateway mendaratkan <code>shape: columns</code>, sehingga keduanya menghasilkan tabel yang sama.</p>
@@ -460,7 +460,7 @@ specification without a key length"><div class="code-head"><button class="code-c
 specification without a key length</code></pre></div>
 <p>Postgres berfungsi, karena <code>string</code>-nya adalah <code>TEXT</code>. Di MySQL, mendaratlah dengan <code>DedupNone</code> dan selesaikan versi terkini di hilir, atau buat tabel itu sendiri dengan <code>CreateSQL</code> dan kolom id yang berukuran.</p>
 <p><strong>Id bersifat content-addressed.</strong> Record yang sama menghasilkan id yang sama dari kedua jalur, dan record yang berubah menghasilkan yang baru — itulah yang membuat run ulang menjadi no-op alih-alih duplikat.</p>
-<h2 id="referensi">Referensi<a class="anchor" href="#referensi" aria-label="link">#</a></h2>
+<h2 id="reference">Referensi<a class="anchor" href="#reference" aria-label="link">#</a></h2>
 <ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> — API lengkap</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> — dua belas contoh yang dapat dijalankan</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> — riwayat versi demi versi</li></ul>
 
       <nav class="pagers" aria-label="Halaman">
@@ -475,7 +475,7 @@ specification without a key length</code></pre></div>
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#tiga-langkah">Tiga langkah</a></li><li class="toc-2"><a href="#driver-adalah-nilai-bukan-pengaturan">Driver adalah nilai, bukan pengaturan</a></li><li class="toc-2"><a href="#sumber-dan-tujuan">Sumber dan tujuan</a></li><li class="toc-3"><a href="#memublikasikan-ke-topik">Memublikasikan ke topik</a></li><li class="toc-2"><a href="#fetcher-utuh">Fetcher utuh</a></li><li class="toc-2"><a href="#context-run">Context run</a></li><li class="toc-3"><a href="#jam">Jam</a></li><li class="toc-2"><a href="#jangan-dikacaukan-dengan-pustaka-klien">Jangan dikacaukan dengan pustaka klien</a></li><li class="toc-2"><a href="#parameter-yang-membangun-pipeline">Parameter yang membangun pipeline</a></li><li class="toc-2"><a href="#layout-landing">Layout landing</a></li><li class="toc-3"><a href="#dua-bentuk-record-utuh-atau-satu-kolom-per-field">Dua bentuk: record utuh, atau satu kolom per field</a></li><li class="toc-3"><a href="#prefiks-brevis-dapat-anda-ubah">Prefiks brevis_ dapat Anda ubah</a></li><li class="toc-3"><a href="#satu-kolom-per-field-bersarang">Satu kolom per field bersarang</a></li><li class="toc-3"><a href="#teks-yang-sudah-berupa-json">Teks yang sudah berupa JSON</a></li><li class="toc-3"><a href="#ketika-muncul-field-yang-tidak-dimiliki-tabel">Ketika muncul field yang tidak dimiliki tabel</a></li><li class="toc-2"><a href="#referensi">Referensi</a></li></ul>
+      <ul><li class="toc-2"><a href="#three-steps">Tiga langkah</a></li><li class="toc-2"><a href="#the-driver-is-a-value-not-a-setting">Driver adalah nilai, bukan pengaturan</a></li><li class="toc-2"><a href="#sources-and-destinations">Sumber dan tujuan</a></li><li class="toc-3"><a href="#publishing-to-a-topic">Memublikasikan ke topik</a></li><li class="toc-2"><a href="#a-whole-fetcher">Fetcher utuh</a></li><li class="toc-2"><a href="#the-run-context">Context run</a></li><li class="toc-3"><a href="#the-clock">Jam</a></li><li class="toc-2"><a href="#not-to-be-confused-with-the-client-libraries">Jangan dikacaukan dengan pustaka klien</a></li><li class="toc-2"><a href="#parameters-that-build-the-pipeline">Parameter yang membangun pipeline</a></li><li class="toc-2"><a href="#the-landing-layout">Layout landing</a></li><li class="toc-3"><a href="#two-shapes-the-record-whole-or-one-column-per-field">Dua bentuk: record utuh, atau satu kolom per field</a></li><li class="toc-3"><a href="#the-brevis-prefix-is-yours-to-change">Prefiks brevis_ dapat Anda ubah</a></li><li class="toc-3"><a href="#one-column-per-nested-field">Satu kolom per field bersarang</a></li><li class="toc-3"><a href="#text-that-is-already-json">Teks yang sudah berupa JSON</a></li><li class="toc-3"><a href="#when-a-field-the-table-does-not-have-shows-up">Ketika muncul field yang tidak dimiliki tabel</a></li><li class="toc-2"><a href="#reference">Referensi</a></li></ul>
     </aside>
   </main>
 </div>
@@ -495,9 +495,9 @@ specification without a key length</code></pre></div>
       <div class="footer-col">
         <h2>proyek</h2>
         <ul>
-          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/#ecosystem">Ekosistem</a></li>
           <li><a href="/id/docs/philosophy/">Prinsip</a></li>
-          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/id/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -520,7 +520,7 @@ specification without a key length</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

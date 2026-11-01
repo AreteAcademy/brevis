@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
       <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/ingestion/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ingestion/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ingestion/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ingestion/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ingestion/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ingestion/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/ingestion/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>Ingestion</h1>
@@ -145,9 +145,9 @@
   -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/clicks <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
   <span class="t-n">-d</span> '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'</code></pre></div>
 <div class="code-block" data-code="{&quot;accepted&quot;:1,&quot;rejected&quot;:null}"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>{"accepted":1,"rejected":null}</code></pre></div>
-<p>Google Cloud क्रेडेंशियल के बिना, batch का retry होता है और वह dead letter में जाता है — देखें <a href="#जब-sink-मन-कर">जब sink मना करे</a>।</p>
+<p>Google Cloud क्रेडेंशियल के बिना, batch का retry होता है और वह dead letter में जाता है — देखें <a href="#when-the-sink-refuses">जब sink मना करे</a>।</p>
 <p><code>-slim</code> image सिर्फ़ <code>auto_table</code>, <code>files</code> और <code>postgres</code> sinks ढोती है; इस उदाहरण का <code>pubsub</code> और बाकी पूरी image में हैं। जो slim image ऐसा sink माँगे जो वह नहीं ढोती, वह शुरू होते समय कारण के साथ मना कर दी जाती है।</p>
-<h2 id="फइल-ह-अनबध-ह">फ़ाइल ही अनुबंध है<a class="anchor" href="#फइल-ह-अनबध-ह" aria-label="link">#</a></h2>
+<h2 id="the-file-is-the-contract">फ़ाइल ही अनुबंध है<a class="anchor" href="#the-file-is-the-contract" aria-label="link">#</a></h2>
 <p>Hooks के सिवा लिखने को कोई कोड नहीं है। Streams, paths, फ़ॉर्मेट, पहचान, retry, गंतव्य और dead letter — सब YAML में, और जो फ़ील्ड निभाया न जा सके वह मना कर दिया जाता है।</p>
 <div class="code-block" data-code="name: events_gateway
 
@@ -221,13 +221,13 @@ streams:
       <span class="t-k">type</span>: files
       <span class="t-k">path</span>: /var/dead-letter/</code></pre></div>
 <p><code>format</code> घोषित किया जाता है, अनुमानित नहीं: अनुमान लगाने से ही हज़ार का batch एक सूची वाली एक पंक्ति बन जाता है।</p>
-<h2 id="ingestion-id-ज-असल-बत-ह"><code>ingestion_id</code>, जो असली बात है<a class="anchor" href="#ingestion-id-ज-असल-बत-ह" aria-label="link">#</a></h2>
+<h2 id="the-ingestion-id-which-is-the-point"><code>ingestion_id</code>, जो असली बात है<a class="anchor" href="#the-ingestion-id-which-is-the-point" aria-label="link">#</a></h2>
 <p>हर रिकॉर्ड एक <code>ingestion_id</code> के साथ निकलता है: <code>provider|entity|source_key|record_ts</code> पर <strong>स्थिर UUID v5</strong>।</p>
 <p>यह वही <strong>id</strong> है जो batch fetcher उसी रिकॉर्ड के लिए निकालता है। जो पंक्ति gateway उतारता है और जो पंक्ति <a href="/hi/docs/sdk/">SDK</a> pipeline उतारती है, वे <em>एक ही पंक्ति</em> हैं, उनके बीच कोई मिलान नहीं।</p>
 <p>दो व्यावहारिक नतीजे:</p>
 <ul><li><strong>दोबारा भेजा गया <code>POST</code> वही रिकॉर्ड है।</strong> क्लाइंट बिना डरे फिर भेज सकता है; <code>merge</code> वाला गंतव्य दूसरी पंक्ति लिखने के बजाय retry को सोख लेता है।</li><li><strong>सूत्र स्थिर है।</strong> चारों फ़ील्ड ज़रूरी हैं, और एक छोड़ देने से कमज़ोर नहीं बल्कि <em>अलग</em> id बनती है। फ़ाइल अधूरे कॉन्फ़िगरेशन को स्वीकार करने के बजाय मना करती है।</li></ul>
 <p>Ingestion के टूल बाइट बहुत अच्छे से ले जाते हैं और इस पर कोई राय नहीं रखते कि रिकॉर्ड <em>क्या है</em>। वह राय ही है जो gateway जोड़ता है।</p>
-<h2 id="अनरध-कभ-sink-क-इतजर-नह-करत">अनुरोध कभी sink का इंतज़ार नहीं करता<a class="anchor" href="#अनरध-कभ-sink-क-इतजर-नह-करत" aria-label="link">#</a></h2>
+<h2 id="the-request-never-waits-for-the-sink">अनुरोध कभी sink का इंतज़ार नहीं करता<a class="anchor" href="#the-request-never-waits-for-the-sink" aria-label="link">#</a></h2>
 <p>यह decode करता है, hook चलाता है, पहचान निकालता है, बफ़र में जोड़ता है और लौट आता है। <strong>बस इतना।</strong> भरा हुआ batch worker pool के पास जाता है, और publish, <code>COPY</code>, retries और dead letter सब वहीं होते हैं।</p>
 <p>यह दिखावटी नहीं है। इसके होने से पहले, जो अनुरोध संयोग से batch भरता था वह डिलीवरी inline चलाता था — इसलिए हर <code>flush.records</code> में से एक caller पूरा round trip चुकाता था, और sink बंद हो तो पूरी retry विंडो। ऐसा p99 जिसका आकार इससे तय हो कि कौन-सा caller बदकिस्मत था, कोई नहीं सुधार सकता।</p>
 <div class="code-block" data-code="buffer:
@@ -249,7 +249,7 @@ streams:
   <span class="t-k">queue</span>: 64           <span class="t-c"># full batches that may wait for a worker</span>
   <span class="t-k">max_records</span>: 10000  <span class="t-c"># events held in memory before the gateway says no</span>
   <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># the same ceiling in bytes</span></code></pre></div>
-<h3 id="flush-क-घड-deployment-क-ह">Flush की घड़ी deployment की है<a class="anchor" href="#flush-क-घड-deployment-क-ह" aria-label="link">#</a></h3>
+<h3 id="the-flush-clock-belongs-to-the-deployment">Flush की घड़ी deployment की है<a class="anchor" href="#the-flush-clock-belongs-to-the-deployment" aria-label="link">#</a></h3>
 <p><code>buffer.flush.every</code> <strong>हर replica</strong> में एक <code>time.AfterFunc</code> है। इसलिए तालिका को मिलने वाले load jobs replica की संख्या का फ़ंक्शन हैं, ट्रैफ़िक का नहीं:</p>
 <div class="code-block" data-code="jobs / day / table  =  replicas × 86400 / every"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>jobs / day / table  =  replicas × 86400 / every</code></pre></div>
 <p>BigQuery पर, प्रति तालिका प्रति दिन 1,500 के विरुद्ध, <strong>60s पर दो replicas पहले ही उस quota का 192% हैं जिसे बढ़ाया नहीं जा सकता</strong> — HPA कुछ करे उससे पहले। और दिशा अंतर्ज्ञान से उलटी है: gateway HTTP concurrency के लिए बाहर की ओर फैलता है जबकि sink संकेंद्रण चाहता है।</p>
@@ -269,13 +269,13 @@ streams:
 <p><strong><code>outcome="unreachable"</code> वह है जिस पर अलर्ट बनता है।</strong> Backend से पूछा नहीं जा सका, इसलिए claim खुला विफल हुआ: समन्वय बंद है और load jobs फिर replica की संख्या से गुणा हो रहे हैं — चुपचाप, क्योंकि हर flush अब भी flush जैसा दिखता है।</p>
 <p>और claim <strong>विशिष्टता</strong> देता है, निष्पक्षता नहीं: जो पहले माँगे वह जीतता है। असली दो-replica run में 4/1 मापा गया, बराबर बँटवारा नहीं। <code>max_age</code> वही है जो बदकिस्मत को भूखा मरने से रोकता है।</p>
 <p><code>claim: true</code> और <code>metastore: memory</code> के साथ gateway <strong>boot पर एक बार</strong> चेतावनी देता है: हर replica अपना claim जीतता है, इसलिए सब कुछ सही दिखता है और कुछ समन्वय नहीं करता।</p>
-<h3 id="every-लकषय-ह-max-age-वद-ह"><code>every</code> लक्ष्य है; <code>max_age</code> वादा है<a class="anchor" href="#every-लकषय-ह-max-age-वद-ह" aria-label="link">#</a></h3>
+<h3 id="every-is-a-target-max-age-is-a-promise"><code>every</code> लक्ष्य है; <code>max_age</code> वादा है<a class="anchor" href="#every-is-a-target-max-age-is-a-promise" aria-label="link">#</a></h3>
 <p>ऊपर के तीन triggers तय करते हैं कि batch कब निकलने की <strong>कोशिश</strong> करता है। <code>max_age</code> तय करता है कि वह कब <strong>हर हाल में</strong> निकलता है।</p>
 <p>आज यह फ़र्क निष्क्रिय है, क्योंकि कुछ लक्ष्य को टालता नहीं। यह तब मायने रखने लगता है जब flush की घड़ी प्रति-प्रोसेस नहीं रहती: <code>buffer.flush.every</code> हर replica में एक <code>time.AfterFunc</code> है, इसलिए तालिका को मिलने वाले load jobs की संख्या <strong>replica की संख्या</strong> का फ़ंक्शन है, ट्रैफ़िक का नहीं — <code>replicas × 86400 / every</code>। BigQuery पर, प्रति तालिका प्रति दिन 1,500 के विरुद्ध, <strong>60s पर दो replicas पहले ही quota का 192% हैं</strong>।</p>
 <p>एक बार जब replica विंडो दूसरे को दे सकता है, वह भरता रहता है, और <code>max_age</code> वही है जो किसी को अपनी बारी की प्रतीक्षा में डेटा अनिश्चित काल तक थामे रखने से रोकता है।</p>
 <p>यह drain को भी तय करता है: <code>SIGTERM</code> पर बफ़र जो <strong>थामे</strong> हो सकता है वह इससे बँध जाता है, और gateway boot पर जो <code>terminationGracePeriodSeconds</code> छापता है वह इसी से निकला है।</p>
 <p>लक्ष्य से <strong>नीचे</strong> की सीमा लोड पर मना की जाती है — उसका मतलब होता कि लक्ष्य कभी लागू नहीं होता।</p>
-<h3 id="size-trigger-कय-ह">Size trigger क्यों है<a class="anchor" href="#size-trigger-कय-ह" aria-label="link">#</a></h3>
+<h3 id="why-there-is-a-size-trigger">Size trigger क्यों है<a class="anchor" href="#why-there-is-a-size-trigger" aria-label="link">#</a></h3>
 <p>बाकी दो <strong>गिनती</strong> हैं, और गिनती 2 KB के 500 events को 2 MB के 500 से अलग नहीं बता सकती — 1 MB बनाम 1 GB, फ़ाइल में वही संख्या। <code>max_records: 10000</code> का भी वही अंधा बिंदु है: 20 MB या 20 GB, और YAML में कुछ नहीं कह सकता कि कौन-सा।</p>
 <p>जो producer id की जगह पूरा दस्तावेज़ भेजना शुरू कर दे, वह pod गिरा देता है, और इसके होने तक <strong>कोई फ़ील्ड सीमा को व्यक्त नहीं कर सकता था</strong>।</p>
 <p>Size उस पर मापा जाता है जो <strong>आया</strong> — उस पर नहीं जो event मेमोरी में तौलता है (<code>map[string]any</code> अपने JSON से कई गुना होता है) और न उस hook के बाद जो उसे फुला दे। अनुमान है, और सही वाला: decode पर मुफ़्त है, payload के साथ चलता है, और जिससे बचाता है वह दस गुना बढ़ा रिकॉर्ड है।</p>
@@ -287,7 +287,7 @@ streams:
 <p>तालिका का एक flush उसके लिए एक load job है, इसलिए यही वह series है जिस पर BigQuery की अनुमत 1,500 में से 1,200 पर अलर्ट बनाना है। बिना शर्त वाला आधा boot पर एक पंक्ति है, जो event आने से पहले बताती है कि <code>flush.every</code> प्रति तालिका प्रति दिन कितना पड़ता है।</p>
 <p><strong>यह सीमित है, fire-and-forget नहीं।</strong> हर batch के लिए goroutine sink की गड़बड़ी को असीमित मेमोरी में बदल देता। जब कतार और बफ़र दोनों भरे हों, तो जवाब <strong><code>Retry-After</code> के साथ <code>503</code></strong> है, ऐसे event के लिए <code>202</code> नहीं जिसके पास जाने की जगह नहीं। स्वीकार किया गया event जो कभी डिलीवर न हो, वही नतीजा है जिसे न होने देने के लिए यह service है।</p>
 <p>और वह <code>503</code> <strong>दोबारा कोशिश के लिए सुरक्षित</strong> है, ऐसे तरीके से जैसा लगभग कोई service नहीं कह सकती: <code>ingestion_id</code> event का ही स्थिर फ़ंक्शन है, इसलिए वही body दोबारा भेजना <em>वही रिकॉर्ड</em> है।</p>
-<h2 id="कनकशन-तय-करत-ह-क-भर-कस-replica-क-मल">कनेक्शन तय करता है कि भार किस replica को मिले<a class="anchor" href="#कनकशन-तय-करत-ह-क-भर-कस-replica-क-मल" aria-label="link">#</a></h2>
+<h2 id="a-connection-decides-which-replica-gets-the-load">कनेक्शन तय करता है कि भार किस replica को मिले<a class="anchor" href="#a-connection-decides-which-replica-gets-the-load" aria-label="link">#</a></h2>
 <p>Kubernetes <code>ClusterIP</code> Service के पीछे, kube-proxy backend <strong>हर TCP कनेक्शन पर एक बार</strong> चुनता है, हर अनुरोध पर नहीं। ज़्यादातर क्लाइंट कनेक्शन जीवित रखते और दोबारा इस्तेमाल करते हैं, इसलिए मुट्ठी भर कनेक्शन वाला producer सब कुछ एक-दो replicas को भेजता है चाहे कितने चल रहे हों — और HPA जो replica जोड़ता है उसे कुछ नहीं मिलता, क्योंकि कोई उसे dial नहीं करता।</p>
 <div class="code-block" data-code="listen:
   idle_timeout: 90s     # closes a connection nobody came back to
@@ -297,7 +297,7 @@ streams:
 <p><strong><code>max_conn_age</code> डिफ़ॉल्ट रूप से बंद है</strong>, और यह जानबूझकर है: क्लाइंट एक कनेक्शन कितनी देर रख सकता है यह नीति है, और यह प्रति उम्र प्रति कनेक्शन एक in-cluster handshake के बदले भार का फैलाव देता है। अनुरोध खुद हमेशा परोसा जाता है — header response पर लगता है, कुछ दोबारा नहीं आज़माया जाता और कोई batch नहीं खोता।</p>
 <p><strong><code>idle_timeout</code> का डिफ़ॉल्ट है और उसे बंद नहीं किया जा सकता।</strong> उसके बिना परोसना प्रोसेस के रीस्टार्ट तक हर छोड़े गए क्लाइंट के लिए एक file descriptor है। लंबा सेट करें अगर वही चाहिए; तब वह ऐसी संख्या है जिसे किसी ने चुना।</p>
 <p>दोनों स्वतंत्र हैं: कनेक्शन उस सीमा से मिलता है जो पहले आए, और कनेक्शन उम्र तक सिर्फ़ इस्तेमाल होकर पहुँचता है — ठीक वही लंबे समय तक जीने वाला producer जिसे उम्र संतुलित करने के लिए है।</p>
-<h2 id="जब-sink-मन-कर">जब sink मना करे<a class="anchor" href="#जब-sink-मन-कर" aria-label="link">#</a></h2>
+<h2 id="when-the-sink-refuses">जब sink मना करे<a class="anchor" href="#when-the-sink-refuses" aria-label="link">#</a></h2>
 <p>Batch का retry होता है — डिफ़ॉल्ट रूप से करीब सात सेकंड में चार प्रयास, jitter के साथ दोगुने — और फिर वह <strong>dead letter</strong> में जाता है, हर रिकॉर्ड पर कारण के साथ:</p>
 <div class="code-block" data-code="{
   &quot;event_id&quot;: &quot;dl-9&quot;,
@@ -314,7 +314,7 @@ streams:
 }</code></pre></div>
 <p>कारण <strong>रिकॉर्ड पर</strong> चलता है, सिर्फ़ लॉग में नहीं, क्योंकि जिसे वह फ़ाइल बाद में मिलती है उसके पास events होते हैं, लॉग नहीं — और <em>यह यहाँ क्यों है</em> उसका पहला सवाल होता है।</p>
 <p><strong>बिना <code>dead_letter</code> वाला stream लोड पर मना है।</strong> इसे चुप्पी पर डिफ़ॉल्ट करना फ़ैसले को वहाँ रख देता जहाँ कोई उसे नहीं लेता, और जो मना किया गया batch सिर्फ़ लॉग पंक्ति है वह डेटा चुपचाप खो रहा है।</p>
-<h2 id="hook-go-ह-compile-हकर-भतर">Hook Go है, compile होकर भीतर<a class="anchor" href="#hook-go-ह-compile-हकर-भतर" aria-label="link">#</a></h2>
+<h2 id="the-hook-is-go-compiled-in">Hook Go है, compile होकर भीतर<a class="anchor" href="#the-hook-is-go-compiled-in" aria-label="link">#</a></h2>
 <div class="code-block" data-code="hooks := gateway.NewHooks()
 hooks.MustRegister(&quot;enrich_clicks&quot;, enrichClicks)
 gateway.Main(hooks, gateway.WithSinks(sinks))
@@ -335,7 +335,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 <p>YAML hook का नाम लेती है; उसे ढोती नहीं। चुनने से पहले मापा: Go फ़ंक्शन <strong>93 ns/op</strong> पड़ता है जबकि Starlark का 959 और yaegi का 1,281, बाइनरी में कुछ जुड़े बिना — और <code>plugin.Open</code> विकल्प ही नहीं है, क्योंकि <code>CGO_ENABLED=0</code> के तहत, जैसे यहाँ हर आर्टिफ़ैक्ट बनता है, वह <code>plugin: not implemented</code> लौटाता है।</p>
 <p>इसकी कीमत, वहाँ कही गई जहाँ कोई पढ़ेगा: <strong>hook जोड़ना rebuild और deploy है, कॉन्फ़िग बदलाव नहीं।</strong> जब तक hooks वे लोग लिखते हैं जो बाइनरी शिप करते हैं, यह सही सौदा है, और उस दिन गलत जब ग्राहक को release के बिना एक बदलना हो।</p>
 <p>Hook में त्रुटि <em>उस</em> event को dead-letter के रास्ते पर भेजती है और बगल के batch को कभी विफल नहीं करती। panic भी: वह प्रति event recover होता है, क्योंकि एक विकृत रिकॉर्ड उस प्रोसेस को नहीं गिराना चाहिए जो हर दूसरे stream को परोस रही है।</p>
-<h2 id="जब-event-बहत-बड-ह">जब event बहुत बड़ा हो<a class="anchor" href="#जब-event-बहत-बड-ह" aria-label="link">#</a></h2>
+<h2 id="when-an-event-is-too-big">जब event बहुत बड़ा हो<a class="anchor" href="#when-an-event-is-too-big" aria-label="link">#</a></h2>
 <div class="code-block" data-code="oversize:
   larger_than: 256KiB
   archive: {type: files, path: gs://acme-oversize/clicks/}
@@ -359,7 +359,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 }</code></pre></div>
 <p>यह <strong>Claim Check</strong> पैटर्न है, और यह सपाट <code>413</code> से बेहतर है क्योंकि <code>413</code> event खो देता है — और बहुत बड़ा payload आम तौर पर किसी के पास सबसे दिलचस्प होता है: वह अनुरोध जिसमें पूरा दस्तावेज़ जुड़ा है, जो debug करने लायक मामला है।</p>
 <p><code>larger_than</code> एक <strong>event</strong> को मापता है, hook के बाद। <code>listen.max_body</code> अलग चीज़ है: वह पूरे <strong>अनुरोध</strong> को सीमित करता है और एक भी बाइट parse होने से पहले <code>413</code> से मना करता है।</p>
-<h2 id="यह-कय-गनत-ह">यह क्या गिनता है<a class="anchor" href="#यह-कय-गनत-ह" aria-label="link">#</a></h2>
+<h2 id="what-it-counts">यह क्या गिनता है<a class="anchor" href="#what-it-counts" aria-label="link">#</a></h2>
 <p>ग्यारह Prometheus series, <strong>अपने port</strong> पर — ingest वाले पर कभी नहीं, और यह नियम यहाँ engine से ज़्यादा मायने रखता है: ingest port निर्माण से ही सार्वजनिक है, वहीं क्लाइंट <code>POST</code> करते हैं, इसलिए उस पर <code>/metrics</code> हर stream का नाम, path और गंतव्य उसे प्रकाशित करता जिसे path मिल जाए। दोनों के लिए वही पता देना लोड पर मना है।</p>
 <div class="code-block" data-code="brevis_gateway_events_received_total{stream,format}     counter
 brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
@@ -393,20 +393,20 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 <p><code>process_start_time_seconds</code> पर <code>brevis_</code> उपसर्ग <strong>नहीं</strong> है, और यह जानबूझकर है: collectors ठीक यही नाम खोजते हैं। यह बताता है कि प्रोसेस कब शुरू हुई, और इसके बिना start-time adjustment करने वाला collector — OpenTelemetry Prometheus receiver, जिस पर Google Managed Prometheus बना है — हर cumulative series को उसके <strong>पहले scrape</strong> पर टिकाता है और उस scrape का मान आधार के रूप में खर्च कर देता है। नतीजा: हर counter कम पढ़ता है, deltas सही और कुल गलत।</p>
 <p>आखिरी तीन वे हैं जिन्हें कोई पहली घटना के बाद तक नहीं माँगता। <code>saturated_total</code> अकेली संख्या है जो कहती है कि क्लाइंट को पीछे हटने को कहा गया; <code>buffer.max_records</code> के विरुद्ध <code>buffer_records</code> अकेली है जो उसकी <strong>भविष्यवाणी</strong> करती है।</p>
 <p><code>reason</code> बंद सेट है, त्रुटि का टेक्स्ट कभी नहीं: त्रुटि string तालिका का नाम, कॉलम, कभी-कभी पंक्ति ढोती है, और एक विकृत क्लाइंट हर अनुरोध पर नई series बना देता। टेक्स्ट dead letter में, रिकॉर्ड पर रहता है।</p>
-<h2 id="202-200-नह"><code>202</code>, <code>200</code> नहीं<a class="anchor" href="#202-200-नह" aria-label="link">#</a></h2>
+<h2 id="202-not-200"><code>202</code>, <code>200</code> नहीं<a class="anchor" href="#202-not-200" aria-label="link">#</a></h2>
 <p>Gateway ने events <strong>स्वीकार</strong> किए हैं। <code>durability: memory</code> के साथ — इकलौता लागू स्तर — वह जितना ईमानदारी से दावा कर सकता है वह बस इतना ही है। जो स्तर <code>200</code> कमाता है वह वह है जिसने उन्हें पहले ही लिख लिया हो, और वह मौजूद नहीं है।</p>
 <p><code>disk</code> <strong>नाम लेकर</strong> मना है, स्वीकार करके memory की तरह बरता नहीं जाता: <code>disk</code> लिखने वाला मानता है कि उसके events crash से बचेंगे, और बिना निभाए सहमत हो जाना ठीक वही विफलता है जिसे रोकने के लिए वह फ़ील्ड है।</p>
 <p>Shutdown पर बफ़र में जो है वह डिलीवर होता है, गिराया नहीं जाता — उसी रास्ते से जो भरा batch लेता है, retry होकर और दफ़नाया जाकर।</p>
-<h2 id="यह-कय-नह-करत">यह क्या नहीं करता<a class="anchor" href="#यह-कय-नह-करत" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-do">यह क्या नहीं करता<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
 <ul><li><strong>यह console में नहीं दिखता।</strong> यह engine के इंटरफ़ेस के साथ कोई डेटाबेस साझा नहीं करता, इसलिए कोई <code>/ingestion</code> पेज नहीं है — और <code>auto_table</code> जो स्कीमा विकास करता है वह भी वहाँ नहीं दिखता। यह अगला कदम है और अभी लिखा नहीं गया।</li><li><strong><code>table</code> वाला stream स्कीमा विकसित नहीं करता।</strong> जब आप तालिका का नाम लेते हैं, अनुबंध तालिका का होता है: जो फ़ील्ड उसके पास नहीं है वह उस संदेश के साथ मना किया जाता है जो उसे ठीक करता है, ऐसी तालिका बदलने के बजाय जिसकी किसी ने समीक्षा की थी। अपने आप कॉलम बढ़ाना वह है जो <code>auto_table</code> करता है, और दोनों में फ़र्क यही है।</li><li><strong><code>table</code> वाला stream कोई तालिका और कोई index नहीं बनाता।</strong> जो service तालिकाएँ बनाती है वह टाइपो को दूसरी तालिका में बदल देती है जिसे कोई पढ़ नहीं रहा — इसीलिए निर्माण सिर्फ़ <code>auto_table</code> के तहत होता है, जहाँ <code>naming</code> बाँधता है कि कौन-से नाम मौजूद हो सकते हैं और <code>listen.auth</code> अनिवार्य है।</li><li><strong>प्रकाशित image में कोई hooks नहीं हैं</strong>, जो compile किए गए hook के डिज़ाइन के लिए ईमानदार आर्टिफ़ैक्ट है: वह उन streams को परोसती है जो <code>hook:</code> घोषित नहीं करते।</li></ul>
-<h2 id="एक-route-n-तलकए">एक route, N तालिकाएँ<a class="anchor" href="#एक-route-n-तलकए" aria-label="link">#</a></h2>
+<h2 id="one-route-n-tables">एक route, N तालिकाएँ<a class="anchor" href="#one-route-n-tables" aria-label="link">#</a></h2>
 <p><code>auto_table</code> हर event को उस तालिका पर route करता है जिसका नाम <strong>envelope</strong> लेता है, वह तालिका न हो तो बनाता है, और नया फ़ील्ड आने पर कॉलम बढ़ाता है:</p>
 <div class="code-block" data-code="{&quot;table_name&quot;: &quot;app_orders&quot;, &quot;operation&quot;: &quot;INSERT&quot;, &quot;unique_key&quot;: &quot;id&quot;,
  &quot;data&quot;: {&quot;id&quot;: &quot;A-1&quot;, &quot;total&quot;: 150, &quot;customer&quot;: {&quot;id&quot;: 7, &quot;uf&quot;: &quot;SP&quot;}}}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>{"table_name": "app_orders", "operation": "INSERT", "unique_key": "id",
  "data": {"id": "A-<span class="t-n">1</span>", "total": <span class="t-n">150</span>, "customer": {"id": <span class="t-n">7</span>, "uf": "SP"}}}</code></pre></div>
 <p>ऊपर नियंत्रण फ़ील्ड, रिकॉर्ड <code>data</code> के भीतर, और हर तालिका पर सात <code>brevis_*</code> ट्रैकिंग कॉलम। एक route, N तालिकाएँ, कुछ घोषित नहीं।</p>
-<p>यह <a href="/hi/docs/ingestion-sinks/#एक-route-n-तलकए-कछ-घषत-नह">Ingestion sinks</a> में है।</p>
-<h2 id="आग-कह-जए">आगे कहाँ जाएँ<a class="anchor" href="#आग-कह-जए" aria-label="link">#</a></h2>
+<p>यह <a href="/hi/docs/ingestion-sinks/#one-route-n-tables-nothing-declared">Ingestion sinks</a> में है।</p>
+<h2 id="where-to-go-next">आगे कहाँ जाएँ<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>अगर आप चाहते हैं</th><th>यहाँ जाएँ</th></tr></thead><tbody><tr><td>गंतव्य और हर एक कैसे लिखता है</td><td><a href="/hi/docs/ingestion-sinks/">Ingestion sinks</a></td></tr><tr><td>दूसरी ओर से <code>ingestion_id</code></td><td><a href="/hi/docs/sdk/">Go SDK</a></td></tr><tr><td>डैशबोर्ड और अलर्ट</td><td><a href="/hi/docs/observability/">ऑब्ज़र्वेबिलिटी</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="पेज">
@@ -421,7 +421,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#फइल-ह-अनबध-ह">फ़ाइल ही अनुबंध है</a></li><li class="toc-2"><a href="#ingestion-id-ज-असल-बत-ह">ingestion_id, जो असली बात है</a></li><li class="toc-2"><a href="#अनरध-कभ-sink-क-इतजर-नह-करत">अनुरोध कभी sink का इंतज़ार नहीं करता</a></li><li class="toc-3"><a href="#flush-क-घड-deployment-क-ह">Flush की घड़ी deployment की है</a></li><li class="toc-3"><a href="#every-लकषय-ह-max-age-वद-ह">every लक्ष्य है; max_age वादा है</a></li><li class="toc-3"><a href="#size-trigger-कय-ह">Size trigger क्यों है</a></li><li class="toc-2"><a href="#कनकशन-तय-करत-ह-क-भर-कस-replica-क-मल">कनेक्शन तय करता है कि भार किस replica को मिले</a></li><li class="toc-2"><a href="#जब-sink-मन-कर">जब sink मना करे</a></li><li class="toc-2"><a href="#hook-go-ह-compile-हकर-भतर">Hook Go है, compile होकर भीतर</a></li><li class="toc-2"><a href="#जब-event-बहत-बड-ह">जब event बहुत बड़ा हो</a></li><li class="toc-2"><a href="#यह-कय-गनत-ह">यह क्या गिनता है</a></li><li class="toc-2"><a href="#202-200-नह">202, 200 नहीं</a></li><li class="toc-2"><a href="#यह-कय-नह-करत">यह क्या नहीं करता</a></li><li class="toc-2"><a href="#एक-route-n-तलकए">एक route, N तालिकाएँ</a></li><li class="toc-2"><a href="#आग-कह-जए">आगे कहाँ जाएँ</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file-is-the-contract">फ़ाइल ही अनुबंध है</a></li><li class="toc-2"><a href="#the-ingestion-id-which-is-the-point">ingestion_id, जो असली बात है</a></li><li class="toc-2"><a href="#the-request-never-waits-for-the-sink">अनुरोध कभी sink का इंतज़ार नहीं करता</a></li><li class="toc-3"><a href="#the-flush-clock-belongs-to-the-deployment">Flush की घड़ी deployment की है</a></li><li class="toc-3"><a href="#every-is-a-target-max-age-is-a-promise">every लक्ष्य है; max_age वादा है</a></li><li class="toc-3"><a href="#why-there-is-a-size-trigger">Size trigger क्यों है</a></li><li class="toc-2"><a href="#a-connection-decides-which-replica-gets-the-load">कनेक्शन तय करता है कि भार किस replica को मिले</a></li><li class="toc-2"><a href="#when-the-sink-refuses">जब sink मना करे</a></li><li class="toc-2"><a href="#the-hook-is-go-compiled-in">Hook Go है, compile होकर भीतर</a></li><li class="toc-2"><a href="#when-an-event-is-too-big">जब event बहुत बड़ा हो</a></li><li class="toc-2"><a href="#what-it-counts">यह क्या गिनता है</a></li><li class="toc-2"><a href="#202-not-200">202, 200 नहीं</a></li><li class="toc-2"><a href="#what-it-does-not-do">यह क्या नहीं करता</a></li><li class="toc-2"><a href="#one-route-n-tables">एक route, N तालिकाएँ</a></li><li class="toc-2"><a href="#where-to-go-next">आगे कहाँ जाएँ</a></li></ul>
     </aside>
   </main>
 </div>
@@ -441,9 +441,9 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -466,7 +466,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
       <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/console/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/console/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/console/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/console/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/console/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/console/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/console/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/console/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/console/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/console/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/console/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>Console</h1>
@@ -127,25 +127,25 @@
       <p>界面内置于二进制文件中，不需要另外安装和维持一个独立的服务。成功率、平均耗时、队列、尝试历史，以及接下来要运行的调度。</p>
 <p>Console 随 <code>brevis serve</code> 一起启动，与 HTTP API 使用同一个端口（<code>BREVIS_HTTP_ADDR</code>，默认为 <code>:8080</code>）。在<a href="/zh/docs/quickstart/">快速开始</a> 中，它在 <code>localhost:8080</code> 打开。</p>
 <p>下面的界面是根据 Console 用示例数据以 SVG 重绘的，绝不是截图：真实的 Console 在生产环境中操作的是客户数据。</p>
-<h2 id="概览">概览<a class="anchor" href="#概览" aria-label="link">#</a></h2>
+<h2 id="overview">概览<a class="anchor" href="#overview" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console.svg" width="1000" height="600" alt="Brevis Console 的概览界面：344 次运行的成功率为 94.2%，每小时运行次数的柱状图及平均耗时，一个分布环图，进行中的内容，以及接下来的调度运行。" loading="lazy"></figure>
 <p>带有指标和图表的概览。成功率、平均耗时、进行中的内容以及接下来的调度运行，都在同一个界面上。</p>
 <h2 id="workflows">Workflows<a class="anchor" href="#workflows" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflows.svg" width="1000" height="600" alt="workflow 列表：搜索、按状态和标签的筛选，以及十二个 workflow，每个都有暂停开关、cron 表达式、下一次和上一次运行、标签，以及立即运行它的按钮。" loading="lazy"></figure>
 <p>带有搜索、筛选、暂停和运行的 workflow 列表。每一行都有 cron、下一次和上一次运行，以及标签。</p>
-<h2 id="单个-workflow">单个 workflow<a class="anchor" href="#单个-workflow" aria-label="link">#</a></h2>
+<h2 id="one-workflow">单个 workflow<a class="anchor" href="#one-workflow" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflow.svg" width="1000" height="600" alt="单个 workflow 的页面：它的四个 step、三个依赖、cron 和标签；带参数运行它的表单；176 次运行的成功率为 96.1%；显示每个 step 状态的 DAG；以及一年的日历，其中每个方块是一天，按当天最差的结果着色。" loading="lazy"></figure>
 <p>step 和依赖、带参数运行的表单、显示每个 step 状态的 DAG，以及一个年历，其中每一天的颜色取决于当天最差的结果。</p>
-<h2 id="运行">运行<a class="anchor" href="#运行" aria-label="link">#</a></h2>
+<h2 id="runs">运行<a class="anchor" href="#runs" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-runs.svg" width="1000" height="600" alt="运行历史：1,284 次运行，包括状态、workflow、触发方式、所属的 slot、各自耗时以及创建时间。部分运行显示是第几次尝试成功的。" loading="lazy"></figure>
 <p>运行历史，包含每次运行的尝试。状态、workflow、触发方式、该运行所属的 slot、耗时以及创建时间。</p>
-<h2 id="单次运行">单次运行<a class="anchor" href="#单次运行" aria-label="link">#</a></h2>
+<h2 id="one-run">单次运行<a class="anchor" href="#one-run" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-run.svg" width="1000" height="600" alt="一个已完成的 run：它的状态、触发方式和 slot；带有每个 step 的命令、镜像和耗时的图；引擎为每个 run 算出的九个自动参数，即用来取代 now() 的时钟、分区日期、这次尝试晚了多久启动以及它所覆盖的窗口；以及每个 step 的输出。" loading="lazy"></figure>
 <p>run 的实时 DAG，以及引擎为它算出的自动参数。图中带有每个 step 的命令、镜像和耗时，以及每个 step 的输出。</p>
-<h2 id="项目">项目<a class="anchor" href="#项目" aria-label="link">#</a></h2>
+<h2 id="projects">项目<a class="anchor" href="#projects" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-projects.svg" width="1000" height="600" alt="两个项目 analytics 和 platform，各自为自己的 workflow 提供命名空间：两者都可以有 daily_ingest 而不会冲突。" loading="lazy"></figure>
 <p>项目，这样两个团队不会在同一个名称上冲突。每个项目为自己的 workflow 提供命名空间：两个项目可以各有一个 <code>daily_ingest</code>。</p>
-<h2 id="内置于二进制文件">内置于二进制文件<a class="anchor" href="#内置于二进制文件" aria-label="link">#</a></h2>
+<h2 id="it-ships-in-the-binary">内置于二进制文件<a class="anchor" href="#it-ships-in-the-binary" aria-label="link">#</a></h2>
 <p>字体和资源包由二进制文件提供，无需互联网也能工作。</p>
 
       <nav class="pagers" aria-label="页面">
@@ -160,7 +160,7 @@
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#概览">概览</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#单个-workflow">单个 workflow</a></li><li class="toc-2"><a href="#运行">运行</a></li><li class="toc-2"><a href="#单次运行">单次运行</a></li><li class="toc-2"><a href="#项目">项目</a></li><li class="toc-2"><a href="#内置于二进制文件">内置于二进制文件</a></li></ul>
+      <ul><li class="toc-2"><a href="#overview">概览</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#one-workflow">单个 workflow</a></li><li class="toc-2"><a href="#runs">运行</a></li><li class="toc-2"><a href="#one-run">单次运行</a></li><li class="toc-2"><a href="#projects">项目</a></li><li class="toc-2"><a href="#it-ships-in-the-binary">内置于二进制文件</a></li></ul>
     </aside>
   </main>
 </div>
@@ -180,9 +180,9 @@
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -205,7 +205,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

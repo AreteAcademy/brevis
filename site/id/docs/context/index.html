@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+<a class="skip-link" href="#content">Lewati ke konten</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigasi utama">
-      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/#ecosystem">Ekosistem</a>
       <a href="/id/docs/">Dokumentasi</a>
       <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/context/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/context/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/context/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/context/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/context/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/context/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/context/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/context/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/context/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/context/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/context/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentasi</p>
       <h1>Konteks antar step</h1>
@@ -150,7 +150,7 @@ bucket = context.get(&quot;extract.bucket&quot;)"><div class="code-head"><span c
 bucket = context.get("extract.bucket")</code></pre></div>
 <p>Key selalu berbentuk <code>&lt;step id&gt;.&lt;name&gt;</code>. Sebuah step membaca apa yang dipublikasikan oleh <strong>dependensinya sendiri</strong>, dan tidak yang lain.</p>
 <aside class="admon admon-note"><p class="admon-t">Apa yang bukan fitur ini</p><p>Bukan message queue, bukan state antar run, dan bukan tempat menyimpan data. Ini adalah catatan yang ditinggalkan satu step untuk step berikutnya — sebuah path, watermark, atau jumlah.</p></aside>
-<h2 id="bahasa-apa-pun-tanpa-pustaka-wajib">Bahasa apa pun, tanpa pustaka wajib<a class="anchor" href="#bahasa-apa-pun-tanpa-pustaka-wajib" aria-label="link">#</a></h2>
+<h2 id="any-language-no-library-required">Bahasa apa pun, tanpa pustaka wajib<a class="anchor" href="#any-language-no-library-required" aria-label="link">#</a></h2>
 <p>Kontraknya adalah <strong>dua variabel environment dan sebuah file</strong>, sehingga step tanpa SDK sama sekali pun dapat ikut serta:</p>
 <div class="code-block" data-code="window=$(jq -r &#x27;.extract.watermark&#x27; &lt;&lt;&lt; &quot;$BREVIS_INPUT&quot;)
 ./publish --until &quot;$window&quot;
@@ -160,15 +160,15 @@ jq <span class="t-n">-n</span> <span class="t-n">--arg</span> n "$(date <span cl
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>BREVIS_INPUT</code></td><td><code>{"&lt;step id&gt;": {…}}</code> — apa yang dipublikasikan oleh dependensi step ini</td></tr><tr><td><code>BREVIS_OUTPUT</code></td><td>path untuk menulis <strong>satu</strong> objek JSON</td></tr></tbody></table></div>
 <p>Di Kubernetes path itu adalah <code>/dev/termination-log</code>, yang sudah dibaca engine untuk mendapatkan exit code. Jadi <strong>tidak ada panggilan API, token, atau port</strong> — dan pustaka untuknya hanyalah parse JSON dan penulisan file.</p>
 <div class="table-wrap"><table><thead><tr><th>bahasa</th><th></th></tr></thead><tbody><tr><td>Python</td><td><a href="/id/docs/python/"><code>pip install brevis</code></a> — juga membawa <code>brevis.run</code>, dengan <a href="/id/docs/parameters/">parameter otomatis</a></td></tr><tr><td>Go</td><td><code>sdk/context</code>, bagian dari modul SDK, tidak bergantung pada apa pun</td></tr><tr><td>lainnya</td><td>dua variabel di atas</td></tr></tbody></table></div>
-<h2 id="isolasi">Isolasi<a class="anchor" href="#isolasi" aria-label="link">#</a></h2>
+<h2 id="isolation">Isolasi<a class="anchor" href="#isolation" aria-label="link">#</a></h2>
 <p>Tidak ada step yang dapat menimpa apa yang dipublikasikan step lain. Key diberi prefiks id penulisnya, dan engine — bukan step — yang menentukan prefiks itu. Dua step yang mempublikasikan <code>bucket</code> menghasilkan <code>extract.bucket</code> dan <code>load.bucket</code>, dan tidak ada yang hilang.</p>
-<h2 id="batas-4096-byte">Batas 4096 byte<a class="anchor" href="#batas-4096-byte" aria-label="link">#</a></h2>
+<h2 id="the-4096-byte-ceiling">Batas 4096 byte<a class="anchor" href="#the-4096-byte-ceiling" aria-label="link">#</a></h2>
 <p>Apa yang dipublikasikan sebuah step harus muat dalam <strong>4096 byte</strong>. Batas ini tidak sembarangan: di Kubernetes transportnya adalah <code>/dev/termination-log</code>, dan itulah yang diterima kubelet.</p>
 <p>Melebihinya adalah <strong>error step</strong>, dengan pesan yang menyebutkan berapa byte yang ditulis. Alternatifnya adalah pemotongan — dan JSON yang terpotong adalah JSON yang tidak valid, yang ditemukan oleh step berikutnya, yang tidak punya cara untuk mengetahui bahwa kesalahannya bukan miliknya.</p>
 <p>Jika sebuah nilai tidak muat, ia bukan context: tulis ke bucket dan publikasikan path-nya.</p>
-<h2 id="retry-dan-run-yang-dilanjutkan">Retry dan run yang dilanjutkan<a class="anchor" href="#retry-dan-run-yang-dilanjutkan" aria-label="link">#</a></h2>
+<h2 id="retries-and-resumed-runs">Retry dan run yang dilanjutkan<a class="anchor" href="#retries-and-resumed-runs" aria-label="link">#</a></h2>
 <p>Pada percobaan baru, step mempublikasikan lagi dan nilai sebelumnya diganti. Step yang sudah berhasil tidak dijalankan ulang dan tidak mempublikasikan ulang — apa yang dikatakannya tetap berlaku bagi yang bergantung padanya.</p>
-<h2 id="menjalankan-step-secara-manual">Menjalankan step secara manual<a class="anchor" href="#menjalankan-step-secara-manual" aria-label="link">#</a></h2>
+<h2 id="running-a-step-by-hand">Menjalankan step secara manual<a class="anchor" href="#running-a-step-by-hand" aria-label="link">#</a></h2>
 <p>Kedua variabel itu adalah seluruh kontraknya, sehingga mereproduksi sebuah run cukup dengan mengekspornya:</p>
 <div class="code-block" data-code="export BREVIS_INPUT=&#x27;{&quot;extract&quot;:{&quot;bucket&quot;:&quot;s3://landing/2026-09-07&quot;}}&#x27;
 export BREVIS_OUTPUT=/tmp/out.json
@@ -177,7 +177,7 @@ cat /tmp/out.json"><div class="code-head"><span class="code-lang">bash</span><bu
 export BREVIS_OUTPUT=/tmp/out.json
 python transform.py
 cat /tmp/out.json</code></pre></div>
-<h2 id="langkah-berikutnya">Langkah berikutnya<a class="anchor" href="#langkah-berikutnya" aria-label="link">#</a></h2>
+<h2 id="next-steps">Langkah berikutnya<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/id/docs/parameters/">Parameter</a> — apa yang berubah di antara run, dan yang otomatis</li><li><a href="/id/docs/runtime/">Runtime step</a> — apa yang dideklarasikan sebuah step tentang tempat ia berjalan</li><li><a href="/id/docs/python/">Python</a> — pustaka klien, dan bahasa lainnya</li></ul>
 
       <nav class="pagers" aria-label="Halaman">
@@ -192,7 +192,7 @@ cat /tmp/out.json</code></pre></div>
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#bahasa-apa-pun-tanpa-pustaka-wajib">Bahasa apa pun, tanpa pustaka wajib</a></li><li class="toc-2"><a href="#isolasi">Isolasi</a></li><li class="toc-2"><a href="#batas-4096-byte">Batas 4096 byte</a></li><li class="toc-2"><a href="#retry-dan-run-yang-dilanjutkan">Retry dan run yang dilanjutkan</a></li><li class="toc-2"><a href="#menjalankan-step-secara-manual">Menjalankan step secara manual</a></li><li class="toc-2"><a href="#langkah-berikutnya">Langkah berikutnya</a></li></ul>
+      <ul><li class="toc-2"><a href="#any-language-no-library-required">Bahasa apa pun, tanpa pustaka wajib</a></li><li class="toc-2"><a href="#isolation">Isolasi</a></li><li class="toc-2"><a href="#the-4096-byte-ceiling">Batas 4096 byte</a></li><li class="toc-2"><a href="#retries-and-resumed-runs">Retry dan run yang dilanjutkan</a></li><li class="toc-2"><a href="#running-a-step-by-hand">Menjalankan step secara manual</a></li><li class="toc-2"><a href="#next-steps">Langkah berikutnya</a></li></ul>
     </aside>
   </main>
 </div>
@@ -212,9 +212,9 @@ cat /tmp/out.json</code></pre></div>
       <div class="footer-col">
         <h2>proyek</h2>
         <ul>
-          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/#ecosystem">Ekosistem</a></li>
           <li><a href="/id/docs/philosophy/">Prinsip</a></li>
-          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/id/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -237,7 +237,7 @@ cat /tmp/out.json</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

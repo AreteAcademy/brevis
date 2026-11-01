@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
       <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/integrations/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/integrations/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/integrations/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/integrations/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/integrations/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/integrations/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/integrations/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/integrations/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/integrations/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/integrations/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/integrations/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,26 +119,26 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>インテグレーション</h1>
       <p class="doc-desc">何が何につながるか。データの取得元、着地先、モデリングの場所、そして全体が動く場所。</p>
       <p><strong>すでに使っているものだけを載せ、まだ存在しないものは載せません。</strong> ドライバがここに載るのは、リポジトリにコードが入った時点からです。それ以前には載りません。</p>
 <p>各行は、どの構成要素が、どのパッケージまたは sink を通じてそこに到達するか、そして詳細をどこで確認できるかを示します。</p>
-<h2 id="取得元">取得元<a class="anchor" href="#取得元" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>接続方法</th><th>ガイド</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK: <code>from.HTTP</code></td><td><a href="/ja/docs/sdk/#ソースと宛先">Go SDK</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>from/postgres</code></td><td><a href="/ja/docs/sdk/#ソースと宛先">Go SDK</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>from/mysql</code></td><td><a href="/ja/docs/sdk/#ソースと宛先">Go SDK</a></td></tr><tr><td><strong>ファイル</strong></td><td>SDK: <code>from.Files</code> — ローカル、S3、GCS</td><td><a href="/ja/docs/sdk/#ソースと宛先">Go SDK</a></td></tr></tbody></table></div>
-<h2 id="着地先">着地先<a class="anchor" href="#着地先" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>接続方法</th><th>ガイド</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK: <code>to/bigquery</code> · Gateway: <code>bigquery</code></td><td><a href="/ja/docs/sdk/#ソースと宛先">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>to/postgres</code> · Gateway: <code>postgres</code></td><td><a href="/ja/docs/sdk/#ソースと宛先">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>to/mysql</code> · Gateway: <code>mysql</code></td><td><a href="/ja/docs/sdk/#ソースと宛先">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK: <code>to/redshift</code> · Gateway: <code>redshift</code></td><td><a href="/ja/docs/sdk/#ソースと宛先">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK: <code>to/pubsub</code> · Gateway: <code>pubsub</code></td><td><a href="/ja/docs/sdk/#ソースと宛先">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr></tbody></table></div>
-<h2 id="ファイルの着地先">ファイルの着地先<a class="anchor" href="#ファイルの着地先" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>接続方法</th><th>ガイド</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK: <code>store/s3</code> · Gateway: <code>s3://</code> 上の <code>files</code></td><td><a href="/ja/docs/sdk/#ソースと宛先">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK: <code>store/gcs</code> · Gateway: <code>gs://</code> 上の <code>files</code></td><td><a href="/ja/docs/sdk/#ソースと宛先">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr></tbody></table></div>
-<h2 id="モデリングの場所">モデリングの場所<a class="anchor" href="#モデリングの場所" aria-label="link">#</a></h2>
+<h2 id="pulls-from">取得元<a class="anchor" href="#pulls-from" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>接続方法</th><th>ガイド</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK: <code>from.HTTP</code></td><td><a href="/ja/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>from/postgres</code></td><td><a href="/ja/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>from/mysql</code></td><td><a href="/ja/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>ファイル</strong></td><td>SDK: <code>from.Files</code> — ローカル、S3、GCS</td><td><a href="/ja/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr></tbody></table></div>
+<h2 id="lands-in">着地先<a class="anchor" href="#lands-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>接続方法</th><th>ガイド</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK: <code>to/bigquery</code> · Gateway: <code>bigquery</code></td><td><a href="/ja/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>to/postgres</code> · Gateway: <code>postgres</code></td><td><a href="/ja/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>to/mysql</code> · Gateway: <code>mysql</code></td><td><a href="/ja/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK: <code>to/redshift</code> · Gateway: <code>redshift</code></td><td><a href="/ja/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK: <code>to/pubsub</code> · Gateway: <code>pubsub</code></td><td><a href="/ja/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr></tbody></table></div>
+<h2 id="files-in">ファイルの着地先<a class="anchor" href="#files-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>接続方法</th><th>ガイド</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK: <code>store/s3</code> · Gateway: <code>s3://</code> 上の <code>files</code></td><td><a href="/ja/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK: <code>store/gcs</code> · Gateway: <code>gs://</code> 上の <code>files</code></td><td><a href="/ja/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr></tbody></table></div>
+<h2 id="models-in">モデリングの場所<a class="anchor" href="#models-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>接続方法</th><th>ガイド</th></tr></thead><tbody><tr><td><strong>Postgres</strong></td><td>SQL: <code>--dialect postgres</code>(デフォルト)</td><td><a href="/ja/docs/sql/">SQL</a></td></tr><tr><td><strong>BigQuery</strong></td><td>SQL: <code>--dialect bigquery</code></td><td><a href="/ja/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="実行環境">実行環境<a class="anchor" href="#実行環境" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>接続方法</th><th>ガイド</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>構成要素ごとに 1 つのイメージ: <code>areteacademy/brevis</code>、<code>brevis-gateway</code>、<code>brevis-sql</code></td><td><a href="/ja/docs/installation/#docker">インストール</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>ステップごとに 1 つの pod</td><td><a href="/ja/docs/kubernetes/">Kubernetes</a>、<a href="/ja/docs/pod-per-step/">ステップごとの pod</a></td></tr><tr><td><strong>Helm</strong></td><td><code>deployments/helm/brevis</code> にあるチャート</td><td><a href="/ja/docs/kubernetes/#helm-でインストールする">Kubernetes</a></td></tr></tbody></table></div>
-<h2 id="実装言語">実装言語<a class="anchor" href="#実装言語" aria-label="link">#</a></h2>
+<h2 id="runs-on">実行環境<a class="anchor" href="#runs-on" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>接続方法</th><th>ガイド</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>構成要素ごとに 1 つのイメージ: <code>areteacademy/brevis</code>、<code>brevis-gateway</code>、<code>brevis-sql</code></td><td><a href="/ja/docs/installation/#docker">インストール</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>ステップごとに 1 つの pod</td><td><a href="/ja/docs/kubernetes/">Kubernetes</a>、<a href="/ja/docs/pod-per-step/">ステップごとの pod</a></td></tr><tr><td><strong>Helm</strong></td><td><code>deployments/helm/brevis</code> にあるチャート</td><td><a href="/ja/docs/kubernetes/#install-it-with-helm">Kubernetes</a></td></tr></tbody></table></div>
+<h2 id="written-in">実装言語<a class="anchor" href="#written-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>接続方法</th><th>ガイド</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td>Core、SDK、Gateway、SQL</td><td><a href="/ja/docs/ecosystem/">エコシステム</a></td></tr><tr><td><strong>Python</strong></td><td><code>pip install brevis</code>: Python ステップでステップ間のコンテキストを扱います</td><td><a href="/ja/docs/python/">Python</a></td></tr><tr><td><strong>SQL</strong></td><td>brevis-sql のモデルは通常の <code>.sql</code> ファイルです</td><td><a href="/ja/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="クラウド">クラウド<a class="anchor" href="#クラウド" aria-label="link">#</a></h2>
+<h2 id="clouds">クラウド<a class="anchor" href="#clouds" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>接続方法</th><th>ガイド</th></tr></thead><tbody><tr><td><strong>Google Cloud</strong></td><td>上記の BigQuery、Pub/Sub、GCS</td><td>—</td></tr><tr><td><strong>AWS</strong></td><td>上記の Redshift と S3</td><td>—</td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="ページ">
@@ -153,7 +153,7 @@
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#取得元">取得元</a></li><li class="toc-2"><a href="#着地先">着地先</a></li><li class="toc-2"><a href="#ファイルの着地先">ファイルの着地先</a></li><li class="toc-2"><a href="#モデリングの場所">モデリングの場所</a></li><li class="toc-2"><a href="#実行環境">実行環境</a></li><li class="toc-2"><a href="#実装言語">実装言語</a></li><li class="toc-2"><a href="#クラウド">クラウド</a></li></ul>
+      <ul><li class="toc-2"><a href="#pulls-from">取得元</a></li><li class="toc-2"><a href="#lands-in">着地先</a></li><li class="toc-2"><a href="#files-in">ファイルの着地先</a></li><li class="toc-2"><a href="#models-in">モデリングの場所</a></li><li class="toc-2"><a href="#runs-on">実行環境</a></li><li class="toc-2"><a href="#written-in">実装言語</a></li><li class="toc-2"><a href="#clouds">クラウド</a></li></ul>
     </aside>
   </main>
 </div>
@@ -173,9 +173,9 @@
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -198,7 +198,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

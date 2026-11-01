@@ -82,7 +82,7 @@ port कभी scrape नहीं होता, या संयोग से �
 pipeline के चरण बनाने के लिए पहले से पढ़ता है — और engine उसे दर्ज करता है। इंस्टॉल करने को कुछ नहीं, चलाने
 को कुछ नहीं, और label engine के होते हैं क्योंकि step अपना workflow slug नहीं जान सकता।
 
-API का विवरण [Python](/docs/python/#व-मटरकस-ज-सरफ-आपक-pipeline-जनत-ह) में है।
+API का विवरण [Python](/docs/python/#metrics-only-your-pipeline-knows) में है।
 
 ## किसी और भाषा के लिए क्लाइंट लिखना
 

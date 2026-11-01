@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+<a class="skip-link" href="#content">Lewati ke konten</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigasi utama">
-      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/#ecosystem">Ekosistem</a>
       <a href="/id/docs/">Dokumentasi</a>
       <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/configuration/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/configuration/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/configuration/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/configuration/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/configuration/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/configuration/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/configuration/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/configuration/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/configuration/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/configuration/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/configuration/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,17 +119,17 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentasi</p>
       <h1>Konfigurasi</h1>
       <p class="doc-desc">Setiap variabel environment, dengan default, format, dan apa yang terjadi bila hilang.</p>
       <p>Semua konfigurasi berasal dari <strong>environment</strong>, dibaca sekali saat boot. Tidak ada yang menanyakan environment sesudahnya: proses yang konfigurasinya berubah di tengah jalan adalah proses yang perilakunya tidak dapat direproduksi siapa pun.</p>
-<h2 id="wajib">Wajib<a class="anchor" href="#wajib" aria-label="link">#</a></h2>
+<h2 id="required">Wajib<a class="anchor" href="#required" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variabel</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_DATABASE_URL</code></td><td>Postgres. Hilang = <strong>error boot</strong> pada lima subcommand yang memakai database</td></tr></tbody></table></div>
-<h2 id="proses">Proses<a class="anchor" href="#proses" aria-label="link">#</a></h2>
+<h2 id="process">Proses<a class="anchor" href="#process" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variabel</th><th>default</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_ENV</code></td><td><code>local</code></td><td><code>local</code> mencatat log dalam teks dan membiarkan antarmuka terbuka; selain itu membutuhkan kredensial dan mencatat log JSON</td></tr><tr><td><code>BREVIS_HTTP_ADDR</code></td><td><code>:8080</code></td><td>alamat listen</td></tr><tr><td><code>BREVIS_LOG_LEVEL</code></td><td><code>info</code></td><td></td></tr><tr><td><code>BREVIS_SHUTDOWN_TIMEOUT_SECONDS</code></td><td><code>15</code></td><td>integer; nilai non-numerik adalah error boot</td></tr><tr><td><code>BREVIS_BRAND_FILE</code></td><td><code>brand.yaml</code></td><td>branding; tidak ada = default</td></tr><tr><td><code>BREVIS_UI_URL</code></td><td>—</td><td>basis tautan run di alert</td></tr><tr><td><code>BREVIS_METRICS_ADDR</code></td><td>—</td><td>port metrik Prometheus; kosong = tidak diekspos. Lihat <a href="/id/docs/observability/">Observabilitas</a></td></tr><tr><td><code>BREVIS_SLACK_WEBHOOK</code></td><td>—</td><td>tujuan alert kegagalan. Kosong = tidak ada yang diberi tahu</td></tr></tbody></table></div>
-<h2 id="autentikasi">Autentikasi<a class="anchor" href="#autentikasi" aria-label="link">#</a></h2>
+<h2 id="authentication">Autentikasi<a class="anchor" href="#authentication" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variabel</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_AUTH_USER</code></td><td>pengguna antarmuka</td></tr><tr><td><code>BREVIS_AUTH_PASSWORD_HASH</code></td><td>hash <code>pbkdf2-sha256$…</code>, dibuat oleh <code>brevis hash</code></td></tr><tr><td><code>BREVIS_AUTH_SECRET</code></td><td>32+ byte untuk menandatangani sesi (<code>openssl rand -base64 48</code>)</td></tr></tbody></table></div>
 <p>Ketiganya datang bersama, atau tidak sama sekali.</p>
 <aside class="admon admon-danger"><p class="admon-t">Setengah terkonfigurasi adalah error boot</p><p>Siapa pun yang mengisi nama pengguna percaya pintunya tertutup. Antarmuka memicu pipeline: <code>POST /workflows/&lt;slug&gt;/trigger</code> menjalankan <code>dbt build</code> yang menulis ke warehouse. Terbuka di internet, ia menjadi remote control untuk warehouse — dan peringatan di log tidak meruntuhkan keyakinan itu, karena tidak ada yang membaca log proses yang berfungsi.</p></aside>
@@ -140,7 +140,7 @@ BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and BREVIS_AUTH_SECR
 <aside class="admon admon-note"><p class="admon-t">Nama lama masih berfungsi</p><p>Empat variabel diganti namanya pada 2026-09-10, ketika nama-nama berbahasa Portugis terakhir meninggalkan sisi operator proyek ini: <code>BREVIS_AUTH_USUARIO</code>, <code>BREVIS_AUTH_SENHA_HASH</code>, <code>BREVIS_AUTH_SEGREDO</code>, dan <code>BREVIS_POD_MANTER_EM_FALHA</code>. Instalasi yang mengatur nama lama tetap berfungsi dan mencatat peringatan yang menyebut nama baru.</p>
 <p>Tambahkan nama baru, deploy, lalu hapus nama lama — nama baru menang bila keduanya diatur. Nama lama akan hilang pada versi mayor.</p>
 <p>Di SDK, <code>BREVIS_SDK_LIMITE_INLINE</code> menjadi <code>BREVIS_SDK_INLINE_LIMIT</code> dengan aturan yang sama.</p></aside>
-<h2 id="environment-task">Environment task<a class="anchor" href="#environment-task" aria-label="link">#</a></h2>
+<h2 id="task-environment">Environment task<a class="anchor" href="#task-environment" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variabel</th><th>default</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TASK_ENV</code></td><td>kosong</td><td>apa yang diterima setiap step</td></tr></tbody></table></div>
 <p>Sebuah task <strong>tidak</strong> mewarisi environment orkestrator. Alasannya konkret: proses membawa <code>BREVIS_DATABASE_URL</code> dengan username dan password Postgres, dan workflow adalah command sembarang yang ditulis orang lain — mewarisi berarti menyerahkan kredensial database ke setiap step dari setiap pipeline.</p>
 <p>Apa yang dibutuhkan task dideklarasikan:</p>
@@ -155,12 +155,12 @@ BREVIS_TASK_ENV='*'                       <span class="t-c"># forwards everythin
 <p>Keputusan <strong>instalasi</strong>, bukan keputusan workflow.</p>
 <div class="table-wrap"><table><thead><tr><th>variabel</th><th>default</th><th>format</th></tr></thead><tbody><tr><td><code>BREVIS_PODS</code></td><td><code>auto</code></td><td><code>auto</code>, <code>on</code>, atau <code>off</code>; selain itu adalah error boot</td></tr><tr><td><code>BREVIS_POD_NAMESPACE</code></td><td>milik klaster</td><td></td></tr><tr><td><code>BREVIS_POD_SERVICE_ACCOUNT</code></td><td>—</td><td></td></tr><tr><td><code>BREVIS_POD_PULL_SECRETS</code></td><td>—</td><td>daftar dipisahkan koma</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_SECRETS</code></td><td>—</td><td>daftar dipisahkan koma</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_CONFIGMAPS</code></td><td>—</td><td>daftar dipisahkan koma</td></tr><tr><td><code>BREVIS_POD_ALLOWED_SECRETS</code></td><td>—</td><td>daftar dipisahkan koma</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PATH</code></td><td>—</td><td>path yang di-mount di pod</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PVC</code></td><td>—</td><td>PVC yang menyimpan kredensial</td></tr><tr><td><code>BREVIS_POD_NODE_SELECTOR</code></td><td>—</td><td><code>key=value,other=value</code></td></tr><tr><td><code>BREVIS_POD_TOLERATIONS</code></td><td>—</td><td><code>key=value:effect,…</code>; hanya operator <code>Equal</code></td></tr><tr><td><code>BREVIS_POD_KEEP_ON_FAILURE</code></td><td><code>false</code></td><td><code>true</code> mempertahankan pod untuk diperiksa</td></tr></tbody></table></div>
 <p>Dalam daftar, entri kosong diabaikan: <code>a,,b</code> adalah typo, dan nama secret yang kosong akan membuat server menolak seluruh pod.</p>
-<h2 id="test">Test<a class="anchor" href="#test" aria-label="link">#</a></h2>
+<h2 id="tests">Test<a class="anchor" href="#tests" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variabel</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TEST_DATABASE_URL</code></td><td>database untuk test integrasi; tanpanya, test dilewati</td></tr></tbody></table></div>
-<h2 id="endpoint-health">Endpoint health<a class="anchor" href="#endpoint-health" aria-label="link">#</a></h2>
+<h2 id="health-endpoints">Endpoint health<a class="anchor" href="#health-endpoints" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>GET /health</code></td><td>liveness — <strong>tidak</strong> mengquery database</td></tr><tr><td><code>GET /ready</code></td><td>readiness — mengquery, dan menyebut dependensi yang gagal</td></tr></tbody></table></div>
 <p>Pemisahan ini disengaja: liveness probe yang bergantung pada layanan eksternal membuat Kubernetes <strong>membunuh pod</strong> ketika database goyah, alih-alih sekadar mengeluarkannya dari load balancer.</p>
-<h2 id="contoh-lengkap">Contoh lengkap<a class="anchor" href="#contoh-lengkap" aria-label="link">#</a></h2>
+<h2 id="a-complete-example">Contoh lengkap<a class="anchor" href="#a-complete-example" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# required
 export BREVIS_DATABASE_URL=&#x27;postgres://brevis:secret@db:5432/brevis?sslmode=require&#x27;
 
@@ -215,7 +215,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#wajib">Wajib</a></li><li class="toc-2"><a href="#proses">Proses</a></li><li class="toc-2"><a href="#autentikasi">Autentikasi</a></li><li class="toc-2"><a href="#environment-task">Environment task</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#test">Test</a></li><li class="toc-2"><a href="#endpoint-health">Endpoint health</a></li><li class="toc-2"><a href="#contoh-lengkap">Contoh lengkap</a></li></ul>
+      <ul><li class="toc-2"><a href="#required">Wajib</a></li><li class="toc-2"><a href="#process">Proses</a></li><li class="toc-2"><a href="#authentication">Autentikasi</a></li><li class="toc-2"><a href="#task-environment">Environment task</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#tests">Test</a></li><li class="toc-2"><a href="#health-endpoints">Endpoint health</a></li><li class="toc-2"><a href="#a-complete-example">Contoh lengkap</a></li></ul>
     </aside>
   </main>
 </div>
@@ -235,9 +235,9 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
       <div class="footer-col">
         <h2>proyek</h2>
         <ul>
-          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/#ecosystem">Ekosistem</a></li>
           <li><a href="/id/docs/philosophy/">Prinsip</a></li>
-          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/id/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -260,7 +260,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

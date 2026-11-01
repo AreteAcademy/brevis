@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Перейти к содержимому</a>
+<a class="skip-link" href="#content">Перейти к содержимому</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Основная навигация">
-      <a href="/ru/#ecossistema">Экосистема</a>
+      <a href="/ru/#ecosystem">Экосистема</a>
       <a href="/ru/docs/">Документация</a>
       <details class="lang-dd"><summary aria-label="Язык: Русский"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Русский</span></summary><ul><li><a href="/docs/core/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/core/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/core/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/core/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/core/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/core/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/core/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/core/" lang="ru" hreflang="ru" aria-current="true">Русский</a></li><li><a href="/ko/docs/core/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/core/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/core/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,16 +119,16 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Документация</p>
       <h1>Core</h1>
       <p class="doc-desc">Оркестратор: планирует запуски, хранит очередь в Postgres и запускает по одному pod на шаг — и никогда не касается данных.</p>
       <p>Весь workflow — один версионируемый файл: ревью пайплайна превращается в ревью диффа. Core планирует, ставит в очередь и запускает каждый шаг с его собственным образом — и никогда не касается данных.</p>
 <figure class="doc-figure"><img src="/assets/flow-core.svg" width="360" height="436" alt="Схема работы Core: планировщик и очередь, хранящиеся в Postgres, запускают по одному pod на каждый шаг workflow — prepare, extract, validate и publish. Из Core выходят только линии управления. Данные идут из HTTP-источника в pod шага extract, где работает SDK, и оттуда в BigQuery; через Core данные не проходят." loading="lazy"></figure>
-<h2 id="что-он-делает">Что он делает<a class="anchor" href="#что-он-делает" aria-label="link">#</a></h2>
+<h2 id="what-it-does">Что он делает<a class="anchor" href="#what-it-does" aria-label="link">#</a></h2>
 <ul><li><strong>Планирует.</strong> Планировщик читает расписание каждого workflow и создаёт запуски. Он и очередь — два независимых цикла: застрявший один не останавливает другой — <a href="/ru/docs/scheduler-and-queue/">Планировщик и очередь</a>.</li><li><strong>Ставит в очередь.</strong> Очередь живёт в Postgres: тот, кто исполняет, забирает ожидающий запуск, обходит граф и записывает состояние каждого шага.</li><li><strong>Запускает по одному pod на шаг</strong>, каждый со своим образом — <a href="/ru/docs/pod-per-step/">Pod на шаг</a>.</li><li><strong>Никогда не касается данных.</strong> Из Core выходят только линии управления: данные читает и записывает шаг, с помощью <a href="/ru/docs/sdk/">SDK</a> или любого вашего кода.</li></ul>
-<h2 id="один-workflow-от-начала-до-конца">Один workflow от начала до конца<a class="anchor" href="#один-workflow-от-начала-до-конца" aria-label="link">#</a></h2>
+<h2 id="one-workflow-end-to-end">Один workflow от начала до конца<a class="anchor" href="#one-workflow-end-to-end" aria-label="link">#</a></h2>
 <p>Workflow — это один YAML-файл. Два шага, зависящие от одного и того же, выполняются параллельно:</p>
 <div class="code-block" data-code="name: hello
 type: dag
@@ -204,7 +204,7 @@ workflow hello finished"><div class="code-head"><span class="code-lang">text</sp
 
 workflow hello finished</code></pre></div>
 <p>Реальный вывод опубликованного образа. brevis run выполняется локально, без очереди; pod запускает планировщик.</p>
-<h2 id="что-читать-дальше">Что читать дальше<a class="anchor" href="#что-читать-дальше" aria-label="link">#</a></h2>
+<h2 id="where-to-go-next">Что читать дальше<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>если вы хотите</th><th>перейдите к</th></tr></thead><tbody><tr><td>весь формат YAML</td><td><a href="/ru/docs/workflows/">Workflows</a></td></tr><tr><td>кто создаёт запуски и кто их исполняет</td><td><a href="/ru/docs/scheduler-and-queue/">Планировщик и очередь</a></td></tr><tr><td>почему один pod на шаг</td><td><a href="/ru/docs/pod-per-step/">Pod на шаг</a></td></tr><tr><td>что шаг передаёт следующему</td><td><a href="/ru/docs/context/">Контекст между шагами</a></td></tr><tr><td>поднять всё и увидеть граф в интерфейсе</td><td><a href="/ru/docs/quickstart/">Быстрый старт</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="Страницы">
@@ -219,7 +219,7 @@ workflow hello finished</code></pre></div>
 
     <aside class="toc" aria-label="На этой странице">
       <p class="toc-t">На этой странице</p>
-      <ul><li class="toc-2"><a href="#что-он-делает">Что он делает</a></li><li class="toc-2"><a href="#один-workflow-от-начала-до-конца">Один workflow от начала до конца</a></li><li class="toc-2"><a href="#что-читать-дальше">Что читать дальше</a></li></ul>
+      <ul><li class="toc-2"><a href="#what-it-does">Что он делает</a></li><li class="toc-2"><a href="#one-workflow-end-to-end">Один workflow от начала до конца</a></li><li class="toc-2"><a href="#where-to-go-next">Что читать дальше</a></li></ul>
     </aside>
   </main>
 </div>
@@ -239,9 +239,9 @@ workflow hello finished</code></pre></div>
       <div class="footer-col">
         <h2>проект</h2>
         <ul>
-          <li><a href="/ru/#ecossistema">Экосистема</a></li>
+          <li><a href="/ru/#ecosystem">Экосистема</a></li>
           <li><a href="/ru/docs/philosophy/">Принципы</a></li>
-          <li><a href="/ru/docs/introduction/#открытый-код-выберите-как-участвовать">Open source</a></li>
+          <li><a href="/ru/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/ru/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -264,7 +264,7 @@ workflow hello finished</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

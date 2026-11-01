@@ -14,10 +14,10 @@ pip install brevis
 from brevis import context, metrics, run
 
 bucket = context.get("extract.bucket")
-since, until = run.window()          # a janela que este run cobre
+since, until = run.window()          # the window this run covers
 
 context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
-metrics.set("rows_loaded", 48213)    # chega ao /metrics do engine
+metrics.set("rows_loaded", 48213)    # reaches the engine's /metrics
 ```
 
 **Sem dependências, nunca.** Lê uma variável de ambiente, escreve um arquivo e
@@ -32,10 +32,10 @@ orquestrador tem para dar.
 Uma chave é sempre qualificada pelo passo que a publicou:
 
 ```python
-context.get("extract.bucket")            # o valor
-context.get("extract.nope", default=0)   # ausente não é erro
-context.of("extract")                    # tudo que aquele passo publicou
-context.published()                      # o que ESTE passo já publicou
+context.get("extract.bucket")            # the value
+context.get("extract.nope", default=0)   # absent is not an error
+context.of("extract")                    # everything that step published
+context.published()                      # what THIS step has published so far
 ```
 
 `context.get("bucket")` sem o passo é **recusado**, nomeando os passos que a
@@ -50,8 +50,8 @@ Ler um passo de que este não depende é erro, e a mensagem aponta a correção.
 
 ```python
 context.set(name="Daniel")
-context.set(label="Nome")
-# os dois sobrevivem: {"name": "Daniel", "label": "Nome"}
+context.set(label="Name")
+# both survive: {"name": "Daniel", "label": "Name"}
 ```
 
 As chamadas **mesclam**. A mesma chave duas vezes mantém a última escrita; uma
@@ -127,7 +127,7 @@ diz a cada um qual recebeu:
 ```python
 partition = run.map_value()
 if partition is None:
-    raise SystemExit("este passo é para rodar sob `for_each:`")
+    raise SystemExit("this step is meant to run under `for_each:`")
 
 load(f"/data/{partition}.csv")
 ```
@@ -153,8 +153,8 @@ ou quantos bytes foram descartados. Isso o passo sabe, e a biblioteca leva.
 ```python
 from brevis import metrics
 
-metrics.set("rows_loaded", 48213)          # gauge: a última escrita vence
-metrics.inc("vendor_rejected_total")       # counter: soma
+metrics.set("rows_loaded", 48213)          # a gauge: the last value wins
+metrics.inc("vendor_rejected_total")       # a counter: it adds up
 metrics.inc("bytes_discarded_total", 4096)
 ```
 
@@ -243,7 +243,7 @@ em produção.
 O contrato inteiro são duas variáveis, então não há o que mockar:
 
 ```python
-def test_meu_passo(monkeypatch, tmp_path):
+def test_my_step(monkeypatch, tmp_path):
     monkeypatch.setenv("BREVIS_INPUT", '{"extract": {"rows": 42}}')
     monkeypatch.setenv("BREVIS_OUTPUT", str(tmp_path / "out"))
     assert context.get("extract.rows") == 42

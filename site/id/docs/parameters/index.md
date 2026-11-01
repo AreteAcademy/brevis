@@ -152,7 +152,7 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01
 `--param` dapat diulang. Input tanpa `=` adalah **error**:
 
 ```
-erro: --param "load_full": use chave=valor
+error: --param "load_full": use key=value
 ```
 
 Itu disengaja. `--param load_full`, dengan lupa memberi nilai, akan berjalan

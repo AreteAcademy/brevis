@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
       <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/integrations/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/integrations/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/integrations/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/integrations/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/integrations/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/integrations/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/integrations/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/integrations/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/integrations/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/integrations/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/integrations/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,26 +119,26 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>集成</h1>
       <p class="doc-desc">什么与什么相连：数据从哪里来，落到哪里，在哪里建模，以及这一切在哪里运行。</p>
       <p><strong>你已经在用的，以及仅限已经存在的。</strong> 只有当仓库里有了对应的代码，某个驱动才会出现在这里，绝不提前列出。</p>
 <p>每一行说明由哪个组成部分、通过哪个包或 sink 连接它，以及去哪里查看具体做法。</p>
-<h2 id="数据来源">数据来源<a class="anchor" href="#数据来源" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>接入方式</th><th>指南</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK：<code>from.HTTP</code></td><td><a href="/zh/docs/sdk/#源与目的地">Go SDK</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK：<code>from/postgres</code></td><td><a href="/zh/docs/sdk/#源与目的地">Go SDK</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK：<code>from/mysql</code></td><td><a href="/zh/docs/sdk/#源与目的地">Go SDK</a></td></tr><tr><td><strong>文件</strong></td><td>SDK：<code>from.Files</code>，本地、S3、GCS</td><td><a href="/zh/docs/sdk/#源与目的地">Go SDK</a></td></tr></tbody></table></div>
-<h2 id="数据落地">数据落地<a class="anchor" href="#数据落地" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>接入方式</th><th>指南</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK：<code>to/bigquery</code> · Gateway：<code>bigquery</code></td><td><a href="/zh/docs/sdk/#源与目的地">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK：<code>to/postgres</code> · Gateway：<code>postgres</code></td><td><a href="/zh/docs/sdk/#源与目的地">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK：<code>to/mysql</code> · Gateway：<code>mysql</code></td><td><a href="/zh/docs/sdk/#源与目的地">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK：<code>to/redshift</code> · Gateway：<code>redshift</code></td><td><a href="/zh/docs/sdk/#源与目的地">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK：<code>to/pubsub</code> · Gateway：<code>pubsub</code></td><td><a href="/zh/docs/sdk/#源与目的地">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr></tbody></table></div>
-<h2 id="文件存储">文件存储<a class="anchor" href="#文件存储" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>接入方式</th><th>指南</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK：<code>store/s3</code> · Gateway：<code>s3://</code> 上的 <code>files</code></td><td><a href="/zh/docs/sdk/#源与目的地">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK：<code>store/gcs</code> · Gateway：<code>gs://</code> 上的 <code>files</code></td><td><a href="/zh/docs/sdk/#源与目的地">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr></tbody></table></div>
-<h2 id="建模所在">建模所在<a class="anchor" href="#建模所在" aria-label="link">#</a></h2>
+<h2 id="pulls-from">数据来源<a class="anchor" href="#pulls-from" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>接入方式</th><th>指南</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK：<code>from.HTTP</code></td><td><a href="/zh/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK：<code>from/postgres</code></td><td><a href="/zh/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK：<code>from/mysql</code></td><td><a href="/zh/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>文件</strong></td><td>SDK：<code>from.Files</code>，本地、S3、GCS</td><td><a href="/zh/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr></tbody></table></div>
+<h2 id="lands-in">数据落地<a class="anchor" href="#lands-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>接入方式</th><th>指南</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK：<code>to/bigquery</code> · Gateway：<code>bigquery</code></td><td><a href="/zh/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK：<code>to/postgres</code> · Gateway：<code>postgres</code></td><td><a href="/zh/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK：<code>to/mysql</code> · Gateway：<code>mysql</code></td><td><a href="/zh/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK：<code>to/redshift</code> · Gateway：<code>redshift</code></td><td><a href="/zh/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK：<code>to/pubsub</code> · Gateway：<code>pubsub</code></td><td><a href="/zh/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr></tbody></table></div>
+<h2 id="files-in">文件存储<a class="anchor" href="#files-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>接入方式</th><th>指南</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK：<code>store/s3</code> · Gateway：<code>s3://</code> 上的 <code>files</code></td><td><a href="/zh/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK：<code>store/gcs</code> · Gateway：<code>gs://</code> 上的 <code>files</code></td><td><a href="/zh/docs/sdk/#sources-and-destinations">Go SDK</a>、<a href="/zh/docs/ingestion-sinks/">摄取 sink</a></td></tr></tbody></table></div>
+<h2 id="models-in">建模所在<a class="anchor" href="#models-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>接入方式</th><th>指南</th></tr></thead><tbody><tr><td><strong>Postgres</strong></td><td>SQL：<code>--dialect postgres</code>（默认值）</td><td><a href="/zh/docs/sql/">SQL</a></td></tr><tr><td><strong>BigQuery</strong></td><td>SQL：<code>--dialect bigquery</code></td><td><a href="/zh/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="运行环境">运行环境<a class="anchor" href="#运行环境" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>接入方式</th><th>指南</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>每个组成部分一个镜像：<code>areteacademy/brevis</code>、<code>brevis-gateway</code>、<code>brevis-sql</code></td><td><a href="/zh/docs/installation/#docker">安装</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>每个 step 一个 pod</td><td><a href="/zh/docs/kubernetes/">Kubernetes</a>、<a href="/zh/docs/pod-per-step/">每个 step 一个 pod</a></td></tr><tr><td><strong>Helm</strong></td><td><code>deployments/helm/brevis</code> 中的 chart</td><td><a href="/zh/docs/kubernetes/#使用-helm-安装">Kubernetes</a></td></tr></tbody></table></div>
-<h2 id="使用的语言">使用的语言<a class="anchor" href="#使用的语言" aria-label="link">#</a></h2>
+<h2 id="runs-on">运行环境<a class="anchor" href="#runs-on" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>接入方式</th><th>指南</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>每个组成部分一个镜像：<code>areteacademy/brevis</code>、<code>brevis-gateway</code>、<code>brevis-sql</code></td><td><a href="/zh/docs/installation/#docker">安装</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>每个 step 一个 pod</td><td><a href="/zh/docs/kubernetes/">Kubernetes</a>、<a href="/zh/docs/pod-per-step/">每个 step 一个 pod</a></td></tr><tr><td><strong>Helm</strong></td><td><code>deployments/helm/brevis</code> 中的 chart</td><td><a href="/zh/docs/kubernetes/#install-it-with-helm">Kubernetes</a></td></tr></tbody></table></div>
+<h2 id="written-in">使用的语言<a class="anchor" href="#written-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>接入方式</th><th>指南</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td>Core、SDK、Gateway 和 SQL</td><td><a href="/zh/docs/ecosystem/">生态</a></td></tr><tr><td><strong>Python</strong></td><td><code>pip install brevis</code>：在 Python step 中传递 step 之间的上下文</td><td><a href="/zh/docs/python/">Python</a></td></tr><tr><td><strong>SQL</strong></td><td>brevis-sql 的模型就是普通的 <code>.sql</code> 文件</td><td><a href="/zh/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="云平台">云平台<a class="anchor" href="#云平台" aria-label="link">#</a></h2>
+<h2 id="clouds">云平台<a class="anchor" href="#clouds" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>接入方式</th><th>指南</th></tr></thead><tbody><tr><td><strong>Google Cloud</strong></td><td>上文的 BigQuery、Pub/Sub 和 GCS</td><td>—</td></tr><tr><td><strong>AWS</strong></td><td>上文的 Redshift 和 S3</td><td>—</td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="页面">
@@ -153,7 +153,7 @@
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#数据来源">数据来源</a></li><li class="toc-2"><a href="#数据落地">数据落地</a></li><li class="toc-2"><a href="#文件存储">文件存储</a></li><li class="toc-2"><a href="#建模所在">建模所在</a></li><li class="toc-2"><a href="#运行环境">运行环境</a></li><li class="toc-2"><a href="#使用的语言">使用的语言</a></li><li class="toc-2"><a href="#云平台">云平台</a></li></ul>
+      <ul><li class="toc-2"><a href="#pulls-from">数据来源</a></li><li class="toc-2"><a href="#lands-in">数据落地</a></li><li class="toc-2"><a href="#files-in">文件存储</a></li><li class="toc-2"><a href="#models-in">建模所在</a></li><li class="toc-2"><a href="#runs-on">运行环境</a></li><li class="toc-2"><a href="#written-in">使用的语言</a></li><li class="toc-2"><a href="#clouds">云平台</a></li></ul>
     </aside>
   </main>
 </div>
@@ -173,9 +173,9 @@
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -198,7 +198,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

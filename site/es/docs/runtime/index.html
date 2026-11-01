@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Saltar al contenido</a>
+<a class="skip-link" href="#content">Saltar al contenido</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegación principal">
-      <a href="/es/#ecossistema">Ecosistema</a>
+      <a href="/es/#ecosystem">Ecosistema</a>
       <a href="/es/docs/">Documentación</a>
       <details class="lang-dd"><summary aria-label="Idioma: Español"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Español</span></summary><ul><li><a href="/docs/runtime/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/runtime/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/runtime/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/runtime/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/runtime/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/runtime/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/runtime/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/runtime/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/runtime/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/runtime/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/runtime/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentación</p>
       <h1>Runtime del step</h1>
@@ -137,7 +137,7 @@
 │   2m14s · attempt 1                  │
 └──────────────────────────────────────┘</code></pre></div>
 <p><strong>La mayor parte del tiempo no se escribe nada.</strong> El engine lee <code>run:</code> e <code>image:</code> y lo deduce.</p>
-<h2 id="cuando-declararlo">Cuándo declararlo<a class="anchor" href="#cuando-declararlo" aria-label="link">#</a></h2>
+<h2 id="when-to-declare-it">Cuándo declararlo<a class="anchor" href="#when-to-declare-it" aria-label="link">#</a></h2>
 <p>Dos campos, ambos opcionales, ambos por step:</p>
 <div class="code-block" data-code="steps:
   - id: fetch
@@ -156,14 +156,14 @@
     <span class="t-k">tools</span>: [dbt]           <span class="t-c"># what it drives, not what it is</span></code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>campo</th><th></th></tr></thead><tbody><tr><td><code>runtime</code></td><td>el lenguaje del step: <code>go</code>, <code>python</code>, <code>node</code>, <code>shell</code>…</td></tr><tr><td><code>tools</code></td><td>las herramientas que maneja el comando: <code>dbt</code>, <code>dlt</code>, <code>spark</code>…</td></tr></tbody></table></div>
 <p>La regla práctica: <strong>declararlo cuando la inferencia se equivoca.</strong> Un <code>run:</code> que apunta a un binario compilado no tiene forma de decir que es Go; un wrapper que llama a <code>dbt</code> internamente no tiene forma de decir que maneja dbt.</p>
-<h2 id="por-que-un-vocabulario-cerrado">Por qué un vocabulario cerrado<a class="anchor" href="#por-que-un-vocabulario-cerrado" aria-label="link">#</a></h2>
+<h2 id="why-a-closed-vocabulary">Por qué un vocabulario cerrado<a class="anchor" href="#why-a-closed-vocabulary" aria-label="link">#</a></h2>
 <p>Un id fuera del vocabulario se <strong>rechaza en el publish</strong>, nombrando los válidos. La alternativa es un chip que se muestra en blanco en una pantalla tres días después, sin nada que permita rastrearlo.</p>
 <div class="code-block" data-code="workflow &quot;daily&quot;: step &quot;transform&quot;: `runtime: pyton` is not valid
   (valid: go, python, node, shell, …)"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>workflow "daily": step "transform": `runtime: pyton` is not valid
   (valid: go, python, node, shell, …)</code></pre></div>
-<h2 id="para-que-sirve-el-chip">Para qué sirve el chip<a class="anchor" href="#para-que-sirve-el-chip" aria-label="link">#</a></h2>
+<h2 id="what-the-chip-is-for">Para qué sirve el chip<a class="anchor" href="#what-the-chip-is-for" aria-label="link">#</a></h2>
 <p>No es decoración. Cuando un run falla a las 3 a. m., la primera pregunta es «¿qué ejecuta este step?», y la respuesta suele vivir en otro repositorio. El chip lo pone en el propio grafo, junto a la versión del SDK que usó el step, que es lo que distingue «se rompió hoy» de «se rompe desde el cambio del martes».</p>
-<h2 id="siguientes-pasos">Siguientes pasos<a class="anchor" href="#siguientes-pasos" aria-label="link">#</a></h2>
+<h2 id="next-steps">Siguientes pasos<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/es/docs/workflows/">Workflows</a> — todos los campos de un step</li><li><a href="/es/docs/pod-per-step/">Pod por step</a> — dónde se ejecuta realmente un step</li><li><a href="/es/docs/observability/">Observabilidad</a> — las métricas que lo acompañan</li></ul>
 
       <nav class="pagers" aria-label="Páginas">
@@ -178,7 +178,7 @@
 
     <aside class="toc" aria-label="En esta página">
       <p class="toc-t">En esta página</p>
-      <ul><li class="toc-2"><a href="#cuando-declararlo">Cuándo declararlo</a></li><li class="toc-2"><a href="#por-que-un-vocabulario-cerrado">Por qué un vocabulario cerrado</a></li><li class="toc-2"><a href="#para-que-sirve-el-chip">Para qué sirve el chip</a></li><li class="toc-2"><a href="#siguientes-pasos">Siguientes pasos</a></li></ul>
+      <ul><li class="toc-2"><a href="#when-to-declare-it">Cuándo declararlo</a></li><li class="toc-2"><a href="#why-a-closed-vocabulary">Por qué un vocabulario cerrado</a></li><li class="toc-2"><a href="#what-the-chip-is-for">Para qué sirve el chip</a></li><li class="toc-2"><a href="#next-steps">Siguientes pasos</a></li></ul>
     </aside>
   </main>
 </div>
@@ -198,9 +198,9 @@
       <div class="footer-col">
         <h2>proyecto</h2>
         <ul>
-          <li><a href="/es/#ecossistema">Ecosistema</a></li>
+          <li><a href="/es/#ecosystem">Ecosistema</a></li>
           <li><a href="/es/docs/philosophy/">Principios</a></li>
-          <li><a href="/es/docs/introduction/#codigo-abierto-elige-como-participar">Código abierto</a></li>
+          <li><a href="/es/docs/introduction/#open-code-choose-how-to-take-part">Código abierto</a></li>
           <li><a href="/es/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -223,7 +223,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

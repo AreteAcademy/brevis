@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Saltar al contenido</a>
+<a class="skip-link" href="#content">Saltar al contenido</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegación principal">
-      <a href="/es/#ecossistema">Ecosistema</a>
+      <a href="/es/#ecosystem">Ecosistema</a>
       <a href="/es/docs/">Documentación</a>
       <details class="lang-dd"><summary aria-label="Idioma: Español"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Español</span></summary><ul><li><a href="/docs/sql/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/sql/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/sql/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/sql/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/sql/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/sql/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/sql/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/sql/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/sql/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/sql/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/sql/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,29 +119,29 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentación</p>
       <h1>SQL</h1>
       <p class="doc-desc">Archivos .sql simples se convierten en tablas y vistas, en orden de dependencia, como step de un workflow o por sí solos.</p>
       <p>Sin plantillas: un modelo es un archivo que sigue siendo SQL válido, y el orden sale de leer el propio SQL. Postgres y BigQuery, bajo la misma suite de conformidad.</p>
 <figure class="doc-figure"><img src="/assets/flow-sql.svg" width="360" height="410" alt="El flujo de SQL: brevis-sql lee raw.orders, una tabla que aterrizó el SDK o el Gateway. El modelo staging.stg_orders se convierte en una vista sobre ella, y marts.orders en una tabla sobre esa vista; el orden sale de leer el SQL. Los mismos modelos se construyen en Postgres o en BigQuery." loading="lazy"></figure>
-<h2 id="seis-comandos">Seis comandos<a class="anchor" href="#seis-comandos" aria-label="link">#</a></h2>
+<h2 id="six-commands">Seis comandos<a class="anchor" href="#six-commands" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>comando</th><th>qué hace</th></tr></thead><tbody><tr><td><code>brevis-sql compile</code></td><td>parsea cada modelo y resuelve cada arista, <strong>sin conectarse a nada</strong></td></tr><tr><td><code>brevis-sql graph</code></td><td>imprime las aristas inferidas, para que una equivocada se vea y no se descubra</td></tr><tr><td><code>brevis-sql build</code></td><td>crea o reemplaza cada modelo, en orden de dependencia</td></tr><tr><td><code>brevis-sql test</code></td><td>ejecuta las pruebas de cada modelo; cada una es un SELECT que no debe encontrar nada</td></tr><tr><td><code>brevis-sql serve</code></td><td>responde vistas previas y consultas de solo lectura por HTTP, de modo que una console no necesita credencial de warehouse</td></tr><tr><td><code>brevis-sql generation bump</code></td><td>registra que una tabla fue reconstruida, para que las respuestas en caché de <code>brevis-sql-api</code> sobre ella queden obsoletas; <code>build --generations-from</code> lo hace por cada modelo que construye</td></tr></tbody></table></div>
 <p><code>--select orders+</code> acota cualquiera de ellos a un modelo y todo lo que está aguas abajo de él.</p>
-<h2 id="brevis-sql-serve-leer-un-warehouse-sin-credencial"><code>brevis-sql serve</code> — leer un warehouse sin credencial<a class="anchor" href="#brevis-sql-serve-leer-un-warehouse-sin-credencial" aria-label="link">#</a></h2>
+<h2 id="brevis-sql-serve-reading-a-warehouse-without-a-credential"><code>brevis-sql serve</code> — leer un warehouse sin credencial<a class="anchor" href="#brevis-sql-serve-reading-a-warehouse-without-a-credential" aria-label="link">#</a></h2>
 <p>Las pantallas Datos y SQL de la console muestran lo que aterrizó y lo que contiene. Ninguna llega a un warehouse: le preguntan a este servicio, que corre a su lado y guarda la credencial que el engine deliberadamente no tiene.</p>
 <div class="code-block" data-code="brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span>-sql serve <span class="t-n">--connections</span> <span class="t-k">brevis</span>.yaml <span class="t-n">--addr</span> 127.0.0.1:8088</code></pre></div>
 <p>Un techo no es un presupuesto: <code>--max-bytes</code> acota una consulta, y <code>--budget</code> acota la suma por conexión por hora, comprobada contra la cotización, de modo que el rechazo llega antes de gastar el dinero. Solo acota warehouses que informan bytes, que son BigQuery y no Postgres; el banner de arranque indica qué postura está en vigor, incluida la de no tener ninguna.</p>
 <p><strong>Solo es alcanzable lo que declara el archivo</strong>, y por defecto nada de lo que hace es una escritura: cada sentencia se clasifica antes de ejecutarse, una lectura que escanearía más de <code>--max-bytes</code> se cotiza y se rechaza antes de que cueste nada, y al propio warehouse se le pide que rechace las escrituras. La línea de auditoría lleva un hash de la sentencia y nunca la sentencia.</p>
 <p><strong>Ya no necesita una service account propia.</strong> <code>brevis-sql build</code> crea tablas, así que su rol puede escribir, y un servicio que rechazara cualquier rol así significaba una segunda cuenta que crear, conservar y rotar. El rol ya no es lo único que sostiene la línea: Postgres ejecuta cada sentencia dentro de una transacción abierta <code>READ ONLY</code> —donde <code>SELECT nextval('s')</code>, una escritura que ningún clasificador puede ver por dentro, vuelve rechazada por el propio Postgres— y BigQuery informa de qué tipo es la sentencia en el dry run que la cotiza, de modo que un <code>CREATE TABLE</code> o un <code>EXPORT DATA</code> se rechaza por el veredicto del propio warehouse. Un warehouse que no puede ofrecer ninguna de las dos cosas igualmente rechaza una credencial que pueda escribir.</p>
 <p>Fuera de <code>BREVIS_ENV=local</code> se requiere un token y el servicio no arrancará sin uno.</p>
-<h3 id="un-warehouse-de-desarrollo-que-alguien-puede-modificar">Un warehouse de desarrollo que alguien puede modificar<a class="anchor" href="#un-warehouse-de-desarrollo-que-alguien-puede-modificar" aria-label="link">#</a></h3>
+<h3 id="a-development-warehouse-somebody-may-change">Un warehouse de desarrollo que alguien puede modificar<a class="anchor" href="#a-development-warehouse-somebody-may-change" aria-label="link">#</a></h3>
 <div class="code-block" data-code="BREVIS_SQL_SERVE_WRITES=warehouse_dev"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_SQL_SERVE_WRITES=warehouse_dev</code></pre></div>
 <p><strong>Nombra conexiones.</strong> Un servicio alcanza varios warehouses, y desbloquear aquel contra el que se desarrolla no debe desbloquear el que está al lado. En una conexión nombrada todas las capas se retiran y este servicio es exactamente tan poderoso como su credencial: el techo de filas acota una pantalla y el techo de bytes acota el dinero, y ninguno acota lo que una sentencia modifica.</p>
 <p>Se requiere un token dondequiera que se defina, y <code>BREVIS_ENV=local</code> no es una excepción. El banner de arranque nombra cada conexión desbloqueada, la console dibuja un banner sobre el editor, y <code>brevis_sql_writable_connection</code> aparece en las métricas. <strong>Déjese sin definir en producción</strong>; ningún manifiesto de este repositorio lo define.</p>
 <p>Los tokens pueden tener <strong>nombre</strong>: <code>BREVIS_SQL_SERVE_TOKEN_CONSOLE=…</code> declara un llamador llamado <code>console</code>, y cada línea de auditoría que produce ese bearer lleva <code>"caller":"console"</code>. La identidad es la credencial y no un header que rellena el llamador, así que el log no puede decir nada que quien posee ese token no poseyera. Un token rechazado también deja una línea, y nunca registra lo que se presentó.</p>
-<h2 id="un-modelo-es-un-archivo-que-sigue-siendo-sql-valido">Un modelo es un archivo que sigue siendo SQL válido<a class="anchor" href="#un-modelo-es-un-archivo-que-sigue-siendo-sql-valido" aria-label="link">#</a></h2>
+<h2 id="a-model-is-a-file-that-stays-valid-sql">Un modelo es un archivo que sigue siendo SQL válido<a class="anchor" href="#a-model-is-a-file-that-stays-valid-sql" aria-label="link">#</a></h2>
 <p>La configuración es un comentario de bloque al inicio, de modo que el archivo se abre en un editor con resaltado, se ejecuta a mano en una console, y <code>psql -f</code> lo ejecuta.</p>
 <div class="code-block" data-code="/* brevis
 materialized: table
@@ -159,7 +159,7 @@ tests:
 */
 select * from staging.stg_orders</code></pre></div>
 <p><strong>Sin plantillas.</strong> <code>models/&lt;schema&gt;/&lt;name&gt;.sql</code> es <code>&lt;schema&gt;.&lt;name&gt;</code>, y las dependencias salen de leer el SQL y no de una llamada a función que haya que escribir. <code>brevis-sql graph</code> imprime lo que se infirió; <code>depends_on:</code> en la cabecera es la sobrescritura explícita para el raro fallo.</p>
-<h2 id="de-compile-a-test">De compile a test<a class="anchor" href="#de-compile-a-test" aria-label="link">#</a></h2>
+<h2 id="from-compile-to-test">De compile a test<a class="anchor" href="#from-compile-to-test" aria-label="link">#</a></h2>
 <p>Dos modelos: una vista que limpia <code>raw.orders</code>, y una tabla que depende de ella.</p>
 <p><code>models/staging/stg_orders.sql</code>:</p>
 <div class="code-block" data-code="/* brevis
@@ -232,7 +232,7 @@ marts.orders
   test <span class="t-n">--project</span> /project <span class="t-n">--dsn-from</span> BREVIS_SQL_DSN</code></pre></div>
 <div class="code-block" data-code="2 tests passed on postgres"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>2 tests passed on postgres</code></pre></div>
 <p>La salida real, de la imagen publicada: compile y graph no se conectan a nada. Contra un Postgres, build y test terminan con «2 models built» y «2 tests passed».</p>
-<h3 id="cuando-una-prueba-falla">Cuando una prueba falla<a class="anchor" href="#cuando-una-prueba-falla" aria-label="link">#</a></h3>
+<h3 id="when-a-test-fails">Cuando una prueba falla<a class="anchor" href="#when-a-test-fails" aria-label="link">#</a></h3>
 <p>Con un pedido que no tiene cliente en <code>raw.orders</code>, <code>build</code> pasa y la prueba <code>not_null</code> no. El fallo nombra el modelo, la columna, cuántas filas y <strong>la consulta</strong>, que es lo que se pega en una console y se va acotando:</p>
 <div class="code-block" data-code="FAIL  marts.orders                   not_null         customer_id          1 row(s)
       SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
@@ -240,21 +240,21 @@ brevis-sql: 1 of 2 tests failed"><div class="code-head"><span class="code-lang">
       SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
 brevis-sql: 1 of 2 tests failed</code></pre></div>
 <p>El proceso sale con código 1, y el step del workflow falla con él.</p>
-<h2 id="las-pruebas-son-selects-que-devuelven-filas-que-violan-la-regla">Las pruebas son SELECTs que devuelven filas que violan la regla<a class="anchor" href="#las-pruebas-son-selects-que-devuelven-filas-que-violan-la-regla" aria-label="link">#</a></h2>
+<h2 id="tests-are-selects-that-return-violating-rows">Las pruebas son SELECTs que devuelven filas que violan la regla<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
 <p><code>not_null</code>, <code>unique</code>, <code>accepted_values</code>, <code>relationships</code>. Cero filas es un éxito, y no hay nada más que interpretar.</p>
-<h2 id="dice-lo-que-escribio">Dice lo que escribió<a class="anchor" href="#dice-lo-que-escribio" aria-label="link">#</a></h2>
+<h2 id="it-says-what-it-wrote">Dice lo que escribió<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
 <p>Cada modelo materializado imprime la línea <code>@brevis:</code> que el engine de Brevis ya lee, así que aparece en <code>/data</code> junto a todo lo demás (ver la salida de <code>build</code> arriba). Una vista no informa conteo de filas en lugar de cero: no contiene ninguna, y un cero ahí no se distingue de una tabla que realmente está vacía.</p>
-<h2 id="dos-warehouses-una-suite">Dos warehouses, una suite<a class="anchor" href="#dos-warehouses-una-suite" aria-label="link">#</a></h2>
+<h2 id="two-warehouses-one-suite">Dos warehouses, una suite<a class="anchor" href="#two-warehouses-one-suite" aria-label="link">#</a></h2>
 <p>PostgreSQL y BigQuery (<code>--dialect bigquery</code>), y ambos ejecutan la misma suite de pruebas, escrita cuando había una única implementación, para que la segunda no pudiera divergir en silencio.</p>
 <p>BigQuery se autentica con Application Default Credentials: en una workload identity, esa es la identidad del propio pod, y <code>--dsn-from</code> nombra la variable que contiene el id del proyecto.</p>
 <h2 id="13-mb">13 MB<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
 <p>Distroless, nonroot, sin shell. El cliente oficial de BigQuery son 31 MB y 526 paquetes en un binario vacío, así que esto habla con BigQuery por su endpoint REST en su lugar: unas 200 líneas, con una prueba por cada forma en que podría estar en silencio equivocado. Una compuerta en el repositorio rechaza ese cliente por su nombre, de modo que la decisión sobreviva a una actualización rutinaria de dependencias.</p>
-<h2 id="verificado-contra-dbt">Verificado contra dbt<a class="anchor" href="#verificado-contra-dbt" aria-label="link">#</a></h2>
+<h2 id="verified-against-dbt">Verificado contra dbt<a class="anchor" href="#verified-against-dbt" aria-label="link">#</a></h2>
 <p>jaffle-shop, construido por esta imagen sobre los mismos datos semilla que usó dbt:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>resultado</th></tr></thead><tbody><tr><td>filas y md5 de cada fila, por modelo</td><td><strong>idénticos, 13 de 13</strong></td></tr><tr><td>columnas y tipos, por modelo</td><td><strong>idénticos, 13 de 13</strong></td></tr><tr><td>13 modelos, primer build</td><td>1,56 s</td></tr></tbody></table></div>
-<h2 id="lo-que-no-hace">Lo que no hace<a class="anchor" href="#lo-que-no-hace" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-do">Lo que no hace<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
 <p><strong>Sin compatibilidad con dbt</strong>, y es una decisión y no una carencia. Alrededor de un tercio de los modelos de un proyecto dbt real no usa nada más allá de <code>ref</code>, <code>source</code> y <code>config</code>; el resto usa macros, y los paquetes son plantillas por diseño. Media compatibilidad que nadie puede predecir es peor que ninguna.</p>
-<h2 id="adonde-ir-despues">Adónde ir después<a class="anchor" href="#adonde-ir-despues" aria-label="link">#</a></h2>
+<h2 id="where-to-go-next">Adónde ir después<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>si quieres</th><th>ve a</th></tr></thead><tbody><tr><td>ver dónde encaja SQL entre las cuatro piezas</td><td><a href="/es/docs/ecosystem/">Ecosistema</a></td></tr><tr><td>ejecutar brevis-sql como un step programado</td><td><a href="/es/docs/core/">Core</a></td></tr><tr><td>aterrizar los datos que modelará</td><td><a href="/es/docs/sdk/">SDK de Go</a> o <a href="/es/docs/ingestion/">Ingesta</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="Páginas">
@@ -269,7 +269,7 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
 
     <aside class="toc" aria-label="En esta página">
       <p class="toc-t">En esta página</p>
-      <ul><li class="toc-2"><a href="#seis-comandos">Seis comandos</a></li><li class="toc-2"><a href="#brevis-sql-serve-leer-un-warehouse-sin-credencial">brevis-sql serve — leer un warehouse sin credencial</a></li><li class="toc-3"><a href="#un-warehouse-de-desarrollo-que-alguien-puede-modificar">Un warehouse de desarrollo que alguien puede modificar</a></li><li class="toc-2"><a href="#un-modelo-es-un-archivo-que-sigue-siendo-sql-valido">Un modelo es un archivo que sigue siendo SQL válido</a></li><li class="toc-2"><a href="#de-compile-a-test">De compile a test</a></li><li class="toc-3"><a href="#cuando-una-prueba-falla">Cuando una prueba falla</a></li><li class="toc-2"><a href="#las-pruebas-son-selects-que-devuelven-filas-que-violan-la-regla">Las pruebas son SELECTs que devuelven filas que violan la regla</a></li><li class="toc-2"><a href="#dice-lo-que-escribio">Dice lo que escribió</a></li><li class="toc-2"><a href="#dos-warehouses-una-suite">Dos warehouses, una suite</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#verificado-contra-dbt">Verificado contra dbt</a></li><li class="toc-2"><a href="#lo-que-no-hace">Lo que no hace</a></li><li class="toc-2"><a href="#adonde-ir-despues">Adónde ir después</a></li></ul>
+      <ul><li class="toc-2"><a href="#six-commands">Seis comandos</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve — leer un warehouse sin credencial</a></li><li class="toc-3"><a href="#a-development-warehouse-somebody-may-change">Un warehouse de desarrollo que alguien puede modificar</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">Un modelo es un archivo que sigue siendo SQL válido</a></li><li class="toc-2"><a href="#from-compile-to-test">De compile a test</a></li><li class="toc-3"><a href="#when-a-test-fails">Cuando una prueba falla</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">Las pruebas son SELECTs que devuelven filas que violan la regla</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">Dice lo que escribió</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">Dos warehouses, una suite</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#verified-against-dbt">Verificado contra dbt</a></li><li class="toc-2"><a href="#what-it-does-not-do">Lo que no hace</a></li><li class="toc-2"><a href="#where-to-go-next">Adónde ir después</a></li></ul>
     </aside>
   </main>
 </div>
@@ -289,9 +289,9 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
       <div class="footer-col">
         <h2>proyecto</h2>
         <ul>
-          <li><a href="/es/#ecossistema">Ecosistema</a></li>
+          <li><a href="/es/#ecosystem">Ecosistema</a></li>
           <li><a href="/es/docs/philosophy/">Principios</a></li>
-          <li><a href="/es/docs/introduction/#codigo-abierto-elige-como-participar">Código abierto</a></li>
+          <li><a href="/es/docs/introduction/#open-code-choose-how-to-take-part">Código abierto</a></li>
           <li><a href="/es/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -314,7 +314,7 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+<a class="skip-link" href="#content">Lewati ke konten</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigasi utama">
-      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/#ecosystem">Ekosistem</a>
       <a href="/id/docs/">Dokumentasi</a>
       <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/integrations/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/integrations/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/integrations/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/integrations/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/integrations/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/integrations/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/integrations/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/integrations/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/integrations/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/integrations/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/integrations/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,26 +119,26 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentasi</p>
       <h1>Integrasi</h1>
       <p class="doc-desc">Apa terhubung ke apa: dari mana data berasal, ke mana data mendarat, di mana data dimodelkan, dan di mana semuanya berjalan.</p>
       <p><strong>Apa yang sudah Anda pakai, dan tidak ada yang belum ada.</strong> Sebuah driver muncul di sini hanya ketika sudah punya kode di repositori — tidak pernah sebelumnya.</p>
 <p>Setiap baris menyebutkan bagian mana yang menjangkaunya, lewat paket atau sink apa, dan ke mana harus pergi untuk melihat caranya.</p>
-<h2 id="mengambil-dari">Mengambil dari<a class="anchor" href="#mengambil-dari" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>cara menjangkaunya</th><th>panduan</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK: <code>from.HTTP</code></td><td><a href="/id/docs/sdk/#sumber-dan-tujuan">Go SDK</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>from/postgres</code></td><td><a href="/id/docs/sdk/#sumber-dan-tujuan">Go SDK</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>from/mysql</code></td><td><a href="/id/docs/sdk/#sumber-dan-tujuan">Go SDK</a></td></tr><tr><td><strong>file</strong></td><td>SDK: <code>from.Files</code> — lokal, S3, GCS</td><td><a href="/id/docs/sdk/#sumber-dan-tujuan">Go SDK</a></td></tr></tbody></table></div>
-<h2 id="mendarat-di">Mendarat di<a class="anchor" href="#mendarat-di" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>cara menjangkaunya</th><th>panduan</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK: <code>to/bigquery</code> · Gateway: <code>bigquery</code></td><td><a href="/id/docs/sdk/#sumber-dan-tujuan">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>to/postgres</code> · Gateway: <code>postgres</code></td><td><a href="/id/docs/sdk/#sumber-dan-tujuan">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>to/mysql</code> · Gateway: <code>mysql</code></td><td><a href="/id/docs/sdk/#sumber-dan-tujuan">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK: <code>to/redshift</code> · Gateway: <code>redshift</code></td><td><a href="/id/docs/sdk/#sumber-dan-tujuan">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK: <code>to/pubsub</code> · Gateway: <code>pubsub</code></td><td><a href="/id/docs/sdk/#sumber-dan-tujuan">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr></tbody></table></div>
-<h2 id="file-masuk-ke">File masuk ke<a class="anchor" href="#file-masuk-ke" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>cara menjangkaunya</th><th>panduan</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK: <code>store/s3</code> · Gateway: <code>files</code> pada <code>s3://</code></td><td><a href="/id/docs/sdk/#sumber-dan-tujuan">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK: <code>store/gcs</code> · Gateway: <code>files</code> pada <code>gs://</code></td><td><a href="/id/docs/sdk/#sumber-dan-tujuan">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr></tbody></table></div>
-<h2 id="dimodelkan-di">Dimodelkan di<a class="anchor" href="#dimodelkan-di" aria-label="link">#</a></h2>
+<h2 id="pulls-from">Mengambil dari<a class="anchor" href="#pulls-from" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>cara menjangkaunya</th><th>panduan</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK: <code>from.HTTP</code></td><td><a href="/id/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>from/postgres</code></td><td><a href="/id/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>from/mysql</code></td><td><a href="/id/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr><tr><td><strong>file</strong></td><td>SDK: <code>from.Files</code> — lokal, S3, GCS</td><td><a href="/id/docs/sdk/#sources-and-destinations">Go SDK</a></td></tr></tbody></table></div>
+<h2 id="lands-in">Mendarat di<a class="anchor" href="#lands-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>cara menjangkaunya</th><th>panduan</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK: <code>to/bigquery</code> · Gateway: <code>bigquery</code></td><td><a href="/id/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK: <code>to/postgres</code> · Gateway: <code>postgres</code></td><td><a href="/id/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK: <code>to/mysql</code> · Gateway: <code>mysql</code></td><td><a href="/id/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK: <code>to/redshift</code> · Gateway: <code>redshift</code></td><td><a href="/id/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK: <code>to/pubsub</code> · Gateway: <code>pubsub</code></td><td><a href="/id/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr></tbody></table></div>
+<h2 id="files-in">File masuk ke<a class="anchor" href="#files-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>cara menjangkaunya</th><th>panduan</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK: <code>store/s3</code> · Gateway: <code>files</code> pada <code>s3://</code></td><td><a href="/id/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK: <code>store/gcs</code> · Gateway: <code>files</code> pada <code>gs://</code></td><td><a href="/id/docs/sdk/#sources-and-destinations">Go SDK</a>, <a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr></tbody></table></div>
+<h2 id="models-in">Dimodelkan di<a class="anchor" href="#models-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>cara menjangkaunya</th><th>panduan</th></tr></thead><tbody><tr><td><strong>Postgres</strong></td><td>SQL: <code>--dialect postgres</code> (default)</td><td><a href="/id/docs/sql/">SQL</a></td></tr><tr><td><strong>BigQuery</strong></td><td>SQL: <code>--dialect bigquery</code></td><td><a href="/id/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="berjalan-di">Berjalan di<a class="anchor" href="#berjalan-di" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>cara menjangkaunya</th><th>panduan</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>satu image per bagian: <code>areteacademy/brevis</code>, <code>brevis-gateway</code>, <code>brevis-sql</code></td><td><a href="/id/docs/installation/#docker">Instalasi</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>satu pod per step</td><td><a href="/id/docs/kubernetes/">Kubernetes</a>, <a href="/id/docs/pod-per-step/">Pod per step</a></td></tr><tr><td><strong>Helm</strong></td><td>chart di <code>deployments/helm/brevis</code></td><td><a href="/id/docs/kubernetes/#pasang-dengan-helm">Kubernetes</a></td></tr></tbody></table></div>
-<h2 id="ditulis-dengan">Ditulis dengan<a class="anchor" href="#ditulis-dengan" aria-label="link">#</a></h2>
+<h2 id="runs-on">Berjalan di<a class="anchor" href="#runs-on" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>cara menjangkaunya</th><th>panduan</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>satu image per bagian: <code>areteacademy/brevis</code>, <code>brevis-gateway</code>, <code>brevis-sql</code></td><td><a href="/id/docs/installation/#docker">Instalasi</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>satu pod per step</td><td><a href="/id/docs/kubernetes/">Kubernetes</a>, <a href="/id/docs/pod-per-step/">Pod per step</a></td></tr><tr><td><strong>Helm</strong></td><td>chart di <code>deployments/helm/brevis</code></td><td><a href="/id/docs/kubernetes/#install-it-with-helm">Kubernetes</a></td></tr></tbody></table></div>
+<h2 id="written-in">Ditulis dengan<a class="anchor" href="#written-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>cara menjangkaunya</th><th>panduan</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td>Core, SDK, Gateway, dan SQL</td><td><a href="/id/docs/ecosystem/">Ekosistem</a></td></tr><tr><td><strong>Python</strong></td><td><code>pip install brevis</code>: konteks antar step di dalam step Python</td><td><a href="/id/docs/python/">Python</a></td></tr><tr><td><strong>SQL</strong></td><td>model brevis-sql adalah file <code>.sql</code> biasa</td><td><a href="/id/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="cloud">Cloud<a class="anchor" href="#cloud" aria-label="link">#</a></h2>
+<h2 id="clouds">Cloud<a class="anchor" href="#clouds" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>cara menjangkaunya</th><th>panduan</th></tr></thead><tbody><tr><td><strong>Google Cloud</strong></td><td>BigQuery, Pub/Sub, dan GCS, di atas</td><td>—</td></tr><tr><td><strong>AWS</strong></td><td>Redshift dan S3, di atas</td><td>—</td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="Halaman">
@@ -153,7 +153,7 @@
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#mengambil-dari">Mengambil dari</a></li><li class="toc-2"><a href="#mendarat-di">Mendarat di</a></li><li class="toc-2"><a href="#file-masuk-ke">File masuk ke</a></li><li class="toc-2"><a href="#dimodelkan-di">Dimodelkan di</a></li><li class="toc-2"><a href="#berjalan-di">Berjalan di</a></li><li class="toc-2"><a href="#ditulis-dengan">Ditulis dengan</a></li><li class="toc-2"><a href="#cloud">Cloud</a></li></ul>
+      <ul><li class="toc-2"><a href="#pulls-from">Mengambil dari</a></li><li class="toc-2"><a href="#lands-in">Mendarat di</a></li><li class="toc-2"><a href="#files-in">File masuk ke</a></li><li class="toc-2"><a href="#models-in">Dimodelkan di</a></li><li class="toc-2"><a href="#runs-on">Berjalan di</a></li><li class="toc-2"><a href="#written-in">Ditulis dengan</a></li><li class="toc-2"><a href="#clouds">Cloud</a></li></ul>
     </aside>
   </main>
 </div>
@@ -173,9 +173,9 @@
       <div class="footer-col">
         <h2>proyek</h2>
         <ul>
-          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/#ecosystem">Ekosistem</a></li>
           <li><a href="/id/docs/philosophy/">Prinsip</a></li>
-          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/id/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -198,7 +198,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

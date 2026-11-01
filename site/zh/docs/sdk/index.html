@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
       <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/sdk/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/sdk/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/sdk/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/sdk/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/sdk/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/sdk/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/sdk/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/sdk/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/sdk/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/sdk/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/sdk/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>Go SDK</h1>
@@ -128,7 +128,7 @@
 <div class="code-block" data-code="go get github.com/AreteAcademy/brevis/sdk@latest"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">go</span> get github.com/AreteAcademy/<span class="t-k">brevis</span>/sdk@latest</code></pre></div>
 <p>需要 Go 1.23 或更新版本：SDK 以 <code>iter.Seq2</code> 流式传输行。</p>
 <aside class="admon admon-warning"><p class="admon-t">不要使用 `v0.1.0`</p><p>它发布时的 <code>go.mod</code> 固定了一个不存在的 revision，而 Go 模块代理是不可变的。请从 <code>v0.1.1</code> 开始。</p></aside>
-<h2 id="三个步骤">三个步骤<a class="anchor" href="#三个步骤" aria-label="link">#</a></h2>
+<h2 id="three-steps">三个步骤<a class="anchor" href="#three-steps" aria-label="link">#</a></h2>
 <div class="code-block" data-code="import (
 	&quot;github.com/AreteAcademy/brevis/sdk&quot;
 	&quot;github.com/AreteAcademy/brevis/sdk/from&quot;
@@ -162,12 +162,12 @@ res, <span class="t-k">err</span> := sdk.Load(ctx, rows, sdk.Target{
 })</code></pre></div>
 <p><code>Extract</code> 读取，<code>Transform</code> 重塑，<code>Load</code> 写入。每个函数都接收并返回一个序列：不会一次性把所有内容物化到内存中。</p>
 <figure class="doc-figure"><img src="/assets/flow-sdk.svg" width="360" height="514" alt="SDK 的流程：sdk.Extract 通过 from.HTTP 从 HTTP API 读取，sdk.Transform 保留接受的字段，sdk.Load 把行写入 BigQuery 表。这三个调用都在你自己的 step 内部运行。" loading="lazy"></figure>
-<h2 id="驱动是一个值而不是一项设置">驱动是一个值，而不是一项设置<a class="anchor" href="#驱动是一个值而不是一项设置" aria-label="link">#</a></h2>
+<h2 id="the-driver-is-a-value-not-a-setting">驱动是一个值，而不是一项设置<a class="anchor" href="#the-driver-is-a-value-not-a-setting" aria-label="link">#</a></h2>
 <p><code>from.HTTP</code> 携带 HTTP 源所需的一切：URL、header、重试、分页，以及响应的含义。<code>from.Files</code> 携带路径和格式。两者都不必为对方的字段留出位置，因此不存在一个收集了四十个选项、而每个驱动只读其中六个的源结构体。</p>
 <p>它还决定了<strong>你编译什么</strong>。Go 是按导入的包来裁剪依赖，而不是按使用的字段：</p>
 <div class="table-wrap"><table><thead><tr><th>你导入什么</th><th>包数量</th><th>AWS</th><th>Google</th></tr></thead><tbody><tr><td><code>sdk</code></td><td>190</td><td>否</td><td>否</td></tr><tr><td><code>sdk</code> + <code>from</code></td><td>194</td><td>否</td><td>否</td></tr><tr><td><code>sdk</code> + <code>from</code> + <code>to</code>（文件）</td><td>195</td><td>否</td><td>否</td></tr><tr><td><code>sdk</code> + <code>to/bigquery</code></td><td>456</td><td>否</td><td><strong>是</strong></td></tr><tr><td><code>sdk</code> + <code>from</code> + <code>store/s3</code></td><td>265</td><td><strong>是</strong></td><td>否</td></tr></tbody></table></div>
 <p>一条完整的文件 pipeline（读取并写入）只需 195 个包，完全不需要任何云 SDK。<strong>背后有厂商 SDK 的驱动放在它自己的包里</strong>，这就是为什么 BigQuery 是 <code>to/bigquery</code>，而对象存储是 <code>store/s3</code> 和 <code>store/gcs</code>。</p>
-<h2 id="源与目的地">源与目的地<a class="anchor" href="#源与目的地" aria-label="link">#</a></h2>
+<h2 id="sources-and-destinations">源与目的地<a class="anchor" href="#sources-and-destinations" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>源</th><th>包</th></tr></thead><tbody><tr><td>HTTP</td><td><code>from.HTTP</code></td></tr><tr><td>文件（本地、S3、GCS）</td><td><code>from.Files</code></td></tr><tr><td>Postgres</td><td><code>from/postgres</code></td></tr><tr><td>MySQL</td><td><code>from/mysql</code></td></tr><tr><td>多个源</td><td><code>from.Many</code></td></tr></tbody></table></div>
 <div class="table-wrap"><table><thead><tr><th>目的地</th><th>包</th></tr></thead><tbody><tr><td>文件</td><td><code>to.Files</code></td></tr><tr><td>BigQuery</td><td><code>to/bigquery</code></td></tr><tr><td>Postgres</td><td><code>to/postgres</code></td></tr><tr><td>MySQL</td><td><code>to/mysql</code></td></tr><tr><td>Redshift</td><td><code>to/redshift</code></td></tr><tr><td>Pub/Sub</td><td><code>to/pubsub</code></td></tr></tbody></table></div>
 <p>路径的 scheme 决定后端，而 <code>Store</code> 是<strong>传入</strong>的，而不是在驱动内部选择：</p>
@@ -175,7 +175,7 @@ res, <span class="t-k">err</span> := sdk.Load(ctx, rows, sdk.Target{
 to.Files{Path: &quot;gs://bucket/landing/&quot;, Store: gcs.New(client)}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>from.Files{Path: "s3:<span class="t-c">//bucket/day=1/*.ndjson", Store: s3.New(client)}</span>
 to.Files{Path: "gs:<span class="t-c">//bucket/landing/", Store: gcs.New(client)}</span></code></pre></div>
 <p>这就是为什么只用本地文件的程序不会编译进哪怕一行 AWS 或 Google 的代码。</p>
-<h3 id="发布到-topic">发布到 topic<a class="anchor" href="#发布到-topic" aria-label="link">#</a></h3>
+<h3 id="publishing-to-a-topic">发布到 topic<a class="anchor" href="#publishing-to-a-topic" aria-label="link">#</a></h3>
 <p><code>to/pubsub</code> 是唯一一个不是表的目的地，它的行为有一点不同，使用之前值得了解：<strong>它不会给发送的内容添加任何东西。</strong></p>
 <div class="code-block" data-code="Target: sdk.Target{
     To: pubsub.Topic{
@@ -211,7 +211,7 @@ to.Files{Path: "gs:<span class="t-c">//bucket/landing/", Store: gcs.New(client)}
 <p>由此引出三点：</p>
 <ul><li><strong>它从不创建 topic。</strong> 能创建 topic 的 pipeline 也能创建错误的 topic，而且与拼错的表名不同，没有人会注意到：消息发往了别处，本该收到的订阅方却毫无动静。</li><li><strong><code>Schema</code>、<code>Dedup</code> 和 <code>PartitionBy</code> 会被拒绝</strong>，并指出具体的选项。它们是为表而存在的：<code>Schema</code> 是目的地创建表的方式，去重需要有一行可以替换，分区是表的概念。这里与之最接近的是 <code>OrderingKey</code>，但它是另一回事：它把必须按顺序*到达*的消息分为一组。</li><li><strong>失败是部分的。</strong> 发布不是事务性的，所以发布 48,000 条消息在 31,000 条处失败，就意味着已经*投递*了 31,000 条。结果会报告实际发出的数量，错误信息会说明重新运行就是重新投递：订阅方必须是幂等的，而且 Pub/Sub 本来就是至少一次投递。</li></ul>
 <p>可运行，针对模拟器： <a href="https://github.com/AreteAcademy/brevis/tree/master/examples/13-pubsub" target="_blank" rel="noopener"><code>examples/13-pubsub</code></a>。</p>
-<h2 id="完整的抓取器">完整的抓取器<a class="anchor" href="#完整的抓取器" aria-label="link">#</a></h2>
+<h2 id="a-whole-fetcher">完整的抓取器<a class="anchor" href="#a-whole-fetcher" aria-label="link">#</a></h2>
 <p><code>sdk.Run</code> 负责标志、<code>-dry-run</code>、日志、重试、分页、来源追踪、建表和退出码。文件里剩下的，只有该数据源特有的部分：</p>
 <div class="code-block" data-code="package main
 
@@ -269,7 +269,7 @@ func main() {
 <div class="code-block" data-code="go run ./fetcher -dry-run   # extracts, counts rows and errors, writes nothing
 go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">go</span> run ./fetcher <span class="t-n">-dry-run</span>   <span class="t-c"># extracts, counts rows and errors, writes nothing</span>
 <span class="t-k">go</span> run ./fetcher</code></pre></div>
-<h2 id="run-上下文">run 上下文<a class="anchor" href="#run-上下文" aria-label="link">#</a></h2>
+<h2 id="the-run-context">run 上下文<a class="anchor" href="#the-run-context" aria-label="link">#</a></h2>
 <p>当抓取器<strong>作为 workflow 的 step</strong> 运行时，引擎会向环境中注入它原本无从得知的信息：这是否是首次运行、它是以哪些参数被调度的、它是哪一个 run。SDK 在 <code>Pipeline.Run</code> 中读取这些信息：</p>
 <div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
 	if p.Run.Params[&quot;load_full&quot;] == &quot;true&quot; {
@@ -284,8 +284,8 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 },</code></pre></div>
 <p>手动运行时，<code>Run</code> 返回零值：读取它是可选的，忽略它没有任何代价。</p>
 <p>在没有历史记录时，“这是首次运行吗？”的答案始终是<strong>否</strong>：在不确定的情况下创建表，比不创建更糟。</p>
-<h3 id="时钟">时钟<a class="anchor" href="#时钟" aria-label="link">#</a></h3>
-<p><code>p.Run.Auto</code> 是引擎对这个 run 所算出的信息，即<a href="/zh/docs/parameters/#自动参数">自动参数</a>。<code>Auto.Now()</code> 是用来取代 <code>time.Now()</code> 的时钟：在调度的 run 上它就是 slot，所以 run 迟到时它不会移动，三个小时后重试时它也不会移动。</p>
+<h3 id="the-clock">时钟<a class="anchor" href="#the-clock" aria-label="link">#</a></h3>
+<p><code>p.Run.Auto</code> 是引擎对这个 run 所算出的信息，即<a href="/zh/docs/parameters/#auto-params">自动参数</a>。<code>Auto.Now()</code> 是用来取代 <code>time.Now()</code> 的时钟：在调度的 run 上它就是 slot，所以 run 迟到时它不会移动，三个小时后重试时它也不会移动。</p>
 <div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
 	start, end, ok := p.Run.Auto.Window()
 	if !ok { // no schedule: fall back to a fixed window
@@ -306,9 +306,9 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 	<span class="t-k">return</span> <span class="t-k">nil</span>
 },</code></pre></div>
 <p>手动运行时，<code>Auto.Now()</code> *就是*挂钟时间，<code>Window()</code> 返回 <code>false</code>，因此本地开发无需任何特殊处理。</p>
-<h2 id="不要与客户端库混淆">不要与客户端库混淆<a class="anchor" href="#不要与客户端库混淆" aria-label="link">#</a></h2>
+<h2 id="not-to-be-confused-with-the-client-libraries">不要与客户端库混淆<a class="anchor" href="#not-to-be-confused-with-the-client-libraries" aria-label="link">#</a></h2>
 <p>这个 SDK 是用 Go 编写的 ETL 机制：驱动、分页、来源追踪、建表。<a href="/zh/docs/libraries/">客户端库</a> 则是另一回事：它们是轻量级客户端，把 run 上下文和时钟交给 step，目前提供 Python，之后会有 Node.js 和 Rust。使用 pandas 或 dbt 的 step 需要的是后者，而不是这个。</p>
-<h2 id="构建-pipeline-的参数">构建 pipeline 的参数<a class="anchor" href="#构建-pipeline-的参数" aria-label="link">#</a></h2>
+<h2 id="parameters-that-build-the-pipeline">构建 pipeline 的参数<a class="anchor" href="#parameters-that-build-the-pipeline" aria-label="link">#</a></h2>
 <p><code>p.Run.Params</code> 在 pipeline 内部可读，但对于决定 pipeline <strong>是什么</strong>的值来说为时已晚，比如每个州一个源、每个租户一张表。<code>Pipeline.Flags</code> 是在 <code>Run</code> 内部解析的，同样为时已晚。</p>
 <div class="code-block" data-code="func main() {
 	sdk.Run(pipeline(sdk.ParamList(&quot;ufs&quot;)))
@@ -318,7 +318,7 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 <p><code>sdk.Param</code> 和 <code>sdk.ParamList</code> 先读取引擎的环境变量，再读取 <code>-param name=value</code>：</p>
 <div class="code-block" data-code="./fetch-stations -param ufs=SP,RJ"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>./fetch-stations <span class="t-n">-param</span> ufs=SP,RJ</code></pre></div>
 <p>环境变量优先：在引擎下它才是真正的值，留在 manifest 中的标志不能覆盖操作者输入的内容。没有引擎时，标志就是唯一可用的来源，这比每次运行都把 <code>BREVIS_RUN_PARAMS</code> 写成 JSON 要好。</p>
-<h2 id="落地布局">落地布局<a class="anchor" href="#落地布局" aria-label="link">#</a></h2>
+<h2 id="the-landing-layout">落地布局<a class="anchor" href="#the-landing-layout" aria-label="link">#</a></h2>
 <p>pipeline 可以落地与 gateway <strong>相同的表</strong>：相同的列，相同的 <code>brevis_ingestion_id</code>，因此在两者之间选择是部署层面的决定，而不是 schema 层面的决定。团队可以把两者放在一起读取，并且无需迁移就能从一种换到另一种。</p>
 <div class="code-block" data-code="const table = &quot;landing.orders&quot;
 
@@ -340,7 +340,7 @@ sdk.Run(sdk.Pipeline{
     },
 })</code></pre></div>
 <p><code>sdk.LandingSchema</code> 有九列：布局拥有的八列，以及生产者拥有的一列。<code>sdk.Landing</code> 负责填充它们，并把整条记录放进 <code>data</code>。如果需要，可以把你自己的列追加到 schema 中，或者使用 <code>sdk.LandingControlColumns</code>，让记录的各个字段拥有自己的列。</p>
-<h3 id="两种形态整条记录或每个字段一列">两种形态：整条记录，或每个字段一列<a class="anchor" href="#两种形态整条记录或每个字段一列" aria-label="link">#</a></h3>
+<h3 id="two-shapes-the-record-whole-or-one-column-per-field">两种形态：整条记录，或每个字段一列<a class="anchor" href="#two-shapes-the-record-whole-or-one-column-per-field" aria-label="link">#</a></h3>
 <p>上面的是<strong>文档</strong>形态：记录以 JSON 形式放进 <code>data</code>，无论记录包含什么，表都是同一张。加上 <code>sdk.LandingColumns()</code>，记录的每个字段就会有自己的一列：</p>
 <div class="code-block" data-code="sdk.Landing(table, sdk.LandingKey(&quot;source_key&quot;), sdk.LandingColumns())"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())</code></pre></div>
 <p>这时的表是 <code>sdk.LandingControlColumns</code> 加上你的列，<strong>而不是</strong>带有 <code>data</code> 的 <code>sdk.LandingSchema</code>：</p>
@@ -362,13 +362,13 @@ sdk.Run(sdk.Pipeline{
     ),
 }</code></pre></div>
 <p><strong>这些列由你声明。</strong> SDK 从不推断 schema，这个选项也不改变这一点：它决定的是*行*如何构建，而不是表是什么。gateway 会推断，因为它的生产者是随便发送手头数据的陌生人；而在这里，pipeline 的作者知道结构并把它写下来，写在会有人评审的 diff 里。</p>
-<p>它与 gateway 以 <a href="/zh/docs/ingestion-sinks/#两种形态一份契约"><code>shape: columns</code></a> 落地的形态相同，走的是同一段代码：相同的列，相同的值，相同的 <code>brevis_ingestion_id</code>。</p>
+<p>它与 gateway 以 <a href="/zh/docs/ingestion-sinks/#two-shapes-one-contract"><code>shape: columns</code></a> 落地的形态相同，走的是同一段代码：相同的列，相同的值，相同的 <code>brevis_ingestion_id</code>。</p>
 <p><strong>字段名必须能够用作列名</strong>：以字母或下划线开头，后面是字母、数字和下划线。这是 BigQuery 的规则，也是四个目的地中最严格的，所以在这里通过的名称在所有地方都能用。带有 <code>my-field</code> 的记录会在写入任何东西之前，按名称被拒绝。文档形态没有这条规则：连字符作为 JSON 键完全没有问题。</p>
-<p><strong>默认不会展平。</strong> 嵌套对象会变成以持有它的键命名的一个 <code>JSON</code> 列：<code>customer</code> 保存 <code>{"id": 7, "uf": "SP"}</code>，而不是 <code>customer_id</code> 和 <code>customer_uf</code>。数组同样是 <code>JSON</code>。如果希望*每个数组元素*一行，需要在源的 <code>Expand</code> 中使用 <code>sdk.ArrayAt</code>：它在 <code>Landing</code> 之前运行，是另一个名称不同的操作。<a href="#每个嵌套字段一列"><code>BREVIS_NORMALIZE_DATA</code></a> 会对整个部署改变前半部分的行为；无论如何，数组仍然是 <code>JSON</code>：</p>
+<p><strong>默认不会展平。</strong> 嵌套对象会变成以持有它的键命名的一个 <code>JSON</code> 列：<code>customer</code> 保存 <code>{"id": 7, "uf": "SP"}</code>，而不是 <code>customer_id</code> 和 <code>customer_uf</code>。数组同样是 <code>JSON</code>。如果希望*每个数组元素*一行，需要在源的 <code>Expand</code> 中使用 <code>sdk.ArrayAt</code>：它在 <code>Landing</code> 之前运行，是另一个名称不同的操作。<a href="#one-column-per-nested-field"><code>BREVIS_NORMALIZE_DATA</code></a> 会对整个部署改变前半部分的行为；无论如何，数组仍然是 <code>JSON</code>：</p>
 <div class="code-block" data-code="Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt(&quot;results&quot;)},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},</code></pre></div>
 <p><strong><code>null</code> 保持为 <code>NULL</code></strong>，绝不会变成 <code>""</code>。字段发送为 null 与字段发送为空是不同的事实，而列在事后无法区分它们。</p>
 <p><strong><code>data</code> 归你所有。</strong> 在这种形态下，布局中没有同名的列，因此带有名为 <code>data</code> 的字段的生产者（Bacen 的序列恰好就是这样）会得到属于自己的一列，里面是他们自己的值。在 <code>document</code> 下，他们的字段只是布局的 JSON 中的一个键。</p>
-<h3 id="brevis-前缀可以由你修改"><code>brevis_</code> 前缀可以由你修改<a class="anchor" href="#brevis-前缀可以由你修改" aria-label="link">#</a></h3>
+<h3 id="the-brevis-prefix-is-yours-to-change"><code>brevis_</code> 前缀可以由你修改<a class="anchor" href="#the-brevis-prefix-is-yours-to-change" aria-label="link">#</a></h3>
 <div class="code-block" data-code="BREVIS_LANDING_PREFIX=acme"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>BREVIS_LANDING_PREFIX=acme</code></pre></div>
 <p>这样布局的八个列就变成 <code>acme_ingestion_id</code>、<code>acme_record_key</code> 等等。不设置时，它们保持一直以来的样子。</p>
 <p><strong>请在创建表时就选定它，因为之后再修改并不是重命名。</strong> 这个 SDK 从不删除任何列，所以切换前缀的 stream 并不是重命名八个列，而是新增八个、遗弃八个。此后的每一行，旧的那一组都是 NULL，而</p>
@@ -383,7 +383,7 @@ sdk.Run(sdk.Pipeline{
 <p><strong>它是按进程设置的，这是重点，而不是局限。</strong> 同一个 gateway 中的所有 stream 共享它，所以两个 sink 之间不会产生分歧，声明表的 schema 与填充表的转换器之间也不会。</p>
 <p><strong>保留规则随之移动。</strong> 在 <code>acme_</code> 下，发送 <code>acme_region</code> 的生产者会被拒绝，因为能够伪造控制列的人会伪造一个看起来真实的列。而 <code>brevis_region</code> 则变成普通字段。</p>
 <p><code>data</code> 从不带前缀。它是生产者的列，不是布局的列。</p>
-<h3 id="每个嵌套字段一列">每个嵌套字段一列<a class="anchor" href="#每个嵌套字段一列" aria-label="link">#</a></h3>
+<h3 id="one-column-per-nested-field">每个嵌套字段一列<a class="anchor" href="#one-column-per-nested-field" aria-label="link">#</a></h3>
 <div class="code-block" data-code="BREVIS_NORMALIZE_DATA=true"><div class="code-head"><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>BREVIS_NORMALIZE_DATA=true</code></pre></div>
 <p>这样嵌套对象的字段会有自己的列，就像 pandas 的 <code>json_normalize</code> 那样，只展开一层：</p>
 <div class="code-block" data-code="data = [
@@ -405,7 +405,7 @@ sdk.Run(sdk.Pipeline{
 <p><strong>冲突会被拒绝，而不是被解决。</strong> <code>{"name_first": 1, "name": {"first": 2}}</code> 会让两个字段产生同一个列，而 Go 的 map 遍历顺序是随机的：让其中一个胜出，会使同一批数据在不同次运行中得到不同的表。拒绝信息会指出两者。</p>
 <p><strong>保留前缀检查的是列，而不是字段。</strong> 发送 <code>{"brevis": {"stream": "x"}}</code> 的生产者，否则会通过字段检查没有监视的入口生成 <code>brevis_stream</code>。它会被拒绝，并指出 <code>brevis.stream</code>，这样他们可以找到那个字段。</p>
 <p><strong>它是按进程设置的</strong>，与前缀一样，原因也相同：同一个 gateway 中的所有 stream 共享它，所以两个 sink 不会对它们都可能写入的表产生分歧。它只适用于 <code>columns</code> 形态：在 <code>document</code> 下，记录整个放进一个 <code>JSON</code> 列，没有可展平的目标。</p>
-<h3 id="本身已是-json-的文本">本身已是 JSON 的文本<a class="anchor" href="#本身已是-json-的文本" aria-label="link">#</a></h3>
+<h3 id="text-that-is-already-json">本身已是 JSON 的文本<a class="anchor" href="#text-that-is-already-json" aria-label="link">#</a></h3>
 <p>声明为 <code>sdk.TypeJSON</code> 的列接收的是 JSON <strong>值</strong>：对象、数组、数字。在 BigQuery 上，行是整体编码的，所以那里的 Go <code>string</code> 会变成 JSON 字符串字面量，列里保存的是你对象的文本，而不是对象本身：</p>
 <div class="code-block" data-code="SELECT JSON_TYPE(payload) ...;            -- &quot;string&quot;, not &quot;object&quot;
 SELECT JSON_VALUE(payload, &#x27;$.a&#x27;) ...;    -- NULL"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">SELECT</span> JSON_TYPE(payload) ...;            <span class="t-c">-- "string", not "object"</span>
@@ -415,7 +415,7 @@ SELECT JSON_VALUE(payload, &#x27;$.a&#x27;) ...;    -- NULL"><div class="code-he
 <div class="code-block" data-code="row[&quot;payload&quot;] = sdk.JSONText(body)"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>row["payload"] = sdk.JSONText(body)</code></pre></div>
 <p><code>encoding/json</code> 自带的 <code>json.RawMessage</code> 也可以，原因相同：两者写入的都是它们所持有的 JSON，而不是它的带引号字符串。</p>
 <p><strong>Postgres 和 MySQL 不受影响，也不会被拒绝。</strong> 它们的服务器会把字符串解析到 JSON 列中，一直如此。</p>
-<h3 id="当出现表中没有的字段时">当出现表中没有的字段时<a class="anchor" href="#当出现表中没有的字段时" aria-label="link">#</a></h3>
+<h3 id="when-a-field-the-table-does-not-have-shows-up">当出现表中没有的字段时<a class="anchor" href="#when-a-field-the-table-does-not-have-shows-up" aria-label="link">#</a></h3>
 <p>生产者新增了一个字段，加载就会停止，并指出该字段：行带有一个没有任何声明的列，写入一个从未提及它的目的地会悄悄丢掉它。这种拒绝在默认情况下是正确的，但在落地表上，这是唯一一种不可能破坏读取方的变更，目的地可以选择接受它：</p>
 <div class="code-block" data-code="postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}</code></pre></div>
 <p>这样，批次会<strong>补全</strong>你的声明：它携带而声明中没有的字段会变成一列，类型为 <code>STRING</code>，除非该字段是对象或数组，那时为 <code>JSON</code>。这是与 gateway 落地 <code>shape: columns</code> 时相同的规则、相同的代码，所以两者产生同样的表。</p>
@@ -460,7 +460,7 @@ specification without a key length"><div class="code-head"><button class="code-c
 specification without a key length</code></pre></div>
 <p>Postgres 可以工作，因为它的 <code>string</code> 是 <code>TEXT</code>。在 MySQL 上，请使用 <code>DedupNone</code> 落地，并在下游解析当前版本，或者用 <code>CreateSQL</code> 和指定长度的 id 列自己创建表。</p>
 <p><strong>id 是内容寻址的。</strong> 同一条记录经由任一路径都产生同一个 id，而变化后的记录产生新的 id，这正是重新运行成为无操作而不是产生重复的原因。</p>
-<h2 id="参考">参考<a class="anchor" href="#参考" aria-label="link">#</a></h2>
+<h2 id="reference">参考<a class="anchor" href="#reference" aria-label="link">#</a></h2>
 <ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a>：完整的 API</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a>：十二个可运行的示例</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a>：逐版本的历史</li></ul>
 
       <nav class="pagers" aria-label="页面">
@@ -475,7 +475,7 @@ specification without a key length</code></pre></div>
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#三个步骤">三个步骤</a></li><li class="toc-2"><a href="#驱动是一个值而不是一项设置">驱动是一个值，而不是一项设置</a></li><li class="toc-2"><a href="#源与目的地">源与目的地</a></li><li class="toc-3"><a href="#发布到-topic">发布到 topic</a></li><li class="toc-2"><a href="#完整的抓取器">完整的抓取器</a></li><li class="toc-2"><a href="#run-上下文">run 上下文</a></li><li class="toc-3"><a href="#时钟">时钟</a></li><li class="toc-2"><a href="#不要与客户端库混淆">不要与客户端库混淆</a></li><li class="toc-2"><a href="#构建-pipeline-的参数">构建 pipeline 的参数</a></li><li class="toc-2"><a href="#落地布局">落地布局</a></li><li class="toc-3"><a href="#两种形态整条记录或每个字段一列">两种形态：整条记录，或每个字段一列</a></li><li class="toc-3"><a href="#brevis-前缀可以由你修改">brevis_ 前缀可以由你修改</a></li><li class="toc-3"><a href="#每个嵌套字段一列">每个嵌套字段一列</a></li><li class="toc-3"><a href="#本身已是-json-的文本">本身已是 JSON 的文本</a></li><li class="toc-3"><a href="#当出现表中没有的字段时">当出现表中没有的字段时</a></li><li class="toc-2"><a href="#参考">参考</a></li></ul>
+      <ul><li class="toc-2"><a href="#three-steps">三个步骤</a></li><li class="toc-2"><a href="#the-driver-is-a-value-not-a-setting">驱动是一个值，而不是一项设置</a></li><li class="toc-2"><a href="#sources-and-destinations">源与目的地</a></li><li class="toc-3"><a href="#publishing-to-a-topic">发布到 topic</a></li><li class="toc-2"><a href="#a-whole-fetcher">完整的抓取器</a></li><li class="toc-2"><a href="#the-run-context">run 上下文</a></li><li class="toc-3"><a href="#the-clock">时钟</a></li><li class="toc-2"><a href="#not-to-be-confused-with-the-client-libraries">不要与客户端库混淆</a></li><li class="toc-2"><a href="#parameters-that-build-the-pipeline">构建 pipeline 的参数</a></li><li class="toc-2"><a href="#the-landing-layout">落地布局</a></li><li class="toc-3"><a href="#two-shapes-the-record-whole-or-one-column-per-field">两种形态：整条记录，或每个字段一列</a></li><li class="toc-3"><a href="#the-brevis-prefix-is-yours-to-change">brevis_ 前缀可以由你修改</a></li><li class="toc-3"><a href="#one-column-per-nested-field">每个嵌套字段一列</a></li><li class="toc-3"><a href="#text-that-is-already-json">本身已是 JSON 的文本</a></li><li class="toc-3"><a href="#when-a-field-the-table-does-not-have-shows-up">当出现表中没有的字段时</a></li><li class="toc-2"><a href="#reference">参考</a></li></ul>
     </aside>
   </main>
 </div>
@@ -495,9 +495,9 @@ specification without a key length</code></pre></div>
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -520,7 +520,7 @@ specification without a key length</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
       <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/context/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/context/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/context/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/context/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/context/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/context/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/context/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/context/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/context/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/context/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/context/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>steps के बीच संदर्भ</h1>
@@ -150,7 +150,7 @@ bucket = context.get(&quot;extract.bucket&quot;)"><div class="code-head"><span c
 bucket = context.get("extract.bucket")</code></pre></div>
 <p>Key हमेशा <code>&lt;step id&gt;.&lt;name&gt;</code> होती है। Step वही पढ़ता है जो <strong>उसकी अपनी निर्भरताओं</strong> ने प्रकाशित किया, और कुछ नहीं।</p>
 <aside class="admon admon-note"><p class="admon-t">यह क्या नहीं है</p><p>यह message queue नहीं है, run के बीच की स्थिति नहीं है, और डेटा रखने की जगह नहीं है। यह वह पर्ची है जो एक step अगले के लिए छोड़ता है — एक path, एक watermark, एक गिनती।</p></aside>
-<h2 id="कई-भ-भष-कस-लइबरर-क-जररत-नह">कोई भी भाषा, किसी लाइब्रेरी की ज़रूरत नहीं<a class="anchor" href="#कई-भ-भष-कस-लइबरर-क-जररत-नह" aria-label="link">#</a></h2>
+<h2 id="any-language-no-library-required">कोई भी भाषा, किसी लाइब्रेरी की ज़रूरत नहीं<a class="anchor" href="#any-language-no-library-required" aria-label="link">#</a></h2>
 <p>अनुबंध <strong>दो environment वेरिएबल और एक फ़ाइल</strong> है, इसलिए बिना SDK वाला step भी इसमें हिस्सा लेता है:</p>
 <div class="code-block" data-code="window=$(jq -r &#x27;.extract.watermark&#x27; &lt;&lt;&lt; &quot;$BREVIS_INPUT&quot;)
 ./publish --until &quot;$window&quot;
@@ -160,15 +160,15 @@ jq <span class="t-n">-n</span> <span class="t-n">--arg</span> n "$(date <span cl
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>BREVIS_INPUT</code></td><td><code>{"&lt;step id&gt;": {…}}</code> — इस step की निर्भरताओं ने जो प्रकाशित किया</td></tr><tr><td><code>BREVIS_OUTPUT</code></td><td>उस path का नाम जिस पर <strong>एक</strong> JSON ऑब्जेक्ट लिखना है</td></tr></tbody></table></div>
 <p>Kubernetes के तहत वह path <code>/dev/termination-log</code> है, जिसे engine exit code पाने के लिए पहले से पढ़ता है। इसलिए <strong>कोई API कॉल, कोई token और कोई port नहीं</strong> — और इसके लिए लाइब्रेरी एक JSON parse और एक फ़ाइल write है।</p>
 <div class="table-wrap"><table><thead><tr><th>भाषा</th><th></th></tr></thead><tbody><tr><td>Python</td><td><a href="/hi/docs/python/"><code>pip install brevis</code></a> — इसमें <code>brevis.run</code> भी है, <a href="/hi/docs/parameters/">auto पैरामीटर</a> के साथ</td></tr><tr><td>Go</td><td><code>sdk/context</code>, SDK module का हिस्सा, किसी पर निर्भर नहीं</td></tr><tr><td>बाकी कुछ भी</td><td>ऊपर के दो वेरिएबल</td></tr></tbody></table></div>
-<h2 id="अलगव">अलगाव<a class="anchor" href="#अलगव" aria-label="link">#</a></h2>
+<h2 id="isolation">अलगाव<a class="anchor" href="#isolation" aria-label="link">#</a></h2>
 <p>कोई step दूसरे के प्रकाशित को अधिलेखित नहीं कर सकता। Keys पर लिखने वाले की id का उपसर्ग लगता है, और वह उपसर्ग engine तय करता है — step नहीं। <code>bucket</code> प्रकाशित करने वाले दो steps <code>extract.bucket</code> और <code>load.bucket</code> बनाते हैं, और कोई गायब नहीं होता।</p>
-<h2 id="4096-बइट-क-सम">4096 बाइट की सीमा<a class="anchor" href="#4096-बइट-क-सम" aria-label="link">#</a></h2>
+<h2 id="the-4096-byte-ceiling">4096 बाइट की सीमा<a class="anchor" href="#the-4096-byte-ceiling" aria-label="link">#</a></h2>
 <p>Step जो प्रकाशित करता है वह <strong>4096 बाइट</strong> में समाना चाहिए। सीमा मनमानी नहीं है: Kubernetes के तहत transport <code>/dev/termination-log</code> है, और kubelet उतना ही स्वीकार करता है।</p>
 <p>सीमा लाँघना <strong>step की त्रुटि</strong> है, और संदेश बताता है कि कितने बाइट लिखे गए। विकल्प छाँटना होता — और छँटा हुआ JSON अमान्य JSON है, जिसे अगला step खोजता है और जिसके पास यह जानने का कोई तरीका नहीं कि दोष उसका अपना नहीं है।</p>
 <p>अगर कोई मान नहीं समाता, तो वह संदर्भ नहीं है: उसे bucket में लिखें और path प्रकाशित करें।</p>
-<h2 id="retries-और-फर-शर-कए-गए-run">Retries और फिर शुरू किए गए run<a class="anchor" href="#retries-और-फर-शर-कए-गए-run" aria-label="link">#</a></h2>
+<h2 id="retries-and-resumed-runs">Retries और फिर शुरू किए गए run<a class="anchor" href="#retries-and-resumed-runs" aria-label="link">#</a></h2>
 <p>नए प्रयास पर step दोबारा प्रकाशित करता है और पिछला मान बदल जाता है। जो step पहले ही सफल हो चुका है वह न दोबारा चलता है, न दोबारा प्रकाशित करता है — उसने जो कहा था वह उन पर टिका रहता है जो उस पर निर्भर हैं।</p>
-<h2 id="step-क-हथ-स-चलन">Step को हाथ से चलाना<a class="anchor" href="#step-क-हथ-स-चलन" aria-label="link">#</a></h2>
+<h2 id="running-a-step-by-hand">Step को हाथ से चलाना<a class="anchor" href="#running-a-step-by-hand" aria-label="link">#</a></h2>
 <p>दो वेरिएबल ही पूरा अनुबंध हैं, इसलिए किसी run को दोहराना उन्हें export करना भर है:</p>
 <div class="code-block" data-code="export BREVIS_INPUT=&#x27;{&quot;extract&quot;:{&quot;bucket&quot;:&quot;s3://landing/2026-09-07&quot;}}&#x27;
 export BREVIS_OUTPUT=/tmp/out.json
@@ -177,7 +177,7 @@ cat /tmp/out.json"><div class="code-head"><span class="code-lang">bash</span><bu
 export BREVIS_OUTPUT=/tmp/out.json
 python transform.py
 cat /tmp/out.json</code></pre></div>
-<h2 id="अगल-कदम">अगले कदम<a class="anchor" href="#अगल-कदम" aria-label="link">#</a></h2>
+<h2 id="next-steps">अगले कदम<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/hi/docs/parameters/">पैरामीटर</a> — run के बीच क्या बदलता है, और स्वचालित वाले</li><li><a href="/hi/docs/runtime/">Step runtime</a> — step अपने चलने की जगह के बारे में क्या घोषित करता है</li><li><a href="/hi/docs/python/">Python</a> — क्लाइंट लाइब्रेरी, और अन्य भाषाएँ</li></ul>
 
       <nav class="pagers" aria-label="पेज">
@@ -192,7 +192,7 @@ cat /tmp/out.json</code></pre></div>
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#कई-भ-भष-कस-लइबरर-क-जररत-नह">कोई भी भाषा, किसी लाइब्रेरी की ज़रूरत नहीं</a></li><li class="toc-2"><a href="#अलगव">अलगाव</a></li><li class="toc-2"><a href="#4096-बइट-क-सम">4096 बाइट की सीमा</a></li><li class="toc-2"><a href="#retries-और-फर-शर-कए-गए-run">Retries और फिर शुरू किए गए run</a></li><li class="toc-2"><a href="#step-क-हथ-स-चलन">Step को हाथ से चलाना</a></li><li class="toc-2"><a href="#अगल-कदम">अगले कदम</a></li></ul>
+      <ul><li class="toc-2"><a href="#any-language-no-library-required">कोई भी भाषा, किसी लाइब्रेरी की ज़रूरत नहीं</a></li><li class="toc-2"><a href="#isolation">अलगाव</a></li><li class="toc-2"><a href="#the-4096-byte-ceiling">4096 बाइट की सीमा</a></li><li class="toc-2"><a href="#retries-and-resumed-runs">Retries और फिर शुरू किए गए run</a></li><li class="toc-2"><a href="#running-a-step-by-hand">Step को हाथ से चलाना</a></li><li class="toc-2"><a href="#next-steps">अगले कदम</a></li></ul>
     </aside>
   </main>
 </div>
@@ -212,9 +212,9 @@ cat /tmp/out.json</code></pre></div>
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -237,7 +237,7 @@ cat /tmp/out.json</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

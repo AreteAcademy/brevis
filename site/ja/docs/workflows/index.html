@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
       <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/workflows/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/workflows/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/workflows/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/workflows/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/workflows/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/workflows/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/workflows/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/workflows/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/workflows/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/workflows/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/workflows/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>Workflows</h1>
       <p class="doc-desc">YAML 形式の全体 — ステップ、依存関係、イメージ、リソース、スケジュール。</p>
       <p>ワークフローは YAML ファイルです。<strong>何を実行するか</strong>、<strong>どの順序で</strong>、 <strong>どのランタイムで</strong>を宣言し、それ以外は何も宣言しません。</p>
-<h2 id="最小構成">最小構成<a class="anchor" href="#最小構成" aria-label="link">#</a></h2>
+<h2 id="minimum-structure">最小構成<a class="anchor" href="#minimum-structure" aria-label="link">#</a></h2>
 <div class="code-block" data-code="name: hello
 steps:
   - id: only
@@ -134,7 +134,7 @@ steps:
   - <span class="t-k">id</span>: only
     <span class="t-k">run</span>: echo done</code></pre></div>
 <p><code>name</code> は、データベースとインターフェースの中でワークフローを識別します。<code>steps</code> は ステップのリストで、各ステップは一意の <code>id</code> と <code>run</code> を持ちます。</p>
-<h3 id="description-何のためのものか"><code>description</code> — 何のためのものか<a class="anchor" href="#description-何のためのものか" aria-label="link">#</a></h3>
+<h3 id="description-what-it-is-for"><code>description</code> — 何のためのものか<a class="anchor" href="#description-what-it-is-for" aria-label="link">#</a></h3>
 <p>任意で、自由形式です。エンジンのどの部分からも読まれません。</p>
 <div class="code-block" data-code="name: daily-orders
 description: &gt;
@@ -151,7 +151,7 @@ steps:
     <span class="t-k">run</span>: python fetch.py</code></pre></div>
 <p>ワークフローの画面の先頭、件数とスケジュールの上に表示されます。グラフはフローが <strong>何をするか</strong>をすでに示しています。これは、それが何のために存在するかを示す唯一の場所で、 午前 3 時に初めてそのワークフローを開く人が本当に必要としているものです。</p>
 <p>説明のないワークフローには、そこに何も表示されません。空のブロックは表示しません。 読み込みに失敗したように見えるからです。</p>
-<h2 id="順序-chain-か-dag-か">順序: chain か dag か<a class="anchor" href="#順序-chain-か-dag-か" aria-label="link">#</a></h2>
+<h2 id="order-chain-or-dag">順序: chain か dag か<a class="anchor" href="#order-chain-or-dag" aria-label="link">#</a></h2>
 <div class="code-block" data-code="type: chain   # order is the file&#x27;s order
 type: dag     # order comes from depends_on"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">type</span>: chain   <span class="t-c"># order is the file's order</span>
 <span class="t-k">type</span>: dag     <span class="t-c"># order comes from depends_on</span></code></pre></div>
@@ -193,7 +193,7 @@ steps:
     <span class="t-k">depends_on</span>: [extract, validate]</code></pre></div>
 <p>ランナーはグラフを<strong>レベルごとに</strong>進みます。同じレベルのものはすべて並列に実行され、 次のレベルは前のレベルが完全に終わってから始まります。</p>
 <aside class="admon admon-warning"><p class="admon-t">失敗するとレベル全体が止まります</p><p>ランナーは、レベル内で<strong>最初</strong>の失敗が起きた時点で止まり、次のレベルを開始しません。 エラーの後で続行すると、完全に見えるのに実は部分的な結果が出てしまうからです。</p></aside>
-<h2 id="スケジュール">スケジュール<a class="anchor" href="#スケジュール" aria-label="link">#</a></h2>
+<h2 id="schedule">スケジュール<a class="anchor" href="#schedule" aria-label="link">#</a></h2>
 <div class="code-block" data-code="schedule: &quot;0 5 * * *&quot;   # five-field cron
 concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">schedule</span>: "0 5 * * *"   <span class="t-c"># five-field cron</span>
 <span class="t-k">concurrency</span>: 1</code></pre></div>
@@ -207,7 +207,7 @@ concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><butto
   <span class="t-k">limit</span>: 1               <span class="t-c"># optional; a group without one means 1</span></code></pre></div>
 <p>グループ内のすべてのワークフローの run は、起動のきっかけ(スケジュール、landing、backfill、 クリックのどれか)にかかわらず、1 つの上限に対してカウントされます。グループが満杯のときに 到着した run は<strong>キューで待機</strong>します。スキップも失敗もしません。同じテーブルに書き込む 3 つ目のワークフローも、グループ名を指定すれば参加できます。待機中は、その run のページに、 どのグループか、その上限、どの run がスロットを占有しているかが表示されます。</p>
 <ul><li>すべてのメンバーが<strong>同じ上限</strong>を宣言します。<code>validate</code> と <code>publish</code> は、あるファイルで 1、 別のファイルで 3 と宣言されたグループを、すでに公開済みのメンバーとの比較も含めて拒否します。</li><li>グループが直列化するのは <strong>Brevis の run</strong> です。誰かが自分のマシンで起動した <code>dbt run</code> はこのキューに 含まれず、同じように失敗します。</li></ul>
-<h2 id="イメージとリソース">イメージとリソース<a class="anchor" href="#イメージとリソース" aria-label="link">#</a></h2>
+<h2 id="image-and-resources">イメージとリソース<a class="anchor" href="#image-and-resources" aria-label="link">#</a></h2>
 <div class="code-block" data-code="image: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
 resources:
   cpu: 200m
@@ -238,9 +238,9 @@ resources:
     <span class="t-k">resources</span>: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
 <p>これにより、Go 製のフェッチャーは、1.9 GB の <code>dbt build</code> の隣で 12 MB と 32Mi で済みます。 両者が大きいほうのサイズを負担することはありません。詳しくは <a href="/ja/docs/pod-per-step/">ステップごとの pod</a> を参照してください。</p>
-<h2 id="ステップのフィールド">ステップのフィールド<a class="anchor" href="#ステップのフィールド" aria-label="link">#</a></h2>
+<h2 id="step-fields">ステップのフィールド<a class="anchor" href="#step-fields" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>フィールド</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>必須</strong></td><td>ワークフロー内で一意。グラフとログに表示される名前</td></tr><tr><td><code>run</code></td><td></td><td>コマンド</td></tr><tr><td><code>image</code></td><td></td><td>ステップのイメージ。省略するとトップレベルのものを継承します</td></tr><tr><td><code>host</code></td><td></td><td>エンジンが管理<strong>しない</strong>マシンにコマンドを送ります。<code>image</code> の代替であり、併用はしません。<a href="https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host" target="_blank" rel="noopener">Kubernetes ガイドの <code>host:</code></a>を参照</td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> にするとシェルなしで実行します。distroless では必須です</td></tr><tr><td><code>depends_on</code></td><td></td><td>先に終わっている必要がある <code>id</code> のリスト。要素は <code>{step, label}</code> でも構いません</td></tr><tr><td><code>marker</code></td><td><code>false</code></td><td>コマンドを持たないステップ。<code>start</code> や <code>end</code> 用です</td></tr><tr><td><code>resources</code></td><td></td><td>そのステップの <code>cpu</code>、<code>memory</code>、<code>limits</code></td></tr><tr><td><code>runtime</code>, <code>tools</code></td><td></td><td>ステップの言語とツール — <a href="/ja/docs/runtime/">ステップのランタイム</a>を参照</td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>依存先がどの状態のときにこのステップを実行するか — 後述</td></tr><tr><td><code>unless_empty</code></td><td></td><td>やるべきことがあるかどうかを決めるコンテキストのキー — 後述</td></tr><tr><td><code>for_each</code></td><td></td><td>リストを保持するコンテキストのキー。ステップは要素ごとに 1 回実行されます — 後述</td></tr><tr><td><code>group</code></td><td></td><td>このステップを、名前付きで折りたためるボックスの中に描画します — 後述</td></tr><tr><td><code>uses</code></td><td></td><td>別のワークフロー。そのステップがこのステップの代わりに入ります — 後述</td></tr><tr><td><code>on_error</code></td><td></td><td>このステップの失敗を通知します — 後述</td></tr></tbody></table></div>
-<h2 id="やるべきことがあるときだけステップを実行する">やるべきことがあるときだけステップを実行する<a class="anchor" href="#やるべきことがあるときだけステップを実行する" aria-label="link">#</a></h2>
+<h2 id="running-a-step-only-when-there-is-something-to-do">やるべきことがあるときだけステップを実行する<a class="anchor" href="#running-a-step-only-when-there-is-something-to-do" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# in extract
 context.set(has_rows=len(rows) &gt; 0)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
@@ -254,15 +254,15 @@ context.set(has_rows=len(rows) &gt; 0)</code></pre></div>
 <p><code>unless_empty</code> が指定するのは式ではなく<strong>キー</strong>です。ステップが判断して答えを公開し、 エンジンは 1 つのキーを読んで、それが空かどうかを問い合わせます。</p>
 <div class="table-wrap"><table><thead><tr><th>空とみなされるもの</th><th>存在するとみなされるもの</th></tr></thead><tbody><tr><td><code>false</code>、<code>0</code>、<code>""</code>、<code>null</code>、<code>[]</code>、<code>{}</code></td><td>それ以外のすべて</td></tr></tbody></table></div>
 <p><strong>文字列</strong>の <code>"false"</code> は存在するとみなされます。その 5 文字を公開したステップは 何かを公開したのであり、それが真偽値を意味すると推測することは、ルールが作者に見えない 意見を持ち始める原因になります。本物の真偽値を公開してください。</p>
-<h3 id="なぜ式ではないのか">なぜ式ではないのか<a class="anchor" href="#なぜ式ではないのか" aria-label="link">#</a></h3>
+<h3 id="why-not-an-expression">なぜ式ではないのか<a class="anchor" href="#why-not-an-expression" aria-label="link">#</a></h3>
 <p>魅力的な設計は <code>when: "{{ context.extract.rows &gt; 0 }}"</code> です。しかし、小さな式言語は 大きな負担を伴います。パーサ、JSON の <code>any</code> に対して <code>&gt;</code> が何を意味するかを定める型システム、 他の人が書いた YAML から式が出てくることによるセキュリティ上の問題、そして文字列の 内部を指すエラーメッセージです。式言語を持つオーケストレータは、どれもそれに関する バグトラッカーを抱えています。</p>
 <p>ここでは、判断は作者がすでに書いている言語の中にあり、自分のテストフレームワークから 手が届きます。</p>
-<h3 id="キーがないのは空の値ではなく失敗">キーがないのは空の値ではなく失敗<a class="anchor" href="#キーがないのは空の値ではなく失敗" aria-label="link">#</a></h3>
+<h3 id="a-missing-key-is-a-failure-not-an-empty-value">キーがないのは空の値ではなく失敗<a class="anchor" href="#a-missing-key-is-a-failure-not-an-empty-value" aria-label="link">#</a></h3>
 <p>キーがない場合、ステップは<strong>失敗</strong>し、メッセージには、公開側が実際に書いたものとともに そのキーの名前が出力されます。</p>
 <div class="code-block" data-code="step &quot;transform&quot; reads `extract.has_row`, and &quot;extract&quot; published &quot;has_rows&quot; but not &quot;has_row&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"</code></pre></div>
 <p>代案として、存在しないキーを「空なのでスキップ」と読むと、タイプミスが、黙って永遠に 実行されなくなるステップに変わり、その理由を示すものはどこにもありません。これはこの機能にとって 最悪の結果です。</p>
 <p>キーは常に、それを公開するステップで修飾され、そのステップはこのステップが依存しているものでなければ なりません。どちらも <strong>publish</strong> の時点で拒否されます。決して見えないキーで制御されたステップは 永遠にスキップされ、夜間ジョブが動かなくなったときにそれに気づくのでは遅すぎるからです。</p>
-<h2 id="要素ごとにステップを-1-回実行する">要素ごとにステップを 1 回実行する<a class="anchor" href="#要素ごとにステップを-1-回実行する" aria-label="link">#</a></h2>
+<h2 id="running-a-step-once-per-element">要素ごとにステップを 1 回実行する<a class="anchor" href="#running-a-step-once-per-element" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# in extract
 context.set(partitions=[&quot;2026-01&quot;, &quot;2026-02&quot;, &quot;2026-03&quot;])"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-c"># in extract</span>
 context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
@@ -277,20 +277,20 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>変数</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_MAP_INDEX</code></td><td><code>0</code>、<code>1</code>、<code>2</code> …</td></tr><tr><td><code>BREVIS_MAP_VALUE</code></td><td>その要素</td></tr></tbody></table></div>
 <p>JSON の文字列は<strong>引用符なし</strong>で渡されるため、<code>["2026-01"]</code> に対する <code>for_each</code> は シェルに <code>"2026-01"</code> ではなく <code>2026-01</code> を渡します。それ以外のもの(数値、オブジェクト、 リスト)は JSON のまま渡されます。</p>
 <p>どちらの変数も、マップされていないステップには存在しません。常に存在して常に空の変数は、 環境変数を読む人にそれを無視するよう教えてしまうからです。</p>
-<h3 id="dag-の形は変わらない">DAG の形は変わらない<a class="anchor" href="#dag-の形は変わらない" aria-label="link">#</a></h3>
+<h3 id="the-shape-of-the-dag-does-not-change">DAG の形は変わらない<a class="anchor" href="#the-shape-of-the-dag-does-not-change" aria-label="link">#</a></h3>
 <p>マップされたステップは、依然として 1 つのエッジの集合を持つ 1 つのノードです。変わるのは、 その下にある行の数だけです。したがってレイアウトはこれまでどおりで、<code>[3]</code> は読み取り時に それらの行から数えられます。何も保存されないので、同期を保つ必要もなく、誤った件数が 修正されたクエリより長く残ることもありません。</p>
 <p>インスタンスがまだ実行中のあいだ、カードには <code>[2/3]</code> と表示されます。</p>
-<h3 id="1-つのインスタンスの失敗でステップが失敗する">1 つのインスタンスの失敗でステップが失敗する<a class="anchor" href="#1-つのインスタンスの失敗でステップが失敗する" aria-label="link">#</a></h3>
+<h3 id="one-failed-instance-fails-the-step">1 つのインスタンスの失敗でステップが失敗する<a class="anchor" href="#one-failed-instance-fails-the-step" aria-label="link">#</a></h3>
 <p>3 つのパーティションをロードして 1 つが失敗したなら、そのステップは仕事を果たしていませんし、 その下のステップはそれを知ることになります。大半がうまくいったからといって緑になるノードは、 嘘をつくバッジです。</p>
 <p><strong>リトライでやり直されるのは、失敗したインスタンスだけです。</strong> 成功した 18 のパーティションが、 2 つが壊れたからといって再ロードされることはありません。</p>
-<h3 id="空のリストは成功ではなく-skipped">空のリストは成功ではなく <code>skipped</code><a class="anchor" href="#空のリストは成功ではなく-skipped" aria-label="link">#</a></h3>
+<h3 id="an-empty-list-is-skipped-not-success">空のリストは成功ではなく <code>skipped</code><a class="anchor" href="#an-empty-list-is-skipped-not-success" aria-label="link">#</a></h3>
 <p>やるべきことがなかったために何もしなかったステップは、それをやり遂げたわけではありません。 インスタンスがゼロなのに緑のノードというのは、まさに誰かがダッシュボードを作ってしまう類のものです。</p>
 <p><strong>リストではない</strong>値は失敗し、キーが存在しない場合も同様です。<code>unless_empty:</code> と同じ方針で、 理由も同じです。タイプミスが黙ってインスタンスをゼロにすると、ステップが永遠に無効になってしまうからです。</p>
-<h3 id="ファンアウトには上限がありその上限は継承されたもの">ファンアウトには上限があり、その上限は継承されたもの<a class="anchor" href="#ファンアウトには上限がありその上限は継承されたもの" aria-label="link">#</a></h3>
+<h3 id="the-fan-out-is-bounded-and-the-bound-is-inherited">ファンアウトには上限があり、その上限は継承されたもの<a class="anchor" href="#the-fan-out-is-bounded-and-the-bound-is-inherited" aria-label="link">#</a></h3>
 <p>リストはコンテキストに載って運ばれ、コンテキストには kubelet に由来する 4096 バイトの 上限があります。ワークフローは、それを 4 キロバイトで表現する方法を見つけない限り、 1 万個の pod を要求できません。これは、回避するのではなく維持する価値のある制限です。</p>
-<h3 id="マップされたステップが公開するもの">マップされたステップが公開するもの<a class="anchor" href="#マップされたステップが公開するもの" aria-label="link">#</a></h3>
+<h3 id="what-a-mapped-step-publishes">マップされたステップが公開するもの<a class="anchor" href="#what-a-mapped-step-publishes" aria-label="link">#</a></h3>
 <p>その出力は各インスタンスの行に記録され、下流のステップからは<strong>見えません</strong>。1 つのステップ名の もとで 4 つのインスタンスが公開すると、1 つのキーに 4 つの値があることになり、 <code>context.String("load.bucket")</code> に対する答えは推測以外にありません。ステップはそれを 黙って捨てるのではなく、ログで知らせます。</p>
-<h2 id="グラフ上でステップをグループ化する">グラフ上でステップをグループ化する<a class="anchor" href="#グラフ上でステップをグループ化する" aria-label="link">#</a></h2>
+<h2 id="grouping-steps-on-the-graph">グラフ上でステップをグループ化する<a class="anchor" href="#grouping-steps-on-the-graph" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: extract_orders
     group: sales_data_reporting
@@ -310,7 +310,7 @@ context.set(partitions=["2026-01", "2026-02", "2026-03"])</code></pre></div>
 <p><strong>見た目だけです。</strong> Airflow の TaskGroup は中の id に*プレフィックスも付ける*ため、 <code>extract</code> は <code>sales.extract</code> になります。ここではそうしません。プレフィックスを付けると、既存の ワークフローのすべての <code>depends_on</code>、コンテキストのキー、記録済みの行が変わってしまいます。 しかもこの機能の価値は、大きなグラフが読みやすくなる点にすべてがあります。名前空間は後から 追加できます。それはこの機能への厳密な追加になります。</p>
 <p>グループはコンテナではなく<strong>ラベル</strong>です。ステップはグローバルな id を保ち、グループは 複数のレベルにまたがることができ、実行については何も変わりません。</p>
 <p>グループ名をクリックすると折りたたまれます。そのステップは消え、境界をまたいでいた矢印は ボックスを指すようになります。</p>
-<h2 id="別のワークフローを再利用する">別のワークフローを再利用する<a class="anchor" href="#別のワークフローを再利用する" aria-label="link">#</a></h2>
+<h2 id="reusing-another-workflow">別のワークフローを再利用する<a class="anchor" href="#reusing-another-workflow" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# nightly.yaml
 steps:
   - id: prepare
@@ -339,11 +339,11 @@ steps:
 <p>それらは折りたためる 1 つのグループとして届くので、グラフにはファイルに書かれたとおりのものが 表示されます。</p>
 <p><strong>publish 時に展開され、実行時に走るわけではありません。</strong> 子の*run* をトリガーして待つステップは、 Airflow をデッドロックさせた設計であり、このエンジンにも同じ要素があります。pod の上限は プロセスごとのセマフォなので、親がスロットを保持したまま、同じプールのスロットを必要とする 子を待つとハングします。しかもそれは負荷がかかったときだけ、つまり本番で起きます。run は 1 つ、 グラフは 1 つ、プールは 1 つです。</p>
 <p>代償として、独自の id と独自の履歴を持つ子の run は得られません。</p>
-<h3 id="ルール">ルール<a class="anchor" href="#ルール" aria-label="link">#</a></h3>
+<h3 id="the-rules">ルール<a class="anchor" href="#the-rules" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>子は<strong>同じ publish</strong> に含まれている必要がある</td><td>すでに公開済みというだけでは不十分</td></tr><tr><td>矢印</td><td>そのステップへの矢印は子の各<strong>ルート</strong>への矢印になり、そのステップからの矢印は子の各<strong>リーフ</strong>からの矢印になる</td></tr><tr><td>子の <code>image</code>、<code>env</code>、<code>secrets</code>、<code>resources</code></td><td>各ステップに具体化されるため、自分のファイルに書かれたもので実行される</td></tr><tr><td>子の <code>unless_empty</code> / <code>for_each</code> のキー</td><td>プレフィックスとともに移る</td></tr><tr><td>ネスト</td><td>深さ優先でフラット化される</td></tr><tr><td>循環</td><td>publish で拒否され、連鎖が示される</td></tr></tbody></table></div>
 <p><strong>「すでに公開済み」ではなく「同じ publish」であることが重要です。</strong> データベースを読む展開を 行うと、意図的にデータベースに触れない <code>brevis validate</code> が <code>brevis publish</code> とは別の問いに 答えることになり、CI を通ったファイルがデプロイで失敗するファイルになってしまいます。</p>
 <p>子は単独でも publish できます。展開は<strong>コピー</strong>であり、消費ではありません。ステップが <code>uses:</code> と、<code>run:</code>、<code>action:</code>、<code>marker:</code> のいずれかを同時に宣言することはできません。それは ファイルが 2 つのことを言っているからです。</p>
-<h2 id="矢印の意味を伝える">矢印の意味を伝える<a class="anchor" href="#矢印の意味を伝える" aria-label="link">#</a></h2>
+<h2 id="saying-what-an-arrow-means">矢印の意味を伝える<a class="anchor" href="#saying-what-an-arrow-means" aria-label="link">#</a></h2>
 <p>依存関係にはラベルを付けられ、グラフの矢印に表示されます。</p>
 <div class="code-block" data-code="steps:
   - id: determine_load_type
@@ -374,7 +374,7 @@ steps:
         <span class="t-k">label</span>: changed existing data</code></pre></div>
 <p>素の書き方である <code>depends_on: [extract]</code> も引き続き使え、通常の形のままです。ほとんどの 依存関係には言うべきことがなく、すべての矢印にラベルがあるとノイズになります。</p>
 <p>ラベルが役に立つのは<strong>分岐</strong>です。同じステップから出る 2 本の矢印に何も書かれていない図は、 読むのにソースを開く必要があります。グラフはそれを避けるために存在するはずです。</p>
-<h2 id="何もしないステップ">何もしないステップ<a class="anchor" href="#何もしないステップ" aria-label="link">#</a></h2>
+<h2 id="a-step-that-does-nothing">何もしないステップ<a class="anchor" href="#a-step-that-does-nothing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="steps:
   - id: start
     marker: true
@@ -391,7 +391,7 @@ steps:
 <p><code>marker: true</code> はコマンドを持たないステップです。何も実行せず、即座に成功し、 グラフ上に表示されます。</p>
 <p>飾りではありません。すべての分岐に依存する <code>end</code> があれば、<em>全体が終わったか?</em> という問いが、 6 本の矢印をたどる代わりに 1 つのノードで答えられます。しかも他のステップと同じように振る舞うので、 失敗した分岐の下にある <code>end</code> は緑ではなく<strong>スキップ</strong>されます。</p>
 <p><strong><code>run:</code> も <code>marker: true</code> もないステップは、引き続き拒否されます。</strong> この 2 つのケースを 1 つにまとめてはなりません。空のコマンドはほとんどの場合ミスであり、<code>marker: true</code> は 意図したものだと表明する方法だからです。<code>run:</code> も宣言しているマーカーも同様に拒否されます。 それはファイルが 2 つのことを言っているからです。</p>
-<h2 id="何かが失敗したときだけステップを実行する">何かが失敗したときだけステップを実行する<a class="anchor" href="#何かが失敗したときだけステップを実行する" aria-label="link">#</a></h2>
+<h2 id="running-a-step-only-when-something-failed">何かが失敗したときだけステップを実行する<a class="anchor" href="#running-a-step-only-when-something-failed" aria-label="link">#</a></h2>
 <p>デフォルトでは、ステップは、それより前のすべてが成功したときに実行されます。<code>when:</code> はこれを変更します。</p>
 <div class="code-block" data-code="steps:
   - id: extract
@@ -420,11 +420,11 @@ steps:
     <span class="t-k">when</span>: all_done            <span class="t-c"># runs either way</span></code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>ルール</th><th></th></tr></thead><tbody><tr><td><code>all_success</code></td><td>デフォルト。このステップが依存するものがすべて成功した — Airflow と同様に、そのステップ<strong>自身</strong>の依存関係が対象</td></tr><tr><td><code>any_failed</code></td><td>このステップが依存するステップのうち、少なくとも 1 つが失敗した</td></tr><tr><td><code>all_done</code></td><td>このステップが依存するものがすべて、どのような終わり方であれ終了した</td></tr></tbody></table></div>
 <p>未知のルールは publish で拒否され、有効なものが示されます。そうする必要があります。 <code>when: on_failure</code> が「デフォルト」として読まれると<strong>成功時</strong>に実行されてしまい、書いてあることと 正反対のことが、重要な夜に初めて発覚するからです。</p>
-<h3 id="実行されないステップは-skipped">実行されないステップは <code>skipped</code><a class="anchor" href="#実行されないステップは-skipped" aria-label="link">#</a></h3>
+<h3 id="a-step-that-does-not-run-is-skipped">実行されないステップは <code>skipped</code><a class="anchor" href="#a-step-that-does-not-run-is-skipped" aria-label="link">#</a></h3>
 <p>これは独自の状態であり、独自の色で描画され、理由が付きます。<em><code>extract</code> が failed だった</em>、という ものです。これ以前は、失敗の下にあるステップには記録がまったくなく、画面ではいつまでも pending のままに見えていました。</p>
 <p><code>skipped</code> は失敗でも成功でもありません。上流が壊れたステップは失敗したのではなく、 機会を与えられなかっただけです。それを成功と呼ぶのは、run 自身のステータスにまで及ぶ嘘になります。</p>
 <p>トリガールールが決めるのは、どのステップが<strong>実行される</strong>かです。run の結果を決めるものではありません。 メッセージを届けた <code>notify_failure</code> があっても、パイプラインがうまくいったことにはならず、 その run は失敗のままです。</p>
-<h3 id="all-success-は-airflow-と同様にローカル"><code>all_success</code> は Airflow と同様にローカル<a class="anchor" href="#all-success-は-airflow-と同様にローカル" aria-label="link">#</a></h3>
+<h3 id="all-success-is-local-as-in-airflow"><code>all_success</code> は Airflow と同様にローカル<a class="anchor" href="#all-success-is-local-as-in-airflow" aria-label="link">#</a></h3>
 <p>このルールが問うのは、ステップ<strong>自身</strong>の依存関係だけです。無関係な分岐の失敗は、 このステップを止めません。</p>
 <div class="code-block" data-code="extract_orders ──✕                 (failed)
 extract_users  ──✓── transform_users ──✓     keeps going"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>extract_orders ──✕                 (failed)
@@ -435,7 +435,7 @@ extract_users  ──✓── transform_users ──✓     keeps going</code><
 <ul><li>run は同じエラーで引き続き<strong>失敗</strong>します。</li><li>グラフは失敗したステップを赤で、スキップされたステップをそれぞれ独自の色で表示し、 それぞれがどのステップに止められたかを示します。</li><li>run が諦めたときには、アラートが引き続き送信されます。</li></ul>
 <p>run が完全でないと自ら言うので、部分的な結果が完全に見えることはなくなります。</p>
 <p><strong>手放すもの</strong>を率直に言えば、別の場所で失敗した run でも、無関係な分岐がデータを書き込むように なったことです。</p>
-<h3 id="リトライは失敗したものだけをやり直す">リトライは失敗したものだけをやり直す<a class="anchor" href="#リトライは失敗したものだけをやり直す" aria-label="link">#</a></h3>
+<h3 id="a-retry-re-runs-only-what-failed">リトライは失敗したものだけをやり直す<a class="anchor" href="#a-retry-re-runs-only-what-failed" aria-label="link">#</a></h3>
 <p>run のリトライはグラフ全体をやり直しません。<strong>同じ run</strong> の以前の試行ですでに成功したステップは、 結果を保持し、再実行されません。Airflow でクリアした DAG run の動作と同じです。</p>
 <div class="code-block" data-code="attempt 1   extract ✓    load ✕    report (skipped)
 attempt 2   extract –    load ✓    report ✓            extract is not re-run"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>attempt 1   extract ✓    load ✕    report (skipped)
@@ -443,7 +443,7 @@ attempt 2   extract –    load ✓    report ✓            extract is not re-r
 <p>そのステップは元の行を保持します。所要時間、ログ、公開したものは最初の試行のものです。 仕事が行われたのはそのときだからです。<strong>その下のステップは、公開されたものを引き続き読み取ります</strong>。 run のコンテキストは再構築されるのではなく、保存されているからです。</p>
 <p>重要な区別があります。これは<strong>この run の</strong>以前の試行についての話です。<em>昨日の</em> run で 成功したステップは、今日も通常どおり実行されます。(もう一方の問いも存在し、それが SDK にステップの初回かどうかを伝えます — <code>BREVIS_RUN_FIRST</code> を参照してください。)</p>
 <p><strong>スキップされた</strong>ステップは確定していません。一度も実行されておらず、リトライは新しい試行の 結果をもとに、あらためてそれを判断します。</p>
-<h2 id="ステップの失敗を通知する">ステップの失敗を通知する<a class="anchor" href="#ステップの失敗を通知する" aria-label="link">#</a></h2>
+<h2 id="announcing-a-steps-failures">ステップの失敗を通知する<a class="anchor" href="#announcing-a-steps-failures" aria-label="link">#</a></h2>
 <p>すべての失敗はすでに通知されます。Webhook を設定していれば、諦めた run は 1 通のメッセージを 送り、どのファイルにもブロックを繰り返す必要はありません。<code>on_error</code> は、自分専用の通知が 必要なステップのためのものです。</p>
 <div class="code-block" data-code="steps:
   - id: fetch_observations
@@ -460,22 +460,22 @@ attempt 2   extract –    load ✓    report ✓            extract is not re-r
 <p><strong><code>when: give_up</code> がデフォルトなのは、誰の夜かを考えてのことです。</strong> 2 回失敗して 3 回目に通る ステップは、もう一方のデフォルトでは 2 通のメッセージを送り、2 通目は問題が解消した後に届きます。</p>
 <p><strong>失敗しなかったステップが通知されることはありません。</strong> ある分岐が壊れたワークフローで、 別の分岐の担当者が起こされることはありません。</p>
 <p>配信は <code>brevis alert</code> の仕事です。アラートは失敗と同じトランザクションで記録されるため、 Slack が止まっても失われず、遅れるだけです。</p>
-<h2 id="タグ">タグ<a class="anchor" href="#タグ" aria-label="link">#</a></h2>
+<h2 id="tags">タグ<a class="anchor" href="#tags" aria-label="link">#</a></h2>
 <div class="code-block" data-code="tags: [analytics, dbt, daily]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">tags</span>: [analytics, dbt, daily]</code></pre></div>
 <p>インターフェースでの絞り込みに使われます。実行には影響しません。</p>
-<h2 id="検証">検証<a class="anchor" href="#検証" aria-label="link">#</a></h2>
+<h2 id="validation">検証<a class="anchor" href="#validation" aria-label="link">#</a></h2>
 <p>検証にデータベースは要らないため、テストと並べて CI で実行できます。</p>
 <div class="code-block" data-code="brevis validate workflows/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> validate workflows/</code></pre></div>
 <div class="code-block" data-code="  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
   ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *</code></pre></div>
 <p>ファイルまたはディレクトリを受け取ります。ディレクトリでは <code>*.y*ml</code> に一致するものをソートします。 2 回の実行で同じログになるので、2 回のデプロイの差分がノイズになることはありません。</p>
-<h2 id="公開">公開<a class="anchor" href="#公開" aria-label="link">#</a></h2>
+<h2 id="publishing">公開<a class="anchor" href="#publishing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis publish workflows/
 brevis publish workflows/ --project acme --prune"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">brevis</span> publish workflows/
 <span class="t-k">brevis</span> publish workflows/ <span class="t-n">--project</span> acme <span class="t-n">--prune</span></code></pre></div>
 <p><code>--prune</code> は、公開リストにないワークフローをプロジェクトから削除し、その履歴は保持します。 実用上の理由から、これはデフォルトでは<strong>ありません</strong>。<code>publish one-file.yaml</code> が、 コマンドラインで名前を挙げなかっただけで、他の 48 個を削除してはならないからです。</p>
-<h2 id="次のステップ">次のステップ<a class="anchor" href="#次のステップ" aria-label="link">#</a></h2>
+<h2 id="next-steps">次のステップ<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ja/docs/parameters/">パラメータ</a> — 2 回の run の間で何が変わるか</li><li><a href="/ja/docs/scheduler-and-queue/">スケジューラとキュー</a> — ワークフローがどのように実行になるか</li><li><a href="/ja/docs/context/">ステップ間のコンテキスト</a> — あるステップが次のステップに伝えるもの</li></ul>
 
       <nav class="pagers" aria-label="ページ">
@@ -490,7 +490,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#最小構成">最小構成</a></li><li class="toc-3"><a href="#description-何のためのものか">description — 何のためのものか</a></li><li class="toc-2"><a href="#順序-chain-か-dag-か">順序: chain か dag か</a></li><li class="toc-2"><a href="#スケジュール">スケジュール</a></li><li class="toc-2"><a href="#イメージとリソース">イメージとリソース</a></li><li class="toc-2"><a href="#ステップのフィールド">ステップのフィールド</a></li><li class="toc-2"><a href="#やるべきことがあるときだけステップを実行する">やるべきことがあるときだけステップを実行する</a></li><li class="toc-3"><a href="#なぜ式ではないのか">なぜ式ではないのか</a></li><li class="toc-3"><a href="#キーがないのは空の値ではなく失敗">キーがないのは空の値ではなく失敗</a></li><li class="toc-2"><a href="#要素ごとにステップを-1-回実行する">要素ごとにステップを 1 回実行する</a></li><li class="toc-3"><a href="#dag-の形は変わらない">DAG の形は変わらない</a></li><li class="toc-3"><a href="#1-つのインスタンスの失敗でステップが失敗する">1 つのインスタンスの失敗でステップが失敗する</a></li><li class="toc-3"><a href="#空のリストは成功ではなく-skipped">空のリストは成功ではなく skipped</a></li><li class="toc-3"><a href="#ファンアウトには上限がありその上限は継承されたもの">ファンアウトには上限があり、その上限は継承されたもの</a></li><li class="toc-3"><a href="#マップされたステップが公開するもの">マップされたステップが公開するもの</a></li><li class="toc-2"><a href="#グラフ上でステップをグループ化する">グラフ上でステップをグループ化する</a></li><li class="toc-2"><a href="#別のワークフローを再利用する">別のワークフローを再利用する</a></li><li class="toc-3"><a href="#ルール">ルール</a></li><li class="toc-2"><a href="#矢印の意味を伝える">矢印の意味を伝える</a></li><li class="toc-2"><a href="#何もしないステップ">何もしないステップ</a></li><li class="toc-2"><a href="#何かが失敗したときだけステップを実行する">何かが失敗したときだけステップを実行する</a></li><li class="toc-3"><a href="#実行されないステップは-skipped">実行されないステップは skipped</a></li><li class="toc-3"><a href="#all-success-は-airflow-と同様にローカル">all_success は Airflow と同様にローカル</a></li><li class="toc-3"><a href="#リトライは失敗したものだけをやり直す">リトライは失敗したものだけをやり直す</a></li><li class="toc-2"><a href="#ステップの失敗を通知する">ステップの失敗を通知する</a></li><li class="toc-2"><a href="#タグ">タグ</a></li><li class="toc-2"><a href="#検証">検証</a></li><li class="toc-2"><a href="#公開">公開</a></li><li class="toc-2"><a href="#次のステップ">次のステップ</a></li></ul>
+      <ul><li class="toc-2"><a href="#minimum-structure">最小構成</a></li><li class="toc-3"><a href="#description-what-it-is-for">description — 何のためのものか</a></li><li class="toc-2"><a href="#order-chain-or-dag">順序: chain か dag か</a></li><li class="toc-2"><a href="#schedule">スケジュール</a></li><li class="toc-2"><a href="#image-and-resources">イメージとリソース</a></li><li class="toc-2"><a href="#step-fields">ステップのフィールド</a></li><li class="toc-2"><a href="#running-a-step-only-when-there-is-something-to-do">やるべきことがあるときだけステップを実行する</a></li><li class="toc-3"><a href="#why-not-an-expression">なぜ式ではないのか</a></li><li class="toc-3"><a href="#a-missing-key-is-a-failure-not-an-empty-value">キーがないのは空の値ではなく失敗</a></li><li class="toc-2"><a href="#running-a-step-once-per-element">要素ごとにステップを 1 回実行する</a></li><li class="toc-3"><a href="#the-shape-of-the-dag-does-not-change">DAG の形は変わらない</a></li><li class="toc-3"><a href="#one-failed-instance-fails-the-step">1 つのインスタンスの失敗でステップが失敗する</a></li><li class="toc-3"><a href="#an-empty-list-is-skipped-not-success">空のリストは成功ではなく skipped</a></li><li class="toc-3"><a href="#the-fan-out-is-bounded-and-the-bound-is-inherited">ファンアウトには上限があり、その上限は継承されたもの</a></li><li class="toc-3"><a href="#what-a-mapped-step-publishes">マップされたステップが公開するもの</a></li><li class="toc-2"><a href="#grouping-steps-on-the-graph">グラフ上でステップをグループ化する</a></li><li class="toc-2"><a href="#reusing-another-workflow">別のワークフローを再利用する</a></li><li class="toc-3"><a href="#the-rules">ルール</a></li><li class="toc-2"><a href="#saying-what-an-arrow-means">矢印の意味を伝える</a></li><li class="toc-2"><a href="#a-step-that-does-nothing">何もしないステップ</a></li><li class="toc-2"><a href="#running-a-step-only-when-something-failed">何かが失敗したときだけステップを実行する</a></li><li class="toc-3"><a href="#a-step-that-does-not-run-is-skipped">実行されないステップは skipped</a></li><li class="toc-3"><a href="#all-success-is-local-as-in-airflow">all_success は Airflow と同様にローカル</a></li><li class="toc-3"><a href="#a-retry-re-runs-only-what-failed">リトライは失敗したものだけをやり直す</a></li><li class="toc-2"><a href="#announcing-a-steps-failures">ステップの失敗を通知する</a></li><li class="toc-2"><a href="#tags">タグ</a></li><li class="toc-2"><a href="#validation">検証</a></li><li class="toc-2"><a href="#publishing">公開</a></li><li class="toc-2"><a href="#next-steps">次のステップ</a></li></ul>
     </aside>
   </main>
 </div>
@@ -510,9 +510,9 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -535,7 +535,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

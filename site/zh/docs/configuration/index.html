@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
       <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/configuration/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/configuration/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/configuration/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/configuration/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/configuration/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/configuration/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/configuration/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/configuration/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/configuration/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/configuration/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/configuration/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,17 +119,17 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>配置</h1>
       <p class="doc-desc">所有环境变量，包括默认值、格式，以及缺失时会发生什么。</p>
       <p>所有配置都来自<strong>环境变量</strong>，在启动时读取一次。之后不会再查询环境：配置在运行中途发生变化的进程，其行为是没有人能够复现的。</p>
-<h2 id="必需">必需<a class="anchor" href="#必需" aria-label="link">#</a></h2>
+<h2 id="required">必需<a class="anchor" href="#required" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>变量</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_DATABASE_URL</code></td><td>Postgres。缺失 = 使用数据库的五个子命令出现<strong>启动错误</strong></td></tr></tbody></table></div>
-<h2 id="进程">进程<a class="anchor" href="#进程" aria-label="link">#</a></h2>
+<h2 id="process">进程<a class="anchor" href="#process" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>变量</th><th>默认值</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_ENV</code></td><td><code>local</code></td><td><code>local</code> 以文本格式记录日志并让界面保持开放；其他任何值都需要凭据，并以 JSON 记录日志</td></tr><tr><td><code>BREVIS_HTTP_ADDR</code></td><td><code>:8080</code></td><td>监听地址</td></tr><tr><td><code>BREVIS_LOG_LEVEL</code></td><td><code>info</code></td><td></td></tr><tr><td><code>BREVIS_SHUTDOWN_TIMEOUT_SECONDS</code></td><td><code>15</code></td><td>整数；非数字的值会导致启动错误</td></tr><tr><td><code>BREVIS_BRAND_FILE</code></td><td><code>brand.yaml</code></td><td>品牌；缺失 = 默认</td></tr><tr><td><code>BREVIS_UI_URL</code></td><td>—</td><td>告警中 run 链接的基础地址</td></tr><tr><td><code>BREVIS_METRICS_ADDR</code></td><td>—</td><td>Prometheus 指标端口；为空 = 不暴露。见<a href="/zh/docs/observability/">可观测性</a></td></tr><tr><td><code>BREVIS_SLACK_WEBHOOK</code></td><td>—</td><td>失败告警的目的地。为空 = 没有人会收到通知</td></tr></tbody></table></div>
-<h2 id="认证">认证<a class="anchor" href="#认证" aria-label="link">#</a></h2>
+<h2 id="authentication">认证<a class="anchor" href="#authentication" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>变量</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_AUTH_USER</code></td><td>界面用户</td></tr><tr><td><code>BREVIS_AUTH_PASSWORD_HASH</code></td><td>由 <code>brevis hash</code> 生成的 <code>pbkdf2-sha256$…</code> 哈希</td></tr><tr><td><code>BREVIS_AUTH_SECRET</code></td><td>用于签署会话的 32 字节以上内容（<code>openssl rand -base64 48</code>）</td></tr></tbody></table></div>
 <p>三者要么全部提供，要么全部不提供。</p>
 <aside class="admon admon-danger"><p class="admon-t">只配置一半是启动错误</p><p>填写了用户名的人，会以为门已经关上了。界面可以触发 pipeline：<code>POST /workflows/&lt;slug&gt;/trigger</code> 会运行一个写入数据仓库的 <code>dbt build</code>。如果暴露在互联网上，它就是数据仓库的遥控器，而一条日志警告无法消除这种误以为，因为没有人会去读一个正常运行的进程的日志。</p></aside>
@@ -140,7 +140,7 @@ BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and BREVIS_AUTH_SECR
 <aside class="admon admon-note"><p class="admon-t">旧名称仍然有效</p><p>有四个变量在 2026-09-10 被重命名，当时最后几个葡萄牙语名称从项目面向操作者的一侧移除了：<code>BREVIS_AUTH_USUARIO</code>、<code>BREVIS_AUTH_SENHA_HASH</code>、<code>BREVIS_AUTH_SEGREDO</code> 和 <code>BREVIS_POD_MANTER_EM_FALHA</code>。设置了旧名称的安装环境仍可继续工作，并会记录一条指出新名称的警告。</p>
 <p>先添加新名称，部署，然后再删除旧名称；两者同时设置时，新名称优先。旧名称会在下一个主版本中移除。</p>
 <p>在 SDK 中，<code>BREVIS_SDK_LIMITE_INLINE</code> 按同样的规则变成了 <code>BREVIS_SDK_INLINE_LIMIT</code>。</p></aside>
-<h2 id="任务环境">任务环境<a class="anchor" href="#任务环境" aria-label="link">#</a></h2>
+<h2 id="task-environment">任务环境<a class="anchor" href="#task-environment" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>变量</th><th>默认值</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TASK_ENV</code></td><td>空</td><td>每个 step 接收到的内容</td></tr></tbody></table></div>
 <p>任务<strong>不会</strong>继承编排器的环境。原因很具体：该进程带有 <code>BREVIS_DATABASE_URL</code>，其中包含 Postgres 的用户名和密码，而 workflow 是别人写的任意命令，继承就等于把数据库凭据交给每条 pipeline 的每个 step。</p>
 <p>任务需要什么，需要显式声明：</p>
@@ -155,12 +155,12 @@ BREVIS_TASK_ENV='*'                       <span class="t-c"># forwards everythin
 <p>这些是<strong>安装</strong>层面的决定，而不是 workflow 层面的。</p>
 <div class="table-wrap"><table><thead><tr><th>变量</th><th>默认值</th><th>格式</th></tr></thead><tbody><tr><td><code>BREVIS_PODS</code></td><td><code>auto</code></td><td><code>auto</code>、<code>on</code> 或 <code>off</code>；其他任何值都是启动错误</td></tr><tr><td><code>BREVIS_POD_NAMESPACE</code></td><td>集群的命名空间</td><td></td></tr><tr><td><code>BREVIS_POD_SERVICE_ACCOUNT</code></td><td>—</td><td></td></tr><tr><td><code>BREVIS_POD_PULL_SECRETS</code></td><td>—</td><td>以逗号分隔的列表</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_SECRETS</code></td><td>—</td><td>以逗号分隔的列表</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_CONFIGMAPS</code></td><td>—</td><td>以逗号分隔的列表</td></tr><tr><td><code>BREVIS_POD_ALLOWED_SECRETS</code></td><td>—</td><td>以逗号分隔的列表</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PATH</code></td><td>—</td><td>挂载在 pod 中的路径</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PVC</code></td><td>—</td><td>保存凭据的 PVC</td></tr><tr><td><code>BREVIS_POD_NODE_SELECTOR</code></td><td>—</td><td><code>key=value,other=value</code></td></tr><tr><td><code>BREVIS_POD_TOLERATIONS</code></td><td>—</td><td><code>key=value:effect,…</code>；仅支持 <code>Equal</code> 运算符</td></tr><tr><td><code>BREVIS_POD_KEEP_ON_FAILURE</code></td><td><code>false</code></td><td><code>true</code> 会保留 pod 以便检查</td></tr></tbody></table></div>
 <p>在列表中，空条目会被忽略：<code>a,,b</code> 是笔误，而空的 secret 名称会导致服务器拒绝整个 pod。</p>
-<h2 id="测试">测试<a class="anchor" href="#测试" aria-label="link">#</a></h2>
+<h2 id="tests">测试<a class="anchor" href="#tests" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>变量</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TEST_DATABASE_URL</code></td><td>集成测试使用的数据库；没有它时，这些测试会被跳过</td></tr></tbody></table></div>
-<h2 id="健康检查端点">健康检查端点<a class="anchor" href="#健康检查端点" aria-label="link">#</a></h2>
+<h2 id="health-endpoints">健康检查端点<a class="anchor" href="#health-endpoints" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>GET /health</code></td><td>存活探针：<strong>不</strong>查询数据库</td></tr><tr><td><code>GET /ready</code></td><td>就绪探针：会查询，并指出失败的依赖</td></tr></tbody></table></div>
 <p>这种分离是有意的：依赖外部服务的存活探针，会在数据库出现波动时让 Kubernetes <strong>杀掉 pod</strong>，而不是仅仅把它从负载均衡器中摘除。</p>
-<h2 id="完整示例">完整示例<a class="anchor" href="#完整示例" aria-label="link">#</a></h2>
+<h2 id="a-complete-example">完整示例<a class="anchor" href="#a-complete-example" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# required
 export BREVIS_DATABASE_URL=&#x27;postgres://brevis:secret@db:5432/brevis?sslmode=require&#x27;
 
@@ -215,7 +215,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#必需">必需</a></li><li class="toc-2"><a href="#进程">进程</a></li><li class="toc-2"><a href="#认证">认证</a></li><li class="toc-2"><a href="#任务环境">任务环境</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#测试">测试</a></li><li class="toc-2"><a href="#健康检查端点">健康检查端点</a></li><li class="toc-2"><a href="#完整示例">完整示例</a></li></ul>
+      <ul><li class="toc-2"><a href="#required">必需</a></li><li class="toc-2"><a href="#process">进程</a></li><li class="toc-2"><a href="#authentication">认证</a></li><li class="toc-2"><a href="#task-environment">任务环境</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#tests">测试</a></li><li class="toc-2"><a href="#health-endpoints">健康检查端点</a></li><li class="toc-2"><a href="#a-complete-example">完整示例</a></li></ul>
     </aside>
   </main>
 </div>
@@ -235,9 +235,9 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -260,7 +260,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

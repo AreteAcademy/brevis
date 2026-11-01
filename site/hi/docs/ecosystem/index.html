@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
       <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/ecosystem/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ecosystem/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ecosystem/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ecosystem/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ecosystem/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ecosystem/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ecosystem/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ecosystem/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ecosystem/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ecosystem/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/ecosystem/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,25 +119,25 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>इकोसिस्टम</h1>
       <p class="doc-desc">brevis.sh के चार हिस्से, हर एक क्या करता है, और डेटा कहाँ से होकर गुज़रता है।</p>
       <p>Core शेड्यूल करता है, कतार में रखता है और निगरानी करता है — और डेटा को कभी नहीं छूता। डेटा को छूते हैं ये तीन: SDK, जो डेटा लाता है; Gateway, जो डेटा ग्रहण करता है; और SQL, जो उस डेटा को मॉडल करता है जो पहले ही अपनी जगह पहुँच चुका है।</p>
-<h2 id="चर-हसस">चार हिस्से<a class="anchor" href="#चर-हसस" aria-label="link">#</a></h2>
+<h2 id="the-four-pieces">चार हिस्से<a class="anchor" href="#the-four-pieces" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>हिस्सा</th><th>क्या करता है</th><th>कैसे मिलता है</th><th>गाइड</th></tr></thead><tbody><tr><td><strong>Core</strong></td><td>शेड्यूल करता है, कतार में रखता है और हर step के लिए एक pod शुरू करता है। डेटा को कभी नहीं छूता।</td><td><code>areteacademy/brevis</code></td><td><a href="/hi/docs/core/">Core</a></td></tr><tr><td><strong>SDK</strong></td><td>एक Go लाइब्रेरी जो आपके step के भीतर डेटा निकालती है, उसे ढालती है और लोड करती है।</td><td><code>go get github.com/AreteAcademy/brevis/sdk</code></td><td><a href="/hi/docs/sdk/">Go SDK</a></td></tr><tr><td><strong>Gateway</strong></td><td>HTTP POST लेता है, 202 लौटाता है और बैच में लिखता है। इसका अपना कोई डेटाबेस नहीं।</td><td><code>areteacademy/brevis-gateway</code></td><td><a href="/hi/docs/ingestion/">Ingestion</a></td></tr><tr><td><strong>SQL</strong></td><td>सादी .sql फ़ाइलें निर्भरता के क्रम में तालिकाएँ और view बन जाती हैं।</td><td><code>areteacademy/brevis-sql</code></td><td><a href="/hi/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="कटरल-पलन-डट-पलन">कंट्रोल प्लेन, डेटा प्लेन<a class="anchor" href="#कटरल-पलन-डट-पलन" aria-label="link">#</a></h2>
+<h2 id="control-plane-data-plane">कंट्रोल प्लेन, डेटा प्लेन<a class="anchor" href="#control-plane-data-plane" aria-label="link">#</a></h2>
 <p><strong>कंट्रोल प्लेन</strong> Core है: वह तय करता है कि हर step कब चलेगा, कतार और स्थिति को Postgres में रखता है और हर step के लिए एक pod शुरू करता है। डेटा कभी उसके रास्ते से नहीं गुज़रता।</p>
 <p><strong>डेटा प्लेन</strong> बाकी तीन हिस्से हैं। डेटा किसी API, डेटाबेस या फ़ाइलों से आता है और दो में से एक रास्ते से अपने गंतव्य तक पहुँचता है: <strong>SDK उसे लाता है</strong>, आपके किसी step के भीतर, या वह webhook और ऐप्स से HTTP के ज़रिए <strong>Gateway को भेजा जाता है</strong>। गंतव्य कोई तालिका, कोई topic या किसी bucket की फ़ाइलें होती हैं। डेटा पहुँच जाने के बाद <strong>SQL</strong> तालिकाओं को वहीं मॉडल करता है, उसी डेटाबेस में जहाँ डेटा उतरा।</p>
-<h3 id="आसपस-क-हसस">आसपास के हिस्से<a class="anchor" href="#आसपस-क-हसस" aria-label="link">#</a></h3>
+<h3 id="around-it">आसपास के हिस्से<a class="anchor" href="#around-it" aria-label="link">#</a></h3>
 <p>तीन सहायक हिस्से:</p>
-<ul><li><strong><a href="/hi/docs/console/">Console</a></strong> — Core के ऊपर बना वेब इंटरफ़ेस</li><li><strong><a href="/hi/docs/pod-per-step/#हर-step-कह-चलत-ह">agent</a></strong> — किसी step को आपके पहले से मौजूद cluster में चलाता है</li><li><strong><a href="/hi/docs/python/">Python के लिए <code>brevis</code></a></strong> — Python step के लिए run संदर्भ</li></ul>
-<h2 id="सरफ-एक-हसस-इसतमल-करन">सिर्फ़ एक हिस्सा इस्तेमाल करना<a class="anchor" href="#सरफ-एक-हसस-इसतमल-करन" aria-label="link">#</a></h2>
+<ul><li><strong><a href="/hi/docs/console/">Console</a></strong> — Core के ऊपर बना वेब इंटरफ़ेस</li><li><strong><a href="/hi/docs/pod-per-step/#where-each-step-runs">agent</a></strong> — किसी step को आपके पहले से मौजूद cluster में चलाता है</li><li><strong><a href="/hi/docs/python/">Python के लिए <code>brevis</code></a></strong> — Python step के लिए run संदर्भ</li></ul>
+<h2 id="using-only-one-piece">सिर्फ़ एक हिस्सा इस्तेमाल करना<a class="anchor" href="#using-only-one-piece" aria-label="link">#</a></h2>
 <p>हाँ, किया जा सकता है। हर हिस्से का अपना module, संस्करण और image है: SDK एक Go लाइब्रेरी है जो किसी भी प्रोग्राम में चलती है, Gateway एक YAML फ़ाइल से बिना डेटाबेस के अपने आप शुरू हो जाता है, और brevis-sql एक container की तरह चलता है। जब आप चाहें, Core बाकी हिस्सों का ऑर्केस्ट्रेशन करता है — वह उनमें से किसी की पूर्वापेक्षा नहीं है।</p>
-<h2 id="वह-पकत">वही पंक्ति<a class="anchor" href="#वह-पकत" aria-label="link">#</a></h2>
+<h2 id="the-same-row">वही पंक्ति<a class="anchor" href="#the-same-row" aria-label="link">#</a></h2>
 <p>SDK जो ऑर्डर लाता है और Gateway पर जो ऑर्डर आता है, दोनों एक ही तालिका में उतरते हैं, एक ही brevis_ingestion_id के साथ। दोनों में से चुनना deployment का फ़ैसला बन जाता है, स्कीमा का नहीं।</p>
-<p>SDK के ज़रिए, <code>sdk.Landing</code> के साथ (विवरण <a href="/hi/docs/sdk/#लडग-लआउट">लैंडिंग लेआउट</a> में):</p>
+<p>SDK के ज़रिए, <code>sdk.Landing</code> के साथ (विवरण <a href="/hi/docs/sdk/#the-landing-layout">लैंडिंग लेआउट</a> में):</p>
 <div class="code-block" data-code="sdk.Execute(ctx, &amp;sdk.Pipeline{
 	Source:    sdk.Source{From: from.Files{Path: &quot;order.json&quot;}},
 	Transform: []sdk.Transformer{sdk.Landing(&quot;app_orders&quot;, sdk.LandingKey(&quot;id&quot;))},
@@ -153,7 +153,7 @@
 		Schema: sdk.LandingSchema(sdk.LandingOptions{}),
 	},
 }, <span class="t-k">nil</span>)</code></pre></div>
-<p>Gateway के ज़रिए, <code>/v1/tables</code> पर एक POST (विवरण <a href="/hi/docs/ingestion/#एक-route-n-तलकए">एक route, N तालिकाएँ</a> में):</p>
+<p>Gateway के ज़रिए, <code>/v1/tables</code> पर एक POST (विवरण <a href="/hi/docs/ingestion/#one-route-n-tables">एक route, N तालिकाएँ</a> में):</p>
 <div class="code-block" data-code="curl -X POST localhost:8080/v1/tables -H &#x27;Authorization: Bearer dev-key&#x27; \
     -d &#x27;{&quot;table_name&quot;:&quot;app_orders&quot;,&quot;unique_key&quot;:&quot;id&quot;,
          &quot;data&quot;:{&quot;id&quot;:&quot;A-1&quot;,&quot;customer&quot;:&quot;acme.example.com&quot;,&quot;total&quot;:150}}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/tables <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
@@ -177,7 +177,7 @@
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#चर-हसस">चार हिस्से</a></li><li class="toc-2"><a href="#कटरल-पलन-डट-पलन">कंट्रोल प्लेन, डेटा प्लेन</a></li><li class="toc-3"><a href="#आसपस-क-हसस">आसपास के हिस्से</a></li><li class="toc-2"><a href="#सरफ-एक-हसस-इसतमल-करन">सिर्फ़ एक हिस्सा इस्तेमाल करना</a></li><li class="toc-2"><a href="#वह-पकत">वही पंक्ति</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-four-pieces">चार हिस्से</a></li><li class="toc-2"><a href="#control-plane-data-plane">कंट्रोल प्लेन, डेटा प्लेन</a></li><li class="toc-3"><a href="#around-it">आसपास के हिस्से</a></li><li class="toc-2"><a href="#using-only-one-piece">सिर्फ़ एक हिस्सा इस्तेमाल करना</a></li><li class="toc-2"><a href="#the-same-row">वही पंक्ति</a></li></ul>
     </aside>
   </main>
 </div>
@@ -197,9 +197,9 @@
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -222,7 +222,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

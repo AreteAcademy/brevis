@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Aller au contenu</a>
+<a class="skip-link" href="#content">Aller au contenu</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigation principale">
-      <a href="/fr/#ecossistema">Écosystème</a>
+      <a href="/fr/#ecosystem">Écosystème</a>
       <a href="/fr/docs/">Documentation</a>
       <details class="lang-dd"><summary aria-label="Langue: Français"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Français</span></summary><ul><li><a href="/docs/integrations/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/integrations/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/integrations/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/integrations/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/integrations/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/integrations/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/integrations/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/integrations/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/integrations/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/integrations/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/integrations/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,24 +119,24 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentation</p>
       <h1>Intégrations</h1>
       <p class="doc-desc">Ce qui se connecte à quoi : d&#x27;où viennent les données, où elles atterrissent, où elles sont modélisées et où tout s&#x27;exécute.</p>
       <p><strong>Ce que vous utilisez déjà, et rien de ce qui n'existe pas encore.</strong> Un driver n'apparaît ici que lorsqu'il a du code dans le dépôt — jamais avant.</p>
 <p>Chaque ligne indique quel composant l'atteint, par quel package ou sink, et où aller pour voir comment.</p>
-<h2 id="lit-depuis">Lit depuis<a class="anchor" href="#lit-depuis" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>comment y accéder</th><th>guide</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK : <code>from.HTTP</code></td><td><a href="/fr/docs/sdk/#sources-et-destinations">SDK Go</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK : <code>from/postgres</code></td><td><a href="/fr/docs/sdk/#sources-et-destinations">SDK Go</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK : <code>from/mysql</code></td><td><a href="/fr/docs/sdk/#sources-et-destinations">SDK Go</a></td></tr><tr><td><strong>fichiers</strong></td><td>SDK : <code>from.Files</code> — local, S3, GCS</td><td><a href="/fr/docs/sdk/#sources-et-destinations">SDK Go</a></td></tr></tbody></table></div>
-<h2 id="atterrit-dans">Atterrit dans<a class="anchor" href="#atterrit-dans" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>comment y accéder</th><th>guide</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK : <code>to/bigquery</code> · Gateway : <code>bigquery</code></td><td><a href="/fr/docs/sdk/#sources-et-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK : <code>to/postgres</code> · Gateway : <code>postgres</code></td><td><a href="/fr/docs/sdk/#sources-et-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK : <code>to/mysql</code> · Gateway : <code>mysql</code></td><td><a href="/fr/docs/sdk/#sources-et-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK : <code>to/redshift</code> · Gateway : <code>redshift</code></td><td><a href="/fr/docs/sdk/#sources-et-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK : <code>to/pubsub</code> · Gateway : <code>pubsub</code></td><td><a href="/fr/docs/sdk/#sources-et-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr></tbody></table></div>
-<h2 id="fichiers-dans">Fichiers dans<a class="anchor" href="#fichiers-dans" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>comment y accéder</th><th>guide</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK : <code>store/s3</code> · Gateway : <code>files</code> sur <code>s3://</code></td><td><a href="/fr/docs/sdk/#sources-et-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK : <code>store/gcs</code> · Gateway : <code>files</code> sur <code>gs://</code></td><td><a href="/fr/docs/sdk/#sources-et-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr></tbody></table></div>
-<h2 id="modelise-dans">Modélise dans<a class="anchor" href="#modelise-dans" aria-label="link">#</a></h2>
+<h2 id="pulls-from">Lit depuis<a class="anchor" href="#pulls-from" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>comment y accéder</th><th>guide</th></tr></thead><tbody><tr><td><strong>HTTP</strong></td><td>SDK : <code>from.HTTP</code></td><td><a href="/fr/docs/sdk/#sources-and-destinations">SDK Go</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK : <code>from/postgres</code></td><td><a href="/fr/docs/sdk/#sources-and-destinations">SDK Go</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK : <code>from/mysql</code></td><td><a href="/fr/docs/sdk/#sources-and-destinations">SDK Go</a></td></tr><tr><td><strong>fichiers</strong></td><td>SDK : <code>from.Files</code> — local, S3, GCS</td><td><a href="/fr/docs/sdk/#sources-and-destinations">SDK Go</a></td></tr></tbody></table></div>
+<h2 id="lands-in">Atterrit dans<a class="anchor" href="#lands-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>comment y accéder</th><th>guide</th></tr></thead><tbody><tr><td><strong>BigQuery</strong></td><td>SDK : <code>to/bigquery</code> · Gateway : <code>bigquery</code></td><td><a href="/fr/docs/sdk/#sources-and-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr><tr><td><strong>Postgres</strong></td><td>SDK : <code>to/postgres</code> · Gateway : <code>postgres</code></td><td><a href="/fr/docs/sdk/#sources-and-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr><tr><td><strong>MySQL</strong></td><td>SDK : <code>to/mysql</code> · Gateway : <code>mysql</code></td><td><a href="/fr/docs/sdk/#sources-and-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr><tr><td><strong>Redshift</strong></td><td>SDK : <code>to/redshift</code> · Gateway : <code>redshift</code></td><td><a href="/fr/docs/sdk/#sources-and-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr><tr><td><strong>Pub/Sub</strong></td><td>SDK : <code>to/pubsub</code> · Gateway : <code>pubsub</code></td><td><a href="/fr/docs/sdk/#sources-and-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr></tbody></table></div>
+<h2 id="files-in">Fichiers dans<a class="anchor" href="#files-in" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>comment y accéder</th><th>guide</th></tr></thead><tbody><tr><td><strong>S3</strong></td><td>SDK : <code>store/s3</code> · Gateway : <code>files</code> sur <code>s3://</code></td><td><a href="/fr/docs/sdk/#sources-and-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr><tr><td><strong>GCS</strong></td><td>SDK : <code>store/gcs</code> · Gateway : <code>files</code> sur <code>gs://</code></td><td><a href="/fr/docs/sdk/#sources-and-destinations">SDK Go</a>, <a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr></tbody></table></div>
+<h2 id="models-in">Modélise dans<a class="anchor" href="#models-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>comment y accéder</th><th>guide</th></tr></thead><tbody><tr><td><strong>Postgres</strong></td><td>SQL : <code>--dialect postgres</code> (la valeur par défaut)</td><td><a href="/fr/docs/sql/">SQL</a></td></tr><tr><td><strong>BigQuery</strong></td><td>SQL : <code>--dialect bigquery</code></td><td><a href="/fr/docs/sql/">SQL</a></td></tr></tbody></table></div>
-<h2 id="sexecute-sur">S'exécute sur<a class="anchor" href="#sexecute-sur" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th></th><th>comment y accéder</th><th>guide</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>une image par composant : <code>areteacademy/brevis</code>, <code>brevis-gateway</code>, <code>brevis-sql</code></td><td><a href="/fr/docs/installation/#docker">Installation</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>un pod par step</td><td><a href="/fr/docs/kubernetes/">Kubernetes</a>, <a href="/fr/docs/pod-per-step/">Un pod par step</a></td></tr><tr><td><strong>Helm</strong></td><td>le chart dans <code>deployments/helm/brevis</code></td><td><a href="/fr/docs/kubernetes/#linstaller-avec-helm">Kubernetes</a></td></tr></tbody></table></div>
-<h2 id="ecrit-en">Écrit en<a class="anchor" href="#ecrit-en" aria-label="link">#</a></h2>
+<h2 id="runs-on">S'exécute sur<a class="anchor" href="#runs-on" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>comment y accéder</th><th>guide</th></tr></thead><tbody><tr><td><strong>Docker</strong></td><td>une image par composant : <code>areteacademy/brevis</code>, <code>brevis-gateway</code>, <code>brevis-sql</code></td><td><a href="/fr/docs/installation/#docker">Installation</a></td></tr><tr><td><strong>Kubernetes</strong></td><td>un pod par step</td><td><a href="/fr/docs/kubernetes/">Kubernetes</a>, <a href="/fr/docs/pod-per-step/">Un pod par step</a></td></tr><tr><td><strong>Helm</strong></td><td>le chart dans <code>deployments/helm/brevis</code></td><td><a href="/fr/docs/kubernetes/#install-it-with-helm">Kubernetes</a></td></tr></tbody></table></div>
+<h2 id="written-in">Écrit en<a class="anchor" href="#written-in" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>comment y accéder</th><th>guide</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td>Core, SDK, Gateway et SQL</td><td><a href="/fr/docs/ecosystem/">Écosystème</a></td></tr><tr><td><strong>Python</strong></td><td><code>pip install brevis</code> : contexte entre steps dans un step Python</td><td><a href="/fr/docs/python/">Python</a></td></tr><tr><td><strong>SQL</strong></td><td>les modèles de brevis-sql sont de simples fichiers <code>.sql</code></td><td><a href="/fr/docs/sql/">SQL</a></td></tr></tbody></table></div>
 <h2 id="clouds">Clouds<a class="anchor" href="#clouds" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>comment y accéder</th><th>guide</th></tr></thead><tbody><tr><td><strong>Google Cloud</strong></td><td>BigQuery, Pub/Sub et GCS, ci-dessus</td><td>—</td></tr><tr><td><strong>AWS</strong></td><td>Redshift et S3, ci-dessus</td><td>—</td></tr></tbody></table></div>
@@ -153,7 +153,7 @@
 
     <aside class="toc" aria-label="Sur cette page">
       <p class="toc-t">Sur cette page</p>
-      <ul><li class="toc-2"><a href="#lit-depuis">Lit depuis</a></li><li class="toc-2"><a href="#atterrit-dans">Atterrit dans</a></li><li class="toc-2"><a href="#fichiers-dans">Fichiers dans</a></li><li class="toc-2"><a href="#modelise-dans">Modélise dans</a></li><li class="toc-2"><a href="#sexecute-sur">S&#x27;exécute sur</a></li><li class="toc-2"><a href="#ecrit-en">Écrit en</a></li><li class="toc-2"><a href="#clouds">Clouds</a></li></ul>
+      <ul><li class="toc-2"><a href="#pulls-from">Lit depuis</a></li><li class="toc-2"><a href="#lands-in">Atterrit dans</a></li><li class="toc-2"><a href="#files-in">Fichiers dans</a></li><li class="toc-2"><a href="#models-in">Modélise dans</a></li><li class="toc-2"><a href="#runs-on">S&#x27;exécute sur</a></li><li class="toc-2"><a href="#written-in">Écrit en</a></li><li class="toc-2"><a href="#clouds">Clouds</a></li></ul>
     </aside>
   </main>
 </div>
@@ -173,9 +173,9 @@
       <div class="footer-col">
         <h2>projet</h2>
         <ul>
-          <li><a href="/fr/#ecossistema">Écosystème</a></li>
+          <li><a href="/fr/#ecosystem">Écosystème</a></li>
           <li><a href="/fr/docs/philosophy/">Principes</a></li>
-          <li><a href="/fr/docs/introduction/#code-ouvert-choisissez-comment-participer">Open source</a></li>
+          <li><a href="/fr/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/fr/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -198,7 +198,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+<a class="skip-link" href="#content">본문으로 건너뛰기</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="주 내비게이션">
-      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/#ecosystem">에코시스템</a>
       <a href="/ko/docs/">문서</a>
       <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/introduction/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/introduction/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/introduction/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/introduction/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/introduction/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/introduction/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/introduction/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/introduction/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/introduction/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/introduction/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/introduction/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,17 +119,17 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">문서</p>
       <h1>소개</h1>
       <p class="doc-desc">brevis.sh가 무엇이고 어떤 문제를 해결하는지, 그리고 어떤 경우에 맞지 않는 선택인지 설명합니다.</p>
       <p>brevis.sh는 <strong>Go로 작성된 데이터 오케스트레이션 런타임</strong>입니다. 보통 네 가지 도구가 필요한 기능, 즉 선언적 변환, workflow 오케스트레이션, 영속 큐, 스케줄러, 그리고 이 모두를 운영하는 인터페이스를 단일 바이너리 하나에 담았습니다.</p>
 <p>MIT 라이선스의 오픈 소스이며, 프로젝트는 <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a>에서 시작되었습니다.</p>
-<h2 id="문제">문제<a class="anchor" href="#문제" aria-label="link">#</a></h2>
+<h2 id="the-problem">문제<a class="anchor" href="#the-problem" aria-label="link">#</a></h2>
 <p>일반적인 데이터 스택은 변환 도구, 오케스트레이터, 큐, 인터페이스를 조합합니다. 각 도구는 맡은 일을 잘하지만, 이들 사이의 통합은 끝나지 않는 일이 됩니다. 버전 관리 방식 네 가지, 설정 방식 네 가지, 문제가 생겼을 때 확인할 곳 네 군데가 생깁니다.</p>
 <p>이 비용은 아키텍처 다이어그램에는 나타나지 않습니다. 대신 팀만이 아는 도메인에 집중하지 못하고 연결 코드를 유지보수하는 데 쓰는 시간으로 나타납니다.</p>
-<h2 id="제안">제안<a class="anchor" href="#제안" aria-label="link">#</a></h2>
+<h2 id="the-proposal">제안<a class="anchor" href="#the-proposal" aria-label="link">#</a></h2>
 <p>산출물은 하나이고, 역할에 필요한 하위 명령을 사용합니다.</p>
 <div class="code-block" data-code="brevis serve        # API + interface
 brevis scheduler    # materialises schedules and drains the queue
@@ -160,32 +160,32 @@ steps:
     <span class="t-k">image</span>: ghcr.io/example/notify:0.3
     <span class="t-k">run</span>: /notify --channel data
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
-<h2 id="무엇이-다른가">무엇이 다른가<a class="anchor" href="#무엇이-다른가" aria-label="link">#</a></h2>
+<h2 id="what-makes-it-different">무엇이 다른가<a class="anchor" href="#what-makes-it-different" aria-label="link">#</a></h2>
 <p><strong>모든 step은 자기만의 이미지로 자기만의 pod에서 실행됩니다.</strong> 작업을 기다리는 범용 worker는 없습니다. 작업이 자신의 런타임을 직접 가져옵니다. <code>dbt</code> step은 dbt 이미지로 올라오고, 그 옆의 Go fetcher는 5.8 MB와 32Mi 메모리로 올라오므로, 가장 큰 이웃의 크기를 물려받지 않습니다.</p>
 <p><strong>스케줄러는 run을 만들고, 큐는 그것을 실행합니다.</strong> 서로 독립된 두 루프이며, 이 분리는 의도된 것입니다. 한쪽이 멈춰도 다른 쪽이 중단되지 않고, 지난달을 재처리하는 일이 시계에 의존하지 않습니다.</p>
 <p><strong>검증에는 데이터베이스가 필요 없습니다.</strong> <code>brevis validate</code>는 CI에서 테스트와 함께 실행되므로, YAML 오류가 클러스터가 아니라 pull request에서 실패합니다.</p>
-<h2 id="의도적으로-분리된-세-가지-구성-요소">의도적으로 분리된 세 가지 구성 요소<a class="anchor" href="#의도적으로-분리된-세-가지-구성-요소" aria-label="link">#</a></h2>
+<h2 id="three-pieces-separate-on-purpose">의도적으로 분리된 세 가지 구성 요소<a class="anchor" href="#three-pieces-separate-on-purpose" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>구성 요소</th><th>설명</th><th>버전</th></tr></thead><tbody><tr><td><strong>engine</strong></td><td><code>brevis</code>, 이 페이지에서 다루는 바이너리: 오케스트레이션, 스케줄링, 실행, 운영</td><td><code>0.15</code></td></tr><tr><td><strong>SDK</strong></td><td>추출하고 적재하는 step을 작성하기 위한 Go 모듈</td><td><code>0.66</code></td></tr><tr><td><strong>gateway</strong></td><td>가져오러 가는 대신 <em>도착하는</em> 데이터를 받아 적재하는 HTTP 엔드포인트</td><td><code>0.8</code></td></tr></tbody></table></div>
 <p>성숙도가 서로 다르기 때문에 버전도 독립적입니다. engine이 있다는 이유로 gateway를 <code>0.15.3</code>이라고 번호 매기면 갖추지 못한 성숙도를 주장하는 셈이고, 한 번 게시한 버전은 취소할 수 없습니다.</p>
 <p>세 가지를 하나로 엮는 것은 숫자 하나, 즉 <code>provider|entity|source_key|record_ts</code>에 대한 고정된 UUID v5인 <code>ingestion_id</code>입니다. 같은 레코드에 대해 <a href="/ko/docs/ingestion/">gateway</a>가 적재한 행과 <a href="/ko/docs/sdk/">SDK</a> fetcher가 적재한 행은 *하나의 행*이며, 둘 사이에 조정(reconciliation) 작업이 없습니다.</p>
-<h2 id="brevissh가-맞지-않는-경우">brevis.sh가 맞지 않는 경우<a class="anchor" href="#brevissh가-맞지-않는-경우" aria-label="link">#</a></h2>
+<h2 id="when-brevissh-is-not-the-choice">brevis.sh가 맞지 않는 경우<a class="anchor" href="#when-brevissh-is-not-the-choice" aria-label="link">#</a></h2>
 <p>도구가 하지 못하는 일을 문서화하는 편이 하는 일을 문서화하는 것보다 시간을 더 절약해 줍니다.</p>
 <ul><li><strong>이미 Airflow나 Dagster를 운영하고 있고 만족하는 경우.</strong> 바이너리 하나를 덜 운영해서 얻는 절감보다 마이그레이션 비용이 더 큽니다.</li><li><strong>workflow가 데이터와 무관한 경우.</strong> brevis.sh는 변환과 적재의 DAG를 전제로 하므로, 범용 오케스트레이터가 더 적합합니다.</li><li><strong>미리 만들어진 오퍼레이터 카탈로그가 필요한 경우.</strong> 여기서 step은 이미지와 명령 하나입니다. 단순하지만 한계도 있어서, 끌어다 쓸 수백 개의 통합은 없습니다.</li><li><strong>팀이 Kubernetes를 쓰지 않고 쓸 계획도 없는 경우.</strong> 로컬 모드도 동작하지만, 설계는 pod를 전제로 합니다.</li></ul>
-<h2 id="열린-코드-참여-방식은-직접-선택하세요">열린 코드. 참여 방식은 직접 선택하세요.<a class="anchor" href="#열린-코드-참여-방식은-직접-선택하세요" aria-label="link">#</a></h2>
+<h2 id="open-code-choose-how-to-take-part">열린 코드. 참여 방식은 직접 선택하세요.<a class="anchor" href="#open-code-choose-how-to-take-part" aria-label="link">#</a></h2>
 <p>brevis.sh는 100% 오픈 소스입니다. 독점 라이선스도, 기능이 제한된 에디션도, 만드는 것에 대한 제약도 없습니다.</p>
-<h3 id="100-오픈">100% 오픈<a class="anchor" href="#100-오픈" aria-label="link">#</a></h3>
+<h3 id="100-open">100% 오픈<a class="anchor" href="#100-open" aria-label="link">#</a></h3>
 <p><em>코드 · 오픈 소스 라이선스</em></p>
 <p>런타임을 읽고, 사용하고, 수정하고, 개선해서 자신의 운영 환경에 적용하세요. 완전한 런타임 · 감사 가능한 코드 · 열린 기여.</p>
 <p><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">저장소 보기</a></p>
-<h3 id="함께-만들기">함께 만들기<a class="anchor" href="#함께-만들기" aria-label="link">#</a></h3>
+<h3 id="build-together">함께 만들기<a class="anchor" href="#build-together" aria-label="link">#</a></h3>
 <p><em>커뮤니티 · 열린 이슈</em> · <strong>주요 경로</strong></p>
 <p>프로젝트의 방향을 결정하는 논의에 참여하세요. 이슈와 제안 · 동료 간 교류 · 공개 로드맵.</p>
 <p><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">프로젝트 팔로우</a></p>
-<h3 id="깊이-배우기">깊이 배우기<a class="anchor" href="#깊이-배우기" aria-label="link">#</a></h3>
+<h3 id="learn-deeply">깊이 배우기<a class="anchor" href="#learn-deeply" aria-label="link">#</a></h3>
 <p><em>aretê · 목적이 있는 기술</em></p>
 <p>철학적 사고와 소프트웨어 엔지니어링을 잇는 학교를 만나 보세요. 오리지널 콘텐츠 · 지속적인 학습 · 열린 소통 창구.</p>
 <p><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê 방문</a></p>
-<h2 id="다음으로-이동">다음으로 이동<a class="anchor" href="#다음으로-이동" aria-label="link">#</a></h2>
+<h2 id="where-to-go-next">다음으로 이동<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>원하는 것</th><th>이동할 곳</th></tr></thead><tbody><tr><td>설치하고 실행되는 모습 보기</td><td><a href="/ko/docs/installation/">설치</a> 및 <a href="/ko/docs/quickstart/">빠른 시작</a></td></tr><tr><td>workflow 형식 이해하기</td><td><a href="/ko/docs/workflows/">Workflows</a></td></tr><tr><td>아키텍처 이해하기</td><td><a href="/ko/docs/scheduler-and-queue/">스케줄러와 큐</a></td></tr><tr><td>명령과 플래그 목록</td><td><a href="/ko/docs/cli/">CLI</a></td></tr><tr><td>Go로 fetcher 작성하기</td><td><a href="/ko/docs/sdk/">SDK</a></td></tr><tr><td>한 step의 값을 다음 step으로 전달하기</td><td><a href="/ko/docs/context/">step 간 컨텍스트</a></td></tr><tr><td>Python으로 step 작성하기</td><td><a href="/ko/docs/libraries/">클라이언트 라이브러리</a></td></tr><tr><td>데이터를 가져오는 대신 HTTP로 받기</td><td><a href="/ko/docs/ingestion/">수집</a></td></tr><tr><td>대시보드와 알림 구성하기</td><td><a href="/ko/docs/observability/">관측성</a></td></tr></tbody></table></div>
 <aside class="admon admon-note"><p class="admon-t">이름에 대하여</p><p>*Brevis*는 라틴어로 "짧은, 간결한"이라는 뜻이며, <em>brevity</em>(간결함)의 어원입니다. 세네카의 <strong>De Brevitate Vitae</strong>(인생의 짧음에 관하여)에서 따왔습니다. 우리에게 시간이 적은 것이 아니라, 많은 시간을 잃어버리고 있다는 뜻입니다.</p></aside>
 
@@ -201,7 +201,7 @@ steps:
 
     <aside class="toc" aria-label="이 페이지에서">
       <p class="toc-t">이 페이지에서</p>
-      <ul><li class="toc-2"><a href="#문제">문제</a></li><li class="toc-2"><a href="#제안">제안</a></li><li class="toc-2"><a href="#무엇이-다른가">무엇이 다른가</a></li><li class="toc-2"><a href="#의도적으로-분리된-세-가지-구성-요소">의도적으로 분리된 세 가지 구성 요소</a></li><li class="toc-2"><a href="#brevissh가-맞지-않는-경우">brevis.sh가 맞지 않는 경우</a></li><li class="toc-2"><a href="#열린-코드-참여-방식은-직접-선택하세요">열린 코드. 참여 방식은 직접 선택하세요.</a></li><li class="toc-3"><a href="#100-오픈">100% 오픈</a></li><li class="toc-3"><a href="#함께-만들기">함께 만들기</a></li><li class="toc-3"><a href="#깊이-배우기">깊이 배우기</a></li><li class="toc-2"><a href="#다음으로-이동">다음으로 이동</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-problem">문제</a></li><li class="toc-2"><a href="#the-proposal">제안</a></li><li class="toc-2"><a href="#what-makes-it-different">무엇이 다른가</a></li><li class="toc-2"><a href="#three-pieces-separate-on-purpose">의도적으로 분리된 세 가지 구성 요소</a></li><li class="toc-2"><a href="#when-brevissh-is-not-the-choice">brevis.sh가 맞지 않는 경우</a></li><li class="toc-2"><a href="#open-code-choose-how-to-take-part">열린 코드. 참여 방식은 직접 선택하세요.</a></li><li class="toc-3"><a href="#100-open">100% 오픈</a></li><li class="toc-3"><a href="#build-together">함께 만들기</a></li><li class="toc-3"><a href="#learn-deeply">깊이 배우기</a></li><li class="toc-2"><a href="#where-to-go-next">다음으로 이동</a></li></ul>
     </aside>
   </main>
 </div>
@@ -221,9 +221,9 @@ steps:
       <div class="footer-col">
         <h2>프로젝트</h2>
         <ul>
-          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/#ecosystem">에코시스템</a></li>
           <li><a href="/ko/docs/philosophy/">원칙</a></li>
-          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/introduction/#open-code-choose-how-to-take-part">오픈 소스</a></li>
           <li><a href="/ko/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -246,7 +246,7 @@ steps:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

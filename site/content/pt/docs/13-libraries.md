@@ -74,8 +74,8 @@ A biblioteca **emite** métricas, e o engine é quem as expõe:
 ```python
 from brevis import metrics
 
-metrics.set("rows_loaded", 48213)      # gauge: a última escrita vence
-metrics.inc("vendor_rejected_total")   # counter: soma
+metrics.set("rows_loaded", 48213)      # a gauge: the last value wins
+metrics.inc("vendor_rejected_total")   # a counter: it adds up
 ```
 
 Elas saem no `/metrics` **do engine**, na porta do scheduler, rotuladas com o
@@ -88,7 +88,7 @@ para desenhar as fases de um pipeline — e o engine registra. Nada a instalar,
 nada a operar, e os rótulos são do engine porque um passo não sabe o slug do
 próprio workflow.
 
-Os detalhes da API estão em [Python](/docs/python/#metricas-que-so-o-seu-pipeline-conhece).
+Os detalhes da API estão em [Python](/docs/python/#metrics-only-your-pipeline-knows).
 
 ## Escrevendo um cliente para outra linguagem
 

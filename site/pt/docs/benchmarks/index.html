@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+<a class="skip-link" href="#content">Pular para o conteúdo</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegação principal">
-      <a href="/pt/#ecossistema">Ecossistema</a>
+      <a href="/pt/#ecosystem">Ecossistema</a>
       <a href="/pt/docs/">Documentação</a>
       <details class="lang-dd"><summary aria-label="Idioma: Português"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Português</span></summary><ul><li><a href="/docs/benchmarks/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/benchmarks/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/benchmarks/" lang="pt-BR" hreflang="pt-BR" aria-current="true">Português</a></li><li><a href="/fr/docs/benchmarks/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/benchmarks/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/benchmarks/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/benchmarks/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/benchmarks/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/benchmarks/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/benchmarks/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/benchmarks/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentação</p>
       <h1>Benchmarks</h1>
@@ -127,28 +127,28 @@
       <p>Um comando, e ele mede o gateway inteiro:</p>
 <div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>Ele sobe um Postgres, sobe o gateway, carrega com [k6], <strong>espera o buffer drenar</strong>, raspa o <code>/metrics</code> do próprio gateway e escreve <code>bench/results/REPORT.md</code>.</p>
-<h2 id="tres-testemunhas-e-a-terceira-e-a-que-importa">Três testemunhas, e a terceira é a que importa<a class="anchor" href="#tres-testemunhas-e-a-terceira-e-a-que-importa" aria-label="link">#</a></h2>
+<h2 id="three-witnesses-and-the-third-is-the-one-that-matters">Três testemunhas, e a terceira é a que importa<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>O k6 sabe o que o produtor viu. O gateway sabe o que fez. Um teste de carga que só tem o primeiro número não distingue um gateway rápido de um que responde <code>202</code> e perde o que aceitou.</p>
 <p>Então o relatório põe os dois lado a lado — e conta as linhas no Postgres:</p>
 <div class="table-wrap"><table><thead><tr><th>testemunha</th><th>eventos</th></tr></thead><tbody><tr><td>o k6 foi informado <code>accepted</code></td><td>5.431.000</td></tr><tr><td>o gateway contou recebidos</td><td>5.431.000</td></tr><tr><td>linhas no Postgres</td><td>5.431.000</td></tr><tr><td>registros na fila de descarte</td><td>0</td></tr></tbody></table></div>
 <p>As duas primeiras são aritmética do próprio gateway — uma da resposta que ele escreveu, outra do contador que ele incrementou — e um bug que perdesse eventos poderia mantê-las coerentes <strong>entre si</strong>. O banco é a única que não aceitou a nossa palavra.</p>
 <p><strong>Uma execução em que as três discordam falhou</strong>, por melhores que sejam os percentis.</p>
-<h2 id="a-corrida-acima">A corrida acima<a class="anchor" href="#a-corrida-acima" aria-label="link">#</a></h2>
+<h2 id="the-run-above">A corrida acima<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
 <p>A corrida de 2026-09-26 em <code>bench/results/REPORT.md</code>: <code>areteacademy/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPUs, Postgres 17 em container no mesmo kernel, <code>auto_table[columns]</code> com <code>write: append</code>:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>eventos aceitos</td><td><strong>5.431.000</strong> (135.768/s)</td></tr><tr><td>corpo enviado</td><td>1.156,7 MiB em 40s</td></tr><tr><td><code>503</code> (contrapressão)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5,9 ms / 16,0 ms / 22,7 ms</td></tr><tr><td>lotes entregues</td><td>1.087, nenhum enterrado</td></tr></tbody></table></div>
-<h2 id="os-thresholds-sao-o-ponto">Os thresholds são o ponto<a class="anchor" href="#os-thresholds-sao-o-ponto" aria-label="link">#</a></h2>
+<h2 id="the-thresholds-are-the-point">Os thresholds são o ponto<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>O k6 sai com código diferente de zero quando um falha, então isso é <strong>portão</strong> e não gráfico:</p>
 <div class="table-wrap"><table><thead><tr><th>threshold</th><th>por quê</th></tr></thead><tbody><tr><td><code>p95 &lt; 500ms</code></td><td>o caminho de aceitação tem que ficar fora da latência do destino. Uma requisição esperando um <code>COPY</code> é o defeito contra o qual a esteira assíncrona existe.</td></tr><tr><td><code>http_req_failed &lt; 1%</code></td><td>um <code>503</code> é aceitável; um timeout ou um 5xx não.</td></tr><tr><td><code>eventos aceitos &gt; 1000</code></td><td>uma suíte de thresholds passa contra um gateway que não respondeu nada.</td></tr></tbody></table></div>
 <p>São deliberadamente frouxos: isso roda na máquina que o CI deu. Pegam <strong>uma ordem de grandeza</strong>, que é a cara de uma regressão, não um por cento.</p>
 <p><strong>Um <code>503</code> não é falha.</strong> É o gateway recusando um evento que não tem onde pôr, e é seguro repetir — o <code>ingestion_id</code> é função congelada do evento, então o mesmo corpo reenviado é o mesmo registro. Contá-lo como erro faria contrapressão parecer bug.</p>
-<h2 id="o-que-ele-nao-mede">O que ele não mede<a class="anchor" href="#o-que-ele-nao-mede" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-measure">O que ele não mede<a class="anchor" href="#what-it-does-not-measure" aria-label="link">#</a></h2>
 <ul><li><strong>Não é BigQuery.</strong> O destino é um Postgres em container. Cota de load job, latência de commit e concorrência de DDL de um warehouse não estão nesses números e não têm como estar.</li><li><strong>Não é durabilidade.</strong> <code>durability: memory</code> é a única camada, então um <code>202</code> significa <em>aceito na RAM</em>. Isso mede a velocidade disso, nunca o que sobrevive a um <code>SIGKILL</code>.</li><li><strong>Não é o seu hardware.</strong> Leia como forma e proporção.</li></ul>
-<h2 id="a-nuvem-local-por-profile">A nuvem local, por profile<a class="anchor" href="#a-nuvem-local-por-profile" aria-label="link">#</a></h2>
+<h2 id="the-local-cloud-by-profile">A nuvem local, por profile<a class="anchor" href="#the-local-cloud-by-profile" aria-label="link">#</a></h2>
 <div class="code-block" data-code="docker compose -f docker-compose.drivers.yml --profile gcp up -d
 docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">docker</span> compose <span class="t-n">-f</span> <span class="t-k">docker</span>-compose.drivers.yml <span class="t-n">--profile</span> gcp up <span class="t-n">-d</span>
 <span class="t-k">docker</span> compose <span class="t-n">-f</span> <span class="t-k">docker</span>-compose.drivers.yml <span class="t-n">--profile</span> all up <span class="t-n">-d</span></code></pre></div>
 <p>Um arquivo com profiles, e não um por nuvem: dois arquivos são dois nomes de projeto, e <code>postgres</code> nos dois já substituiu o banco de desenvolvimento do motor uma vez.</p>
-<h3 id="o-floci-cobre-menos-do-bigquery-do-que-parece">O floci cobre menos do BigQuery do que parece<a class="anchor" href="#o-floci-cobre-menos-do-bigquery-do-que-parece" aria-label="link">#</a></h3>
+<h3 id="floci-covers-less-of-bigquery-than-it-looks">O floci cobre menos do BigQuery do que parece<a class="anchor" href="#floci-covers-less-of-bigquery-than-it-looks" aria-label="link">#</a></h3>
 <p>Medido, não suposto:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>criar dataset e tabela</td><td>✅</td></tr><tr><td><code>timePartitioning</code> e <code>clustering</code> preservados</td><td>✅ — a forma do bug da <code>0.9.1</code></td></tr><tr><td><code>PATCH</code> de coluna</td><td>✅ — a evolução do <code>auto_table</code></td></tr><tr><td><code>insertAll</code></td><td>✅</td></tr><tr><td>queries</td><td>✅, só com <code>/var/run/docker.sock</code> montado</td></tr><tr><td><strong>load jobs</strong></td><td>❌ <code>Only QUERY jobs are supported by the floci BigQuery emulator</code></td></tr></tbody></table></div>
 <p>O SDK escreve no BigQuery <strong>só</strong> por load job. Então o floci exercita cada linha do <code>auto_table</code> que transforma payload em DDL — e <strong>nenhuma escrita do Brevis</strong>. Ainda é a metade que hoje não tem teste local nenhum, e vale ter. Mas uma suíte verde contra o floci não significa que o BigQuery funciona.</p>
@@ -166,7 +166,7 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#tres-testemunhas-e-a-terceira-e-a-que-importa">Três testemunhas, e a terceira é a que importa</a></li><li class="toc-2"><a href="#a-corrida-acima">A corrida acima</a></li><li class="toc-2"><a href="#os-thresholds-sao-o-ponto">Os thresholds são o ponto</a></li><li class="toc-2"><a href="#o-que-ele-nao-mede">O que ele não mede</a></li><li class="toc-2"><a href="#a-nuvem-local-por-profile">A nuvem local, por profile</a></li><li class="toc-3"><a href="#o-floci-cobre-menos-do-bigquery-do-que-parece">O floci cobre menos do BigQuery do que parece</a></li></ul>
+      <ul><li class="toc-2"><a href="#three-witnesses-and-the-third-is-the-one-that-matters">Três testemunhas, e a terceira é a que importa</a></li><li class="toc-2"><a href="#the-run-above">A corrida acima</a></li><li class="toc-2"><a href="#the-thresholds-are-the-point">Os thresholds são o ponto</a></li><li class="toc-2"><a href="#what-it-does-not-measure">O que ele não mede</a></li><li class="toc-2"><a href="#the-local-cloud-by-profile">A nuvem local, por profile</a></li><li class="toc-3"><a href="#floci-covers-less-of-bigquery-than-it-looks">O floci cobre menos do BigQuery do que parece</a></li></ul>
     </aside>
   </main>
 </div>
@@ -186,9 +186,9 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
       <div class="footer-col">
         <h2>projeto</h2>
         <ul>
-          <li><a href="/pt/#ecossistema">Ecossistema</a></li>
+          <li><a href="/pt/#ecosystem">Ecossistema</a></li>
           <li><a href="/pt/docs/philosophy/">Princípios</a></li>
-          <li><a href="/pt/docs/introduction/#codigo-aberto-escolha-como-participar">Open source</a></li>
+          <li><a href="/pt/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/pt/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -211,7 +211,7 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

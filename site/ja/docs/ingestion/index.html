@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
       <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/ingestion/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ingestion/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ingestion/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ingestion/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/ingestion/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ingestion/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ingestion/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>取り込み</h1>
@@ -145,9 +145,9 @@
   -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/clicks <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
   <span class="t-n">-d</span> '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'</code></pre></div>
 <div class="code-block" data-code="{&quot;accepted&quot;:1,&quot;rejected&quot;:null}"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>{"accepted":1,"rejected":null}</code></pre></div>
-<p>Google Cloud の認証情報がなければ、バッチはリトライされ、dead letter に送られます。 <a href="#sink-が拒否したとき">sink が拒否したとき</a>を参照してください。</p>
+<p>Google Cloud の認証情報がなければ、バッチはリトライされ、dead letter に送られます。 <a href="#when-the-sink-refuses">sink が拒否したとき</a>を参照してください。</p>
 <p><code>-slim</code> イメージが含むのは <code>auto_table</code>、<code>files</code>、<code>postgres</code> の sink だけです。この例の <code>pubsub</code> と その他は完全なイメージにあります。含まれていない sink を指定した slim イメージは、起動時に理由を 示して拒否されます。</p>
-<h2 id="ファイルが契約">ファイルが契約<a class="anchor" href="#ファイルが契約" aria-label="link">#</a></h2>
+<h2 id="the-file-is-the-contract">ファイルが契約<a class="anchor" href="#the-file-is-the-contract" aria-label="link">#</a></h2>
 <p>フック以外に書くコードはありません。ストリーム、パス、フォーマット、識別、リトライ、宛先、 dead letter のすべてが YAML にあり、守れないフィールドはすべて拒否されます。</p>
 <div class="code-block" data-code="name: events_gateway
 
@@ -221,13 +221,13 @@ streams:
       <span class="t-k">type</span>: files
       <span class="t-k">path</span>: /var/dead-letter/</code></pre></div>
 <p><code>format</code> は宣言するもので、推測されることはありません。推測すると、1000 件のバッチが、 配列を保持する 1 つの行になってしまいます。</p>
-<h2 id="ingestion-idこれが要点"><code>ingestion_id</code>、これが要点<a class="anchor" href="#ingestion-idこれが要点" aria-label="link">#</a></h2>
+<h2 id="the-ingestion-id-which-is-the-point"><code>ingestion_id</code>、これが要点<a class="anchor" href="#the-ingestion-id-which-is-the-point" aria-label="link">#</a></h2>
 <p>すべてのレコードは <code>ingestion_id</code> を付けて出ていきます。<code>provider|entity|source_key|record_ts</code> に対する <strong>固定の UUID v5</strong> です。</p>
 <p>これは、バッチのフェッチャーが同じレコードに対して計算するものと<strong>同じ id</strong> です。gateway が着地させた行と、 <a href="/ja/docs/sdk/">SDK</a> のパイプラインが着地させた行は*同じ 1 行*になり、両者の間で突き合わせは不要です。</p>
 <p>実用上の帰結が 2 つあります。</p>
 <ul><li><strong>リトライされた <code>POST</code> は同じレコードです。</strong> クライアントは心配せずに再送でき、<code>merge</code> を持つ宛先は 2 行目を書かずにリトライを吸収します。</li><li><strong>計算式は固定されています。</strong> 4 つのフィールドはすべて必須で、1 つでも省くと、弱い id ではなく <em>別の</em> id が生成されます。ファイルは、不完全な設定を受け付けるのではなく拒否します。</li></ul>
 <p>取り込みツールはバイトを運ぶのは非常にうまいのですが、レコードが*何であるか*については意見を持ちません。 その意見を加えるのが gateway です。</p>
-<h2 id="リクエストは-sink-を待たない">リクエストは sink を待たない<a class="anchor" href="#リクエストは-sink-を待たない" aria-label="link">#</a></h2>
+<h2 id="the-request-never-waits-for-the-sink">リクエストは sink を待たない<a class="anchor" href="#the-request-never-waits-for-the-sink" aria-label="link">#</a></h2>
 <p>デコードし、フックを実行し、識別を計算し、バッファに追加して、返ります。<strong>それだけです。</strong> 満杯のバッチはワーカープールに渡され、publish、<code>COPY</code>、リトライ、dead letter はすべてそこで行われます。</p>
 <p>これは見かけだけの話ではありません。これが存在する前は、たまたまバッチを満たしたリクエストが配信を インラインで実行していたため、<code>flush.records</code> 件に 1 人の呼び出し元が往復の全コストを負担し、sink が 落ちているときはリトライの全期間を負担しました。どの呼び出し元が不運だったかで形が決まる p99 は、 誰も行動の根拠にできません。</p>
 <div class="code-block" data-code="buffer:
@@ -249,7 +249,7 @@ streams:
   <span class="t-k">queue</span>: 64           <span class="t-c"># full batches that may wait for a worker</span>
   <span class="t-k">max_records</span>: 10000  <span class="t-c"># events held in memory before the gateway says no</span>
   <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># the same ceiling in bytes</span></code></pre></div>
-<h3 id="フラッシュの時計はデプロイに属する">フラッシュの時計はデプロイに属する<a class="anchor" href="#フラッシュの時計はデプロイに属する" aria-label="link">#</a></h3>
+<h3 id="the-flush-clock-belongs-to-the-deployment">フラッシュの時計はデプロイに属する<a class="anchor" href="#the-flush-clock-belongs-to-the-deployment" aria-label="link">#</a></h3>
 <p><code>buffer.flush.every</code> は<strong>すべてのレプリカ</strong>にある <code>time.AfterFunc</code> です。そのため、テーブルが受け取る ロードジョブはトラフィックではなくレプリカ数の関数になります。</p>
 <div class="code-block" data-code="jobs / day / table  =  replicas × 86400 / every"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>jobs / day / table  =  replicas × 86400 / every</code></pre></div>
 <p>BigQuery では、テーブルあたり 1 日 1,500 に対して、<strong>60 秒で 2 レプリカでも、引き上げられない クォータの 192%</strong> になります。HPA が何かをする前の話です。しかも方向は直感の逆です。gateway は HTTP の同時実行数のためにスケールアウトしますが、sink は集約を求めます。</p>
@@ -269,13 +269,13 @@ streams:
 <p><strong><code>outcome="unreachable"</code> は、アラートを設定する価値のある唯一のものです。</strong> バックエンドに問い合わせられず、 claim がフェイルオープンしました。調整はオフで、ロードジョブはまたレプリカ数に比例して増えています。 すべてのフラッシュが依然としてフラッシュに見えるため、静かに進行します。</p>
 <p>そして claim が与えるのは<strong>排他性であり、公平性ではありません</strong>。先に要求した者が勝ちます。実際の 2 レプリカでの実行では、均等な分割ではなく 4/1 でした。不運なほうが飢餓状態にならないようにするのが <code>max_age</code> です。</p>
 <p><code>claim: true</code> と <code>metastore: memory</code> の組み合わせでは、gateway は<strong>起動時に一度だけ</strong>警告します。 すべてのレプリカが自分の claim に勝つので、すべて正しく見えて、何も調整されないからです。</p>
-<h3 id="every-は目標max-age-は約束"><code>every</code> は目標、<code>max_age</code> は約束<a class="anchor" href="#every-は目標max-age-は約束" aria-label="link">#</a></h3>
+<h3 id="every-is-a-target-max-age-is-a-promise"><code>every</code> は目標、<code>max_age</code> は約束<a class="anchor" href="#every-is-a-target-max-age-is-a-promise" aria-label="link">#</a></h3>
 <p>上の 3 つのトリガーは、バッチがいつ出ていこうと<strong>試みる</strong>かを決めます。<code>max_age</code> は、バッチが <strong>どうあっても</strong>いつ出ていくかを決めます。</p>
 <p>現時点では、目標を遅らせるものがないため、この違いは機能していません。フラッシュの時計がプロセス単位で なくなると重要になります。<code>buffer.flush.every</code> は各レプリカの <code>time.AfterFunc</code> なので、テーブルが受け取る ロードジョブの数はトラフィックではなく<strong>レプリカ数</strong>の関数、つまり <code>replicas × 86400 / every</code> です。 BigQuery では、テーブルあたり 1 日 1,500 に対して、<strong>60 秒で 2 レプリカでもクォータの 192%</strong> です。</p>
 <p>レプリカが他のレプリカにウィンドウを譲れるようになると、それはバッファを満たし続けます。 順番を待ってデータを無期限に抱え込むことを防ぐのが <code>max_age</code> です。</p>
 <p>これはドレインも決めます。<code>SIGTERM</code> 時にバッファが<strong>抱えている</strong>可能性のあるものがそれで制限され、 gateway が起動時に出力する <code>terminationGracePeriodSeconds</code> はそこから導かれます。</p>
 <p>目標より<strong>小さい</strong>上限は、ロード時に拒否されます。目標が一切適用されないことを意味するからです。</p>
-<h3 id="サイズのトリガーがある理由">サイズのトリガーがある理由<a class="anchor" href="#サイズのトリガーがある理由" aria-label="link">#</a></h3>
+<h3 id="why-there-is-a-size-trigger">サイズのトリガーがある理由<a class="anchor" href="#why-there-is-a-size-trigger" aria-label="link">#</a></h3>
 <p>他の 2 つは<strong>件数</strong>であり、件数では 2 KB のイベント 500 件と 2 MB のイベント 500 件を区別できません。 1 MB と 1 GB が、ファイル上では同じ数字です。<code>max_records: 10000</code> も同じ盲点を持ちます。20 MB なのか 20 GB なのか、YAML からは何もわかりません。</p>
 <p>プロデューサーが id の代わりにドキュメント全体を送り始めると pod が落ちますが、これが存在するまでは <strong>その制限を表現できるフィールドが 1 つもありませんでした</strong>。</p>
 <p>サイズは<strong>届いたもの</strong>で測ります。イベントがメモリ上で占める重さ(<code>map[string]any</code> は JSON の数倍)でも、 それを膨らませるフックの後でもありません。近似ですが、それで正しいのです。デコード時にコストがかからず、 ペイロードに連動して動き、防ぎたいのは 10 倍に膨らんだレコードだからです。</p>
@@ -287,7 +287,7 @@ streams:
 <p>テーブルの 1 回のフラッシュはそのテーブルの 1 回のロードジョブなので、BigQuery が許す 1,500 のうち 1,200 でアラートを出すのは、この系列です。無条件のもう半分は起動時の 1 行で、イベントが届く前に、 <code>flush.every</code> がテーブルあたり 1 日にいくらかかるかを示します。</p>
 <p><strong>上限があり、撃ちっぱなしではありません。</strong> バッチごとの goroutine では、sink の障害がメモリの 無制限な増加になってしまいます。キューとバッファがどちらも満杯のとき、行き場のないイベントに <code>202</code> を 返すのではなく、<strong><code>Retry-After</code> 付きの <code>503</code></strong> を返します。受け付けたのに配信されないイベントは、 このサービスが決して持たないために存在する唯一の結果です。</p>
 <p>そしてその <code>503</code> は、ほとんどのサービスが主張できない形で<strong>リトライしても安全</strong>です。<code>ingestion_id</code> は イベント自身の固定された関数なので、同じボディを再送すれば*同じレコード*だからです。</p>
-<h2 id="接続がどのレプリカに負荷がかかるかを決める">接続がどのレプリカに負荷がかかるかを決める<a class="anchor" href="#接続がどのレプリカに負荷がかかるかを決める" aria-label="link">#</a></h2>
+<h2 id="a-connection-decides-which-replica-gets-the-load">接続がどのレプリカに負荷がかかるかを決める<a class="anchor" href="#a-connection-decides-which-replica-gets-the-load" aria-label="link">#</a></h2>
 <p>Kubernetes の <code>ClusterIP</code> Service の背後では、kube-proxy はリクエストごとではなく <strong>TCP 接続ごとに 一度</strong>バックエンドを選びます。ほとんどのクライアントは接続を維持して再利用するため、少数の接続を持つ プロデューサーは、何台が動いていても、すべてを同じ 1、2 台のレプリカに送り、HPA が追加した レプリカは、誰もダイヤルしないので何も受け取りません。</p>
 <div class="code-block" data-code="listen:
   idle_timeout: 90s     # closes a connection nobody came back to
@@ -297,7 +297,7 @@ streams:
 <p><strong><code>max_conn_age</code> はデフォルトでオフ</strong>で、これは意図的です。クライアントが 1 つの接続をどれだけ長く 保てるかはポリシーであり、それは、年齢ごとに接続あたり 1 回のクラスタ内ハンドシェイクと引き換えに、 負荷を分散させるものだからです。リクエスト自体は常に処理されます。ヘッダーがレスポンスに付くだけで、 リトライされるものも、失われるバッチもありません。</p>
 <p><strong><code>idle_timeout</code> にはデフォルトがあり、オフにできません。</strong> なしで提供すると、放棄されたクライアントごとに ファイルディスクリプタが、プロセスの再起動まで残ります。長くしたければ長い値を設定してください。 そうすれば、それは誰かが選んだ数字になります。</p>
 <p>2 つは独立しています。接続は先に達した境界に出会い、接続が年齢に達するのは使われ続けることによってだけです。 それはまさに、年齢による再分散が対象とする長寿命のプロデューサーです。</p>
-<h2 id="sink-が拒否したとき">sink が拒否したとき<a class="anchor" href="#sink-が拒否したとき" aria-label="link">#</a></h2>
+<h2 id="when-the-sink-refuses">sink が拒否したとき<a class="anchor" href="#when-the-sink-refuses" aria-label="link">#</a></h2>
 <p>バッチはリトライされます。デフォルトでは約 7 秒の間に 4 回、ジッター付きで倍々にしていき、その後 <strong>dead letter</strong> に送られ、すべてのレコードに理由が付きます。</p>
 <div class="code-block" data-code="{
   &quot;event_id&quot;: &quot;dl-9&quot;,
@@ -314,7 +314,7 @@ streams:
 }</code></pre></div>
 <p>理由はログだけでなく<strong>レコード上</strong>にあります。後でそのファイルを見つけた人が持っているのはイベントで あってログではなく、*なぜこれがここにあるのか*が最初の疑問だからです。</p>
 <p><strong><code>dead_letter</code> のないストリームは、ロード時に拒否されます。</strong> デフォルトを沈黙にすると、 誰も判断しない場所に判断を置くことになり、ログの 1 行だけで済まされる拒否されたバッチは、 黙ってデータを失っています。</p>
-<h2 id="フックは-go-でコンパイルして組み込む">フックは Go で、コンパイルして組み込む<a class="anchor" href="#フックは-go-でコンパイルして組み込む" aria-label="link">#</a></h2>
+<h2 id="the-hook-is-go-compiled-in">フックは Go で、コンパイルして組み込む<a class="anchor" href="#the-hook-is-go-compiled-in" aria-label="link">#</a></h2>
 <div class="code-block" data-code="hooks := gateway.NewHooks()
 hooks.MustRegister(&quot;enrich_clicks&quot;, enrichClicks)
 gateway.Main(hooks, gateway.WithSinks(sinks))
@@ -335,7 +335,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 <p>YAML はフックの名前を指定するだけで、フックそのものは含みません。選ぶ前に計測しました。Go の関数は <strong>93 ns/op</strong>、Starlark は 959、yaegi は 1,281 で、バイナリには何も追加されません。そして <code>plugin.Open</code> は選択肢にすらなりません。ここのすべての成果物がビルドされる <code>CGO_ENABLED=0</code> では、 <code>plugin: not implemented</code> を返すからです。</p>
 <p>そのコストは、誰かが読む場所で言っておきます。<strong>フックの追加は設定変更ではなく、再ビルドとデプロイです。</strong> フックをバイナリを出荷する人たちが書いているうちは正しいトレードオフですが、顧客がリリースなしで フックを変更しなければならなくなる日には、間違ったものになります。</p>
 <p>フックのエラーは、*そのイベント*を dead letter の経路に送り、隣のバッチを失敗させることは決してありません。 panic も同様です。イベントごとにリカバーされます。不正な形式のレコード 1 つで、他のすべてのストリームを 提供しているプロセスを落としてはならないからです。</p>
-<h2 id="イベントが大きすぎるとき">イベントが大きすぎるとき<a class="anchor" href="#イベントが大きすぎるとき" aria-label="link">#</a></h2>
+<h2 id="when-an-event-is-too-big">イベントが大きすぎるとき<a class="anchor" href="#when-an-event-is-too-big" aria-label="link">#</a></h2>
 <div class="code-block" data-code="oversize:
   larger_than: 256KiB
   archive: {type: files, path: gs://acme-oversize/clicks/}
@@ -359,7 +359,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 }</code></pre></div>
 <p>これは <strong>Claim Check</strong> パターンで、単純な <code>413</code> より優れています。<code>413</code> はイベントを失い、サイズ超過の ペイロードはたいてい最も興味深いものだからです。ドキュメント全体が添付されたリクエストであり、 デバッグする価値のあるケースです。</p>
 <p><code>larger_than</code> は、フックの後の 1 つの<strong>イベント</strong>を測ります。<code>listen.max_body</code> は別のもので、 <strong>リクエスト</strong>全体の上限であり、1 バイトもパースされる前に <code>413</code> で拒否します。</p>
-<h2 id="何を数えるか">何を数えるか<a class="anchor" href="#何を数えるか" aria-label="link">#</a></h2>
+<h2 id="what-it-counts">何を数えるか<a class="anchor" href="#what-it-counts" aria-label="link">#</a></h2>
 <p><strong>専用のポート</strong>で 11 個の Prometheus 系列を公開します。取り込み用のポートでは決してなく、このルールは エンジンよりもここのほうが重要です。取り込みポートは構造上公開されており、クライアントが <code>POST</code> する 場所だからです。そこに <code>/metrics</code> があると、パスを見つけた人にすべてのストリーム名、パス、宛先が 公開されてしまいます。両方に同じアドレスを指定すると、ロード時に拒否されます。</p>
 <div class="code-block" data-code="brevis_gateway_events_received_total{stream,format}     counter
 brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
@@ -393,20 +393,20 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 <p><code>process_start_time_seconds</code> には <code>brevis_</code> の<strong>プレフィックスが付いていません</strong>。これは意図的です。 コレクタはまさにその名前を探すからです。プロセスがいつ起動したかを示し、これがないと、開始時刻の調整を行う コレクタ(OpenTelemetry の Prometheus レシーバーで、Google Managed Prometheus はこれをもとにしています)は、 すべての累積系列を<strong>最初のスクレイプ</strong>に固定し、そのスクレイプの値をベースラインとして消費します。 結果として、すべてのカウンタが低く読まれ、差分は正しいのに合計が間違います。</p>
 <p>最後の 3 つは、最初のインシデントの後まで誰も欲しがらないものです。<code>saturated_total</code> は、クライアントが 下がるよう伝えられたことを示す唯一の数字で、<code>buffer.max_records</code> に対する <code>buffer_records</code> は、それを <strong>予測する</strong>唯一のものです。</p>
 <p><code>reason</code> は閉じた集合であり、エラーテキストではありません。エラー文字列にはテーブル名、列、時には行が 含まれ、不正な形式のクライアントが 1 つあるだけで、リクエストごとに新しい系列を作ってしまうからです。 テキストは dead letter の、レコード上に残ります。</p>
-<h2 id="200-ではなく-202"><code>200</code> ではなく <code>202</code><a class="anchor" href="#200-ではなく-202" aria-label="link">#</a></h2>
+<h2 id="202-not-200"><code>200</code> ではなく <code>202</code><a class="anchor" href="#202-not-200" aria-label="link">#</a></h2>
 <p>gateway はイベントを<strong>受け付けました</strong>。<code>durability: memory</code>(実装されている唯一のティア)では、 それが誠実に主張できるすべてです。<code>200</code> に値するティアは、すでにそれを書き留めたものですが、 そのティアは存在しません。</p>
 <p><code>disk</code> は、受け付けてメモリとして扱うのではなく、<strong>名前を挙げて</strong>拒否されます。<code>disk</code> と書く人は クラッシュしてもイベントが残ると信じており、届けることなく同意するのは、そのフィールドが防ぐために 存在する失敗そのものだからです。</p>
 <p>シャットダウン時にバッファにあるものは、破棄されず配信されます。満杯のバッチと同じ経路を通り、 リトライされ、葬られます。</p>
-<h2 id="やらないこと">やらないこと<a class="anchor" href="#やらないこと" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-do">やらないこと<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
 <ul><li><strong>Console には表示されません。</strong> エンジンのインターフェースとデータベースを共有しないため、 <code>/ingestion</code> ページはなく、<code>auto_table</code> が行うスキーマの進化もそこには現れません。それは次の ステップで、まだ書かれていません。</li><li><strong><code>table</code> を持つストリームはスキーマを進化させません。</strong> テーブルを指定した場合、契約はテーブルのもの です。テーブルにないフィールドは、誰かがレビューしたテーブルを変更するのではなく、修正方法を示す メッセージとともに拒否されます。列を自分で増やすのは <code>auto_table</code> のすることで、そこが両者の違いです。</li><li><strong><code>table</code> を持つストリームは、テーブルもインデックスも作りません。</strong> テーブルを作るサービスは、 タイプミスを、誰も読まない 2 つ目のテーブルに変えてしまいます。作成が <code>auto_table</code> の下でだけ行われる のはそのためで、そこでは <code>naming</code> が存在できる名前を制限し、<code>listen.auth</code> が必須です。</li><li><strong>公開されているイメージにフックはありません。</strong> コンパイル済みフックの設計における誠実な成果物は それです。<code>hook:</code> を宣言しないストリームを提供します。</li></ul>
-<h2 id="1-つのルートn-個のテーブル">1 つのルート、N 個のテーブル<a class="anchor" href="#1-つのルートn-個のテーブル" aria-label="link">#</a></h2>
+<h2 id="one-route-n-tables">1 つのルート、N 個のテーブル<a class="anchor" href="#one-route-n-tables" aria-label="link">#</a></h2>
 <p><code>auto_table</code> は、各イベントを<strong>エンベロープ</strong>が指定するテーブルにルーティングし、そのテーブルが なければ作成し、新しいフィールドが現れたら列を追加します。</p>
 <div class="code-block" data-code="{&quot;table_name&quot;: &quot;app_orders&quot;, &quot;operation&quot;: &quot;INSERT&quot;, &quot;unique_key&quot;: &quot;id&quot;,
  &quot;data&quot;: {&quot;id&quot;: &quot;A-1&quot;, &quot;total&quot;: 150, &quot;customer&quot;: {&quot;id&quot;: 7, &quot;uf&quot;: &quot;SP&quot;}}}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>{"table_name": "app_orders", "operation": "INSERT", "unique_key": "id",
  "data": {"id": "A-<span class="t-n">1</span>", "total": <span class="t-n">150</span>, "customer": {"id": <span class="t-n">7</span>, "uf": "SP"}}}</code></pre></div>
 <p>制御フィールドは最上位に、レコードは <code>data</code> の中にあり、すべてのテーブルに 7 つの <code>brevis_*</code> 追跡列が 付きます。1 つのルート、N 個のテーブル、宣言するものは何もありません。</p>
-<p>これは<a href="/ja/docs/ingestion-sinks/#1-つのルートn-個のテーブル宣言するものは何もない">取り込みの sink</a>にあります。</p>
-<h2 id="次に進む先">次に進む先<a class="anchor" href="#次に進む先" aria-label="link">#</a></h2>
+<p>これは<a href="/ja/docs/ingestion-sinks/#one-route-n-tables-nothing-declared">取り込みの sink</a>にあります。</p>
+<h2 id="where-to-go-next">次に進む先<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>目的</th><th>参照先</th></tr></thead><tbody><tr><td>宛先と、それぞれの書き込み方</td><td><a href="/ja/docs/ingestion-sinks/">取り込みの sink</a></td></tr><tr><td>反対側から見た <code>ingestion_id</code></td><td><a href="/ja/docs/sdk/">Go SDK</a></td></tr><tr><td>ダッシュボードとアラート</td><td><a href="/ja/docs/observability/">オブザーバビリティ</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="ページ">
@@ -421,7 +421,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#ファイルが契約">ファイルが契約</a></li><li class="toc-2"><a href="#ingestion-idこれが要点">ingestion_id、これが要点</a></li><li class="toc-2"><a href="#リクエストは-sink-を待たない">リクエストは sink を待たない</a></li><li class="toc-3"><a href="#フラッシュの時計はデプロイに属する">フラッシュの時計はデプロイに属する</a></li><li class="toc-3"><a href="#every-は目標max-age-は約束">every は目標、max_age は約束</a></li><li class="toc-3"><a href="#サイズのトリガーがある理由">サイズのトリガーがある理由</a></li><li class="toc-2"><a href="#接続がどのレプリカに負荷がかかるかを決める">接続がどのレプリカに負荷がかかるかを決める</a></li><li class="toc-2"><a href="#sink-が拒否したとき">sink が拒否したとき</a></li><li class="toc-2"><a href="#フックは-go-でコンパイルして組み込む">フックは Go で、コンパイルして組み込む</a></li><li class="toc-2"><a href="#イベントが大きすぎるとき">イベントが大きすぎるとき</a></li><li class="toc-2"><a href="#何を数えるか">何を数えるか</a></li><li class="toc-2"><a href="#200-ではなく-202">200 ではなく 202</a></li><li class="toc-2"><a href="#やらないこと">やらないこと</a></li><li class="toc-2"><a href="#1-つのルートn-個のテーブル">1 つのルート、N 個のテーブル</a></li><li class="toc-2"><a href="#次に進む先">次に進む先</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file-is-the-contract">ファイルが契約</a></li><li class="toc-2"><a href="#the-ingestion-id-which-is-the-point">ingestion_id、これが要点</a></li><li class="toc-2"><a href="#the-request-never-waits-for-the-sink">リクエストは sink を待たない</a></li><li class="toc-3"><a href="#the-flush-clock-belongs-to-the-deployment">フラッシュの時計はデプロイに属する</a></li><li class="toc-3"><a href="#every-is-a-target-max-age-is-a-promise">every は目標、max_age は約束</a></li><li class="toc-3"><a href="#why-there-is-a-size-trigger">サイズのトリガーがある理由</a></li><li class="toc-2"><a href="#a-connection-decides-which-replica-gets-the-load">接続がどのレプリカに負荷がかかるかを決める</a></li><li class="toc-2"><a href="#when-the-sink-refuses">sink が拒否したとき</a></li><li class="toc-2"><a href="#the-hook-is-go-compiled-in">フックは Go で、コンパイルして組み込む</a></li><li class="toc-2"><a href="#when-an-event-is-too-big">イベントが大きすぎるとき</a></li><li class="toc-2"><a href="#what-it-counts">何を数えるか</a></li><li class="toc-2"><a href="#202-not-200">200 ではなく 202</a></li><li class="toc-2"><a href="#what-it-does-not-do">やらないこと</a></li><li class="toc-2"><a href="#one-route-n-tables">1 つのルート、N 個のテーブル</a></li><li class="toc-2"><a href="#where-to-go-next">次に進む先</a></li></ul>
     </aside>
   </main>
 </div>
@@ -441,9 +441,9 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -466,7 +466,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

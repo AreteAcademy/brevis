@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
       <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/runtime/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/runtime/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/runtime/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/runtime/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/runtime/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/runtime/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/runtime/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/runtime/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/runtime/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/runtime/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/runtime/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>Step runtime</h1>
@@ -137,7 +137,7 @@
 │   2m14s · attempt 1                  │
 └──────────────────────────────────────┘</code></pre></div>
 <p><strong>ज़्यादातर समय आप कुछ नहीं लिखते।</strong> Engine <code>run:</code> और <code>image:</code> पढ़कर खुद निकाल लेता है।</p>
-<h2 id="इस-कब-घषत-कर">इसे कब घोषित करें<a class="anchor" href="#इस-कब-घषत-कर" aria-label="link">#</a></h2>
+<h2 id="when-to-declare-it">इसे कब घोषित करें<a class="anchor" href="#when-to-declare-it" aria-label="link">#</a></h2>
 <p>दो फ़ील्ड, दोनों वैकल्पिक, दोनों प्रति step:</p>
 <div class="code-block" data-code="steps:
   - id: fetch
@@ -156,14 +156,14 @@
     <span class="t-k">tools</span>: [dbt]           <span class="t-c"># what it drives, not what it is</span></code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>फ़ील्ड</th><th></th></tr></thead><tbody><tr><td><code>runtime</code></td><td>step की भाषा: <code>go</code>, <code>python</code>, <code>node</code>, <code>shell</code>…</td></tr><tr><td><code>tools</code></td><td>कमांड जिन टूल को चलाती है: <code>dbt</code>, <code>dlt</code>, <code>spark</code>…</td></tr></tbody></table></div>
 <p>मोटा नियम: <strong>तब घोषित करें जब अनुमान गलत निकले।</strong> जिस <code>run:</code> का इशारा किसी compile की हुई बाइनरी की ओर है, उसके पास यह बताने का तरीका नहीं कि वह Go है; जो wrapper भीतर से <code>dbt</code> बुलाता है, उसके पास यह बताने का तरीका नहीं कि वह dbt चलाता है।</p>
-<h2 id="बद-शबदवल-कय">बंद शब्दावली क्यों<a class="anchor" href="#बद-शबदवल-कय" aria-label="link">#</a></h2>
+<h2 id="why-a-closed-vocabulary">बंद शब्दावली क्यों<a class="anchor" href="#why-a-closed-vocabulary" aria-label="link">#</a></h2>
 <p>शब्दावली से बाहर की id <strong>प्रकाशित करते समय ही मना</strong> कर दी जाती है, और बताया जाता है कि क्या मान्य है। विकल्प तीन दिन बाद स्क्रीन पर खाली दिखता chip है, जिसे ट्रेस करने के लिए कुछ नहीं होता।</p>
 <div class="code-block" data-code="workflow &quot;daily&quot;: step &quot;transform&quot;: `runtime: pyton` is not valid
   (valid: go, python, node, shell, …)"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>workflow "daily": step "transform": `runtime: pyton` is not valid
   (valid: go, python, node, shell, …)</code></pre></div>
-<h2 id="chip-कसलए-ह">Chip किसलिए है<a class="anchor" href="#chip-कसलए-ह" aria-label="link">#</a></h2>
+<h2 id="what-the-chip-is-for">Chip किसलिए है<a class="anchor" href="#what-the-chip-is-for" aria-label="link">#</a></h2>
 <p>यह सजावट नहीं है। जब रात के 3 बजे कोई run विफल होता है, तो पहला सवाल होता है "यह step क्या चलाता है?", और जवाब आम तौर पर किसी दूसरी रिपॉज़िटरी में होता है। Chip उसे ग्राफ़ पर ही रख देता है — step ने जो SDK संस्करण इस्तेमाल किया उसके साथ, जो "आज टूटा" को "मंगलवार के बदलाव से टूटा" से अलग करता है।</p>
-<h2 id="अगल-कदम">अगले कदम<a class="anchor" href="#अगल-कदम" aria-label="link">#</a></h2>
+<h2 id="next-steps">अगले कदम<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/hi/docs/workflows/">Workflows</a> — step का हर फ़ील्ड</li><li><a href="/hi/docs/pod-per-step/">हर step के लिए एक pod</a> — step असल में कहाँ चलता है</li><li><a href="/hi/docs/observability/">ऑब्ज़र्वेबिलिटी</a> — इसके साथ चलने वाले मेट्रिक्स</li></ul>
 
       <nav class="pagers" aria-label="पेज">
@@ -178,7 +178,7 @@
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#इस-कब-घषत-कर">इसे कब घोषित करें</a></li><li class="toc-2"><a href="#बद-शबदवल-कय">बंद शब्दावली क्यों</a></li><li class="toc-2"><a href="#chip-कसलए-ह">Chip किसलिए है</a></li><li class="toc-2"><a href="#अगल-कदम">अगले कदम</a></li></ul>
+      <ul><li class="toc-2"><a href="#when-to-declare-it">इसे कब घोषित करें</a></li><li class="toc-2"><a href="#why-a-closed-vocabulary">बंद शब्दावली क्यों</a></li><li class="toc-2"><a href="#what-the-chip-is-for">Chip किसलिए है</a></li><li class="toc-2"><a href="#next-steps">अगले कदम</a></li></ul>
     </aside>
   </main>
 </div>
@@ -198,9 +198,9 @@
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -223,7 +223,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

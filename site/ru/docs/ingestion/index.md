@@ -44,7 +44,7 @@ curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
 ```
 
 Без учётных данных Google Cloud пакет повторяется и уходит в dead letter — см.
-[Когда sink отказывает](#когда-sink-отказывает).
+[Когда sink отказывает](#when-the-sink-refuses).
 
 Образ `-slim` содержит только sinks `auto_table`, `files` и `postgres`; `pubsub`
 из этого примера и остальные есть в полном образе. Slim-образ с sink, которого
@@ -473,7 +473,7 @@ Gateway **принял** события. С `durability: memory` — единс�
 Управляющие поля сверху, запись внутри `data` и семь служебных столбцов
 `brevis_*` в каждой таблице. Один маршрут, N таблиц, ничего не объявлено.
 
-Это описано в разделе [Sinks приёма данных](/ru/docs/ingestion-sinks/#один-маршрут-n-таблиц-ничего-не-объявлено).
+Это описано в разделе [Sinks приёма данных](/ru/docs/ingestion-sinks/#one-route-n-tables-nothing-declared).
 
 ## Что читать дальше
 

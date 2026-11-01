@@ -133,7 +133,7 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01
 `--param` दोहराया जा सकता है। `=` के बिना इनपुट **त्रुटि** है:
 
 ```
-erro: --param "load_full": use chave=valor
+error: --param "load_full": use key=value
 ```
 
 यह जानबूझकर है। `--param load_full`, मान भूलकर, डिफ़ॉल्ट के साथ चलता — और ऑपरेटर मान लेता कि backfill उस पैरामीटर के साथ हुआ जो उसने चाहा था।

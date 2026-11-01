@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
       <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/python/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/python/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/python/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/python/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/python/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/python/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/python/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/python/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/python/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/python/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/python/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>Python</h1>
@@ -140,7 +140,7 @@ context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
 <p><strong>कभी कोई निर्भरता नहीं।</strong> यह एक environment वेरिएबल पढ़ती है, एक फ़ाइल लिखती है और stdout पर एक पंक्ति छापती है। Python 3.9+ चाहिए।</p>
 <p>यह Go SDK का पोर्ट नहीं है: कोई drivers नहीं, कोई pagination नहीं, कोई ingestion ids नहीं। यह इसलिए है कि टीम pandas, Polars या dbt इस्तेमाल करे और फिर भी वह पाए जिसके लिए ऑर्केस्ट्रेटर होता है।</p>
-<h2 id="सदरभ-पढन">संदर्भ पढ़ना<a class="anchor" href="#सदरभ-पढन" aria-label="link">#</a></h2>
+<h2 id="reading-context">संदर्भ पढ़ना<a class="anchor" href="#reading-context" aria-label="link">#</a></h2>
 <p>Key हमेशा उस step से योग्य होती है जिसने उसे प्रकाशित किया:</p>
 <div class="code-block" data-code="context.get(&quot;extract.bucket&quot;)            # the value
 context.get(&quot;extract.nope&quot;, default=0)   # absent is not an error
@@ -151,7 +151,7 @@ context.of("extract")                    <span class="t-c"># everything that ste
 context.published()                      <span class="t-c"># what THIS step has published so far</span></code></pre></div>
 <p>बिना step वाला <code>context.get("bucket")</code> <strong>मना</strong> है, और उन steps के नाम बताता है जिन्होंने उसे प्रकाशित किया। Steps अलग-थलग हैं — <code>extract</code> और <code>transform</code> दोनों <code>bucket</code> प्रकाशित कर सकते हैं और कोई उसे खोता नहीं — और बिना step की key इसे उसी क्षण गँवा देती है जब दो ऐसा करें। खोजकर एक चुनना संयोग से बनी प्राथमिकता है: यह तब तक काम करती है जब तक चुपचाप काम करना बंद नहीं कर देती।</p>
 <p>जिस step पर यह निर्भर नहीं, उसे पढ़ना त्रुटि है, और संदेश सुधार की ओर इशारा करता है।</p>
-<h2 id="लखन">लिखना<a class="anchor" href="#लखन" aria-label="link">#</a></h2>
+<h2 id="writing">लिखना<a class="anchor" href="#writing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="context.set(name=&quot;Daniel&quot;)
 context.set(label=&quot;Name&quot;)
 # both survive: {&quot;name&quot;: &quot;Daniel&quot;, &quot;label&quot;: &quot;Name&quot;}"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>context.set(name="Daniel")
@@ -159,7 +159,7 @@ context.set(label="Name")
 <span class="t-c"># both survive: {"name": "Daniel", "label": "Name"}</span></code></pre></div>
 <p>कॉल <strong>मर्ज</strong> होती हैं। एक ही key दो बार हो तो आखिरी write रहता है; अलग key पहली को नहीं छूती। <strong>step आर्ग्युमेंट नहीं है</strong> — प्रोसेस जिस अकेले namespace में लिख सकती है वह उसका अपना है, जो अलगाव को नियम के बजाय संरचनात्मक बनाता है।</p>
 <p>प्रोसेस के निकलने तक डिस्क पर कुछ नहीं पहुँचता, इसलिए जो step बुरी तरह मरता है वह कुछ प्रकाशित नहीं करता। यह सही है: क्रैश हुए step का आउटपुट उस काम का वर्णन करता जो पूरा नहीं हुआ।</p>
-<h2 id="वह-घड-ज-यह-run-पढ">वह घड़ी जो यह run पढ़े<a class="anchor" href="#वह-घड-ज-यह-run-पढ" aria-label="link">#</a></h2>
+<h2 id="the-clock-this-run-should-read">वह घड़ी जो यह run पढ़े<a class="anchor" href="#the-clock-this-run-should-read" aria-label="link">#</a></h2>
 <p>हर run <strong>auto पैरामीटर</strong> भी ढोता है: ऐसे मान जो engine खुद निकालता है। इन्हें कोई घोषित नहीं करता, हर run में ये होते हैं, और ये उस सवाल का जवाब देते हैं जो pipeline वरना <code>datetime.now()</code> से देती।</p>
 <div class="code-block" data-code="from datetime import timedelta
 from brevis import run
@@ -176,10 +176,10 @@ df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>run.now()</code></td><td>घड़ी: slot, या run कब शुरू हुआ</td></tr><tr><td><code>run.window()</code></td><td><code>(start, end)</code>, end शामिल नहीं — या <code>None</code></td></tr><tr><td><code>run.auto()</code></td><td>auto पैरामीटर, नीचे</td></tr><tr><td><code>run.context()</code></td><td>id, प्रयास, trigger, params और auto</td></tr><tr><td><code>run.params()</code> · <code>run.param(name)</code></td><td>workflow में घोषित पैरामीटर</td></tr><tr><td><code>run.map_index()</code> · <code>run.map_value()</code></td><td><code>for_each:</code> के तहत इंस्टेंस</td></tr></tbody></table></div>
 <p><code>window()</code> <strong>cron</strong> से आती है, इतिहास से नहीं: मार्च के slot का backfill वह विंडो बनाता है जो मार्च की थी। <code>[start, end)</code> माँगना कभी ओवरलैप नहीं करता और कभी खाली नहीं छोड़ता, चाहे run कितना भी देर से हो और कितनी भी बार retry हो।</p>
 <p>Workflow का शेड्यूल न हो तो यह शून्य समयों की जोड़ी के बजाय <code>None</code> लौटाती है — epoch से query सब कुछ चुन लेती है, और वह विफलता चुप नहीं होनी चाहिए। ऊपर का <code>or</code> ही पूरा fallback है।</p>
-<h3 id="auto-परमटर">Auto पैरामीटर<a class="anchor" href="#auto-परमटर" aria-label="link">#</a></h3>
+<h3 id="the-auto-parameters">Auto पैरामीटर<a class="anchor" href="#the-auto-parameters" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th>फ़ील्ड</th><th></th></tr></thead><tbody><tr><td><code>date</code></td><td><code>"2026-09-08"</code> — partition, फ़ोल्डर, <code>WHERE</code></td></tr><tr><td><code>adjusted_at</code></td><td><code>now()</code> की जगह पढ़ी जाने वाली घड़ी</td></tr><tr><td><code>scheduled_at</code></td><td>वह slot जो cron ने माँगा; मैन्युअल run पर <code>None</code></td></tr><tr><td><code>started_at</code></td><td><strong>यह प्रयास</strong> कब शुरू हुआ; retry इसे खिसकाता है</td></tr><tr><td><code>delay_seconds</code></td><td>यह प्रयास कितना देर से था; कभी ऋणात्मक नहीं</td></tr><tr><td><code>interval_start</code> · <code>interval_end</code></td><td>विंडो, end शामिल नहीं</td></tr><tr><td><code>previous_error</code></td><td>इससे पहले का run सफल नहीं हुआ</td></tr><tr><td><code>previous_success_at</code></td><td>आखिरी <strong>सफल</strong> run का slot — जो <code>previous_error</code> को कार्रवाई योग्य बनाता है</td></tr></tbody></table></div>
 <p>स्क्रिप्ट को हाथ से चलाएँ तो <code>run.now()</code> दीवार की घड़ी <strong>है</strong> और <code>window()</code> <code>None</code> है, इसलिए स्थानीय विकास के लिए लिखने को कोई branch नहीं।</p>
-<h2 id="mapped-step-क-एक-इसटस">Mapped step का एक इंस्टेंस<a class="anchor" href="#mapped-step-क-एक-इसटस" aria-label="link">#</a></h2>
+<h2 id="one-instance-of-a-mapped-step">Mapped step का एक इंस्टेंस<a class="anchor" href="#one-instance-of-a-mapped-step" aria-label="link">#</a></h2>
 <p><a href="/hi/docs/workflows/"><code>for_each:</code></a> के तहत, engine हर तत्व के लिए एक प्रोसेस चलाता है और हर एक को बताता है कि उसे कौन-सा मिला:</p>
 <div class="code-block" data-code="partition = run.map_value()
 if partition is None:
@@ -193,7 +193,7 @@ load(f"/data/{partition}.csv")</code></pre></div>
 <p>JSON string <strong>बिना अपने उद्धरण चिह्नों के</strong> आती है — <code>["2026-01"]</code> पर <code>for_each</code> step को <code>2026-01</code> देता है, <code>"2026-01"</code> नहीं। बाकी सब कुछ — ऑब्जेक्ट, संख्या, सूची — अपने JSON के रूप में आता है, इसलिए <code>json.loads(run.map_value())</code>।</p>
 <p>Mapped न होने वाले step पर दोनों <code>None</code> हैं। <code>None</code>, और <code>-1</code> या <code>""</code> नहीं: sentinel वह संख्या है जिस पर कोई न कोई आखिर अंकगणित कर बैठता है, और खाली string उस तत्व से अलग नहीं पहचानी जा सकती जो <em>खुद</em> खाली string है।</p>
 <p>Mapped step आगे <strong>कोई संदर्भ</strong> प्रकाशित नहीं करता — चार इंस्टेंस एक key साझा नहीं कर सकते। जिस step को कुछ आगे देना है वह फ़ाइल लिखता है, या उसके बाद का कोई step गिनता है कि क्या उतरा।</p>
-<h2 id="व-मटरकस-ज-सरफ-आपक-pipeline-जनत-ह">वे मेट्रिक्स जो सिर्फ़ आपकी pipeline जानती है<a class="anchor" href="#व-मटरकस-ज-सरफ-आपक-pipeline-जनत-ह" aria-label="link">#</a></h2>
+<h2 id="metrics-only-your-pipeline-knows">वे मेट्रिक्स जो सिर्फ़ आपकी pipeline जानती है<a class="anchor" href="#metrics-only-your-pipeline-knows" aria-label="link">#</a></h2>
 <p>Engine पहले से वह मापता है जो वह देख सकता है: अवधि, प्रयास, कतार की गहराई। जो उसके जानने का कोई तरीका नहीं है वह यह कि कितनी पंक्तियाँ उतरीं, vendor ने कितनी ठुकराईं, या कितने बाइट फेंके गए। Step यह जानता है, और लाइब्रेरी उसे ढोती है।</p>
 <div class="code-block" data-code="from brevis import metrics
 
@@ -209,22 +209,22 @@ metrics.inc("bytes_discarded_total", 4096)</code></pre></div>
 brevis_step_vendor_rejected_total{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 5"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
 brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>metrics.set(name, value)</code></td><td>gauge। step के निकलने के बाद मान तब तक रहता है जब तक अगला run दूसरा न लिखे</td></tr><tr><td><code>metrics.inc(name, by=1)</code></td><td>counter। steps और runs के पार जुड़ता जाता है</td></tr></tbody></table></div>
-<h3 id="यह-port-कय-नह-खलत">यह port क्यों नहीं खोलता<a class="anchor" href="#यह-port-कय-नह-खलत" aria-label="link">#</a></h3>
+<h3 id="why-this-does-not-open-a-port">यह port क्यों नहीं खोलता<a class="anchor" href="#why-this-does-not-open-a-port" aria-label="link">#</a></h3>
 <p>क्योंकि <strong>step scrape नहीं किया जा सकता</strong>। <code>:9090</code> शेड्यूलर और API का है — लंबे जीने वाली प्रोसेस, स्थिर पते के साथ, हर पंद्रह से साठ सेकंड में scrape की जाती हैं। Step अपने pod में शुरू होता है, चालीस सेकंड चलता है और निकल जाता है: उसका खोला port कभी scrape नहीं होता, या संयोग से एक बार।</p>
 <p>इसके तीन जाने-पहचाने जवाब हैं: Pushgateway (चलाने को एक घटक, और ऐसी series जो कोई हटाए तब तक रहती हैं), OTLP collector (एक घटक <strong>और</strong> इस लाइब्रेरी में निर्भरता, जिसकी कोई निर्भरता नहीं है और न होगी), या <strong>ऑर्केस्ट्रेटर</strong> से उन्हें ढुलवाना। Brevis पहले से हर step का stdout <code>@brevis:</code> पंक्तियों के लिए पढ़ता है — इसी से SDK के चरण ग्राफ़ तक पहुँचते हैं — और उसके पास पहले से meter और Prometheus endpoint है।</p>
 <p>इसलिए लाइब्रेरी <strong>stdout पर एक पंक्ति</strong> लिखती है और बाकी engine करता है। मेट्रिक workflow और step के label के साथ मुफ़्त में पहुँचता है, क्योंकि engine जानता है कि वह क्या चला रहा था; Pushgateway के रास्ते लाइब्रेरी को खुद label लगाने पड़ते, और वह गलत करती।</p>
 <p>Write <code>print(flush=True)</code> है, क्योंकि engine उस pipe को <strong>लाइव</strong> पढ़ता है। बफ़र हुई पंक्ति प्रोसेस के निकलने पर पहुँचती है — जो घंटे भर चलने वाले step के लिए घंटे भर देर है, और मार दिए गए step के लिए कभी नहीं।</p>
-<h3 id="मटरक-कय-मन-करत-ह">मेट्रिक क्या मना करता है<a class="anchor" href="#मटरक-कय-मन-करत-ह" aria-label="link">#</a></h3>
+<h3 id="what-a-metric-refuses">मेट्रिक क्या मना करता है<a class="anchor" href="#what-a-metric-refuses" aria-label="link">#</a></h3>
 <p><strong>अमान्य नाम ज़ोर से मना किया जाता है।</strong> Prometheus अक्षर, अंक और अंडरस्कोर स्वीकार करता है, और पहला अक्षर अंक नहीं हो सकता। जिस नाम से वह मना करता है वह टूटा हुआ मेट्रिक नहीं बनाता — वह ऐसा exposition बनाता है जिसे वह <strong>parse करने से मना कर देता है</strong>, और <strong>पूरा scrape</strong> खो जाता है, बाकी हर मेट्रिक के साथ। इसलिए <code>rows-loaded</code> यहीं <code>MetricError</code> उठाता है, जहाँ गलती हुई, ऐसे नाम के नीचे पहुँचने के बजाय जो किसी ने लिखा ही नहीं।</p>
 <div class="table-wrap"><table><thead><tr><th>मना किया जाता है</th><th>क्योंकि</th></tr></thead><tbody><tr><td><code>rows-loaded</code>, <code>rows loaded</code>, <code>2rows</code></td><td>Prometheus इसे parse नहीं करेगा, और पूरा scrape चला जाता है</td></tr><tr><td><code>metrics.set("ok", True)</code></td><td>Python में <code>bool</code> एक <code>int</code> है, और <code>1</code> रिपोर्ट करना ऐसी संख्या है जिसका अर्थ यह जानने पर निर्भर है। स्थिति नहीं, गिनती या अवधि रिपोर्ट करें</td></tr><tr><td><code>metrics.inc("x", -1)</code></td><td>counter सिर्फ़ ऊपर जाता है। उस पर हर <code>rate()</code> यही मानता है, और गड़बड़ हफ़्तों बाद ग्राफ़ में दिखती है</td></tr></tbody></table></div>
 <p>स्क्रिप्ट हाथ से चलाएँ तो पंक्ति फिर भी stdout पर जाती है, जहाँ वह वही पढ़ी जाती है जो वह है। कोई उसे इकट्ठा नहीं करता और कुछ विफल नहीं होता — लैपटॉप पर <code>context.set()</code> की तरह।</p>
-<h2 id="यह-कय-मन-करत-ह">यह क्या मना करती है<a class="anchor" href="#यह-कय-मन-करत-ह" aria-label="link">#</a></h2>
+<h2 id="what-it-refuses">यह क्या मना करती है<a class="anchor" href="#what-it-refuses" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>क्योंकि</th></tr></thead><tbody><tr><td>4096 बाइट से ज़्यादा</td><td>प्लैटफ़ॉर्म मना करने के बजाय <strong>छाँटता</strong> है, इसलिए बड़ा ऑब्जेक्ट आधा कटा पहुँचता है और आगे "कुछ प्रकाशित नहीं हुआ" पढ़ा जाता है</td></tr><tr><td>ऐसा मान जो JSON नहीं है</td><td><code>datetime</code> <code>"..."</code> बन जाता है या गायब हो जाता है, इस पर निर्भर कि serialize कौन करे। त्रुटि key का नाम बताती है और <code>.isoformat()</code> सुझाती है</td></tr><tr><td>string से अलग key</td><td><code>{1: "x"}</code> <code>{"1": "x"}</code> बनकर लौटता है और lookup चूक जाता है</td></tr></tbody></table></div>
 <p>सीमा प्लैटफ़ॉर्म की संख्या है, हमारी नहीं। "tasks के बीच संदर्भ" वाला हर फ़ीचर एक ही तरह विफल होता है — कोई <strong>डेटा</strong> वहाँ रख देता है जहाँ सिर्फ़ <strong>संदर्भ</strong> समाता है। चार किलोबाइट में watermark, गिनती या partitions की सूची समाती है। संदर्भ प्रकाशित करें और पंक्तियाँ वहीं छोड़ दें जहाँ हैं।</p>
 <aside class="admon admon-danger"><p class="admon-t">यह secret store नहीं है</p><p>जो कुछ प्रकाशित होता है वह run देख सकने वाले हर किसी को दिखता है — वह pod की स्थिति में और run के इतिहास में है। Path प्रकाशित करें, signed URL नहीं।</p></aside>
-<h2 id="हथ-स-चलन">हाथ से चलाना<a class="anchor" href="#हथ-स-चलन" aria-label="link">#</a></h2>
+<h2 id="running-it-by-hand">हाथ से चलाना<a class="anchor" href="#running-it-by-hand" aria-label="link">#</a></h2>
 <p>Brevis के बाहर कोई इनपुट नहीं होता और आउटपुट कोई नहीं पढ़ता। <code>get()</code> डिफ़ॉल्ट लौटाता है, <code>set()</code> स्वीकार करके फेंक देता है, और लाइब्रेरी यह INFO पर एक बार बताती है। यह <strong>त्रुटि नहीं उठाती</strong>: जिस स्क्रिप्ट को हाथ से चलाया नहीं जा सकता, उसे विकसित नहीं किया जा सकता। Validation फिर भी चलती है, इसलिए जो मान आपके लैपटॉप पर चलता है वह production में चलता है।</p>
-<h2 id="अपन-step-क-टसट">अपने step का टेस्ट<a class="anchor" href="#अपन-step-क-टसट" aria-label="link">#</a></h2>
+<h2 id="testing-your-step">अपने step का टेस्ट<a class="anchor" href="#testing-your-step" aria-label="link">#</a></h2>
 <p>पूरा अनुबंध दो environment वेरिएबल है, इसलिए mock करने को कुछ नहीं:</p>
 <div class="code-block" data-code="def test_my_step(monkeypatch, tmp_path):
     monkeypatch.setenv(&quot;BREVIS_INPUT&quot;, &#x27;{&quot;extract&quot;: {&quot;rows&quot;: 42}}&#x27;)
@@ -233,11 +233,11 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
     monkeypatch.setenv("BREVIS_INPUT", '{"extract": {"rows": 42}}')
     monkeypatch.setenv("BREVIS_OUTPUT", str(tmp_path / "out"))
     <span class="t-k">assert</span> context.get("extract.rows") == 42</code></pre></div>
-<h2 id="ससकरण">संस्करण<a class="anchor" href="#ससकरण" aria-label="link">#</a></h2>
+<h2 id="versions">संस्करण<a class="anchor" href="#versions" aria-label="link">#</a></h2>
 <p>लाइब्रेरी का संस्करण अपना है, engine और Go SDK से अलग।</p>
 <aside class="admon admon-warning"><p class="admon-t">`0.2.0` इस्तेमाल न करें</p><p>यह PyPI पर सिर्फ़ wheel के रूप में गया। <code>0.2.1</code> वही कोड है, पूरा।</p></aside>
 <p><code>brevis.run</code> को पढ़ने के लिए कुछ पाने के लिए <strong><code>v0.9.0</code> या नए</strong> engine की ज़रूरत है; पुराने पर हर फ़ील्ड खाली है और <code>run.now()</code> दीवार की घड़ी है — वही जो वह engine के बाहर करता है।</p>
-<h2 id="अगल-कदम">अगले कदम<a class="anchor" href="#अगल-कदम" aria-label="link">#</a></h2>
+<h2 id="next-steps">अगले कदम<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/hi/docs/libraries/">क्लाइंट लाइब्रेरी</a> — अनुबंध और अन्य भाषाएँ</li><li><a href="/hi/docs/context/">steps के बीच संदर्भ</a> — अवधारणा</li><li><a href="/hi/docs/parameters/">पैरामीटर</a> — घोषित वाले</li></ul>
 
       <nav class="pagers" aria-label="पेज">
@@ -252,7 +252,7 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#सदरभ-पढन">संदर्भ पढ़ना</a></li><li class="toc-2"><a href="#लखन">लिखना</a></li><li class="toc-2"><a href="#वह-घड-ज-यह-run-पढ">वह घड़ी जो यह run पढ़े</a></li><li class="toc-3"><a href="#auto-परमटर">Auto पैरामीटर</a></li><li class="toc-2"><a href="#mapped-step-क-एक-इसटस">Mapped step का एक इंस्टेंस</a></li><li class="toc-2"><a href="#व-मटरकस-ज-सरफ-आपक-pipeline-जनत-ह">वे मेट्रिक्स जो सिर्फ़ आपकी pipeline जानती है</a></li><li class="toc-3"><a href="#यह-port-कय-नह-खलत">यह port क्यों नहीं खोलता</a></li><li class="toc-3"><a href="#मटरक-कय-मन-करत-ह">मेट्रिक क्या मना करता है</a></li><li class="toc-2"><a href="#यह-कय-मन-करत-ह">यह क्या मना करती है</a></li><li class="toc-2"><a href="#हथ-स-चलन">हाथ से चलाना</a></li><li class="toc-2"><a href="#अपन-step-क-टसट">अपने step का टेस्ट</a></li><li class="toc-2"><a href="#ससकरण">संस्करण</a></li><li class="toc-2"><a href="#अगल-कदम">अगले कदम</a></li></ul>
+      <ul><li class="toc-2"><a href="#reading-context">संदर्भ पढ़ना</a></li><li class="toc-2"><a href="#writing">लिखना</a></li><li class="toc-2"><a href="#the-clock-this-run-should-read">वह घड़ी जो यह run पढ़े</a></li><li class="toc-3"><a href="#the-auto-parameters">Auto पैरामीटर</a></li><li class="toc-2"><a href="#one-instance-of-a-mapped-step">Mapped step का एक इंस्टेंस</a></li><li class="toc-2"><a href="#metrics-only-your-pipeline-knows">वे मेट्रिक्स जो सिर्फ़ आपकी pipeline जानती है</a></li><li class="toc-3"><a href="#why-this-does-not-open-a-port">यह port क्यों नहीं खोलता</a></li><li class="toc-3"><a href="#what-a-metric-refuses">मेट्रिक क्या मना करता है</a></li><li class="toc-2"><a href="#what-it-refuses">यह क्या मना करती है</a></li><li class="toc-2"><a href="#running-it-by-hand">हाथ से चलाना</a></li><li class="toc-2"><a href="#testing-your-step">अपने step का टेस्ट</a></li><li class="toc-2"><a href="#versions">संस्करण</a></li><li class="toc-2"><a href="#next-steps">अगले कदम</a></li></ul>
     </aside>
   </main>
 </div>
@@ -272,9 +272,9 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -297,7 +297,7 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

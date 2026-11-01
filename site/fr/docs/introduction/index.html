@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Aller au contenu</a>
+<a class="skip-link" href="#content">Aller au contenu</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigation principale">
-      <a href="/fr/#ecossistema">Écosystème</a>
+      <a href="/fr/#ecosystem">Écosystème</a>
       <a href="/fr/docs/">Documentation</a>
       <details class="lang-dd"><summary aria-label="Langue: Français"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Français</span></summary><ul><li><a href="/docs/introduction/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/introduction/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/introduction/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/introduction/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/introduction/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/introduction/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/introduction/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/introduction/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/introduction/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/introduction/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/introduction/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,17 +119,17 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentation</p>
       <h1>Introduction</h1>
       <p class="doc-desc">Ce qu&#x27;est brevis.sh, le problème qu&#x27;il résout et les cas où ce n&#x27;est pas le bon choix.</p>
       <p>brevis.sh est un <strong>runtime d'orchestration de données écrit en Go</strong>. Un seul binaire réunit ce qui demande normalement quatre outils : la transformation déclarative, l'orchestration de workflows, une file persistante, un planificateur et une interface pour opérer le tout.</p>
 <p>Il est open source sous licence MIT, et le projet est né à <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a>.</p>
-<h2 id="le-problème">Le problème<a class="anchor" href="#le-problème" aria-label="link">#</a></h2>
+<h2 id="the-problem">Le problème<a class="anchor" href="#the-problem" aria-label="link">#</a></h2>
 <p>Une pile de données courante combine un outil de transformation, un orchestrateur, une file et une interface. Chaque composant excelle dans son rôle — et l'intégration entre eux devient un travail permanent : quatre schémas de versionnement, quatre façons de configurer, quatre endroits où regarder quand quelque chose échoue.</p>
 <p>Ce coût n'apparaît jamais sur un schéma d'architecture. Il se voit dans le temps qu'une équipe passe à entretenir la colle au lieu de travailler sur le domaine qu'elle seule connaît.</p>
-<h2 id="la-proposition">La proposition<a class="anchor" href="#la-proposition" aria-label="link">#</a></h2>
+<h2 id="the-proposal">La proposition<a class="anchor" href="#the-proposal" aria-label="link">#</a></h2>
 <p>Un seul artefact, avec la sous-commande que le rôle exige :</p>
 <div class="code-block" data-code="brevis serve        # API + interface
 brevis scheduler    # materialises schedules and drains the queue
@@ -160,32 +160,32 @@ steps:
     <span class="t-k">image</span>: ghcr.io/example/notify:0.3
     <span class="t-k">run</span>: /notify --channel data
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
-<h2 id="ce-qui-le-distingue">Ce qui le distingue<a class="anchor" href="#ce-qui-le-distingue" aria-label="link">#</a></h2>
+<h2 id="what-makes-it-different">Ce qui le distingue<a class="anchor" href="#what-makes-it-different" aria-label="link">#</a></h2>
 <p><strong>Chaque step s'exécute dans son propre pod, avec sa propre image.</strong> Il n'y a pas de worker générique qui attend du travail : le travail apporte son propre runtime. Un step <code>dbt</code> démarre avec l'image dbt ; un fetcher Go à côté démarre avec 5,8 Mo et 32Mi de mémoire, au lieu d'hériter de la taille de son plus gros voisin.</p>
 <p><strong>Le scheduler crée les runs ; la file les exécute.</strong> Deux boucles indépendantes, et cette séparation est délibérée : l'une peut tomber sans interrompre l'autre, et retraiter un mois passé ne dépend pas de l'horloge.</p>
 <p><strong>La validation n'a pas besoin de base de données.</strong> <code>brevis validate</code> s'exécute en CI avec les tests, de sorte qu'une erreur YAML fait échouer la pull request et non le cluster.</p>
-<h2 id="trois-composants-separes-a-dessein">Trois composants, séparés à dessein<a class="anchor" href="#trois-composants-separes-a-dessein" aria-label="link">#</a></h2>
+<h2 id="three-pieces-separate-on-purpose">Trois composants, séparés à dessein<a class="anchor" href="#three-pieces-separate-on-purpose" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>composant</th><th>ce que c'est</th><th>version</th></tr></thead><tbody><tr><td><strong>engine</strong></td><td><code>brevis</code>, le binaire dont parle cette page : orchestre, planifie, exécute et opère</td><td><code>0.15</code></td></tr><tr><td><strong>SDK</strong></td><td>un module Go pour écrire le step qui extrait et charge</td><td><code>0.66</code></td></tr><tr><td><strong>gateway</strong></td><td>un endpoint HTTP qui fait atterrir les données qui <em>arrivent</em>, au lieu d'aller les chercher</td><td><code>0.8</code></td></tr></tbody></table></div>
 <p>Les versions sont indépendantes parce que les maturités le sont. Numéroter le gateway <code>0.15.3</code> parce que l'engine en est là reviendrait à revendiquer une maturité qu'il n'a pas, et une version ne peut pas être dépubliée.</p>
 <p>Ce qui relie les trois est un nombre : l'<code>ingestion_id</code>, un UUID v5 figé calculé sur <code>provider|entity|source_key|record_ts</code>. Une ligne que le <a href="/fr/docs/ingestion/">gateway</a> fait atterrir et une ligne qu'un fetcher du <a href="/fr/docs/sdk/">SDK</a> fait atterrir pour le même enregistrement sont <em>une seule ligne</em>, sans réconciliation entre elles.</p>
-<h2 id="quand-brevissh-nest-pas-le-bon-choix">Quand brevis.sh n'est pas le bon choix<a class="anchor" href="#quand-brevissh-nest-pas-le-bon-choix" aria-label="link">#</a></h2>
+<h2 id="when-brevissh-is-not-the-choice">Quand brevis.sh n'est pas le bon choix<a class="anchor" href="#when-brevissh-is-not-the-choice" aria-label="link">#</a></h2>
 <p>Documenter ce qu'un outil ne fait pas fait gagner plus de temps que documenter ce qu'il fait :</p>
 <ul><li><strong>Vous exploitez déjà Airflow ou Dagster et vous en êtes satisfait.</strong> Migrer coûte plus cher que l'économie d'un binaire de moins à opérer.</li><li><strong>Vos workflows ne concernent pas les données.</strong> brevis.sh suppose des DAG de transformation et de chargement ; un orchestrateur généraliste vous servira mieux.</li><li><strong>Vous avez besoin d'un catalogue d'opérateurs prêts à l'emploi.</strong> Ici, un step est une image et une commande. C'est simple, et c'est limité — il n'y a pas des centaines d'intégrations à glisser-déposer.</li><li><strong>Votre équipe n'utilise pas Kubernetes et n'en a pas l'intention.</strong> Le mode local fonctionne, mais la conception suppose des pods.</li></ul>
-<h2 id="code-ouvert-choisissez-comment-participer">Code ouvert. Choisissez comment participer.<a class="anchor" href="#code-ouvert-choisissez-comment-participer" aria-label="link">#</a></h2>
+<h2 id="open-code-choose-how-to-take-part">Code ouvert. Choisissez comment participer.<a class="anchor" href="#open-code-choose-how-to-take-part" aria-label="link">#</a></h2>
 <p>brevis.sh est 100 % open source. Pas de licences propriétaires, pas d'édition limitée, pas de verrous sur ce que vous construisez.</p>
-<h3 id="100-ouvert">100 % ouvert<a class="anchor" href="#100-ouvert" aria-label="link">#</a></h3>
+<h3 id="100-open">100 % ouvert<a class="anchor" href="#100-open" aria-label="link">#</a></h3>
 <p><em>code · licence open source</em></p>
 <p>Lisez, utilisez, adaptez et améliorez le runtime dans votre propre exploitation. Runtime complet · Code auditable · Contributions ouvertes.</p>
 <p><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Voir le dépôt</a></p>
-<h3 id="construire-ensemble">Construire ensemble<a class="anchor" href="#construire-ensemble" aria-label="link">#</a></h3>
+<h3 id="build-together">Construire ensemble<a class="anchor" href="#build-together" aria-label="link">#</a></h3>
 <p><em>communauté · issues ouvertes</em> · <strong>Voie principale</strong></p>
 <p>Participez aux conversations qui décident de ce que devient le projet. Issues et propositions · Échanges entre pairs · Feuille de route publique.</p>
 <p><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Suivre le projet</a></p>
-<h3 id="apprendre-en-profondeur">Apprendre en profondeur<a class="anchor" href="#apprendre-en-profondeur" aria-label="link">#</a></h3>
+<h3 id="learn-deeply">Apprendre en profondeur<a class="anchor" href="#learn-deeply" aria-label="link">#</a></h3>
 <p><em>aretê · la technologie avec un sens</em></p>
 <p>Découvrez l'école qui relie la pensée philosophique et l'ingénierie logicielle. Contenu original · Apprentissage continu · Canal ouvert.</p>
 <p><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Visiter Aretê</a></p>
-<h2 id="où-aller-ensuite">Où aller ensuite<a class="anchor" href="#où-aller-ensuite" aria-label="link">#</a></h2>
+<h2 id="where-to-go-next">Où aller ensuite<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>si vous voulez</th><th>allez à</th></tr></thead><tbody><tr><td>installer et voir le produit fonctionner</td><td><a href="/fr/docs/installation/">Installation</a> et <a href="/fr/docs/quickstart/">Démarrage rapide</a></td></tr><tr><td>comprendre le format des workflows</td><td><a href="/fr/docs/workflows/">Workflows</a></td></tr><tr><td>comprendre l'architecture</td><td><a href="/fr/docs/scheduler-and-queue/">Scheduler et file</a></td></tr><tr><td>la liste des commandes et des options</td><td><a href="/fr/docs/cli/">CLI</a></td></tr><tr><td>écrire un fetcher en Go</td><td><a href="/fr/docs/sdk/">SDK</a></td></tr><tr><td>passer une valeur d'un step au suivant</td><td><a href="/fr/docs/context/">Contexte entre steps</a></td></tr><tr><td>écrire un step en Python</td><td><a href="/fr/docs/libraries/">Bibliothèques clientes</a></td></tr><tr><td>recevoir des données en HTTP au lieu de les récupérer</td><td><a href="/fr/docs/ingestion/">Ingestion</a></td></tr><tr><td>construire des tableaux de bord et des alertes</td><td><a href="/fr/docs/observability/">Observabilité</a></td></tr></tbody></table></div>
 <aside class="admon admon-note"><p class="admon-t">À propos du nom</p><p><em>Brevis</em> est un mot latin qui signifie « court, bref » — la racine de <em>brièveté</em>. Il vient du <strong>De Brevitate Vitae</strong> de Sénèque : ce n'est pas que nous avons peu de temps, c'est que nous en perdons beaucoup.</p></aside>
 
@@ -201,7 +201,7 @@ steps:
 
     <aside class="toc" aria-label="Sur cette page">
       <p class="toc-t">Sur cette page</p>
-      <ul><li class="toc-2"><a href="#le-problème">Le problème</a></li><li class="toc-2"><a href="#la-proposition">La proposition</a></li><li class="toc-2"><a href="#ce-qui-le-distingue">Ce qui le distingue</a></li><li class="toc-2"><a href="#trois-composants-separes-a-dessein">Trois composants, séparés à dessein</a></li><li class="toc-2"><a href="#quand-brevissh-nest-pas-le-bon-choix">Quand brevis.sh n&#x27;est pas le bon choix</a></li><li class="toc-2"><a href="#code-ouvert-choisissez-comment-participer">Code ouvert. Choisissez comment participer.</a></li><li class="toc-3"><a href="#100-ouvert">100 % ouvert</a></li><li class="toc-3"><a href="#construire-ensemble">Construire ensemble</a></li><li class="toc-3"><a href="#apprendre-en-profondeur">Apprendre en profondeur</a></li><li class="toc-2"><a href="#où-aller-ensuite">Où aller ensuite</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-problem">Le problème</a></li><li class="toc-2"><a href="#the-proposal">La proposition</a></li><li class="toc-2"><a href="#what-makes-it-different">Ce qui le distingue</a></li><li class="toc-2"><a href="#three-pieces-separate-on-purpose">Trois composants, séparés à dessein</a></li><li class="toc-2"><a href="#when-brevissh-is-not-the-choice">Quand brevis.sh n&#x27;est pas le bon choix</a></li><li class="toc-2"><a href="#open-code-choose-how-to-take-part">Code ouvert. Choisissez comment participer.</a></li><li class="toc-3"><a href="#100-open">100 % ouvert</a></li><li class="toc-3"><a href="#build-together">Construire ensemble</a></li><li class="toc-3"><a href="#learn-deeply">Apprendre en profondeur</a></li><li class="toc-2"><a href="#where-to-go-next">Où aller ensuite</a></li></ul>
     </aside>
   </main>
 </div>
@@ -221,9 +221,9 @@ steps:
       <div class="footer-col">
         <h2>projet</h2>
         <ul>
-          <li><a href="/fr/#ecossistema">Écosystème</a></li>
+          <li><a href="/fr/#ecosystem">Écosystème</a></li>
           <li><a href="/fr/docs/philosophy/">Principes</a></li>
-          <li><a href="/fr/docs/introduction/#code-ouvert-choisissez-comment-participer">Open source</a></li>
+          <li><a href="/fr/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/fr/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -246,7 +246,7 @@ steps:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc serif">
 
-<a class="skip-link" href="#conteudo">Aller au contenu</a>
+<a class="skip-link" href="#content">Aller au contenu</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigation principale">
-      <a href="/fr/#ecossistema">Écosystème</a>
+      <a href="/fr/#ecosystem">Écosystème</a>
       <a href="/fr/docs/">Documentation</a>
       <details class="lang-dd"><summary aria-label="Langue: Français"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Français</span></summary><ul><li><a href="/docs/philosophy/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/philosophy/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/philosophy/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/philosophy/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/philosophy/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/philosophy/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/philosophy/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/philosophy/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/philosophy/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/philosophy/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/philosophy/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentation</p>
       <h1>Philosophie</h1>
@@ -130,9 +130,9 @@
 <p>La maxime de Sénèque guide la question derrière brevis.sh : quelles complexités méritent vraiment le temps d'une équipe ? Chaque workflow s'exécute dans des pods isolés afin que les échecs, les versions et les dépendances aient des frontières claires.</p>
 <p>Quatre choix du runtime découlent de cette question :</p>
 <ul><li><strong>image par step</strong> — Chaque step déclare le runtime dont il a besoin. Monter une version n'oblige pas à toucher aux autres.</li><li><strong>logs par run</strong> — La sortie appartient au run qui l'a produite. Enquêter sur un échec, ce n'est pas reconstruire un contexte perdu.</li><li><strong>nouvelles tentatives persistantes</strong> — La tentative survit au processus. Un redémarrage n'efface pas ce qui était déjà connu du travail.</li><li><strong>isolation des dépendances</strong> — Ce qu'un step transporte ne déborde pas chez ses voisins. Une frontière claire est ce qui rend un échec lisible.</li></ul>
-<h2 id="ce-que-le-projet-propose">Ce que le projet propose<a class="anchor" href="#ce-que-le-projet-propose" aria-label="link">#</a></h2>
+<h2 id="what-the-project-proposes">Ce que le projet propose<a class="anchor" href="#what-the-project-proposes" aria-label="link">#</a></h2>
 <p>Entre la <em>philosophie sans pratique</em> et la <em>technologie sans direction</em>, <strong>la clarté pour faire ce qui compte.</strong></p>
-<h2 id="les-outils-faconnent-notre-facon-de-penser">Les outils façonnent notre façon de penser.<a class="anchor" href="#les-outils-faconnent-notre-facon-de-penser" aria-label="link">#</a></h2>
+<h2 id="tools-shape-the-way-we-think">Les outils façonnent notre façon de penser.<a class="anchor" href="#tools-shape-the-way-we-think" aria-label="link">#</a></h2>
 <blockquote><p>« Le code durable n'est pas simplement du code qui continue de tourner. C'est du code qui laisse de la place au raisonnement des personnes. » — La philosophie appliquée au logiciel</p></blockquote>
 <blockquote><p>« La clarté n'est pas l'opposé de la sophistication. C'est le critère qui empêche la sophistication de devenir du bruit. » — L'open source par principe</p></blockquote>
 
@@ -148,7 +148,7 @@
 
     <aside class="toc" aria-label="Sur cette page">
       <p class="toc-t">Sur cette page</p>
-      <ul><li class="toc-2"><a href="#de-brevitate-vitae">De brevitate vitae</a></li><li class="toc-2"><a href="#ce-que-le-projet-propose">Ce que le projet propose</a></li><li class="toc-2"><a href="#les-outils-faconnent-notre-facon-de-penser">Les outils façonnent notre façon de penser.</a></li></ul>
+      <ul><li class="toc-2"><a href="#de-brevitate-vitae">De brevitate vitae</a></li><li class="toc-2"><a href="#what-the-project-proposes">Ce que le projet propose</a></li><li class="toc-2"><a href="#tools-shape-the-way-we-think">Les outils façonnent notre façon de penser.</a></li></ul>
     </aside>
   </main>
 </div>
@@ -168,9 +168,9 @@
       <div class="footer-col">
         <h2>projet</h2>
         <ul>
-          <li><a href="/fr/#ecossistema">Écosystème</a></li>
+          <li><a href="/fr/#ecosystem">Écosystème</a></li>
           <li><a href="/fr/docs/philosophy/">Principes</a></li>
-          <li><a href="/fr/docs/introduction/#code-ouvert-choisissez-comment-participer">Open source</a></li>
+          <li><a href="/fr/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/fr/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -193,7 +193,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

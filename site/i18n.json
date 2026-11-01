@@ -98,7 +98,9 @@
       "eco_mais_http": "+ any HTTP API",
       "eco_mais_cliente": "+ any HTTP client",
       "eco_mais_s3": "+ any S3-compatible",
-      "eco_buckets": "files in a bucket"
+      "eco_buckets": "files in a bucket",
+      "u0_nome": "Zarv",
+      "u0_url": "https://www.zarv.com"
     }
   },
   "es": {
@@ -108,7 +110,7 @@
       "nav_ecossistema": "Ecosistema",
       "nav_principios": "Principios",
       "nav_open_source": "Código abierto",
-      "nav_open_source_ancora": "codigo-abierto-elige-como-participar",
+      "nav_open_source_ancora": "open-code-choose-how-to-take-part",
       "nav_faq": "FAQ",
       "docs": "Documentación",
       "github": "Explorar el código abierto",
@@ -176,9 +178,9 @@
       "dp_agent_d": "Un paso con host: va a un agente que tú mantienes — donde viven la licencia, la GPU o la IP en lista de permitidos.",
       "dp_agent_passo": "en el paso del workflow",
       "dp_link": "Cómo hacerlo",
-      "dp_a_compose": "un-entorno-local-completo",
-      "dp_a_helm": "instalarlo-con-helm",
-      "dp_a_agent": "donde-se-ejecuta-cada-step",
+      "dp_a_compose": "a-full-local-environment",
+      "dp_a_helm": "install-it-with-helm",
+      "dp_a_agent": "where-each-step-runs",
       "final_contato": "¿Una pregunta, un bug o quieres contarnos cómo lo usas?",
       "final_contato_link": "Abre un issue en GitHub",
       "users_titulo": "En producción, hoy.",
@@ -200,7 +202,9 @@
       "eco_mais_http": "+ cualquier API HTTP",
       "eco_mais_cliente": "+ cualquier cliente HTTP",
       "eco_mais_s3": "+ cualquier compatible con S3",
-      "eco_buckets": "archivos en un bucket"
+      "eco_buckets": "archivos en un bucket",
+      "u0_nome": "Zarv",
+      "u0_url": "https://www.zarv.com"
     }
   },
   "pt": {
@@ -210,7 +214,7 @@
       "nav_ecossistema": "Ecossistema",
       "nav_principios": "Princípios",
       "nav_open_source": "Open source",
-      "nav_open_source_ancora": "codigo-aberto-escolha-como-participar",
+      "nav_open_source_ancora": "open-code-choose-how-to-take-part",
       "nav_faq": "FAQ",
       "docs": "Documentação",
       "github": "Explorar open source",
@@ -278,9 +282,9 @@
       "dp_agent_d": "Uma etapa com host: vai para um agent que você mantém — onde mora a licença, o GPU ou o IP liberado.",
       "dp_agent_passo": "na etapa do workflow",
       "dp_link": "Como fazer",
-      "dp_a_compose": "ambiente-local-completo",
-      "dp_a_helm": "instalando-com-helm",
-      "dp_a_agent": "onde-cada-passo-roda",
+      "dp_a_compose": "a-full-local-environment",
+      "dp_a_helm": "install-it-with-helm",
+      "dp_a_agent": "where-each-step-runs",
       "final_contato": "Uma dúvida, um bug, ou quer contar como usa?",
       "final_contato_link": "Abra uma issue no GitHub",
       "users_titulo": "Em produção, hoje.",
@@ -302,7 +306,9 @@
       "eco_mais_http": "+ qualquer API HTTP",
       "eco_mais_cliente": "+ qualquer cliente HTTP",
       "eco_mais_s3": "+ qualquer compatível com S3",
-      "eco_buckets": "arquivos em bucket"
+      "eco_buckets": "arquivos em bucket",
+      "u0_nome": "Zarv",
+      "u0_url": "https://www.zarv.com"
     }
   },
   "fr": {
@@ -312,7 +318,7 @@
       "nav_ecossistema": "Écosystème",
       "nav_principios": "Principes",
       "nav_open_source": "Open source",
-      "nav_open_source_ancora": "code-ouvert-choisissez-comment-participer",
+      "nav_open_source_ancora": "open-code-choose-how-to-take-part",
       "nav_faq": "FAQ",
       "docs": "Documentation",
       "github": "Explorer l'open source",
@@ -380,9 +386,9 @@
       "dp_agent_d": "Un step avec host: part vers un agent que vous gérez — là où se trouve la licence, le GPU ou l'IP en allowlist.",
       "dp_agent_passo": "dans le step du workflow",
       "dp_link": "Comment faire",
-      "dp_a_compose": "un-environnement-local-complet",
-      "dp_a_helm": "linstaller-avec-helm",
-      "dp_a_agent": "où-chaque-step-sexecute",
+      "dp_a_compose": "a-full-local-environment",
+      "dp_a_helm": "install-it-with-helm",
+      "dp_a_agent": "where-each-step-runs",
       "final_contato": "Une question, un bug, ou envie de nous dire comment vous l'utilisez ?",
       "final_contato_link": "Ouvrir une issue sur GitHub",
       "users_titulo": "En production, aujourd'hui.",
@@ -404,7 +410,9 @@
       "eco_mais_http": "+ toute API HTTP",
       "eco_mais_cliente": "+ tout client HTTP",
       "eco_mais_s3": "+ tout stockage compatible S3",
-      "eco_buckets": "fichiers dans un bucket"
+      "eco_buckets": "fichiers dans un bucket",
+      "u0_nome": "Zarv",
+      "u0_url": "https://www.zarv.com"
     }
   },
   "de": {
@@ -414,7 +422,7 @@
       "nav_ecossistema": "Ökosystem",
       "nav_principios": "Prinzipien",
       "nav_open_source": "Open Source",
-      "nav_open_source_ancora": "offener-code-wählen-sie-wie-sie-mitmachen",
+      "nav_open_source_ancora": "open-code-choose-how-to-take-part",
       "nav_faq": "FAQ",
       "docs": "Dokumentation",
       "github": "Open Source erkunden",
@@ -482,9 +490,9 @@
       "dp_agent_d": "Ein Step mit host: geht an einen Agent, den Sie betreiben — dort, wo die Lizenz, die GPU oder die freigegebene IP liegt.",
       "dp_agent_passo": "im Workflow-Step",
       "dp_link": "So geht's",
-      "dp_a_compose": "eine-vollständige-lokale-umgebung",
-      "dp_a_helm": "mit-helm-installieren",
-      "dp_a_agent": "wo-jeder-step-läuft",
+      "dp_a_compose": "a-full-local-environment",
+      "dp_a_helm": "install-it-with-helm",
+      "dp_a_agent": "where-each-step-runs",
       "final_contato": "Eine Frage, ein Bug, oder möchten Sie uns erzählen, wie Sie es nutzen?",
       "final_contato_link": "Issue auf GitHub öffnen",
       "users_titulo": "Heute im Produktivbetrieb.",
@@ -506,7 +514,9 @@
       "eco_mais_http": "+ jede HTTP-API",
       "eco_mais_cliente": "+ jeder HTTP-Client",
       "eco_mais_s3": "+ jeder S3-kompatible Speicher",
-      "eco_buckets": "Dateien in einem Bucket"
+      "eco_buckets": "Dateien in einem Bucket",
+      "u0_nome": "Zarv",
+      "u0_url": "https://www.zarv.com"
     }
   },
   "zh": {
@@ -516,7 +526,7 @@
       "nav_ecossistema": "生态",
       "nav_principios": "原则",
       "nav_open_source": "开源",
-      "nav_open_source_ancora": "开放的代码自选参与方式",
+      "nav_open_source_ancora": "open-code-choose-how-to-take-part",
       "nav_faq": "FAQ",
       "docs": "文档",
       "github": "探索开源项目",
@@ -584,9 +594,9 @@
       "dp_agent_d": "带 host: 的步骤会交给你维护的 agent — 许可证、GPU 或白名单 IP 所在之处。",
       "dp_agent_passo": "在 workflow 步骤中",
       "dp_link": "如何操作",
-      "dp_a_compose": "完整的本地环境",
-      "dp_a_helm": "使用-helm-安装",
-      "dp_a_agent": "每个-step-在哪里运行",
+      "dp_a_compose": "a-full-local-environment",
+      "dp_a_helm": "install-it-with-helm",
+      "dp_a_agent": "where-each-step-runs",
       "final_contato": "有问题、发现 bug，或想告诉我们你如何使用它？",
       "final_contato_link": "在 GitHub 上提交 issue",
       "users_titulo": "今天，已在生产环境运行。",
@@ -608,7 +618,9 @@
       "eco_mais_http": "+ 任意 HTTP API",
       "eco_mais_cliente": "+ 任意 HTTP 客户端",
       "eco_mais_s3": "+ 任意 S3 兼容存储",
-      "eco_buckets": "bucket 中的文件"
+      "eco_buckets": "bucket 中的文件",
+      "u0_nome": "Zarv",
+      "u0_url": "https://www.zarv.com"
     }
   },
   "ja": {
@@ -618,7 +630,7 @@
       "nav_ecossistema": "エコシステム",
       "nav_principios": "原則",
       "nav_open_source": "オープンソース",
-      "nav_open_source_ancora": "オープンなコード関わり方は選べます",
+      "nav_open_source_ancora": "open-code-choose-how-to-take-part",
       "nav_faq": "FAQ",
       "docs": "ドキュメント",
       "github": "オープンソースを見る",
@@ -686,9 +698,9 @@
       "dp_agent_d": "host: を指定したステップは、自分で運用する agent に向かいます — ライセンス、GPU、許可リスト済みの IP がある場所です。",
       "dp_agent_passo": "workflow のステップ内",
       "dp_link": "手順を見る",
-      "dp_a_compose": "ローカル環境一式",
-      "dp_a_helm": "helm-でインストールする",
-      "dp_a_agent": "各ステップが動く場所",
+      "dp_a_compose": "a-full-local-environment",
+      "dp_a_helm": "install-it-with-helm",
+      "dp_a_agent": "where-each-step-runs",
       "final_contato": "質問やバグの報告、あるいは使い方を教えてくださる場合は",
       "final_contato_link": "GitHub で issue を作成",
       "users_titulo": "今日、本番で稼働中。",
@@ -710,7 +722,9 @@
       "eco_mais_http": "+ あらゆる HTTP API",
       "eco_mais_cliente": "+ あらゆる HTTP クライアント",
       "eco_mais_s3": "+ S3 互換ストレージ全般",
-      "eco_buckets": "バケット内のファイル"
+      "eco_buckets": "バケット内のファイル",
+      "u0_nome": "Zarv",
+      "u0_url": "https://www.zarv.com"
     }
   },
   "ru": {
@@ -720,7 +734,7 @@
       "nav_ecossistema": "Экосистема",
       "nav_principios": "Принципы",
       "nav_open_source": "Open source",
-      "nav_open_source_ancora": "открытый-код-выберите-как-участвовать",
+      "nav_open_source_ancora": "open-code-choose-how-to-take-part",
       "nav_faq": "FAQ",
       "docs": "Документация",
       "github": "Open source на GitHub",
@@ -788,9 +802,9 @@
       "dp_agent_d": "Шаг с host: уходит агенту, которого вы держите — там, где лицензия, GPU или IP из allowlist.",
       "dp_agent_passo": "в шаге workflow",
       "dp_link": "Как это сделать",
-      "dp_a_compose": "полное-локальное-окружение",
-      "dp_a_helm": "установка-через-helm",
-      "dp_a_agent": "где-выполняется-каждый-шаг",
+      "dp_a_compose": "a-full-local-environment",
+      "dp_a_helm": "install-it-with-helm",
+      "dp_a_agent": "where-each-step-runs",
       "final_contato": "Вопрос, баг или хотите рассказать, как вы этим пользуетесь?",
       "final_contato_link": "Откройте issue на GitHub",
       "users_titulo": "В продакшене уже сегодня.",
@@ -812,7 +826,9 @@
       "eco_mais_http": "+ любой HTTP API",
       "eco_mais_cliente": "+ любой HTTP-клиент",
       "eco_mais_s3": "+ любой S3-совместимый",
-      "eco_buckets": "файлы в бакете"
+      "eco_buckets": "файлы в бакете",
+      "u0_nome": "Zarv",
+      "u0_url": "https://www.zarv.com"
     }
   },
   "ko": {
@@ -822,7 +838,7 @@
       "nav_ecossistema": "에코시스템",
       "nav_principios": "원칙",
       "nav_open_source": "오픈 소스",
-      "nav_open_source_ancora": "열린-코드-참여-방식은-직접-선택하세요",
+      "nav_open_source_ancora": "open-code-choose-how-to-take-part",
       "nav_faq": "FAQ",
       "docs": "문서",
       "github": "오픈 소스 둘러보기",
@@ -890,9 +906,9 @@
       "dp_agent_d": "host:가 지정된 step은 직접 운영하는 agent로 갑니다 — 라이선스, GPU, 허용 목록에 등록된 IP가 있는 곳.",
       "dp_agent_passo": "workflow step에서",
       "dp_link": "방법 보기",
-      "dp_a_compose": "전체-로컬-환경",
-      "dp_a_helm": "helm으로-설치하기",
-      "dp_a_agent": "각-step이-실행되는-곳",
+      "dp_a_compose": "a-full-local-environment",
+      "dp_a_helm": "install-it-with-helm",
+      "dp_a_agent": "where-each-step-runs",
       "final_contato": "질문이나 버그가 있거나, 어떻게 쓰고 있는지 알려 주고 싶으신가요?",
       "final_contato_link": "GitHub에서 issue 열기",
       "users_titulo": "지금, 프로덕션에서.",
@@ -914,7 +930,9 @@
       "eco_mais_http": "+ 모든 HTTP API",
       "eco_mais_cliente": "+ 모든 HTTP 클라이언트",
       "eco_mais_s3": "+ S3 호환 스토리지 전반",
-      "eco_buckets": "버킷의 파일"
+      "eco_buckets": "버킷의 파일",
+      "u0_nome": "Zarv",
+      "u0_url": "https://www.zarv.com"
     }
   },
   "hi": {
@@ -924,7 +942,7 @@
       "nav_ecossistema": "इकोसिस्टम",
       "nav_principios": "सिद्धांत",
       "nav_open_source": "ओपन सोर्स",
-      "nav_open_source_ancora": "खल-कड-भगदर-क-तरक-आप-चन",
+      "nav_open_source_ancora": "open-code-choose-how-to-take-part",
       "nav_faq": "FAQ",
       "docs": "दस्तावेज़",
       "github": "ओपन सोर्स देखें",
@@ -992,9 +1010,9 @@
       "dp_agent_d": "host: वाला step उस agent के पास जाता है जिसे आप चलाते हैं — जहाँ लाइसेंस, GPU या allowlist किया हुआ IP है।",
       "dp_agent_passo": "workflow के step में",
       "dp_link": "कैसे करें",
-      "dp_a_compose": "पर-सथनय-वतवरण",
-      "dp_a_helm": "helm-स-इसटल-कर",
-      "dp_a_agent": "हर-step-कह-चलत-ह",
+      "dp_a_compose": "a-full-local-environment",
+      "dp_a_helm": "install-it-with-helm",
+      "dp_a_agent": "where-each-step-runs",
       "final_contato": "कोई सवाल, कोई bug, या बताना चाहते हैं कि आप इसे कैसे उपयोग करते हैं?",
       "final_contato_link": "GitHub पर issue खोलें",
       "users_titulo": "आज प्रोडक्शन में।",
@@ -1016,7 +1034,9 @@
       "eco_mais_http": "+ कोई भी HTTP API",
       "eco_mais_cliente": "+ कोई भी HTTP क्लाइंट",
       "eco_mais_s3": "+ कोई भी S3-संगत",
-      "eco_buckets": "bucket में फ़ाइलें"
+      "eco_buckets": "bucket में फ़ाइलें",
+      "u0_nome": "Zarv",
+      "u0_url": "https://www.zarv.com"
     }
   },
   "id": {
@@ -1026,7 +1046,7 @@
       "nav_ecossistema": "Ekosistem",
       "nav_principios": "Prinsip",
       "nav_open_source": "Open source",
-      "nav_open_source_ancora": "kode-terbuka-pilih-cara-anda-ikut-serta",
+      "nav_open_source_ancora": "open-code-choose-how-to-take-part",
       "nav_faq": "FAQ",
       "docs": "Dokumentasi",
       "github": "Jelajahi open source",
@@ -1094,9 +1114,9 @@
       "dp_agent_d": "Step dengan host: dikirim ke agen yang Anda kelola — tempat lisensi, GPU, atau IP allowlist berada.",
       "dp_agent_passo": "di step workflow",
       "dp_link": "Caranya",
-      "dp_a_compose": "lingkungan-lokal-lengkap",
-      "dp_a_helm": "pasang-dengan-helm",
-      "dp_a_agent": "di-mana-setiap-step-berjalan",
+      "dp_a_compose": "a-full-local-environment",
+      "dp_a_helm": "install-it-with-helm",
+      "dp_a_agent": "where-each-step-runs",
       "final_contato": "Ada pertanyaan, bug, atau ingin bercerita bagaimana Anda memakainya?",
       "final_contato_link": "Buka issue di GitHub",
       "users_titulo": "Di produksi, hari ini.",
@@ -1118,7 +1138,9 @@
       "eco_mais_http": "+ API HTTP apa pun",
       "eco_mais_cliente": "+ klien HTTP apa pun",
       "eco_mais_s3": "+ yang kompatibel S3",
-      "eco_buckets": "file di bucket"
+      "eco_buckets": "file di bucket",
+      "u0_nome": "Zarv",
+      "u0_url": "https://www.zarv.com"
     }
   }
 }

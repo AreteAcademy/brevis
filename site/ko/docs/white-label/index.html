@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+<a class="skip-link" href="#content">본문으로 건너뛰기</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="주 내비게이션">
-      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/#ecosystem">에코시스템</a>
       <a href="/ko/docs/">문서</a>
       <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/white-label/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/white-label/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/white-label/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/white-label/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/white-label/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/white-label/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/white-label/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/white-label/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/white-label/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/white-label/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/white-label/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">문서</p>
       <h1>화이트 라벨</h1>
       <p class="doc-desc">YAML 파일 하나로 인터페이스의 제목, 모토, 로고, 팔레트를 바꿉니다.</p>
       <p>인터페이스는 파일로 사용자 지정할 수 있습니다. 색상은 <strong>런타임에</strong> CSS 변수를 덮어쓰므로, 고객의 테마를 바꿔도 다시 컴파일할 것이 없습니다.</p>
-<h2 id="파일">파일<a class="anchor" href="#파일" aria-label="link">#</a></h2>
+<h2 id="the-file">파일<a class="anchor" href="#the-file" aria-label="link">#</a></h2>
 <p><code>brand.example.yaml</code>을 루트의 <code>brand.yaml</code>로 복사하거나, <code>BREVIS_BRAND_FILE</code>이 그 파일을 가리키게 하세요.</p>
 <div class="code-block" data-code="titulo: Acme Data
 subtitulo: Data platform
@@ -150,28 +150,28 @@ cores:
   <span class="t-k">destaque</span>: "<span class="t-c">#aa8450"</span></code></pre></div>
 <p><strong>모든 필드는 선택 사항입니다.</strong> 생략한 항목은 기본값을 유지하므로, <code>titulo:</code>만 있는 파일도 이미 유효합니다.</p>
 <p><code>frase</code>의 줄바꿈은 보존됩니다. 사이드바에서 문구의 리듬을 결정하기 때문입니다.</p>
-<h2 id="로고">로고<a class="anchor" href="#로고" aria-label="link">#</a></h2>
+<h2 id="logo">로고<a class="anchor" href="#logo" aria-label="link">#</a></h2>
 <div class="code-block" data-code="logo: https://example.com/mark.svg"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">logo</span>: https://example.com/mark.svg</code></pre></div>
 <p>URL(<code>https://</code> 또는 <code>http://</code>)이나 <code>/</code>로 시작하는 내부 경로를 받습니다. 없으면 테마 색상을 따르는 내장 심볼을 사용합니다.</p>
 <aside class="admon admon-warning"><p class="admon-t">다른 곳에 호스팅한 로고는 그 호스트에 의존합니다</p><p>호스트가 다운되었거나 클러스터에서 인터넷으로 나가는 경로가 없으면 이미지가 로드되지 않습니다. 인터페이스의 나머지는 계속 동작하지만, 선택할 때 이를 고려하세요. 폰트와 번들을 포함한 UI의 나머지는 네트워크에 의존하지 않도록 바이너리 자체에서 제공됩니다.</p></aside>
-<h2 id="검증">검증<a class="anchor" href="#검증" aria-label="link">#</a></h2>
+<h2 id="validating">검증<a class="anchor" href="#validating" aria-label="link">#</a></h2>
 <p>잘못된 16진수 값은 컨테이너가 올라올 때에야 드러나고, 메시지는 파일을 수정한 사람과 멀리 떨어진 pod 로그를 통해 도착합니다. 그래서 하위 명령이 있습니다.</p>
 <div class="code-block" data-code="brevis marca brand.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">brevis</span> marca brand.yaml</code></pre></div>
 <div class="code-block" data-code="  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product&#x27;s own)
         Powered by Brevis"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis</code></pre></div>
 <p>설치 환경의 CI에서 호출하면 오류가 pull request에서 돌아옵니다.</p>
 <aside class="admon admon-note"><p class="admon-t">파일이 없다는 것의 의미는 상황에 따라 다릅니다</p><p><code>serve</code>에서 파일이 없다는 것은 "기본 아이덴티티를 사용"한다는 뜻이며 API는 정상적으로 올라옵니다. <code>marca</code>에서 파일이 없는 것은 <strong>오류</strong>입니다. 경로를 검증해 달라고 요청한 사람은 그 경로가 존재하지 않는다는 사실을 알려 주기를 기대하기 때문입니다.</p></aside>
-<h2 id="부팅-시-동작">부팅 시 동작<a class="anchor" href="#부팅-시-동작" aria-label="link">#</a></h2>
+<h2 id="behaviour-at-boot">부팅 시 동작<a class="anchor" href="#behaviour-at-boot" aria-label="link">#</a></h2>
 <p>내용 오류, 즉 잘못된 색상이나 깨진 YAML은 인터페이스가 올라오는 것을 <strong>막지 않습니다</strong>. 프로세스는 경고를 로그에 남기고 기본 테마를 사용합니다. 색상 하나 때문에 API를 내리는 것은 기본 테마로 제공하는 것보다 나쁩니다.</p>
-<div class="code-block" data-code="level=WARN msg=&quot;identidade visual ignorada&quot; arquivo=brand.yaml erro=&quot;cor invalida: #gggggg&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>level=WARN msg="identidade visual ignorada" arquivo=brand.yaml erro="cor invalida: #gggggg"</code></pre></div>
-<h2 id="사용자-지정할-수-없는-것">사용자 지정할 수 없는 것<a class="anchor" href="#사용자-지정할-수-없는-것" aria-label="link">#</a></h2>
+<div class="code-block" data-code="level=WARN msg=&quot;visual identity ignored&quot; file=brand.yaml error=&quot;brand.yaml: colour accent: \&quot;#gggggg\&quot; is not a hex value (#rgb, #rrggbb or #rrggbbaa)&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>level=WARN msg="visual identity ignored" file=brand.yaml error="brand.yaml: colour accent: \"#gggggg\" is not a hex value (#rgb, #rrggbb or #rrggbbaa)"</code></pre></div>
+<h2 id="what-cannot-be-customised">사용자 지정할 수 없는 것<a class="anchor" href="#what-cannot-be-customised" aria-label="link">#</a></h2>
 <p>푸터의 <strong>"Powered by Brevis"</strong> 문구는 구성에서 오지 않고 코드에서 옵니다.</p>
-<h2 id="kubernetes에서">Kubernetes에서<a class="anchor" href="#kubernetes에서" aria-label="link">#</a></h2>
+<h2 id="on-kubernetes">Kubernetes에서<a class="anchor" href="#on-kubernetes" aria-label="link">#</a></h2>
 <p>ConfigMap으로 파일을 마운트하세요.</p>
 <div class="code-block" data-code="volumes:
   - name: brand
@@ -205,7 +205,7 @@ containers:
 
     <aside class="toc" aria-label="이 페이지에서">
       <p class="toc-t">이 페이지에서</p>
-      <ul><li class="toc-2"><a href="#파일">파일</a></li><li class="toc-2"><a href="#로고">로고</a></li><li class="toc-2"><a href="#검증">검증</a></li><li class="toc-2"><a href="#부팅-시-동작">부팅 시 동작</a></li><li class="toc-2"><a href="#사용자-지정할-수-없는-것">사용자 지정할 수 없는 것</a></li><li class="toc-2"><a href="#kubernetes에서">Kubernetes에서</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file">파일</a></li><li class="toc-2"><a href="#logo">로고</a></li><li class="toc-2"><a href="#validating">검증</a></li><li class="toc-2"><a href="#behaviour-at-boot">부팅 시 동작</a></li><li class="toc-2"><a href="#what-cannot-be-customised">사용자 지정할 수 없는 것</a></li><li class="toc-2"><a href="#on-kubernetes">Kubernetes에서</a></li></ul>
     </aside>
   </main>
 </div>
@@ -225,9 +225,9 @@ containers:
       <div class="footer-col">
         <h2>프로젝트</h2>
         <ul>
-          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/#ecosystem">에코시스템</a></li>
           <li><a href="/ko/docs/philosophy/">원칙</a></li>
-          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/introduction/#open-code-choose-how-to-take-part">오픈 소스</a></li>
           <li><a href="/ko/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -250,7 +250,7 @@ containers:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

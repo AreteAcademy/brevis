@@ -88,7 +88,7 @@ dibujar las fases de un pipeline— y el engine la registra. Nada que instalar,
 nada que operar, y las etiquetas son las del engine porque un step no puede conocer
 el slug de su propio workflow.
 
-Los detalles de la API están en [Python](/docs/python/#metricas-que-solo-tu-pipeline-conoce).
+Los detalles de la API están en [Python](/docs/python/#metrics-only-your-pipeline-knows).
 
 ## Escribir un cliente para otro lenguaje
 

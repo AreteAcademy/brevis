@@ -30,15 +30,15 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/to/bigquery"
 )
 
-dados, err := sdk.Extract(ctx, sdk.Source{
-	From: from.HTTP{URL: "https://api.exemplo.com/v1/eventos"},
+rows, err := sdk.Extract(ctx, sdk.Source{
+	From: from.HTTP{URL: "https://api.example.com/v1/events"},
 })
 
-dados = sdk.Transform(dados, sdk.Accept("id", "criado_em", "valor"))
+rows = sdk.Transform(rows, sdk.Accept("id", "created_at", "amount"))
 
-res, err := sdk.Load(ctx, dados, sdk.Target{
-	To:      bigquery.Table{Dataset: "bronze", Name: "eventos"},
-	Columns: []string{"id", "criado_em", "valor"},
+res, err := sdk.Load(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: "bronze", Name: "events"},
+	Columns: []string{"id", "created_at", "amount"},
 })
 ```
 
@@ -93,8 +93,8 @@ O esquema do caminho decide o backend, e o `Store` é **passado** em vez de
 escolhido dentro do driver:
 
 ```go
-from.Files{Path: "s3://bucket/dia=1/*.ndjson", Store: s3.New(cliente)}
-to.Files{Path: "gs://bucket/landing/", Store: gcs.New(cliente)}
+from.Files{Path: "s3://bucket/day=1/*.ndjson", Store: s3.New(client)}
+to.Files{Path: "gs://bucket/landing/", Store: gcs.New(client)}
 ```
 
 É isso que faz um programa de arquivos locais não compilar uma linha da AWS nem
@@ -111,7 +111,7 @@ Target: sdk.Target{
         Project: "acme-prod",
         Name:    "orders",
 
-        // Nulo é o padrão, e significa NENHUM atributo.
+        // Nil is the default, and it means NO attributes at all.
         Attributes: func(e sdk.Envelope) map[string]string {
             row, ok := e.Payload.(map[string]any)
             if !ok {
@@ -172,15 +172,15 @@ func main() {
 	sdk.Run(sdk.Pipeline{
 		Source: sdk.Source{
 			From: from.HTTP{
-				URL:     "https://api.exemplo.com/v1/eventos",
+				URL:     "https://api.example.com/v1/events",
 				Timeout: 15 * time.Second,
 			},
 			Guard:  sdk.RejectIf("error"),
 			Expand: sdk.ArrayAt("results"),
 		},
 		Target: sdk.Target{
-			Provider: "exemplo",
-			Entity:   "eventos",
+			Provider: "example",
+			Entity:   "events",
 			Key:      sdk.Key("id"),
 			When:     sdk.Field("created_at"),
 		},
@@ -189,7 +189,7 @@ func main() {
 ```
 
 ```bash
-go run ./fetcher -dry-run   # extrai, conta linhas e erros, não escreve
+go run ./fetcher -dry-run   # extracts, counts rows and errors, writes nothing
 go run ./fetcher
 ```
 
@@ -223,7 +223,7 @@ run atrasa nem quando o run é retentado três horas depois.
 ```go
 Before: func(ctx context.Context, p *sdk.Pipeline) error {
 	start, end, ok := p.Run.Auto.Window()
-	if !ok { // sem agendamento: cai para uma janela fixa
+	if !ok { // no schedule: fall back to a fixed window
 		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
 	}
 	p.Source.From = from.HTTP{URL: base +
@@ -326,7 +326,7 @@ aqui quem escreve a pipeline conhece o formato e o escreve, num diff que
 alguém revisa.
 
 É a mesma forma que um gateway aterrissa como
-[`shape: columns`](/docs/ingestion-sinks/#duas-formas-um-contrato), pelo mesmo
+[`shape: columns`](/docs/ingestion-sinks/#two-shapes-one-contract), pelo mesmo
 código — mesmas colunas, mesmos valores, mesmo `brevis_ingestion_id`.
 
 **O nome do campo precisa poder ser nome de coluna**: letra ou sublinhado, e
@@ -341,7 +341,7 @@ continha: `customer` guarda `{"id": 7, "uf": "SP"}`, e não `customer_id` e
 `customer_uf`. Um array também é `JSON`. Um registro que quer uma linha *por
 elemento do array* quer o `sdk.ArrayAt` no `Expand` da fonte — ele roda antes
 do `Landing`, e é outra operação com outro nome. O
-[`BREVIS_NORMALIZE_DATA`](#uma-coluna-por-campo-aninhado) muda a primeira
+[`BREVIS_NORMALIZE_DATA`](#one-column-per-nested-field) muda a primeira
 metade disso para um deployment inteiro; array continua `JSON` dos dois
 jeitos:
 
@@ -481,7 +481,7 @@ Go ali vira um literal de string JSON e a coluna acaba guardando o TEXTO do
 seu objeto em vez do objeto:
 
 ```sql
-SELECT JSON_TYPE(payload) ...;            -- "string", e não "object"
+SELECT JSON_TYPE(payload) ...;            -- "string", not "object"
 SELECT JSON_VALUE(payload, '$.a') ...;    -- NULL
 ```
 

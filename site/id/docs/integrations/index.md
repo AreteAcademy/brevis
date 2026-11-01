@@ -14,27 +14,27 @@ Setiap baris menyebutkan bagian mana yang menjangkaunya, lewat paket atau sink a
 
 |  | cara menjangkaunya | panduan |
 |---|---|---|
-| **HTTP** | SDK: `from.HTTP` | [Go SDK](/id/docs/sdk/#sumber-dan-tujuan) |
-| **Postgres** | SDK: `from/postgres` | [Go SDK](/id/docs/sdk/#sumber-dan-tujuan) |
-| **MySQL** | SDK: `from/mysql` | [Go SDK](/id/docs/sdk/#sumber-dan-tujuan) |
-| **file** | SDK: `from.Files` — lokal, S3, GCS | [Go SDK](/id/docs/sdk/#sumber-dan-tujuan) |
+| **HTTP** | SDK: `from.HTTP` | [Go SDK](/id/docs/sdk/#sources-and-destinations) |
+| **Postgres** | SDK: `from/postgres` | [Go SDK](/id/docs/sdk/#sources-and-destinations) |
+| **MySQL** | SDK: `from/mysql` | [Go SDK](/id/docs/sdk/#sources-and-destinations) |
+| **file** | SDK: `from.Files` — lokal, S3, GCS | [Go SDK](/id/docs/sdk/#sources-and-destinations) |
 
 ## Mendarat di
 
 |  | cara menjangkaunya | panduan |
 |---|---|---|
-| **BigQuery** | SDK: `to/bigquery` · Gateway: `bigquery` | [Go SDK](/id/docs/sdk/#sumber-dan-tujuan), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
-| **Postgres** | SDK: `to/postgres` · Gateway: `postgres` | [Go SDK](/id/docs/sdk/#sumber-dan-tujuan), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
-| **MySQL** | SDK: `to/mysql` · Gateway: `mysql` | [Go SDK](/id/docs/sdk/#sumber-dan-tujuan), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
-| **Redshift** | SDK: `to/redshift` · Gateway: `redshift` | [Go SDK](/id/docs/sdk/#sumber-dan-tujuan), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
-| **Pub/Sub** | SDK: `to/pubsub` · Gateway: `pubsub` | [Go SDK](/id/docs/sdk/#sumber-dan-tujuan), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
+| **BigQuery** | SDK: `to/bigquery` · Gateway: `bigquery` | [Go SDK](/id/docs/sdk/#sources-and-destinations), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
+| **Postgres** | SDK: `to/postgres` · Gateway: `postgres` | [Go SDK](/id/docs/sdk/#sources-and-destinations), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
+| **MySQL** | SDK: `to/mysql` · Gateway: `mysql` | [Go SDK](/id/docs/sdk/#sources-and-destinations), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
+| **Redshift** | SDK: `to/redshift` · Gateway: `redshift` | [Go SDK](/id/docs/sdk/#sources-and-destinations), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
+| **Pub/Sub** | SDK: `to/pubsub` · Gateway: `pubsub` | [Go SDK](/id/docs/sdk/#sources-and-destinations), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
 
 ## File masuk ke
 
 |  | cara menjangkaunya | panduan |
 |---|---|---|
-| **S3** | SDK: `store/s3` · Gateway: `files` pada `s3://` | [Go SDK](/id/docs/sdk/#sumber-dan-tujuan), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
-| **GCS** | SDK: `store/gcs` · Gateway: `files` pada `gs://` | [Go SDK](/id/docs/sdk/#sumber-dan-tujuan), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
+| **S3** | SDK: `store/s3` · Gateway: `files` pada `s3://` | [Go SDK](/id/docs/sdk/#sources-and-destinations), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
+| **GCS** | SDK: `store/gcs` · Gateway: `files` pada `gs://` | [Go SDK](/id/docs/sdk/#sources-and-destinations), [Sink ingestion](/id/docs/ingestion-sinks/index.md) |
 
 ## Dimodelkan di
 
@@ -49,7 +49,7 @@ Setiap baris menyebutkan bagian mana yang menjangkaunya, lewat paket atau sink a
 |---|---|---|
 | **Docker** | satu image per bagian: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Instalasi](/id/docs/installation/#docker) |
 | **Kubernetes** | satu pod per step | [Kubernetes](/id/docs/kubernetes/index.md), [Pod per step](/id/docs/pod-per-step/index.md) |
-| **Helm** | chart di `deployments/helm/brevis` | [Kubernetes](/id/docs/kubernetes/#pasang-dengan-helm) |
+| **Helm** | chart di `deployments/helm/brevis` | [Kubernetes](/id/docs/kubernetes/#install-it-with-helm) |
 
 ## Ditulis dengan
 

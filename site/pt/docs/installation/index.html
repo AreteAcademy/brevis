@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+<a class="skip-link" href="#content">Pular para o conteúdo</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegação principal">
-      <a href="/pt/#ecossistema">Ecossistema</a>
+      <a href="/pt/#ecosystem">Ecossistema</a>
       <a href="/pt/docs/">Documentação</a>
       <details class="lang-dd"><summary aria-label="Idioma: Português"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Português</span></summary><ul><li><a href="/docs/installation/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/installation/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/installation/" lang="pt-BR" hreflang="pt-BR" aria-current="true">Português</a></li><li><a href="/fr/docs/installation/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/installation/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/installation/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/installation/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/installation/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/installation/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/installation/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/installation/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,16 +119,16 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentação</p>
       <h1>Instalação</h1>
       <p class="doc-desc">Como obter o binário, o que ele exige e como confirmar que a instalação está correta.</p>
       <p>O brevis.sh é distribuído como <strong>binário único</strong> e como <strong>imagem Docker</strong>. Não há runtime para instalar ao lado: as migrations, os assets da interface e as fontes vão dentro do binário.</p>
-<h2 id="requisitos">Requisitos<a class="anchor" href="#requisitos" aria-label="link">#</a></h2>
+<h2 id="requirements">Requisitos<a class="anchor" href="#requirements" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><strong>PostgreSQL</strong></td><td>obrigatório para <code>serve</code>, <code>scheduler</code>, <code>migrate</code>, <code>publish</code> e <code>backfill</code></td></tr><tr><td><strong>Go 1.25+</strong></td><td>apenas se você for compilar do código</td></tr><tr><td><strong>Kubernetes</strong></td><td>opcional — sem cluster, os passos rodam como processos locais</td></tr></tbody></table></div>
 <p><code>brevis run</code>, <code>validate</code>, <code>marca</code>, <code>hash</code> e <code>version</code> <strong>não</strong> precisam de banco.</p>
-<h2 id="compilando-do-codigo">Compilando do código<a class="anchor" href="#compilando-do-codigo" aria-label="link">#</a></h2>
+<h2 id="building-from-source">Compilando do código<a class="anchor" href="#building-from-source" aria-label="link">#</a></h2>
 <p>É o caminho que produz um binário com versão e commit carimbados:</p>
 <div class="code-block" data-code="git clone https://github.com/AreteAcademy/brevis.git
 cd brevis
@@ -150,17 +150,17 @@ cd <span class="t-k">brevis</span>
 <div class="table-wrap"><table><thead><tr><th>tag</th><th>base</th><th>por quê</th></tr></thead><tbody><tr><td><code>:0.11.2</code></td><td>distroless</td><td>a API só serve HTTP e não executa nada — sem shell, superfície mínima</td></tr><tr><td><code>:0.11.2-worker</code></td><td>alpine + tini</td><td>os passos <code>run:</code> precisam de shell</td></tr></tbody></table></div>
 <div class="code-block" data-code="docker run --rm areteacademy/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> areteacademy/<span class="t-k">brevis</span>:latest version</code></pre></div>
 <p>As duas imagens ficam em <a href="https://hub.docker.com/r/areteacademy/brevis" target="_blank" rel="noopener">hub.docker.com/r/areteacademy/brevis</a>, para <code>amd64</code> e <code>arm64</code>.</p>
-<h2 id="ambiente-local-completo">Ambiente local completo<a class="anchor" href="#ambiente-local-completo" aria-label="link">#</a></h2>
+<h2 id="a-full-local-environment">Ambiente local completo<a class="anchor" href="#a-full-local-environment" aria-label="link">#</a></h2>
 <p>O repositório traz um <code>docker-compose.yml</code> que sobe Postgres, API e scheduler:</p>
 <div class="code-block" data-code="make up      # Postgres + API + scheduler
-make smoke   # confere /health e /ready
+make smoke   # checks /health and /ready
 make logs
 make down"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">make</span> up      <span class="t-c"># Postgres + API + scheduler</span>
-<span class="t-k">make</span> smoke   <span class="t-c"># confere /health e /ready</span>
+<span class="t-k">make</span> smoke   <span class="t-c"># checks /health and /ready</span>
 <span class="t-k">make</span> logs
 <span class="t-k">make</span> down</code></pre></div>
 <p>A interface fica em <code>http://localhost:8080</code>.</p>
-<h2 id="configuracao-minima">Configuração mínima<a class="anchor" href="#configuracao-minima" aria-label="link">#</a></h2>
+<h2 id="minimum-configuration">Configuração mínima<a class="anchor" href="#minimum-configuration" aria-label="link">#</a></h2>
 <p>Uma única variável é obrigatória:</p>
 <div class="code-block" data-code="export BREVIS_DATABASE_URL=&#x27;postgres://brevis:brevis@localhost:5432/brevis?sslmode=disable&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>export BREVIS_DATABASE_URL='postgres://<span class="t-k">brevis</span>:<span class="t-k">brevis</span>@localhost:5432/<span class="t-k">brevis</span>?sslmode=disable'</code></pre></div>
 <p>Sem ela, os subcomandos que usam banco falham no boot — de propósito. Um processo que sobe sem credencial só descobre o problema no primeiro request, e aí o readiness já mentiu para o orquestrador.</p>
@@ -168,12 +168,12 @@ make down"><div class="code-head"><span class="code-lang">bash</span><button cla
 erro: BREVIS_DATABASE_URL e obrigatoria"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>$ brevis migrate status
 erro: BREVIS_DATABASE_URL e obrigatoria</code></pre></div>
 <p>A lista completa está em <a href="/pt/docs/configuration/">Configuração</a>.</p>
-<h2 id="aplicando-o-schema">Aplicando o schema<a class="anchor" href="#aplicando-o-schema" aria-label="link">#</a></h2>
+<h2 id="applying-the-schema">Aplicando o schema<a class="anchor" href="#applying-the-schema" aria-label="link">#</a></h2>
 <p>As migrations são embutidas no binário e aplicadas por subcomando próprio — <strong><code>serve</code> nunca altera schema</strong>:</p>
 <div class="code-block" data-code="brevis migrate up
 brevis migrate status"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> migrate up
 <span class="t-k">brevis</span> migrate status</code></pre></div>
-<h2 id="confirmando">Confirmando<a class="anchor" href="#confirmando" aria-label="link">#</a></h2>
+<h2 id="confirming">Confirmando<a class="anchor" href="#confirming" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis version
 brevis validate examples/"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> version
 <span class="t-k">brevis</span> validate examples/</code></pre></div>
@@ -196,7 +196,7 @@ brevis validate examples/"><div class="code-head"><span class="code-lang">bash</
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#requisitos">Requisitos</a></li><li class="toc-2"><a href="#compilando-do-codigo">Compilando do código</a></li><li class="toc-2"><a href="#docker">Docker</a></li><li class="toc-2"><a href="#ambiente-local-completo">Ambiente local completo</a></li><li class="toc-2"><a href="#configuracao-minima">Configuração mínima</a></li><li class="toc-2"><a href="#aplicando-o-schema">Aplicando o schema</a></li><li class="toc-2"><a href="#confirmando">Confirmando</a></li></ul>
+      <ul><li class="toc-2"><a href="#requirements">Requisitos</a></li><li class="toc-2"><a href="#building-from-source">Compilando do código</a></li><li class="toc-2"><a href="#docker">Docker</a></li><li class="toc-2"><a href="#a-full-local-environment">Ambiente local completo</a></li><li class="toc-2"><a href="#minimum-configuration">Configuração mínima</a></li><li class="toc-2"><a href="#applying-the-schema">Aplicando o schema</a></li><li class="toc-2"><a href="#confirming">Confirmando</a></li></ul>
     </aside>
   </main>
 </div>
@@ -216,9 +216,9 @@ brevis validate examples/"><div class="code-head"><span class="code-lang">bash</
       <div class="footer-col">
         <h2>projeto</h2>
         <ul>
-          <li><a href="/pt/#ecossistema">Ecossistema</a></li>
+          <li><a href="/pt/#ecosystem">Ecossistema</a></li>
           <li><a href="/pt/docs/philosophy/">Princípios</a></li>
-          <li><a href="/pt/docs/introduction/#codigo-aberto-escolha-como-participar">Open source</a></li>
+          <li><a href="/pt/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/pt/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -241,7 +241,7 @@ brevis validate examples/"><div class="code-head"><span class="code-lang">bash</
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

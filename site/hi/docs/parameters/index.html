@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">सीधे सामग्री पर जाएँ</a>
+<a class="skip-link" href="#content">सीधे सामग्री पर जाएँ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="मुख्य नेविगेशन">
-      <a href="/hi/#ecossistema">इकोसिस्टम</a>
+      <a href="/hi/#ecosystem">इकोसिस्टम</a>
       <a href="/hi/docs/">दस्तावेज़</a>
       <details class="lang-dd"><summary aria-label="भाषा: हिन्दी"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>हिन्दी</span></summary><ul><li><a href="/docs/parameters/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/parameters/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/parameters/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/parameters/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/parameters/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/parameters/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/parameters/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/parameters/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/parameters/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/parameters/" lang="hi" hreflang="hi" aria-current="true">हिन्दी</a></li><li><a href="/id/docs/parameters/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">दस्तावेज़</p>
       <h1>पैरामीटर</h1>
       <p class="doc-desc">एक ही workflow के दो run के बीच, फ़ाइल को बदले बिना, क्या बदलता है।</p>
       <p>Workflow <strong>run पैरामीटर</strong> घोषित कर सकता है: ऐसे मान जो फ़ाइल बदले बिना दो ट्रिगर के बीच बदलते हैं।</p>
-<h2 id="घषत-करन">घोषित करना<a class="anchor" href="#घषत-करन" aria-label="link">#</a></h2>
+<h2 id="declaring">घोषित करना<a class="anchor" href="#declaring" aria-label="link">#</a></h2>
 <div class="code-block" data-code="params:
   - name: load_full
     type: boolean
@@ -167,7 +167,7 @@ steps:
     <span class="t-k">group</span>: Load
     <span class="t-k">warn</span>: reprocesses the whole table; it costs
     <span class="t-k">uses</span>: bigquery</code></pre></div>
-<h2 id="मन-क-सच">मानों की सूची<a class="anchor" href="#मन-क-सच" aria-label="link">#</a></h2>
+<h2 id="a-list-of-values">मानों की सूची<a class="anchor" href="#a-list-of-values" aria-label="link">#</a></h2>
 <p><code>list|&lt;type&gt;</code> ऐसा पैरामीटर घोषित करता है जो कई मान ढोता है — लोड की जाने वाली तालिकाएँ, दोबारा बनने वाली परतें, backfill की विंडो:</p>
 <div class="code-block" data-code="params:
   - name: tables
@@ -198,7 +198,7 @@ steps:
 <p>यह हर जगह <strong>अल्पविराम से अलग की गई एक string</strong> है: डेटाबेस में, <code>BREVIS_RUN_PARAMS</code> में और कमांड में। इसी से यह बिना किसी विशेष मामले के step में काम करती है —</p>
 <div class="code-block" data-code="run: dbt build --select {{ .tables }}      # dbt build --select users,orders"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">run</span>: dbt build --select {{ .tables }}      <span class="t-c"># dbt build --select users,orders</span></code></pre></div>
 <p>— और इसीलिए आइटम के भीतर अल्पविराम नहीं आ सकता। खाली आइटम और दोहराया गया आइटम भी मना हैं: दोहराव चुपचाप वह सब दोगुना कर देता है जो step प्रति आइटम करता है।</p>
-<h3 id="step-म-array-क-रप-म">Step में array के रूप में<a class="anchor" href="#step-म-array-क-रप-म" aria-label="link">#</a></h3>
+<h3 id="as-an-array-in-a-step">Step में array के रूप में<a class="anchor" href="#as-an-array-in-a-step" aria-label="link">#</a></h3>
 <div class="code-block" data-code="for _, table := range p.Run.ParamList(&quot;tables&quot;) {
     load(table)
 }"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">for</span> _, table := <span class="t-k">range</span> p.Run.ParamList("tables") {
@@ -212,27 +212,27 @@ for table in run.param_list(&quot;tables&quot;):
 <span class="t-k">for</span> table <span class="t-k">in</span> run.param_list("tables"):
     load(table)</code></pre></div>
 <p>जिस पैरामीटर को किसी ने नहीं भरा उसके लिए दोनों <code>[]</code> लौटाते हैं, एक खाली string वाली सूची नहीं: "करने को कुछ नहीं" पर iterate करने से कुछ नहीं होना चाहिए। आइटम strings के रूप में लौटते हैं — <code>list|integer</code> समेत — क्योंकि संख्या का क्या करना है यह step लाइब्रेरी से बेहतर जानता है।</p>
-<h3 id="इटरफस-म">इंटरफ़ेस में<a class="anchor" href="#इटरफस-म" aria-label="link">#</a></h3>
+<h3 id="in-the-interface">इंटरफ़ेस में<a class="anchor" href="#in-the-interface" aria-label="link">#</a></h3>
 <p><code>enum</code> वाली सूची checkboxes के रूप में दिखती है, जिन्हें JavaScript नहीं चाहिए और जिन्हें browser टिक किए गए हर बॉक्स के लिए एक मान के रूप में भेजता है। <code>enum</code> के बिना वह टेक्स्ट फ़ील्ड है जिसके आइटम हटाए जा सकने वाले chips बनते हैं, और JavaScript बंद हो तो वह <code>users,orders</code> रखने वाला फ़ील्ड बना रहता है — जो ठीक वही है जिसकी सर्वर को अपेक्षा है।</p>
-<h3 id="कमड-लइन-पर">कमांड लाइन पर<a class="anchor" href="#कमड-लइन-पर" aria-label="link">#</a></h3>
+<h3 id="on-the-command-line">कमांड लाइन पर<a class="anchor" href="#on-the-command-line" aria-label="link">#</a></h3>
 <div class="code-block" data-code="brevis run wf.yaml --param tables=events,sessions --param days=1,30"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> tables=events,sessions <span class="t-n">--param</span> days=1,30</code></pre></div>
 <aside class="admon admon-note"><p class="admon-t">पुराना engine इसे नहीं पढ़ेगा</p><p>टाइप workflow के साथ सहेजा जाता है, और इस फ़ीचर से पहले का engine <code>list|string</code> को अज्ञात टाइप मानकर publish के समय मना कर देता है। इसे इस्तेमाल करने वाला workflow प्रकाशित करने से पहले engine अपग्रेड करें।</p></aside>
-<h2 id="कमड-म-इसतमल-करन">कमांड में इस्तेमाल करना<a class="anchor" href="#कमड-म-इसतमल-करन" aria-label="link">#</a></h2>
+<h2 id="using-it-in-the-command">कमांड में इस्तेमाल करना<a class="anchor" href="#using-it-in-the-command" aria-label="link">#</a></h2>
 <p>मान <code>run</code> में template से आता है, डबल ब्रेसेस में बिंदु के साथ:</p>
 <div class="code-block" data-code="run: ./load.sh --since {{ .start_date }}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">run</span>: ./load.sh --since {{ .start_date }}</code></pre></div>
-<h2 id="कमड-लइन-पर-दन">कमांड लाइन पर देना<a class="anchor" href="#कमड-लइन-पर-दन" aria-label="link">#</a></h2>
+<h2 id="passing-it-on-the-command-line">कमांड लाइन पर देना<a class="anchor" href="#passing-it-on-the-command-line" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis run wf.yaml --param load_full=true
 brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true
 <span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> load_full=true <span class="t-n">--param</span> start_date=2026-01-01</code></pre></div>
 <p><code>--param</code> दोहराया जा सकता है। <code>=</code> के बिना इनपुट <strong>त्रुटि</strong> है:</p>
-<div class="code-block" data-code="erro: --param &quot;load_full&quot;: use chave=valor"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>erro: --param "load_full": use chave=valor</code></pre></div>
+<div class="code-block" data-code="error: --param &quot;load_full&quot;: use key=value"><div class="code-head"><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>error: --param "load_full": use key=value</code></pre></div>
 <p>यह जानबूझकर है। <code>--param load_full</code>, मान भूलकर, डिफ़ॉल्ट के साथ चलता — और ऑपरेटर मान लेता कि backfill उस पैरामीटर के साथ हुआ जो उसने चाहा था।</p>
-<h2 id="backfill-म">Backfill में<a class="anchor" href="#backfill-म" aria-label="link">#</a></h2>
+<h2 id="in-a-backfill">Backfill में<a class="anchor" href="#in-a-backfill" aria-label="link">#</a></h2>
 <p>मान दायरे के <strong>हर</strong> slot पर लागू होते हैं। यही केंद्रीय उपयोग है: "पूरे जनवरी को <code>load_full=true</code> के साथ दोबारा प्रोसेस करो"।</p>
 <div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
-<h2 id="इटरफस-म">इंटरफ़ेस में<a class="anchor" href="#इटरफस-म" aria-label="link">#</a></h2>
+<h2 id="in-the-interface-2">इंटरफ़ेस में<a class="anchor" href="#in-the-interface-2" aria-label="link">#</a></h2>
 <p><code>params</code> वाले workflow को सरल ट्रिगर बटन की जगह <strong>फ़ॉर्म</strong> मिलता है। फ़ील्ड घोषणा से आते हैं, और <code>pattern</code> सबमिट से पहले validate होता है।</p>
-<h2 id="step-क-environment-म">Step के environment में<a class="anchor" href="#step-क-environment-म" aria-label="link">#</a></h2>
+<h2 id="in-the-step-environment">Step के environment में<a class="anchor" href="#in-the-step-environment" aria-label="link">#</a></h2>
 <p>Run पैरामीटर हर step के <strong>environment</strong> में भी उपसर्ग के साथ आते हैं। यह इसलिए है कि <a href="/hi/docs/sdk/">SDK</a> से लिखा fetcher उन्हें बिना आर्ग्युमेंट के कुछ पाए देख सके:</p>
 <div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
     if p.Run.Params[&quot;load_full&quot;] == &quot;true&quot; {
@@ -254,7 +254,7 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div cl
 <p><strong>यहाँ हर टाइमस्टैम्प UTC है</strong>, <code>Z</code> के साथ RFC 3339 में लिखा, और run की स्क्रीन भी उन्हें UTC में दिखाती है — इसलिए पेज और <code>$BREVIS_AUTO_ADJUSTED_AT</code> कभी असहमत नहीं होते। <code>date</code> <strong>UTC का दिन</strong> है, जो उस workflow के लिए जिसका slot UTC की आधी रात पार करता है, स्थानीय दिन नहीं है: <code>America/Sao_Paulo</code> में <code>0 22 * * *</code> का <code>date</code> अगले दिन का होता है। Airflow का <code>ds</code> उसी कारण से वैसे ही व्यवहार करता है — slot एक क्षण है, और क्षण का एक ही दिन तब होता है जब टाइमज़ोन चुना जाए।</p>
 <p><code>interval_start</code> और <code>interval_end</code> <strong>cron</strong> से आते हैं, इतिहास से नहीं: मार्च के slot का backfill वह विंडो बनाता है जो मार्च की थी, वह नहीं जो इस workflow के run आज बयान करते हैं। जो pipeline <code>[start, end)</code> माँगती है वह कभी ओवरलैप नहीं करती और कभी खाली नहीं छोड़ती, चाहे वह कितनी भी देर से चले और कितनी भी बार retry हो।</p>
 <p>ये <strong>स्नैपशॉट</strong> हैं, जो run शुरू होने पर निकाले जाकर उस पर सहेजे जाते हैं। <code>previous_error</code> उस क्षण के बारे में तथ्य है जब यह run शुरू हुआ; कल इसे दोबारा निकालना — पिछले run के retry होकर पास हो जाने के बाद — उसी नाम के साथ अलग सवाल का जवाब देता।</p>
-<h3 id="उनह-पढन">उन्हें पढ़ना<a class="anchor" href="#उनह-पढन" aria-label="link">#</a></h3>
+<h3 id="reading-them">उन्हें पढ़ना<a class="anchor" href="#reading-them" aria-label="link">#</a></h3>
 <p>Shell step में, हर मान के लिए एक वेरिएबल, ताकि कुछ parse न करना पड़े:</p>
 <div class="code-block" data-code="steps:
   - id: extract
@@ -298,7 +298,7 @@ since, until = run.window() <span class="t-k">or</span> (run.now() - timedelta(d
 df = fetch(since, until)
 df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 <p>Workflow का शेड्यूल न हो तो <code>window()</code> शून्य समयों की जोड़ी के बजाय <code>None</code> लौटाता है — epoch से query सब कुछ चुन लेती है, और वह विफलता चुप नहीं होनी चाहिए। ऊपर का <code>or</code> ही पूरा fallback है।</p>
-<h3 id="dlt-म-पढन-क-कछ-नह">dlt में, पढ़ने को कुछ नहीं<a class="anchor" href="#dlt-म-पढन-क-कछ-नह" aria-label="link">#</a></h3>
+<h3 id="in-dlt-nothing-to-read-at-all">dlt में, पढ़ने को कुछ नहीं<a class="anchor" href="#in-dlt-nothing-to-read-at-all" aria-label="link">#</a></h3>
 <p><a href="https://dlthub.com" target="_blank" rel="noopener">dlt</a> अपना cursor रखता है, उस स्थिति में जिसे वह गंतव्य पर लिखता है। वह स्थिति सिर्फ़ <strong>आगे</strong> बढ़ती है, जो तब तक ठीक है जब तक आप पुराना slot दोबारा न चलाएँ: cursor अब भी आज कहता है, इसलिए backfill आज की विंडो पढ़ता है, और इसका dlt का अपना जवाब स्थिति को गिरा देना है।</p>
 <p>Brevis जो विंडो सौंपता है वह cron से आती है, इसलिए मार्च का run मार्च की विंडो ही बनाता है चाहे कितनी भी बार retry हो। dlt उसे ले लेगा — नाम उसके अपने हैं, Airflow खोजने से पहले पढ़े जाते हैं, और engine उन्हें हर शेड्यूल्ड run पर सेट करता है:</p>
 <div class="code-block" data-code="@dlt.resource(primary_key=&quot;id&quot;)
@@ -323,9 +323,9 @@ def events(
 <p>काम करने से पहले दो बातें जान लें:</p>
 <ul><li><strong>Cursor datetime होना चाहिए, string नहीं।</strong> dlt तुलना के लिए <code>text</code> cursor को ज़बरदस्ती नहीं बदलेगा और शेड्यूलर से जुड़ने से ही मना कर देता है, <code>JoinSchedulerError</code> के साथ जो यह साफ़ नहीं कहता। उसे resource पर बदलें — <code>add_map</code> — या ऊपर की तरह <code>initial_value</code> को टाइप करें।</li><li><strong>बिना शेड्यूल वाला workflow कुछ नहीं सौंपता</strong>, और तब dlt चुपचाप अपने cursor पर लौटने के बजाय <code>ExternalSchedulerNotAvailable</code> उठाता है। अगर pipeline को दोनों तरह चलना है, तो <code>allow_external_schedulers</code> बंद रखें और विंडो <code>run.window()</code> से खुद दें।</li></ul>
 <p>Step पर <code>tools: [dlt]</code> घोषित करना अलग बात है, और सिर्फ़ ग्राफ़ पर chip बनाता है — विंडो दोनों तरह सौंपी जाती है।</p>
-<h2 id="सनपशट">स्नैपशॉट<a class="anchor" href="#सनपशट" aria-label="link">#</a></h2>
+<h2 id="the-snapshot">स्नैपशॉट<a class="anchor" href="#the-snapshot" aria-label="link">#</a></h2>
 <p>पैरामीटर <strong>run में</strong> सहेजे जाते हैं, execution के समय workflow से नहीं पढ़े जाते। Run वह इनपुट ढोता है जिसके साथ वह ट्रिगर हुआ था, और जनवरी के execution का लॉग डिफ़ॉल्ट बदलने के बाद भी जनवरी के मान दिखाता रहता है।</p>
-<h2 id="अगल-कदम">अगले कदम<a class="anchor" href="#अगल-कदम" aria-label="link">#</a></h2>
+<h2 id="next-steps">अगले कदम<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/hi/docs/configuration/">कॉन्फ़िगरेशन</a> — प्रोसेस के environment वेरिएबल</li><li><a href="/hi/docs/sdk/">SDK</a> — fetcher run का संदर्भ कैसे पढ़ता है</li><li><a href="/hi/docs/context/">steps के बीच संदर्भ</a> — step अगले के लिए क्या प्रकाशित करता है</li></ul>
 
       <nav class="pagers" aria-label="पेज">
@@ -340,7 +340,7 @@ def events(
 
     <aside class="toc" aria-label="इस पेज पर">
       <p class="toc-t">इस पेज पर</p>
-      <ul><li class="toc-2"><a href="#घषत-करन">घोषित करना</a></li><li class="toc-2"><a href="#मन-क-सच">मानों की सूची</a></li><li class="toc-3"><a href="#step-म-array-क-रप-म">Step में array के रूप में</a></li><li class="toc-3"><a href="#इटरफस-म">इंटरफ़ेस में</a></li><li class="toc-3"><a href="#कमड-लइन-पर">कमांड लाइन पर</a></li><li class="toc-2"><a href="#कमड-म-इसतमल-करन">कमांड में इस्तेमाल करना</a></li><li class="toc-2"><a href="#कमड-लइन-पर-दन">कमांड लाइन पर देना</a></li><li class="toc-2"><a href="#backfill-म">Backfill में</a></li><li class="toc-2"><a href="#इटरफस-म">इंटरफ़ेस में</a></li><li class="toc-2"><a href="#step-क-environment-म">Step के environment में</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#उनह-पढन">उन्हें पढ़ना</a></li><li class="toc-3"><a href="#dlt-म-पढन-क-कछ-नह">dlt में, पढ़ने को कुछ नहीं</a></li><li class="toc-2"><a href="#सनपशट">स्नैपशॉट</a></li><li class="toc-2"><a href="#अगल-कदम">अगले कदम</a></li></ul>
+      <ul><li class="toc-2"><a href="#declaring">घोषित करना</a></li><li class="toc-2"><a href="#a-list-of-values">मानों की सूची</a></li><li class="toc-3"><a href="#as-an-array-in-a-step">Step में array के रूप में</a></li><li class="toc-3"><a href="#in-the-interface">इंटरफ़ेस में</a></li><li class="toc-3"><a href="#on-the-command-line">कमांड लाइन पर</a></li><li class="toc-2"><a href="#using-it-in-the-command">कमांड में इस्तेमाल करना</a></li><li class="toc-2"><a href="#passing-it-on-the-command-line">कमांड लाइन पर देना</a></li><li class="toc-2"><a href="#in-a-backfill">Backfill में</a></li><li class="toc-2"><a href="#in-the-interface-2">इंटरफ़ेस में</a></li><li class="toc-2"><a href="#in-the-step-environment">Step के environment में</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#reading-them">उन्हें पढ़ना</a></li><li class="toc-3"><a href="#in-dlt-nothing-to-read-at-all">dlt में, पढ़ने को कुछ नहीं</a></li><li class="toc-2"><a href="#the-snapshot">स्नैपशॉट</a></li><li class="toc-2"><a href="#next-steps">अगले कदम</a></li></ul>
     </aside>
   </main>
 </div>
@@ -360,9 +360,9 @@ def events(
       <div class="footer-col">
         <h2>प्रोजेक्ट</h2>
         <ul>
-          <li><a href="/hi/#ecossistema">इकोसिस्टम</a></li>
+          <li><a href="/hi/#ecosystem">इकोसिस्टम</a></li>
           <li><a href="/hi/docs/philosophy/">सिद्धांत</a></li>
-          <li><a href="/hi/docs/introduction/#खल-कड-भगदर-क-तरक-आप-चन">ओपन सोर्स</a></li>
+          <li><a href="/hi/docs/introduction/#open-code-choose-how-to-take-part">ओपन सोर्स</a></li>
           <li><a href="/hi/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -385,7 +385,7 @@ def events(
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

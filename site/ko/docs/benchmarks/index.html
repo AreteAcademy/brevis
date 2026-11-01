@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+<a class="skip-link" href="#content">본문으로 건너뛰기</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="주 내비게이션">
-      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/#ecosystem">에코시스템</a>
       <a href="/ko/docs/">문서</a>
       <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/benchmarks/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/benchmarks/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/benchmarks/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/benchmarks/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/benchmarks/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/benchmarks/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/benchmarks/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/benchmarks/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/benchmarks/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/benchmarks/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/benchmarks/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">문서</p>
       <h1>벤치마크</h1>
@@ -127,28 +127,28 @@
       <p>명령 하나로 게이트웨이 전체를 측정합니다.</p>
 <div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>Postgres를 띄우고, 게이트웨이를 시작하고, [k6]로 부하를 걸고, <strong>버퍼가 비워질 때까지 기다린 뒤</strong> 게이트웨이 자신의 <code>/metrics</code>를 수집해 <code>bench/results/REPORT.md</code>를 작성합니다.</p>
-<h2 id="증인-셋-그리고-중요한-것은-세-번째">증인 셋, 그리고 중요한 것은 세 번째<a class="anchor" href="#증인-셋-그리고-중요한-것은-세-번째" aria-label="link">#</a></h2>
+<h2 id="three-witnesses-and-the-third-is-the-one-that-matters">증인 셋, 그리고 중요한 것은 세 번째<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>k6는 프로듀서가 본 것을 압니다. 게이트웨이는 자기가 한 일을 압니다. 첫 번째만 가진 부하 테스트는 빠른 게이트웨이와 <code>202</code>로 응답하고 받아들인 것을 버리는 게이트웨이를 구별할 수 없습니다.</p>
 <p>그래서 리포트는 둘을 나란히 놓고, Postgres의 행도 셉니다.</p>
 <div class="table-wrap"><table><thead><tr><th>증인</th><th>이벤트</th></tr></thead><tbody><tr><td>k6가 <code>accepted</code>라고 통보받음</td><td>5,431,000</td></tr><tr><td>게이트웨이가 수신으로 집계함</td><td>5,431,000</td></tr><tr><td>Postgres의 행</td><td>5,431,000</td></tr><tr><td>dead letter의 레코드</td><td>0</td></tr></tbody></table></div>
 <p>앞의 둘은 모두 게이트웨이 자신의 산술입니다. 하나는 작성한 응답에서, 하나는 증가시킨 카운터에서 나온 것이며, 이벤트를 잃는 버그가 있어도 둘은 <strong>서로</strong> 일치할 수 있습니다. 우리 말을 믿지 않은 것은 데이터베이스뿐입니다.</p>
 <p><strong>셋이 일치하지 않는 run은 실패한 것입니다.</strong> 백분위수가 아무리 좋아도 마찬가지입니다.</p>
-<h2 id="위의-run">위의 run<a class="anchor" href="#위의-run" aria-label="link">#</a></h2>
+<h2 id="the-run-above">위의 run<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
 <p><code>bench/results/REPORT.md</code>의 2026-09-26 run입니다. <code>areteacademy/brevis-gateway:0.11.0</code>, Darwin arm64, CPU 11개, 같은 커널의 컨테이너에서 실행한 Postgres 17, <code>write: append</code>인 <code>auto_table[columns]</code>입니다.</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>수락된 이벤트</td><td><strong>5,431,000</strong> (135,768/s)</td></tr><tr><td>전송한 본문</td><td>40초 동안 1,156.7 MiB</td></tr><tr><td><code>503</code> (백프레셔)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5.9 ms / 16.0 ms / 22.7 ms</td></tr><tr><td>전달된 배치</td><td>1,087개, 묻힌 것 없음</td></tr></tbody></table></div>
-<h2 id="임계값이-핵심입니다">임계값이 핵심입니다<a class="anchor" href="#임계값이-핵심입니다" aria-label="link">#</a></h2>
+<h2 id="the-thresholds-are-the-point">임계값이 핵심입니다<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>임계값 중 하나라도 실패하면 k6가 0이 아닌 코드로 종료하므로, 이것은 차트가 아니라 <strong>게이트</strong>입니다.</p>
 <div class="table-wrap"><table><thead><tr><th>임계값</th><th>이유</th></tr></thead><tbody><tr><td><code>p95 &lt; 500ms</code></td><td>수락 경로는 sink의 지연과 무관해야 합니다. <code>COPY</code>를 기다리는 요청은 비동기 파이프가 막으려는 결함입니다.</td></tr><tr><td><code>http_req_failed &lt; 1%</code></td><td><code>503</code>은 괜찮지만 타임아웃이나 5xx는 그렇지 않습니다.</td></tr><tr><td><code>events accepted &gt; 1000</code></td><td>임계값 스위트는 아무것도 응답하지 않은 게이트웨이에 대해서도 통과합니다.</td></tr></tbody></table></div>
 <p>의도적으로 느슨하게 잡았습니다. CI가 준 어떤 머신에서든 실행되기 때문입니다. 이 임계값은 퍼센트 단위가 아니라 회귀의 모습인 <strong>자릿수 차이</strong>를 잡아냅니다.</p>
 <p><strong><code>503</code>은 실패가 아닙니다.</strong> 게이트웨이가 둘 곳이 없는 이벤트를 거부하는 것이며 재시도해도 안전합니다. <code>ingestion_id</code>는 이벤트의 고정된 함수이므로 같은 본문을 다시 보내면 같은 레코드입니다. 이를 오류로 집계하면 백프레셔가 버그처럼 보입니다.</p>
-<h2 id="측정하지-않는-것">측정하지 않는 것<a class="anchor" href="#측정하지-않는-것" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-measure">측정하지 않는 것<a class="anchor" href="#what-it-does-not-measure" aria-label="link">#</a></h2>
 <ul><li><strong>BigQuery는 아닙니다.</strong> 목적지는 컨테이너 안의 Postgres입니다. 웨어하우스의 load job 쿼터, 커밋 지연, DDL 동시성은 이 숫자에 들어 있지 않으며 들어갈 수도 없습니다.</li><li><strong>내구성은 아닙니다.</strong> <code>durability: memory</code>가 유일한 티어이므로 <code>202</code>는 *RAM에 수락됨*을 뜻합니다. 이 벤치마크는 그것이 얼마나 빨리 일어나는지를 측정할 뿐, <code>SIGKILL</code> 이후 무엇이 살아남는지는 측정하지 않습니다.</li><li><strong>여러분의 하드웨어는 아닙니다.</strong> 형태와 비율로 읽으세요.</li></ul>
-<h2 id="프로파일별-로컬-클라우드">프로파일별 로컬 클라우드<a class="anchor" href="#프로파일별-로컬-클라우드" aria-label="link">#</a></h2>
+<h2 id="the-local-cloud-by-profile">프로파일별 로컬 클라우드<a class="anchor" href="#the-local-cloud-by-profile" aria-label="link">#</a></h2>
 <div class="code-block" data-code="docker compose -f docker-compose.drivers.yml --profile gcp up -d
 docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">docker</span> compose <span class="t-n">-f</span> <span class="t-k">docker</span>-compose.drivers.yml <span class="t-n">--profile</span> gcp up <span class="t-n">-d</span>
 <span class="t-k">docker</span> compose <span class="t-n">-f</span> <span class="t-k">docker</span>-compose.drivers.yml <span class="t-n">--profile</span> all up <span class="t-n">-d</span></code></pre></div>
 <p>클라우드마다 파일 하나가 아니라 프로파일이 있는 파일 하나입니다. 파일이 둘이면 프로젝트 이름이 둘인데, 양쪽의 <code>postgres</code>가 이미 한 번 엔진의 개발 데이터베이스를 대체한 적이 있습니다.</p>
-<h3 id="floci가-지원하는-bigquery는-보기보다-적습니다">floci가 지원하는 BigQuery는 보기보다 적습니다<a class="anchor" href="#floci가-지원하는-bigquery는-보기보다-적습니다" aria-label="link">#</a></h3>
+<h3 id="floci-covers-less-of-bigquery-than-it-looks">floci가 지원하는 BigQuery는 보기보다 적습니다<a class="anchor" href="#floci-covers-less-of-bigquery-than-it-looks" aria-label="link">#</a></h3>
 <p>가정이 아니라 측정한 결과입니다.</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>데이터셋과 테이블 생성</td><td>✅</td></tr><tr><td><code>timePartitioning</code>과 <code>clustering</code> 보존</td><td>✅ — <code>0.9.1</code> 버그의 형태</td></tr><tr><td>컬럼 <code>PATCH</code></td><td>✅ — <code>auto_table</code>의 진화</td></tr><tr><td><code>insertAll</code></td><td>✅</td></tr><tr><td>쿼리</td><td>✅, <code>/var/run/docker.sock</code>을 마운트한 경우에만</td></tr><tr><td><strong>load job</strong></td><td>❌ <code>Only QUERY jobs are supported by the floci BigQuery emulator</code></td></tr></tbody></table></div>
 <p>SDK는 BigQuery에 load job으로<strong>만</strong> 씁니다. 따라서 floci는 페이로드를 DDL로 바꾸는 <code>auto_table</code>의 모든 줄을 검증하지만 Brevis의 쓰기는 <strong>하나도</strong> 검증하지 않습니다. 오늘날 로컬 테스트가 없는 쪽이 여전히 그 절반이며, 갖출 가치가 있습니다. 하지만 floci에 대한 스위트가 통과했다고 BigQuery가 동작한다는 뜻은 아닙니다.</p>
@@ -166,7 +166,7 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
 
     <aside class="toc" aria-label="이 페이지에서">
       <p class="toc-t">이 페이지에서</p>
-      <ul><li class="toc-2"><a href="#증인-셋-그리고-중요한-것은-세-번째">증인 셋, 그리고 중요한 것은 세 번째</a></li><li class="toc-2"><a href="#위의-run">위의 run</a></li><li class="toc-2"><a href="#임계값이-핵심입니다">임계값이 핵심입니다</a></li><li class="toc-2"><a href="#측정하지-않는-것">측정하지 않는 것</a></li><li class="toc-2"><a href="#프로파일별-로컬-클라우드">프로파일별 로컬 클라우드</a></li><li class="toc-3"><a href="#floci가-지원하는-bigquery는-보기보다-적습니다">floci가 지원하는 BigQuery는 보기보다 적습니다</a></li></ul>
+      <ul><li class="toc-2"><a href="#three-witnesses-and-the-third-is-the-one-that-matters">증인 셋, 그리고 중요한 것은 세 번째</a></li><li class="toc-2"><a href="#the-run-above">위의 run</a></li><li class="toc-2"><a href="#the-thresholds-are-the-point">임계값이 핵심입니다</a></li><li class="toc-2"><a href="#what-it-does-not-measure">측정하지 않는 것</a></li><li class="toc-2"><a href="#the-local-cloud-by-profile">프로파일별 로컬 클라우드</a></li><li class="toc-3"><a href="#floci-covers-less-of-bigquery-than-it-looks">floci가 지원하는 BigQuery는 보기보다 적습니다</a></li></ul>
     </aside>
   </main>
 </div>
@@ -186,9 +186,9 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
       <div class="footer-col">
         <h2>프로젝트</h2>
         <ul>
-          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/#ecosystem">에코시스템</a></li>
           <li><a href="/ko/docs/philosophy/">원칙</a></li>
-          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/introduction/#open-code-choose-how-to-take-part">오픈 소스</a></li>
           <li><a href="/ko/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -211,7 +211,7 @@ docker compose -f docker-compose.drivers.yml --profile all up -d"><div class="co
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

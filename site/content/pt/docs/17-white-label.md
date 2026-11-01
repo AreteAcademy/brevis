@@ -16,12 +16,12 @@ Copie `brand.example.yaml` para `brand.yaml` na raiz, ou aponte
 `BREVIS_BRAND_FILE`:
 
 ```yaml
-titulo: Dados Acme
-subtitulo: Plataforma de dados
+titulo: Acme Data
+subtitulo: Data platform
 
 frase: |
-  Medir antes de decidir.
-  Decidir antes de escalar.
+  Measure before deciding.
+  Decide before scaling.
 
 cores:
   fundo:    "#f4efe4"
@@ -38,7 +38,7 @@ lateral.
 ## Logo
 
 ```yaml
-logo: https://exemplo.com/marca.svg
+logo: https://example.com/mark.svg
 ```
 
 Aceita URL (`https://` ou `http://`) ou caminho interno começando em `/`.
@@ -62,9 +62,9 @@ brevis marca brand.yaml
 ```
 
 ```
-  ok    Dados Acme · Plataforma de dados
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+  ok    Acme Data · Data platform
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis
 ```
 
@@ -83,7 +83,7 @@ subir**. O processo registra um aviso e usa o tema padrão. Derrubar a API por
 causa de uma cor seria pior do que servi-la com o tema padrão.
 
 ```
-level=WARN msg="identidade visual ignorada" arquivo=brand.yaml erro="cor invalida: #gggggg"
+level=WARN msg="visual identity ignored" file=brand.yaml error="brand.yaml: colour accent: \"#gggggg\" is not a hex value (#rgb, #rrggbb or #rrggbbaa)"
 ```
 
 ## O que não se customiza
@@ -96,12 +96,12 @@ Monte o arquivo por ConfigMap:
 
 ```yaml
 volumes:
-  - name: marca
+  - name: brand
     configMap: {name: brevis-brand}
 containers:
   - name: api
     volumeMounts:
-      - {name: marca, mountPath: /etc/brevis}
+      - {name: brand, mountPath: /etc/brevis}
     env:
       - name: BREVIS_BRAND_FILE
         value: /etc/brevis/brand.yaml

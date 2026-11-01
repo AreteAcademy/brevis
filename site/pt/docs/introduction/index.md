@@ -31,8 +31,8 @@ Um artefato, com o subcomando que o papel exige:
 
 ```bash
 brevis serve        # API + interface
-brevis scheduler    # materializa agendas e executa a fila
-brevis run wf.yaml  # executa agora, sem banco
+brevis scheduler    # materialises schedules and drains the queue
+brevis run wf.yaml  # runs now, no database
 ```
 
 O workflow é um arquivo YAML versionado. Revisar um pipeline vira revisar um
@@ -44,12 +44,12 @@ schedule: "0 5 * * *"
 
 steps:
   - id: bronze
-    image: registry.exemplo/dbt:1.10.3
+    image: registry.example/dbt:1.10.3
     run: dbt build --select bronze+
 
-  - id: notificar
-    image: ghcr.io/exemplo/notify:0.3
-    run: /notify --canal dados
+  - id: notify
+    image: ghcr.io/example/notify:0.3
+    run: /notify --channel data
     depends_on: [bronze]
 ```
 

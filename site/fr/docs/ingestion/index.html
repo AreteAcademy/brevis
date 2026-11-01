@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Aller au contenu</a>
+<a class="skip-link" href="#content">Aller au contenu</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigation principale">
-      <a href="/fr/#ecossistema">Écosystème</a>
+      <a href="/fr/#ecosystem">Écosystème</a>
       <a href="/fr/docs/">Documentation</a>
       <details class="lang-dd"><summary aria-label="Langue: Français"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Français</span></summary><ul><li><a href="/docs/ingestion/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/ingestion/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ingestion/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ingestion/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ingestion/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ingestion/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ingestion/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentation</p>
       <h1>Ingestion</h1>
@@ -145,9 +145,9 @@
   -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/clicks <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
   <span class="t-n">-d</span> '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'</code></pre></div>
 <div class="code-block" data-code="{&quot;accepted&quot;:1,&quot;rejected&quot;:null}"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>{"accepted":1,"rejected":null}</code></pre></div>
-<p>Sans identifiants Google Cloud, le lot est réessayé et part dans la dead letter — voir <a href="#quand-le-sink-refuse">Quand le sink refuse</a>.</p>
+<p>Sans identifiants Google Cloud, le lot est réessayé et part dans la dead letter — voir <a href="#when-the-sink-refuses">Quand le sink refuse</a>.</p>
 <p>L'image <code>-slim</code> ne contient que les sinks <code>auto_table</code>, <code>files</code> et <code>postgres</code> ; le <code>pubsub</code> de cet exemple et les autres sont dans l'image complète. Une image slim avec un sink qu'elle ne contient pas est refusée au démarrage, avec la raison.</p>
-<h2 id="le-fichier-est-le-contrat">Le fichier est le contrat<a class="anchor" href="#le-fichier-est-le-contrat" aria-label="link">#</a></h2>
+<h2 id="the-file-is-the-contract">Le fichier est le contrat<a class="anchor" href="#the-file-is-the-contract" aria-label="link">#</a></h2>
 <p>Il n'y a aucun code à écrire, hormis les hooks. Streams, chemins, formats, identité, nouvelles tentatives, destination et dead letter — tout est dans le YAML, et chaque champ est refusé quand il ne peut pas être honoré.</p>
 <div class="code-block" data-code="name: events_gateway
 
@@ -221,13 +221,13 @@ streams:
       <span class="t-k">type</span>: files
       <span class="t-k">path</span>: /var/dead-letter/</code></pre></div>
 <p><code>format</code> est déclaré et jamais deviné : deviner, c'est ainsi qu'un lot de mille devient une seule ligne contenant un tableau.</p>
-<h2 id="lingestion-id-qui-est-tout-linteret">L'<code>ingestion_id</code>, qui est tout l'intérêt<a class="anchor" href="#lingestion-id-qui-est-tout-linteret" aria-label="link">#</a></h2>
+<h2 id="the-ingestion-id-which-is-the-point">L'<code>ingestion_id</code>, qui est tout l'intérêt<a class="anchor" href="#the-ingestion-id-which-is-the-point" aria-label="link">#</a></h2>
 <p>Chaque enregistrement part avec un <code>ingestion_id</code> : un <strong>UUID v5 figé</strong> calculé sur <code>provider|entity|source_key|record_ts</code>.</p>
 <p>C'est le <strong>même id</strong> qu'un fetcher batch calcule pour le même enregistrement. Une ligne que le gateway fait atterrir et une ligne qu'un pipeline du <a href="/fr/docs/sdk/">SDK</a> fait atterrir sont <em>une seule ligne</em>, sans réconciliation entre elles.</p>
 <p>Deux conséquences pratiques :</p>
 <ul><li><strong>Un <code>POST</code> réessayé est le même enregistrement.</strong> Un client peut renvoyer sans crainte ; une destination avec <code>merge</code> absorbe la nouvelle tentative au lieu d'écrire une seconde ligne.</li><li><strong>La formule est figée.</strong> Les quatre champs sont requis, et en omettre un produit un id <em>différent</em> plutôt qu'un id plus faible. Le fichier refuse la configuration incomplète au lieu de l'accepter.</li></ul>
 <p>Les outils d'ingestion déplacent très bien des octets et n'ont aucune opinion sur ce qu'<em>est</em> un enregistrement. Cette opinion, c'est ce qu'ajoute le gateway.</p>
-<h2 id="la-requete-nattend-jamais-le-sink">La requête n'attend jamais le sink<a class="anchor" href="#la-requete-nattend-jamais-le-sink" aria-label="link">#</a></h2>
+<h2 id="the-request-never-waits-for-the-sink">La requête n'attend jamais le sink<a class="anchor" href="#the-request-never-waits-for-the-sink" aria-label="link">#</a></h2>
 <p>Il décode, exécute le hook, calcule l'identité, ajoute à un buffer et répond. <strong>C'est tout.</strong> Un lot plein part vers un pool de workers, et la publication, le <code>COPY</code>, les nouvelles tentatives et la dead letter se passent tous là.</p>
 <p>Ce n'est pas cosmétique. Avant que cela existe, la requête qui remplissait par hasard un lot exécutait la livraison en ligne — un appelant sur chaque <code>flush.records</code> payait donc l'aller-retour complet, et quand le sink était indisponible, toute la fenêtre de nouvelles tentatives. Un p99 façonné par l'appelant malchanceux n'est pas un p99 sur lequel on peut agir.</p>
 <div class="code-block" data-code="buffer:
@@ -249,7 +249,7 @@ streams:
   <span class="t-k">queue</span>: 64           <span class="t-c"># full batches that may wait for a worker</span>
   <span class="t-k">max_records</span>: 10000  <span class="t-c"># events held in memory before the gateway says no</span>
   <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># the same ceiling in bytes</span></code></pre></div>
-<h3 id="lhorloge-de-flush-appartient-au-deploiement">L'horloge de flush appartient au déploiement<a class="anchor" href="#lhorloge-de-flush-appartient-au-deploiement" aria-label="link">#</a></h3>
+<h3 id="the-flush-clock-belongs-to-the-deployment">L'horloge de flush appartient au déploiement<a class="anchor" href="#the-flush-clock-belongs-to-the-deployment" aria-label="link">#</a></h3>
 <p><code>buffer.flush.every</code> est un <code>time.AfterFunc</code> dans <strong>chaque réplica</strong>. Les load jobs qu'une table reçoit sont donc fonction du nombre de réplicas, pas du trafic :</p>
 <div class="code-block" data-code="jobs / day / table  =  replicas × 86400 / every"><div class="code-head"><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>jobs / day / table  =  replicas × 86400 / every</code></pre></div>
 <p>Sur BigQuery, face à 1 500 par table et par jour, <strong>deux réplicas à 60s font déjà 192 % d'un quota qu'on ne peut pas relever</strong> — avant que le moindre HPA agisse. Et le sens est opposé à l'intuition : le gateway passe à l'échelle pour la concurrence HTTP tandis que le sink veut de la concentration.</p>
@@ -269,13 +269,13 @@ streams:
 <p><strong><code>outcome="unreachable"</code> est celui qui mérite une alerte.</strong> Le backend n'a pas pu être interrogé, donc la réclamation a échoué en mode ouvert : la coordination est désactivée et les load jobs se multiplient de nouveau par le nombre de réplicas — en silence, car chaque flush ressemble toujours à un flush.</p>
 <p>Et la réclamation donne l'<strong>exclusivité, pas l'équité</strong> : celui qui demande en premier gagne. Un vrai run à deux réplicas a mesuré 4/1, pas un partage égal. <code>max_age</code> est ce qui empêche le malchanceux de mourir de faim.</p>
 <p>Avec <code>claim: true</code> et <code>metastore: memory</code>, le gateway avertit <strong>une seule fois au démarrage</strong> : chaque réplica gagne sa propre réclamation, donc tout semble correct et rien ne coordonne.</p>
-<h3 id="every-est-une-cible-max-age-est-une-promesse"><code>every</code> est une cible ; <code>max_age</code> est une promesse<a class="anchor" href="#every-est-une-cible-max-age-est-une-promesse" aria-label="link">#</a></h3>
+<h3 id="every-is-a-target-max-age-is-a-promise"><code>every</code> est une cible ; <code>max_age</code> est une promesse<a class="anchor" href="#every-is-a-target-max-age-is-a-promise" aria-label="link">#</a></h3>
 <p>Les trois déclencheurs ci-dessus décident quand un lot <strong>essaie</strong> de partir. <code>max_age</code> décide quand il part <strong>quoi qu'il arrive</strong>.</p>
 <p>Aujourd'hui la différence est inerte, car rien ne diffère la cible. Elle commence à compter dès que l'horloge de flush cesse d'être par processus : <code>buffer.flush.every</code> est un <code>time.AfterFunc</code> dans chaque réplica, donc le nombre de load jobs qu'une table reçoit est fonction du <strong>nombre de réplicas</strong>, pas du trafic — <code>replicas × 86400 / every</code>. Sur BigQuery, face à 1 500 par table et par jour, <strong>deux réplicas à 60s font déjà 192 % du quota</strong>.</p>
 <p>Dès qu'un réplica peut céder une fenêtre à un autre, il continue de se remplir, et <code>max_age</code> est ce qui empêche quiconque de retenir des données indéfiniment en attendant son tour.</p>
 <p>Il règle aussi le drain : ce qu'un buffer peut <strong>contenir</strong> au <code>SIGTERM</code> se retrouve borné par lui, et le <code>terminationGracePeriodSeconds</code> que le gateway affiche au démarrage en est dérivé.</p>
 <p>Un plafond <strong>inférieur</strong> à la cible est refusé au chargement — cela voudrait dire que la cible ne s'applique jamais.</p>
-<h3 id="pourquoi-il-y-a-un-declencheur-de-taille">Pourquoi il y a un déclencheur de taille<a class="anchor" href="#pourquoi-il-y-a-un-declencheur-de-taille" aria-label="link">#</a></h3>
+<h3 id="why-there-is-a-size-trigger">Pourquoi il y a un déclencheur de taille<a class="anchor" href="#why-there-is-a-size-trigger" aria-label="link">#</a></h3>
 <p>Les deux autres sont des <strong>comptages</strong>, et un comptage ne distingue pas 500 événements de 2 Ko de 500 de 2 Mo — 1 Mo contre 1 Go, le même nombre dans le fichier. <code>max_records: 10000</code> a le même angle mort : 20 Mo ou 20 Go, et rien dans le YAML ne pourrait dire lequel.</p>
 <p>Un producteur qui se met à envoyer le document entier au lieu de son id fait tomber le pod, et tant que cela n'existait pas, <strong>aucun champ n'aurait pu exprimer la limite</strong>.</p>
 <p>La taille est mesurée sur ce qui est <strong>arrivé</strong> — pas sur ce que l'événement pèse en mémoire (une <code>map[string]any</code> fait plusieurs fois son JSON) ni après un hook qui le gonfle. Une approximation, et la bonne : elle est gratuite au décodage, elle suit le payload, et ce contre quoi elle protège est un enregistrement qui a été multiplié par dix.</p>
@@ -287,7 +287,7 @@ streams:
 <p>Un flush d'une table est un load job pour elle ; c'est donc la série sur laquelle alerter à 1 200 des 1 500 que BigQuery autorise. La moitié inconditionnelle est une ligne au démarrage, qui dit ce que coûte <code>flush.every</code> par table et par jour avant qu'un événement arrive.</p>
 <p><strong>C'est borné, pas fire-and-forget.</strong> Une goroutine par lot transformerait une panne du sink en mémoire non bornée. Quand la file et le buffer sont tous deux pleins, la réponse est <strong><code>503</code> avec <code>Retry-After</code></strong> plutôt qu'un <code>202</code> pour un événement qui n'a nulle part où aller. Un événement accepté qui n'est jamais livré est le seul résultat que ce service existe pour ne pas avoir.</p>
 <p>Et ce <code>503</code> est <strong>sans risque à réessayer</strong>, d'une façon dont presque aucun service ne peut se prévaloir : l'<code>ingestion_id</code> est une fonction figée de l'événement lui-même, donc le même corps renvoyé est le <em>même enregistrement</em>.</p>
-<h2 id="une-connexion-decide-quel-replica-recoit-la-charge">Une connexion décide quel réplica reçoit la charge<a class="anchor" href="#une-connexion-decide-quel-replica-recoit-la-charge" aria-label="link">#</a></h2>
+<h2 id="a-connection-decides-which-replica-gets-the-load">Une connexion décide quel réplica reçoit la charge<a class="anchor" href="#a-connection-decides-which-replica-gets-the-load" aria-label="link">#</a></h2>
 <p>Derrière un Service Kubernetes <code>ClusterIP</code>, kube-proxy choisit un backend <strong>une fois par connexion TCP</strong>, pas par requête. La plupart des clients gardent les connexions ouvertes et les réutilisent, donc un producteur qui en a une poignée envoie tout au même ou aux deux mêmes réplicas quel que soit leur nombre — et un réplica que le HPA ajoute ne reçoit rien, parce que personne ne s'y connecte.</p>
 <div class="code-block" data-code="listen:
   idle_timeout: 90s     # closes a connection nobody came back to
@@ -297,7 +297,7 @@ streams:
 <p><strong><code>max_conn_age</code> est désactivé par défaut</strong>, et c'est délibéré : la durée pendant laquelle un client peut garder une connexion est une politique, et elle échange un handshake dans le cluster par connexion et par âge contre une charge qui se répartit. La requête elle-même est toujours servie — l'en-tête est ajouté à la réponse, rien n'est réessayé et aucun lot n'est perdu.</p>
 <p><strong><code>idle_timeout</code> a une valeur par défaut et ne peut pas être désactivé.</strong> Servir sans en avoir, c'est un descripteur de fichier par client abandonné jusqu'au redémarrage du processus. Définissez-en une longue si c'est ce que vous voulez ; c'est alors un nombre que quelqu'un a choisi.</p>
 <p>Les deux sont indépendants : une connexion rencontre la borne qu'elle atteint en premier, et une connexion n'atteint l'âge qu'en étant utilisée — exactement le producteur de longue durée que l'âge existe pour rééquilibrer.</p>
-<h2 id="quand-le-sink-refuse">Quand le sink refuse<a class="anchor" href="#quand-le-sink-refuse" aria-label="link">#</a></h2>
+<h2 id="when-the-sink-refuses">Quand le sink refuse<a class="anchor" href="#when-the-sink-refuses" aria-label="link">#</a></h2>
 <p>Le lot est réessayé — quatre tentatives sur environ sept secondes par défaut, avec doublement et jitter — puis il part dans la <strong>dead letter</strong>, avec la raison sur chaque enregistrement :</p>
 <div class="code-block" data-code="{
   &quot;event_id&quot;: &quot;dl-9&quot;,
@@ -314,7 +314,7 @@ streams:
 }</code></pre></div>
 <p>La raison voyage <strong>sur l'enregistrement</strong> et pas seulement dans un log, parce que celui qui trouve ce fichier plus tard a les événements et pas le log — et <em>pourquoi est-ce ici</em> est sa première question.</p>
 <p><strong>Un stream sans <code>dead_letter</code> est refusé au chargement.</strong> En faire un silence par défaut placerait la décision là où personne ne la prend, et un lot refusé qui n'est qu'une ligne de log, c'est perdre des données discrètement.</p>
-<h2 id="le-hook-est-du-go-compile-dedans">Le hook est du Go, compilé dedans<a class="anchor" href="#le-hook-est-du-go-compile-dedans" aria-label="link">#</a></h2>
+<h2 id="the-hook-is-go-compiled-in">Le hook est du Go, compilé dedans<a class="anchor" href="#the-hook-is-go-compiled-in" aria-label="link">#</a></h2>
 <div class="code-block" data-code="hooks := gateway.NewHooks()
 hooks.MustRegister(&quot;enrich_clicks&quot;, enrichClicks)
 gateway.Main(hooks, gateway.WithSinks(sinks))
@@ -335,7 +335,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 <p>Le YAML nomme un hook ; il n'en porte pas. Mesuré avant de choisir : une fonction Go coûte <strong>93 ns/op</strong> contre 959 pour Starlark et 1 281 pour yaegi, sans rien ajouter au binaire — et <code>plugin.Open</code> n'est pas une option du tout, car sous <code>CGO_ENABLED=0</code>, qui est la façon dont chaque artefact ici est compilé, il renvoie <code>plugin: not implemented</code>.</p>
 <p>Ce que cela coûte, dit là où quelqu'un le lira : <strong>ajouter un hook est une recompilation et un déploiement, pas un changement de configuration.</strong> C'est le bon compromis tant que les hooks sont écrits par ceux qui livrent le binaire, et le mauvais le jour où un client doit en changer un sans release.</p>
 <p>Une erreur dans un hook envoie <em>cet</em> événement sur le chemin de la dead letter et ne fait jamais échouer le lot à côté. Un panic aussi : il est récupéré par événement, parce qu'un enregistrement malformé ne doit pas faire tomber un processus qui sert tous les autres streams.</p>
-<h2 id="quand-un-evenement-est-trop-gros">Quand un événement est trop gros<a class="anchor" href="#quand-un-evenement-est-trop-gros" aria-label="link">#</a></h2>
+<h2 id="when-an-event-is-too-big">Quand un événement est trop gros<a class="anchor" href="#when-an-event-is-too-big" aria-label="link">#</a></h2>
 <div class="code-block" data-code="oversize:
   larger_than: 256KiB
   archive: {type: files, path: gs://acme-oversize/clicks/}
@@ -359,7 +359,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 }</code></pre></div>
 <p>C'est le pattern <strong>Claim Check</strong>, et il vaut mieux qu'un <code>413</code> sec car un <code>413</code> perd l'événement — et un payload surdimensionné est généralement le plus intéressant que quelqu'un ait : c'est la requête avec le document entier en pièce jointe, qui est le cas qui vaut la peine d'être débogué.</p>
 <p><code>larger_than</code> mesure un <strong>événement</strong>, après le hook. <code>listen.max_body</code> est autre chose : il plafonne une <strong>requête</strong> entière et refuse avec <code>413</code> avant qu'un seul octet soit parsé.</p>
-<h2 id="ce-quil-compte">Ce qu'il compte<a class="anchor" href="#ce-quil-compte" aria-label="link">#</a></h2>
+<h2 id="what-it-counts">Ce qu'il compte<a class="anchor" href="#what-it-counts" aria-label="link">#</a></h2>
 <p>Onze séries Prometheus, sur <strong>son propre port</strong> — jamais celui d'ingestion, et cette règle compte davantage ici que dans le moteur : le port d'ingestion est public par construction, c'est là que les clients font leur <code>POST</code>, donc un <code>/metrics</code> dessus publierait chaque nom de stream, chemin et destination à quiconque trouverait le chemin. Nommer la même adresse pour les deux est refusé au chargement.</p>
 <div class="code-block" data-code="brevis_gateway_events_received_total{stream,format}     counter
 brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
@@ -393,20 +393,20 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 <p><code>process_start_time_seconds</code> n'est <strong>pas</strong> préfixé par <code>brevis_</code>, et c'est délibéré : les collecteurs cherchent exactement ce nom. Il indique quand le processus a démarré, et sans lui un collecteur qui ajuste l'heure de départ — le récepteur Prometheus d'OpenTelemetry, sur lequel Google Managed Prometheus est construit — ancre chaque série cumulative à son <strong>premier scrape</strong> et dépense la valeur de ce scrape comme base. Résultat : chaque compteur lit trop bas, avec des deltas justes et des totaux faux.</p>
 <p>Les trois derniers sont ceux que personne ne réclame avant le premier incident. <code>saturated_total</code> est le seul nombre qui dit qu'on a demandé à un client de reculer ; <code>buffer_records</code> rapporté à <code>buffer.max_records</code> est le seul qui le <strong>prédit</strong>.</p>
 <p><code>reason</code> est un ensemble fermé et jamais le texte de l'erreur : une chaîne d'erreur contient un nom de table, une colonne, parfois une ligne, et un seul client malformé créerait une nouvelle série par requête. Le texte reste dans la dead letter, sur l'enregistrement.</p>
-<h2 id="202-pas-200"><code>202</code>, pas <code>200</code><a class="anchor" href="#202-pas-200" aria-label="link">#</a></h2>
+<h2 id="202-not-200"><code>202</code>, pas <code>200</code><a class="anchor" href="#202-not-200" aria-label="link">#</a></h2>
 <p>Le gateway a <strong>accepté</strong> les événements. Avec <code>durability: memory</code> — le seul niveau implémenté — c'est tout ce qu'il peut honnêtement affirmer. Le niveau qui mérite un <code>200</code> est celui qui les a déjà écrits durablement, et il n'existe pas.</p>
 <p><code>disk</code> est refusé <strong>par son nom</strong>, et non accepté et traité comme de la mémoire : celui qui écrit <code>disk</code> croit que ses événements survivent à un crash, et approuver sans livrer est exactement l'échec que ce champ existe pour empêcher.</p>
 <p>Ce qui se trouve dans un buffer à l'arrêt est livré, pas abandonné — par le même chemin que prend un lot plein, réessayé et enterré.</p>
-<h2 id="ce-quil-ne-fait-pas">Ce qu'il ne fait pas<a class="anchor" href="#ce-quil-ne-fait-pas" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-do">Ce qu'il ne fait pas<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
 <ul><li><strong>Il n'apparaît pas dans la console.</strong> Il ne partage aucune base avec l'interface du moteur, donc il n'y a pas de page <code>/ingestion</code> — et l'évolution de schéma qu'effectue <code>auto_table</code> n'y apparaît pas non plus. C'est la prochaine étape et elle n'a pas été écrite.</li><li><strong>Un stream avec une <code>table</code> ne fait pas évoluer le schéma.</strong> Quand vous nommez la table, le contrat est celui de la table : un champ qu'elle n'a pas est refusé avec le message qui le corrige, plutôt que de modifier une table que quelqu'un a relue. Faire grandir une colonne tout seul, c'est ce que fait <code>auto_table</code>, et c'est la différence entre les deux.</li><li><strong>Un stream avec une <code>table</code> ne crée ni table ni index.</strong> Un service qui crée des tables transforme une faute de frappe en une seconde table que personne ne lit — c'est pourquoi la création n'a lieu que sous <code>auto_table</code>, où <code>naming</code> borne les noms qui peuvent exister et où <code>listen.auth</code> est obligatoire.</li><li><strong>L'image publiée n'a aucun hook</strong>, ce qui est l'artefact honnête pour une conception à hooks compilés : elle sert les streams qui ne déclarent pas de <code>hook:</code>.</li></ul>
-<h2 id="une-route-n-tables">Une route, N tables<a class="anchor" href="#une-route-n-tables" aria-label="link">#</a></h2>
+<h2 id="one-route-n-tables">Une route, N tables<a class="anchor" href="#one-route-n-tables" aria-label="link">#</a></h2>
 <p><code>auto_table</code> route chaque événement vers la table que l'<strong>enveloppe</strong> nomme, crée cette table si elle est absente, et ajoute une colonne quand un nouveau champ apparaît :</p>
 <div class="code-block" data-code="{&quot;table_name&quot;: &quot;app_orders&quot;, &quot;operation&quot;: &quot;INSERT&quot;, &quot;unique_key&quot;: &quot;id&quot;,
  &quot;data&quot;: {&quot;id&quot;: &quot;A-1&quot;, &quot;total&quot;: 150, &quot;customer&quot;: {&quot;id&quot;: 7, &quot;uf&quot;: &quot;SP&quot;}}}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>{"table_name": "app_orders", "operation": "INSERT", "unique_key": "id",
  "data": {"id": "A-<span class="t-n">1</span>", "total": <span class="t-n">150</span>, "customer": {"id": <span class="t-n">7</span>, "uf": "SP"}}}</code></pre></div>
 <p>Les champs de contrôle en haut, l'enregistrement dans <code>data</code>, et sept colonnes de suivi <code>brevis_*</code> sur chaque table. Une route, N tables, rien de déclaré.</p>
-<p>C'est dans <a href="/fr/docs/ingestion-sinks/#une-route-n-tables-rien-de-declare">Sinks d'ingestion</a>.</p>
-<h2 id="où-aller-ensuite">Où aller ensuite<a class="anchor" href="#où-aller-ensuite" aria-label="link">#</a></h2>
+<p>C'est dans <a href="/fr/docs/ingestion-sinks/#one-route-n-tables-nothing-declared">Sinks d'ingestion</a>.</p>
+<h2 id="where-to-go-next">Où aller ensuite<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>si vous voulez</th><th>allez à</th></tr></thead><tbody><tr><td>les destinations et la façon dont chacune écrit</td><td><a href="/fr/docs/ingestion-sinks/">Sinks d'ingestion</a></td></tr><tr><td>l'<code>ingestion_id</code> vu de l'autre côté</td><td><a href="/fr/docs/sdk/">SDK Go</a></td></tr><tr><td>des tableaux de bord et des alertes</td><td><a href="/fr/docs/observability/">Observabilité</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="Pages">
@@ -421,7 +421,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 
     <aside class="toc" aria-label="Sur cette page">
       <p class="toc-t">Sur cette page</p>
-      <ul><li class="toc-2"><a href="#le-fichier-est-le-contrat">Le fichier est le contrat</a></li><li class="toc-2"><a href="#lingestion-id-qui-est-tout-linteret">L&#x27;ingestion_id, qui est tout l&#x27;intérêt</a></li><li class="toc-2"><a href="#la-requete-nattend-jamais-le-sink">La requête n&#x27;attend jamais le sink</a></li><li class="toc-3"><a href="#lhorloge-de-flush-appartient-au-deploiement">L&#x27;horloge de flush appartient au déploiement</a></li><li class="toc-3"><a href="#every-est-une-cible-max-age-est-une-promesse">every est une cible ; max_age est une promesse</a></li><li class="toc-3"><a href="#pourquoi-il-y-a-un-declencheur-de-taille">Pourquoi il y a un déclencheur de taille</a></li><li class="toc-2"><a href="#une-connexion-decide-quel-replica-recoit-la-charge">Une connexion décide quel réplica reçoit la charge</a></li><li class="toc-2"><a href="#quand-le-sink-refuse">Quand le sink refuse</a></li><li class="toc-2"><a href="#le-hook-est-du-go-compile-dedans">Le hook est du Go, compilé dedans</a></li><li class="toc-2"><a href="#quand-un-evenement-est-trop-gros">Quand un événement est trop gros</a></li><li class="toc-2"><a href="#ce-quil-compte">Ce qu&#x27;il compte</a></li><li class="toc-2"><a href="#202-pas-200">202, pas 200</a></li><li class="toc-2"><a href="#ce-quil-ne-fait-pas">Ce qu&#x27;il ne fait pas</a></li><li class="toc-2"><a href="#une-route-n-tables">Une route, N tables</a></li><li class="toc-2"><a href="#où-aller-ensuite">Où aller ensuite</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file-is-the-contract">Le fichier est le contrat</a></li><li class="toc-2"><a href="#the-ingestion-id-which-is-the-point">L&#x27;ingestion_id, qui est tout l&#x27;intérêt</a></li><li class="toc-2"><a href="#the-request-never-waits-for-the-sink">La requête n&#x27;attend jamais le sink</a></li><li class="toc-3"><a href="#the-flush-clock-belongs-to-the-deployment">L&#x27;horloge de flush appartient au déploiement</a></li><li class="toc-3"><a href="#every-is-a-target-max-age-is-a-promise">every est une cible ; max_age est une promesse</a></li><li class="toc-3"><a href="#why-there-is-a-size-trigger">Pourquoi il y a un déclencheur de taille</a></li><li class="toc-2"><a href="#a-connection-decides-which-replica-gets-the-load">Une connexion décide quel réplica reçoit la charge</a></li><li class="toc-2"><a href="#when-the-sink-refuses">Quand le sink refuse</a></li><li class="toc-2"><a href="#the-hook-is-go-compiled-in">Le hook est du Go, compilé dedans</a></li><li class="toc-2"><a href="#when-an-event-is-too-big">Quand un événement est trop gros</a></li><li class="toc-2"><a href="#what-it-counts">Ce qu&#x27;il compte</a></li><li class="toc-2"><a href="#202-not-200">202, pas 200</a></li><li class="toc-2"><a href="#what-it-does-not-do">Ce qu&#x27;il ne fait pas</a></li><li class="toc-2"><a href="#one-route-n-tables">Une route, N tables</a></li><li class="toc-2"><a href="#where-to-go-next">Où aller ensuite</a></li></ul>
     </aside>
   </main>
 </div>
@@ -441,9 +441,9 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
       <div class="footer-col">
         <h2>projet</h2>
         <ul>
-          <li><a href="/fr/#ecossistema">Écosystème</a></li>
+          <li><a href="/fr/#ecosystem">Écosystème</a></li>
           <li><a href="/fr/docs/philosophy/">Principes</a></li>
-          <li><a href="/fr/docs/introduction/#code-ouvert-choisissez-comment-participer">Open source</a></li>
+          <li><a href="/fr/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/fr/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -466,7 +466,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

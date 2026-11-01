@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Zum Inhalt springen</a>
+<a class="skip-link" href="#content">Zum Inhalt springen</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Hauptnavigation">
-      <a href="/de/#ecossistema">Ökosystem</a>
+      <a href="/de/#ecosystem">Ökosystem</a>
       <a href="/de/docs/">Dokumentation</a>
       <details class="lang-dd"><summary aria-label="Sprache: Deutsch"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Deutsch</span></summary><ul><li><a href="/docs/white-label/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/white-label/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/white-label/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/white-label/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/white-label/" lang="de" hreflang="de" aria-current="true">Deutsch</a></li><li><a href="/zh/docs/white-label/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/white-label/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/white-label/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/white-label/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/white-label/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/white-label/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentation</p>
       <h1>White Label</h1>
       <p class="doc-desc">Titel, Leitspruch, Logo und Palette der Oberfläche über eine einzige YAML-Datei ändern.</p>
       <p>Die Oberfläche lässt sich über eine Datei anpassen. Farben überschreiben die CSS-Variablen <strong>zur Laufzeit</strong>, sodass eine Änderung des Themes eines Kunden nichts neu kompiliert.</p>
-<h2 id="die-datei">Die Datei<a class="anchor" href="#die-datei" aria-label="link">#</a></h2>
+<h2 id="the-file">Die Datei<a class="anchor" href="#the-file" aria-label="link">#</a></h2>
 <p>Kopieren Sie <code>brand.example.yaml</code> nach <code>brand.yaml</code> im Wurzelverzeichnis, oder zeigen Sie mit <code>BREVIS_BRAND_FILE</code> darauf:</p>
 <div class="code-block" data-code="titulo: Acme Data
 subtitulo: Data platform
@@ -154,24 +154,24 @@ cores:
 <div class="code-block" data-code="logo: https://example.com/mark.svg"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">logo</span>: https://example.com/mark.svg</code></pre></div>
 <p>Akzeptiert eine URL (<code>https://</code> oder <code>http://</code>) oder einen internen Pfad, der mit <code>/</code> beginnt. Fehlt es, wird das eingebaute Symbol verwendet, das der Themenfarbe folgt.</p>
 <aside class="admon admon-warning"><p class="admon-t">Ein anderswo gehostetes Logo hängt von diesem Host ab</p><p>Fällt er aus, oder hat der Cluster keinen ausgehenden Internetzugang, lädt das Bild nicht. Der Rest der Oberfläche funktioniert weiter, aber wägen Sie das bei der Wahl ab – der Rest der UI, Schriften und Bundles eingeschlossen, wird gerade deshalb aus dem Binary selbst ausgeliefert, um nicht vom Netzwerk abzuhängen.</p></aside>
-<h2 id="validieren">Validieren<a class="anchor" href="#validieren" aria-label="link">#</a></h2>
+<h2 id="validating">Validieren<a class="anchor" href="#validating" aria-label="link">#</a></h2>
 <p>Ein falscher Hex-Wert würde erst auffallen, wenn der Container hochkommt, und die Meldung käme über das Pod-Log an – weit entfernt von dem, der die Datei bearbeitet hat. Daher ein Subcommand:</p>
 <div class="code-block" data-code="brevis marca brand.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">brevis</span> marca brand.yaml</code></pre></div>
 <div class="code-block" data-code="  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product&#x27;s own)
         Powered by Brevis"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>  ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis</code></pre></div>
 <p>Rufen Sie ihn in der CI der Installation auf, und der Fehler kommt im Pull Request zurück.</p>
 <aside class="admon admon-note"><p class="admon-t">Abwesenheit bedeutet Verschiedenes</p><p>In <code>serve</code> bedeutet eine fehlende Datei „die Standardidentität verwenden“ – und die API startet. In <code>marca</code> ist eine fehlende Datei ein <strong>Fehler</strong>: Wer darum bat, einen Pfad zu validieren, erwartet, gesagt zu bekommen, dass er nicht existiert.</p></aside>
-<h2 id="verhalten-beim-start">Verhalten beim Start<a class="anchor" href="#verhalten-beim-start" aria-label="link">#</a></h2>
+<h2 id="behaviour-at-boot">Verhalten beim Start<a class="anchor" href="#behaviour-at-boot" aria-label="link">#</a></h2>
 <p>Ein inhaltlicher Fehler – eine ungültige Farbe, kaputtes YAML – <strong>hindert die Oberfläche nicht am Starten</strong>. Der Prozess loggt eine Warnung und verwendet das Standard-Theme. Die API wegen einer Farbe herunterzunehmen wäre schlimmer, als sie mit dem Standard-Theme auszuliefern.</p>
-<div class="code-block" data-code="level=WARN msg=&quot;identidade visual ignorada&quot; arquivo=brand.yaml erro=&quot;cor invalida: #gggggg&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>level=WARN msg="identidade visual ignorada" arquivo=brand.yaml erro="cor invalida: #gggggg"</code></pre></div>
-<h2 id="was-sich-nicht-anpassen-lässt">Was sich nicht anpassen lässt<a class="anchor" href="#was-sich-nicht-anpassen-lässt" aria-label="link">#</a></h2>
+<div class="code-block" data-code="level=WARN msg=&quot;visual identity ignored&quot; file=brand.yaml error=&quot;brand.yaml: colour accent: \&quot;#gggggg\&quot; is not a hex value (#rgb, #rrggbb or #rrggbbaa)&quot;"><div class="code-head"><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>level=WARN msg="visual identity ignored" file=brand.yaml error="brand.yaml: colour accent: \"#gggggg\" is not a hex value (#rgb, #rrggbb or #rrggbbaa)"</code></pre></div>
+<h2 id="what-cannot-be-customised">Was sich nicht anpassen lässt<a class="anchor" href="#what-cannot-be-customised" aria-label="link">#</a></h2>
 <p>Die Zeile <strong>„Powered by Brevis“</strong> in der Fußzeile kommt nicht aus der Konfiguration – sie kommt aus dem Code.</p>
-<h2 id="auf-kubernetes">Auf Kubernetes<a class="anchor" href="#auf-kubernetes" aria-label="link">#</a></h2>
+<h2 id="on-kubernetes">Auf Kubernetes<a class="anchor" href="#on-kubernetes" aria-label="link">#</a></h2>
 <p>Hängen Sie die Datei aus einer ConfigMap ein:</p>
 <div class="code-block" data-code="volumes:
   - name: brand
@@ -205,7 +205,7 @@ containers:
 
     <aside class="toc" aria-label="Auf dieser Seite">
       <p class="toc-t">Auf dieser Seite</p>
-      <ul><li class="toc-2"><a href="#die-datei">Die Datei</a></li><li class="toc-2"><a href="#logo">Logo</a></li><li class="toc-2"><a href="#validieren">Validieren</a></li><li class="toc-2"><a href="#verhalten-beim-start">Verhalten beim Start</a></li><li class="toc-2"><a href="#was-sich-nicht-anpassen-lässt">Was sich nicht anpassen lässt</a></li><li class="toc-2"><a href="#auf-kubernetes">Auf Kubernetes</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file">Die Datei</a></li><li class="toc-2"><a href="#logo">Logo</a></li><li class="toc-2"><a href="#validating">Validieren</a></li><li class="toc-2"><a href="#behaviour-at-boot">Verhalten beim Start</a></li><li class="toc-2"><a href="#what-cannot-be-customised">Was sich nicht anpassen lässt</a></li><li class="toc-2"><a href="#on-kubernetes">Auf Kubernetes</a></li></ul>
     </aside>
   </main>
 </div>
@@ -225,9 +225,9 @@ containers:
       <div class="footer-col">
         <h2>Projekt</h2>
         <ul>
-          <li><a href="/de/#ecossistema">Ökosystem</a></li>
+          <li><a href="/de/#ecosystem">Ökosystem</a></li>
           <li><a href="/de/docs/philosophy/">Prinzipien</a></li>
-          <li><a href="/de/docs/introduction/#offener-code-wählen-sie-wie-sie-mitmachen">Open Source</a></li>
+          <li><a href="/de/docs/introduction/#open-code-choose-how-to-take-part">Open Source</a></li>
           <li><a href="/de/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -250,7 +250,7 @@ containers:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

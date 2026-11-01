@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Saltar al contenido</a>
+<a class="skip-link" href="#content">Saltar al contenido</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegación principal">
-      <a href="/es/#ecossistema">Ecosistema</a>
+      <a href="/es/#ecosystem">Ecosistema</a>
       <a href="/es/docs/">Documentación</a>
       <details class="lang-dd"><summary aria-label="Idioma: Español"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Español</span></summary><ul><li><a href="/docs/scheduler-and-queue/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/scheduler-and-queue/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/scheduler-and-queue/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/scheduler-and-queue/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/scheduler-and-queue/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/scheduler-and-queue/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/scheduler-and-queue/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/scheduler-and-queue/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/scheduler-and-queue/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/scheduler-and-queue/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/scheduler-and-queue/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentación</p>
       <h1>Scheduler y cola</h1>
@@ -142,20 +142,20 @@ creates the Run  ─────────────►  (pending in the dat
                                    walks the graph
                                    executes each step
                                    records state and log</code></pre></div>
-<h2 id="por-que-separarlos">Por qué separarlos<a class="anchor" href="#por-que-separarlos" aria-label="link">#</a></h2>
+<h2 id="why-separate">Por qué separarlos<a class="anchor" href="#why-separate" aria-label="link">#</a></h2>
 <p>Un único bucle que programa y ejecuta a la vez tiene una mala propiedad: cuando la ejecución se atasca, la programación se detiene con ella. Las próximas doce horas de slots simplemente no existen, y nadie lo nota hasta que alguien busca datos que nunca llegaron.</p>
 <p>Con los dos por separado:</p>
 <ul><li>el <strong>scheduler</strong> puede caerse y la cola sigue vaciando lo que se creó;</li><li>la <strong>cola</strong> puede caerse y los slots se siguen materializando, para ejecutarse cuando vuelva;</li><li><strong>el reprocesamiento no depende del reloj</strong>: <code>backfill</code> crea runs pasados por el mismo camino que usaría cron.</li></ul>
-<h2 id="el-proceso">El proceso<a class="anchor" href="#el-proceso" aria-label="link">#</a></h2>
+<h2 id="the-process">El proceso<a class="anchor" href="#the-process" aria-label="link">#</a></h2>
 <p>Ambos bucles viven en el mismo comando:</p>
 <div class="code-block" data-code="brevis scheduler --interval 5s --concurrency 4 --max-pods 10"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--interval</span> 5s <span class="t-n">--concurrency</span> 4 <span class="t-n">--max-pods</span> 10</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>flag</th><th>valor por defecto</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td><code>10s</code></td><td>intervalo entre ciclos del scheduler</td></tr><tr><td><code>--concurrency</code></td><td><code>5</code></td><td><strong>runs</strong> simultáneos</td></tr><tr><td><code>--max-pods</code></td><td><code>5</code></td><td><strong>steps</strong> simultáneos en total</td></tr></tbody></table></div>
 <p><code>--concurrency</code> y <code>--max-pods</code> cuentan cosas distintas, deliberadamente: cinco runs con tres steps paralelos cada uno serían quince pods si el único límite estuviera en los runs.</p>
 <aside class="admon admon-note"><p class="admon-t">`serve` no materializa programaciones</p><p>El proceso de la API levanta el mismo scheduler, pero <strong>sin el bucle</strong>: está ahí solo para atender los disparos manuales desde la interfaz, de modo que la regla «el scheduler crea runs» tenga un único dueño. Para que las programaciones se disparen, debe correr un <code>brevis scheduler</code> a su lado.</p></aside>
-<h2 id="el-snapshot-de-la-definicion">El snapshot de la definición<a class="anchor" href="#el-snapshot-de-la-definicion" aria-label="link">#</a></h2>
+<h2 id="the-definition-snapshot">El snapshot de la definición<a class="anchor" href="#the-definition-snapshot" aria-label="link">#</a></h2>
 <p>Cuando el scheduler crea un run, almacena <strong>la definición del workflow dentro del run</strong>. La ejecución lee ese snapshot, no el YAML en disco.</p>
 <p>El motivo es concreto: entre el disparo y la ejecución, alguien pudo haber editado el archivo y desplegado. Sin el snapshot, un run creado a las 05:00 con una definición se ejecutaría a las 05:02 con otra, y el log no tendría forma de explicar la diferencia.</p>
-<h2 id="reintentos">Reintentos<a class="anchor" href="#reintentos" aria-label="link">#</a></h2>
+<h2 id="retries">Reintentos<a class="anchor" href="#retries" aria-label="link">#</a></h2>
 <p>Un run fallido se intenta <strong>tres veces</strong>, y la espera se <strong>duplica</strong>: con los valores por defecto caen en <strong>0s, 30s y 1m30s</strong>.</p>
 <div class="code-block" data-code="brevis scheduler --max-attempts 3 --retry-backoff 30s --retry-backoff-max 1h"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--max-attempts</span> 3 <span class="t-n">--retry-backoff</span> 30s <span class="t-n">--retry-backoff-max</span> 1h</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>flag</th><th>valor por defecto</th><th></th></tr></thead><tbody><tr><td><code>--max-attempts</code></td><td><code>3</code></td><td>intentos por run, contando el primero</td></tr><tr><td><code>--retry-backoff</code></td><td><code>30s</code></td><td>la primera espera, que se duplica en cada intento posterior</td></tr><tr><td><code>--retry-backoff-max</code></td><td><code>1h</code></td><td>techo para esa espera</td></tr></tbody></table></div>
@@ -170,11 +170,11 @@ creates the Run  ─────────────►  (pending in the dat
 <div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31
 brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31
 <span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
-<div class="code-block" data-code="  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los</code></pre></div>
+<div class="code-block" data-code="  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them</code></pre></div>
 <p><strong>Encola, no ejecuta.</strong> La ejecución es trabajo del <code>scheduler</code>: la misma separación de nuevo. <code>--to</code> incluye el día completo.</p>
-<h2 id="iniciado-por-un-landing">Iniciado por un landing<a class="anchor" href="#iniciado-por-un-landing" aria-label="link">#</a></h2>
+<h2 id="started-by-a-landing">Iniciado por un landing<a class="anchor" href="#started-by-a-landing" aria-label="link">#</a></h2>
 <p>Un workflow puede ejecutarse porque llegaron datos, en lugar de porque lo dijo el reloj:</p>
 <div class="code-block" data-code="trigger:
   on_landed:
@@ -187,23 +187,23 @@ brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true">
   <span class="t-k">debounce</span>: 5m</code></pre></div>
 <p>Cada step ya declara lo que escribió, por el canal que transporta las fases; eso es lo que llena <code>/data</code>. Un workflow se suscribe a uno de esos nombres y arranca cuando algo aterriza en él.</p>
 <p>Un <code>/*</code> al final suscribe a todo el dataset. Existe para <code>auto_table</code>, que crea una tabla por ruta: el dataset es lo único que se puede nombrar para tablas que nadie declaró. Coincide con <code>bronze/orders</code> y no con <code>bronze_raw/orders</code>.</p>
-<h3 id="la-ventana-y-por-que-diez-landings-son-un-run">La ventana, y por qué diez landings son un run<a class="anchor" href="#la-ventana-y-por-que-diez-landings-son-un-run" aria-label="link">#</a></h3>
+<h3 id="the-window-and-why-ten-landings-are-one-run">La ventana, y por qué diez landings son un run<a class="anchor" href="#the-window-and-why-ten-landings-are-one-run" aria-label="link">#</a></h3>
 <p><code>debounce</code> colapsa una ráfaga. Diez tablas que aterrizan dentro de cinco minutos inician <strong>un</strong> run, no diez, y el run dice cuáles:</p>
 <div class="code-block" data-code="BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items</code></pre></div>
 <p>La lista exacta también está en <code>BREVIS_AUTO_PARAMS</code> como JSON, que es lo que hay que leer cuando un destino podría contener una coma.</p>
 <p>La ventana se corta desde <strong>el momento en que el engine registró el landing</strong>, no desde el momento en que el step dijo que ocurrió. Un step que informa el instante en que empezó su consulta informa algo cierto y algo viejo, y un reloj desfasado de otro modo partiría una ráfaga en dos runs.</p>
 <p>Si se omite <code>debounce</code>, cada landing inicia un run.</p>
-<h3 id="lo-que-no-hara">Lo que no hará<a class="anchor" href="#lo-que-no-hara" aria-label="link">#</a></h3>
+<h3 id="what-it-will-not-do">Lo que no hará<a class="anchor" href="#what-it-will-not-do" aria-label="link">#</a></h3>
 <p><strong>Un workflow nunca es iniciado por su propia escritura.</strong> El engine descarta un landing cuyo escritor es el workflow suscrito y registra por qué; sin eso, un workflow que lee y escribe la misma tabla se dispararía a sí mismo para siempre.</p>
 <p>Se rechaza <strong>cuando se dispara</strong> y no cuando se verifica el archivo, y eso es un límite y no un descuido: <code>brevis validate</code> lee archivos y ningún archivo declara lo que escribe un step. Un destino de warehouse lo decide la conexión, no el YAML. Así que <code>validate</code> aprueba un workflow que será rechazado en tiempo de ejecución, siempre, con el motivo en el log.</p>
 <p><strong>El primer ciclo no inicia nada.</strong> Un trigger empieza a contar desde el momento en que entra en vigor, como una programación; de lo contrario, publicar uno dispararía un run por cada landing del historial del catálogo.</p>
-<h2 id="alertas">Alertas<a class="anchor" href="#alertas" aria-label="link">#</a></h2>
+<h2 id="alerts">Alertas<a class="anchor" href="#alerts" aria-label="link">#</a></h2>
 <div class="code-block" data-code="export BREVIS_SLACK_WEBHOOK=&#x27;https://hooks.slack.com/services/...&#x27;
 export BREVIS_UI_URL=&#x27;https://brevis.example.com&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
 export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code></pre></div>
 <p>Sin el webhook, el proceso avisa al arrancar que los fallos no se reportarán. Una instalación que falla en silencio suele ser descubierta por el cliente, no por el equipo.</p>
 <p><code>BREVIS_UI_URL</code> construye el enlace al run dentro de la alerta; sin él, la alerta dice qué falló pero obliga al lector a buscar el run a mano.</p>
-<h2 id="siguientes-pasos">Siguientes pasos<a class="anchor" href="#siguientes-pasos" aria-label="link">#</a></h2>
+<h2 id="next-steps">Siguientes pasos<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/es/docs/pod-per-step/">Pod por step</a> — dónde se ejecuta realmente cada step</li><li><a href="/es/docs/cli/">CLI</a> — cada flag de <code>scheduler</code> y <code>backfill</code></li></ul>
 
       <nav class="pagers" aria-label="Páginas">
@@ -218,7 +218,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
     <aside class="toc" aria-label="En esta página">
       <p class="toc-t">En esta página</p>
-      <ul><li class="toc-2"><a href="#por-que-separarlos">Por qué separarlos</a></li><li class="toc-2"><a href="#el-proceso">El proceso</a></li><li class="toc-2"><a href="#el-snapshot-de-la-definicion">El snapshot de la definición</a></li><li class="toc-2"><a href="#reintentos">Reintentos</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#iniciado-por-un-landing">Iniciado por un landing</a></li><li class="toc-3"><a href="#la-ventana-y-por-que-diez-landings-son-un-run">La ventana, y por qué diez landings son un run</a></li><li class="toc-3"><a href="#lo-que-no-hara">Lo que no hará</a></li><li class="toc-2"><a href="#alertas">Alertas</a></li><li class="toc-2"><a href="#siguientes-pasos">Siguientes pasos</a></li></ul>
+      <ul><li class="toc-2"><a href="#why-separate">Por qué separarlos</a></li><li class="toc-2"><a href="#the-process">El proceso</a></li><li class="toc-2"><a href="#the-definition-snapshot">El snapshot de la definición</a></li><li class="toc-2"><a href="#retries">Reintentos</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#started-by-a-landing">Iniciado por un landing</a></li><li class="toc-3"><a href="#the-window-and-why-ten-landings-are-one-run">La ventana, y por qué diez landings son un run</a></li><li class="toc-3"><a href="#what-it-will-not-do">Lo que no hará</a></li><li class="toc-2"><a href="#alerts">Alertas</a></li><li class="toc-2"><a href="#next-steps">Siguientes pasos</a></li></ul>
     </aside>
   </main>
 </div>
@@ -238,9 +238,9 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
       <div class="footer-col">
         <h2>proyecto</h2>
         <ul>
-          <li><a href="/es/#ecossistema">Ecosistema</a></li>
+          <li><a href="/es/#ecosystem">Ecosistema</a></li>
           <li><a href="/es/docs/philosophy/">Principios</a></li>
-          <li><a href="/es/docs/introduction/#codigo-abierto-elige-como-participar">Código abierto</a></li>
+          <li><a href="/es/docs/introduction/#open-code-choose-how-to-take-part">Código abierto</a></li>
           <li><a href="/es/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -263,7 +263,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

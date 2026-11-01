@@ -68,7 +68,7 @@ metrics.inc("vendor_rejected_total")   # a counter: it adds up
 
 **这不会开启端口，也不可能开启。** step 在自己的 pod 中运行四十秒就退出了；它打开的端口要么永远不会被抓取，要么只是碰巧被抓取一次。所以这一行输出到 stdout，也就是引擎本来就在读取、用来绘制 pipeline 各阶段的那条管道，由引擎来记录。无需安装，无需运维，标签也来自引擎，因为 step 自己不知道所属 workflow 的 slug。
 
-API 的详细信息见 [Python](/zh/docs/python/#只有你的-pipeline-才知道的指标)。
+API 的详细信息见 [Python](/zh/docs/python/#metrics-only-your-pipeline-knows)。
 
 ## 为其他语言编写客户端
 

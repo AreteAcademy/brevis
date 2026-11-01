@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
       <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/pod-per-step/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/pod-per-step/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/pod-per-step/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/pod-per-step/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/pod-per-step/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/pod-per-step/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/pod-per-step/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/pod-per-step/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/pod-per-step/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/pod-per-step/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/pod-per-step/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>每个 step 一个 pod</h1>
@@ -143,23 +143,23 @@ walks the graph
     follows the log     ◄───────  container stdout
     reads the exit code ◄───────  containerStatuses[0].terminated
     deletes the pod ───────────►  (gone)</code></pre></div>
-<h2 id="这带来了什么变化">这带来了什么变化<a class="anchor" href="#这带来了什么变化" aria-label="link">#</a></h2>
+<h2 id="what-this-changes">这带来了什么变化<a class="anchor" href="#what-this-changes" aria-label="link">#</a></h2>
 <p>单体 worker 迫使镜像包含任何 step 可能需要的一切。实际情况是：</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>单一镜像</th><th>每个 step 一个 pod</th></tr></thead><tbody><tr><td>dbt step</td><td>1.9 GB · 1Gi RAM</td><td>1.9 GB · 1Gi RAM</td></tr><tr><td>与它并排的 Go 抓取器</td><td><strong>1.9 GB · 1Gi</strong></td><td><strong>12 MB · 32Mi</strong></td></tr><tr><td>升级 dbt 版本</td><td>全部重新构建</td><td>该 workflow YAML 中的一行</td></tr><tr><td>内存泄漏的 step</td><td>把 worker 及其邻居一起拖垮</td><td>只有自己死掉</td></tr></tbody></table></div>
 <p>第三行最不显眼，却是日常中代价最高的：只有一个镜像时，在某条 pipeline 中把 dbt 从 1.10 升级到 1.11，就迫使所有 pipeline 一起升级。</p>
-<h2 id="按角色划分的镜像">按角色划分的镜像<a class="anchor" href="#按角色划分的镜像" aria-label="link">#</a></h2>
+<h2 id="images-by-role">按角色划分的镜像<a class="anchor" href="#images-by-role" aria-label="link">#</a></h2>
 <p>镜像按<strong>角色</strong>划分，而不是按项目。镜像中多余的一切，都会被每个运行该 step 的节点拉取：</p>
 <div class="table-wrap"><table><thead><tr><th>角色</th><th>大小</th><th>冷启动</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td><strong>5.8 MB</strong></td><td>0.18 秒</td></tr><tr><td><strong>Python</strong></td><td><strong>118 MB</strong></td><td>0.54 秒</td></tr><tr><td><strong>dbt</strong></td><td><strong>620 MB</strong></td><td>3.3 秒</td></tr></tbody></table></div>
 <p>之前：所有东西共用一个 1.87 GB 的镜像。</p>
 <p>对于 dbt，<code>dbt parse</code> 在构建时运行，<code>target/partial_parse.msgpack</code> 随镜像一起分发，每次调用<strong>每个 pod 少用 2.68 秒</strong>。</p>
-<h2 id="每个-step-在哪里运行">每个 step 在哪里运行<a class="anchor" href="#每个-step-在哪里运行" aria-label="link">#</a></h2>
+<h2 id="where-each-step-runs">每个 step 在哪里运行<a class="anchor" href="#where-each-step-runs" aria-label="link">#</a></h2>
 <p>这个决定在启动时做出一次，取决于 <code>BREVIS_PODS</code> 以及是否存在集群：</p>
 <div class="table-wrap"><table><thead><tr><th><code>BREVIS_PODS</code></th><th>有集群</th><th>无集群</th></tr></thead><tbody><tr><td><code>auto</code>（默认）</td><td>带 <code>image:</code> 的 step 变成 pod</td><td>全部作为本地进程运行，并在日志中给出警告</td></tr><tr><td><code>on</code></td><td>带 <code>image:</code> 的 step 变成 pod</td><td><strong>启动错误</strong></td></tr><tr><td><code>off</code></td><td>全部作为本地进程运行</td><td>全部作为本地进程运行</td></tr></tbody></table></div>
 <p><strong>带 <code>host:</code> 的 step 不经过上述任何一种。</strong> 它在 pod 和进程之前就被检查，然后被发送到一台已经在运行的机器：<code>BREVIS_PODS</code> 对它不适用，它也绝不会回退为本地进程。这是有意为之：<code>image:</code> 会带着警告降级为本地执行，因为容器和进程只是同一条命令的两种包装，而主机不是。主机上有许可证，或者 GPU，或者数据。</p>
 <p><code>auto</code> 是默认值，因为同一个二进制文件在两种环境中都运行：在笔记本电脑上没有挂载 service account，会回退到本地进程；在集群中有，就开始创建 pod。</p>
 <p><code>on</code> 适用于<strong>绝不能</strong>悄悄变成本地执行的部署。在那里，没有集群必须是启动错误。</p>
 <aside class="admon admon-warning"><p class="admon-t">`brevis run` 不创建 pod</p><p><code>run</code> 命令只构建进程执行器。带 <code>image:</code> 的 step 会在实例本身上运行，并会明确说明这一点。保持沉默会让人以为 step 是在声明的镜像上运行的，这种错误只有在结果已经出错之后才会暴露。</p></aside>
-<h2 id="身份与凭据">身份与凭据<a class="anchor" href="#身份与凭据" aria-label="link">#</a></h2>
+<h2 id="identity-and-credentials">身份与凭据<a class="anchor" href="#identity-and-credentials" aria-label="link">#</a></h2>
 <p>pod 以什么身份启动，是<strong>安装</strong>层面的决定，而不是 workflow 层面的：pipeline 不应该能选择自己以哪个 service account 运行。因此它来自环境变量：</p>
 <div class="code-block" data-code="BREVIS_POD_NAMESPACE=data
 BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
@@ -169,16 +169,16 @@ BREVIS_POD_SERVICE_ACCOUNT=<span class="t-k">brevis</span>-runner
 BREVIS_POD_PULL_SECRETS=registry-cred
 BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred,api-tokens</code></pre></div>
 <p>在 pod 模式下，任务环境来自集群的 Secret，而不是 <code>BREVIS_TASK_ENV</code>。</p>
-<h2 id="节点选择器与容忍">节点选择器与容忍<a class="anchor" href="#节点选择器与容忍" aria-label="link">#</a></h2>
+<h2 id="node-selector-and-tolerations">节点选择器与容忍<a class="anchor" href="#node-selector-and-tolerations" aria-label="link">#</a></h2>
 <div class="code-block" data-code="BREVIS_POD_NODE_SELECTOR=&#x27;kubernetes.io/arch=arm64&#x27;
 BREVIS_POD_TOLERATIONS=&#x27;dedicated=data:NoSchedule&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>BREVIS_POD_NODE_SELECTOR='kubernetes.io/arch=arm64'
 BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
 <p>容忍只接受 <code>Equal</code> 运算符：<code>Exists</code> 会容忍带有该键的<strong>任何</strong>污点，对于来自环境变量的决定来说范围太宽。</p>
 <p>格式错误的容忍会被<strong>忽略</strong>，而不是变成启动错误：这会让 pod 停在 <code>Pending</code>，是可见的；而拒绝启动则会连带停止不需要那个节点池的 workflow。</p>
-<h2 id="调试失败">调试失败<a class="anchor" href="#调试失败" aria-label="link">#</a></h2>
+<h2 id="debugging-a-failure">调试失败<a class="anchor" href="#debugging-a-failure" aria-label="link">#</a></h2>
 <div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>保留失败的 pod，以便执行 <code>kubectl logs</code> 和 <code>kubectl describe</code>。在生产环境中请保持关闭：已停止的 pod 会占用集群配额。</p>
-<h2 id="下一步">下一步<a class="anchor" href="#下一步" aria-label="link">#</a></h2>
+<h2 id="next-steps">下一步<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/zh/docs/kubernetes/">Kubernetes</a>：完整的部署</li><li><a href="/zh/docs/configuration/">配置</a>：所有 <code>BREVIS_POD_*</code> 变量</li><li><a href="/zh/docs/observability/">可观测性</a>：两个进程的指标</li></ul>
 
       <nav class="pagers" aria-label="页面">
@@ -193,7 +193,7 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#这带来了什么变化">这带来了什么变化</a></li><li class="toc-2"><a href="#按角色划分的镜像">按角色划分的镜像</a></li><li class="toc-2"><a href="#每个-step-在哪里运行">每个 step 在哪里运行</a></li><li class="toc-2"><a href="#身份与凭据">身份与凭据</a></li><li class="toc-2"><a href="#节点选择器与容忍">节点选择器与容忍</a></li><li class="toc-2"><a href="#调试失败">调试失败</a></li><li class="toc-2"><a href="#下一步">下一步</a></li></ul>
+      <ul><li class="toc-2"><a href="#what-this-changes">这带来了什么变化</a></li><li class="toc-2"><a href="#images-by-role">按角色划分的镜像</a></li><li class="toc-2"><a href="#where-each-step-runs">每个 step 在哪里运行</a></li><li class="toc-2"><a href="#identity-and-credentials">身份与凭据</a></li><li class="toc-2"><a href="#node-selector-and-tolerations">节点选择器与容忍</a></li><li class="toc-2"><a href="#debugging-a-failure">调试失败</a></li><li class="toc-2"><a href="#next-steps">下一步</a></li></ul>
     </aside>
   </main>
 </div>
@@ -213,9 +213,9 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -238,7 +238,7 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

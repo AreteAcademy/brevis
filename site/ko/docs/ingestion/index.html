@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">본문으로 건너뛰기</a>
+<a class="skip-link" href="#content">본문으로 건너뛰기</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="주 내비게이션">
-      <a href="/ko/#ecossistema">에코시스템</a>
+      <a href="/ko/#ecosystem">에코시스템</a>
       <a href="/ko/docs/">문서</a>
       <details class="lang-dd"><summary aria-label="언어: 한국어"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>한국어</span></summary><ul><li><a href="/docs/ingestion/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ingestion/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ingestion/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ingestion/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ingestion/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion/" lang="ko" hreflang="ko" aria-current="true">한국어</a></li><li><a href="/hi/docs/ingestion/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ingestion/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">문서</p>
       <h1>수집</h1>
@@ -145,9 +145,9 @@
   -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/clicks <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
   <span class="t-n">-d</span> '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'</code></pre></div>
 <div class="code-block" data-code="{&quot;accepted&quot;:1,&quot;rejected&quot;:null}"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>{"accepted":1,"rejected":null}</code></pre></div>
-<p>Google Cloud 자격 증명이 없으면 배치는 재시도되다가 dead letter로 갑니다. <a href="#sink가-거부할-때">sink가 거부할 때</a>를 참고하세요.</p>
+<p>Google Cloud 자격 증명이 없으면 배치는 재시도되다가 dead letter로 갑니다. <a href="#when-the-sink-refuses">sink가 거부할 때</a>를 참고하세요.</p>
 <p><code>-slim</code> 이미지에는 <code>auto_table</code>, <code>files</code>, <code>postgres</code> sink만 들어 있습니다. 이 예제의 <code>pubsub</code>과 나머지는 전체 이미지에 있습니다. 포함하지 않은 sink를 쓰는 slim 이미지는 시작 시점에 이유와 함께 거부됩니다.</p>
-<h2 id="파일이-곧-계약입니다">파일이 곧 계약입니다<a class="anchor" href="#파일이-곧-계약입니다" aria-label="link">#</a></h2>
+<h2 id="the-file-is-the-contract">파일이 곧 계약입니다<a class="anchor" href="#the-file-is-the-contract" aria-label="link">#</a></h2>
 <p>hook 외에는 작성할 코드가 없습니다. stream, 경로, 형식, 아이덴티티, 재시도, 목적지, dead letter가 모두 YAML에 있으며, 지킬 수 없는 필드는 모두 거부됩니다.</p>
 <div class="code-block" data-code="name: events_gateway
 
@@ -221,13 +221,13 @@ streams:
       <span class="t-k">type</span>: files
       <span class="t-k">path</span>: /var/dead-letter/</code></pre></div>
 <p><code>format</code>은 선언하며 추측하지 않습니다. 추측은 천 건의 배치가 배열 하나를 담은 한 행이 되는 원인입니다.</p>
-<h2 id="핵심인-ingestion-id">핵심인 <code>ingestion_id</code><a class="anchor" href="#핵심인-ingestion-id" aria-label="link">#</a></h2>
+<h2 id="the-ingestion-id-which-is-the-point">핵심인 <code>ingestion_id</code><a class="anchor" href="#the-ingestion-id-which-is-the-point" aria-label="link">#</a></h2>
 <p>모든 레코드는 <code>ingestion_id</code>와 함께 나갑니다. <code>provider|entity|source_key|record_ts</code>에 대한 <strong>고정된 UUID v5</strong>입니다.</p>
 <p>같은 레코드에 대해 배치 fetcher가 계산하는 id와 <strong>동일한 id</strong>입니다. 게이트웨이가 적재한 행과 <a href="/ko/docs/sdk/">SDK</a> 파이프라인이 적재한 행은 *하나의 행*이며, 둘 사이에 조정 작업이 없습니다.</p>
 <p>실용적인 결과가 두 가지 있습니다.</p>
 <ul><li><strong>재시도된 <code>POST</code>는 같은 레코드입니다.</strong> 클라이언트는 걱정 없이 다시 보낼 수 있으며, <code>merge</code>가 설정된 목적지는 두 번째 행을 쓰지 않고 재시도를 흡수합니다.</li><li><strong>공식은 고정되어 있습니다.</strong> 네 필드가 모두 필수이며, 하나를 빠뜨리면 더 약한 id가 아니라 <em>다른</em> id가 만들어집니다. 파일은 불완전한 구성을 받아들이지 않고 거부합니다.</li></ul>
 <p>수집 도구는 바이트를 매우 잘 옮기지만 레코드가 *무엇인지*에 대해서는 의견이 없습니다. 게이트웨이가 더하는 것이 바로 그 의견입니다.</p>
-<h2 id="요청은-sink를-기다리지-않습니다">요청은 sink를 기다리지 않습니다<a class="anchor" href="#요청은-sink를-기다리지-않습니다" aria-label="link">#</a></h2>
+<h2 id="the-request-never-waits-for-the-sink">요청은 sink를 기다리지 않습니다<a class="anchor" href="#the-request-never-waits-for-the-sink" aria-label="link">#</a></h2>
 <p>디코딩하고, hook을 실행하고, 아이덴티티를 계산하고, 버퍼에 추가한 뒤 반환합니다. <strong>그것이 전부입니다.</strong> 가득 찬 배치는 worker 풀로 가며, 게시, <code>COPY</code>, 재시도, dead letter는 모두 거기서 일어납니다.</p>
 <p>이것은 겉치레가 아닙니다. 이 구조가 생기기 전에는 우연히 배치를 채운 요청이 전달을 인라인으로 실행했습니다. 그래서 <code>flush.records</code>마다 호출자 한 명이 왕복 전체 비용을 치렀고, sink가 내려가 있으면 재시도 윈도우 전체를 치렀습니다. 운이 나빴던 호출자가 누구냐에 따라 모양이 정해지는 p99는 누구도 근거로 삼아 행동할 수 없습니다.</p>
 <div class="code-block" data-code="buffer:
@@ -249,7 +249,7 @@ streams:
   <span class="t-k">queue</span>: 64           <span class="t-c"># full batches that may wait for a worker</span>
   <span class="t-k">max_records</span>: 10000  <span class="t-c"># events held in memory before the gateway says no</span>
   <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># the same ceiling in bytes</span></code></pre></div>
-<h3 id="flush-시계는-배포에-속합니다">flush 시계는 배포에 속합니다<a class="anchor" href="#flush-시계는-배포에-속합니다" aria-label="link">#</a></h3>
+<h3 id="the-flush-clock-belongs-to-the-deployment">flush 시계는 배포에 속합니다<a class="anchor" href="#the-flush-clock-belongs-to-the-deployment" aria-label="link">#</a></h3>
 <p><code>buffer.flush.every</code>는 <strong>모든 레플리카</strong>의 <code>time.AfterFunc</code>입니다. 그래서 테이블이 받는 load job 수는 트래픽이 아니라 레플리카 수의 함수입니다.</p>
 <div class="code-block" data-code="jobs / day / table  =  replicas × 86400 / every"><div class="code-head"><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>jobs / day / table  =  replicas × 86400 / every</code></pre></div>
 <p>BigQuery에서는 테이블당 하루 1,500건 기준으로, <strong>60초 주기의 레플리카 두 개만으로도 이미 늘릴 수 없는 쿼터의 192%</strong>입니다. HPA가 아무것도 하기 전의 이야기입니다. 그리고 방향이 직관과 반대입니다. 게이트웨이는 HTTP 동시성을 위해 스케일 아웃하지만 sink는 집중을 원합니다.</p>
@@ -269,13 +269,13 @@ streams:
 <p><strong><code>outcome="unreachable"</code>은 알림을 걸 가치가 있는 값입니다.</strong> 백엔드에 질의할 수 없어 클레임이 fail-open으로 처리되었다는 뜻입니다. 조정이 꺼져 있고 load job이 레플리카 수만큼 다시 늘어나고 있으며, 모든 flush가 여전히 flush처럼 보이므로 조용히 진행됩니다.</p>
 <p>그리고 클레임은 공정성이 아니라 <strong>배타성</strong>을 제공합니다. 먼저 요청하는 쪽이 이깁니다. 실제 레플리카 두 개 실행에서는 균등한 분배가 아니라 4/1이 측정되었습니다. 운이 나쁜 쪽이 굶지 않게 하는 것이 <code>max_age</code>입니다.</p>
 <p><code>claim: true</code>와 <code>metastore: memory</code>를 함께 쓰면 게이트웨이는 <strong>부팅 시 한 번</strong> 경고합니다. 모든 레플리카가 자기 클레임에서 이기므로 모든 것이 맞아 보이지만 아무것도 조정되지 않기 때문입니다.</p>
-<h3 id="every는-목표이고-max-age는-약속입니다"><code>every</code>는 목표이고, <code>max_age</code>는 약속입니다<a class="anchor" href="#every는-목표이고-max-age는-약속입니다" aria-label="link">#</a></h3>
+<h3 id="every-is-a-target-max-age-is-a-promise"><code>every</code>는 목표이고, <code>max_age</code>는 약속입니다<a class="anchor" href="#every-is-a-target-max-age-is-a-promise" aria-label="link">#</a></h3>
 <p>위의 세 트리거는 배치가 언제 나가려고 <strong>시도하는지</strong>를 결정합니다. <code>max_age</code>는 배치가 언제 <strong>무조건</strong> 나가는지를 결정합니다.</p>
 <p>현재는 이 차이가 의미 없습니다. 아무것도 목표를 미루지 않기 때문입니다. flush 시계가 더 이상 프로세스별이 아니게 되는 순간부터 중요해집니다. <code>buffer.flush.every</code>는 각 레플리카의 <code>time.AfterFunc</code>이므로, 테이블이 받는 load job 수는 트래픽이 아니라 <strong>레플리카 수</strong>의 함수입니다. <code>replicas × 86400 / every</code>입니다. BigQuery에서는 테이블당 하루 1,500건 기준으로, <strong>60초 주기의 레플리카 두 개만으로도 이미 쿼터의 192%</strong>입니다.</p>
 <p>레플리카가 다른 레플리카에게 윈도우를 양보할 수 있게 되면 계속 채우게 되고, <code>max_age</code>가 순서를 기다리며 데이터를 무기한 쥐고 있는 일을 막습니다.</p>
 <p>또한 드레인도 정해 줍니다. <code>SIGTERM</code> 시점에 버퍼가 <strong>쥐고 있을</strong> 수 있는 양이 이것으로 제한되며, 게이트웨이가 부팅 시 출력하는 <code>terminationGracePeriodSeconds</code>가 이 값에서 도출됩니다.</p>
 <p>목표값보다 <strong>낮은</strong> 상한은 로드 시점에 거부됩니다. 목표값이 절대 적용되지 않는다는 뜻이 되기 때문입니다.</p>
-<h3 id="크기-트리거가-있는-이유">크기 트리거가 있는 이유<a class="anchor" href="#크기-트리거가-있는-이유" aria-label="link">#</a></h3>
+<h3 id="why-there-is-a-size-trigger">크기 트리거가 있는 이유<a class="anchor" href="#why-there-is-a-size-trigger" aria-label="link">#</a></h3>
 <p>나머지 둘은 <strong>개수</strong>이며, 개수로는 2 KB짜리 이벤트 500건과 2 MB짜리 이벤트 500건을 구별할 수 없습니다. 파일에는 같은 숫자인데 1 MB와 1 GB입니다. <code>max_records: 10000</code>도 같은 사각지대를 가집니다. 20 MB인지 20 GB인지 YAML의 어떤 것도 말해 주지 않았습니다.</p>
 <p>id 대신 문서 전체를 보내기 시작한 프로듀서는 pod를 죽이는데, 이 트리거가 생기기 전에는 <strong>그 한계를 표현할 수 있는 필드가 하나도 없었습니다.</strong></p>
 <p>크기는 <strong>도착한</strong> 것을 기준으로 측정합니다. 메모리에서 이벤트가 차지하는 크기(<code>map[string]any</code>는 JSON의 몇 배입니다)가 아니며, 크기를 부풀리는 hook 이후의 크기도 아닙니다. 근사치이며 올바른 근사치입니다. 디코딩 시 비용이 없고, 페이로드와 함께 움직이며, 막으려는 대상이 열 배로 커진 레코드이기 때문입니다.</p>
@@ -287,7 +287,7 @@ streams:
 <p>테이블의 flush 한 번은 그 테이블의 load job 한 건이므로, BigQuery가 허용하는 1,500건 중 1,200건에서 알림을 걸 시리즈가 이것입니다. 무조건 제공되는 쪽은 부팅 시의 한 줄로, 이벤트가 도착하기 전에 <code>flush.every</code>가 테이블당 하루에 얼마를 소모하는지 알려 줍니다.</p>
 <p><strong>한도가 있으며, 던져 놓고 잊는 방식이 아닙니다.</strong> 배치마다 고루틴을 만들면 sink 장애가 메모리 무한 증가로 이어집니다. 큐와 버퍼가 모두 가득 차면, 둘 곳이 없는 이벤트에 <code>202</code>를 주는 대신 <strong><code>Retry-After</code>가 포함된 <code>503</code></strong>으로 응답합니다. 수락했는데 전달되지 않는 이벤트는 이 서비스가 존재하며 막으려는 바로 그 결과입니다.</p>
 <p>그리고 이 <code>503</code>은 거의 어떤 서비스도 주장할 수 없는 방식으로 <strong>재시도해도 안전합니다</strong>. <code>ingestion_id</code>는 이벤트 자체의 고정된 함수이므로, 같은 본문을 다시 보내면 <em>같은 레코드</em> 입니다.</p>
-<h2 id="연결이-어느-레플리카가-부하를-받을지-결정합니다">연결이 어느 레플리카가 부하를 받을지 결정합니다<a class="anchor" href="#연결이-어느-레플리카가-부하를-받을지-결정합니다" aria-label="link">#</a></h2>
+<h2 id="a-connection-decides-which-replica-gets-the-load">연결이 어느 레플리카가 부하를 받을지 결정합니다<a class="anchor" href="#a-connection-decides-which-replica-gets-the-load" aria-label="link">#</a></h2>
 <p>Kubernetes <code>ClusterIP</code> Service 뒤에서 kube-proxy는 요청별이 아니라 <strong>TCP 연결당 한 번</strong> 백엔드를 고릅니다. 대부분의 클라이언트는 연결을 유지하고 재사용하므로, 연결이 몇 개 없는 프로듀서는 레플리카가 몇 개 실행 중이든 모든 것을 한두 레플리카에 보냅니다. HPA가 추가한 레플리카는 아무도 연결하지 않으므로 아무것도 받지 못합니다.</p>
 <div class="code-block" data-code="listen:
   idle_timeout: 90s     # closes a connection nobody came back to
@@ -297,7 +297,7 @@ streams:
 <p><strong><code>max_conn_age</code>는 기본적으로 꺼져 있으며</strong> 의도된 동작입니다. 클라이언트가 연결 하나를 얼마나 오래 유지할 수 있는지는 정책이고, 연결당 수명마다 클러스터 내부 핸드셰이크 한 번을 치르는 대가로 부하가 분산됩니다. 요청 자체는 항상 처리되며, 헤더가 응답에 붙을 뿐 아무것도 재시도되지 않고 배치도 손실되지 않습니다.</p>
 <p><strong><code>idle_timeout</code>에는 기본값이 있고 끌 수 없습니다.</strong> 없이 서비스하면 버려진 클라이언트마다 프로세스가 재시작될 때까지 파일 디스크립터 하나가 남습니다. 길게 두고 싶다면 길게 설정하세요. 그러면 누군가 선택한 숫자가 됩니다.</p>
 <p>둘은 독립적입니다. 연결은 먼저 만나는 한도에 걸리고, 연결이 수명에 도달하는 것은 사용되는 경우뿐입니다. 수명이 재분배하려는 대상이 바로 오래 유지되는 프로듀서입니다.</p>
-<h2 id="sink가-거부할-때">sink가 거부할 때<a class="anchor" href="#sink가-거부할-때" aria-label="link">#</a></h2>
+<h2 id="when-the-sink-refuses">sink가 거부할 때<a class="anchor" href="#when-the-sink-refuses" aria-label="link">#</a></h2>
 <p>배치는 재시도되고(기본적으로 약 7초에 걸쳐 4회, 지터와 함께 두 배씩 증가), 그다음에 <strong>dead letter</strong>로 가며 모든 레코드에 이유가 붙습니다.</p>
 <div class="code-block" data-code="{
   &quot;event_id&quot;: &quot;dl-9&quot;,
@@ -314,7 +314,7 @@ streams:
 }</code></pre></div>
 <p>이유는 로그에만 남지 않고 <strong>레코드에</strong> 실려 이동합니다. 나중에 그 파일을 발견하는 사람이 가진 것은 로그가 아니라 이벤트이며, *이것이 왜 여기 있는가*가 첫 번째 질문이기 때문입니다.</p>
 <p><strong><code>dead_letter</code>가 없는 stream은 로드 시점에 거부됩니다.</strong> 기본값을 침묵으로 두면 결정이 아무도 내리지 않는 곳에 놓이게 되고, 로그 한 줄뿐인 거부된 배치는 조용히 데이터를 잃는 것이기 때문입니다.</p>
-<h2 id="hook은-컴파일된-go입니다">hook은 컴파일된 Go입니다<a class="anchor" href="#hook은-컴파일된-go입니다" aria-label="link">#</a></h2>
+<h2 id="the-hook-is-go-compiled-in">hook은 컴파일된 Go입니다<a class="anchor" href="#the-hook-is-go-compiled-in" aria-label="link">#</a></h2>
 <div class="code-block" data-code="hooks := gateway.NewHooks()
 hooks.MustRegister(&quot;enrich_clicks&quot;, enrichClicks)
 gateway.Main(hooks, gateway.WithSinks(sinks))
@@ -335,7 +335,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 <p>YAML은 hook의 이름을 지정할 뿐 hook을 담고 있지 않습니다. 선택하기 전에 측정했습니다. Go 함수는 <strong>93 ns/op</strong>이고 Starlark는 959, yaegi는 1,281이며, 바이너리에 추가되는 것은 없습니다. 그리고 <code>plugin.Open</code>은 선택지가 아닙니다. 여기서 모든 산출물을 빌드하는 방식인 <code>CGO_ENABLED=0</code>에서는 <code>plugin: not implemented</code>를 반환하기 때문입니다.</p>
 <p>누군가 읽을 곳에 밝혀 두는 비용은 이렇습니다. <strong>hook을 추가하는 것은 구성 변경이 아니라 재빌드와 배포입니다.</strong> hook을 바이너리를 배포하는 사람들이 작성하는 동안에는 맞는 트레이드오프이고, 고객이 릴리스 없이 hook을 바꿔야 하는 날에는 틀린 트레이드오프입니다.</p>
 <p>hook의 오류는 <em>그</em> 이벤트를 dead letter 경로로 보내며, 옆의 배치를 실패시키지 않습니다. 패닉도 마찬가지입니다. 이벤트별로 복구되는데, 잘못된 레코드 하나가 다른 모든 stream을 서비스하는 프로세스를 죽여서는 안 되기 때문입니다.</p>
-<h2 id="이벤트가-너무-클-때">이벤트가 너무 클 때<a class="anchor" href="#이벤트가-너무-클-때" aria-label="link">#</a></h2>
+<h2 id="when-an-event-is-too-big">이벤트가 너무 클 때<a class="anchor" href="#when-an-event-is-too-big" aria-label="link">#</a></h2>
 <div class="code-block" data-code="oversize:
   larger_than: 256KiB
   archive: {type: files, path: gs://acme-oversize/clicks/}
@@ -359,7 +359,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 }</code></pre></div>
 <p>이것은 <strong>Claim Check</strong> 패턴이며 단순한 <code>413</code>보다 낫습니다. <code>413</code>은 이벤트를 잃게 하고, 너무 큰 페이로드는 대개 누군가 가진 가장 흥미로운 페이로드이기 때문입니다. 문서 전체가 첨부된 요청이며, 디버깅할 가치가 있는 경우입니다.</p>
 <p><code>larger_than</code>은 hook 이후의 <strong>이벤트</strong> 하나를 측정합니다. <code>listen.max_body</code>는 다른 것입니다. <strong>요청</strong> 전체를 제한하며, 바이트 하나를 파싱하기 전에 <code>413</code>으로 거부합니다.</p>
-<h2 id="무엇을-집계하나">무엇을 집계하나<a class="anchor" href="#무엇을-집계하나" aria-label="link">#</a></h2>
+<h2 id="what-it-counts">무엇을 집계하나<a class="anchor" href="#what-it-counts" aria-label="link">#</a></h2>
 <p><strong>전용 포트</strong>에서 Prometheus 시리즈 열한 개를 제공합니다. 수집(ingest) 포트가 아니며, 이 규칙은 엔진에서보다 여기서 더 중요합니다. 수집 포트는 구조상 공개되어 있고 클라이언트가 <code>POST</code>하는 곳이므로, 거기에 <code>/metrics</code>를 두면 경로를 찾아낸 누구에게나 모든 stream 이름, 경로, 목적지를 공개하게 됩니다. 둘에 같은 주소를 지정하면 로드 시점에 거부됩니다.</p>
 <div class="code-block" data-code="brevis_gateway_events_received_total{stream,format}     counter
 brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
@@ -393,20 +393,20 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 <p><code>process_start_time_seconds</code>에는 <code>brevis_</code> 접두사가 붙지 <strong>않으며</strong> 의도된 동작입니다. 컬렉터가 정확히 그 이름을 찾기 때문입니다. 이 값은 프로세스가 시작된 시각을 알려 주며, 이 값이 없으면 시작 시각 보정을 수행하는 컬렉터(Google Managed Prometheus가 기반으로 하는 OpenTelemetry Prometheus receiver)는 모든 누적 시리즈를 <strong>첫 번째 스크레이프</strong>에 고정하고 그 스크레이프의 값을 기준선으로 소모합니다. 결과적으로 모든 카운터가 낮게 읽히며, 증분은 맞고 합계는 틀립니다.</p>
 <p>마지막 세 개는 첫 번째 장애가 나기 전까지는 아무도 찾지 않는 것들입니다. <code>saturated_total</code>은 클라이언트가 물러나라는 응답을 받았다는 사실을 알려 주는 유일한 숫자이고, <code>buffer.max_records</code>에 대한 <code>buffer_records</code>는 그것을 <strong>예측</strong>하는 유일한 숫자입니다.</p>
 <p><code>reason</code>은 닫힌 집합이며 오류 텍스트가 아닙니다. 오류 문자열에는 테이블 이름, 컬럼, 때로는 행이 들어 있고, 잘못된 클라이언트 하나가 요청마다 새 시리즈를 만들어 낼 것이기 때문입니다. 텍스트는 dead letter의 레코드에 남습니다.</p>
-<h2 id="200이-아니라-202"><code>200</code>이 아니라 <code>202</code><a class="anchor" href="#200이-아니라-202" aria-label="link">#</a></h2>
+<h2 id="202-not-200"><code>200</code>이 아니라 <code>202</code><a class="anchor" href="#202-not-200" aria-label="link">#</a></h2>
 <p>게이트웨이는 이벤트를 <strong>수락</strong>했습니다. 구현된 유일한 티어인 <code>durability: memory</code>에서는 그것이 정직하게 주장할 수 있는 전부입니다. <code>200</code>을 받을 자격이 있는 티어는 이미 기록해 둔 티어이며, 그런 티어는 존재하지 않습니다.</p>
 <p><code>disk</code>는 메모리로 받아들여 처리하는 대신 <strong>이름을 명시하며</strong> 거부됩니다. <code>disk</code>라고 쓴 사람은 이벤트가 충돌에서 살아남는다고 믿는데, 전달하지 못하면서 동의하는 것은 그 필드가 막으려는 바로 그 실패이기 때문입니다.</p>
 <p>종료 시점에 버퍼에 있는 것은 버려지지 않고 전달됩니다. 가득 찬 배치가 가는 경로와 같은 경로로, 재시도되고 묻힙니다.</p>
-<h2 id="하지-않는-것">하지 않는 것<a class="anchor" href="#하지-않는-것" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-do">하지 않는 것<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
 <ul><li><strong>Console에 나타나지 않습니다.</strong> 엔진의 인터페이스와 데이터베이스를 공유하지 않으므로 <code>/ingestion</code> 페이지가 없으며, <code>auto_table</code>이 수행하는 스키마 진화도 거기에 나타나지 않습니다. 다음 단계이며 아직 작성되지 않았습니다.</li><li><strong><code>table</code>이 있는 stream은 스키마를 진화시키지 않습니다.</strong> 테이블을 지정하면 계약은 테이블의 것입니다. 테이블에 없는 필드는 누군가 리뷰한 테이블을 변경하는 대신, 해결 방법이 담긴 메시지와 함께 거부됩니다. 스스로 컬럼을 늘리는 것은 <code>auto_table</code>이 하는 일이며, 이것이 둘의 차이입니다.</li><li><strong><code>table</code>이 있는 stream은 테이블도 인덱스도 만들지 않습니다.</strong> 테이블을 만드는 서비스는 오타를 아무도 읽지 않는 두 번째 테이블로 만듭니다. 그래서 생성은 <code>auto_table</code>에서만 일어나며, 거기서는 <code>naming</code>이 존재할 수 있는 이름을 제한하고 <code>listen.auth</code>가 필수입니다.</li><li><strong>게시된 이미지에는 hook이 없으며</strong>, 컴파일된 hook 설계에서는 이것이 정직한 산출물입니다. <code>hook:</code>을 선언하지 않는 stream만 처리합니다.</li></ul>
-<h2 id="하나의-라우트-n개의-테이블">하나의 라우트, N개의 테이블<a class="anchor" href="#하나의-라우트-n개의-테이블" aria-label="link">#</a></h2>
+<h2 id="one-route-n-tables">하나의 라우트, N개의 테이블<a class="anchor" href="#one-route-n-tables" aria-label="link">#</a></h2>
 <p><code>auto_table</code>은 각 이벤트를 <strong>envelope</strong>가 지정하는 테이블로 라우팅하고, 테이블이 없으면 만들고, 새 필드가 나타나면 컬럼을 늘립니다.</p>
 <div class="code-block" data-code="{&quot;table_name&quot;: &quot;app_orders&quot;, &quot;operation&quot;: &quot;INSERT&quot;, &quot;unique_key&quot;: &quot;id&quot;,
  &quot;data&quot;: {&quot;id&quot;: &quot;A-1&quot;, &quot;total&quot;: 150, &quot;customer&quot;: {&quot;id&quot;: 7, &quot;uf&quot;: &quot;SP&quot;}}}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>{"table_name": "app_orders", "operation": "INSERT", "unique_key": "id",
  "data": {"id": "A-<span class="t-n">1</span>", "total": <span class="t-n">150</span>, "customer": {"id": <span class="t-n">7</span>, "uf": "SP"}}}</code></pre></div>
 <p>제어 필드는 최상위에, 레코드는 <code>data</code> 안에 있고, 모든 테이블에 <code>brevis_*</code> 추적 컬럼 일곱 개가 붙습니다. 라우트 하나, 테이블 N개, 선언은 없습니다.</p>
-<p><a href="/ko/docs/ingestion-sinks/#하나의-라우트-n개의-테이블-선언은-없음">수집 sink</a>에 있습니다.</p>
-<h2 id="다음으로-이동">다음으로 이동<a class="anchor" href="#다음으로-이동" aria-label="link">#</a></h2>
+<p><a href="/ko/docs/ingestion-sinks/#one-route-n-tables-nothing-declared">수집 sink</a>에 있습니다.</p>
+<h2 id="where-to-go-next">다음으로 이동<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>원하는 것</th><th>이동할 곳</th></tr></thead><tbody><tr><td>목적지와 각각이 쓰는 방식</td><td><a href="/ko/docs/ingestion-sinks/">수집 sink</a></td></tr><tr><td>반대편에서 본 <code>ingestion_id</code></td><td><a href="/ko/docs/sdk/">Go SDK</a></td></tr><tr><td>대시보드와 알림</td><td><a href="/ko/docs/observability/">관측성</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="페이지">
@@ -421,7 +421,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 
     <aside class="toc" aria-label="이 페이지에서">
       <p class="toc-t">이 페이지에서</p>
-      <ul><li class="toc-2"><a href="#파일이-곧-계약입니다">파일이 곧 계약입니다</a></li><li class="toc-2"><a href="#핵심인-ingestion-id">핵심인 ingestion_id</a></li><li class="toc-2"><a href="#요청은-sink를-기다리지-않습니다">요청은 sink를 기다리지 않습니다</a></li><li class="toc-3"><a href="#flush-시계는-배포에-속합니다">flush 시계는 배포에 속합니다</a></li><li class="toc-3"><a href="#every는-목표이고-max-age는-약속입니다">every는 목표이고, max_age는 약속입니다</a></li><li class="toc-3"><a href="#크기-트리거가-있는-이유">크기 트리거가 있는 이유</a></li><li class="toc-2"><a href="#연결이-어느-레플리카가-부하를-받을지-결정합니다">연결이 어느 레플리카가 부하를 받을지 결정합니다</a></li><li class="toc-2"><a href="#sink가-거부할-때">sink가 거부할 때</a></li><li class="toc-2"><a href="#hook은-컴파일된-go입니다">hook은 컴파일된 Go입니다</a></li><li class="toc-2"><a href="#이벤트가-너무-클-때">이벤트가 너무 클 때</a></li><li class="toc-2"><a href="#무엇을-집계하나">무엇을 집계하나</a></li><li class="toc-2"><a href="#200이-아니라-202">200이 아니라 202</a></li><li class="toc-2"><a href="#하지-않는-것">하지 않는 것</a></li><li class="toc-2"><a href="#하나의-라우트-n개의-테이블">하나의 라우트, N개의 테이블</a></li><li class="toc-2"><a href="#다음으로-이동">다음으로 이동</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file-is-the-contract">파일이 곧 계약입니다</a></li><li class="toc-2"><a href="#the-ingestion-id-which-is-the-point">핵심인 ingestion_id</a></li><li class="toc-2"><a href="#the-request-never-waits-for-the-sink">요청은 sink를 기다리지 않습니다</a></li><li class="toc-3"><a href="#the-flush-clock-belongs-to-the-deployment">flush 시계는 배포에 속합니다</a></li><li class="toc-3"><a href="#every-is-a-target-max-age-is-a-promise">every는 목표이고, max_age는 약속입니다</a></li><li class="toc-3"><a href="#why-there-is-a-size-trigger">크기 트리거가 있는 이유</a></li><li class="toc-2"><a href="#a-connection-decides-which-replica-gets-the-load">연결이 어느 레플리카가 부하를 받을지 결정합니다</a></li><li class="toc-2"><a href="#when-the-sink-refuses">sink가 거부할 때</a></li><li class="toc-2"><a href="#the-hook-is-go-compiled-in">hook은 컴파일된 Go입니다</a></li><li class="toc-2"><a href="#when-an-event-is-too-big">이벤트가 너무 클 때</a></li><li class="toc-2"><a href="#what-it-counts">무엇을 집계하나</a></li><li class="toc-2"><a href="#202-not-200">200이 아니라 202</a></li><li class="toc-2"><a href="#what-it-does-not-do">하지 않는 것</a></li><li class="toc-2"><a href="#one-route-n-tables">하나의 라우트, N개의 테이블</a></li><li class="toc-2"><a href="#where-to-go-next">다음으로 이동</a></li></ul>
     </aside>
   </main>
 </div>
@@ -441,9 +441,9 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
       <div class="footer-col">
         <h2>프로젝트</h2>
         <ul>
-          <li><a href="/ko/#ecossistema">에코시스템</a></li>
+          <li><a href="/ko/#ecosystem">에코시스템</a></li>
           <li><a href="/ko/docs/philosophy/">원칙</a></li>
-          <li><a href="/ko/docs/introduction/#열린-코드-참여-방식은-직접-선택하세요">오픈 소스</a></li>
+          <li><a href="/ko/docs/introduction/#open-code-choose-how-to-take-part">오픈 소스</a></li>
           <li><a href="/ko/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -466,7 +466,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Aller au contenu</a>
+<a class="skip-link" href="#content">Aller au contenu</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigation principale">
-      <a href="/fr/#ecossistema">Écosystème</a>
+      <a href="/fr/#ecosystem">Écosystème</a>
       <a href="/fr/docs/">Documentation</a>
       <details class="lang-dd"><summary aria-label="Langue: Français"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Français</span></summary><ul><li><a href="/docs/python/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/python/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/python/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/python/" lang="fr" hreflang="fr" aria-current="true">Français</a></li><li><a href="/de/docs/python/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/python/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/python/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/python/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/python/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/python/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/python/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentation</p>
       <h1>Python</h1>
@@ -140,7 +140,7 @@ context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
 <p><strong>Aucune dépendance, jamais.</strong> Elle lit une variable d'environnement, écrit un fichier et affiche une ligne sur stdout. Nécessite Python 3.9+.</p>
 <p>Ce n'est pas un portage du SDK Go : pas de drivers, pas de pagination, pas d'ids d'ingestion. Elle existe pour qu'une équipe puisse utiliser pandas, Polars ou dbt tout en obtenant ce pour quoi un orchestrateur existe.</p>
-<h2 id="lire-le-contexte">Lire le contexte<a class="anchor" href="#lire-le-contexte" aria-label="link">#</a></h2>
+<h2 id="reading-context">Lire le contexte<a class="anchor" href="#reading-context" aria-label="link">#</a></h2>
 <p>Une clé est toujours qualifiée par le step qui l'a publiée :</p>
 <div class="code-block" data-code="context.get(&quot;extract.bucket&quot;)            # the value
 context.get(&quot;extract.nope&quot;, default=0)   # absent is not an error
@@ -151,7 +151,7 @@ context.of("extract")                    <span class="t-c"># everything that ste
 context.published()                      <span class="t-c"># what THIS step has published so far</span></code></pre></div>
 <p><code>context.get("bucket")</code> sans step est <strong>refusé</strong>, en nommant les steps qui l'ont publiée. Les steps sont isolés — <code>extract</code> et <code>transform</code> peuvent tous deux publier <code>bucket</code> sans que l'un le perde — et une clé nue jette cela à la poubelle dès que deux d'entre eux le font. Chercher et en choisir un est une priorité par accident : cela marche jusqu'à ce que, silencieusement, cela ne marche plus.</p>
 <p>Lire un step dont celui-ci ne dépend pas est une erreur, et le message indique le correctif.</p>
-<h2 id="ecrire">Écrire<a class="anchor" href="#ecrire" aria-label="link">#</a></h2>
+<h2 id="writing">Écrire<a class="anchor" href="#writing" aria-label="link">#</a></h2>
 <div class="code-block" data-code="context.set(name=&quot;Daniel&quot;)
 context.set(label=&quot;Name&quot;)
 # both survive: {&quot;name&quot;: &quot;Daniel&quot;, &quot;label&quot;: &quot;Name&quot;}"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>context.set(name="Daniel")
@@ -159,7 +159,7 @@ context.set(label="Name")
 <span class="t-c"># both survive: {"name": "Daniel", "label": "Name"}</span></code></pre></div>
 <p>Les appels <strong>fusionnent</strong>. La même clé deux fois garde la dernière écriture ; une clé différente laisse la première intacte. <strong>Il n'y a pas d'argument de step</strong> — le seul espace de noms qu'un processus puisse écrire est le sien, ce qui rend l'isolation structurelle plutôt qu'une règle.</p>
 <p>Rien n'atteint le disque avant la sortie du processus : un step qui meurt brutalement ne publie donc rien. C'est correct : la sortie d'un step planté décrivait un travail qui ne s'est pas terminé.</p>
-<h2 id="lhorloge-que-ce-run-doit-lire">L'horloge que ce run doit lire<a class="anchor" href="#lhorloge-que-ce-run-doit-lire" aria-label="link">#</a></h2>
+<h2 id="the-clock-this-run-should-read">L'horloge que ce run doit lire<a class="anchor" href="#the-clock-this-run-should-read" aria-label="link">#</a></h2>
 <p>Chaque run porte aussi des <strong>paramètres automatiques</strong> : des valeurs que le moteur calcule lui-même. Personne ne les déclare, chaque run les a, et ils répondent à la question qu'un pipeline résoudrait autrement avec <code>datetime.now()</code>.</p>
 <div class="code-block" data-code="from datetime import timedelta
 from brevis import run
@@ -176,10 +176,10 @@ df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>run.now()</code></td><td>l'horloge : le slot, ou le démarrage du run</td></tr><tr><td><code>run.window()</code></td><td><code>(start, end)</code>, fin exclue — ou <code>None</code></td></tr><tr><td><code>run.auto()</code></td><td>les paramètres automatiques, ci-dessous</td></tr><tr><td><code>run.context()</code></td><td>id, tentative, déclencheur, params et auto</td></tr><tr><td><code>run.params()</code> · <code>run.param(name)</code></td><td>les paramètres déclarés dans le workflow</td></tr><tr><td><code>run.map_index()</code> · <code>run.map_value()</code></td><td>l'instance, sous <code>for_each:</code></td></tr></tbody></table></div>
 <p><code>window()</code> vient du <strong>cron</strong>, pas de l'historique : un backfill d'un slot de mars produit la fenêtre qu'avait mars. Demander <code>[start, end)</code> ne chevauche jamais et ne laisse jamais de trou, quel que soit le retard du run et le nombre de ses nouvelles tentatives.</p>
 <p>Elle renvoie <code>None</code> plutôt qu'une paire de dates nulles quand le workflow n'a pas de planification — une requête depuis l'epoch sélectionne tout, et cet échec ne doit pas être silencieux. Le <code>or</code> ci-dessus est tout le repli.</p>
-<h3 id="les-paramètres-automatiques">Les paramètres automatiques<a class="anchor" href="#les-paramètres-automatiques" aria-label="link">#</a></h3>
+<h3 id="the-auto-parameters">Les paramètres automatiques<a class="anchor" href="#the-auto-parameters" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th>champ</th><th></th></tr></thead><tbody><tr><td><code>date</code></td><td><code>"2026-09-08"</code> — la partition, le dossier, le <code>WHERE</code></td></tr><tr><td><code>adjusted_at</code></td><td>l'horloge à lire à la place de <code>now()</code></td></tr><tr><td><code>scheduled_at</code></td><td>le slot demandé par le cron ; <code>None</code> sur un run manuel</td></tr><tr><td><code>started_at</code></td><td>quand <strong>cette tentative</strong> a commencé ; une nouvelle tentative le déplace</td></tr><tr><td><code>delay_seconds</code></td><td>de combien cette tentative était en retard ; jamais négatif</td></tr><tr><td><code>interval_start</code> · <code>interval_end</code></td><td>la fenêtre, fin exclue</td></tr><tr><td><code>previous_error</code></td><td>le run précédent n'a pas réussi</td></tr><tr><td><code>previous_success_at</code></td><td>le slot du dernier run qui <strong>a</strong> réussi — ce qui rend <code>previous_error</code> exploitable</td></tr></tbody></table></div>
 <p>Exécutez le script à la main et <code>run.now()</code> <strong>est</strong> l'horloge murale et <code>window()</code> est <code>None</code>, donc il n'y a aucune branche à écrire pour le développement local.</p>
-<h2 id="une-instance-dun-step-mappe">Une instance d'un step mappé<a class="anchor" href="#une-instance-dun-step-mappe" aria-label="link">#</a></h2>
+<h2 id="one-instance-of-a-mapped-step">Une instance d'un step mappé<a class="anchor" href="#one-instance-of-a-mapped-step" aria-label="link">#</a></h2>
 <p>Sous <a href="/fr/docs/workflows/"><code>for_each:</code></a>, le moteur exécute un processus par élément et dit à chacun lequel il a reçu :</p>
 <div class="code-block" data-code="partition = run.map_value()
 if partition is None:
@@ -193,7 +193,7 @@ load(f"/data/{partition}.csv")</code></pre></div>
 <p>Une chaîne JSON arrive <strong>sans ses guillemets</strong> — <code>for_each</code> sur <code>["2026-01"]</code> transmet au step <code>2026-01</code>, pas <code>"2026-01"</code>. Tout le reste — un objet, un nombre, une liste — arrive sous forme de son JSON, donc <code>json.loads(run.map_value())</code>.</p>
 <p>Les deux valent <code>None</code> sur un step qui n'est pas mappé. <code>None</code>, et non <code>-1</code> ou <code>""</code> : une valeur sentinelle est un nombre sur lequel quelqu'un finit par faire de l'arithmétique, et une chaîne vide est indiscernable d'un élément qui <em>est</em> la chaîne vide.</p>
 <p>Un step mappé ne publie <strong>aucun contexte</strong> en aval — quatre instances ne peuvent pas partager une clé. Un step qui doit transmettre quelque chose écrit un fichier, ou un step après lui compte ce qui a atterri.</p>
-<h2 id="des-metriques-que-seul-votre-pipeline-connaît">Des métriques que seul votre pipeline connaît<a class="anchor" href="#des-metriques-que-seul-votre-pipeline-connaît" aria-label="link">#</a></h2>
+<h2 id="metrics-only-your-pipeline-knows">Des métriques que seul votre pipeline connaît<a class="anchor" href="#metrics-only-your-pipeline-knows" aria-label="link">#</a></h2>
 <p>Le moteur mesure déjà ce qu'il peut voir : durée, tentatives, profondeur de la file. Ce qu'il n'a aucun moyen de savoir, c'est combien de lignes ont atterri, combien le fournisseur en a rejeté, ou combien d'octets ont été écartés. Le step le sait, et la bibliothèque le transporte.</p>
 <div class="code-block" data-code="from brevis import metrics
 
@@ -209,22 +209,22 @@ metrics.inc("bytes_discarded_total", 4096)</code></pre></div>
 brevis_step_vendor_rejected_total{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 5"><div class="code-head"><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
 brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>metrics.set(name, value)</code></td><td>une gauge. Après la sortie du step, la valeur reste jusqu'à ce que le run suivant en écrive une autre</td></tr><tr><td><code>metrics.inc(name, by=1)</code></td><td>un compteur. S'additionne entre steps et entre runs</td></tr></tbody></table></div>
-<h3 id="pourquoi-cela-nouvre-pas-de-port">Pourquoi cela n'ouvre pas de port<a class="anchor" href="#pourquoi-cela-nouvre-pas-de-port" aria-label="link">#</a></h3>
+<h3 id="why-this-does-not-open-a-port">Pourquoi cela n'ouvre pas de port<a class="anchor" href="#why-this-does-not-open-a-port" aria-label="link">#</a></h3>
 <p>Parce qu'<strong>un step n'est pas scrutable</strong>. <code>:9090</code> appartient au scheduler et à l'API — des processus de longue durée avec une adresse stable, scrutés toutes les quinze à soixante secondes. Un step démarre dans son propre pod, s'exécute pendant quarante secondes et s'arrête : un port qu'il ouvrirait ne serait jamais scruté, ou une fois par chance.</p>
 <p>Les trois réponses connues sont un Pushgateway (un composant à opérer, et des séries qui restent tant que personne ne les supprime), un collecteur OTLP (un composant <strong>et</strong> une dépendance dans cette bibliothèque, qui n'en a aucune et n'en aura pas), ou laisser l'<strong>orchestrateur</strong> les porter. Brevis lit déjà la sortie standard de chaque step à la recherche de lignes <code>@brevis:</code> — c'est ainsi que les phases du SDK atteignent le graphe — et il a déjà un compteur et un endpoint Prometheus.</p>
 <p>La bibliothèque écrit donc <strong>une ligne sur stdout</strong> et le moteur fait le reste. La métrique arrive étiquetée avec le workflow et le step gratuitement, parce que le moteur sait ce qu'il exécutait ; via un Pushgateway, cette bibliothèque devrait s'étiqueter elle-même, et se tromperait.</p>
 <p>L'écriture est un <code>print(flush=True)</code>, parce que le moteur lit ce canal <strong>en direct</strong>. Une ligne mise en tampon arrive à la sortie du processus — ce qui, pour un step qui dure une heure, a une heure de retard, et pour un step tué, n'arrive jamais.</p>
-<h3 id="ce-quune-metrique-refuse">Ce qu'une métrique refuse<a class="anchor" href="#ce-quune-metrique-refuse" aria-label="link">#</a></h3>
+<h3 id="what-a-metric-refuses">Ce qu'une métrique refuse<a class="anchor" href="#what-a-metric-refuses" aria-label="link">#</a></h3>
 <p><strong>Un nom invalide est refusé, bruyamment.</strong> Prometheus accepte les lettres, les chiffres et le tiret bas, et le premier caractère ne peut pas être un chiffre. Un nom qu'il refuse ne produit pas une métrique cassée — il produit une exposition qu'il <strong>refuse de parser</strong>, et le <strong>scrape entier</strong> est perdu, avec toutes les autres métriques. Donc <code>rows-loaded</code> lève <code>MetricError</code> ici, là où l'erreur a été commise, plutôt que d'arriver sous un nom que personne n'a écrit.</p>
 <div class="table-wrap"><table><thead><tr><th>refusé</th><th>parce que</th></tr></thead><tbody><tr><td><code>rows-loaded</code>, <code>rows loaded</code>, <code>2rows</code></td><td>Prometheus ne le parsera pas, et le scrape entier part avec</td></tr><tr><td><code>metrics.set("ok", True)</code></td><td><code>bool</code> est un <code>int</code> en Python, et rapporter <code>1</code> est un nombre dont le sens dépend de le savoir. Rapportez le compte ou la durée, pas l'état</td></tr><tr><td><code>metrics.inc("x", -1)</code></td><td>un compteur ne fait qu'augmenter. Chaque <code>rate()</code> dessus le suppose, et la casse apparaît dans un graphique des semaines plus tard</td></tr></tbody></table></div>
 <p>Exécutez le script à la main et la ligne va quand même sur stdout, où elle se lit pour ce qu'elle est. Rien ne la collecte et rien n'échoue — comme <code>context.set()</code> sur un portable.</p>
-<h2 id="ce-quelle-refuse">Ce qu'elle refuse<a class="anchor" href="#ce-quelle-refuse" aria-label="link">#</a></h2>
+<h2 id="what-it-refuses">Ce qu'elle refuse<a class="anchor" href="#what-it-refuses" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th>parce que</th></tr></thead><tbody><tr><td>plus de 4096 octets</td><td>la plateforme <strong>tronque</strong> au lieu de refuser, donc un objet trop gros arrive coupé en deux et se lit en aval comme « n'a rien publié »</td></tr><tr><td>une valeur qui n'est pas du JSON</td><td>un <code>datetime</code> devient <code>"..."</code> ou disparaît selon qui sérialise. L'erreur nomme la clé et suggère <code>.isoformat()</code></td></tr><tr><td>une clé qui n'est pas une chaîne</td><td><code>{1: "x"}</code> revient sous la forme <code>{"1": "x"}</code> et la recherche rate</td></tr></tbody></table></div>
 <p>Le plafond est le nombre de la plateforme, pas le nôtre. Toute fonctionnalité de « contexte entre tâches » échoue de la même façon — quelqu'un met des <strong>données</strong> là où seul du <strong>contexte</strong> tient. Quatre kilo-octets contiennent un watermark, un compteur ou une liste de partitions. Publiez une référence et laissez les lignes où elles sont.</p>
 <aside class="admon admon-danger"><p class="admon-t">Ce n&#x27;est pas un coffre-fort de secrets</p><p>Tout ce qui est publié est visible de quiconque peut voir le run — c'est dans le statut du pod et dans l'historique du run. Publiez un chemin, pas une URL signée.</p></aside>
-<h2 id="lexecuter-a-la-main">L'exécuter à la main<a class="anchor" href="#lexecuter-a-la-main" aria-label="link">#</a></h2>
+<h2 id="running-it-by-hand">L'exécuter à la main<a class="anchor" href="#running-it-by-hand" aria-label="link">#</a></h2>
 <p>En dehors de Brevis, il n'y a pas d'entrée et rien ne lit la sortie. <code>get()</code> renvoie la valeur par défaut, <code>set()</code> accepte et jette, et la bibliothèque le dit une fois au niveau INFO. Elle <strong>ne lève pas d'erreur</strong> : un script qui ne peut pas être exécuté à la main ne peut pas être développé. La validation s'exécute quand même, donc une valeur qui fonctionne sur votre portable fonctionne en production.</p>
-<h2 id="tester-votre-step">Tester votre step<a class="anchor" href="#tester-votre-step" aria-label="link">#</a></h2>
+<h2 id="testing-your-step">Tester votre step<a class="anchor" href="#testing-your-step" aria-label="link">#</a></h2>
 <p>Tout le contrat tient en deux variables d'environnement, il n'y a donc rien à mocker :</p>
 <div class="code-block" data-code="def test_my_step(monkeypatch, tmp_path):
     monkeypatch.setenv(&quot;BREVIS_INPUT&quot;, &#x27;{&quot;extract&quot;: {&quot;rows&quot;: 42}}&#x27;)
@@ -237,7 +237,7 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
 <p>La bibliothèque est versionnée de façon autonome, séparément du moteur et du SDK Go.</p>
 <aside class="admon admon-warning"><p class="admon-t">N&#x27;utilisez pas `0.2.0`</p><p>Elle a été publiée en wheel seule sur PyPI. <code>0.2.1</code> est le même code, complet.</p></aside>
 <p><code>brevis.run</code> a besoin d'un moteur en <strong><code>v0.9.0</code> ou plus récent</strong> pour avoir quelque chose à lire ; sur un moteur plus ancien, chaque champ est vide et <code>run.now()</code> est l'horloge murale — ce qu'elle fait aussi en dehors du moteur.</p>
-<h2 id="etapes-suivantes">Étapes suivantes<a class="anchor" href="#etapes-suivantes" aria-label="link">#</a></h2>
+<h2 id="next-steps">Étapes suivantes<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/fr/docs/libraries/">Bibliothèques clientes</a> — le contrat et les autres langages</li><li><a href="/fr/docs/context/">Contexte entre steps</a> — le concept</li><li><a href="/fr/docs/parameters/">Paramètres</a> — les paramètres déclarés</li></ul>
 
       <nav class="pagers" aria-label="Pages">
@@ -252,7 +252,7 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
 
     <aside class="toc" aria-label="Sur cette page">
       <p class="toc-t">Sur cette page</p>
-      <ul><li class="toc-2"><a href="#lire-le-contexte">Lire le contexte</a></li><li class="toc-2"><a href="#ecrire">Écrire</a></li><li class="toc-2"><a href="#lhorloge-que-ce-run-doit-lire">L&#x27;horloge que ce run doit lire</a></li><li class="toc-3"><a href="#les-paramètres-automatiques">Les paramètres automatiques</a></li><li class="toc-2"><a href="#une-instance-dun-step-mappe">Une instance d&#x27;un step mappé</a></li><li class="toc-2"><a href="#des-metriques-que-seul-votre-pipeline-connaît">Des métriques que seul votre pipeline connaît</a></li><li class="toc-3"><a href="#pourquoi-cela-nouvre-pas-de-port">Pourquoi cela n&#x27;ouvre pas de port</a></li><li class="toc-3"><a href="#ce-quune-metrique-refuse">Ce qu&#x27;une métrique refuse</a></li><li class="toc-2"><a href="#ce-quelle-refuse">Ce qu&#x27;elle refuse</a></li><li class="toc-2"><a href="#lexecuter-a-la-main">L&#x27;exécuter à la main</a></li><li class="toc-2"><a href="#tester-votre-step">Tester votre step</a></li><li class="toc-2"><a href="#versions">Versions</a></li><li class="toc-2"><a href="#etapes-suivantes">Étapes suivantes</a></li></ul>
+      <ul><li class="toc-2"><a href="#reading-context">Lire le contexte</a></li><li class="toc-2"><a href="#writing">Écrire</a></li><li class="toc-2"><a href="#the-clock-this-run-should-read">L&#x27;horloge que ce run doit lire</a></li><li class="toc-3"><a href="#the-auto-parameters">Les paramètres automatiques</a></li><li class="toc-2"><a href="#one-instance-of-a-mapped-step">Une instance d&#x27;un step mappé</a></li><li class="toc-2"><a href="#metrics-only-your-pipeline-knows">Des métriques que seul votre pipeline connaît</a></li><li class="toc-3"><a href="#why-this-does-not-open-a-port">Pourquoi cela n&#x27;ouvre pas de port</a></li><li class="toc-3"><a href="#what-a-metric-refuses">Ce qu&#x27;une métrique refuse</a></li><li class="toc-2"><a href="#what-it-refuses">Ce qu&#x27;elle refuse</a></li><li class="toc-2"><a href="#running-it-by-hand">L&#x27;exécuter à la main</a></li><li class="toc-2"><a href="#testing-your-step">Tester votre step</a></li><li class="toc-2"><a href="#versions">Versions</a></li><li class="toc-2"><a href="#next-steps">Étapes suivantes</a></li></ul>
     </aside>
   </main>
 </div>
@@ -272,9 +272,9 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
       <div class="footer-col">
         <h2>projet</h2>
         <ul>
-          <li><a href="/fr/#ecossistema">Écosystème</a></li>
+          <li><a href="/fr/#ecosystem">Écosystème</a></li>
           <li><a href="/fr/docs/philosophy/">Principes</a></li>
-          <li><a href="/fr/docs/introduction/#code-ouvert-choisissez-comment-participer">Open source</a></li>
+          <li><a href="/fr/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/fr/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -297,7 +297,7 @@ brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

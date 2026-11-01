@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+<a class="skip-link" href="#content">Lewati ke konten</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigasi utama">
-      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/#ecosystem">Ekosistem</a>
       <a href="/id/docs/">Dokumentasi</a>
       <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/scheduler-and-queue/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/scheduler-and-queue/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/scheduler-and-queue/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/scheduler-and-queue/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/scheduler-and-queue/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/scheduler-and-queue/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/scheduler-and-queue/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/scheduler-and-queue/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/scheduler-and-queue/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/scheduler-and-queue/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/scheduler-and-queue/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentasi</p>
       <h1>Scheduler dan antrean</h1>
@@ -142,20 +142,20 @@ creates the Run  ─────────────►  (pending in the dat
                                    walks the graph
                                    executes each step
                                    records state and log</code></pre></div>
-<h2 id="mengapa-dipisah">Mengapa dipisah<a class="anchor" href="#mengapa-dipisah" aria-label="link">#</a></h2>
+<h2 id="why-separate">Mengapa dipisah<a class="anchor" href="#why-separate" aria-label="link">#</a></h2>
 <p>Satu loop yang sekaligus menjadwalkan dan mengeksekusi punya satu sifat buruk: ketika eksekusi macet, penjadwalan ikut berhenti. Slot untuk dua belas jam berikutnya begitu saja tidak ada, dan tidak ada yang menyadarinya sampai seseorang mencari data yang tidak pernah datang.</p>
 <p>Dengan keduanya terpisah:</p>
 <ul><li><strong>scheduler</strong> boleh mati dan antrean terus menguras apa yang sudah dibuat;</li><li><strong>antrean</strong> boleh mati dan slot terus dimaterialisasi, untuk dieksekusi ketika ia kembali;</li><li><strong>pemrosesan ulang tidak bergantung pada jam</strong> — <code>backfill</code> membuat run masa lalu lewat jalur yang sama dengan yang dipakai cron.</li></ul>
-<h2 id="prosesnya">Prosesnya<a class="anchor" href="#prosesnya" aria-label="link">#</a></h2>
+<h2 id="the-process">Prosesnya<a class="anchor" href="#the-process" aria-label="link">#</a></h2>
 <p>Kedua loop berada dalam command yang sama:</p>
 <div class="code-block" data-code="brevis scheduler --interval 5s --concurrency 4 --max-pods 10"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--interval</span> 5s <span class="t-n">--concurrency</span> 4 <span class="t-n">--max-pods</span> 10</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>flag</th><th>default</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td><code>10s</code></td><td>selang antar siklus scheduler</td></tr><tr><td><code>--concurrency</code></td><td><code>5</code></td><td><strong>run</strong> simultan</td></tr><tr><td><code>--max-pods</code></td><td><code>5</code></td><td>total <strong>step</strong> simultan</td></tr></tbody></table></div>
 <p><code>--concurrency</code> dan <code>--max-pods</code> menghitung hal yang berbeda, dengan sengaja: lima run dengan masing-masing tiga step paralel akan menjadi lima belas pod apabila satu-satunya batas ada pada run.</p>
 <aside class="admon admon-note"><p class="admon-t">`serve` tidak mematerialisasi jadwal</p><p>Proses API menjalankan scheduler yang sama, tetapi <strong>tanpa loop</strong> — ia ada hanya untuk melayani pemicu manual dari antarmuka, sehingga aturan "scheduler membuat run" tetap punya satu pemilik. Agar jadwal terpicu, sebuah <code>brevis scheduler</code> harus berjalan berdampingan.</p></aside>
-<h2 id="snapshot-definisi">Snapshot definisi<a class="anchor" href="#snapshot-definisi" aria-label="link">#</a></h2>
+<h2 id="the-definition-snapshot">Snapshot definisi<a class="anchor" href="#the-definition-snapshot" aria-label="link">#</a></h2>
 <p>Ketika scheduler membuat sebuah run, ia menyimpan <strong>definisi workflow di dalam run itu</strong>. Eksekusi membaca snapshot tersebut, bukan YAML di disk.</p>
 <p>Alasannya konkret: di antara pemicu dan eksekusi, seseorang mungkin sudah mengedit file dan men-deploy-nya. Tanpa snapshot, run yang dibuat pukul 05:00 dengan satu definisi akan dieksekusi pukul 05:02 dengan definisi lain — dan log tidak punya cara untuk menjelaskan perbedaannya.</p>
-<h2 id="retry">Retry<a class="anchor" href="#retry" aria-label="link">#</a></h2>
+<h2 id="retries">Retry<a class="anchor" href="#retries" aria-label="link">#</a></h2>
 <p>Run yang gagal dicoba <strong>tiga kali</strong>, dan jedanya <strong>berlipat dua</strong>: dengan nilai default, percobaan jatuh pada <strong>0 d, 30 d, dan 1 mnt 30 d</strong>.</p>
 <div class="code-block" data-code="brevis scheduler --max-attempts 3 --retry-backoff 30s --retry-backoff-max 1h"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--max-attempts</span> 3 <span class="t-n">--retry-backoff</span> 30s <span class="t-n">--retry-backoff-max</span> 1h</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>flag</th><th>default</th><th></th></tr></thead><tbody><tr><td><code>--max-attempts</code></td><td><code>3</code></td><td>percobaan per run, termasuk yang pertama</td></tr><tr><td><code>--retry-backoff</code></td><td><code>30s</code></td><td>jeda pertama, dilipatduakan pada setiap percobaan sesudahnya</td></tr><tr><td><code>--retry-backoff-max</code></td><td><code>1h</code></td><td>batas atas jeda itu</td></tr></tbody></table></div>
@@ -170,11 +170,11 @@ creates the Run  ─────────────►  (pending in the dat
 <div class="code-block" data-code="brevis backfill daily --from 2026-01-01 --to 2026-01-31
 brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31
 <span class="t-k">brevis</span> backfill daily <span class="t-n">--from</span> 2026-01-01 <span class="t-n">--to</span> 2026-01-31 <span class="t-n">--param</span> load_full=true</code></pre></div>
-<div class="code-block" data-code="  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los</code></pre></div>
+<div class="code-block" data-code="  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them</code></pre></div>
 <p>Ia <strong>memasukkan ke antrean, tidak mengeksekusi.</strong> Eksekusi adalah tugas <code>scheduler</code> — pemisahan yang sama lagi. <code>--to</code> mencakup seluruh hari.</p>
-<h2 id="dimulai-oleh-sebuah-landing">Dimulai oleh sebuah landing<a class="anchor" href="#dimulai-oleh-sebuah-landing" aria-label="link">#</a></h2>
+<h2 id="started-by-a-landing">Dimulai oleh sebuah landing<a class="anchor" href="#started-by-a-landing" aria-label="link">#</a></h2>
 <p>Sebuah workflow dapat berjalan karena data tiba, bukan karena jam yang memutuskannya:</p>
 <div class="code-block" data-code="trigger:
   on_landed:
@@ -187,23 +187,23 @@ brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true">
   <span class="t-k">debounce</span>: 5m</code></pre></div>
 <p>Setiap step sudah mendeklarasikan apa yang ditulisnya, lewat pipe yang membawa fase-fasenya — itulah yang mengisi <code>/data</code>. Sebuah workflow berlangganan pada salah satu nama itu dan mulai ketika sesuatu mendarat di sana.</p>
 <p><code>/*</code> di akhir berlangganan ke seluruh dataset. Ini ada untuk <code>auto_table</code>, yang membuat satu tabel per rute: dataset adalah satu-satunya yang bisa disebut untuk tabel yang tidak dideklarasikan siapa pun. Ia cocok dengan <code>bronze/orders</code> dan tidak dengan <code>bronze_raw/orders</code>.</p>
-<h3 id="jendelanya-dan-mengapa-sepuluh-landing-menjadi-satu-run">Jendelanya, dan mengapa sepuluh landing menjadi satu run<a class="anchor" href="#jendelanya-dan-mengapa-sepuluh-landing-menjadi-satu-run" aria-label="link">#</a></h3>
+<h3 id="the-window-and-why-ten-landings-are-one-run">Jendelanya, dan mengapa sepuluh landing menjadi satu run<a class="anchor" href="#the-window-and-why-ten-landings-are-one-run" aria-label="link">#</a></h3>
 <p><code>debounce</code> meleburkan lonjakan. Sepuluh tabel yang mendarat dalam lima menit memulai <strong>satu</strong> run, bukan sepuluh, dan run itu menyebutkan yang mana saja:</p>
 <div class="code-block" data-code="BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items</code></pre></div>
 <p>Daftar persisnya juga ada di <code>BREVIS_AUTO_PARAMS</code> sebagai JSON, yang sebaiknya dibaca ketika sebuah target bisa mengandung koma.</p>
 <p>Jendela dipotong dari <strong>kapan engine mencatat landing</strong>, bukan dari kapan step mengatakan hal itu terjadi. Step yang melaporkan saat query-nya dimulai melaporkan sesuatu yang benar sekaligus lama, dan satu jam yang melenceng akan memecah lonjakan menjadi dua run.</p>
 <p>Hilangkan <code>debounce</code> dan setiap landing memulai sebuah run.</p>
-<h3 id="yang-tidak-akan-dilakukannya">Yang tidak akan dilakukannya<a class="anchor" href="#yang-tidak-akan-dilakukannya" aria-label="link">#</a></h3>
+<h3 id="what-it-will-not-do">Yang tidak akan dilakukannya<a class="anchor" href="#what-it-will-not-do" aria-label="link">#</a></h3>
 <p><strong>Workflow tidak pernah dimulai oleh tulisannya sendiri.</strong> Engine membuang landing yang penulisnya adalah workflow yang berlangganan itu sendiri dan mencatat alasannya di log — tanpa itu, workflow yang membaca dan menulis tabel yang sama akan memicu dirinya sendiri selamanya.</p>
 <p>Penolakan terjadi <strong>saat terpicu</strong> dan bukan saat file diperiksa, dan itu adalah keterbatasan, bukan kelalaian: <code>brevis validate</code> membaca file dan tidak ada file yang mendeklarasikan apa yang ditulis sebuah step. Target warehouse ditentukan oleh koneksi, bukan oleh YAML. Jadi <code>validate</code> meloloskan workflow yang akan ditolak saat runtime, setiap kali, dengan alasan di log.</p>
 <p><strong>Siklus pertama tidak memulai apa pun.</strong> Trigger mulai menghitung sejak saat ia aktif, seperti jadwal — kalau tidak, mempublikasikan satu trigger akan memicu run untuk setiap landing dalam riwayat katalog.</p>
-<h2 id="alert">Alert<a class="anchor" href="#alert" aria-label="link">#</a></h2>
+<h2 id="alerts">Alert<a class="anchor" href="#alerts" aria-label="link">#</a></h2>
 <div class="code-block" data-code="export BREVIS_SLACK_WEBHOOK=&#x27;https://hooks.slack.com/services/...&#x27;
 export BREVIS_UI_URL=&#x27;https://brevis.example.com&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
 export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code></pre></div>
 <p>Tanpa webhook, proses memberi peringatan saat boot bahwa kegagalan tidak akan dilaporkan. Instalasi yang gagal secara diam-diam cenderung ditemukan oleh pelanggan, bukan oleh tim.</p>
 <p><code>BREVIS_UI_URL</code> membangun tautan run di dalam alert — tanpanya, alert menyebutkan apa yang gagal tetapi membuat pembaca mencari run itu sendiri secara manual.</p>
-<h2 id="langkah-berikutnya">Langkah berikutnya<a class="anchor" href="#langkah-berikutnya" aria-label="link">#</a></h2>
+<h2 id="next-steps">Langkah berikutnya<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/id/docs/pod-per-step/">Pod per step</a> — di mana setiap step benar-benar berjalan</li><li><a href="/id/docs/cli/">CLI</a> — setiap flag <code>scheduler</code> dan <code>backfill</code></li></ul>
 
       <nav class="pagers" aria-label="Halaman">
@@ -218,7 +218,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#mengapa-dipisah">Mengapa dipisah</a></li><li class="toc-2"><a href="#prosesnya">Prosesnya</a></li><li class="toc-2"><a href="#snapshot-definisi">Snapshot definisi</a></li><li class="toc-2"><a href="#retry">Retry</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#dimulai-oleh-sebuah-landing">Dimulai oleh sebuah landing</a></li><li class="toc-3"><a href="#jendelanya-dan-mengapa-sepuluh-landing-menjadi-satu-run">Jendelanya, dan mengapa sepuluh landing menjadi satu run</a></li><li class="toc-3"><a href="#yang-tidak-akan-dilakukannya">Yang tidak akan dilakukannya</a></li><li class="toc-2"><a href="#alert">Alert</a></li><li class="toc-2"><a href="#langkah-berikutnya">Langkah berikutnya</a></li></ul>
+      <ul><li class="toc-2"><a href="#why-separate">Mengapa dipisah</a></li><li class="toc-2"><a href="#the-process">Prosesnya</a></li><li class="toc-2"><a href="#the-definition-snapshot">Snapshot definisi</a></li><li class="toc-2"><a href="#retries">Retry</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#started-by-a-landing">Dimulai oleh sebuah landing</a></li><li class="toc-3"><a href="#the-window-and-why-ten-landings-are-one-run">Jendelanya, dan mengapa sepuluh landing menjadi satu run</a></li><li class="toc-3"><a href="#what-it-will-not-do">Yang tidak akan dilakukannya</a></li><li class="toc-2"><a href="#alerts">Alert</a></li><li class="toc-2"><a href="#next-steps">Langkah berikutnya</a></li></ul>
     </aside>
   </main>
 </div>
@@ -238,9 +238,9 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
       <div class="footer-col">
         <h2>proyek</h2>
         <ul>
-          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/#ecosystem">Ekosistem</a></li>
           <li><a href="/id/docs/philosophy/">Prinsip</a></li>
-          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/id/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -263,7 +263,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

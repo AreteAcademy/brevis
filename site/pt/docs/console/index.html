@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+<a class="skip-link" href="#content">Pular para o conteúdo</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegação principal">
-      <a href="/pt/#ecossistema">Ecossistema</a>
+      <a href="/pt/#ecosystem">Ecossistema</a>
       <a href="/pt/docs/">Documentação</a>
       <details class="lang-dd"><summary aria-label="Idioma: Português"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Português</span></summary><ul><li><a href="/docs/console/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/console/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/console/" lang="pt-BR" hreflang="pt-BR" aria-current="true">Português</a></li><li><a href="/fr/docs/console/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/console/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/console/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/console/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/console/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/console/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/console/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/console/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentação</p>
       <h1>Console</h1>
@@ -127,25 +127,25 @@
       <p>A interface vem no binário — não é um serviço à parte para instalar e manter. Taxa de sucesso, duração média, a fila, o histórico de tentativas e a agenda das próximas execuções.</p>
 <p>O console sobe com <code>brevis serve</code>, na mesma porta da API HTTP (<code>BREVIS_HTTP_ADDR</code>, <code>:8080</code> por padrão). No <a href="/pt/docs/quickstart/">Quickstart</a> ele abre em <code>localhost:8080</code>.</p>
 <p>As telas abaixo são recriadas em SVG a partir do console, com dados de exemplo — nunca capturas: o console de verdade opera dados de clientes em produção.</p>
-<h2 id="visao-geral">Visão geral<a class="anchor" href="#visao-geral" aria-label="link">#</a></h2>
+<h2 id="overview">Visão geral<a class="anchor" href="#overview" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console.svg" width="1000" height="600" alt="O painel do Brevis na tela de visão geral: taxa de sucesso de 94,2% em 344 execuções, gráfico de execuções por hora com a duração média, anel de distribuição, o que está em progresso e as próximas execuções agendadas." loading="lazy"></figure>
 <p>Visão geral com métricas e gráficos. Taxa de sucesso, duração média, o que está em progresso e as próximas execuções agendadas, numa tela.</p>
 <h2 id="workflows">Workflows<a class="anchor" href="#workflows" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflows.svg" width="1000" height="600" alt="A lista de workflows: busca, filtros por estado e por tag, e doze workflows com o botão de pausa, a expressão cron, a próxima e a última execução, tags e um botão para disparar cada um." loading="lazy"></figure>
 <p>Lista de workflows com busca, filtros, pausa e disparo. Cada linha traz o cron, a próxima e a última execução e as tags.</p>
-<h2 id="um-workflow">Um workflow<a class="anchor" href="#um-workflow" aria-label="link">#</a></h2>
+<h2 id="one-workflow">Um workflow<a class="anchor" href="#one-workflow" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-workflow.svg" width="1000" height="600" alt="A página de um workflow: os quatro passos, as três dependências, o cron e as tags; um formulário para executar com parâmetros; 96,1% de sucesso em 176 execuções; o DAG com o estado de cada passo; e um calendário de um ano em que cada quadrado é um dia, com a cor do pior resultado daquele dia." loading="lazy"></figure>
 <p>Os passos e as dependências, um formulário para executar com parâmetros, o DAG com o estado de cada passo e um calendário de um ano, em que cada dia tem a cor do pior resultado dele.</p>
-<h2 id="execucoes">Execuções<a class="anchor" href="#execucoes" aria-label="link">#</a></h2>
+<h2 id="runs">Execuções<a class="anchor" href="#runs" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-runs.svg" width="1000" height="600" alt="O histórico de execuções: 1.284 runs com o estado, o workflow, o disparo, o slot a que pertencem, a duração e quando foram criados. Alguns mostram em que tentativa tiveram sucesso." loading="lazy"></figure>
 <p>Histórico de execuções, com a tentativa de cada uma. Estado, workflow, disparo, o slot a que a execução pertence, duração e quando foi criada.</p>
-<h2 id="uma-execucao">Uma execução<a class="anchor" href="#uma-execucao" aria-label="link">#</a></h2>
+<h2 id="one-run">Uma execução<a class="anchor" href="#one-run" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-run.svg" width="1000" height="600" alt="Uma execução concluída: o estado, o disparo e o slot; o grafo com o comando, a imagem e a duração de cada passo; os nove auto params que o engine calcula para toda execução — o relógio a ler em vez de now(), a data da partição, o atraso da tentativa e a janela que ela cobre; e a saída de cada passo." loading="lazy"></figure>
 <p>A DAG de um run ao vivo, e os auto params que o engine calculou para ele. O grafo com o comando, a imagem e a duração de cada passo, e a saída de cada um.</p>
-<h2 id="projetos">Projetos<a class="anchor" href="#projetos" aria-label="link">#</a></h2>
+<h2 id="projects">Projetos<a class="anchor" href="#projects" aria-label="link">#</a></h2>
 <figure class="doc-figure doc-figure-wide"><img src="/assets/console-projects.svg" width="1000" height="600" alt="Dois projetos, analytics e platform, cada um dando namespace aos seus workflows — os dois podem ter um daily_ingest sem colidir." loading="lazy"></figure>
 <p>Projetos, para dois times não colidirem no mesmo nome. Cada projeto dá namespace aos seus workflows: dois podem ter um <code>daily_ingest</code>.</p>
-<h2 id="vem-no-binario">Vem no binário<a class="anchor" href="#vem-no-binario" aria-label="link">#</a></h2>
+<h2 id="it-ships-in-the-binary">Vem no binário<a class="anchor" href="#it-ships-in-the-binary" aria-label="link">#</a></h2>
 <p>Fontes e bundles servidos do binário — funciona sem internet.</p>
 
       <nav class="pagers" aria-label="Páginas">
@@ -160,7 +160,7 @@
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#visao-geral">Visão geral</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#um-workflow">Um workflow</a></li><li class="toc-2"><a href="#execucoes">Execuções</a></li><li class="toc-2"><a href="#uma-execucao">Uma execução</a></li><li class="toc-2"><a href="#projetos">Projetos</a></li><li class="toc-2"><a href="#vem-no-binario">Vem no binário</a></li></ul>
+      <ul><li class="toc-2"><a href="#overview">Visão geral</a></li><li class="toc-2"><a href="#workflows">Workflows</a></li><li class="toc-2"><a href="#one-workflow">Um workflow</a></li><li class="toc-2"><a href="#runs">Execuções</a></li><li class="toc-2"><a href="#one-run">Uma execução</a></li><li class="toc-2"><a href="#projects">Projetos</a></li><li class="toc-2"><a href="#it-ships-in-the-binary">Vem no binário</a></li></ul>
     </aside>
   </main>
 </div>
@@ -180,9 +180,9 @@
       <div class="footer-col">
         <h2>projeto</h2>
         <ul>
-          <li><a href="/pt/#ecossistema">Ecossistema</a></li>
+          <li><a href="/pt/#ecosystem">Ecossistema</a></li>
           <li><a href="/pt/docs/philosophy/">Princípios</a></li>
-          <li><a href="/pt/docs/introduction/#codigo-aberto-escolha-como-participar">Open source</a></li>
+          <li><a href="/pt/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/pt/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -205,7 +205,7 @@
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

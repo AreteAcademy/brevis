@@ -91,7 +91,7 @@ même canal que le moteur lit déjà pour dessiner les phases d'un pipeline — 
 moteur l'enregistre. Rien à installer, rien à opérer, et les étiquettes sont celles
 du moteur parce qu'un step ne peut pas connaître le slug de son propre workflow.
 
-Les détails de l'API sont dans [Python](/docs/python/#des-metriques-que-seul-votre-pipeline-connaît).
+Les détails de l'API sont dans [Python](/docs/python/#metrics-only-your-pipeline-knows).
 
 ## Écrire un client pour un autre langage
 

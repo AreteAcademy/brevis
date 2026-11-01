@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+<a class="skip-link" href="#content">Lewati ke konten</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigasi utama">
-      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/#ecosystem">Ekosistem</a>
       <a href="/id/docs/">Dokumentasi</a>
       <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/ingestion/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ingestion/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ingestion/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ingestion/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/ingestion/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ingestion/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ingestion/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentasi</p>
       <h1>Ingestion</h1>
@@ -145,9 +145,9 @@
   -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/clicks <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
   <span class="t-n">-d</span> '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'</code></pre></div>
 <div class="code-block" data-code="{&quot;accepted&quot;:1,&quot;rejected&quot;:null}"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>{"accepted":1,"rejected":null}</code></pre></div>
-<p>Tanpa kredensial Google Cloud, batch di-retry dan masuk ke dead letter — lihat <a href="#ketika-sink-menolak">Ketika sink menolak</a>.</p>
+<p>Tanpa kredensial Google Cloud, batch di-retry dan masuk ke dead letter — lihat <a href="#when-the-sink-refuses">Ketika sink menolak</a>.</p>
 <p>Image <code>-slim</code> hanya membawa sink <code>auto_table</code>, <code>files</code>, dan <code>postgres</code>; <code>pubsub</code> pada contoh ini dan sink lainnya ada di image penuh. Image slim dengan sink yang tidak dibawanya ditolak saat start, dengan alasannya.</p>
-<h2 id="file-adalah-kontraknya">File adalah kontraknya<a class="anchor" href="#file-adalah-kontraknya" aria-label="link">#</a></h2>
+<h2 id="the-file-is-the-contract">File adalah kontraknya<a class="anchor" href="#the-file-is-the-contract" aria-label="link">#</a></h2>
 <p>Tidak ada kode yang perlu ditulis kecuali hook. Stream, path, format, identitas, retry, tujuan, dan dead letter — semuanya di YAML, dan setiap field ditolak bila tidak dapat dipenuhi.</p>
 <div class="code-block" data-code="name: events_gateway
 
@@ -221,13 +221,13 @@ streams:
       <span class="t-k">type</span>: files
       <span class="t-k">path</span>: /var/dead-letter/</code></pre></div>
 <p><code>format</code> dideklarasikan dan tidak pernah ditebak: menebak adalah cara batch seribu menjadi satu baris yang berisi sebuah array.</p>
-<h2 id="ingestion-id-yang-merupakan-intinya"><code>ingestion_id</code>, yang merupakan intinya<a class="anchor" href="#ingestion-id-yang-merupakan-intinya" aria-label="link">#</a></h2>
+<h2 id="the-ingestion-id-which-is-the-point"><code>ingestion_id</code>, yang merupakan intinya<a class="anchor" href="#the-ingestion-id-which-is-the-point" aria-label="link">#</a></h2>
 <p>Setiap record keluar dengan <code>ingestion_id</code>: <strong>UUID v5 yang dibekukan</strong> atas <code>provider|entity|source_key|record_ts</code>.</p>
 <p>Ia adalah <strong>id yang sama</strong> yang dihitung fetcher batch untuk record yang sama. Baris yang didaratkan gateway dan baris yang didaratkan pipeline <a href="/id/docs/sdk/">SDK</a> adalah <em>satu baris</em>, tanpa rekonsiliasi di antara keduanya.</p>
 <p>Dua konsekuensi praktis:</p>
 <ul><li><strong><code>POST</code> yang di-retry adalah record yang sama.</strong> Klien boleh mengirim lagi tanpa takut; tujuan dengan <code>merge</code> menyerap retry itu alih-alih menulis baris kedua.</li><li><strong>Rumusnya dibekukan.</strong> Keempat field wajib, dan menghilangkan salah satunya menghasilkan id yang <em>berbeda</em> alih-alih yang lebih lemah. File menolak konfigurasi yang tidak lengkap alih-alih menerimanya.</li></ul>
 <p>Tool ingestion memindahkan byte dengan sangat baik dan tidak punya pendapat tentang apa <em>itu</em> sebuah record. Pendapat itulah yang ditambahkan gateway.</p>
-<h2 id="request-tidak-pernah-menunggu-sink">Request tidak pernah menunggu sink<a class="anchor" href="#request-tidak-pernah-menunggu-sink" aria-label="link">#</a></h2>
+<h2 id="the-request-never-waits-for-the-sink">Request tidak pernah menunggu sink<a class="anchor" href="#the-request-never-waits-for-the-sink" aria-label="link">#</a></h2>
 <p>Ia mendekode, menjalankan hook, menghitung identitas, menambahkan ke buffer, dan kembali. <strong>Hanya itu.</strong> Batch penuh pergi ke worker pool, dan publish, <code>COPY</code>, retry, dan dead letter semuanya terjadi di sana.</p>
 <p>Ini bukan kosmetik. Sebelum ada, request yang kebetulan memenuhi batch menjalankan pengiriman secara inline — sehingga satu pemanggil dari setiap <code>flush.records</code> membayar seluruh round trip, dan ketika sink mati, seluruh jendela retry. p99 yang dibentuk oleh pemanggil mana yang sial bukan p99 yang bisa ditindaklanjuti siapa pun.</p>
 <div class="code-block" data-code="buffer:
@@ -249,7 +249,7 @@ streams:
   <span class="t-k">queue</span>: 64           <span class="t-c"># full batches that may wait for a worker</span>
   <span class="t-k">max_records</span>: 10000  <span class="t-c"># events held in memory before the gateway says no</span>
   <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># the same ceiling in bytes</span></code></pre></div>
-<h3 id="jam-flush-adalah-milik-deployment">Jam flush adalah milik deployment<a class="anchor" href="#jam-flush-adalah-milik-deployment" aria-label="link">#</a></h3>
+<h3 id="the-flush-clock-belongs-to-the-deployment">Jam flush adalah milik deployment<a class="anchor" href="#the-flush-clock-belongs-to-the-deployment" aria-label="link">#</a></h3>
 <p><code>buffer.flush.every</code> adalah <code>time.AfterFunc</code> di <strong>setiap replika</strong>. Maka job load yang diterima sebuah tabel adalah fungsi dari jumlah replika, bukan trafik:</p>
 <div class="code-block" data-code="jobs / day / table  =  replicas × 86400 / every"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>jobs / day / table  =  replicas × 86400 / every</code></pre></div>
 <p>Di BigQuery, terhadap 1.500 per tabel per hari, <strong>dua replika pada 60d sudah 192% dari kuota yang tidak dapat dinaikkan</strong> — sebelum HPA berbuat apa pun. Dan arahnya berlawanan dengan intuisi: gateway scale out untuk konkurensi HTTP sementara sink menginginkan konsentrasi.</p>
@@ -269,13 +269,13 @@ streams:
 <p><strong><code>outcome="unreachable"</code> adalah satu yang layak diberi alert.</strong> Backend tidak dapat ditanya, sehingga klaim gagal terbuka: koordinasi mati dan job load berlipat ganda lagi menurut jumlah replika — secara diam-diam, karena setiap flush masih tampak seperti flush.</p>
 <p>Dan klaim memberi <strong>eksklusivitas, bukan keadilan</strong>: siapa yang meminta lebih dulu menang. Run dua replika yang nyata mengukur 4/1, bukan pembagian rata. <code>max_age</code> adalah yang mencegah yang sial kelaparan.</p>
 <p>Dengan <code>claim: true</code> dan <code>metastore: memory</code> gateway memperingatkan <strong>sekali saat boot</strong>: setiap replika memenangkan klaim-nya sendiri, sehingga semuanya tampak benar dan tidak ada yang berkoordinasi.</p>
-<h3 id="every-adalah-target-max-age-adalah-janji"><code>every</code> adalah target; <code>max_age</code> adalah janji<a class="anchor" href="#every-adalah-target-max-age-adalah-janji" aria-label="link">#</a></h3>
+<h3 id="every-is-a-target-max-age-is-a-promise"><code>every</code> adalah target; <code>max_age</code> adalah janji<a class="anchor" href="#every-is-a-target-max-age-is-a-promise" aria-label="link">#</a></h3>
 <p>Ketiga pemicu di atas menentukan kapan batch <strong>mencoba</strong> keluar. <code>max_age</code> menentukan kapan ia keluar <strong>apa pun yang terjadi</strong>.</p>
 <p>Hari ini perbedaannya inert, karena tidak ada yang menunda target. Ia mulai penting begitu jam flush tidak lagi per proses: <code>buffer.flush.every</code> adalah <code>time.AfterFunc</code> di setiap replika, sehingga jumlah job load yang diterima tabel adalah fungsi dari <strong>jumlah replika</strong>, bukan trafik — <code>replicas × 86400 / every</code>. Di BigQuery, terhadap 1.500 per tabel per hari, <strong>dua replika pada 60d sudah 192% dari kuota</strong>.</p>
 <p>Begitu sebuah replika dapat menyerahkan jendela ke yang lain, ia terus mengisi, dan <code>max_age</code> adalah yang mencegah siapa pun menahan data tanpa batas sambil menunggu giliran.</p>
 <p>Ia juga menyelesaikan drain: apa yang dapat <strong>ditahan</strong> buffer saat <code>SIGTERM</code> menjadi dibatasi olehnya, dan <code>terminationGracePeriodSeconds</code> yang dicetak gateway saat boot diturunkan darinya.</p>
 <p>Batas atas yang <strong>di bawah</strong> target ditolak saat load — itu berarti target tidak pernah berlaku.</p>
-<h3 id="mengapa-ada-pemicu-ukuran">Mengapa ada pemicu ukuran<a class="anchor" href="#mengapa-ada-pemicu-ukuran" aria-label="link">#</a></h3>
+<h3 id="why-there-is-a-size-trigger">Mengapa ada pemicu ukuran<a class="anchor" href="#why-there-is-a-size-trigger" aria-label="link">#</a></h3>
 <p>Dua lainnya adalah <strong>hitungan</strong>, dan hitungan tidak bisa membedakan 500 event 2 KB dari 500 event 2 MB — 1 MB melawan 1 GB, angka yang sama di file. <code>max_records: 10000</code> punya titik buta yang sama: 20 MB atau 20 GB, dan tidak ada di YAML yang bisa menyatakan yang mana.</p>
 <p>Produser yang mulai mengirim seluruh dokumen alih-alih id-nya menjatuhkan pod, dan sampai ini ada <strong>tidak ada field yang dapat mengekspresikan batasnya</strong>.</p>
 <p>Ukuran diukur pada apa yang <strong>tiba</strong> — bukan pada berat event di memori (<code>map[string]any</code> beberapa kali lipat JSON-nya) dan bukan setelah hook yang menggelembungkannya. Sebuah aproksimasi, dan yang tepat: gratis saat decode, bergerak mengikuti payload, dan yang dijaganya adalah record yang membesar sepuluh kali lipat.</p>
@@ -287,7 +287,7 @@ streams:
 <p>Satu flush tabel adalah satu job load untuknya, jadi ini adalah seri yang harus diberi alert pada 1.200 dari 1.500 yang diizinkan BigQuery. Separuh yang tak bersyarat adalah baris saat boot, yang menyatakan berapa biaya <code>flush.every</code> per tabel per hari sebelum event tiba.</p>
 <p><strong>Ia dibatasi, bukan fire-and-forget.</strong> Goroutine per batch akan mengubah gangguan sink menjadi memori tak terbatas. Ketika antrean dan buffer sama-sama penuh, jawabannya adalah <strong><code>503</code> dengan <code>Retry-After</code></strong> alih-alih <code>202</code> untuk event yang tidak punya tujuan. Event yang diterima tetapi tidak pernah dikirim adalah satu-satunya hasil yang justru dihindari layanan ini.</p>
 <p>Dan <code>503</code> itu <strong>aman di-retry</strong>, dengan cara yang hampir tidak bisa diklaim layanan lain: <code>ingestion_id</code> adalah fungsi beku dari event itu sendiri, sehingga body yang sama yang dikirim lagi adalah <em>record yang sama</em>.</p>
-<h2 id="koneksi-menentukan-replika-mana-yang-mendapat-beban">Koneksi menentukan replika mana yang mendapat beban<a class="anchor" href="#koneksi-menentukan-replika-mana-yang-mendapat-beban" aria-label="link">#</a></h2>
+<h2 id="a-connection-decides-which-replica-gets-the-load">Koneksi menentukan replika mana yang mendapat beban<a class="anchor" href="#a-connection-decides-which-replica-gets-the-load" aria-label="link">#</a></h2>
 <p>Di balik Service <code>ClusterIP</code> Kubernetes, kube-proxy memilih backend <strong>sekali per koneksi TCP</strong>, bukan per request. Sebagian besar klien menjaga koneksi tetap hidup dan memakainya ulang, sehingga produser dengan segelintir koneksi mengirim semuanya ke satu atau dua replika yang sama berapa pun yang berjalan — dan replika yang ditambahkan HPA tidak menerima apa-apa, karena tidak ada yang menghubunginya.</p>
 <div class="code-block" data-code="listen:
   idle_timeout: 90s     # closes a connection nobody came back to
@@ -297,7 +297,7 @@ streams:
 <p><strong><code>max_conn_age</code> nonaktif secara default</strong>, dan itu disengaja: berapa lama klien boleh mempertahankan satu koneksi adalah kebijakan, dan ia menukar satu handshake dalam klaster per koneksi per usia dengan beban yang tersebar. Request itu sendiri selalu dilayani — header dipasang pada respons, tidak ada yang di-retry dan tidak ada batch yang hilang.</p>
 <p><strong><code>idle_timeout</code> punya default dan tidak dapat dimatikan.</strong> Melayani tanpa batas berarti satu file descriptor per klien terlantar sampai proses di-restart. Atur yang panjang bila itu yang Anda inginkan; maka ia adalah angka yang dipilih seseorang.</p>
 <p>Keduanya independen: koneksi bertemu batas mana pun yang ditemuinya lebih dulu, dan koneksi hanya mencapai usia itu dengan dipakai — yang persis produser berumur panjang yang ingin diseimbangkan ulang oleh usia tersebut.</p>
-<h2 id="ketika-sink-menolak">Ketika sink menolak<a class="anchor" href="#ketika-sink-menolak" aria-label="link">#</a></h2>
+<h2 id="when-the-sink-refuses">Ketika sink menolak<a class="anchor" href="#when-the-sink-refuses" aria-label="link">#</a></h2>
 <p>Batch di-retry — empat percobaan dalam sekitar tujuh detik secara default, berlipat dua dengan jitter — lalu ia masuk ke <strong>dead letter</strong>, dengan alasan pada setiap record:</p>
 <div class="code-block" data-code="{
   &quot;event_id&quot;: &quot;dl-9&quot;,
@@ -314,7 +314,7 @@ streams:
 }</code></pre></div>
 <p>Alasan itu berjalan <strong>pada record</strong> dan bukan hanya di log, karena siapa pun yang menemukan file itu kemudian memiliki event dan bukan log — dan <em>mengapa ini ada di sini</em> adalah pertanyaan pertama mereka.</p>
 <p><strong>Stream tanpa <code>dead_letter</code> ditolak saat load.</strong> Menjadikannya diam sebagai default akan menaruh keputusan di tempat yang tidak dibuat siapa pun, dan batch yang ditolak yang hanya menjadi baris log adalah kehilangan data secara diam-diam.</p>
-<h2 id="hook-adalah-go-dikompilasi-masuk">Hook adalah Go, dikompilasi masuk<a class="anchor" href="#hook-adalah-go-dikompilasi-masuk" aria-label="link">#</a></h2>
+<h2 id="the-hook-is-go-compiled-in">Hook adalah Go, dikompilasi masuk<a class="anchor" href="#the-hook-is-go-compiled-in" aria-label="link">#</a></h2>
 <div class="code-block" data-code="hooks := gateway.NewHooks()
 hooks.MustRegister(&quot;enrich_clicks&quot;, enrichClicks)
 gateway.Main(hooks, gateway.WithSinks(sinks))
@@ -335,7 +335,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 <p>YAML menyebut nama hook; ia tidak membawanya. Diukur sebelum memilih: fungsi Go berbiaya <strong>93 ns/op</strong> melawan 959 milik Starlark dan 1.281 milik yaegi, tanpa menambah apa pun pada binary — dan <code>plugin.Open</code> sama sekali bukan opsi, karena di bawah <code>CGO_ENABLED=0</code>, cara semua artefak di sini dibangun, ia mengembalikan <code>plugin: not implemented</code>.</p>
 <p>Apa harganya, dinyatakan di tempat yang akan dibaca orang: <strong>menambah hook adalah rebuild dan deploy, bukan perubahan konfigurasi.</strong> Itu pertukaran yang tepat selama hook ditulis oleh orang yang merilis binary, dan yang salah pada hari pelanggan harus mengubah satu tanpa rilis.</p>
 <p>Error di dalam hook mengirim event <em>itu</em> ke jalur dead letter dan tidak pernah menggagalkan batch di sebelahnya. Panic juga: ia di-recover per event, karena satu record yang cacat tidak boleh menjatuhkan proses yang melayani setiap stream lain.</p>
-<h2 id="ketika-event-terlalu-besar">Ketika event terlalu besar<a class="anchor" href="#ketika-event-terlalu-besar" aria-label="link">#</a></h2>
+<h2 id="when-an-event-is-too-big">Ketika event terlalu besar<a class="anchor" href="#when-an-event-is-too-big" aria-label="link">#</a></h2>
 <div class="code-block" data-code="oversize:
   larger_than: 256KiB
   archive: {type: files, path: gs://acme-oversize/clicks/}
@@ -359,7 +359,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 }</code></pre></div>
 <p>Ini adalah pola <strong>Claim Check</strong>, dan ia mengalahkan <code>413</code> polos karena <code>413</code> kehilangan event — dan payload yang terlalu besar biasanya yang paling menarik yang dimiliki seseorang: itu request dengan seluruh dokumen terlampir, kasus yang layak di-debug.</p>
 <p><code>larger_than</code> mengukur satu <strong>event</strong>, setelah hook. <code>listen.max_body</code> adalah hal yang berbeda: ia membatasi seluruh <strong>request</strong> dan menolak dengan <code>413</code> sebelum satu byte pun diparse.</p>
-<h2 id="apa-yang-dihitungnya">Apa yang dihitungnya<a class="anchor" href="#apa-yang-dihitungnya" aria-label="link">#</a></h2>
+<h2 id="what-it-counts">Apa yang dihitungnya<a class="anchor" href="#what-it-counts" aria-label="link">#</a></h2>
 <p>Sebelas seri Prometheus, pada <strong>port-nya sendiri</strong> — tidak pernah port ingest, dan aturan itu lebih penting di sini daripada di engine: port ingest bersifat publik secara konstruksi, di situlah klien melakukan <code>POST</code>, sehingga <code>/metrics</code> di sana akan mempublikasikan setiap nama stream, path, dan tujuan kepada siapa pun yang menemukan path-nya. Menyebut alamat yang sama untuk keduanya ditolak saat load.</p>
 <div class="code-block" data-code="brevis_gateway_events_received_total{stream,format}     counter
 brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
@@ -393,20 +393,20 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 <p><code>process_start_time_seconds</code> <strong>tidak</strong> diberi prefiks <code>brevis_</code>, dan itu disengaja: collector mencari persis nama itu. Ia menyatakan kapan proses mulai, dan tanpanya collector yang melakukan penyesuaian waktu mulai — receiver Prometheus OpenTelemetry, yang menjadi dasar Google Managed Prometheus — menjangkarkan setiap seri kumulatif pada <strong>scrape pertamanya</strong> dan menghabiskan nilai scrape itu sebagai baseline. Hasilnya setiap counter terbaca rendah, dengan delta yang benar dan total yang salah.</p>
 <p>Tiga yang terakhir adalah yang tidak diminta siapa pun sampai setelah insiden pertama. <code>saturated_total</code> adalah satu-satunya angka yang menyatakan bahwa klien disuruh mundur; <code>buffer_records</code> terhadap <code>buffer.max_records</code> adalah satu-satunya yang <strong>memprediksinya</strong>.</p>
 <p><code>reason</code> adalah himpunan tertutup dan tidak pernah teks error: string error membawa nama tabel, kolom, kadang baris, dan satu klien yang cacat akan mencetak seri baru per request. Teksnya tetap di dead letter, pada record.</p>
-<h2 id="202-bukan-200"><code>202</code>, bukan <code>200</code><a class="anchor" href="#202-bukan-200" aria-label="link">#</a></h2>
+<h2 id="202-not-200"><code>202</code>, bukan <code>200</code><a class="anchor" href="#202-not-200" aria-label="link">#</a></h2>
 <p>Gateway telah <strong>menerima</strong> event. Dengan <code>durability: memory</code> — satu-satunya tier yang diimplementasikan — itulah seluruh yang dapat diklaimnya dengan jujur. Tier yang berhak atas <code>200</code> adalah yang sudah menuliskannya, dan itu belum ada.</p>
 <p><code>disk</code> ditolak <strong>dengan menyebut namanya</strong>, bukan diterima dan diperlakukan sebagai memory: orang yang menulis <code>disk</code> percaya event-nya bertahan dari crash, dan menyetujui tanpa memenuhinya adalah persis kegagalan yang dicegah field tersebut.</p>
 <p>Apa yang ada di buffer saat shutdown dikirim, bukan dibuang — lewat jalur yang sama dengan batch penuh, di-retry dan dikuburkan.</p>
-<h2 id="apa-yang-tidak-dilakukannya">Apa yang tidak dilakukannya<a class="anchor" href="#apa-yang-tidak-dilakukannya" aria-label="link">#</a></h2>
+<h2 id="what-it-does-not-do">Apa yang tidak dilakukannya<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
 <ul><li><strong>Ia tidak muncul di console.</strong> Ia tidak berbagi database dengan antarmuka engine, sehingga tidak ada halaman <code>/ingestion</code> — dan evolusi skema yang dilakukan <code>auto_table</code> juga tidak tampil di sana. Itu langkah berikutnya dan belum ditulis.</li><li><strong>Stream dengan <code>table</code> tidak mengevolusikan skema.</strong> Ketika Anda menyebut tabelnya, kontraknya adalah milik tabel: field yang tidak dimilikinya ditolak dengan pesan yang memperbaikinya, alih-alih mengubah tabel yang sudah direview seseorang. Menumbuhkan kolom sendiri adalah yang dilakukan <code>auto_table</code>, dan itu perbedaan antara keduanya.</li><li><strong>Stream dengan <code>table</code> tidak membuat tabel dan tidak membuat index.</strong> Layanan yang membuat tabel mengubah typo menjadi tabel kedua yang tidak dibaca siapa pun — itulah sebabnya pembuatan hanya terjadi di bawah <code>auto_table</code>, ketika <code>naming</code> membatasi nama mana yang boleh ada dan <code>listen.auth</code> wajib.</li><li><strong>Image yang dipublikasikan tidak punya hook</strong>, yang merupakan artefak jujur untuk desain hook terkompilasi: ia melayani stream yang tidak mendeklarasikan <code>hook:</code>.</li></ul>
-<h2 id="satu-rute-n-tabel">Satu rute, N tabel<a class="anchor" href="#satu-rute-n-tabel" aria-label="link">#</a></h2>
+<h2 id="one-route-n-tables">Satu rute, N tabel<a class="anchor" href="#one-route-n-tables" aria-label="link">#</a></h2>
 <p><code>auto_table</code> merutekan setiap event ke tabel yang disebut oleh <strong>envelope</strong>, membuat tabel itu bila belum ada, dan menumbuhkan kolom ketika field baru muncul:</p>
 <div class="code-block" data-code="{&quot;table_name&quot;: &quot;app_orders&quot;, &quot;operation&quot;: &quot;INSERT&quot;, &quot;unique_key&quot;: &quot;id&quot;,
  &quot;data&quot;: {&quot;id&quot;: &quot;A-1&quot;, &quot;total&quot;: 150, &quot;customer&quot;: {&quot;id&quot;: 7, &quot;uf&quot;: &quot;SP&quot;}}}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>{"table_name": "app_orders", "operation": "INSERT", "unique_key": "id",
  "data": {"id": "A-<span class="t-n">1</span>", "total": <span class="t-n">150</span>, "customer": {"id": <span class="t-n">7</span>, "uf": "SP"}}}</code></pre></div>
 <p>Field kontrol di atas, record di dalam <code>data</code>, dan tujuh kolom pelacakan <code>brevis_*</code> pada setiap tabel. Satu rute, N tabel, tanpa deklarasi apa pun.</p>
-<p>Ia ada di <a href="/id/docs/ingestion-sinks/#satu-rute-n-tabel-tanpa-deklarasi">Sink ingestion</a>.</p>
-<h2 id="ke-mana-selanjutnya">Ke mana selanjutnya<a class="anchor" href="#ke-mana-selanjutnya" aria-label="link">#</a></h2>
+<p>Ia ada di <a href="/id/docs/ingestion-sinks/#one-route-n-tables-nothing-declared">Sink ingestion</a>.</p>
+<h2 id="where-to-go-next">Ke mana selanjutnya<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>jika Anda ingin</th><th>buka</th></tr></thead><tbody><tr><td>tujuan dan cara masing-masing menulis</td><td><a href="/id/docs/ingestion-sinks/">Sink ingestion</a></td></tr><tr><td><code>ingestion_id</code> dari sisi lain</td><td><a href="/id/docs/sdk/">Go SDK</a></td></tr><tr><td>dashboard dan alert</td><td><a href="/id/docs/observability/">Observabilitas</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="Halaman">
@@ -421,7 +421,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#file-adalah-kontraknya">File adalah kontraknya</a></li><li class="toc-2"><a href="#ingestion-id-yang-merupakan-intinya">ingestion_id, yang merupakan intinya</a></li><li class="toc-2"><a href="#request-tidak-pernah-menunggu-sink">Request tidak pernah menunggu sink</a></li><li class="toc-3"><a href="#jam-flush-adalah-milik-deployment">Jam flush adalah milik deployment</a></li><li class="toc-3"><a href="#every-adalah-target-max-age-adalah-janji">every adalah target; max_age adalah janji</a></li><li class="toc-3"><a href="#mengapa-ada-pemicu-ukuran">Mengapa ada pemicu ukuran</a></li><li class="toc-2"><a href="#koneksi-menentukan-replika-mana-yang-mendapat-beban">Koneksi menentukan replika mana yang mendapat beban</a></li><li class="toc-2"><a href="#ketika-sink-menolak">Ketika sink menolak</a></li><li class="toc-2"><a href="#hook-adalah-go-dikompilasi-masuk">Hook adalah Go, dikompilasi masuk</a></li><li class="toc-2"><a href="#ketika-event-terlalu-besar">Ketika event terlalu besar</a></li><li class="toc-2"><a href="#apa-yang-dihitungnya">Apa yang dihitungnya</a></li><li class="toc-2"><a href="#202-bukan-200">202, bukan 200</a></li><li class="toc-2"><a href="#apa-yang-tidak-dilakukannya">Apa yang tidak dilakukannya</a></li><li class="toc-2"><a href="#satu-rute-n-tabel">Satu rute, N tabel</a></li><li class="toc-2"><a href="#ke-mana-selanjutnya">Ke mana selanjutnya</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file-is-the-contract">File adalah kontraknya</a></li><li class="toc-2"><a href="#the-ingestion-id-which-is-the-point">ingestion_id, yang merupakan intinya</a></li><li class="toc-2"><a href="#the-request-never-waits-for-the-sink">Request tidak pernah menunggu sink</a></li><li class="toc-3"><a href="#the-flush-clock-belongs-to-the-deployment">Jam flush adalah milik deployment</a></li><li class="toc-3"><a href="#every-is-a-target-max-age-is-a-promise">every adalah target; max_age adalah janji</a></li><li class="toc-3"><a href="#why-there-is-a-size-trigger">Mengapa ada pemicu ukuran</a></li><li class="toc-2"><a href="#a-connection-decides-which-replica-gets-the-load">Koneksi menentukan replika mana yang mendapat beban</a></li><li class="toc-2"><a href="#when-the-sink-refuses">Ketika sink menolak</a></li><li class="toc-2"><a href="#the-hook-is-go-compiled-in">Hook adalah Go, dikompilasi masuk</a></li><li class="toc-2"><a href="#when-an-event-is-too-big">Ketika event terlalu besar</a></li><li class="toc-2"><a href="#what-it-counts">Apa yang dihitungnya</a></li><li class="toc-2"><a href="#202-not-200">202, bukan 200</a></li><li class="toc-2"><a href="#what-it-does-not-do">Apa yang tidak dilakukannya</a></li><li class="toc-2"><a href="#one-route-n-tables">Satu rute, N tabel</a></li><li class="toc-2"><a href="#where-to-go-next">Ke mana selanjutnya</a></li></ul>
     </aside>
   </main>
 </div>
@@ -441,9 +441,9 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
       <div class="footer-col">
         <h2>proyek</h2>
         <ul>
-          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/#ecosystem">Ekosistem</a></li>
           <li><a href="/id/docs/philosophy/">Prinsip</a></li>
-          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/id/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -466,7 +466,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

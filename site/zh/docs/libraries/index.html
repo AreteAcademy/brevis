@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">跳到正文</a>
+<a class="skip-link" href="#content">跳到正文</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="主导航">
-      <a href="/zh/#ecossistema">生态</a>
+      <a href="/zh/#ecosystem">生态</a>
       <a href="/zh/docs/">文档</a>
       <details class="lang-dd"><summary aria-label="语言: 简体中文"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>简体中文</span></summary><ul><li><a href="/docs/libraries/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/libraries/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/libraries/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/libraries/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/libraries/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/libraries/" lang="zh-CN" hreflang="zh-CN" aria-current="true">简体中文</a></li><li><a href="/ja/docs/libraries/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/libraries/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/libraries/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/libraries/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/libraries/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">文档</p>
       <h1>客户端库</h1>
       <p class="doc-desc">任何语言的 step 如何读取上下文和 run 的时钟，以及哪些语言已经有了库。</p>
       <p>step 需要编排器提供两样东西：<strong>上一个 step 发布了什么</strong>，以及<strong>这个 run 应该读取哪个时钟</strong>。客户端库只交付这两样，别无其他。</p>
-<h2 id="先有约定后有库">先有约定，后有库<a class="anchor" href="#先有约定后有库" aria-label="link">#</a></h2>
+<h2 id="the-contract-comes-before-the-libraries">先有约定，后有库<a class="anchor" href="#the-contract-comes-before-the-libraries" aria-label="link">#</a></h2>
 <p>引擎定义的是<strong>两个环境变量和一个文件</strong>：</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>BREVIS_INPUT</code></td><td><code>{"&lt;step id&gt;": {…}}</code>：这个 step 的依赖所发布的内容</td></tr><tr><td><code>BREVIS_OUTPUT</code></td><td>一个路径，用来写入<strong>一个</strong> JSON 对象</td></tr></tbody></table></div>
 <p>此外还有 run 的变量和自动参数，都是只读的：<code>BREVIS_RUN_*</code> 和 <code>BREVIS_AUTO_*</code>。在 Kubernetes 下，<code>BREVIS_OUTPUT</code> 是 <code>/dev/termination-log</code>，引擎本来就会读取它来获取退出码。</p>
@@ -136,15 +136,15 @@ jq -n --arg n &quot;$(date -Is)&quot; &#x27;{published_at: $n}&#x27; &gt; &quot;
 ./publish <span class="t-n">--until</span> "$window"
 jq <span class="t-n">-n</span> <span class="t-n">--arg</span> n "$(date <span class="t-n">-Is</span>)" '{published_at: $n}' &gt; "$BREVIS_OUTPUT"</code></pre></div>
 <p>这里的库不会开启任何新能力：它帮你省去了校验、缺失值处理和错误信息这些不值得重写的部分。</p>
-<h2 id="已有哪些库">已有哪些库<a class="anchor" href="#已有哪些库" aria-label="link">#</a></h2>
+<h2 id="which-ones-exist">已有哪些库<a class="anchor" href="#which-ones-exist" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>语言</th><th></th><th></th></tr></thead><tbody><tr><td><strong>Python</strong></td><td><code>pip install brevis</code></td><td><a href="/zh/docs/python/">可用</a>，PyPI 上为 <code>0.2.1</code></td></tr><tr><td><strong>Go</strong></td><td><code>brevis/sdk/context</code></td><td>可用，位于 SDK 模块内</td></tr><tr><td><strong>Node.js</strong></td><td>—</td><td>计划中</td></tr><tr><td><strong>Rust</strong></td><td>—</td><td>计划中</td></tr><tr><td>其他任何语言</td><td>上面的变量</td><td>现在即可</td></tr></tbody></table></div>
 <aside class="admon admon-note"><p class="admon-t">Go 不放在 `lib/` 中</p><p>Go 的 context 支持位于项目已经发布的 <code>sdk/</code> 模块中，是一个子包，对于不导入它的人来说会被裁剪得一干二净。<code>lib/go-context</code> 意味着为一个已经有归属的包再建一个 Go 模块。</p>
 <p>规则是：<strong>每种尚未有已发布制品的语言，对应一个目录</strong>。</p></aside>
 <p>每个库都是独立的制品，有自己的版本和标签：修复 Python 客户端不需要发布新的引擎版本。</p>
-<h2 id="它们是什么不是什么">它们是什么，不是什么<a class="anchor" href="#它们是什么不是什么" aria-label="link">#</a></h2>
+<h2 id="what-they-are-and-what-they-are-not">它们是什么，不是什么<a class="anchor" href="#what-they-are-and-what-they-are-not" aria-label="link">#</a></h2>
 <p>它们是<strong>基于该约定的轻量级客户端</strong>，不是 Go SDK 的移植版。</p>
 <p>移植 SDK 的 ETL 机制（驱动、分页、检查点、摄取 id）既不属于这里，大概也不属于任何地方：这些语言本身都已经有更好的工具，而 Brevis 的工作是运行它们。这正是 Python 库存在的原因：让团队可以使用 pandas、Polars 或 dbt，同时仍能获得编排器应当提供的那一件事。</p>
-<h2 id="指标">指标<a class="anchor" href="#指标" aria-label="link">#</a></h2>
+<h2 id="metrics">指标<a class="anchor" href="#metrics" aria-label="link">#</a></h2>
 <p>库负责<strong>发出</strong>指标，而由引擎来暴露它们：</p>
 <div class="code-block" data-code="from brevis import metrics
 
@@ -155,11 +155,11 @@ metrics.set("rows_loaded", 48213)      <span class="t-c"># a gauge: the last val
 metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up</span></code></pre></div>
 <p>它们出现在<strong>引擎</strong>的 <code>/metrics</code> 中，位于调度器的端口上，并带有 workflow 和 step 的标签，见<a href="/zh/docs/observability/">可观测性</a>。</p>
 <p><strong>这不会开启端口，也不可能开启。</strong> step 在自己的 pod 中运行四十秒就退出了；它打开的端口要么永远不会被抓取，要么只是碰巧被抓取一次。所以这一行输出到 stdout，也就是引擎本来就在读取、用来绘制 pipeline 各阶段的那条管道，由引擎来记录。无需安装，无需运维，标签也来自引擎，因为 step 自己不知道所属 workflow 的 slug。</p>
-<p>API 的详细信息见 <a href="/zh/docs/python/#只有你的-pipeline-才知道的指标">Python</a>。</p>
-<h2 id="为其他语言编写客户端">为其他语言编写客户端<a class="anchor" href="#为其他语言编写客户端" aria-label="link">#</a></h2>
+<p>API 的详细信息见 <a href="/zh/docs/python/#metrics-only-your-pipeline-knows">Python</a>。</p>
+<h2 id="writing-a-client-for-another-language">为其他语言编写客户端<a class="anchor" href="#writing-a-client-for-another-language" aria-label="link">#</a></h2>
 <p>如果你比我们更早做到 Node.js 或 Rust，下面是客户端必须做对的事，以及 Python 实现已经用教训学到的东西：</p>
 <ol><li><strong>键由 step 限定。</strong> 不带 step 的 <code>get("bucket")</code> 必须被拒绝。两个 step 都可能发布 <code>bucket</code>，通过搜索挑选其中一个，是偶然形成的优先级。</li><li><strong>合并写入。</strong> 以不同的键两次调用，两者都会保留；同一个键写两次，保留最后一次。</li><li><strong>仅在进程退出时刷新。</strong> 异常终止的 step 什么都不发布，这是正确的，因为崩溃的 step 的输出所描述的工作并没有完成。</li><li><strong>超过 4096 字节就拒绝。</strong> 平台会<strong>截断</strong>而不是拒绝，被截断一半的对象会作为无效的 JSON 到达下一个 step。</li><li><strong>在 Brevis 之外也能工作。</strong> 没有 <code>BREVIS_INPUT</code> 时，<code>get()</code> 返回默认值，<code>set()</code> 接受并丢弃，不抛出异常：无法手动运行的脚本，是无法开发的。</li></ol>
-<h2 id="下一步">下一步<a class="anchor" href="#下一步" aria-label="link">#</a></h2>
+<h2 id="next-steps">下一步<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/zh/docs/python/">Python</a>：完整的 API</li><li><a href="/zh/docs/context/">step 之间的上下文</a>：概念以及 4096 字节的上限</li><li><a href="/zh/docs/parameters/">参数</a>：声明的参数和自动参数</li></ul>
 
       <nav class="pagers" aria-label="页面">
@@ -174,7 +174,7 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
 
     <aside class="toc" aria-label="本页内容">
       <p class="toc-t">本页内容</p>
-      <ul><li class="toc-2"><a href="#先有约定后有库">先有约定，后有库</a></li><li class="toc-2"><a href="#已有哪些库">已有哪些库</a></li><li class="toc-2"><a href="#它们是什么不是什么">它们是什么，不是什么</a></li><li class="toc-2"><a href="#指标">指标</a></li><li class="toc-2"><a href="#为其他语言编写客户端">为其他语言编写客户端</a></li><li class="toc-2"><a href="#下一步">下一步</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-contract-comes-before-the-libraries">先有约定，后有库</a></li><li class="toc-2"><a href="#which-ones-exist">已有哪些库</a></li><li class="toc-2"><a href="#what-they-are-and-what-they-are-not">它们是什么，不是什么</a></li><li class="toc-2"><a href="#metrics">指标</a></li><li class="toc-2"><a href="#writing-a-client-for-another-language">为其他语言编写客户端</a></li><li class="toc-2"><a href="#next-steps">下一步</a></li></ul>
     </aside>
   </main>
 </div>
@@ -194,9 +194,9 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
       <div class="footer-col">
         <h2>项目</h2>
         <ul>
-          <li><a href="/zh/#ecossistema">生态</a></li>
+          <li><a href="/zh/#ecosystem">生态</a></li>
           <li><a href="/zh/docs/philosophy/">原则</a></li>
-          <li><a href="/zh/docs/introduction/#开放的代码自选参与方式">开源</a></li>
+          <li><a href="/zh/docs/introduction/#open-code-choose-how-to-take-part">开源</a></li>
           <li><a href="/zh/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -219,7 +219,7 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

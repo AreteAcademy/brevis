@@ -59,8 +59,8 @@ brevis marca brand.yaml
 
 ```
   ok    Acme Data · Data platform
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    (the product's own)
         Powered by Brevis
 ```
 
@@ -79,7 +79,7 @@ brevis marca brand.yaml
 내리는 것은 기본 테마로 제공하는 것보다 나쁩니다.
 
 ```
-level=WARN msg="identidade visual ignorada" arquivo=brand.yaml erro="cor invalida: #gggggg"
+level=WARN msg="visual identity ignored" file=brand.yaml error="brand.yaml: colour accent: \"#gggggg\" is not a hex value (#rgb, #rrggbb or #rrggbbaa)"
 ```
 
 ## 사용자 지정할 수 없는 것

@@ -190,7 +190,7 @@ spec:
             - name: BREVIS_PODS
               value: "on"
             - name: BREVIS_POD_NAMESPACE
-              value: dados
+              value: data
             - name: BREVIS_POD_SERVICE_ACCOUNT
               value: brevis-runner
             - name: BREVIS_POD_ENV_FROM_SECRETS
@@ -210,7 +210,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: brevis-runner
-  namespace: dados
+  namespace: data
 rules:
   - apiGroups: [""]
     resources: ["pods"]
@@ -226,16 +226,16 @@ run funciona e o log fica vazio.
 ## Depois do deploy
 
 ```bash
-kubectl -n dados get pods -l app=brevis-api
-kubectl -n dados exec deploy/brevis-api -- brevis version
-curl -fsS https://brevis.exemplo.com/ready
+kubectl -n data get pods -l app=brevis-api
+kubectl -n data exec deploy/brevis-api -- brevis version
+curl -fsS https://brevis.example.com/ready
 ```
 
 Dispare um workflow simples pela interface e confirme que o pod do passo aparece
 e desaparece:
 
 ```bash
-kubectl -n dados get pods -w
+kubectl -n data get pods -w
 ```
 
 ## Quando um passo fica Pending

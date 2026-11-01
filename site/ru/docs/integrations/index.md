@@ -14,27 +14,27 @@
 
 |  | как подключается | руководство |
 |---|---|---|
-| **HTTP** | SDK: `from.HTTP` | [Go SDK](/ru/docs/sdk/#источники-и-места-назначения) |
-| **Postgres** | SDK: `from/postgres` | [Go SDK](/ru/docs/sdk/#источники-и-места-назначения) |
-| **MySQL** | SDK: `from/mysql` | [Go SDK](/ru/docs/sdk/#источники-и-места-назначения) |
-| **файлы** | SDK: `from.Files` — локальные, S3, GCS | [Go SDK](/ru/docs/sdk/#источники-и-места-назначения) |
+| **HTTP** | SDK: `from.HTTP` | [Go SDK](/ru/docs/sdk/#sources-and-destinations) |
+| **Postgres** | SDK: `from/postgres` | [Go SDK](/ru/docs/sdk/#sources-and-destinations) |
+| **MySQL** | SDK: `from/mysql` | [Go SDK](/ru/docs/sdk/#sources-and-destinations) |
+| **файлы** | SDK: `from.Files` — локальные, S3, GCS | [Go SDK](/ru/docs/sdk/#sources-and-destinations) |
 
 ## Куда записывает
 
 |  | как подключается | руководство |
 |---|---|---|
-| **BigQuery** | SDK: `to/bigquery` · Gateway: `bigquery` | [Go SDK](/ru/docs/sdk/#источники-и-места-назначения), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
-| **Postgres** | SDK: `to/postgres` · Gateway: `postgres` | [Go SDK](/ru/docs/sdk/#источники-и-места-назначения), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
-| **MySQL** | SDK: `to/mysql` · Gateway: `mysql` | [Go SDK](/ru/docs/sdk/#источники-и-места-назначения), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
-| **Redshift** | SDK: `to/redshift` · Gateway: `redshift` | [Go SDK](/ru/docs/sdk/#источники-и-места-назначения), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
-| **Pub/Sub** | SDK: `to/pubsub` · Gateway: `pubsub` | [Go SDK](/ru/docs/sdk/#источники-и-места-назначения), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
+| **BigQuery** | SDK: `to/bigquery` · Gateway: `bigquery` | [Go SDK](/ru/docs/sdk/#sources-and-destinations), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
+| **Postgres** | SDK: `to/postgres` · Gateway: `postgres` | [Go SDK](/ru/docs/sdk/#sources-and-destinations), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
+| **MySQL** | SDK: `to/mysql` · Gateway: `mysql` | [Go SDK](/ru/docs/sdk/#sources-and-destinations), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
+| **Redshift** | SDK: `to/redshift` · Gateway: `redshift` | [Go SDK](/ru/docs/sdk/#sources-and-destinations), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
+| **Pub/Sub** | SDK: `to/pubsub` · Gateway: `pubsub` | [Go SDK](/ru/docs/sdk/#sources-and-destinations), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
 
 ## Куда складывает файлы
 
 |  | как подключается | руководство |
 |---|---|---|
-| **S3** | SDK: `store/s3` · Gateway: `files` на `s3://` | [Go SDK](/ru/docs/sdk/#источники-и-места-назначения), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
-| **GCS** | SDK: `store/gcs` · Gateway: `files` на `gs://` | [Go SDK](/ru/docs/sdk/#источники-и-места-назначения), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
+| **S3** | SDK: `store/s3` · Gateway: `files` на `s3://` | [Go SDK](/ru/docs/sdk/#sources-and-destinations), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
+| **GCS** | SDK: `store/gcs` · Gateway: `files` на `gs://` | [Go SDK](/ru/docs/sdk/#sources-and-destinations), [Sinks приёма данных](/ru/docs/ingestion-sinks/index.md) |
 
 ## Где моделирует
 
@@ -49,7 +49,7 @@
 |---|---|---|
 | **Docker** | один образ на компонент: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Установка](/ru/docs/installation/#docker) |
 | **Kubernetes** | один pod на шаг | [Kubernetes](/ru/docs/kubernetes/index.md), [Pod на шаг](/ru/docs/pod-per-step/index.md) |
-| **Helm** | чарт в `deployments/helm/brevis` | [Kubernetes](/ru/docs/kubernetes/#установка-через-helm) |
+| **Helm** | чарт в `deployments/helm/brevis` | [Kubernetes](/ru/docs/kubernetes/#install-it-with-helm) |
 
 ## На чём написано
 

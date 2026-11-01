@@ -272,7 +272,7 @@ stocké.
 Ces huit sont **ceux du SDK**, pas ceux de ce sink : `sdk.LandingSchema` les déclare
 et `sdk.LandingID` frappe l'identité, de sorte qu'un pipeline peut faire atterrir la
 même table avec les mêmes ids. Une seule définition, parce que deux divergeraient.
-Voir [la disposition d'atterrissage du SDK](/fr/docs/sdk/#la-disposition-datterrissage).
+Voir [la disposition d'atterrissage du SDK](/fr/docs/sdk/#the-landing-layout).
 
 **`brevis_` est réservé.** Un `data` portant une clé avec ce préfixe est refusé
 **par événement** — sinon un producteur forge un champ de contrôle, et un
@@ -423,13 +423,13 @@ table y est créée et elle casse le jour où quelqu'un pointe un stream vers Bi
 Les deux formes ont un équivalent dans le SDK, et c'est le même code plutôt qu'un
 code correspondant : `sdk.Landing(table, sdk.LandingKey("id"))` fait atterrir
 `document`, et ajouter
-[`sdk.LandingColumns()`](/fr/docs/sdk/#deux-formes-lenregistrement-entier-ou-une-colonne-par-champ)
+[`sdk.LandingColumns()`](/fr/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field)
 fait atterrir `columns`. Mêmes colonnes, mêmes valeurs, même
 `brevis_ingestion_id` — donc un stream peut passer d'un gateway à un pipeline sans
 migration, et les deux peuvent être lus comme une seule table.
 
 Le pipeline peut faire grandir la même colonne de la même façon : définissez
-[`Evolve: sdk.EvolveAdditiveFromPayload`](/fr/docs/sdk/#quand-un-champ-que-la-table-na-pas-apparaît)
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/fr/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)
 sur la destination et un champ que le lot porte devient une colonne, selon cette
 règle, par ce code.
 
@@ -444,7 +444,7 @@ règle de réservation ci-dessus suit : sous `acme_`, un producteur qui envoie
 **Choisissez-le avant la création de la première table.** Le changer plus tard
 ajoute huit colonnes et en abandonne huit — rien ne supprime de colonne — donc une
 table qui porte déjà la disposition sous un préfixe refuse un chargement qui en
-déclare un autre. Voir [la page du SDK](/fr/docs/sdk/#le-prefixe-brevis-est-a-vous-de-le-changer)
+déclare un autre. Voir [la page du SDK](/fr/docs/sdk/#the-brevis-prefix-is-yours-to-change)
 pour la normalisation et la sortie.
 
 **Les champs d'un objet imbriqué peuvent obtenir leurs propres colonnes.**
@@ -452,7 +452,7 @@ pour la normalisation et la sortie.
 `{"name": {"first": "x"}}` atterrit comme `name_first` — et chaque stream le
 partage, de sorte que deux sinks ne peuvent pas être en désaccord sur une table
 dans laquelle ils pourraient tous deux écrire. Voir
-[la page du SDK](/fr/docs/sdk/#une-colonne-par-champ-imbrique) pour ce qu'il renomme,
+[la page du SDK](/fr/docs/sdk/#one-column-per-nested-field) pour ce qu'il renomme,
 la moitié à lire avant de l'activer.
 
 **Sur BigQuery, `nationalID` et `nationalId` sont une seule colonne.** BigQuery

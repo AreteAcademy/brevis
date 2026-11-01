@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Lewati ke konten</a>
+<a class="skip-link" href="#content">Lewati ke konten</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navigasi utama">
-      <a href="/id/#ecossistema">Ekosistem</a>
+      <a href="/id/#ecosystem">Ekosistem</a>
       <a href="/id/docs/">Dokumentasi</a>
       <details class="lang-dd"><summary aria-label="Bahasa: Bahasa Indonesia"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Bahasa Indonesia</span></summary><ul><li><a href="/docs/observability/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/observability/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/observability/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/observability/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/observability/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/observability/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/observability/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/observability/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/observability/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/observability/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/observability/" lang="id" hreflang="id" aria-current="true">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Dokumentasi</p>
       <h1>Observabilitas</h1>
@@ -127,11 +127,11 @@
       <p>Brevis mengekspos metrik Prometheus pada port tersendiri, dari <strong>kedua</strong> proses.</p>
 <div class="code-block" data-code="GET http://&lt;pod&gt;:9090/metrics"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>GET http://&lt;pod&gt;:9090/metrics</code></pre></div>
 <p>Port berasal dari <code>BREVIS_METRICS_ADDR</code>. Ia terpisah dari port HTTP dengan sengaja: metrik tidak melewati autentikasi antarmuka, dan melayani keduanya dari satu tempat akan memaksa memilih antara scrape yang terautentikasi dan dashboard yang terbuka.</p>
-<h2 id="dua-proses-dua-endpoint">Dua proses, dua endpoint<a class="anchor" href="#dua-proses-dua-endpoint" aria-label="link">#</a></h2>
+<h2 id="two-processes-two-endpoints">Dua proses, dua endpoint<a class="anchor" href="#two-processes-two-endpoints" aria-label="link">#</a></h2>
 <p>Inilah bagian yang paling sering salah dalam banyak setup, dengan hanya men-scrape API.</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>melayani</th><th>melaporkan</th></tr></thead><tbody><tr><td><code>brevis serve</code></td><td>UI dan API HTTP</td><td>kedalaman antrean</td></tr><tr><td><code>brevis scheduler</code></td><td>tidak ada lewat HTTP</td><td>kedalaman antrean, latensi klaim, slot, orphan, run, step</td></tr></tbody></table></div>
 <p>Scheduler-lah yang mengeksekusi, sehingga hampir semuanya berasal darinya. Dashboard yang dibangun hanya dari API menampilkan antrean yang bertambah dan <strong>tidak ada</strong> tentang apa yang menguraskannya.</p>
-<h2 id="metrik-yang-dipublikasikan-sebuah-step">Metrik yang dipublikasikan sebuah step<a class="anchor" href="#metrik-yang-dipublikasikan-sebuah-step" aria-label="link">#</a></h2>
+<h2 id="the-metrics-a-step-publishes">Metrik yang dipublikasikan sebuah step<a class="anchor" href="#the-metrics-a-step-publishes" aria-label="link">#</a></h2>
 <p>Di luar apa yang diukur engine, step dapat mempublikasikan metriknya sendiri — berapa baris yang mendarat, berapa yang ditolak vendor:</p>
 <div class="code-block" data-code="from brevis import metrics
 metrics.set(&quot;rows_loaded&quot;, 48213)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> metrics
@@ -139,7 +139,7 @@ metrics.set("rows_loaded", 48213)</code></pre></div>
 <p>Metrik itu muncul di <code>/metrics</code> scheduler yang <strong>sama</strong>, dengan prefiks dan label dari engine:</p>
 <div class="code-block" data-code="brevis_step_rows_loaded{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 48213"><div class="code-head"><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213</code></pre></div>
 <p>Step tidak membuka port: ia menulis satu baris ke stdout dan engine mencatatnya — pod yang hidup empat puluh detik tidak dapat di-scrape. Lihat <a href="/id/docs/python/">Python</a>.</p>
-<h2 id="apa-yang-dipantau">Apa yang dipantau<a class="anchor" href="#apa-yang-dipantau" aria-label="link">#</a></h2>
+<h2 id="what-to-watch">Apa yang dipantau<a class="anchor" href="#what-to-watch" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>sinyal</th><th>alasan</th></tr></thead><tbody><tr><td>kedalaman antrean naik tanpa turun</td><td>scheduler mati, atau <code>--concurrency</code> terlalu rendah untuk bebannya</td></tr><tr><td>latensi klaim bertambah</td><td>perebutan di database, atau antrean terlalu besar untuk interval</td></tr><tr><td>orphan &gt; 0</td><td>run yang diklaim proses yang mati sebelum selesai</td></tr><tr><td>slot tidak termaterialisasi</td><td>loop scheduler berhenti, dan jadwal ikut berhenti</td></tr></tbody></table></div>
 <p>Dua yang pertama saja tidak membedakan "beban tinggi" dari "proses mati" — itulah sebabnya slot penting. Antrean naik <strong>dengan</strong> slot yang dibuat adalah beban; antrean naik <strong>tanpa</strong> slot adalah loop yang berhenti.</p>
 <h2 id="kubernetes">Kubernetes<a class="anchor" href="#kubernetes" aria-label="link">#</a></h2>
@@ -155,10 +155,10 @@ ports:
   - <span class="t-k">name</span>: metrics
     <span class="t-k">containerPort</span>: 9090</code></pre></div>
 <p>Dengan Prometheus Operator, satu <code>PodMonitor</code> per peran — dan memang harus satu per peran, karena kedua Deployment membawa label yang berbeda dan melaporkan set yang berbeda.</p>
-<h2 id="apa-yang-sengaja-tidak-ada">Apa yang sengaja tidak ada<a class="anchor" href="#apa-yang-sengaja-tidak-ada" aria-label="link">#</a></h2>
+<h2 id="what-is-deliberately-absent">Apa yang sengaja tidak ada<a class="anchor" href="#what-is-deliberately-absent" aria-label="link">#</a></h2>
 <p><strong>Trace.</strong> Belum ada OpenTelemetry. Step berjalan sebagai pod-nya sendiri, dan yang penting tentangnya — mulai, selesai, percobaan, exit code, log — sudah ada di database dan di layar. Trace yang berguna adalah yang ada di dalam step, dan itu milik kode step, bukan milik orkestrator.</p>
 <p>Itu berlaku selama step adalah unitnya. Pada hari step memanggil layanan lain dan pertanyaannya menjadi "ke mana perginya 40 detik itu", trace mulai sepadan dengan biayanya.</p>
-<h2 id="langkah-berikutnya">Langkah berikutnya<a class="anchor" href="#langkah-berikutnya" aria-label="link">#</a></h2>
+<h2 id="next-steps">Langkah berikutnya<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/id/docs/kubernetes/">Kubernetes</a> — men-deploy kedua proses</li><li><a href="/id/docs/configuration/">Konfigurasi</a> — <code>BREVIS_METRICS_ADDR</code> dan lainnya</li></ul>
 
       <nav class="pagers" aria-label="Halaman">
@@ -173,7 +173,7 @@ ports:
 
     <aside class="toc" aria-label="Di halaman ini">
       <p class="toc-t">Di halaman ini</p>
-      <ul><li class="toc-2"><a href="#dua-proses-dua-endpoint">Dua proses, dua endpoint</a></li><li class="toc-2"><a href="#metrik-yang-dipublikasikan-sebuah-step">Metrik yang dipublikasikan sebuah step</a></li><li class="toc-2"><a href="#apa-yang-dipantau">Apa yang dipantau</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#apa-yang-sengaja-tidak-ada">Apa yang sengaja tidak ada</a></li><li class="toc-2"><a href="#langkah-berikutnya">Langkah berikutnya</a></li></ul>
+      <ul><li class="toc-2"><a href="#two-processes-two-endpoints">Dua proses, dua endpoint</a></li><li class="toc-2"><a href="#the-metrics-a-step-publishes">Metrik yang dipublikasikan sebuah step</a></li><li class="toc-2"><a href="#what-to-watch">Apa yang dipantau</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#what-is-deliberately-absent">Apa yang sengaja tidak ada</a></li><li class="toc-2"><a href="#next-steps">Langkah berikutnya</a></li></ul>
     </aside>
   </main>
 </div>
@@ -193,9 +193,9 @@ ports:
       <div class="footer-col">
         <h2>proyek</h2>
         <ul>
-          <li><a href="/id/#ecossistema">Ekosistem</a></li>
+          <li><a href="/id/#ecosystem">Ekosistem</a></li>
           <li><a href="/id/docs/philosophy/">Prinsip</a></li>
-          <li><a href="/id/docs/introduction/#kode-terbuka-pilih-cara-anda-ikut-serta">Open source</a></li>
+          <li><a href="/id/docs/introduction/#open-code-choose-how-to-take-part">Open source</a></li>
           <li><a href="/id/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -218,7 +218,7 @@ ports:
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

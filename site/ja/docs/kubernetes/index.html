@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
       <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/kubernetes/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/kubernetes/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/kubernetes/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/kubernetes/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/kubernetes/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/kubernetes/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/kubernetes/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/kubernetes/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/kubernetes/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/kubernetes/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/kubernetes/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>Kubernetes</h1>
       <p class="doc-desc">エンジンのデプロイ方法、必要な権限、そしてデプロイ後に確認すること。</p>
       <p>典型的なインストールには、同じバイナリの <strong>2 つの Deployment</strong>(API とスケジューラ)と、 Postgres があります。</p>
-<h2 id="helm-でインストールする">Helm でインストールする<a class="anchor" href="#helm-でインストールする" aria-label="link">#</a></h2>
+<h2 id="install-it-with-helm">Helm でインストールする<a class="anchor" href="#install-it-with-helm" aria-label="link">#</a></h2>
 <p>チャートはリポジトリの <code>deployments/helm/brevis</code> にあります。必須の値は 4 つで、 それ以外にはすべて動作するデフォルトがあります。</p>
 <div class="code-block" data-code="helm install brevis ./deployments/helm/brevis \
   --namespace data --create-namespace \
@@ -151,11 +151,11 @@
   <span class="t-n">--set</span> api.ingress.tls.secretName=<span class="t-k">brevis</span>-tls</code></pre></div>
 <p>本番では、接続文字列をリリースに含めないでください。Secret に入れて <code>--set database.existingSecret=brevis-db</code> を渡します。インラインで渡すと、リリースの保存された マニフェストに入り、その名前空間で Secret を読める人なら誰でも読めてしまいます。</p>
 <p><code>helm show values ./deployments/helm/brevis</code> は、すべての値を、その理由とともに一覧表示します。</p>
-<h3 id="チャートが拒否するもの">チャートが拒否するもの<a class="anchor" href="#チャートが拒否するもの" aria-label="link">#</a></h3>
+<h3 id="what-the-chart-refuses">チャートが拒否するもの<a class="anchor" href="#what-the-chart-refuses" aria-label="link">#</a></h3>
 <p>安全にできないものはすべて、レンダリング時に、何が壊れるかを伝えるメッセージとともに失敗します。 午前 3 時に、重複した行を生成した run の中で発覚するのではありません。</p>
 <div class="table-wrap"><table><thead><tr><th>拒否されるもの</th><th>理由</th></tr></thead><tbody><tr><td><code>scheduler.replicas</code> の指定そのもの</td><td>2 つあれば同じ slot を具体化してしまう。<code>FOR UPDATE SKIP LOCKED</code> は同じキューアイテムの取得を防ぐが、同じスケジュールされた run の作成を防ぐものはなく、<code>dbt build</code> が何も失敗しないまま同じウィンドウに対して 2 回実行される</td></tr><tr><td><code>local</code> 以外での認証情報の欠落</td><td>認証情報なしではエンジンが起動を拒否するため、チャートは CrashLoopBackOff を渡すことになる</td></tr><tr><td>32 バイト未満の <code>auth.secret</code></td><td>セッション Cookie の署名に使われ、エンジンも同じ最小値を強制する</td></tr><tr><td><code>host</code> のない Ingress</td><td>コントローラに届くすべてのリクエストに一致してしまう。共有クラスタでは、他人のホスト名に応答することになる</td></tr><tr><td>Webhook のない <code>alerts.enabled</code></td><td>pod はアウトボックスを消化してどこにも配信しないことになり、動かないよりも悪い。失敗が通知済みに見えてしまう</td></tr><tr><td>チャートが定義していない値</td><td>そうしないと <code>--set</code> のタイプミスは黙って何もしない</td></tr></tbody></table></div>
 <p><code>.github/scripts/helm-check.sh</code> は、レンダリング結果に対してそのすべてを検証します。さらに、 上記の不変条件も検証します。スケジューラが 1 つであること、<code>pods/log</code> があること、マイグレーションが 最初であること、メトリクスのポートが Service にないことです。</p>
-<h2 id="helm-を使わない場合">Helm を使わない場合<a class="anchor" href="#helm-を使わない場合" aria-label="link">#</a></h2>
+<h2 id="without-helm">Helm を使わない場合<a class="anchor" href="#without-helm" aria-label="link">#</a></h2>
 <p>7 つのマニフェストが <code>deployments/kubernetes/</code> にあり、名前空間とイメージタグを編集すれば <code>kubectl apply -f</code> でそのまま適用できます。</p>
 <div class="code-block" data-code="kubectl apply -f deployments/kubernetes/rbac.yaml
 kubectl apply -f deployments/kubernetes/api.yaml
@@ -163,11 +163,11 @@ kubectl apply -f deployments/kubernetes/scheduler.yaml"><div class="code-head"><
 <span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/api.yaml
 <span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/scheduler.yaml</code></pre></div>
 <p>チャートと同じ判断が、理由をコメントに添えて含まれています。ほかに <code>alert.yaml</code>、<code>report.yaml</code>、 <code>publish-job.yaml</code> があります。以下のセクションで、それぞれの内容を順に説明します。</p>
-<h2 id="2-つのロール">2 つのロール<a class="anchor" href="#2-つのロール" aria-label="link">#</a></h2>
+<h2 id="the-two-roles">2 つのロール<a class="anchor" href="#the-two-roles" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>ロール</th><th>コマンド</th><th>イメージ</th><th>レプリカ数</th></tr></thead><tbody><tr><td>API + インターフェース</td><td><code>serve</code></td><td><code>:0.11.2</code>(distroless)</td><td>必要なだけ</td></tr><tr><td>スケジューラ + キュー</td><td><code>scheduler</code></td><td><code>:0.11.2-worker</code>(alpine)</td><td><strong>1 つ</strong></td></tr></tbody></table></div>
 <p>API が distroless なのは、HTTP を提供するだけで何も実行せず、シェルが不要だからです。 ワーカーが alpine なのは、<code>run:</code> のステップにシェルが必要だからです。</p>
 <aside class="admon admon-warning"><p class="admon-t">スケジューラのレプリカは 1 つ</p><p>同じスケジュールを具体化する 2 つのプロセスは、重複した run を作ります。可用性が必要なら、 <code>strategy: Recreate</code> とともに <code>replicas: 1</code> を使ってください。</p></aside>
-<h2 id="マイグレーション">マイグレーション<a class="anchor" href="#マイグレーション" aria-label="link">#</a></h2>
+<h2 id="migrations">マイグレーション<a class="anchor" href="#migrations" aria-label="link">#</a></h2>
 <p>デプロイの前に Job として実行します。<code>serve</code> の起動時には決して実行しないでください。</p>
 <div class="code-block" data-code="apiVersion: batch/v1
 kind: Job
@@ -196,7 +196,7 @@ spec:
           <span class="t-k">args</span>: ["migrate", "up"]
           <span class="t-k">envFrom</span>:
             - <span class="t-k">secretRef</span>: {name: brevis-db}</code></pre></div>
-<h2 id="api-の-deployment">API の Deployment<a class="anchor" href="#api-の-deployment" aria-label="link">#</a></h2>
+<h2 id="api-deployment">API の Deployment<a class="anchor" href="#api-deployment" aria-label="link">#</a></h2>
 <div class="code-block" data-code="apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -259,7 +259,7 @@ spec:
             <span class="t-k">requests</span>: {cpu: 100m, memory: 128Mi}
             <span class="t-k">limits</span>: {memory: 256Mi}</code></pre></div>
 <aside class="admon admon-note"><p class="admon-t">2 つのプローブが異なる理由</p><p><code>/health</code> はデータベースへの<strong>クエリを行わず</strong>、<code>/ready</code> は行い、失敗した依存先の名前を示します。 liveness が Postgres に依存すると、データベースが不安定になったときに、API の pod をロードバランサから 外すだけでなく Kubernetes に <strong>kill</strong> させてしまい、システムがすでに負荷を受けているまさにそのときに、 回復が遅くなります。</p></aside>
-<h2 id="スケジューラの-deployment">スケジューラの Deployment<a class="anchor" href="#スケジューラの-deployment" aria-label="link">#</a></h2>
+<h2 id="scheduler-deployment">スケジューラの Deployment<a class="anchor" href="#scheduler-deployment" aria-label="link">#</a></h2>
 <div class="code-block" data-code="apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -324,7 +324,7 @@ spec:
             - <span class="t-k">name</span>: BREVIS_POD_ENV_FROM_SECRETS
               <span class="t-k">value</span>: bigquery-cred</code></pre></div>
 <p><code>BREVIS_PODS=on</code> は、クラスタを<strong>必須</strong>とします。サービスアカウントがマウントされていなければ、 黙ってローカル実行にフォールバックするのではなく、起動が失敗します。</p>
-<h2 id="権限">権限<a class="anchor" href="#権限" aria-label="link">#</a></h2>
+<h2 id="permissions">権限<a class="anchor" href="#permissions" aria-label="link">#</a></h2>
 <p>スケジューラは、実行用の名前空間で pod を作成、監視、削除します。それ以外は何もしません。</p>
 <div class="code-block" data-code="apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -350,7 +350,7 @@ rules:
     <span class="t-k">resources</span>: ["pods/log"]
     <span class="t-k">verbs</span>: ["get"]</code></pre></div>
 <p><code>pods/log</code> は、ステップの出力をインターフェースまで追跡できるようにするものです。 これがなくても run は動作しますが、ログは空のままです。</p>
-<h2 id="デプロイ後">デプロイ後<a class="anchor" href="#デプロイ後" aria-label="link">#</a></h2>
+<h2 id="after-the-deploy">デプロイ後<a class="anchor" href="#after-the-deploy" aria-label="link">#</a></h2>
 <div class="code-block" data-code="kubectl -n data get pods -l app=brevis-api
 kubectl -n data exec deploy/brevis-api -- brevis version
 curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">kubectl</span> <span class="t-n">-n</span> data get pods <span class="t-n">-l</span> app=<span class="t-k">brevis</span>-api
@@ -358,13 +358,13 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
 <span class="t-k">curl</span> <span class="t-n">-fsS</span> https://<span class="t-k">brevis</span>.example.com/ready</code></pre></div>
 <p>インターフェースから単純なワークフローをトリガーし、ステップの pod が現れて消えることを確認します。</p>
 <div class="code-block" data-code="kubectl -n data get pods -w"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">kubectl</span> <span class="t-n">-n</span> data get pods <span class="t-n">-w</span></code></pre></div>
-<h2 id="ステップが-pending-のままのとき">ステップが Pending のままのとき<a class="anchor" href="#ステップが-pending-のままのとき" aria-label="link">#</a></h2>
+<h2 id="when-a-step-stays-pending">ステップが Pending のままのとき<a class="anchor" href="#when-a-step-stays-pending" aria-label="link">#</a></h2>
 <p>ほとんどの場合、次の 3 つのどれかです。</p>
 <div class="table-wrap"><table><thead><tr><th>原因</th><th>確認方法</th></tr></thead><tbody><tr><td>toleration のない taint</td><td><code>kubectl describe pod</code> に <code>node(s) had untolerated taint</code> と表示される</td></tr><tr><td>ノードのない <code>nodeSelector</code></td><td><code>describe</code> に <code>didn't match Pod's node affinity</code> と表示される</td></tr><tr><td>リソース不足</td><td><code>describe</code> に <code>Insufficient cpu</code> または <code>memory</code> と表示される</td></tr></tbody></table></div>
 <p>失敗したステップの pod が消えるのを見るのではなく、調べるには:</p>
 <div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>本番ではオフにしてください。停止した pod はクォータを消費します。</p>
-<h2 id="次のステップ">次のステップ<a class="anchor" href="#次のステップ" aria-label="link">#</a></h2>
+<h2 id="next-steps">次のステップ<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ja/docs/pod-per-step/">ステップごとの pod</a> — 実行モデル</li><li><a href="/ja/docs/configuration/">設定</a> — すべての <code>BREVIS_POD_*</code> 変数</li><li><a href="/ja/docs/observability/">オブザーバビリティ</a> — 何をスクレイプするか、どのプロセスからか</li></ul>
 
       <nav class="pagers" aria-label="ページ">
@@ -379,7 +379,7 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#helm-でインストールする">Helm でインストールする</a></li><li class="toc-3"><a href="#チャートが拒否するもの">チャートが拒否するもの</a></li><li class="toc-2"><a href="#helm-を使わない場合">Helm を使わない場合</a></li><li class="toc-2"><a href="#2-つのロール">2 つのロール</a></li><li class="toc-2"><a href="#マイグレーション">マイグレーション</a></li><li class="toc-2"><a href="#api-の-deployment">API の Deployment</a></li><li class="toc-2"><a href="#スケジューラの-deployment">スケジューラの Deployment</a></li><li class="toc-2"><a href="#権限">権限</a></li><li class="toc-2"><a href="#デプロイ後">デプロイ後</a></li><li class="toc-2"><a href="#ステップが-pending-のままのとき">ステップが Pending のままのとき</a></li><li class="toc-2"><a href="#次のステップ">次のステップ</a></li></ul>
+      <ul><li class="toc-2"><a href="#install-it-with-helm">Helm でインストールする</a></li><li class="toc-3"><a href="#what-the-chart-refuses">チャートが拒否するもの</a></li><li class="toc-2"><a href="#without-helm">Helm を使わない場合</a></li><li class="toc-2"><a href="#the-two-roles">2 つのロール</a></li><li class="toc-2"><a href="#migrations">マイグレーション</a></li><li class="toc-2"><a href="#api-deployment">API の Deployment</a></li><li class="toc-2"><a href="#scheduler-deployment">スケジューラの Deployment</a></li><li class="toc-2"><a href="#permissions">権限</a></li><li class="toc-2"><a href="#after-the-deploy">デプロイ後</a></li><li class="toc-2"><a href="#when-a-step-stays-pending">ステップが Pending のままのとき</a></li><li class="toc-2"><a href="#next-steps">次のステップ</a></li></ul>
     </aside>
   </main>
 </div>
@@ -399,9 +399,9 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -424,7 +424,7 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

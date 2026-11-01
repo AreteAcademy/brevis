@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Saltar al contenido</a>
+<a class="skip-link" href="#content">Saltar al contenido</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegación principal">
-      <a href="/es/#ecossistema">Ecosistema</a>
+      <a href="/es/#ecosystem">Ecosistema</a>
       <a href="/es/docs/">Documentación</a>
       <details class="lang-dd"><summary aria-label="Idioma: Español"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Español</span></summary><ul><li><a href="/docs/core/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/core/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/core/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/core/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/core/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/core/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/core/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/core/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/core/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/core/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/core/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,16 +119,16 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentación</p>
       <h1>Core</h1>
       <p class="doc-desc">El orquestador: programa runs, mantiene la cola en Postgres e inicia un pod por step, y nunca toca los datos.</p>
       <p>Todo el workflow es un archivo versionado: revisar un pipeline pasa a ser revisar un diff. El Core programa, encola e inicia cada step con su propia imagen, y nunca toca los datos.</p>
 <figure class="doc-figure"><img src="/assets/flow-core.svg" width="360" height="436" alt="El flujo del Core: un scheduler y una cola, mantenidos en Postgres, inician un pod por step del workflow — prepare, extract, validate y publish. Del Core solo salen líneas de control. Los datos van de una fuente HTTP al pod extract, que ejecuta el SDK, y de allí a BigQuery; ningún dato pasa por el Core." loading="lazy"></figure>
-<h2 id="que-hace">Qué hace<a class="anchor" href="#que-hace" aria-label="link">#</a></h2>
+<h2 id="what-it-does">Qué hace<a class="anchor" href="#what-it-does" aria-label="link">#</a></h2>
 <ul><li><strong>Programa.</strong> El scheduler lee la programación de cada workflow y crea los runs. Él y la cola son dos bucles independientes: uno atascado no detiene al otro — <a href="/es/docs/scheduler-and-queue/">Scheduler y cola</a>.</li><li><strong>Encola.</strong> La cola vive en Postgres: quien ejecuta reclama un run pendiente, recorre el grafo y registra el estado de cada step.</li><li><strong>Inicia un pod por step</strong>, cada uno con su propia imagen — <a href="/es/docs/pod-per-step/">Pod por step</a>.</li><li><strong>Nunca toca los datos.</strong> Del Core solo salen líneas de control: quien lee y escribe datos es el step, con el <a href="/es/docs/sdk/">SDK</a> o con el código que sea propio.</li></ul>
-<h2 id="un-workflow-de-punta-a-punta">Un workflow, de punta a punta<a class="anchor" href="#un-workflow-de-punta-a-punta" aria-label="link">#</a></h2>
+<h2 id="one-workflow-end-to-end">Un workflow, de punta a punta<a class="anchor" href="#one-workflow-end-to-end" aria-label="link">#</a></h2>
 <p>El workflow es un archivo YAML. Dos steps que dependen del mismo corren en paralelo:</p>
 <div class="code-block" data-code="name: hello
 type: dag
@@ -204,7 +204,7 @@ workflow hello finished"><div class="code-head"><span class="code-lang">text</sp
 
 workflow hello finished</code></pre></div>
 <p>La salida real, de la imagen publicada. brevis run se ejecuta localmente, sin cola; los pods los inicia el scheduler.</p>
-<h2 id="adonde-ir-despues">Adónde ir después<a class="anchor" href="#adonde-ir-despues" aria-label="link">#</a></h2>
+<h2 id="where-to-go-next">Adónde ir después<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>si quieres</th><th>ve a</th></tr></thead><tbody><tr><td>el formato YAML completo</td><td><a href="/es/docs/workflows/">Workflows</a></td></tr><tr><td>quién crea los runs y quién los ejecuta</td><td><a href="/es/docs/scheduler-and-queue/">Scheduler y cola</a></td></tr><tr><td>por qué un pod por step</td><td><a href="/es/docs/pod-per-step/">Pod por step</a></td></tr><tr><td>lo que un step pasa al siguiente</td><td><a href="/es/docs/context/">Contexto entre steps</a></td></tr><tr><td>levantarlo todo y ver el grafo en la interfaz</td><td><a href="/es/docs/quickstart/">Inicio rápido</a></td></tr></tbody></table></div>
 
       <nav class="pagers" aria-label="Páginas">
@@ -219,7 +219,7 @@ workflow hello finished</code></pre></div>
 
     <aside class="toc" aria-label="En esta página">
       <p class="toc-t">En esta página</p>
-      <ul><li class="toc-2"><a href="#que-hace">Qué hace</a></li><li class="toc-2"><a href="#un-workflow-de-punta-a-punta">Un workflow, de punta a punta</a></li><li class="toc-2"><a href="#adonde-ir-despues">Adónde ir después</a></li></ul>
+      <ul><li class="toc-2"><a href="#what-it-does">Qué hace</a></li><li class="toc-2"><a href="#one-workflow-end-to-end">Un workflow, de punta a punta</a></li><li class="toc-2"><a href="#where-to-go-next">Adónde ir después</a></li></ul>
     </aside>
   </main>
 </div>
@@ -239,9 +239,9 @@ workflow hello finished</code></pre></div>
       <div class="footer-col">
         <h2>proyecto</h2>
         <ul>
-          <li><a href="/es/#ecossistema">Ecosistema</a></li>
+          <li><a href="/es/#ecosystem">Ecosistema</a></li>
           <li><a href="/es/docs/philosophy/">Principios</a></li>
-          <li><a href="/es/docs/introduction/#codigo-abierto-elige-como-participar">Código abierto</a></li>
+          <li><a href="/es/docs/introduction/#open-code-choose-how-to-take-part">Código abierto</a></li>
           <li><a href="/es/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -264,7 +264,7 @@ workflow hello finished</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

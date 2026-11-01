@@ -50,9 +50,9 @@ params:
   - name: load_full
     type: boolean
     default: "false"
-    title: Carga completa
-    group: Carga
-    warn: reprocessa a tabela inteira; custa caro
+    title: Full load
+    group: Load
+    warn: reprocesses the whole table; it costs
     uses: bigquery
 ```
 
@@ -69,7 +69,7 @@ params:
 
   - name: layers
     type: list|string
-    enum: [bronze, silver, gold]     # o enum restringe cada ITEM
+    enum: [bronze, silver, gold]     # an enum restricts each ITEM
     default: "bronze"
 
   - name: days
@@ -137,7 +137,7 @@ de publicar um workflow que use uma lista.
 O valor entra no `run` por template, entre chaves duplas e com ponto:
 
 ```yaml
-run: ./carregar.sh --desde {{ .start_date }}
+run: ./load.sh --since {{ .start_date }}
 ```
 
 ## Passando na linha de comando
@@ -150,7 +150,7 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01
 `--param` é repetível. Entrada sem `=` é **erro**:
 
 ```
-erro: --param "load_full": use chave=valor
+error: --param "load_full": use key=value
 ```
 
 Isso é deliberado. `--param load_full`, esquecendo o valor, rodaria com o padrão
@@ -162,7 +162,7 @@ Os valores valem para **todos** os slots do intervalo. É o caso de uso central:
 "reprocessa janeiro inteiro com `load_full=true`".
 
 ```bash
-brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true
+brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true
 ```
 
 ## Na interface
@@ -256,7 +256,7 @@ Em Go, o [SDK](/docs/sdk/) lê por você:
 ```go
 Before: func(ctx context.Context, p *sdk.Pipeline) error {
     start, end, ok := p.Run.Auto.Window()
-    if !ok { // sem agendamento: cai para uma janela fixa
+    if !ok { // no schedule: fall back to a fixed window
         start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
     }
     p.Source.URL += "&from=" + start.Format(time.RFC3339) +
@@ -302,7 +302,7 @@ def events(
     updated_at=dlt.sources.incremental(
         "updated_at",
         initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
-        allow_external_schedulers=True,   # esta linha é a integração inteira
+        allow_external_schedulers=True,   # this line is the whole integration
     )
 ):
     yield from api.events(since=updated_at.start_value, until=updated_at.end_value)

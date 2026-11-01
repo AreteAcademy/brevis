@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
       <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/ingestion-sinks/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/ingestion-sinks/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/ingestion-sinks/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/ingestion-sinks/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/ingestion-sinks/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/ingestion-sinks/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/ingestion-sinks/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/ingestion-sinks/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/ingestion-sinks/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/ingestion-sinks/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/ingestion-sinks/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>取り込みの sink</h1>
@@ -129,7 +129,7 @@
 <p><strong>6 つのうち 2 つは、エンドツーエンドでは未検証</strong>です。表は、誰も確認していない主張を 「動作する」という言葉に担わせるのではなく、そう明記しています。BigQuery と Redshift にはローカルの エミュレータがないため、テストされているのは、設定、拒否、そしてその下のドライバです。ドライバは SDK 自身の テストスイートがすでにカバーしています。どちらかの最初の本番利用が本当の証明であり、リスクの低い ストリームで行うべきです。</p>
 <p>未知の <code>type:</code> は<strong>起動時に拒否され</strong>、*このバイナリ*が持っているものが示されます。持っていない sink で 起動した gateway は、誰にも見えない理由でイベントを捨てる gateway だからです。</p>
 <p><code>gs://</code> と <code>s3://</code> は別のコネクタではありません。<code>files</code> が 3 種類のパスの形をすべて読むので、 dead letter はノート PC ではフォルダ、本番ではバケットになり、ここで何も変える必要はありません。</p>
-<h2 id="それぞれの書き込み方">それぞれの書き込み方<a class="anchor" href="#それぞれの書き込み方" aria-label="link">#</a></h2>
+<h2 id="how-each-one-writes">それぞれの書き込み方<a class="anchor" href="#how-each-one-writes" aria-label="link">#</a></h2>
 <p><code>write</code> は、テーブルに書き込む 4 つの宛先で<strong>必須であり、デフォルトはありません</strong>。2 つのモードは 本当に異なり、どちらかを知っているのはテーブルの所有者だけだからです。</p>
 <div class="table-wrap"><table><thead><tr><th></th><th><code>append</code></th><th><code>merge</code></th></tr></thead><tbody><tr><td><strong>postgres</strong></td><td><code>COPY FROM STDIN</code></td><td><code>INSERT … ON CONFLICT (ingestion_id) DO NOTHING</code></td></tr><tr><td><strong>mysql</strong></td><td>ブロックごとの複数行 <code>INSERT</code></td><td><code>INSERT IGNORE</code></td></tr><tr><td><strong>bigquery</strong></td><td>行のロード(インライン上限を超えると GCS 経由)</td><td><code>MERGE … WHEN NOT MATCHED THEN INSERT</code></td></tr><tr><td><strong>redshift</strong></td><td>S3 からの <code>COPY</code></td><td>ステージングテーブルへの <code>COPY</code>、その後 <code>MERGE</code></td></tr></tbody></table></div>
 <p><code>merge</code> は <strong>4 つすべてで同じ意味</strong>です。冪等な挿入で、<strong>最初の配信が勝ちます</strong>。再配信は適用されず 無視されます。これは、一度だけ起き、変わらないイベントには正しく、可変な状態を持つ行には間違っています。</p>
@@ -137,7 +137,7 @@
 <div class="code-block" data-code="CREATE UNIQUE INDEX CONCURRENTLY ON landing.orders (ingestion_id);"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">CREATE</span> UNIQUE INDEX CONCURRENTLY <span class="t-k">ON</span> landing.orders (ingestion_id);</code></pre></div>
 <p>インデックスがなければ、<code>ON CONFLICT</code> に照合する対象がなく、すべての再配信が、所有者が正反対を 求めたテーブルに重複してしまいます。拒否はバッチの喪失ではありません。リトライされ、その後、理由と <code>CREATE INDEX</code> をレコードに付けて dead letter に葬られます。誰かがインデックスを作成するあいだに イベントを失う人はいません。</p>
 <p><strong><code>upsert</code> は名前を挙げて拒否されます。</strong> *最後の*配信が勝つ <code>ON CONFLICT DO UPDATE</code> は実在するモードですが、 <strong>実装されていません</strong>。<code>merge</code> のように振る舞いながらその言葉を受け付けるのは、そのフィールドが防ぐために 存在する失敗そのものなので、設定はそう伝えます。</p>
-<h2 id="それぞれに固有の事実">それぞれに固有の事実<a class="anchor" href="#それぞれに固有の事実" aria-label="link">#</a></h2>
+<h2 id="each-one-with-what-is-true-only-of-it">それぞれに固有の事実<a class="anchor" href="#each-one-with-what-is-true-only-of-it" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# Postgres: schema-qualified name, and the table has to exist.
 sink: {type: postgres, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
 
@@ -185,10 +185,10 @@ sink:
   <span class="t-k">write</span>: merge</code></pre></div>
 <p><code>dsn_from</code> は、接続文字列を保持する<strong>環境変数</strong>の名前であり、文字列そのものではありません。DSN には パスワードが含まれ、このファイルは git にあるからです。ワークフローの <code>secrets:</code> と同じ分け方です。</p>
 <p><code>iam_role</code> はロールであり、ドライバは<strong>キーを受け付けません</strong>。<code>COPY</code> の URL に入ったキーはクラスタの クエリログに残り、それを読む人は大勢いるからです。</p>
-<h2 id="列の宣言はない">列の宣言はない<a class="anchor" href="#列の宣言はない" aria-label="link">#</a></h2>
+<h2 id="no-column-declaration">列の宣言はない<a class="anchor" href="#no-column-declaration" aria-label="link">#</a></h2>
 <p>gateway は列のリストを送りません。パイプラインが自分で宣言するのは、その行が自分で制御できる 1 つの形を 持つからです。gateway のバッチは、1 回のフラッシュウィンドウで <em>N</em> 個のクライアントが POST したものが 何であれそれになり、形が異なることが許されています。</p>
 <p>ドライバは、サーバーに触れる<strong>前に</strong>、<strong>テーブル自身</strong>から列のリストを取得し、バッチが持つものと 突き合わせて決定します。テーブルにないフィールドは、<code>COPY</code> の途中で <code>column "x" of relation "y" does not exist</code> と失敗するのではなく、修正方法を示すメッセージとともに 拒否されます。あるイベントが省略したフィールドは <code>NULL</code> として書き込まれます。</p>
-<h2 id="import-のリストが選択になる">import のリストが選択になる<a class="anchor" href="#import-のリストが選択になる" aria-label="link">#</a></h2>
+<h2 id="the-import-list-is-the-selection">import のリストが選択になる<a class="anchor" href="#the-import-list-is-the-selection" aria-label="link">#</a></h2>
 <p>sink はフックと同様に<strong>コンパイルして組み込まれ</strong>、バイナリは持っているものを登録します。</p>
 <div class="code-block" data-code="func main() {
     sinks := gateway.NewSinks()
@@ -205,18 +205,18 @@ sink:
 <p>その価値は、聞こえるとおりです。</p>
 <div class="table-wrap"><table><thead><tr><th>ビルド</th><th>パッケージ数</th><th>バイナリ</th></tr></thead><tbody><tr><td>6 つすべての sink、両方のオブジェクトストア、両方のメタストア</td><td>約 900</td><td>55.0 MB</td></tr><tr><td><code>postgres</code> + ローカルの <code>files</code></td><td>約 240</td><td><strong>10.2 MB</strong></td></tr></tbody></table></div>
 <p>オブジェクトストアは<strong>2 つ目の</strong>レジストリです。スキームは宛先ではないからです。<code>files</code> は、ディレクトリ、 <code>gs://</code>、<code>s3://</code> に書き込む 1 つの sink であり、ローカルにしか書き込まないビルドが、そのために AWS SDK を抱えるべきではありません。</p>
-<h3 id="公開されている-2-つのイメージ">公開されている 2 つのイメージ<a class="anchor" href="#公開されている-2-つのイメージ" aria-label="link">#</a></h3>
+<h3 id="two-published-images">公開されている 2 つのイメージ<a class="anchor" href="#two-published-images" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th>イメージ</th><th>含むもの</th><th>pull サイズ(amd64)</th></tr></thead><tbody><tr><td><code>areteacademy/brevis-gateway:0.32.0</code></td><td>6 つの sink、S3、GCS、Redis、memcached</td><td>19.1 MB</td></tr><tr><td><code>areteacademy/brevis-gateway:0.32.0-slim</code></td><td><code>postgres</code>、ローカルの <code>files</code>、<code>auto_table</code></td><td><strong>5.2 MB</strong></td></tr></tbody></table></div>
 <p>どちらも 1 つのツリーの 1 回のビルドから作られるため、2 つのタグは常に同じコミットです。 <code>latest-slim</code> はありません。<code>latest</code> はすでに、誰もデプロイすべきでないタグだからです。</p>
 <p><strong>別の組み合わせが欲しいですか?</strong> <code>cmd/gateway-slim</code> は 15 行で、import ブロックがその設定のすべてです。 コピーして import を変え、ビルドしてください。フックが欲しい人はすでに自分でバイナリをコンパイルして いるので、sink を選ぶことにそれ以上のコストはかかりません。</p>
-<h3 id="拒否はどのビルドを持っているかを教える">拒否は、どのビルドを持っているかを教える<a class="anchor" href="#拒否はどのビルドを持っているかを教える" aria-label="link">#</a></h3>
+<h3 id="the-refusal-says-which-build-you-are-holding">拒否は、どのビルドを持っているかを教える<a class="anchor" href="#the-refusal-says-which-build-you-are-holding" aria-label="link">#</a></h3>
 <div class="code-block" data-code="sink type &quot;bigquery&quot; is not one this binary carries (it has: files, postgres).
 Sinks are compiled in, so this is a build that left it out rather than a
 destination that does not exist."><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>sink type "bigquery" is not one this binary carries (it has: files, postgres).
 Sinks are compiled in, so this is a build that left it out rather than a
 destination that does not exist.</code></pre></div>
 <p>固定のリストでは、その人は、自分がしていない設定ミスを探すことになります。オブジェクトストアも同じです。 S3 バックエンドのないバイナリでの <code>s3://</code> の dead letter は、葬らなければならない最初のバッチではなく、 <strong>起動時に</strong>スキームを示して拒否されます。</p>
-<h2 id="1-つのルートn-個のテーブル宣言するものは何もない">1 つのルート、N 個のテーブル、宣言するものは何もない<a class="anchor" href="#1-つのルートn-個のテーブル宣言するものは何もない" aria-label="link">#</a></h2>
+<h2 id="one-route-n-tables-nothing-declared">1 つのルート、N 個のテーブル、宣言するものは何もない<a class="anchor" href="#one-route-n-tables-nothing-declared" aria-label="link">#</a></h2>
 <div class="code-block" data-code="sink:
   type: auto_table
   shape: columns
@@ -229,7 +229,7 @@ destination that does not exist.</code></pre></div>
   <span class="t-k">metastore</span>: {type: redis, addr_from: BREVIS_METASTORE_ADDR, ttl: 60s}
   <span class="t-k">into</span>: {type: bigquery, project: acme-prod, dataset: landing, write: merge}</code></pre></div>
 <p><code>auto_table</code> は<strong>ルーティングするだけで書き込みません</strong>。書き込むのは <code>into</code> で、<code>table</code> を持ちません。 テーブルは各イベントから決まります。<code>table</code> を持つ <code>into</code> は起動時に拒否されます。ルーターの下の固定テーブルが 黙って優先され、すべてのイベントがそこに着地してしまうからです。</p>
-<h3 id="エンベロープ">エンベロープ<a class="anchor" href="#エンベロープ" aria-label="link">#</a></h3>
+<h3 id="the-envelope">エンベロープ<a class="anchor" href="#the-envelope" aria-label="link">#</a></h3>
 <p>ボディは<strong>エンベロープ</strong>です。制御フィールドが最上位にあり、レコードは <code>data</code> の中にあります。</p>
 <div class="code-block" data-code="{
   &quot;table_name&quot;: &quot;app_orders&quot;,
@@ -256,7 +256,7 @@ destination that does not exist.</code></pre></div>
 }</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>フィールド</th><th></th><th>内容</th></tr></thead><tbody><tr><td><code>table_name</code></td><td><strong>必須</strong></td><td>これが着地する場所</td></tr><tr><td><code>data</code></td><td><strong>必須</strong></td><td>レコード、そしてレコードだけ</td></tr><tr><td><code>unique_key</code></td><td>デフォルトは <code>id</code></td><td><code>data</code> のどのフィールドがレコードを識別するか — <strong><code>merge</code> では必須</strong></td></tr><tr><td><code>operation</code></td><td>デフォルトは <code>INSERT</code></td><td><code>INSERT</code>、<code>UPDATE</code>、<code>DELETE</code></td></tr><tr><td><code>description</code></td><td>任意</td><td><strong>受け付けるが、まだ使われていない</strong> — 後述</td></tr></tbody></table></div>
 <p><code>total</code> や <code>customer</code> の隣にある <code>table_name</code> は、<strong>トランスポート</strong>のフィールドが<strong>レコード</strong>の フィールドのふりをしていたものでした。両者を分けるのは、あらゆる CDC フォーマットの形であり、 プレフィックスを予約できるようにするものでもあります。プロデューサーだけが書く場所が、 1 つできたからです。</p>
-<h3 id="キーは-merge-のものでありエンベロープのものではない">キーは <code>merge</code> のものであり、エンベロープのものではない<a class="anchor" href="#キーは-merge-のものでありエンベロープのものではない" aria-label="link">#</a></h3>
+<h3 id="the-key-belongs-to-merge-not-to-the-envelope">キーは <code>merge</code> のものであり、エンベロープのものではない<a class="anchor" href="#the-key-belongs-to-merge-not-to-the-envelope" aria-label="link">#</a></h3>
 <p><code>unique_key</code> は任意で、それが<strong>必須</strong>かどうかは書き込みモードで決まります。2 つのモードが 求めるものが異なるからです。</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>write: merge</code></td><td><strong>必須。</strong> このモードはレコードごとに 1 行を保つために存在し、<code>brevis_record_key</code> が「レコードごと」の意味です。現行バージョンを解決する <code>qualify</code> はそれでパーティションを切ります。どのレコードも指さない行でいっぱいの merge テーブルは、誰にも解決できないテーブルです。</td></tr><tr><td><code>write: append</code></td><td><strong>任意。</strong> append テーブルはログであり、ログのエントリは、レコードに*ついて*のものである必要はありません。監査ログ、Webhook、メトリクスのサンプルなどです。そこで <code>id</code> を要求すれば、プロデューサーに id をでっち上げさせることになり、本物らしく見える分、<code>NULL</code> より悪くなります。</td></tr></tbody></table></div>
 <p><code>append</code> では、列は null 許容で作成され、キーのない行は <code>NULL</code> を持ちます。<code>""</code> ではありません。それは別の事実だからです。 そして <code>brevis_ingestion_id</code> は引き続き存在します。キーがなければ<strong>内容がキー</strong>になるので、 同じドキュメントを 2 回送れば同じ id になります。</p>
@@ -267,14 +267,14 @@ destination that does not exist.</code></pre></div>
  record's identity and \"data\".\"pedido_id\" is missing or empty. Drop
  \"unique_key\" to fall back to \"id\", or send the field"]}</code></pre></div>
 <p><strong><code>description</code> は読み取られますが、現時点ではどこにも行きません。</strong> まだ書かれていない Console の 取り込みページのために、契約に含まれています。ここで明言するのは、黙って受け付けられたフィールドは、 保存されていると誰かが信じるフィールドだからです。</p>
-<h3 id="8-つの固定列とレコードが持つもの">8 つの固定列と、レコードが持つもの<a class="anchor" href="#8-つの固定列とレコードが持つもの" aria-label="link">#</a></h3>
+<h3 id="eight-fixed-columns-plus-whatever-the-record-carries">8 つの固定列と、レコードが持つもの<a class="anchor" href="#eight-fixed-columns-plus-whatever-the-record-carries" aria-label="link">#</a></h3>
 <div class="table-wrap"><table><thead><tr><th>列</th><th></th><th></th></tr></thead><tbody><tr><td><code>brevis_ingestion_id</code></td><td><code>STRING</code></td><td>識別子であり、merge のキー</td></tr><tr><td><code>brevis_record_key</code></td><td><code>STRING</code></td><td><code>data[unique_key]</code> — どの<strong>レコード</strong>についてのものか。<code>append</code> では <code>NULL</code></td></tr><tr><td><code>brevis_operation</code></td><td><code>STRING</code></td><td><code>INSERT</code>、<code>UPDATE</code>、<code>DELETE</code></td></tr><tr><td><code>brevis_received_at</code></td><td><code>TIMESTAMP</code></td><td>到着時刻。<strong>こちら側</strong>の時計で。パーティション列</td></tr><tr><td><code>brevis_loaded_at</code></td><td><code>TIMESTAMP</code></td><td>書き込み時刻。<strong>宛先</strong>が刻印する</td></tr><tr><td><code>brevis_stream</code></td><td><code>STRING</code></td><td>どのルートが書いたか</td></tr><tr><td><code>brevis_gateway</code></td><td><code>STRING</code></td><td>どのデプロイか</td></tr><tr><td><code>brevis_received_bytes</code></td><td><code>INT64</code></td><td>イベントがエンベロープを含めて<strong>どれだけの大きさで届いたか</strong></td></tr></tbody></table></div>
-<p>この 8 つは、この sink のものではなく <strong>SDK のもの</strong>です。<code>sdk.LandingSchema</code> がそれらを宣言し、 <code>sdk.LandingID</code> が識別子を生成するため、パイプラインは同じテーブルを同じ id で着地させられます。 定義は 1 つです。2 つあればずれていくからです。 <a href="/ja/docs/sdk/#ランディングレイアウト">SDK のランディングレイアウト</a>を参照してください。</p>
+<p>この 8 つは、この sink のものではなく <strong>SDK のもの</strong>です。<code>sdk.LandingSchema</code> がそれらを宣言し、 <code>sdk.LandingID</code> が識別子を生成するため、パイプラインは同じテーブルを同じ id で着地させられます。 定義は 1 つです。2 つあればずれていくからです。 <a href="/ja/docs/sdk/#the-landing-layout">SDK のランディングレイアウト</a>を参照してください。</p>
 <p><strong><code>brevis_</code> は予約されています。</strong> そのプレフィックスを持つキーが <code>data</code> にあると、<strong>イベントごとに</strong> 拒否されます。さもなければプロデューサーが制御フィールドを偽造でき、偽造された <code>brevis_received_at</code> は 本物らしく見える分、ないよりも悪いからです。</p>
 <p><strong><code>brevis_loaded_at</code> は、データベースの <code>DEFAULT</code></strong> であり、gateway が送る値ではありません。 gateway が知っているのは<strong>送出</strong>の時刻、宛先が知っているのは<strong>書き込み</strong>の時刻で、2 つの列の差が、 行ごとの本当のエンドツーエンドのレイテンシです。何も計装する必要はありません。</p>
 <p><strong><code>brevis_received_at</code> はパーティション列であり、クライアントの時計では決してありません。</strong> プロデューサーの時計は間違っているか、存在しないことがあり、クライアントが制御できるパーティション列は、 2035 年に書き込めるクライアントを意味します。パーティションのないランディングテーブルは、増える一方の クエリ料金です。クラスタリングは <code>brevis_record_key</code> で行います。このようなテーブルで誰もがすることは、 1 つのレコードの履歴を読むことだからです。</p>
 <p>1 つの宣言がすべての宛先に使えるのは、SDK の DDL ジェネレータが各型を変換するからです。<code>STRING</code> は Postgres では <code>TEXT</code>、MySQL では <code>LONGTEXT</code>、BigQuery では <code>STRING</code> になり、<code>JSON</code> は <code>JSONB</code>、<code>JSON</code>、<code>JSON</code> になります。</p>
-<h3 id="ボリュームを測るインフラなしでボリュームを知る">ボリュームを測るインフラなしでボリュームを知る<a class="anchor" href="#ボリュームを測るインフラなしでボリュームを知る" aria-label="link">#</a></h3>
+<h3 id="volume-without-infrastructure-to-measure-volume">ボリュームを測るインフラなしでボリュームを知る<a class="anchor" href="#volume-without-infrastructure-to-measure-volume" aria-label="link">#</a></h3>
 <p><code>brevis_received_bytes</code> は<strong>無料</strong>です。gateway は <code>buffer.flush.size</code> を駆動するために、デコード時に すでにこのバイト数を数えており、これまでその数字はそこで捨てられていました。レコードだけを測ろうとすると、 イベントごとに <code>json.Marshal</code> が必要になり、パースがすでに使う 3.1 µs に対して 2.0 µs、つまりホットパスで <strong>67% 多く</strong>かかります。それも、傾向と帰属を知るための数字を洗練させるためだけに。</p>
 <p>これは、メトリクスが<strong>構造的に答えられない</strong>ことに答えます。すべての <code>brevis_gateway_*</code> 系列は *ストリーム*単位で、<code>table</code> ラベルを意図的に持ちません。<code>auto_table</code> では 1 つのルートが N 個のテーブルに なり、そのラベルを選ぶのはプロデューサーだからです。そのため、「どのテーブルが、いつから増えているか」には、 どこにも答えがありませんでした。</p>
 <div class="code-block" data-code="select date(brevis_received_at) day,
@@ -289,7 +289,7 @@ group by 1 order by 1 desc</code></pre></div>
 <p>この列がなければ、同じ問いのたびに JSON 列全体のスキャン、つまり <code>sum(length(to_json_string(data)))</code> が必要で、スキャンされるバイト数は約<strong>50 倍</strong>です。この列は、 最初のクエリで元が取れます。</p>
 <p><strong>これはストレージではなくイングレスです。</strong> 宛先は行を型付けして圧縮して保持するため、 400 バイトの JSON がディスク上では 80 バイトのこともあります。これを合計して得られるのは、*届いた*量であって、 保持に対して課金される量ではありません。</p>
 <p>そして<strong>プロデューサーはこれを書き込めません</strong>。gateway はフックの後に値を刻印し、エンベロープが 持っていたものを上書きします。このフィールドを送ってきたクライアントは自分のボリュームを報告する ことになり、その合計は何も意味しなくなるからです。</p>
-<h3 id="ボリューム系列はオプトイン">ボリューム系列はオプトイン<a class="anchor" href="#ボリューム系列はオプトイン" aria-label="link">#</a></h3>
+<h3 id="the-volume-series-are-opt-in">ボリューム系列はオプトイン<a class="anchor" href="#the-volume-series-are-opt-in" aria-label="link">#</a></h3>
 <div class="code-block" data-code="BREVIS_INGESTION_METRICS=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>BREVIS_INGESTION_METRICS=true</code></pre></div>
 <div class="code-block" data-code="brevis_gateway_ingested_bytes_total{stream,table}
 brevis_gateway_ingested_events_total{stream,table}"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>brevis_gateway_ingested_bytes_total{stream,table}
@@ -297,7 +297,7 @@ brevis_gateway_ingested_events_total{stream,table}</code></pre></div>
 <p><strong>デフォルトではオフ</strong>であり、デフォルトであることが要点です。<code>table</code> は*プロデューサー*が選ぶラベルです。 このファイルの他のすべては、オペレータが YAML に書いたものでラベル付けされるため、系列の数はプロセスの 起動前にわかります。アップグレードしたからといって、誰もメトリクスの請求書を見つけるべきではありません。</p>
 <p>パースできない値は、失敗ではなく<strong>オフ</strong>として読まれます。これはオブザーバビリティであり、ここでの タイプミスが取り込みエンドポイントが起動しない理由になってはならないからです。</p>
 <p>列はどちらの場合もあります。メトリクスは*今*を買い、列は*いつから*と*誰によって*を買います。</p>
-<h3 id="2-つの形1-つの契約">2 つの形、1 つの契約<a class="anchor" href="#2-つの形1-つの契約" aria-label="link">#</a></h3>
+<h3 id="two-shapes-one-contract">2 つの形、1 つの契約<a class="anchor" href="#two-shapes-one-contract" aria-label="link">#</a></h3>
 <p><code>shape</code> は、<strong>レコード</strong>が行に何を寄与するかを決めます。プロデューサーの契約はどちらでも同じで、 エンベロープは変わりません。変わるのはテーブルの見た目で、それはプロデューサーではなく オペレータの判断です。</p>
 <div class="code-block" data-code="shape: document   # the default
 shape: columns"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">shape</span>: document   <span class="t-c"># the default</span>
@@ -319,13 +319,13 @@ SELECT JSON_VALUE(customer, &#x27;$.uf&#x27;) ...;           -- SP"><div class="
 <span class="t-k">SELECT</span> JSON_VALUE(customer, '$.uf') ...;           <span class="t-c">-- SP</span></code></pre></div>
 <p><code>JSON_TYPE</code> が <code>string</code> を返し、<code>JSON_VALUE</code> が NULL を返すなら、オブジェクトが二重にエンコードされています。 列はオブジェクトではなく、オブジェクトの TEXT を保持しています。<strong>0.15.0</strong> 以前の gateway バージョンは、 BigQuery で<strong>両方の</strong>形についてそうなっていました。1 行で確認する方法と修復は <a href="https://github.com/AreteAcademy/brevis/blob/master/gateway/CHANGELOG.md" target="_blank" rel="noopener">gateway の changelog</a>を参照して ください。Postgres と MySQL は影響を受けていません。サーバーがテキストをパースするからです。</p>
 <p>フィールド名は、4 つの中で最も狭い BigQuery のルールに合致する必要があります。Postgres は引用符を付ければ ほとんど何でも受け付けますが、それが罠です。そこではテーブルが作成され、誰かがストリームを BigQuery に 向けた日に壊れます。</p>
-<p>どちらの形にも SDK に相当するものがあり、それは一致するコードではなく同じコードです。 <code>sdk.Landing(table, sdk.LandingKey("id"))</code> は <code>document</code> を着地させ、 <a href="/ja/docs/sdk/#2-つの形-レコードを丸ごとまたはフィールドごとに-1-列"><code>sdk.LandingColumns()</code></a>を加えると <code>columns</code> を着地させます。列も、値も、<code>brevis_ingestion_id</code> も同じなので、ストリームはマイグレーションなしで gateway とパイプラインの間を移動でき、両者を 1 つのテーブルとして読めます。</p>
-<p>パイプラインも、同じ列を同じ方法で増やせます。宛先に <a href="/ja/docs/sdk/#テーブルにないフィールドが現れたとき"><code>Evolve: sdk.EvolveAdditiveFromPayload</code></a>を 設定すると、バッチが持つフィールドが、このルール、このコードによって列になります。</p>
+<p>どちらの形にも SDK に相当するものがあり、それは一致するコードではなく同じコードです。 <code>sdk.Landing(table, sdk.LandingKey("id"))</code> は <code>document</code> を着地させ、 <a href="/ja/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field"><code>sdk.LandingColumns()</code></a>を加えると <code>columns</code> を着地させます。列も、値も、<code>brevis_ingestion_id</code> も同じなので、ストリームはマイグレーションなしで gateway とパイプラインの間を移動でき、両者を 1 つのテーブルとして読めます。</p>
+<p>パイプラインも、同じ列を同じ方法で増やせます。宛先に <a href="/ja/docs/sdk/#when-a-field-the-table-does-not-have-shows-up"><code>Evolve: sdk.EvolveAdditiveFromPayload</code></a>を 設定すると、バッチが持つフィールドが、このルール、このコードによって列になります。</p>
 <p><strong>プレフィックスは設定可能で、プロセス全体での 1 つの判断です。</strong> <code>BREVIS_LANDING_PREFIX=acme</code> にすると <code>acme_ingestion_id</code> などになります。この gateway のすべての ストリームに及ぶので、両方が書き込むかもしれないテーブルについて 2 つの sink が食い違うことはありません。 上の予約ルールもそれに合わせて移ります。<code>acme_</code> の下では、<code>acme_region</code> を送るプロデューサーは拒否され、 <code>brevis_region</code> は普通のフィールドです。</p>
-<p><strong>最初のテーブルを作る前に選んでください。</strong> 後から変更すると、8 つの列が追加されて 8 つが放棄されます。 列を削除するものはないため、あるプレフィックスでレイアウトをすでに持つテーブルは、別のプレフィックスを 宣言したロードを拒否します。正規化と回避方法は <a href="/ja/docs/sdk/#brevis-プレフィックスは変更できる">SDK のページ</a>を参照してください。</p>
-<p><strong>ネストされたオブジェクトのフィールドに、独自の列を持たせることができます。</strong> gateway のプロセスで <code>BREVIS_NORMALIZE_DATA=true</code> にすると 1 階層がフラット化され、 <code>{"name": {"first": "x"}}</code> は <code>name_first</code> として着地します。すべてのストリームがこれを共有するため、 両方が書き込むかもしれないテーブルについて 2 つの sink が食い違うことはありません。何がリネームされるかは <a href="/ja/docs/sdk/#ネストされたフィールドごとに-1-列">SDK のページ</a>を参照してください。有効にする前に読むべきなのは そちらの半分です。</p>
+<p><strong>最初のテーブルを作る前に選んでください。</strong> 後から変更すると、8 つの列が追加されて 8 つが放棄されます。 列を削除するものはないため、あるプレフィックスでレイアウトをすでに持つテーブルは、別のプレフィックスを 宣言したロードを拒否します。正規化と回避方法は <a href="/ja/docs/sdk/#the-brevis-prefix-is-yours-to-change">SDK のページ</a>を参照してください。</p>
+<p><strong>ネストされたオブジェクトのフィールドに、独自の列を持たせることができます。</strong> gateway のプロセスで <code>BREVIS_NORMALIZE_DATA=true</code> にすると 1 階層がフラット化され、 <code>{"name": {"first": "x"}}</code> は <code>name_first</code> として着地します。すべてのストリームがこれを共有するため、 両方が書き込むかもしれないテーブルについて 2 つの sink が食い違うことはありません。何がリネームされるかは <a href="/ja/docs/sdk/#one-column-per-nested-field">SDK のページ</a>を参照してください。有効にする前に読むべきなのは そちらの半分です。</p>
 <p><strong>BigQuery では、<code>nationalID</code> と <code>nationalId</code> は 1 つの列です。</strong> BigQuery は列の大文字小文字を畳み込む ため、<code>DELETE</code> で一方の綴り、<code>INSERT</code> で他方の綴りを持つフラッシュは、<code>CREATE</code> を失敗させるのではなく、 ソート順で最初の<strong>1 つの</strong>列を作成します。1 つのイベントが両方を持つ場合は、両方のフィールドを示して 拒否されます。Postgres と MySQL では 2 つの列のまま保持され、それらにとっては正しい動作です。 どちらの綴りが勝つか、何がマイグレーションされないかは<a href="/ja/docs/sdk/">SDK のページ</a>を参照してください。</p>
-<h3 id="update-と-delete-は適用されず記録される"><code>UPDATE</code> と <code>DELETE</code> は、適用されず記録される<a class="anchor" href="#update-と-delete-は適用されず記録される" aria-label="link">#</a></h3>
+<h3 id="update-and-delete-are-recorded-not-applied"><code>UPDATE</code> と <code>DELETE</code> は、適用されず記録される<a class="anchor" href="#update-and-delete-are-recorded-not-applied" aria-label="link">#</a></h3>
 <p><code>brevis_operation</code> は列です。ランディングテーブルは<strong>履歴</strong>です。その場で適用された <code>UPDATE</code> は以前の バージョンを失い、そのバージョンが欲しくなる日は、何かが壊れた日です。「各レコードの現行バージョン」の 解決は、下流のモデルの仕事です。</p>
 <div class="code-block" data-code="qualify row_number() over (partition by brevis_record_key
                            order by brevis_received_at desc) = 1
@@ -333,7 +333,7 @@ SELECT JSON_VALUE(customer, &#x27;$.uf&#x27;) ...;           -- SP"><div class="
                            order by brevis_received_at desc) = 1
    and brevis_operation &lt;&gt; 'DELETE'</code></pre></div>
 <p>これは Debezium、Fivetran、Airbyte がしていることで、CDC が書き込み経路で<strong>何も</strong>コストを払わないことを 意味します。upsert モードも、ロックも、削除もありません。</p>
-<h3 id="識別子に時計は入っていない">識別子に時計は入っていない<a class="anchor" href="#識別子に時計は入っていない" aria-label="link">#</a></h3>
+<h3 id="the-identity-has-no-clock-in-it">識別子に時計は入っていない<a class="anchor" href="#the-identity-has-no-clock-in-it" aria-label="link">#</a></h3>
 <div class="code-block" data-code="brevis_ingestion_id = uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))"><div class="code-head"><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>brevis_ingestion_id = uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))</code></pre></div>
 <p>計算式に <code>occurred_at</code> はなく、これは意図的です。到着は<strong>こちら側の</strong>責任になり、こちらの時計は <code>time.Now()</code> で、配信のたびに異なります。それを含んだ識別子では、すべての再配信が新しいイベントになり、 <code>merge</code> は何も吸収しなくなります。</p>
 <div class="code-block" data-code="same record, same content, twice  →  same id, merge absorbs
@@ -341,20 +341,20 @@ same record, content changed      →  a different id, both versions land"><div 
 same record, content changed      →  a different id, both versions land</code></pre></div>
 <p>注意点は文書化されているとおりです。バイト単位で同一の <code>data</code> を持つ、本当に別の 2 つのイベントは 1 つにまとまります。CDC ではそれが<strong>正しい</strong>動作です。同じ値での、1 つのレコードに対する同一の 2 回の更新は、 同じ事実だからです。</p>
 <p>フィンガープリントは、<strong>正規</strong>形のドキュメントに対して計算されます。すべての階層でキーをソートし、 配列は順序を保ち、すべてを引用符で囲みます。Go はマップの反復順序をランダム化するので、素朴なハッシュは 同じイベントの 2 回の配信で異なってしまい、それがハッシュの防ぐべき唯一のことだからです。</p>
-<h3 id="テーブルは自分で列を増やす">テーブルは自分で列を増やす<a class="anchor" href="#テーブルは自分で列を増やす" aria-label="link">#</a></h3>
+<h3 id="the-table-grows-a-column-on-its-own">テーブルは自分で列を増やす<a class="anchor" href="#the-table-grows-a-column-on-its-own" aria-label="link">#</a></h3>
 <p>テーブルにないフィールドを持つ <code>data</code> は、列を出現させます。<strong>追加のみで、追加だけです。</strong> 何も削除されず、何も狭められません。</p>
 <p>BigQuery でこれが成り立つようになったのは <strong>0.13.0</strong> からです。それ以前は、<code>auto_table</code> は すべての宛先に <code>Evolve: additive</code> を宣言していましたが、その宣言を読んだのは Postgres と MySQL の ドライバだけでした。そのため、BigQuery では形が作成時に固定されたままで、そのことを伝えるものは ありませんでした。</p>
 <blockquote><p><strong>0.11.0 または 0.12.0 から移行する場合</strong>、<code>0.11.0</code> より前に作成されたテーブルには、1 回限りの マイグレーションが必要です。8 番目の固定列が宣言に追加され、テーブルには追加されなかったからです。  ``<code>sql ALTER TABLE </code>&lt;dataset&gt;.&lt;table&gt;<code> ADD COLUMN IF NOT EXISTS brevis_received_bytes INT64 </code>``  Postgres と MySQL は影響を受けませんでした。</p></blockquote>
 <p><code>ALTER</code> の競合に負けたバッチは失敗し、パイプの通常のリトライがそれを解決します。DDL を待つバッチと ワーカーを待つバッチは同じものなので、2 つ目のバッファはありません。複数のレプリカにまたがっては、 メタストアがテーブルごと、形ごとに 1 秒の*デバウンス*を保持します。同じ新しいフィールドを見た 10 個の レプリカが、BigQuery のテーブルあたり 10 秒に 5 回のメタデータ操作というクォータに対して、10 回の <code>ALTER</code> にならないようにするためです。</p>
 <p><strong>ロックではなくデバウンス</strong>です。何も解放されず、リースも更新されません。負けた側は ブロックされるのではなく*リトライされ*、保持したまま死んだレプリカのコストは、他のレプリカに とっての 1 秒です。市場がしていることと同じです。Delta Lake と Iceberg は楽観的にコミットしてリトライし、 Kafka Connect はパーティションの順序から直列化を得て、Fivetran はテーブルごとに 1 つのライターを保ちます。</p>
-<h3 id="名前は攻撃対象領域">名前は攻撃対象領域<a class="anchor" href="#名前は攻撃対象領域" aria-label="link">#</a></h3>
+<h3 id="the-name-is-the-attack-surface">名前は攻撃対象領域<a class="anchor" href="#the-name-is-the-attack-surface" aria-label="link">#</a></h3>
 <p><code>auto_table</code> はペイロード内の文字列を DDL に変えるので、<code>naming</code> 配下のすべてのフィールドが拒否の ルールになります。</p>
 <ul><li><strong><code>pattern</code></strong> のデフォルトは <code>^[a-z][a-z0-9_]{2,48}$</code> で、Postgres、MySQL、BigQuery、Redshift が 引用符なしで受け付けるものの共通部分です。これを通る名前はどこでも引用符が不要で、インジェクションを 含みえません。</li><li><strong><code>allow</code></strong> は、プレフィックスでさらに絞り込みます。</li><li><strong><code>max_new_per_hour</code></strong>(デフォルト 20)は、ローリング 1 時間における<strong>作成</strong>の上限であり、書き込みの 上限ではありません。すでに存在するテーブルがレート制限されることは決してありません。 <code>metastore: memory</code> では予算はプロセス内にあり、4 つのレプリカはこの 4 倍を許します。<code>redis</code> または <code>memcached</code> では、1 つのカウンタを共有します。</li></ul>
 <p>ルール外の名前は<strong>イベントごとに</strong>、レスポンスで拒否され、同じリクエスト内の正しい形式のイベントは すべて着地します。</p>
 <div class="code-block" data-code="{&quot;accepted&quot;: 0, &quot;rejected&quot;: [&quot;event 0: the table name \&quot;orders\&quot; does not match ^(app|svc)_[a-z0-9_]{2,40}$&quot;]}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>{"accepted": <span class="t-n">0</span>, "rejected": ["event <span class="t-n">0</span>: the table name \"orders\" does not match ^(app|svc)_[a-z0-9_]{<span class="t-n">2</span>,<span class="t-n">40</span>}$"]}</code></pre></div>
 <p>バッチごとではなくイベントごとなのは意図的です。書き込み時に拒否すると、バッチ全体が失敗し、 1 人のプロデューサーの不正なイベント 1 つが、同じフラッシュウィンドウにある他のすべてのプロデューサーの イベントを葬り、誰にも通知されません。</p>
 <p><strong><code>auto_table</code> は <code>listen.auth</code> のないエンドポイントでは拒否されます。</strong> <code>BREVIS_ENV=local</code> でも 同様です。テーブルに名前を付けられるプロデューサーはそれを作成できるので、通常のストリームでは 不要な場合でも認証が必要です。NetworkPolicy ではカバーできません。それはポートに到達できる人を 制限するもので、彼らが要求するテーブル名を制限するものではないからです。</p>
-<h3 id="メタストアはキャッシュ">メタストアはキャッシュ<a class="anchor" href="#メタストアはキャッシュ" aria-label="link">#</a></h3>
+<h3 id="the-metastore-is-a-cache">メタストアはキャッシュ<a class="anchor" href="#the-metastore-is-a-cache" aria-label="link">#</a></h3>
 <p>イベントごとの書き込みがイベントごとの検索にならないようにするために存在し、3 つのものを保持します。 どのテーブルが存在するか、DDL の*デバウンス*、そして <code>max_new_per_hour</code> を支えるカウンタです。</p>
 <p>これはキャッシュであり、信頼できる情報源<strong>ではありません</strong>。テーブルが存在するかどうかは宛先が決め、 <em>N</em> 個のレプリカが競ってテーブルを作成するのは通常のケースです。<code>AlreadyExists</code> は成功であり、 これは競合を減らすだけです。TTL は、それが<strong>間違っていてよい</strong>期間です。</p>
 <div class="table-wrap"><table><thead><tr><th>バックエンド</th><th>使う場面</th></tr></thead><tbody><tr><td><code>memory</code></td><td>デフォルト。何も要らない。レプリカが<strong>1 つ</strong>ならそれが正解</td></tr><tr><td><code>redis</code></td><td><code>addr_from</code> が必須。<code>SETNX</code> が claim、<code>INCR</code> がカウンタ</td></tr><tr><td><code>memcached</code></td><td><code>addr_from</code> が必須。<code>Add</code> が claim で、有効期限は<strong>秒</strong>単位</td></tr></tbody></table></div>
@@ -369,11 +369,11 @@ same record, content changed      →  a different id, both versions land</code>
 <p>有効期限には代償があります。<code>sinkFor</code> は、テーブルを<strong>把握していない</strong>とき <code>naming.max_new_per_hour</code> を 消費します。そのため、数週間存在し続けているテーブルでもミスは課金され、テーブルの最後のイベントの 1 分後に再起動する pod は、料金を払っている共有バックエンドから何も得られません。長寿命のテーブルが あるなら、<code>ttl: 0</code> が答えです。</p>
 <blockquote><p><code>0.12.0</code> と <code>0.13.1</code> では、その書き方は<strong>パースされません</strong>。YAML は裸のゼロを整数として読み、 両方を受け付ける最初のバージョンは <code>0.13.2</code> です。それらのバージョンでは <code>ttl: 0s</code> と書いてください。</p></blockquote>
 <p><code>addr_from</code> は、アドレスを保持する<strong>環境変数</strong>の名前であり、アドレスそのものではありません。 パスワードを含んでいることがよくあるからです。</p>
-<h3 id="bigquery-にはフラッシュの下限がある">BigQuery にはフラッシュの下限がある<a class="anchor" href="#bigquery-にはフラッシュの下限がある" aria-label="link">#</a></h3>
+<h3 id="bigquery-has-a-flush-floor">BigQuery にはフラッシュの下限がある<a class="anchor" href="#bigquery-has-a-flush-floor" aria-label="link">#</a></h3>
 <p><strong>BigQuery は、テーブルあたり 1 日 1,500 回のロードジョブを許可します。</strong> デフォルトの 1 秒ウィンドウでは 86,400 回で、クォータの 57 倍、約 25 分で使い切ります。Pub/Sub では問題にならず、この数字は Pub/Sub の設定から*持ち込まれる*ものです。</p>
 <p>そのため、BigQuery に直接またはルーター経由で書き込むストリームは、ウィンドウが 60 秒未満だと <strong>ロード時に拒否されます</strong>。本当の答えは Storage Write API ですが、まだ書かれていません。それができるまで、 設定は守れないウィンドウを拒否します。最初のデプロイでそれが発覚するよりは良いからです。</p>
 <p><code>auto_table</code> は <strong>Redshift</strong> にはルーティングできません。そのドライバはテーブルを作成しないため、 新しい名前はすべてロードで失敗するからです。名前を挙げて、起動時に拒否されます。</p>
-<h2 id="まだ存在しないもの">まだ存在しないもの<a class="anchor" href="#まだ存在しないもの" aria-label="link">#</a></h2>
+<h2 id="what-does-not-exist-yet">まだ存在しないもの<a class="anchor" href="#what-does-not-exist-yet" aria-label="link">#</a></h2>
 <p><code>sqlite</code>、<code>dynamodb</code>、<code>kinesis</code>、<code>sqs</code>、<code>sns</code>、<code>kafka</code>、<code>rabbitmq</code> は計画中で、何も書かれていません。 (<code>redis</code> と <code>memcached</code> は<strong>メタストア</strong>として存在しますが、それは別のもので、テーブルについて わかっていることのキャッシュであり、宛先では決してありません。)このページの冒頭の表が、それぞれの 状態を示しており、状態が変わったときに更新されます。その前ではありません。</p>
 
       <nav class="pagers" aria-label="ページ">
@@ -388,7 +388,7 @@ same record, content changed      →  a different id, both versions land</code>
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#それぞれの書き込み方">それぞれの書き込み方</a></li><li class="toc-2"><a href="#それぞれに固有の事実">それぞれに固有の事実</a></li><li class="toc-2"><a href="#列の宣言はない">列の宣言はない</a></li><li class="toc-2"><a href="#import-のリストが選択になる">import のリストが選択になる</a></li><li class="toc-3"><a href="#公開されている-2-つのイメージ">公開されている 2 つのイメージ</a></li><li class="toc-3"><a href="#拒否はどのビルドを持っているかを教える">拒否は、どのビルドを持っているかを教える</a></li><li class="toc-2"><a href="#1-つのルートn-個のテーブル宣言するものは何もない">1 つのルート、N 個のテーブル、宣言するものは何もない</a></li><li class="toc-3"><a href="#エンベロープ">エンベロープ</a></li><li class="toc-3"><a href="#キーは-merge-のものでありエンベロープのものではない">キーは merge のものであり、エンベロープのものではない</a></li><li class="toc-3"><a href="#8-つの固定列とレコードが持つもの">8 つの固定列と、レコードが持つもの</a></li><li class="toc-3"><a href="#ボリュームを測るインフラなしでボリュームを知る">ボリュームを測るインフラなしでボリュームを知る</a></li><li class="toc-3"><a href="#ボリューム系列はオプトイン">ボリューム系列はオプトイン</a></li><li class="toc-3"><a href="#2-つの形1-つの契約">2 つの形、1 つの契約</a></li><li class="toc-3"><a href="#update-と-delete-は適用されず記録される">UPDATE と DELETE は、適用されず記録される</a></li><li class="toc-3"><a href="#識別子に時計は入っていない">識別子に時計は入っていない</a></li><li class="toc-3"><a href="#テーブルは自分で列を増やす">テーブルは自分で列を増やす</a></li><li class="toc-3"><a href="#名前は攻撃対象領域">名前は攻撃対象領域</a></li><li class="toc-3"><a href="#メタストアはキャッシュ">メタストアはキャッシュ</a></li><li class="toc-3"><a href="#bigquery-にはフラッシュの下限がある">BigQuery にはフラッシュの下限がある</a></li><li class="toc-2"><a href="#まだ存在しないもの">まだ存在しないもの</a></li></ul>
+      <ul><li class="toc-2"><a href="#how-each-one-writes">それぞれの書き込み方</a></li><li class="toc-2"><a href="#each-one-with-what-is-true-only-of-it">それぞれに固有の事実</a></li><li class="toc-2"><a href="#no-column-declaration">列の宣言はない</a></li><li class="toc-2"><a href="#the-import-list-is-the-selection">import のリストが選択になる</a></li><li class="toc-3"><a href="#two-published-images">公開されている 2 つのイメージ</a></li><li class="toc-3"><a href="#the-refusal-says-which-build-you-are-holding">拒否は、どのビルドを持っているかを教える</a></li><li class="toc-2"><a href="#one-route-n-tables-nothing-declared">1 つのルート、N 個のテーブル、宣言するものは何もない</a></li><li class="toc-3"><a href="#the-envelope">エンベロープ</a></li><li class="toc-3"><a href="#the-key-belongs-to-merge-not-to-the-envelope">キーは merge のものであり、エンベロープのものではない</a></li><li class="toc-3"><a href="#eight-fixed-columns-plus-whatever-the-record-carries">8 つの固定列と、レコードが持つもの</a></li><li class="toc-3"><a href="#volume-without-infrastructure-to-measure-volume">ボリュームを測るインフラなしでボリュームを知る</a></li><li class="toc-3"><a href="#the-volume-series-are-opt-in">ボリューム系列はオプトイン</a></li><li class="toc-3"><a href="#two-shapes-one-contract">2 つの形、1 つの契約</a></li><li class="toc-3"><a href="#update-and-delete-are-recorded-not-applied">UPDATE と DELETE は、適用されず記録される</a></li><li class="toc-3"><a href="#the-identity-has-no-clock-in-it">識別子に時計は入っていない</a></li><li class="toc-3"><a href="#the-table-grows-a-column-on-its-own">テーブルは自分で列を増やす</a></li><li class="toc-3"><a href="#the-name-is-the-attack-surface">名前は攻撃対象領域</a></li><li class="toc-3"><a href="#the-metastore-is-a-cache">メタストアはキャッシュ</a></li><li class="toc-3"><a href="#bigquery-has-a-flush-floor">BigQuery にはフラッシュの下限がある</a></li><li class="toc-2"><a href="#what-does-not-exist-yet">まだ存在しないもの</a></li></ul>
     </aside>
   </main>
 </div>
@@ -408,9 +408,9 @@ same record, content changed      →  a different id, both versions land</code>
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -433,7 +433,7 @@ same record, content changed      →  a different id, both versions land</code>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
       <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/libraries/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/libraries/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/libraries/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/libraries/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/libraries/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/libraries/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/libraries/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/libraries/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/libraries/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/libraries/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/libraries/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,13 +119,13 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>クライアントライブラリ</h1>
       <p class="doc-desc">どの言語のステップでも、コンテキストと run の時計を読み取る方法、そしてすでにライブラリがある言語。</p>
       <p>ステップがオーケストレータから必要とするものは 2 つです。<strong>前のステップが公開したもの</strong>と、 <strong>この run が読むべき時計</strong>です。クライアントライブラリが渡すのはこの 2 つだけで、それ以外は何も 渡しません。</p>
-<h2 id="ライブラリより先に契約がある">ライブラリより先に契約がある<a class="anchor" href="#ライブラリより先に契約がある" aria-label="link">#</a></h2>
+<h2 id="the-contract-comes-before-the-libraries">ライブラリより先に契約がある<a class="anchor" href="#the-contract-comes-before-the-libraries" aria-label="link">#</a></h2>
 <p>エンジンが定義するのは、<strong>2 つの環境変数と 1 つのファイル</strong>です。</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>BREVIS_INPUT</code></td><td><code>{"&lt;step id&gt;": {…}}</code> — このステップの依存先が公開したもの</td></tr><tr><td><code>BREVIS_OUTPUT</code></td><td>JSON オブジェクトを<strong>1 つ</strong>書き込むパス</td></tr></tbody></table></div>
 <p>これに加えて、run の変数と自動パラメータがあり、すべて読み取り専用です。<code>BREVIS_RUN_*</code> と <code>BREVIS_AUTO_*</code> です。Kubernetes では <code>BREVIS_OUTPUT</code> は <code>/dev/termination-log</code> で、 エンジンは終了コードを得るためにすでにこれを読んでいます。</p>
@@ -136,15 +136,15 @@ jq -n --arg n &quot;$(date -Is)&quot; &#x27;{published_at: $n}&#x27; &gt; &quot;
 ./publish <span class="t-n">--until</span> "$window"
 jq <span class="t-n">-n</span> <span class="t-n">--arg</span> n "$(date <span class="t-n">-Is</span>)" '{published_at: $n}' &gt; "$BREVIS_OUTPUT"</code></pre></div>
 <p>ここでのライブラリは新しい機能を開くものではなく、書き直さないほうがよい検証、値が存在しない場合の 処理、エラーメッセージを肩代わりしてくれるものです。</p>
-<h2 id="存在するもの">存在するもの<a class="anchor" href="#存在するもの" aria-label="link">#</a></h2>
+<h2 id="which-ones-exist">存在するもの<a class="anchor" href="#which-ones-exist" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>言語</th><th></th><th></th></tr></thead><tbody><tr><td><strong>Python</strong></td><td><code>pip install brevis</code></td><td><a href="/ja/docs/python/">利用可能</a> — PyPI で <code>0.2.1</code></td></tr><tr><td><strong>Go</strong></td><td><code>brevis/sdk/context</code></td><td>利用可能。SDK モジュールの中にあります</td></tr><tr><td><strong>Node.js</strong></td><td>—</td><td>計画中</td></tr><tr><td><strong>Rust</strong></td><td>—</td><td>計画中</td></tr><tr><td>その他</td><td>上記の変数</td><td>現時点ではこれ</td></tr></tbody></table></div>
 <aside class="admon admon-note"><p class="admon-t">Go は `lib/` にありません</p><p>Go のコンテキスト対応は、プロジェクトがすでに公開している <code>sdk/</code> モジュールの中にあり、 インポートしない人にとっては何にもならないサブパッケージです。<code>lib/go-context</code> を作ると、 1 つのパッケージのために 2 つ目の Go モジュールを作ることになります。</p>
 <p>ルールは、<strong>公開済みの成果物をまだ持たない言語ごとに 1 つのディレクトリ</strong>です。</p></aside>
 <p>各ライブラリは、独自のバージョンとタグを持つ別々の成果物です。Python クライアントの修正で エンジンのリリースが必要になることはありません。</p>
-<h2 id="何であり何ではないか">何であり、何ではないか<a class="anchor" href="#何であり何ではないか" aria-label="link">#</a></h2>
+<h2 id="what-they-are-and-what-they-are-not">何であり、何ではないか<a class="anchor" href="#what-they-are-and-what-they-are-not" aria-label="link">#</a></h2>
 <p>これらは契約の上に載る<strong>薄いクライアント</strong>であり、Go SDK の移植ではありません。</p>
 <p>SDK の ETL の仕組み、つまりドライバ、ページネーション、チェックポイント、ingestion id の移植は ここには属しませんし、おそらくどこにも属しません。対象となるどの言語にも、そのためのより良い ツールがすでにあり、Brevis の仕事はそれらを実行することだからです。Python ライブラリが存在するのは、 チームが pandas、Polars、dbt を使いながら、オーケストレータの存在意義であるものを得られるように するためです。</p>
-<h2 id="メトリクス">メトリクス<a class="anchor" href="#メトリクス" aria-label="link">#</a></h2>
+<h2 id="metrics">メトリクス<a class="anchor" href="#metrics" aria-label="link">#</a></h2>
 <p>ライブラリはメトリクスを<strong>出力</strong>し、公開するのはエンジンです。</p>
 <div class="code-block" data-code="from brevis import metrics
 
@@ -155,11 +155,11 @@ metrics.set("rows_loaded", 48213)      <span class="t-c"># a gauge: the last val
 metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up</span></code></pre></div>
 <p>メトリクスは、スケジューラのポートにある<strong>エンジンの</strong> <code>/metrics</code> から、ワークフローとステップの ラベル付きで出力されます。<a href="/ja/docs/observability/">オブザーバビリティ</a>を参照してください。</p>
 <p><strong>これはポートを開きませんし、開けません。</strong> ステップは専用の pod で 40 秒動いて終了します。 開いたポートがスクレイプされることは決してないか、運よく一度あるだけです。そのため、その行は stdout に出力されます。エンジンがパイプラインのフェーズを描くためにすでに読んでいるのと同じ パイプで、エンジンがそれを記録します。インストールするものも、運用するものもなく、ラベルが エンジンのものになるのは、ステップが自分のワークフローの slug を知り得ないからです。</p>
-<p>API の詳細は <a href="/ja/docs/python/#パイプラインだけが知るメトリクス">Python</a> にあります。</p>
-<h2 id="別の言語のクライアントを書く">別の言語のクライアントを書く<a class="anchor" href="#別の言語のクライアントを書く" aria-label="link">#</a></h2>
+<p>API の詳細は <a href="/ja/docs/python/#metrics-only-your-pipeline-knows">Python</a> にあります。</p>
+<h2 id="writing-a-client-for-another-language">別の言語のクライアントを書く<a class="anchor" href="#writing-a-client-for-another-language" aria-label="link">#</a></h2>
 <p>私たちより先に Node.js や Rust に取り組む場合のために、クライアントが正しく実装すべきことと、 Python 実装がすでに苦労して学んだことを挙げます。</p>
 <ol><li><strong>ステップで修飾されたキー。</strong> ステップなしの <code>get("bucket")</code> は拒否しなければなりません。 2 つのステップが <code>bucket</code> を公開することがあり、検索して片方を選ぶのは偶然による優先順位だからです。</li><li><strong>書き込みをマージする。</strong> 異なるキーでの 2 回の呼び出しは両方を保持し、同じキーの 2 回は最後を保持します。</li><li><strong>プロセス終了時にだけフラッシュする。</strong> 強制終了したステップは何も公開しません。これは正しい動作で、 クラッシュしたステップの出力は、終わっていない仕事を記述しているからです。</li><li><strong>4096 バイトを超えたら拒否する。</strong> プラットフォームは拒否せず<strong>切り詰め</strong>、半分に切られた オブジェクトは、次のステップに不正な JSON として届きます。</li><li><strong>Brevis の外でも動く。</strong> <code>BREVIS_INPUT</code> がなければ、<code>get()</code> はデフォルト値を返し、<code>set()</code> は 例外を出さずに受け取って破棄します。手動で実行できないスクリプトは開発できないからです。</li></ol>
-<h2 id="次のステップ">次のステップ<a class="anchor" href="#次のステップ" aria-label="link">#</a></h2>
+<h2 id="next-steps">次のステップ<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ja/docs/python/">Python</a> — 完全な API</li><li><a href="/ja/docs/context/">ステップ間のコンテキスト</a> — 概念と 4096 バイトの上限</li><li><a href="/ja/docs/parameters/">パラメータ</a> — 宣言するものと自動のもの</li></ul>
 
       <nav class="pagers" aria-label="ページ">
@@ -174,7 +174,7 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#ライブラリより先に契約がある">ライブラリより先に契約がある</a></li><li class="toc-2"><a href="#存在するもの">存在するもの</a></li><li class="toc-2"><a href="#何であり何ではないか">何であり、何ではないか</a></li><li class="toc-2"><a href="#メトリクス">メトリクス</a></li><li class="toc-2"><a href="#別の言語のクライアントを書く">別の言語のクライアントを書く</a></li><li class="toc-2"><a href="#次のステップ">次のステップ</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-contract-comes-before-the-libraries">ライブラリより先に契約がある</a></li><li class="toc-2"><a href="#which-ones-exist">存在するもの</a></li><li class="toc-2"><a href="#what-they-are-and-what-they-are-not">何であり、何ではないか</a></li><li class="toc-2"><a href="#metrics">メトリクス</a></li><li class="toc-2"><a href="#writing-a-client-for-another-language">別の言語のクライアントを書く</a></li><li class="toc-2"><a href="#next-steps">次のステップ</a></li></ul>
     </aside>
   </main>
 </div>
@@ -194,9 +194,9 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -219,7 +219,7 @@ metrics.inc("vendor_rejected_total")   <span class="t-c"># a counter: it adds up
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

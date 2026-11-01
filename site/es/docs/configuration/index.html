@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">Saltar al contenido</a>
+<a class="skip-link" href="#content">Saltar al contenido</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegación principal">
-      <a href="/es/#ecossistema">Ecosistema</a>
+      <a href="/es/#ecosystem">Ecosistema</a>
       <a href="/es/docs/">Documentación</a>
       <details class="lang-dd"><summary aria-label="Idioma: Español"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Español</span></summary><ul><li><a href="/docs/configuration/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/configuration/" lang="es" hreflang="es" aria-current="true">Español</a></li><li><a href="/pt/docs/configuration/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/configuration/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/configuration/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/configuration/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/configuration/" lang="ja" hreflang="ja">日本語</a></li><li><a href="/ru/docs/configuration/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/configuration/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/configuration/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/configuration/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,17 +119,17 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">Documentación</p>
       <h1>Configuración</h1>
       <p class="doc-desc">Cada variable de entorno, con su valor por defecto, formato y qué ocurre cuando falta.</p>
       <p>Toda la configuración viene del <strong>entorno</strong>, leído una sola vez al arrancar. Nada consulta el entorno después: un proceso cuya configuración cambia a mitad de ejecución es un proceso cuyo comportamiento nadie puede reproducir.</p>
-<h2 id="obligatoria">Obligatoria<a class="anchor" href="#obligatoria" aria-label="link">#</a></h2>
+<h2 id="required">Obligatoria<a class="anchor" href="#required" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variable</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_DATABASE_URL</code></td><td>Postgres. Ausente = <strong>error de arranque</strong> en los cinco subcomandos que usan la base de datos</td></tr></tbody></table></div>
-<h2 id="proceso">Proceso<a class="anchor" href="#proceso" aria-label="link">#</a></h2>
+<h2 id="process">Proceso<a class="anchor" href="#process" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variable</th><th>valor por defecto</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_ENV</code></td><td><code>local</code></td><td><code>local</code> registra logs en texto y deja la interfaz abierta; cualquier otro valor exige credenciales y registra JSON</td></tr><tr><td><code>BREVIS_HTTP_ADDR</code></td><td><code>:8080</code></td><td>dirección de escucha</td></tr><tr><td><code>BREVIS_LOG_LEVEL</code></td><td><code>info</code></td><td></td></tr><tr><td><code>BREVIS_SHUTDOWN_TIMEOUT_SECONDS</code></td><td><code>15</code></td><td>entero; un valor no numérico es un error de arranque</td></tr><tr><td><code>BREVIS_BRAND_FILE</code></td><td><code>brand.yaml</code></td><td>branding; ausente = valor por defecto</td></tr><tr><td><code>BREVIS_UI_URL</code></td><td>—</td><td>base del enlace al run en las alertas</td></tr><tr><td><code>BREVIS_METRICS_ADDR</code></td><td>—</td><td>puerto de métricas de Prometheus; vacío = no se expone. Ver <a href="/es/docs/observability/">Observabilidad</a></td></tr><tr><td><code>BREVIS_SLACK_WEBHOOK</code></td><td>—</td><td>destino de las alertas de fallo. Vacío = nadie se entera</td></tr></tbody></table></div>
-<h2 id="autenticacion">Autenticación<a class="anchor" href="#autenticacion" aria-label="link">#</a></h2>
+<h2 id="authentication">Autenticación<a class="anchor" href="#authentication" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variable</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_AUTH_USER</code></td><td>usuario de la interfaz</td></tr><tr><td><code>BREVIS_AUTH_PASSWORD_HASH</code></td><td>hash <code>pbkdf2-sha256$…</code>, generado por <code>brevis hash</code></td></tr><tr><td><code>BREVIS_AUTH_SECRET</code></td><td>32+ bytes para firmar la sesión (<code>openssl rand -base64 48</code>)</td></tr></tbody></table></div>
 <p>Las tres van juntas, o ninguna.</p>
 <aside class="admon admon-danger"><p class="admon-t">A medio configurar es un error de arranque</p><p>Quien rellenó el nombre de usuario cree que la puerta está cerrada. La interfaz dispara pipelines: un <code>POST /workflows/&lt;slug&gt;/trigger</code> ejecuta un <code>dbt build</code> que escribe en el warehouse. Abierta a internet, es un control remoto del warehouse, y una advertencia en el log no deshace esa creencia, porque nadie lee el log de un proceso que funciona.</p></aside>
@@ -140,7 +140,7 @@ BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and BREVIS_AUTH_SECR
 <aside class="admon admon-note"><p class="admon-t">Los nombres antiguos siguen funcionando</p><p>Cuatro variables se renombraron el 2026-09-10, cuando los últimos nombres en portugués salieron del lado del operador del proyecto: <code>BREVIS_AUTH_USUARIO</code>, <code>BREVIS_AUTH_SENHA_HASH</code>, <code>BREVIS_AUTH_SEGREDO</code> y <code>BREVIS_POD_MANTER_EM_FALHA</code>. Una instalación que define el nombre antiguo sigue funcionando y registra una advertencia con el nombre nuevo.</p>
 <p>Se añade el nombre nuevo, se despliega y luego se quita el antiguo; el nombre nuevo gana cuando ambos están definidos. Los nombres antiguos desaparecerán en una versión mayor.</p>
 <p>En el SDK, <code>BREVIS_SDK_LIMITE_INLINE</code> pasó a ser <code>BREVIS_SDK_INLINE_LIMIT</code> bajo la misma regla.</p></aside>
-<h2 id="entorno-de-la-tarea">Entorno de la tarea<a class="anchor" href="#entorno-de-la-tarea" aria-label="link">#</a></h2>
+<h2 id="task-environment">Entorno de la tarea<a class="anchor" href="#task-environment" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variable</th><th>valor por defecto</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TASK_ENV</code></td><td>vacío</td><td>lo que recibe cada step</td></tr></tbody></table></div>
 <p>Una tarea <strong>no</strong> hereda el entorno del orquestador. El motivo es concreto: el proceso lleva <code>BREVIS_DATABASE_URL</code> con el usuario y la contraseña de Postgres, y un workflow es un comando arbitrario escrito por otra persona: heredar entregaría las credenciales de la base de datos a cada step de cada pipeline.</p>
 <p>Lo que la tarea necesita se declara:</p>
@@ -155,12 +155,12 @@ BREVIS_TASK_ENV='*'                       <span class="t-c"># forwards everythin
 <p>Decisiones de la <strong>instalación</strong>, no del workflow.</p>
 <div class="table-wrap"><table><thead><tr><th>variable</th><th>valor por defecto</th><th>formato</th></tr></thead><tbody><tr><td><code>BREVIS_PODS</code></td><td><code>auto</code></td><td><code>auto</code>, <code>on</code> u <code>off</code>; cualquier otro valor es un error de arranque</td></tr><tr><td><code>BREVIS_POD_NAMESPACE</code></td><td>el del clúster</td><td></td></tr><tr><td><code>BREVIS_POD_SERVICE_ACCOUNT</code></td><td>—</td><td></td></tr><tr><td><code>BREVIS_POD_PULL_SECRETS</code></td><td>—</td><td>lista separada por comas</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_SECRETS</code></td><td>—</td><td>lista separada por comas</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_CONFIGMAPS</code></td><td>—</td><td>lista separada por comas</td></tr><tr><td><code>BREVIS_POD_ALLOWED_SECRETS</code></td><td>—</td><td>lista separada por comas</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PATH</code></td><td>—</td><td>ruta montada en el pod</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PVC</code></td><td>—</td><td>PVC que contiene las credenciales</td></tr><tr><td><code>BREVIS_POD_NODE_SELECTOR</code></td><td>—</td><td><code>key=value,other=value</code></td></tr><tr><td><code>BREVIS_POD_TOLERATIONS</code></td><td>—</td><td><code>key=value:effect,…</code>; solo el operador <code>Equal</code></td></tr><tr><td><code>BREVIS_POD_KEEP_ON_FAILURE</code></td><td><code>false</code></td><td><code>true</code> conserva el pod para inspección</td></tr></tbody></table></div>
 <p>En las listas, las entradas vacías se ignoran: <code>a,,b</code> es un error tipográfico, y un nombre de secret vacío haría que el servidor rechazara el pod completo.</p>
-<h2 id="pruebas">Pruebas<a class="anchor" href="#pruebas" aria-label="link">#</a></h2>
+<h2 id="tests">Pruebas<a class="anchor" href="#tests" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variable</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TEST_DATABASE_URL</code></td><td>base de datos para las pruebas de integración; sin ella, se omiten</td></tr></tbody></table></div>
-<h2 id="endpoints-de-salud">Endpoints de salud<a class="anchor" href="#endpoints-de-salud" aria-label="link">#</a></h2>
+<h2 id="health-endpoints">Endpoints de salud<a class="anchor" href="#health-endpoints" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>GET /health</code></td><td>liveness — <strong>no</strong> consulta la base de datos</td></tr><tr><td><code>GET /ready</code></td><td>readiness — consulta, y nombra la dependencia que falló</td></tr></tbody></table></div>
 <p>La separación es deliberada: una sonda de liveness que depende de un servicio externo hace que Kubernetes <strong>mate el pod</strong> cuando la base de datos titubea, en lugar de simplemente sacarlo del balanceador de carga.</p>
-<h2 id="un-ejemplo-completo">Un ejemplo completo<a class="anchor" href="#un-ejemplo-completo" aria-label="link">#</a></h2>
+<h2 id="a-complete-example">Un ejemplo completo<a class="anchor" href="#a-complete-example" aria-label="link">#</a></h2>
 <div class="code-block" data-code="# required
 export BREVIS_DATABASE_URL=&#x27;postgres://brevis:secret@db:5432/brevis?sslmode=require&#x27;
 
@@ -215,7 +215,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
     <aside class="toc" aria-label="En esta página">
       <p class="toc-t">En esta página</p>
-      <ul><li class="toc-2"><a href="#obligatoria">Obligatoria</a></li><li class="toc-2"><a href="#proceso">Proceso</a></li><li class="toc-2"><a href="#autenticacion">Autenticación</a></li><li class="toc-2"><a href="#entorno-de-la-tarea">Entorno de la tarea</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#pruebas">Pruebas</a></li><li class="toc-2"><a href="#endpoints-de-salud">Endpoints de salud</a></li><li class="toc-2"><a href="#un-ejemplo-completo">Un ejemplo completo</a></li></ul>
+      <ul><li class="toc-2"><a href="#required">Obligatoria</a></li><li class="toc-2"><a href="#process">Proceso</a></li><li class="toc-2"><a href="#authentication">Autenticación</a></li><li class="toc-2"><a href="#task-environment">Entorno de la tarea</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#tests">Pruebas</a></li><li class="toc-2"><a href="#health-endpoints">Endpoints de salud</a></li><li class="toc-2"><a href="#a-complete-example">Un ejemplo completo</a></li></ul>
     </aside>
   </main>
 </div>
@@ -235,9 +235,9 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
       <div class="footer-col">
         <h2>proyecto</h2>
         <ul>
-          <li><a href="/es/#ecossistema">Ecosistema</a></li>
+          <li><a href="/es/#ecosystem">Ecosistema</a></li>
           <li><a href="/es/docs/philosophy/">Principios</a></li>
-          <li><a href="/es/docs/introduction/#codigo-abierto-elige-como-participar">Código abierto</a></li>
+          <li><a href="/es/docs/introduction/#open-code-choose-how-to-take-part">Código abierto</a></li>
           <li><a href="/es/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -260,7 +260,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

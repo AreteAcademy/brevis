@@ -43,7 +43,7 @@ curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
 ```
 
 Google Cloud 자격 증명이 없으면 배치는 재시도되다가 dead letter로 갑니다.
-[sink가 거부할 때](#sink가-거부할-때)를 참고하세요.
+[sink가 거부할 때](#when-the-sink-refuses)를 참고하세요.
 
 `-slim` 이미지에는 `auto_table`, `files`, `postgres` sink만 들어 있습니다. 이 예제의
 `pubsub`과 나머지는 전체 이미지에 있습니다. 포함하지 않은 sink를 쓰는 slim 이미지는
@@ -447,7 +447,7 @@ OpenTelemetry Prometheus receiver)는 모든 누적 시리즈를 **첫 번째 �
 제어 필드는 최상위에, 레코드는 `data` 안에 있고, 모든 테이블에 `brevis_*` 추적 컬럼 일곱
 개가 붙습니다. 라우트 하나, 테이블 N개, 선언은 없습니다.
 
-[수집 sink](/docs/ingestion-sinks/#하나의-라우트-n개의-테이블-선언은-없음)에 있습니다.
+[수집 sink](/docs/ingestion-sinks/#one-route-n-tables-nothing-declared)에 있습니다.
 
 ## 다음으로 이동
 

@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -50,7 +50,7 @@
 </head>
 <body class="page-doc">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -84,7 +84,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
       <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/pod-per-step/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/pod-per-step/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/pod-per-step/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/pod-per-step/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/pod-per-step/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/pod-per-step/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/pod-per-step/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/pod-per-step/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/pod-per-step/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/pod-per-step/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/pod-per-step/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -119,7 +119,7 @@
     </div>
   </aside>
 
-  <main class="doc" id="conteudo">
+  <main class="doc" id="content">
     <article class="doc-body">
       <p class="doc-kicker">ドキュメント</p>
       <h1>ステップごとの pod</h1>
@@ -143,23 +143,23 @@ walks the graph
     follows the log     ◄───────  container stdout
     reads the exit code ◄───────  containerStatuses[0].terminated
     deletes the pod ───────────►  (gone)</code></pre></div>
-<h2 id="何が変わるか">何が変わるか<a class="anchor" href="#何が変わるか" aria-label="link">#</a></h2>
+<h2 id="what-this-changes">何が変わるか<a class="anchor" href="#what-this-changes" aria-label="link">#</a></h2>
 <p>モノリシックなワーカーでは、どのステップが必要とするかもしれないものをすべて、イメージに 入れなければなりません。実際には次のようになります。</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>単一イメージ</th><th>ステップごとの pod</th></tr></thead><tbody><tr><td>dbt のステップ</td><td>1.9 GB · 1Gi RAM</td><td>1.9 GB · 1Gi RAM</td></tr><tr><td>その隣の Go フェッチャー</td><td><strong>1.9 GB · 1Gi</strong></td><td><strong>12 MB · 32Mi</strong></td></tr><tr><td>dbt のバージョンを上げる</td><td>すべてを再ビルド</td><td>そのワークフローの YAML の 1 行</td></tr><tr><td>メモリリークするステップ</td><td>ワーカーと隣のステップごと落ちる</td><td>単独で落ちる</td></tr></tbody></table></div>
 <p>3 行目は最もわかりにくく、日々のコストとしては最も高くつきます。単一イメージでは、 1 つのパイプラインで dbt を 1.10 から 1.11 に上げると、すべてのパイプラインで上げることに なります。</p>
-<h2 id="ロールごとのイメージ">ロールごとのイメージ<a class="anchor" href="#ロールごとのイメージ" aria-label="link">#</a></h2>
+<h2 id="images-by-role">ロールごとのイメージ<a class="anchor" href="#images-by-role" aria-label="link">#</a></h2>
 <p>イメージは、プロジェクトごとではなく<strong>ロール</strong>ごとです。イメージに余分に残ったものは、 そのステップを実行するすべてのノードが取得します。</p>
 <div class="table-wrap"><table><thead><tr><th>ロール</th><th>サイズ</th><th>コールドスタート</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td><strong>5.8 MB</strong></td><td>0.18 s</td></tr><tr><td><strong>Python</strong></td><td><strong>118 MB</strong></td><td>0.54 s</td></tr><tr><td><strong>dbt</strong></td><td><strong>620 MB</strong></td><td>3.3 s</td></tr></tbody></table></div>
 <p>以前は、すべてに対して 1.87 GB の単一イメージでした。</p>
 <p>dbt では、ビルド時に <code>dbt parse</code> が実行され、<code>target/partial_parse.msgpack</code> がイメージに 含まれます。これにより、呼び出しのたびに、pod あたり <strong>2.68 秒短縮</strong>されます。</p>
-<h2 id="各ステップが動く場所">各ステップが動く場所<a class="anchor" href="#各ステップが動く場所" aria-label="link">#</a></h2>
+<h2 id="where-each-step-runs">各ステップが動く場所<a class="anchor" href="#where-each-step-runs" aria-label="link">#</a></h2>
 <p>この判断は起動時に一度だけ行われ、<code>BREVIS_PODS</code> とクラスタの有無によって決まります。</p>
 <div class="table-wrap"><table><thead><tr><th><code>BREVIS_PODS</code></th><th>クラスタあり</th><th>クラスタなし</th></tr></thead><tbody><tr><td><code>auto</code>(デフォルト)</td><td><code>image:</code> のあるステップは pod になる</td><td>すべてローカルプロセス。ログに警告が出る</td></tr><tr><td><code>on</code></td><td><code>image:</code> のあるステップは pod になる</td><td><strong>起動エラー</strong></td></tr><tr><td><code>off</code></td><td>すべてローカルプロセス</td><td>すべてローカルプロセス</td></tr></tbody></table></div>
 <p><strong><code>host:</code> のあるステップは、このどれも通りません。</strong> pod より先、プロセスより先に判定され、 すでに動いているマシンに送られます。<code>BREVIS_PODS</code> は適用されず、ローカルプロセスに フォールバックすることも決してありません。これは意図的です。<code>image:</code> が警告付きでローカル実行に 縮退するのは、コンテナとプロセスが、同じコマンドを 2 通りに包んだものだからです。ホストは違います。 ライセンスがあり、GPU があり、データがある場所です。</p>
 <p><code>auto</code> がデフォルトなのは、同じバイナリが両方の場所で動くからです。ノート PC ではサービスアカウントが マウントされておらずローカルプロセスにフォールバックし、クラスタではマウントされていて pod の作成を始めます。</p>
 <p><code>on</code> は、黙ってローカル実行になっては<strong>ならない</strong>デプロイのためにあります。そこでは、 クラスタがないことは起動エラーでなければなりません。</p>
 <aside class="admon admon-warning"><p class="admon-t">`brevis run` は pod を作りません</p><p><code>run</code> コマンドが組み立てるのはプロセスのエグゼキュータだけです。<code>image:</code> のあるステップは インスタンス自身で実行され、その旨が表示されます。黙っていると、宣言したイメージで ステップが動いたように見えてしまいます。それは、結果がすでに間違っているときにしか 表面化しない類のミスです。</p></aside>
-<h2 id="id-と認証情報">ID と認証情報<a class="anchor" href="#id-と認証情報" aria-label="link">#</a></h2>
+<h2 id="identity-and-credentials">ID と認証情報<a class="anchor" href="#identity-and-credentials" aria-label="link">#</a></h2>
 <p>pod がどの ID で起動するかは、ワークフローではなく<strong>インストール</strong>の判断です。パイプラインが 自分の実行するサービスアカウントを選べてはなりません。そのため、環境から取得します。</p>
 <div class="code-block" data-code="BREVIS_POD_NAMESPACE=data
 BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
@@ -169,16 +169,16 @@ BREVIS_POD_SERVICE_ACCOUNT=<span class="t-k">brevis</span>-runner
 BREVIS_POD_PULL_SECRETS=registry-cred
 BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred,api-tokens</code></pre></div>
 <p>pod モードでは、タスクの環境はクラスタの Secret から取得され、<code>BREVIS_TASK_ENV</code> からは 取得されません。</p>
-<h2 id="ノードセレクタと-toleration">ノードセレクタと toleration<a class="anchor" href="#ノードセレクタと-toleration" aria-label="link">#</a></h2>
+<h2 id="node-selector-and-tolerations">ノードセレクタと toleration<a class="anchor" href="#node-selector-and-tolerations" aria-label="link">#</a></h2>
 <div class="code-block" data-code="BREVIS_POD_NODE_SELECTOR=&#x27;kubernetes.io/arch=arm64&#x27;
 BREVIS_POD_TOLERATIONS=&#x27;dedicated=data:NoSchedule&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>BREVIS_POD_NODE_SELECTOR='kubernetes.io/arch=arm64'
 BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
 <p>toleration では <code>Equal</code> 演算子だけが受け付けられます。<code>Exists</code> はそのキーを持つ<strong>あらゆる</strong> taint を許容してしまい、環境変数から来る判断としては広すぎます。</p>
 <p>不正な形式の toleration は、起動エラーにはせず<strong>無視されます</strong>。pod は <code>Pending</code> のままになり、 それは目に見えます。一方、起動を拒否すると、そのプールを必要としないワークフローまで 止まってしまいます。</p>
-<h2 id="失敗のデバッグ">失敗のデバッグ<a class="anchor" href="#失敗のデバッグ" aria-label="link">#</a></h2>
+<h2 id="debugging-a-failure">失敗のデバッグ<a class="anchor" href="#debugging-a-failure" aria-label="link">#</a></h2>
 <div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>失敗した pod を残し、<code>kubectl logs</code> と <code>kubectl describe</code> で調べられるようにします。 本番ではオフにしておいてください。停止した pod はクラスタのクォータを消費します。</p>
-<h2 id="次のステップ">次のステップ<a class="anchor" href="#次のステップ" aria-label="link">#</a></h2>
+<h2 id="next-steps">次のステップ<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/ja/docs/kubernetes/">Kubernetes</a> — デプロイの全体</li><li><a href="/ja/docs/configuration/">設定</a> — すべての <code>BREVIS_POD_*</code> 変数</li><li><a href="/ja/docs/observability/">オブザーバビリティ</a> — 両方のプロセスのメトリクス</li></ul>
 
       <nav class="pagers" aria-label="ページ">
@@ -193,7 +193,7 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
 
     <aside class="toc" aria-label="このページの内容">
       <p class="toc-t">このページの内容</p>
-      <ul><li class="toc-2"><a href="#何が変わるか">何が変わるか</a></li><li class="toc-2"><a href="#ロールごとのイメージ">ロールごとのイメージ</a></li><li class="toc-2"><a href="#各ステップが動く場所">各ステップが動く場所</a></li><li class="toc-2"><a href="#id-と認証情報">ID と認証情報</a></li><li class="toc-2"><a href="#ノードセレクタと-toleration">ノードセレクタと toleration</a></li><li class="toc-2"><a href="#失敗のデバッグ">失敗のデバッグ</a></li><li class="toc-2"><a href="#次のステップ">次のステップ</a></li></ul>
+      <ul><li class="toc-2"><a href="#what-this-changes">何が変わるか</a></li><li class="toc-2"><a href="#images-by-role">ロールごとのイメージ</a></li><li class="toc-2"><a href="#where-each-step-runs">各ステップが動く場所</a></li><li class="toc-2"><a href="#identity-and-credentials">ID と認証情報</a></li><li class="toc-2"><a href="#node-selector-and-tolerations">ノードセレクタと toleration</a></li><li class="toc-2"><a href="#debugging-a-failure">失敗のデバッグ</a></li><li class="toc-2"><a href="#next-steps">次のステップ</a></li></ul>
     </aside>
   </main>
 </div>
@@ -213,9 +213,9 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -238,7 +238,7 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
   </div>
 </footer>
 
-<script src="/js/docs.js" defer></script>
-<script src="/js/lang.js" defer></script>
+<script src="/js/docs.js?v=eeab111760" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>

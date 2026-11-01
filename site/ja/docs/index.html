@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/docs.css">
+<link rel="stylesheet" href="/css/styles.css?v=1e7b337d0c">
+<link rel="stylesheet" href="/css/docs.css?v=429afea5ff">
 
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -36,7 +36,7 @@
 </head>
 <body class="page-landing">
 
-<a class="skip-link" href="#conteudo">本文へスキップ</a>
+<a class="skip-link" href="#content">本文へスキップ</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
@@ -70,7 +70,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="メインナビゲーション">
-      <a href="/ja/#ecossistema">エコシステム</a>
+      <a href="/ja/#ecosystem">エコシステム</a>
       <a href="/ja/docs/">ドキュメント</a>
       <details class="lang-dd"><summary aria-label="言語: 日本語"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>日本語</span></summary><ul><li><a href="/docs/" lang="en-US" hreflang="en-US">English</a></li><li><a href="/es/docs/" lang="es" hreflang="es">Español</a></li><li><a href="/pt/docs/" lang="pt-BR" hreflang="pt-BR">Português</a></li><li><a href="/fr/docs/" lang="fr" hreflang="fr">Français</a></li><li><a href="/de/docs/" lang="de" hreflang="de">Deutsch</a></li><li><a href="/zh/docs/" lang="zh-CN" hreflang="zh-CN">简体中文</a></li><li><a href="/ja/docs/" lang="ja" hreflang="ja" aria-current="true">日本語</a></li><li><a href="/ru/docs/" lang="ru" hreflang="ru">Русский</a></li><li><a href="/ko/docs/" lang="ko" hreflang="ko">한국어</a></li><li><a href="/hi/docs/" lang="hi" hreflang="hi">हिन्दी</a></li><li><a href="/id/docs/" lang="id" hreflang="id">Bahasa Indonesia</a></li></ul></details>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
@@ -85,7 +85,7 @@
   </div>
 </header>
 
-<main id="conteudo" class="doc-index"><div class="shell"><p class="eyebrow">ドキュメント</p><h1>ドキュメント</h1><p class="lead">brevis.sh のインストール、理解、運用に必要なすべて — 最初の workflow から Kubernetes へのデプロイまで。</p><h2>はじめに</h2><div class="surface-grid"><a class="surface" href="/ja/docs/ecosystem/"><h3>エコシステム</h3><p>brevis.sh の 4 つの構成要素と、それぞれの役割、そしてデータが通る場所。</p></a><a class="surface" href="/ja/docs/integrations/"><h3>インテグレーション</h3><p>何が何につながるか。データの取得元、着地先、モデリングの場所、そして全体が動く場所。</p></a><a class="surface" href="/ja/docs/introduction/"><h3>はじめに</h3><p>brevis.sh とは何か、何を解決するのか、そしてどんなときに最適な選択ではないのか。</p></a><a class="surface" href="/ja/docs/installation/"><h3>インストール</h3><p>バイナリの入手方法、必要なもの、そしてインストールが正しいことの確認方法。</p></a><a class="surface" href="/ja/docs/quickstart/"><h3>クイックスタート</h3><p>何もない状態から、インターフェース上で動く DAG まで、4 つのステップで。</p></a></div><h2>基本概念</h2><div class="surface-grid"><a class="surface" href="/ja/docs/core/"><h3>Core</h3><p>オーケストレータ。run をスケジュールし、キューを Postgres に保持し、ステップごとに 1 つの pod を起動します。データには一切触れません。</p></a><a class="surface" href="/ja/docs/workflows/"><h3>Workflows</h3><p>YAML 形式の全体 — ステップ、依存関係、イメージ、リソース、スケジュール。</p></a><a class="surface" href="/ja/docs/scheduler-and-queue/"><h3>スケジューラとキュー</h3><p>2 つの独立したループ — 誰が run を作り、誰が実行するのか、そしてなぜ分かれているのか。</p></a><a class="surface" href="/ja/docs/pod-per-step/"><h3>ステップごとの pod</h3><p>なぜ各ステップが専用の pod で動くのか、そしてそれがコストと分離にどう影響するのか。</p></a><a class="surface" href="/ja/docs/context/"><h3>ステップ間のコンテキスト</h3><p>あるステップが次のステップに伝えるもの — 2 つの環境変数と 1 つのファイル。</p></a></div><h2>リファレンス</h2><div class="surface-grid"><a class="surface" href="/ja/docs/cli/"><h3>CLI</h3><p>エンジンの 12 個のサブコマンドと、そのフラグ、引数、それぞれが必要とするもの。</p></a><a class="surface" href="/ja/docs/parameters/"><h3>パラメータ</h3><p>ファイルを編集せずに、同じワークフローの 2 回の run の間で変えられるもの。</p></a><a class="surface" href="/ja/docs/configuration/"><h3>設定</h3><p>すべての環境変数について、デフォルト、形式、未設定の場合に何が起きるか。</p></a><a class="surface" href="/ja/docs/runtime/"><h3>ステップのランタイム</h3><p>ステップが、使う言語と操作するツールについて宣言するもの — そして、ほとんど宣言が要らない理由。</p></a></div><h2>SDK とライブラリ</h2><div class="surface-grid"><a class="surface" href="/ja/docs/sdk/"><h3>Go SDK</h3><p>フェッチャーの書き方 — ソースから抽出し、変換し、宛先にロードします。</p></a><a class="surface" href="/ja/docs/libraries/"><h3>クライアントライブラリ</h3><p>どの言語のステップでも、コンテキストと run の時計を読み取る方法、そしてすでにライブラリがある言語。</p></a><a class="surface" href="/ja/docs/python/"><h3>Python</h3><p>pip install brevis — ステップ間のコンテキスト、run の時計、パイプライン独自のメトリクスを、依存関係ゼロで。</p></a></div><h2>運用</h2><div class="surface-grid"><a class="surface" href="/ja/docs/console/"><h3>Console</h3><p>Core の Web インターフェース。何が動いていて、何が実行される予定で、各 run に何が起きたか。</p></a><a class="surface" href="/ja/docs/kubernetes/"><h3>Kubernetes</h3><p>エンジンのデプロイ方法、必要な権限、そしてデプロイ後に確認すること。</p></a><a class="surface" href="/ja/docs/observability/"><h3>オブザーバビリティ</h3><p>両方のプロセスの Prometheus メトリクス、何を監視するか、そして意図的に存在しないもの。</p></a><a class="surface" href="/ja/docs/white-label/"><h3>ホワイトラベル</h3><p>1 つの YAML ファイルで、インターフェースのタイトル、モットー、ロゴ、パレットを変更します。</p></a></div><h2>取り込み</h2><div class="surface-grid"><a class="surface" href="/ja/docs/ingestion/"><h3>取り込み</h3><p>データを着地させる HTTP エンドポイント — 検証、識別、バッチ化、配信。専用のイメージ、専用のバージョン。</p></a><a class="surface" href="/ja/docs/ingestion-sinks/"><h3>取り込みの sink</h3><p>6 つの宛先、各データベースがレコードを書き込む方法、そしてイメージが使うものだけを含む理由。</p></a><a class="surface" href="/ja/docs/benchmarks/"><h3>ベンチマーク</h3><p>gateway の測り方、数字が示すこと、そして一致していなければならない 3 つの証人。</p></a></div><h2>SQL によるモデリング</h2><div class="surface-grid"><a class="surface" href="/ja/docs/sql/"><h3>SQL</h3><p>通常の .sql ファイルを、依存関係の順にテーブルとビューへ変換します — ワークフローのステップとして、または単独で。</p></a></div><h2>プロジェクト</h2><div class="surface-grid"><a class="surface" href="/ja/docs/philosophy/"><h3>哲学</h3><p>brevis.sh の由来 — セネカ、Aretê Academy、そしてそれがコードの中で何を決めているか。</p></a><a class="surface" href="/ja/docs/faq/"><h3>FAQ</h3><p>最初に出てくる質問と、短い答え、そして次に読む場所。</p></a></div></div></main>
+<main id="content" class="doc-index"><div class="shell"><p class="eyebrow">ドキュメント</p><h1>ドキュメント</h1><p class="lead">brevis.sh のインストール、理解、運用に必要なすべて — 最初の workflow から Kubernetes へのデプロイまで。</p><h2>はじめに</h2><div class="surface-grid"><a class="surface" href="/ja/docs/ecosystem/"><h3>エコシステム</h3><p>brevis.sh の 4 つの構成要素と、それぞれの役割、そしてデータが通る場所。</p></a><a class="surface" href="/ja/docs/integrations/"><h3>インテグレーション</h3><p>何が何につながるか。データの取得元、着地先、モデリングの場所、そして全体が動く場所。</p></a><a class="surface" href="/ja/docs/introduction/"><h3>はじめに</h3><p>brevis.sh とは何か、何を解決するのか、そしてどんなときに最適な選択ではないのか。</p></a><a class="surface" href="/ja/docs/installation/"><h3>インストール</h3><p>バイナリの入手方法、必要なもの、そしてインストールが正しいことの確認方法。</p></a><a class="surface" href="/ja/docs/quickstart/"><h3>クイックスタート</h3><p>何もない状態から、インターフェース上で動く DAG まで、4 つのステップで。</p></a></div><h2>基本概念</h2><div class="surface-grid"><a class="surface" href="/ja/docs/core/"><h3>Core</h3><p>オーケストレータ。run をスケジュールし、キューを Postgres に保持し、ステップごとに 1 つの pod を起動します。データには一切触れません。</p></a><a class="surface" href="/ja/docs/workflows/"><h3>Workflows</h3><p>YAML 形式の全体 — ステップ、依存関係、イメージ、リソース、スケジュール。</p></a><a class="surface" href="/ja/docs/scheduler-and-queue/"><h3>スケジューラとキュー</h3><p>2 つの独立したループ — 誰が run を作り、誰が実行するのか、そしてなぜ分かれているのか。</p></a><a class="surface" href="/ja/docs/pod-per-step/"><h3>ステップごとの pod</h3><p>なぜ各ステップが専用の pod で動くのか、そしてそれがコストと分離にどう影響するのか。</p></a><a class="surface" href="/ja/docs/context/"><h3>ステップ間のコンテキスト</h3><p>あるステップが次のステップに伝えるもの — 2 つの環境変数と 1 つのファイル。</p></a></div><h2>リファレンス</h2><div class="surface-grid"><a class="surface" href="/ja/docs/cli/"><h3>CLI</h3><p>エンジンの 12 個のサブコマンドと、そのフラグ、引数、それぞれが必要とするもの。</p></a><a class="surface" href="/ja/docs/parameters/"><h3>パラメータ</h3><p>ファイルを編集せずに、同じワークフローの 2 回の run の間で変えられるもの。</p></a><a class="surface" href="/ja/docs/configuration/"><h3>設定</h3><p>すべての環境変数について、デフォルト、形式、未設定の場合に何が起きるか。</p></a><a class="surface" href="/ja/docs/runtime/"><h3>ステップのランタイム</h3><p>ステップが、使う言語と操作するツールについて宣言するもの — そして、ほとんど宣言が要らない理由。</p></a></div><h2>SDK とライブラリ</h2><div class="surface-grid"><a class="surface" href="/ja/docs/sdk/"><h3>Go SDK</h3><p>フェッチャーの書き方 — ソースから抽出し、変換し、宛先にロードします。</p></a><a class="surface" href="/ja/docs/libraries/"><h3>クライアントライブラリ</h3><p>どの言語のステップでも、コンテキストと run の時計を読み取る方法、そしてすでにライブラリがある言語。</p></a><a class="surface" href="/ja/docs/python/"><h3>Python</h3><p>pip install brevis — ステップ間のコンテキスト、run の時計、パイプライン独自のメトリクスを、依存関係ゼロで。</p></a></div><h2>運用</h2><div class="surface-grid"><a class="surface" href="/ja/docs/console/"><h3>Console</h3><p>Core の Web インターフェース。何が動いていて、何が実行される予定で、各 run に何が起きたか。</p></a><a class="surface" href="/ja/docs/kubernetes/"><h3>Kubernetes</h3><p>エンジンのデプロイ方法、必要な権限、そしてデプロイ後に確認すること。</p></a><a class="surface" href="/ja/docs/observability/"><h3>オブザーバビリティ</h3><p>両方のプロセスの Prometheus メトリクス、何を監視するか、そして意図的に存在しないもの。</p></a><a class="surface" href="/ja/docs/white-label/"><h3>ホワイトラベル</h3><p>1 つの YAML ファイルで、インターフェースのタイトル、モットー、ロゴ、パレットを変更します。</p></a></div><h2>取り込み</h2><div class="surface-grid"><a class="surface" href="/ja/docs/ingestion/"><h3>取り込み</h3><p>データを着地させる HTTP エンドポイント — 検証、識別、バッチ化、配信。専用のイメージ、専用のバージョン。</p></a><a class="surface" href="/ja/docs/ingestion-sinks/"><h3>取り込みの sink</h3><p>6 つの宛先、各データベースがレコードを書き込む方法、そしてイメージが使うものだけを含む理由。</p></a><a class="surface" href="/ja/docs/benchmarks/"><h3>ベンチマーク</h3><p>gateway の測り方、数字が示すこと、そして一致していなければならない 3 つの証人。</p></a></div><h2>SQL によるモデリング</h2><div class="surface-grid"><a class="surface" href="/ja/docs/sql/"><h3>SQL</h3><p>通常の .sql ファイルを、依存関係の順にテーブルとビューへ変換します — ワークフローのステップとして、または単独で。</p></a></div><h2>プロジェクト</h2><div class="surface-grid"><a class="surface" href="/ja/docs/philosophy/"><h3>哲学</h3><p>brevis.sh の由来 — セネカ、Aretê Academy、そしてそれがコードの中で何を決めているか。</p></a><a class="surface" href="/ja/docs/faq/"><h3>FAQ</h3><p>最初に出てくる質問と、短い答え、そして次に読む場所。</p></a></div></div></main>
 
 <footer class="site-footer bg-grid">
   <div class="shell">
@@ -101,9 +101,9 @@
       <div class="footer-col">
         <h2>プロジェクト</h2>
         <ul>
-          <li><a href="/ja/#ecossistema">エコシステム</a></li>
+          <li><a href="/ja/#ecosystem">エコシステム</a></li>
           <li><a href="/ja/docs/philosophy/">原則</a></li>
-          <li><a href="/ja/docs/introduction/#オープンなコード関わり方は選べます">オープンソース</a></li>
+          <li><a href="/ja/docs/introduction/#open-code-choose-how-to-take-part">オープンソース</a></li>
           <li><a href="/ja/docs/faq/">FAQ</a></li>
         </ul>
       </div>
@@ -127,6 +127,6 @@
 </footer>
 
 
-<script src="/js/lang.js" defer></script>
+<script src="/js/lang.js?v=6011ef326e" defer></script>
 </body>
 </html>
