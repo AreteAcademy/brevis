@@ -19,14 +19,14 @@ func TestLoadRequiresDatabaseURL(t *testing.T) {
 
 func TestLoadAppliesTheDefaults(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://u:p@localhost:5432/db")
-	t.Setenv("BREVIS_ENV", "local")
+	t.Setenv("BREVIS_ENV", "")
 
 	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Env != "local" {
-		t.Errorf("Env = %q, wanted local", c.Env)
+	if c.Env != "production" {
+		t.Errorf("Env = %q, wanted production", c.Env)
 	}
 	if c.HTTPAddr != ":8080" {
 		t.Errorf("HTTPAddr = %q, wanted :8080", c.HTTPAddr)
@@ -153,7 +153,11 @@ func TestOutsideLocalACredentialIsRequired(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
 	t.Setenv("BREVIS_ENV", "prod")
 
-	if _, err := Load(); err == nil {
+	c0, err := Load()
+	if err != nil {
+		t.Fatalf("Load must not need a credential (migrate, publish... use it): %v", err)
+	}
+	if c0.RequireConsoleCredential() == nil {
 		t.Fatal("BREVIS_ENV=prod started with no credential")
 	}
 
@@ -180,7 +184,11 @@ func TestOutsideLocalACredentialIsRequired(t *testing.T) {
 func TestUnsetEnvIsProductionAndRefusesWithoutCredential(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
 	t.Setenv("BREVIS_ENV", "")
-	_, err := Load()
+	c, err := Load()
+	if err != nil {
+		t.Fatalf("Load must not need a credential: %v", err)
+	}
+	err = c.RequireConsoleCredential()
 	if err == nil {
 		t.Fatal("an unset BREVIS_ENV started with no credential")
 	}
@@ -198,7 +206,11 @@ func TestUnsetEnvIsProductionAndRefusesWithoutCredential(t *testing.T) {
 func TestLocalStartsWithNoCredential(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
 	t.Setenv("BREVIS_ENV", "local")
-	if _, err := Load(); err != nil {
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.RequireConsoleCredential(); err != nil {
 		t.Fatalf("local should start with no credential: %v", err)
 	}
 }
