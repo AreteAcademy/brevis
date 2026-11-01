@@ -92,6 +92,17 @@ left for a person. The merge uses the Dependabot secret
 trigger the workflows that run on `master`. Without the secret the job only
 warns, and the PR waits for a person.
 
+### What runs for a change
+
+`test.yml` starts with a `changes` job: a plain `git diff` against the base
+decides which of the rest run. A change under `site/`, `docs/` or a `.md` file
+runs none of them (the site has its own workflow); `gateway/`, `sql/`,
+`lib/` and `examples/` run the checks that cover them; a change in `sdk/` runs
+the engine's, the gateway's and the examples' too, because they build against
+`../sdk`; the console and the engine (`cmd/`, `internal/`, `web/`, the root
+module) run the engine's. A change under `.github/`, and anything the diff cannot
+answer, runs everything. `quality.yml` only runs when `sdk/` changes.
+
 ## Triggers
 
 | workflow | push | PR | release | tag |

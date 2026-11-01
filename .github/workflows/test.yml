@@ -7,8 +7,80 @@ on:
     branches: [main, master, develop]
 
 jobs:
+  # WHAT THIS CHANGE TOUCHES, so a docs or site change does not wait for the
+  # engine's integration run, and a gateway change does not run the console's
+  # tests. Plain `git diff` against the base, no third-party action: the answer
+  # is a few lines of shell and the file's own paths are the only input.
+  #
+  # The modules that depend on another one (the root, the gateway and the
+  # examples take `../sdk` through a `replace`) are listed with it: a change in
+  # `sdk/` is a change for all of them. A change under `.github/` (this file, a
+  # script) and anything the diff cannot answer run everything, because a gate
+  # edited and not run is a gate nobody has seen pass.
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    outputs:
+      engine: ${{ steps.diff.outputs.engine }}
+      sdk: ${{ steps.diff.outputs.sdk }}
+      python: ${{ steps.diff.outputs.python }}
+      go: ${{ steps.diff.outputs.go }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          engine=false sdk=false gateway=false sql=false python=false examples=false all=false
+
+          if [ "$EVENT" = "pull_request" ]; then
+            files=$(git diff --name-only "$PR_BASE...$PR_HEAD") || all=true
+          elif [ -n "$PUSH_BEFORE" ] && [ "$PUSH_BEFORE" != "0000000000000000000000000000000000000000" ] \
+               && git cat-file -e "$PUSH_BEFORE^{commit}" 2>/dev/null; then
+            files=$(git diff --name-only "$PUSH_BEFORE" "$SHA") || all=true
+          else
+            all=true
+          fi
+
+          while IFS= read -r f; do
+            case "$f" in
+              "") ;;
+              .github/*) all=true ;;
+              sdk/*) sdk=true ;;
+              gateway/*) gateway=true ;;
+              sql/*) sql=true ;;
+              lib/*) python=true ;;
+              examples/*) examples=true ;;
+              site/*|docs/*|*.md) ;;
+              *) engine=true ;;
+            esac
+          done <<<"${files:-}"
+
+          if [ "$all" = true ]; then
+            engine=true sdk=true gateway=true sql=true python=true examples=true
+          fi
+          # The root module, the gateway and the examples build against ../sdk.
+          if [ "$sdk" = true ]; then engine=true gateway=true examples=true; fi
+
+          go=false
+          for v in $engine $sdk $gateway $sql $examples; do [ "$v" = true ] && go=true; done
+
+          {
+            echo "engine=$engine"; echo "sdk=$sdk"; echo "python=$python"; echo "go=$go"
+          } >> "$GITHUB_OUTPUT"
+          echo "engine=$engine sdk=$sdk gateway=$gateway sql=$sql python=$python examples=$examples all=$all"
   test:
     name: Test
+    needs: [changes]
+    if: needs.changes.outputs.sdk == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -41,6 +113,8 @@ jobs:
 
   engine:
     name: Engine
+    needs: [changes]
+    if: needs.changes.outputs.engine == 'true'
     runs-on: ubuntu-latest
 
     # O modulo RAIZ -- runner, executores, API, notify, scheduler.
@@ -136,6 +210,8 @@ jobs:
 
   python:
     name: Python library
+    needs: [changes]
+    if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
 
     # It had no CI outside the publish workflow, which is how `importlib`
@@ -170,6 +246,8 @@ jobs:
 
   integration:
     name: Integration
+    needs: [changes]
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     # The integration tests are the only ones that prove a row actually goes in
     # and comes out. They existed since v0.2.1 and sat behind an environment
@@ -512,6 +590,8 @@ jobs:
 
   lint:
     name: Lint
+    needs: [changes]
+    if: needs.changes.outputs.sdk == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -572,6 +652,8 @@ jobs:
 
   security:
     name: Security Scan
+    needs: [changes]
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -706,7 +788,10 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [test, lint]
+    needs: [changes, test, lint]
+    # `test` and `lint` are the SDK's: they are skipped when only the gateway or
+    # the engine changed, and a skipped need is not a reason not to build.
+    if: ${{ !cancelled() && !failure() && needs.changes.outputs.go == 'true' }}
 
     steps:
       - uses: actions/checkout@v7

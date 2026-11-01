@@ -1,10 +1,18 @@
 name: Code Quality
 
+# Only the SDK: every step below does `cd sdk`. A change that does not touch it
+# has nothing here to check.
 on:
   push:
     branches: [main, master, develop]
+    paths:
+      - 'sdk/**'
+      - '.github/workflows/quality.yml'
   pull_request:
     branches: [main, master, develop]
+    paths:
+      - 'sdk/**'
+      - '.github/workflows/quality.yml'
 
 jobs:
   quality:
