@@ -124,6 +124,29 @@
     dismiss(t);
   };
 
+  // --- A new Brevis ----------------------------------------------------------
+  //
+  // The page draws [data-update-notice] when a release newer than this one is
+  // out. Told once per version: localStorage remembers the one already shown,
+  // so the same news is not a toast on every screen. The words come from the
+  // server, in the reader's language.
+  (function () {
+    var n = document.querySelector("[data-update-notice]");
+    if (!n || typeof window.Brevis.toast !== "function") return;
+    var v = n.dataset.version, seen = "";
+    try { seen = localStorage.getItem("brevis_update_seen") || ""; } catch (e) { /* a private window */ }
+    if (seen === v) return;
+    try { localStorage.setItem("brevis_update_seen", v); } catch (e) { /* the toast shows again next page */ }
+    window.Brevis.toast(n.dataset.message, {
+      kind: "run",
+      action: n.dataset.action,
+      onAction: function () {
+        var d = document.getElementById("version");
+        if (d && typeof d.showModal === "function") d.showModal();
+      }
+    });
+  })();
+
   // --- Switches --------------------------------------------------------------
   //
   // components.Switch flips its own aria-checked; one marked data-manual is
@@ -516,7 +539,7 @@
     function on() { return button.getAttribute("aria-pressed") === "true"; }
     function draw(live) {
       button.setAttribute("aria-pressed", live ? "true" : "false");
-      if (dot) dot.className = "h-1.5 w-1.5 rounded-full " + (live ? "bg-state-running animate-pulse" : "bg-line-strong");
+      if (dot) dot.className = "h-1.5 w-1.5 rounded-full " + (live ? "bg-state-success live-dot-on" : "bg-line-strong");
     }
     function schedule() {
       clearTimeout(timer);

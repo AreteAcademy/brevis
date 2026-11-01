@@ -1283,6 +1283,11 @@ table.ct > tbody > tr > td {
 .st-pulse::before {
   animation: st-pulse 2s ease-out infinite;
 }
+/* The Runs list's Live dot: a ring that spreads from it while Live is on. */
+.live-dot-on {
+  color: var(--color-state-success);
+  animation: st-pulse 2s ease-out infinite;
+}
 @keyframes st-spin {
   to {
     transform: rotate(360deg);
@@ -1301,6 +1306,7 @@ table.ct > tbody > tr > td {
 @media (prefers-reduced-motion: reduce) {
   .st-spin::before,
   .st-spin-dashed::before,
+  .live-dot-on,
   .st-pulse::before {
     animation: none;
   }
@@ -1637,4 +1643,81 @@ tr[data-paused] > td[data-fade] {
     outline: 2px solid var(--color-state-failed);
     outline-offset: -2px;
   }
+}
+
+/* THE RELEASE NOTES in the version dialog: GitHub's own HTML, sanitised on the
+   way in (internal/updates), set in the console's type. */
+.release-notes {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--color-ink-2);
+}
+.release-notes h1,
+.release-notes h2,
+.release-notes h3,
+.release-notes h4 {
+  margin: 1.1rem 0 0.4rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.release-notes h1:first-child,
+.release-notes h2:first-child,
+.release-notes h3:first-child {
+  margin-top: 0;
+}
+.release-notes p,
+.release-notes ul,
+.release-notes ol,
+.release-notes blockquote,
+.release-notes pre,
+.release-notes table {
+  margin: 0 0 0.7rem;
+}
+.release-notes ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.release-notes ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.release-notes li {
+  margin: 0.2rem 0;
+}
+.release-notes code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  background: var(--color-surface-3);
+}
+.release-notes pre {
+  overflow-x: auto;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--color-line);
+  border-radius: 3px;
+  background: var(--color-canvas-subtle);
+}
+.release-notes pre code {
+  padding: 0;
+  background: none;
+}
+.release-notes a {
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.release-notes blockquote {
+  padding-left: 0.8rem;
+  border-left: 2px solid var(--color-line-strong);
+  color: var(--color-muted);
+}
+.release-notes table {
+  border-collapse: collapse;
+}
+.release-notes th,
+.release-notes td {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--color-line);
 }

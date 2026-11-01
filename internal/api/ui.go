@@ -33,6 +33,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/endpointcall"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
+	"github.com/AreteAcademy/brevis/internal/updates"
 	"github.com/AreteAcademy/brevis/web/assets"
 	"github.com/AreteAcademy/brevis/web/components"
 	"github.com/AreteAcademy/brevis/web/i18n"
@@ -133,6 +134,9 @@ type Actions interface {
 // UI registers the server-rendered pages and the JSON the React island consumes.
 type UI struct {
 	leitura Leitura
+	// version is what the console runs; updates says if there is newer.
+	version string
+	updates UpdateSource
 	defs    Definitions
 	execs   RunsChart
 	actions Actions
@@ -235,6 +239,34 @@ type EventsReader interface {
 func (u *UI) WithEvents(r EventsReader) *UI {
 	u.events = r
 	return u
+}
+
+// UpdateSource knows the newest Brevis released and whether it is newer than
+// the one running.
+type UpdateSource interface {
+	Latest() (r updates.Release, newer, ok bool)
+}
+
+// WithVersion shows the running version in the account menu and, when src
+// knows a newer release, an update icon and a notice. A nil src is the version
+// alone.
+func (u *UI) WithVersion(current string, src UpdateSource) *UI {
+	u.version, u.updates = current, src
+	return u
+}
+
+// withVersion carries the version and the update, if any, to the layout.
+func (u *UI) withVersion(ctx context.Context) context.Context {
+	if u.version == "" {
+		return ctx
+	}
+	ctx = layouts.WithVersion(ctx, u.version)
+	if u.updates != nil {
+		if r, newer, ok := u.updates.Latest(); ok {
+			ctx = layouts.WithRelease(ctx, r.Tag, r.URL, r.Notes, newer)
+		}
+	}
+	return ctx
 }
 
 // WithFailing turns on the Runs section's badge. Without it there is none.
@@ -2012,6 +2044,7 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	ctx = layouts.WithRequestURI(ctx, r.URL.RequestURI())
 	ctx = layouts.TakeFlash(ctx, w, r)
 	ctx = u.withFailing(ctx, r)
+	ctx = u.withVersion(ctx)
 	ctx = u.withAttention(ctx, r)
 	if err := c.Render(ctx, w); err != nil {
 		u.log.Error("rendering the page", "path", r.URL.Path, "error", err)

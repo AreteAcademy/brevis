@@ -221,6 +221,8 @@ templ Base(p Page) {
 			</div>
 			@palette()
 			@shortcuts()
+			@versionModal()
+			@updateNotice()
 			// The sentences ui.js writes itself, in this page's language.
 			@templ.Raw(`<script type="application/json" id="i18n">` + scriptMessages(ctx) + `</script>`)
 			@toasts()
@@ -255,59 +257,27 @@ templ accountMenu(operator string, brand branding.Brand) {
 					<span class="truncate">{ i18n.T(ctx, "shell.account") }</span>
 				}
 			</span>
+			<span class="flex shrink-0 items-center gap-1.5">
+			if r, ok := newerRelease(ctx); ok {
+				<span class="text-state-running" title={ i18n.T(ctx, "update.available", "version", r.tag) } data-update-icon>
+					@components.Icon("arrow-up-circle", "h-4 w-4")
+				</span>
+			}
 			// Rotates when the menu opens, which is the only thing that says
 			// the button is a menu before it is clicked.
 			<svg class="account-menu-arrow h-3.5 w-3.5 shrink-0 transition-transform" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
 				<path d="M4 10l4-4 4 4"></path>
 			</svg>
+			</span>
 		</summary>
 		// IT OPENS UPWARDS, because it sits at the foot of the sidebar: a
 		// dropdown from there would be drawn past the bottom of the window.
 		// It dropped down for the while it lived in a top bar.
 		<div class="absolute right-0 bottom-full left-0 z-20 mb-1 rounded-card border border-line bg-surface shadow-warm">
-			// The installation's phrase, INSIDE the menu.
-			//
-			// It used to sit in the sidebar's footer, where it was a paragraph
-			// of prose between the navigation and a button -- read once, then
-			// skipped forever, and taking vertical room from the only two
-			// things down there anybody clicks. In here it is still the
-			// customer's voice and it costs nothing until the menu is open.
-			if rows := brand.Lines(); len(rows) > 0 {
-				<p class="border-b border-line px-3 py-2.5 text-[0.75rem] leading-snug text-muted">
-					for i, l := range rows {
-						if i == 0 {
-							{ "“" + l }
-						} else {
-							<br/>
-							if i == len(rows)-1 {
-								{ l + "”" }
-							} else {
-								{ l }
-							}
-						}
-					}
-					if len(rows) == 1 {
-						{ "”" }
-					}
-				</p>
-			}
+			@versionRow()
 			<div class="py-1">
 			@langChoice()
 			@themeChoice()
-			<span class="block" data-js>
-				<button
-					type="button"
-					data-dialogo="shortcuts"
-					title={ i18n.T(ctx, "shortcuts.tip") }
-					class="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-left text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-				>
-					<span class="flex items-center gap-2.5">
-						@components.Icon("keyboard", "h-4 w-4")
-						{ i18n.T(ctx, "shortcuts.title") }
-					</span>
-					<span class="font-mono text-[0.7rem] text-faint">?</span>
-				</button>
-			</span>
 			if operator != "" {
 				<form method="post" action="/logout">
 					// A POST, and not a link. A GET that signs somebody out is
@@ -338,6 +308,20 @@ templ accountMenu(operator string, brand branding.Brand) {
 				</svg>
 				{ i18n.T(ctx, "shell.docs") }
 			</a>
+			<span class="block" data-js>
+				<button
+					type="button"
+					data-dialogo="shortcuts"
+					title={ i18n.T(ctx, "shortcuts.tip") }
+					class="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-left text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+				>
+					<span class="flex items-center gap-2.5">
+						@components.Icon("keyboard", "h-4 w-4")
+						{ i18n.T(ctx, "shortcuts.title") }
+					</span>
+					<span class="font-mono text-[0.7rem] text-faint">?</span>
+				</button>
+			</span>
 			</div>
 		</div>
 	</details>
@@ -461,6 +445,79 @@ templ themeButton(pref, icon, label string) {
 	>
 		@components.Icon(icon, "h-3.5 w-3.5")
 	</button>
+}
+
+// versionRow is the menu's first line: the running Brevis, and when a newer
+// one is out, which. It opens the release notes (versionModal) -- the newest
+// release's, whether or not it is newer than this one. Where the release is
+// not known (a development build, or a host that cannot reach GitHub) it is
+// the version alone, as plain text.
+templ versionRow() {
+	{{ v := versionLabel(ctx) }}
+	if v != "" {
+		{{ r, known := latestRelease(ctx) }}
+		if known {
+			<span class="block" data-js>
+				<button
+					type="button"
+					data-dialogo="version"
+					title={ i18n.T(ctx, "update.notes") }
+					class="flex w-full items-center justify-between gap-2 border-b border-line px-3 py-2.5 text-left text-[0.78rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+				>
+					<span class="font-medium text-ink">{ i18n.T(ctx, "shell.version", "version", v) }</span>
+					if r.newer {
+						<span class="inline-flex items-center gap-1 text-state-running">
+							@components.Icon("arrow-up-circle", "h-3.5 w-3.5")
+							{ i18n.T(ctx, "update.available", "version", r.tag) }
+						</span>
+					}
+				</button>
+			</span>
+		} else {
+			<p class="border-b border-line px-3 py-2.5 text-[0.78rem] font-medium text-ink">{ i18n.T(ctx, "shell.version", "version", v) }</p>
+		}
+	}
+}
+
+// versionModal is the newest release's notes, as GitHub renders them, and the
+// way to download it. Drawn only when the release is known.
+templ versionModal() {
+	if r, ok := latestRelease(ctx); ok {
+		@components.Modal("version", i18n.T(ctx, "shell.version", "version", r.tag), downloadFoot(r.url)) {
+			if r.newer {
+				<p class="mb-3 text-[0.8rem] text-muted">{ i18n.T(ctx, "update.running", "version", versionLabel(ctx)) }</p>
+			}
+			<div class="release-notes">
+				@notesHTML(r.notes)
+			</div>
+		}
+	}
+}
+
+templ downloadFoot(url string) {
+	<a
+		href={ templ.SafeURL(url) }
+		target="_blank"
+		rel="noopener noreferrer"
+		class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }
+	>
+		@components.Icon("download", "h-4 w-4")
+		{ i18n.T(ctx, "update.download") }
+	</a>
+}
+
+// updateNotice is read by ui.js: one toast per new version, remembered in
+// localStorage so it does not come back on every page.
+templ updateNotice() {
+	if r, ok := newerRelease(ctx); ok {
+		<div
+			hidden
+			data-update-notice
+			data-version={ r.tag }
+			data-message={ i18n.T(ctx, "update.toast", "version", r.tag) }
+			data-action={ i18n.T(ctx, "update.view") }
+		></div>
+	}
 }
 
 // langChoice chooses the console's language: a <details> inside the account
