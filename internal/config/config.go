@@ -239,27 +239,35 @@ func Load() (Config, error) {
 	if err := c.Auth.Validate(); err != nil {
 		return Config{}, err
 	}
-	// Outside local, starting without a credential is refused.
-	//
-	// The interface triggers pipelines: a POST to /workflows/<slug>/trigger runs
-	// a `dbt build` that writes to the warehouse. Open on the internet, it is a
-	// remote control for the warehouse available to anyone -- which is exactly
-	// the state the dev environment came up in, and nobody noticed because
-	// nothing failed. A warning in the log would not have been enough: nobody
-	// reads the log of a process that works. Failing at boot is what makes the
-	// oversight visible.
-	//
-	// `local` is left out because there the server listens on the developer's
-	// own machine, and demanding a password on every `make up` would push the
-	// team to turn authentication off for good.
+	return c, nil
+}
+
+// RequireConsoleCredential refuses a console that would come up open. It lives
+// apart from Load because Load serves every subcommand (migrate, publish,
+// scheduler...) and only `serve` exposes the console.
+//
+// Outside local, starting without a credential is refused.
+//
+// The interface triggers pipelines: a POST to /workflows/<slug>/trigger runs
+// a `dbt build` that writes to the warehouse. Open on the internet, it is a
+// remote control for the warehouse available to anyone -- which is exactly
+// the state the dev environment came up in, and nobody noticed because
+// nothing failed. A warning in the log would not have been enough: nobody
+// reads the log of a process that works. Failing at boot is what makes the
+// oversight visible.
+//
+// `local` is left out because there the server listens on the developer's
+// own machine, and demanding a password on every `make up` would push the
+// team to turn authentication off for good.
+func (c Config) RequireConsoleCredential() error {
 	if c.Env != "local" && !c.Auth.Enabled() {
-		return Config{}, fmt.Errorf(
+		return fmt.Errorf(
 			"BREVIS_ENV=%s requires a credential: set BREVIS_AUTH_USER, "+
 				"BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and "+
 				"BREVIS_AUTH_SECRET -- or set BREVIS_ENV=local for development, "+
 				"where the console stays open on your own machine", c.Env)
 	}
-	return c, nil
+	return nil
 }
 
 // TasksEnvironment builds the environment each local step receives.
