@@ -111,6 +111,19 @@ func fetch(ctx context.Context, source core.Source, rd reading) (iter.Seq2[core.
 		return nil, err
 	}
 
+	// A request body is a stream, and every attempt and every page sends it
+	// again: read it once here so fetchPage can rewind it. Without this a
+	// retried or paged POST goes out with an empty body.
+	if source.Body != nil {
+		if _, ok := source.Body.(*bytes.Reader); !ok {
+			b, err := io.ReadAll(source.Body)
+			if err != nil {
+				return nil, fmt.Errorf("read request body: %w", err)
+			}
+			source.Body = bytes.NewReader(b)
+		}
+	}
+
 	if source.Method == "" {
 		source.Method = DefaultMethod
 	}
@@ -680,6 +693,9 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 
 		ctxAttempt, cancelAttempt := context.WithTimeout(ctxTotal, source.Timeout)
 
+		if br, ok := source.Body.(*bytes.Reader); ok {
+			_, _ = br.Seek(0, io.SeekStart)
+		}
 		req, err := http.NewRequestWithContext(ctxAttempt, source.Method, pageURL, source.Body)
 		if err != nil {
 			cancelAttempt()
