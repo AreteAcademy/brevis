@@ -584,7 +584,7 @@ func accountMenu(operator string, brand branding.Brand) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</span><svg class=\"account-menu-arrow h-3.5 w-3.5 shrink-0 transition-transform\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" aria-hidden=\"true\"><path d=\"M4 10l4-4 4 4\"></path></svg></summary><div class=\"absolute right-0 bottom-full left-0 z-20 mb-1 overflow-hidden rounded-card border border-line bg-surface shadow-warm\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</span><svg class=\"account-menu-arrow h-3.5 w-3.5 shrink-0 transition-transform\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" aria-hidden=\"true\"><path d=\"M4 10l4-4 4 4\"></path></svg></summary><div class=\"absolute right-0 bottom-full left-0 z-20 mb-1 rounded-card border border-line bg-surface shadow-warm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1092,7 +1092,7 @@ func themeChoice() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "</span> <span class=\"flex items-center gap-0.5 rounded-card border border-line bg-surface p-0.5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "</span> <span class=\"flex items-center gap-0.5\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1220,7 +1220,7 @@ func langChoice() templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		current := i18n.Lang(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "<details class=\"group/lang\"><summary class=\"flex cursor-pointer list-none items-center justify-between gap-2.5 px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink\"><span class=\"flex items-center gap-2.5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "<details class=\"relative\" data-popover><summary class=\"flex cursor-pointer list-none items-center justify-between gap-2.5 px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink\"><span class=\"flex items-center gap-2.5\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1250,7 +1250,7 @@ func langChoice() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "</span></summary><form method=\"post\" action=\"/preferences/lang\" data-lang-form class=\"max-h-52 overflow-y-auto border-y border-line-soft bg-surface-2/40 py-1\"><input type=\"hidden\" name=\"next\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "</span></summary><form method=\"post\" action=\"/preferences/lang\" data-lang-form class=\"absolute right-2 bottom-full left-2 z-30 mb-1 max-h-56 overflow-y-auto rounded-card border border-line bg-surface py-1 shadow-warm\"><input type=\"hidden\" name=\"next\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1304,7 +1304,7 @@ func langChoice() templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, " class=\"flex w-full items-center justify-between gap-2 py-1.5 pr-3 pl-9 text-left text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[current=true]:text-ink\"><span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, " class=\"flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[current=true]:text-ink\"><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -264,7 +264,7 @@ templ accountMenu(operator string, brand branding.Brand) {
 		// IT OPENS UPWARDS, because it sits at the foot of the sidebar: a
 		// dropdown from there would be drawn past the bottom of the window.
 		// It dropped down for the while it lived in a top bar.
-		<div class="absolute right-0 bottom-full left-0 z-20 mb-1 overflow-hidden rounded-card border border-line bg-surface shadow-warm">
+		<div class="absolute right-0 bottom-full left-0 z-20 mb-1 rounded-card border border-line bg-surface shadow-warm">
 			// The installation's phrase, INSIDE the menu.
 			//
 			// It used to sit in the sidebar's footer, where it was a paragraph
@@ -441,7 +441,7 @@ templ sidebar(active string, brand branding.Brand) {
 templ themeChoice() {
 	<div class="flex items-center justify-between gap-2 px-3 py-1.5 text-[0.82rem] text-muted" data-js role="group" aria-label={ i18n.T(ctx, "theme.label") }>
 		<span>{ i18n.T(ctx, "theme.label") }</span>
-		<span class="flex items-center gap-0.5 rounded-card border border-line bg-surface p-0.5">
+		<span class="flex items-center gap-0.5">
 			@themeButton("auto", "monitor", i18n.T(ctx, "theme.auto"))
 			@themeButton("light", "sun", i18n.T(ctx, "theme.light"))
 			@themeButton("dark", "moon", i18n.T(ctx, "theme.dark"))
@@ -470,7 +470,7 @@ templ themeButton(pref, icon, label string) {
 // says it right.
 templ langChoice() {
 	{{ current := i18n.Lang(ctx) }}
-	<details class="group/lang">
+	<details class="relative" data-popover>
 		<summary
 			class="flex cursor-pointer list-none items-center justify-between gap-2.5 px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
@@ -480,7 +480,7 @@ templ langChoice() {
 			</span>
 			<span class="font-mono text-[0.7rem] text-faint">{ i18n.Names[current] }</span>
 		</summary>
-		<form method="post" action="/preferences/lang" data-lang-form class="max-h-52 overflow-y-auto border-y border-line-soft bg-surface-2/40 py-1">
+		<form method="post" action="/preferences/lang" data-lang-form class="absolute right-2 bottom-full left-2 z-30 mb-1 max-h-56 overflow-y-auto rounded-card border border-line bg-surface py-1 shadow-warm">
 			<input type="hidden" name="next" value={ requestURI(ctx) }/>
 			for _, lang := range i18n.Langs {
 				<button
@@ -491,7 +491,7 @@ templ langChoice() {
 					if lang == current {
 						aria-current="true"
 					}
-					class="flex w-full items-center justify-between gap-2 py-1.5 pr-3 pl-9 text-left text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[current=true]:text-ink"
+					class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[current=true]:text-ink"
 				>
 					<span>{ i18n.Names[lang] }</span>
 					<span class="font-mono text-[0.7rem] text-faint">{ i18n.Codes[lang] }</span>
