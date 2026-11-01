@@ -421,7 +421,7 @@ func TestATruncatedListingIsSaidOnScreen(t *testing.T) {
 
 // THE TREE AND THE SCRIPT AGREE ON THE ATTRIBUTE.
 //
-// The page marks each table with `data-insert` and the island reads it. They
+// The page marks each table with `data-select` and the island reads it. They
 // are two files and nothing but a string joins them: rename one and the tree
 // becomes a column of dead buttons that still LOOK right, which no markup
 // assertion here would notice.
@@ -433,19 +433,19 @@ func TestTheTreeAndTheIslandAgreeOnTheAttribute(t *testing.T) {
 	svc := f.start(t)
 	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery")
 
-	if body := render(t, ui, "/sql"); !strings.Contains(body, `data-insert="bronze.orders"`) {
-		t.Error("the tree marks nothing for the editor to insert")
+	if body := render(t, ui, "/sql"); !strings.Contains(body, `data-select="SELECT *`+"\n"+`FROM bronze.orders`) {
+		t.Error("the tree marks nothing for the editor to take")
 	}
 
 	mux := http.NewServeMux()
 	ui.Registrar(mux)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/assets/sql.js", nil))
-	// WITHOUT THE COMMENTS. `data-insert` is named in the paragraph that
+	// WITHOUT THE COMMENTS. `data-select` is named in the paragraph that
 	// explains why the tree carries it, so this passed with the island no
 	// longer reading the attribute at all.
-	if !strings.Contains(strip(rec.Body.String()), `"data-insert"`) {
-		t.Error("the island's CODE never reads data-insert, so the tree inserts nothing")
+	if !strings.Contains(strip(rec.Body.String()), `"data-select"`) {
+		t.Error("the island's CODE never reads data-select, so the tree offers nothing")
 	}
 }
 

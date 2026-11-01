@@ -420,6 +420,14 @@ func (c *Client) ask(ctx context.Context, path string, body request, what string
 	return out, nil
 }
 
+// Refused is the service declining a statement, in its own words: a write,
+// a scan over the ceiling, an exhausted budget. It does not say which -- the
+// service sends no code for these -- so a page titles it once and shows the
+// sentence, and never matches on it.
+type Refused struct{ Why string }
+
+func (r *Refused) Error() string { return r.Why }
+
 // refusal turns a non-200 into what a page may say.
 func refusal(res *http.Response, what string) error {
 	if res.StatusCode == http.StatusBadRequest {
@@ -432,7 +440,7 @@ func refusal(res *http.Response, what string) error {
 				return ErrNoConnection
 			}
 			if strings.TrimSpace(body.Error) != "" {
-				return errors.New(body.Error)
+				return &Refused{Why: body.Error}
 			}
 		}
 	}

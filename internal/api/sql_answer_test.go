@@ -6,8 +6,6 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-
-	"github.com/AreteAcademy/brevis/web/pages"
 )
 
 // THE ANSWER IS WIRED FROM ITS OWN NODE, NOT FROM THE DOCUMENT.
@@ -91,7 +89,7 @@ func TestARunCanAskForTheAnswerAlone(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("/sql answered %d", code)
 	}
-	for _, want := range []string{"data-outcome", `data-tab="results"`} {
+	for _, want := range []string{"data-outcome", `data-panel="results"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the answer lacks %s", want)
 		}
@@ -131,7 +129,7 @@ func TestWithoutTheHeaderARunDrawsTheWholeWorkbench(t *testing.T) {
 func TestTheAnswerAloneKeepsEveryRefusal(t *testing.T) {
 	w, ui := browsing(t)
 	code, body := submit(t, ui, url.Values{"target": {"postgres://not-in-the-catalog"}, "q": {"SELECT 1"}}, true)
-	if code != http.StatusOK || !strings.Contains(body, strings.SplitN(pages.Unknown, ".", 2)[0]) {
+	if code != http.StatusOK || !strings.Contains(body, "That is not a destination this console knows") {
 		t.Errorf("an unknown connection is not refused in the pane: %d %q", code, body)
 	}
 	if len(w.calls) != 0 {

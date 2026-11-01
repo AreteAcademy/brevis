@@ -215,43 +215,51 @@
   // AND NOTHING CLOSES. The server path can only hold ONE open relation,
   // because what is open rides in a form field and a field holding a list
   // needs a separator that a `schema.name` may contain. Here the open set is
-  // just the DOM, so three relations in three schemas stay open at once --
-  // which is the complaint this slice exists for.
+  // just the DOM, so three relations in three schemas stay open at once.
+  //
+  // THE PICKER IS A PAGE (screen-sql T1). Choosing a connection submits its
+  // own GET form: the listing, the logo and the label beside Run all belong
+  // to the connection, the server draws them, and the open statements are in
+  // the tabs' storage already, so nothing typed is lost.
   function wireTree() {
     document.addEventListener("click", function (ev) {
-      var el = ev.target.closest ? ev.target.closest("[data-insert]") : null;
-      if (el) {
+      var table = ev.target.closest ? ev.target.closest("[data-select]") : null;
+      if (table) {
         ev.preventDefault();
-        insert(el.getAttribute("data-insert"));
+        offer(table.getAttribute("data-select"));
+        var shut = table.parentNode.querySelector('button[name="expand"][aria-expanded="false"]');
+        if (shut) openRelation(shut);
         return;
       }
-      var btn = ev.target.closest ? ev.target.closest("button[name]") : null;
+      var btn = ev.target.closest ? ev.target.closest('button[name="expand"]') : null;
       if (!btn) return;
-      if (btn.name === "expand") {
-        ev.preventDefault();
-        openRelation(btn);
-      } else if (btn.name === "connect") {
-        ev.preventDefault();
-        openConnection(btn);
-      }
+      ev.preventDefault();
+      openRelation(btn);
+    });
+
+    var pick = document.querySelector("[data-connection-pick] select");
+    if (pick) pick.addEventListener("change", function () {
+      store();
+      pick.form.submit();
     });
 
     var box = document.querySelector("[data-tree-search]");
     if (box) box.addEventListener("input", function () { filter(box.value); });
   }
 
-  function insert(name) {
-    if (editor) {
-      editor.replaceSelection(name);
-      editor.focus();
-      return;
+  // A TABLE'S FIRST LOOK GOES WHERE IT TAKES NOTHING AWAY: the open tab when
+  // it is empty, a new tab when somebody has written in it. Overwriting a
+  // half-written query because a table was clicked would be the click
+  // somebody learns never to make.
+  function offer(statement) {
+    if (text().trim() === "") {
+      put(statement);
+      store();
+    } else {
+      openTab(statement);
     }
-    // No editor: the textarea itself, at its own cursor.
-    var at = area.selectionStart === null ? area.value.length : area.selectionStart;
-    var to = area.selectionEnd === null ? at : area.selectionEnd;
-    area.value = area.value.slice(0, at) + name + area.value.slice(to);
-    area.selectionStart = area.selectionEnd = at + name.length;
-    area.focus();
+    if (editor) editor.focus();
+    estimate();
   }
 
   // A relation's columns, fetched once and then only hidden and shown. The
@@ -268,80 +276,43 @@
     toggle(btn, slot, url);
   }
 
-  // A connection's schemas. Opening one also makes it the connection a query
-  // runs on, which the label beside Run says out loud -- an invisible change
-  // of warehouse is the one thing a picker was good at preventing.
-  function openConnection(btn) {
-    var target = btn.value;
-    var slot = document.querySelector('[data-objects="' + css(target) + '"]');
-    if (!slot) return;
-    var hidden = document.querySelector('#workbench input[name="target"]');
-    if (hidden) hidden.value = target;
-    var node = btn.closest("[data-connection]");
-    var label = document.querySelector("[data-running-on]");
-    if (label && node) label.textContent = node.getAttribute("data-connection");
-    toggle(btn, slot, "/api/sql/objects?target=" + encodeURIComponent(target), node);
-  }
-
-  function toggle(btn, slot, url, node) {
-    var arrow = btn.querySelector("[data-arrow]");
+  function toggle(btn, slot, url) {
     if (slot.innerHTML.trim() !== "") {
       var shut = slot.hidden;
       slot.hidden = !shut;
       btn.setAttribute("aria-expanded", shut ? "true" : "false");
-      if (arrow) arrow.textContent = shut ? "\u25BE" : "\u25B8";
       return;
     }
     btn.setAttribute("aria-busy", "true");
     fetch(url, { headers: { Accept: "text/html" } })
       .then(function (r) { return r.ok ? r.text() : ""; })
       .then(function (html) {
-        // AN EMPTY ANSWER IS AN ANSWER. A warehouse that cannot list or
-        // cannot describe is not an error here either -- the server draws
-        // the sentence that says so, and a refusal draws nothing rather
-        // than leaving the button spinning.
+        // AN EMPTY ANSWER IS AN ANSWER. A warehouse that cannot describe is
+        // not an error here either -- the server draws the sentence that
+        // says so, and a refusal draws nothing rather than leaving the
+        // button spinning.
         slot.innerHTML = html;
         slot.hidden = false;
         btn.setAttribute("aria-expanded", "true");
-        if (arrow) arrow.textContent = "\u25BE";
-        if (node) node.setAttribute("data-loaded", "true");
       })
       .catch(function () { slot.innerHTML = ""; })
       .then(function () { btn.removeAttribute("aria-busy"); });
   }
 
-  // THE FILTER SEES WHAT IS LOADED, AND SAYS WHEN THAT IS NOT EVERYTHING.
-  //
-  // A connection nobody opened holds names this cannot read. A search that
-  // quietly skipped one would be how somebody concludes a table does not
-  // exist, so the ones it could not look inside are named instead.
+  // THE FILTER SEES THE CHOSEN CONNECTION'S LISTING, which is all the page
+  // holds: one connection at a time, drawn whole by the server.
   function filter(term) {
     var q = term.trim().toLowerCase();
-    var unsearched = [];
-    document.querySelectorAll("[data-connection][data-loaded]").forEach(function (node) {
-      if (node.getAttribute("data-loaded") !== "true") {
-        unsearched.push(node.getAttribute("data-connection"));
-      }
-      node.querySelectorAll("[data-relation]").forEach(function (row) {
-        var name = row.getAttribute("data-relation").toLowerCase();
-        row.hidden = q !== "" && name.indexOf(q) < 0;
-      });
-      node.querySelectorAll("details").forEach(function (d) {
-        var any = false;
-        d.querySelectorAll("[data-relation]").forEach(function (row) { if (!row.hidden) any = true; });
-        d.hidden = q !== "" && !any;
-        if (any) d.open = true;
-      });
+    document.querySelectorAll("#objects [data-relation]").forEach(function (row) {
+      var name = row.getAttribute("data-relation").toLowerCase();
+      row.hidden = q !== "" && name.indexOf(q) < 0;
     });
-    var note = document.querySelector("[data-tree-unsearched]");
-    if (!note) return;
-    if (q === "" || unsearched.length === 0) {
-      note.hidden = true;
-      return;
-    }
-    note.hidden = false;
-    note.textContent = "Not searched, because nothing has been loaded from " +
-      (unsearched.length === 1 ? "it" : "them") + ": " + unsearched.join(", ") + ".";
+    document.querySelectorAll("#objects details").forEach(function (d) {
+      var any = false;
+      d.querySelectorAll("[data-relation]").forEach(function (row) { if (!row.hidden) any = true; });
+      d.hidden = q !== "" && !any;
+      if (any) d.open = true;
+    });
   }
 
   // THE CHROME: two grips, one collapse, and a memory.
@@ -397,18 +368,12 @@
     var editor = recall("editor");
     if (editor) bench.style.setProperty("--editor", editor);
     if (recall("rail-collapsed") === "true") fold(bench, "rail", true);
-    if (recall("recent-collapsed") === "true") fold(bench, "recent", true);
 
     document.addEventListener("click", function (ev) {
       if (!ev.target.closest) return;
       if (ev.target.closest("[data-rail-toggle]")) {
         ev.preventDefault();
         fold(bench, "rail", bench.getAttribute("data-rail-collapsed") !== "true");
-        return;
-      }
-      if (ev.target.closest("[data-recent-toggle]")) {
-        ev.preventDefault();
-        fold(bench, "recent", bench.getAttribute("data-recent-collapsed") !== "true");
       }
     });
 
@@ -427,10 +392,8 @@
     });
   }
 
-  // ONE FOLD FOR TWO RAILS. The object tree and the Recent rail collapse the
-  // same way -- an attribute on the workbench, the ARIA on every control
-  // that drives it, and a line in storage -- and writing it twice is how the
-  // second one quietly stops remembering.
+  // THE FOLD: an attribute on the workbench, the ARIA on every control that
+  // drives it, and a line in storage. The object tree is the one rail left.
   function fold(bench, which, shut) {
     bench.setAttribute("data-" + which + "-collapsed", shut ? "true" : "false");
     bench.querySelectorAll("[data-" + which + "-toggle]").forEach(function (b) {
@@ -502,25 +465,36 @@
     return document.querySelector("[data-answer]") || document;
   }
 
+  // THE TABS ARE OVER THE ANSWER AND OUTLIVE IT (screen-sql T3): Results
+  // and JSON switch the panels inside whatever answer is drawn; History hides
+  // the answer and shows the list kept in this browser.
   function wireResultTabs() {
     document.addEventListener("click", function (ev) {
-      var tab = ev.target.closest ? ev.target.closest("[data-tab]") : null;
+      var tab = ev.target.closest ? ev.target.closest("[data-results-tabs] [data-tab]") : null;
       if (!tab) return;
       ev.preventDefault();
-      var root = tab.closest("[data-answer]") || document;
-      var want = tab.getAttribute("data-tab");
-      root.querySelectorAll("[data-tab]").forEach(function (t) {
-        t.setAttribute("aria-selected", t.getAttribute("data-tab") === want ? "true" : "false");
-      });
-      root.querySelectorAll("[data-panel]").forEach(function (p) {
-        p.hidden = p.getAttribute("data-panel") !== want;
-      });
-      // THE PAGER BELONGS TO THE GRID. On the JSON tab there is one block
-      // of text and nothing to page through, so offering the control would
-      // be offering a control that does nothing.
-      var panel = root.querySelector("[data-pager]");
-      if (panel) panel.hidden = want !== "results" || pagerRows(root).length <= perPage(panel);
+      showTab(tab.getAttribute("data-tab"));
     });
+  }
+
+  function showTab(want) {
+    document.querySelectorAll("[data-results-tabs] [data-tab]").forEach(function (t) {
+      t.setAttribute("aria-selected", t.getAttribute("data-tab") === want ? "true" : "false");
+    });
+    var root = answer();
+    // NOT `history`: that name is the browser's address-bar API, which this
+    // file never touches, and a test holds it to that by its name.
+    var kept = document.querySelector('[data-panel="history"]');
+    if (kept) kept.hidden = want !== "history";
+    if (root !== document) root.hidden = want === "history";
+    root.querySelectorAll("[data-panel]").forEach(function (p) {
+      if (p.getAttribute("data-panel") !== "history") p.hidden = p.getAttribute("data-panel") !== want;
+    });
+    // THE PAGER BELONGS TO THE GRID. On the JSON tab there is one block
+    // of text and nothing to page through, so offering the control would
+    // be offering a control that does nothing.
+    var panel = root.querySelector("[data-pager]");
+    if (panel) panel.hidden = want !== "results" || pagerRows(root).length <= perPage(panel);
   }
 
   function perPage(panel) {
@@ -551,7 +525,10 @@
       // THE TOTAL COMES FROM THE SERVER, carrying its own `+` when a limit
       // cut the answer. The rule for that lives in Go, where a test can read
       // it; this only prints what it was handed.
-      if (range) range.textContent = from + "\u2013" + to + " of " + panel.getAttribute("data-total");
+      // AND THE WORDS ARE THE PAGE'S: "{from}–{to} of {total}" in the
+      // reader's language, filled here.
+      if (range) range.textContent = (panel.getAttribute("data-range") || "{from}\u2013{to} / {total}")
+        .replace("{from}", from).replace("{to}", to).replace("{total}", panel.getAttribute("data-total"));
       var prev = panel.querySelector("[data-pager-prev]");
       var next = panel.querySelector("[data-pager-next]");
       if (prev) prev.disabled = at === 0;
@@ -576,8 +553,11 @@
     if (!btn || !navigator.clipboard) return;
     btn.addEventListener("click", function () {
       navigator.clipboard.writeText(text()).then(function () {
-        btn.setAttribute("aria-label", "Copied");
-        btn.setAttribute("title", "Copied");
+        // THE WORD IS THE PAGE'S, in the reader's language: this file
+        // writes no text of its own.
+        var said = btn.getAttribute("data-copied-label") || "";
+        btn.setAttribute("aria-label", said);
+        btn.setAttribute("title", said);
         setTimeout(function () {
           btn.removeAttribute("aria-label");
           btn.removeAttribute("title");
@@ -690,6 +670,9 @@
         pane.innerHTML = html;
         wirePager(pane);
         addRecent(pane, statement);
+        // A NEW ANSWER IS SHOWN: whatever tab was open, the run is what
+        // somebody pressed for.
+        showTab("results");
       })
       .catch(function (err) {
         // CANCELLED IS NOT FAILED. Aborting closes the request, which
@@ -773,19 +756,31 @@
 
     tabs = parse(recall("tabs"), []);
     at = recall("tab") || "";
-    if (tabs.length === 0) tabs = [{ id: fresh(), name: "Query 1", text: echoed }];
+    if (tabs.length === 0) tabs = [{ id: fresh(), name: "1", text: echoed }];
     if (!here()) at = tabs[0].id;
 
     // THE SERVER'S ECHO WINS WHEN THERE IS ONE. What is in the box after a
     // submit is the statement that just ran, and the copy in storage is
     // older by definition. With nothing echoed, the tab fills the box --
     // which is what makes three tabs survive a reload.
+    //
+    // BUT A LINK'S SELECT IS AN OFFER, NOT A RUN (screen-sql T1): it takes
+    // the open tab only when that tab is empty, and a new tab otherwise.
+    if (echoed !== "" && area.hasAttribute("data-preloaded") && here().text.trim() !== "" && here().text !== echoed) {
+      put(here().text);
+      drawTabs();
+      openTab(echoed);
+      return wireTabClicks();
+    }
     if (echoed !== "") here().text = echoed;
     else put(here().text);
 
     drawTabs();
     store();
+    wireTabClicks();
+  }
 
+  function wireTabClicks() {
     document.addEventListener("click", function (ev) {
       if (!ev.target.closest) return;
       var pick = ev.target.closest("[data-tab-pick]");
@@ -819,13 +814,28 @@
   // The name is derived and never renumbered: closing the second of three
   // tabs must not rename the third, or the tab somebody was looking for
   // becomes the tab they just closed.
+  //
+  // WHAT IS STORED IS THE NUMBER, and the word around it is the page's
+  // (`data-tab-name`, "Consulta {n}"), so a tab reads in the language the
+  // console is in today -- and a tab stored as "Query 2" before this still
+  // reads as its number.
   function named() {
     var top = 0;
     tabs.forEach(function (t) {
-      var n = parseInt(String(t.name).replace(/\D+/g, ""), 10);
+      var n = numberOf(t.name);
       if (n > top) top = n;
     });
-    return "Query " + (top + 1);
+    return String(top + 1);
+  }
+
+  function numberOf(name) {
+    return parseInt(String(name).replace(/\D+/g, ""), 10) || 0;
+  }
+
+  function label(name) {
+    var strip = document.querySelector("[data-tabs]");
+    var pattern = (strip && strip.getAttribute("data-tab-name")) || "{n}";
+    return pattern.replace("{n}", String(numberOf(name)));
   }
 
   function goTo(id) {
@@ -885,7 +895,7 @@
       var node = tpl.content.firstElementChild.cloneNode(true);
       node.setAttribute("data-tab-id", t.id);
       var pick = node.querySelector("[data-tab-pick]");
-      pick.textContent = t.name;
+      pick.textContent = label(t.name);
       pick.setAttribute("aria-selected", t.id === at ? "true" : "false");
       node.querySelector("[data-tab-close]").hidden = tabs.length < 2;
       strip.insertBefore(node, add);
@@ -956,6 +966,8 @@
       ol.appendChild(node);
     });
     if (empty) empty.hidden = list.length > 0;
+    var count = document.querySelector("[data-history-count]");
+    if (count) count.textContent = String(list.length);
   }
 
   // THE COST LINE: WHAT THIS WOULD PROCESS, BEFORE ANYBODY PRESSES RUN.

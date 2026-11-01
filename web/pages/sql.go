@@ -1,13 +1,16 @@
 package pages
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/i18n"
 )
 
 // SQLView is the workbench.
@@ -27,9 +30,18 @@ type SQLView struct {
 	// somebody has to type again.
 	Target    string
 	Statement string
+	// Preloaded says Statement is a table's first look from a link, not what
+	// somebody ran: the island opens it in a tab of its own rather than over
+	// the one somebody was writing in.
+	Preloaded bool
 
 	Result *sqlserve.Result
-	Err    string
+	// Refused is the service declining the statement, in its own words; the
+	// page titles it (screen-sql T3). ErrKey is a failure the console words
+	// itself, with ErrArg filling it; Err any other failure, as it came.
+	Refused        string
+	ErrKey, ErrArg string
+	Err            string
 
 	// Tree is what the chosen connection holds, grouped by schema. Empty
 	// when the warehouse cannot say -- the capability is optional and a
@@ -134,8 +146,64 @@ func (v SQLView) Branch() Branch {
 	return Branch{Target: v.Target, Tree: v.Tree, Cut: v.TreeCut, Open: v.Open, Cols: v.Cols}
 }
 
-// Warehouses is the tree's roots.
+// Warehouses is the picker's choices: one per connection.
 func (v SQLView) Warehouses() []Warehouse { return Warehouses(v.Targets) }
+
+// queryableSchemes are the warehouses `brevis-sql serve` has a dialect for
+// (`sql/internal/dialect`). The catalog lists Redshift and MySQL tables too;
+// the picker offers them disabled, with the reason, rather than a tree that
+// answers nothing.
+var queryableSchemes = map[string]bool{"bigquery": true, "postgres": true}
+
+// Queryable says this console can read the destination.
+func Queryable(target string) bool {
+	scheme, _, ok := strings.Cut(target, "://")
+	return ok && queryableSchemes[scheme]
+}
+
+// FirstQueryable is the destination the workbench opens on when it was given
+// none: the first one it can read.
+func (v SQLView) FirstQueryable() string {
+	for _, t := range v.Targets {
+		if Queryable(t) {
+			return t
+		}
+	}
+	return ""
+}
+
+// Unreadable is the kinds of warehouse in the catalog this console cannot
+// read, as their makers write them, for the sentence under the picker.
+func (v SQLView) Unreadable() []string {
+	var out []string
+	for _, w := range v.Warehouses() {
+		scheme, _, _ := strings.Cut(w.Name, "://")
+		if !queryableSchemes[scheme] && !slices.Contains(out, scheme) {
+			out = append(out, scheme)
+		}
+	}
+	return out
+}
+
+// SelectFor is a table's first look: every column, a hundred rows, the table
+// named as a build names it -- `schema.table`, with no project or database,
+// which is the connection's. "" for a destination that is not a table this
+// console reads.
+func SelectFor(target string) string {
+	if !Queryable(target) {
+		return ""
+	}
+	_, rest, _ := strings.Cut(target, "://")
+	segs := strings.Split(rest, "/")
+	if len(segs) != 3 || segs[1] == "" || segs[2] == "" {
+		return ""
+	}
+	return selectOf(segs[1], segs[2])
+}
+
+func selectOf(schema, table string) string {
+	return "SELECT *\nFROM " + schema + "." + table + "\nLIMIT 100;"
+}
 
 // Active says this warehouse is the one whose listing is drawn.
 func (v SQLView) Active(w Warehouse) bool {
@@ -157,24 +225,6 @@ func (v SQLView) Running() string {
 		}
 	}
 	return ""
-}
-
-// loaded is `data-loaded`, which the search box reads: a connection nobody
-// opened holds names no filter can see, and a search that quietly skips one
-// is how somebody concludes a table does not exist.
-func loaded(v SQLView, w Warehouse) string {
-	if v.Active(w) && len(v.Tree) > 0 {
-		return "true"
-	}
-	return "false"
-}
-
-// expanded is a connection node's ARIA state.
-func expanded(v SQLView, w Warehouse) string {
-	if v.Active(w) {
-		return "true"
-	}
-	return "false"
 }
 
 // BuildTree groups a listing by schema, in the order the service gave it.
@@ -211,22 +261,18 @@ func BuildSQL(entries []postgres.CatalogEntry) SQLView {
 	return v
 }
 
-// Note is the line under the grid: what came back, what it cost, how long.
-func (v SQLView) Note() string {
+// Note is the line over the grid: what came back, what it read, how long --
+// "2 rows · 91.9 MB read · 523 ms" -- in the reader's words and numbers.
+func (v SQLView) Note(ctx context.Context) string {
 	if v.Result == nil {
 		return ""
 	}
 	if v.Result.Wrote {
-		return v.Changed() + " · " + v.Cost()
+		return v.Changed(ctx) + " · " + v.Cost(ctx)
 	}
-	n := len(v.Result.Rows)
-	rows := "rows"
-	if n == 1 {
-		rows = "row"
-	}
-	note := fmt.Sprintf("%d %s · %s", n, rows, v.Cost())
+	note := i18n.N(ctx, "sql.result.rows", len(v.Result.Rows)) + " · " + v.Cost(ctx)
 	if v.Result.Truncated {
-		note += " — there are more"
+		note += " " + i18n.T(ctx, "sql.result.more")
 	}
 	return note
 }
@@ -237,40 +283,35 @@ func (v SQLView) Note() string {
 // same sentence with a different number, and both are a COUNT. "no rows to
 // count" is not a count at all -- a CREATE TABLE changed nothing and did not
 // fail, and printing zero for it reads as a failure to whoever ran it.
-//
-// The plural is spelled out because every count gets it wrong once, and a
-// screen that says "1 rows" is a screen somebody stops reading carefully.
-func (v SQLView) Changed() string {
+func (v SQLView) Changed(ctx context.Context) string {
 	if v.Result == nil || !v.Result.Wrote {
 		return ""
 	}
 	if v.Result.Changed == nil {
-		return "ran — no rows to count"
+		return i18n.T(ctx, "sql.result.uncounted")
 	}
-	n := *v.Result.Changed
-	if n == 1 {
-		return "1 row changed"
-	}
-	return fmt.Sprintf("%d rows changed", n)
+	return i18n.N(ctx, "sql.result.changed", int(*v.Result.Changed))
 }
 
-// Cost is what the statement spent, in the words the screen already uses.
+// Cost is what the statement spent: "91.9 MB read · 523 ms".
 //
-// ONE FORMATTER, TWO READERS. The Recent rail lists the same figures, and
-// it is built in the browser -- so the alternative was a second `bytesText`
-// in JavaScript. Two rounders disagree eventually, and the day they do, the
-// rail says "2 KB" under a grid that says "2.0 KB" and somebody stops
-// trusting both.
-func (v SQLView) Cost() string {
+// ONE FORMATTER, TWO READERS. History lists the same figures, and it is
+// built in the browser -- so the alternative was a second `bytesText` in
+// JavaScript. Two rounders disagree eventually.
+func (v SQLView) Cost(ctx context.Context) string {
 	if v.Result == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s scanned · %d ms", bytesText(v.Result.Bytes), v.Result.Millis)
+	return i18n.T(ctx, "sql.result.read", "bytes", bytesSaid(ctx, v.Result.Bytes)) + " · " +
+		i18n.Number(ctx, v.Result.Millis) + " ms"
 }
 
 // Ran says something happened, which is the difference between a screen
 // waiting for a first query and one showing the second.
-func (v SQLView) Ran() bool { return v.Result != nil || v.Err != "" }
+func (v SQLView) Ran() bool { return v.Result != nil || v.failed() }
+
+// failed says the statement came back with no answer, for whatever reason.
+func (v SQLView) failed() bool { return v.Err != "" || v.Refused != "" || v.ErrKey != "" }
 
 // Outcome is what the Recent rail records.
 //
@@ -281,7 +322,7 @@ func (v SQLView) Outcome() string {
 	if v.Result != nil {
 		return "ok"
 	}
-	if v.Err != "" {
+	if v.failed() {
 		return "failed"
 	}
 	return ""
@@ -303,15 +344,17 @@ func (v SQLView) Knows(target string) bool {
 	return false
 }
 
-// Unknown is what the screen says when a body named something the catalog
-// does not list.
-//
-// IT DOES NOT REPEAT WHAT WAS SENT. The string came from the request, and a
-// page that echoes a request back is a page that has to be right about
-// escaping forever. templ escapes it today; this does not need templ to be
-// right.
-const Unknown = "That is not a destination this console knows. " +
-	"The catalog lists what Brevis has written, and nothing else can be queried here."
+// ConnectionOf is the connection a destination lives on, as `serve` reads
+// it: the first segment after the scheme -- what a missing `brevis.yaml`
+// entry is named by.
+func ConnectionOf(target string) string {
+	_, rest, ok := strings.Cut(target, "://")
+	if !ok {
+		return target
+	}
+	first, _, _ := strings.Cut(rest, "/")
+	return first
+}
 
 // JSON is the result as the service sent it, for the tab of that name.
 //
@@ -363,4 +406,35 @@ func openOf(b Branch, schema, table string) string {
 		return "true"
 	}
 	return "false"
+}
+
+// warehouseLabel is a connection as the picker says it: the warehouse by its
+// maker's name, then the connection -- "Google BigQuery · acme".
+func warehouseLabel(ctx context.Context, w Warehouse) string {
+	scheme, rest, _ := strings.Cut(w.Name, "://")
+	return components.LogoTitle(ctx, kindLogo(scheme)) + " · " + rest
+}
+
+// unreadableSaid is the kinds the console cannot read, by their makers'
+// names: "Amazon Redshift, MySQL".
+func unreadableSaid(ctx context.Context, kinds []string) string {
+	names := make([]string, len(kinds))
+	for i, k := range kinds {
+		names[i] = components.LogoTitle(ctx, kindLogo(k))
+	}
+	return strings.Join(names, ", ")
+}
+
+// bytesSaid is a byte count as the reader writes numbers: "273.9 MB" in
+// English, "273,9 MB" in Portuguese. The units are the same everywhere.
+func bytesSaid(ctx context.Context, n int64) string {
+	for _, u := range []struct {
+		size int64
+		unit string
+	}{{1 << 40, "TB"}, {1 << 30, "GB"}, {1 << 20, "MB"}, {1 << 10, "kB"}} {
+		if n >= u.size {
+			return i18n.Decimal(ctx, float64(n)/float64(u.size), 1) + " " + u.unit
+		}
+	}
+	return i18n.Number(ctx, n) + " B"
 }

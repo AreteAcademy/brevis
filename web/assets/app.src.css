@@ -762,39 +762,21 @@ li.CodeMirror-hint-active {
   color: var(--color-ink);
 }
 
-/* THE RESULT ZONE IS TWO COLUMNS NOW: what has been run, and the answer.
-   
-   `overflow` moved off the section and onto the answer, or the rail would
-   scroll with the grid it sits beside. */
+/* THE RESULT ZONE: the tabs over the answer, then the answer or History
+   (screen-sql T3; History was a rail beside the grid). The tabs stay put
+   and the panel under them scrolls. */
 .workbench-results {
   min-width: 0;
   min-height: 0;
   flex: 1;
   display: flex;
+  flex-direction: column;
 }
 .workbench-answer {
   min-width: 0;
   min-height: 0;
   flex: 1;
   overflow: auto;
-}
-.workbench-recent {
-  width: var(--recent, 13rem);
-  min-width: 0;
-  flex-shrink: 0;
-  overflow: auto;
-  margin-right: 0.75rem;
-  padding-right: 0.75rem;
-  border-right: 1px solid var(--color-line-soft);
-}
-.workbench[data-recent-collapsed="true"] .workbench-recent {
-  display: none;
-}
-.workbench-recent-show {
-  display: none;
-}
-.workbench[data-recent-collapsed="true"] .workbench-recent-show {
-  display: block;
 }
 
 /* ON A PHONE THE WORKBENCH STACKS.
@@ -849,15 +831,6 @@ li.CodeMirror-hint-active {
   }
   .workbench-answer {
     min-height: 16rem;
-  }
-  .workbench-recent {
-    order: 2;
-    width: auto;
-    max-height: 12rem;
-    margin-right: 0;
-    padding: 0.75rem 0 0;
-    border-right: none;
-    border-top: 1px solid var(--color-line-soft);
   }
 }
 
