@@ -271,7 +271,7 @@ go test ./...
 
 # the cloud ones ask for the variables
 docker compose -f docker-compose.drivers.yml up -d minio postgres mysql
-BREVIS_IT_S3_ENDPOINT=http://localhost:9000 \
+BREVIS_IT_S3_ENDPOINT=http://localhost:59000 \
 BREVIS_IT_PROJECT=my-project BREVIS_IT_DATASET=brevis_it \
 BREVIS_IT_BUCKET=my-bucket \
   go test ./... -run Integration

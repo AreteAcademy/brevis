@@ -2,7 +2,7 @@
 #
 #   docker compose -f docker-compose.drivers.yml --profile sql up -d
 #   docker compose -f docker-compose.drivers.yml --profile all up -d
-#   BREVIS_IT_S3_ENDPOINT=http://localhost:9000 go test ./sdk/... -run Integration
+#   BREVIS_IT_S3_ENDPOINT=http://localhost:59000 go test ./sdk/... -run Integration
 #
 # PROFILES, and not a file per cloud. A second compose file is a second project
 # name, and the paragraph below is what that cost once already. The profiles:
@@ -77,14 +77,18 @@ services:
   # script and habit in this repository calls it, and renaming it would move
   # a dozen references to fix an image line.
   #
-  # Port 9000 outside, 9090 inside: s3mock serves HTTP on 9090, and nothing
-  # downstream moves. It needs no command and no credentials -- it accepts
-  # whatever the caller signs with, which is what the tests already send.
+  # Port 59000 outside (BREVIS_S3_PORT), 9090 inside: s3mock serves HTTP on
+  # 9090. SHIFTED LIKE THE OTHERS, and later than them: it sat on 9000 until a
+  # dev server on the host's ::1:9000 answered the warehouse run's probe and
+  # six S3 tests with a 404 while this container was up -- `localhost` is ::1
+  # first on macOS, and a process bound there wins over Docker's wildcard.
+  # It needs no command and no credentials -- it accepts whatever the caller
+  # signs with, which is what the tests already send.
   minio:
     profiles: [aws, all]
     image: adobe/s3mock:5.2.3
     ports:
-      - "9000:9090"
+      - "${BREVIS_S3_PORT:-59000}:9090"
     # NO HEALTHCHECK, and that is a decision rather than an omission. The
     # image is a JRE with no curl, no wget and a `/bin/sh` that is not bash,
     # so every in-container probe this file could write is a probe that

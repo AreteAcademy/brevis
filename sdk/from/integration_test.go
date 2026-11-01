@@ -26,7 +26,7 @@ import (
 // docker-compose.drivers.yml:
 //
 //	docker compose -f docker-compose.drivers.yml up -d minio
-//	BREVIS_IT_S3_ENDPOINT=http://localhost:9000 go test ./from/... -run Integration
+//	BREVIS_IT_S3_ENDPOINT=http://localhost:59000 go test ./from/... -run Integration
 //
 // Without the variable they skip, and the normal suite stays offline. They are
 // the only ones proving a real object goes in and comes out -- the in-memory ones
