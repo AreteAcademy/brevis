@@ -10,7 +10,9 @@ package model
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -47,6 +49,10 @@ type Model struct {
 	// Parse, which says why neither has a default.
 	UniqueKey []string
 	Watermark string
+	// Lookback, when set, re-reads that much history behind the target's
+	// greatest watermark, so a row that committed late or ties the watermark
+	// is merged instead of lost. Zero keeps the strict `>` filter.
+	Lookback time.Duration
 
 	Tests []Test
 	// DependsOn is the explicit override for an edge the extractor cannot
@@ -78,6 +84,7 @@ type header struct {
 	Materialized string           `yaml:"materialized"`
 	UniqueKey    []string         `yaml:"unique_key"`
 	Watermark    string           `yaml:"watermark"`
+	Lookback     string           `yaml:"lookback"`
 	Tests        []map[string]any `yaml:"tests"`
 	DependsOn    []string         `yaml:"depends_on"`
 }
@@ -160,8 +167,8 @@ func Parse(path string, content []byte) (Model, error) {
 // a table is somebody expecting a merge and getting a rebuild.
 func readIncremental(path string, m *Model, h header) error {
 	if m.Materialised != Incremental {
-		if len(h.UniqueKey) > 0 || h.Watermark != "" {
-			return fmt.Errorf("%s: `unique_key` and `watermark` belong to "+
+		if len(h.UniqueKey) > 0 || h.Watermark != "" || h.Lookback != "" {
+			return fmt.Errorf("%s: `unique_key`, `watermark` and `lookback` belong to "+
 				"`materialized: incremental`, and this model is a %s -- they would be "+
 				"read here and then ignored", path, m.Materialised)
 		}
@@ -179,7 +186,30 @@ func readIncremental(path string, m *Model, h header) error {
 			"source that re-emits a row grows a duplicate per run", path)
 	}
 	m.UniqueKey, m.Watermark = h.UniqueKey, h.Watermark
+	if h.Lookback != "" {
+		d, err := parseLookback(h.Lookback)
+		if err != nil {
+			return fmt.Errorf("%s: `lookback: %s` %w", path, h.Lookback, err)
+		}
+		m.Lookback = d
+	}
 	return nil
+}
+
+// parseLookback reads `30m`, `2h` or `1d`: a whole number and one unit.
+//
+// Not time.ParseDuration, which has no day and accepts `1h30m`, `-1h` and
+// `1.5h` -- three spellings that mean nothing to a window that is rendered
+// into SQL as whole seconds.
+func parseLookback(s string) (time.Duration, error) {
+	unit := map[byte]time.Duration{'s': time.Second, 'm': time.Minute, 'h': time.Hour, 'd': 24 * time.Hour}
+	u, ok := unit[s[len(s)-1]]
+	n, err := strconv.ParseUint(s[:len(s)-1], 10, 32)
+	if !ok || err != nil || n == 0 {
+		return 0, fmt.Errorf("is not a positive duration: write a whole number and " +
+			"`s`, `m`, `h` or `d`, like `2h` or `1d`")
+	}
+	return time.Duration(n) * u, nil
 }
 
 // identify turns `models/<schema>/<name>.sql` into the two halves.

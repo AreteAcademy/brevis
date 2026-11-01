@@ -438,7 +438,7 @@ type pipe struct {
 	dead    Sinker
 	maxBody int64
 
-	queue chan []sdk.Envelope
+	queue chan queued
 	wg    sync.WaitGroup
 	// pending is how many accepted events have not been delivered yet.
 	//
@@ -447,7 +447,12 @@ type pipe struct {
 	// thousand, and that number is the difference between a note and an
 	// incident.
 	pending atomic.Int64
-	metrics *Metrics
+	// pendingBytes is pending in bytes. Both are what the ceilings count
+	// BESIDE held and bytes: a batch leaves the buffer at handoff but stays in
+	// memory, in the queue or in a worker, until the sink is done with it.
+	// Atomics, so the workers release it without taking p.mu.
+	pendingBytes atomic.Int64
+	metrics      *Metrics
 
 	// meta is the stream's metastore, and the pipe holds it because the flush
 	// claim is taken on the TIMER path -- issue #36. Nil means nothing
@@ -503,6 +508,12 @@ type pipe struct {
 
 	timer   *time.Timer
 	closing bool
+}
+
+// queued is a batch on its way to a worker, with the bytes it holds in memory.
+type queued struct {
+	batch []sdk.Envelope
+	bytes int64
 }
 
 // bucket is one routing key's share of the buffer.
@@ -643,7 +654,7 @@ func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64, m *Metrics,
 ) *pipe {
 	p := &pipe{
 		stream: st, hook: hook, sink: sink, dead: dead, maxBody: maxBody,
-		queue: make(chan []sdk.Envelope, st.Buffer.Queue), metrics: m, meta: meta,
+		queue: make(chan queued, st.Buffer.Queue), metrics: m, meta: meta,
 		buckets: map[string]*bucket{},
 	}
 	// Resolved once, here, where the sink arrives: a type assertion per event
@@ -663,11 +674,12 @@ func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64, m *Metrics,
 			// this batch the caller is gone, and a delivery cancelled because
 			// one client disconnected would lose the events of every other
 			// client in the same batch. send bounds itself with sendTimeout.
-			for batch := range p.queue {
-				_ = p.send(context.Background(), batch)
+			for q := range p.queue {
+				_ = p.send(context.Background(), q.batch)
 				// After send, not before: send buries what the sink refuses,
 				// so a batch is accounted for either way once it returns.
-				p.pending.Add(-int64(len(batch)))
+				p.pending.Add(-int64(len(q.batch)))
+				p.pendingBytes.Add(-q.bytes)
 			}
 		}()
 	}
@@ -994,13 +1006,16 @@ func (p *pipe) enqueue(in prepared) error {
 		// way out and an event accepted now has no drain left to leave by.
 		return errSaturated
 	}
-	if p.held+len(envs) > p.stream.Buffer.MaxRecords {
+	// Counted with what is queued and in the workers, not only with what is
+	// buffered: those batches are still in memory, and a sink that is down
+	// would otherwise hold queue x flush.records beyond the stated ceiling.
+	if p.held+int(p.pending.Load())+len(envs) > p.stream.Buffer.MaxRecords {
 		return errSaturated
 	}
 	// The other ceiling, and the one that actually stops an OOM. A count
 	// cannot see bytes: 40,000 records is 80 MB of 2 KB events and 80 GB of
 	// 2 MB ones, and the config had no way to say which this stream holds.
-	if max := int64(p.stream.Buffer.MaxBytes); max > 0 && p.bytes+bytes > max {
+	if max := int64(p.stream.Buffer.MaxBytes); max > 0 && p.bytes+p.pendingBytes.Load()+bytes > max {
 		return errSaturated
 	}
 	p.gen++
@@ -1090,8 +1105,9 @@ func (p *pipe) handoff(key, why string) {
 		return
 	}
 	select {
-	case p.queue <- b.batch:
+	case p.queue <- queued{b.batch, b.bytes}:
 		p.pending.Add(int64(len(b.batch)))
+		p.pendingBytes.Add(b.bytes)
 		p.metrics.count(p.metrics.flushes, 1, p.stream.Name, why)
 		// And again against the table, where the quota lives. Here and not
 		// beside the stream counter's declaration, because only the handoff
@@ -1634,9 +1650,11 @@ func (p *pipe) close(ctx context.Context) error {
 	}
 	sort.Strings(keys)
 	var ready []sdk.Envelope
+	var readyBytes int64
 	for _, key := range keys {
 		if b := p.take(key); b != nil {
 			ready = append(ready, b.batch...)
+			readyBytes += b.bytes
 		}
 	}
 	if p.timer != nil {
@@ -1650,8 +1668,9 @@ func (p *pipe) close(ctx context.Context) error {
 	// batch on, and closing the channel after it is what ends the workers.
 	if len(ready) > 0 {
 		select {
-		case p.queue <- ready:
+		case p.queue <- queued{ready, readyBytes}:
 			p.pending.Add(int64(len(ready)))
+			p.pendingBytes.Add(readyBytes)
 		case <-ctx.Done():
 			// No room before the window closed. Delivered here rather than
 			// dropped: send buries what the sink refuses, and the alternative

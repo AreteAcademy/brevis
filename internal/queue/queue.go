@@ -87,6 +87,8 @@ func (q *Queue) Enqueue(ctx context.Context, runID uuid.UUID, priority int, avai
 // The limit is how concurrency is enforced: the dispatcher asks only for the
 // slots it has free. There is no path in which more items leave the queue than
 // concurrency allows, because whoever counts the slots is whoever asks.
+//
+// Claims are serialized across processes by an advisory lock (see claimLock).
 func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, error) {
 	if limite <= 0 {
 		return nil, nil
@@ -97,6 +99,13 @@ func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, e
 	// is no path in which more items leave the queue than allowed. Claiming and
 	// then handing back would be a window in which two dispatchers had already
 	// taken the same workflow.
+	//
+	// That holds for ONE claimer. `em_voo` and `posicao` are computed from one
+	// READ COMMITTED snapshot, and SKIP LOCKED only keeps two claimers off the
+	// same ROW: neither sees the other's uncommitted claim, so two processes
+	// claiming at once could each take a different item of a workflow with a
+	// limit of 1. The advisory lock below makes the claims take turns; the
+	// claim is a single short statement, so the wait is negligible.
 	//
 	// `em_voo` counts CLAIMED items, not runs in `running`: between the claim
 	// and the state transition there is an instant where the run is still
@@ -118,7 +127,16 @@ func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, e
 	// postgres.RunRepo.WaitingOn repeats this arithmetic to tell a queued run
 	// what holds it (#95). A change to the key, the order or what counts as in
 	// flight is a change there too.
-	rows, err := q.pool.Query(ctx, `
+	tx, err := q.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("reivindicando itens: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	// Transaction-scoped: released on commit, or on rollback if the claim fails.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, claimLock); err != nil {
+		return nil, fmt.Errorf("reivindicando itens: %w", err)
+	}
+	rows, err := tx.Query(ctx, `
 		WITH em_voo AS (
 			SELECT COALESCE('g:' || r.grupo_concorrencia, 'w:' || r.workflow_slug) AS chave,
 			       count(*) AS n
@@ -170,8 +188,20 @@ func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, e
 		}
 		items = append(items, it)
 	}
-	return items, rows.Err()
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("reivindicando itens: %w", err)
+	}
+	return items, nil
 }
+
+// claimLock is the advisory lock key that serializes Claim. A constant, since
+// the limits are counted across the whole queue; it is distinct from the
+// hash-derived keys the postgres package uses.
+const claimLock int64 = 0x62726576_636c6d31 // "brev" "clm1"
 
 // Renew says the claim is still held. It is fenced on the claim itself, not on
 // the item: a reclaim writes a new reivindicado_em, so a stale holder's renewal

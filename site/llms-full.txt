@@ -2437,7 +2437,7 @@ mid-run is a process whose behaviour nobody can reproduce.
 
 | variable | default | |
 |---|---|---|
-| `BREVIS_ENV` | `local` | `local` logs in text and leaves the interface open; anything else requires credentials and logs JSON |
+| `BREVIS_ENV` | `production` | `local` logs in text and leaves the interface open; anything else, including unset, requires credentials and logs JSON. Set `BREVIS_ENV=local` for development |
 | `BREVIS_HTTP_ADDR` | `:8080` | listen address |
 | `BREVIS_LOG_LEVEL` | `info` | |
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | integer; a non-numeric value is a boot error |
@@ -5625,6 +5625,28 @@ brevis-sql: 1 of 2 tests failed
 ```
 
 The process exits with code 1, and the workflow step fails with it.
+
+## An incremental model and its lookback
+
+`materialized: incremental` needs a `unique_key` and a `watermark`. Each build
+reads only the rows past the greatest watermark already in the target and
+MERGEs them by key. That filter is strict, so a row that ties the watermark but
+commits after the build, or arrives late with an older timestamp, is not seen
+until `--full-refresh`. An optional `lookback` fixes that:
+
+```sql
+/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+lookback: 2h
+*/
+```
+
+The value is a whole number and `s`, `m`, `h` or `d`; anything else is refused
+with the model's name. The filter becomes `updated_at >= max - 2h`, and the
+MERGE absorbs the repeated rows. The watermark must be a TIMESTAMP column when
+a lookback is set. Without `lookback` the SQL is unchanged.
 
 ## Tests are SELECTs that return violating rows
 

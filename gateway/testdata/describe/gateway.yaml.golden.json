@@ -236,6 +236,11 @@
           "default": true
         },
         {
+          "path": "buffer.max_bytes",
+          "value": "64MiB",
+          "default": true
+        },
+        {
           "path": "sink.type",
           "value": "postgres"
         },
@@ -359,6 +364,11 @@
         {
           "path": "buffer.max_records",
           "value": 40000,
+          "default": true
+        },
+        {
+          "path": "buffer.max_bytes",
+          "value": "64MiB",
           "default": true
         },
         {

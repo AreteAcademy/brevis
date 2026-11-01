@@ -277,6 +277,10 @@ type execution struct {
 	// pid is free for the OS to hand to somebody else.
 	exited bool
 
+	// killTimer is the SIGKILL escalation Cancel schedules after its SIGTERM;
+	// it is stopped when the process has been waited for. Under mu.
+	killTimer *time.Timer
+
 	// finishedAt is when it moved to the finished set, set under the agent's
 	// lock; retention is measured from it.
 	finishedAt time.Time
@@ -395,6 +399,12 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	// spawned. Killing only the shell leaves a python that goes on writing to a
 	// pipe nobody reads.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// exec.CommandContext kills only cmd.Process on a timeout. A grandchild
+	// (`cd x && python load.py`) would keep the output pipes open, the streams
+	// would never end and no exit line would be written. Kill the group, as the
+	// local executor does, and bound Wait in case an orphan escaped the group.
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	cmd.WaitDelay = 3 * time.Second
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -439,6 +449,9 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 		err := cmd.Wait()
 		e.mu.Lock()
 		e.exited = true
+		if e.killTimer != nil {
+			e.killTimer.Stop()
+		}
 		e.mu.Unlock()
 		close(heartbeat)
 		cancel()
@@ -572,6 +585,9 @@ func (a *Agent) Resume(execID string, after int64) (io.ReadCloser, error) {
 	return a.reading(e, after), nil
 }
 
+// killGrace is how long a cancelled group has to exit on SIGTERM before SIGKILL.
+const killGrace = 2 * time.Second
+
 // Cancel stops a step.
 //
 // The process GROUP is signalled, not the process: the shell spawned whatever
@@ -604,10 +620,23 @@ func (a *Agent) Cancel(execID string) error {
 	// yet, and the stop above is then all it takes -- Start fails on the
 	// ended context and abandons the step.
 	e.mu.Lock()
-	exited, cmd := e.exited, e.cmd
-	e.mu.Unlock()
-	if !exited && cmd != nil && cmd.Process != nil {
-		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+	defer e.mu.Unlock()
+	if !e.exited && e.cmd != nil && e.cmd.Process != nil {
+		pgid := e.cmd.Process.Pid
+		_ = syscall.Kill(-pgid, syscall.SIGTERM)
+		// A process that ignores SIGTERM would survive: escalate once the
+		// grace is over -- but only if the step has not been reaped by then.
+		// Once it has, the group id is free for the OS to hand to somebody
+		// else, and a SIGKILL sent to it would hit a stranger (the same reason
+		// `exited` guards the SIGTERM above). So the timer is stopped when the
+		// wait returns, and its callback re-checks `exited` under the lock.
+		e.killTimer = time.AfterFunc(killGrace, func() {
+			e.mu.Lock()
+			defer e.mu.Unlock()
+			if !e.exited {
+				_ = syscall.Kill(-pgid, syscall.SIGKILL)
+			}
+		})
 	}
 	return nil
 }

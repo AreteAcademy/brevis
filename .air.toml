@@ -13,7 +13,7 @@ tmp_dir = "tmp"
   ]
   cmd = "go build -o ./tmp/bravis ./cmd/bravis"
   bin = "./tmp/bravis"
-  full_bin = "BRAVIS_ENV=local BRAVIS_LOG_LEVEL=debug ./tmp/bravis serve"
+  full_bin = "BREVIS_ENV=local BRAVIS_LOG_LEVEL=debug ./tmp/bravis serve"
 
   include_ext = ["go", "templ", "css", "sql", "yaml"]
 

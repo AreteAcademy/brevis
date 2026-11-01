@@ -68,6 +68,11 @@
           "default": true
         },
         {
+          "path": "buffer.max_bytes",
+          "value": "64MiB",
+          "default": true
+        },
+        {
           "path": "sink.type",
           "value": "pubsub"
         },
@@ -192,6 +197,11 @@
         {
           "path": "buffer.max_records",
           "value": 2000,
+          "default": true
+        },
+        {
+          "path": "buffer.max_bytes",
+          "value": "64MiB",
           "default": true
         },
         {

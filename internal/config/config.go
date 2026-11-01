@@ -180,7 +180,9 @@ type Grace struct {
 // orchestrator.
 func Load() (Config, error) {
 	c := Config{
-		Env:          get("BREVIS_ENV", "local"),
+		// Unset means production: forgetting the variable must fail closed
+		// (credential required), never serve an open console on every interface.
+		Env:          get("BREVIS_ENV", "production"),
 		HTTPAddr:     get("BREVIS_HTTP_ADDR", ":8080"),
 		DatabaseURL:  os.Getenv("BREVIS_DATABASE_URL"),
 		LogLevel:     get("BREVIS_LOG_LEVEL", "info"),
@@ -309,7 +311,8 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf(
 			"BREVIS_ENV=%s requires a credential: set BREVIS_AUTH_USER, "+
 				"BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and "+
-				"BREVIS_AUTH_SECRET", c.Env)
+				"BREVIS_AUTH_SECRET -- or set BREVIS_ENV=local for development, "+
+				"where the console stays open on your own machine", c.Env)
 	}
 	return c, nil
 }

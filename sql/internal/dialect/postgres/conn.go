@@ -37,6 +37,26 @@ func (c *conn) Exec(ctx context.Context, statement string) error {
 	return err
 }
 
+// ExecAtomic runs the statements in one transaction. See dialect.Atomic.
+// Postgres DDL is transactional, so a failed CREATE TABLE AS rolls the DROP
+// back and the old table is never missing, not even while the new one builds.
+func (c *conn) ExecAtomic(ctx context.Context, statements []string) (int, error) {
+	tx, err := c.c.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }() // a no-op after Commit
+	for i, s := range statements {
+		if _, err := tx.Exec(ctx, s); err != nil {
+			return i, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return len(statements) - 1, err
+	}
+	return 0, nil
+}
+
 // Write runs a statement that changes data and says how much it changed.
 // See dialect.Writer.
 //

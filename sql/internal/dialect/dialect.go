@@ -215,11 +215,24 @@ func MergeOf(m model.Model, columns []string) Merge {
 // an empty table would stay empty forever while every build reported
 // success. The IS NULL arm is what stops that, and the conformance suite has
 // a case for it because nothing else would ever notice.
-func NewRows(m model.Model, body string) string {
+//
+// WITHOUT A LOOKBACK the filter is the strict `>`, which loses a row that
+// ties the target's greatest watermark but committed after the build, and any
+// row that arrives late with an older timestamp. With `lookback` the bound
+// moves back by that much and the comparison becomes `>=`; the MERGE already
+// takes a repeated row, so the overlap costs a re-read and nothing else.
+// `minus` renders "this timestamp expression, less so many seconds", which is
+// the one part that is spelled differently in each warehouse.
+func NewRows(m model.Model, body string, minus func(expr string, secs int64) string) string {
 	ref, w := m.Ref(), m.Watermark
+	max := "(SELECT MAX(" + w + ") FROM " + ref + ")"
+	cmp := w + " > " + max
+	if m.Lookback > 0 {
+		cmp = w + " >= " + minus(max, int64(m.Lookback/time.Second))
+	}
 	return "SELECT * FROM (\n" + body + "\n) AS brevis_new\n" +
-		" WHERE (SELECT MAX(" + w + ") FROM " + ref + ") IS NULL\n" +
-		"    OR " + w + " > (SELECT MAX(" + w + ") FROM " + ref + ")"
+		" WHERE " + max + " IS NULL\n" +
+		"    OR " + cmp
 }
 
 // Result is a result set, as a screen needs it.
@@ -523,6 +536,23 @@ type ReadOnlyGuard interface {
 	// ReadOnly runs fn with the warehouse refusing any write for its
 	// duration. Reads issued on this connection inside fn are covered.
 	ReadOnly(ctx context.Context, fn func(context.Context) error) error
+}
+
+// Atomic is implemented by a connection that can run several statements as
+// ONE unit: all of them take effect or none does.
+//
+// IT EXISTS FOR THE REBUILD OF A TABLE, which is `DROP` then `CREATE TABLE AS`.
+// Run one by one, a CREATE that fails or times out leaves the old table
+// already gone, and while a long one runs the table does not exist at all --
+// so whatever reads it fails for the whole time. Postgres puts DDL in a
+// transaction, so there the pair commits together or rolls back and the old
+// table stays readable throughout. BigQuery has no such transaction and does
+// not implement this; the runner falls back to one statement at a time.
+type Atomic interface {
+	// ExecAtomic runs the statements in order as one unit. On failure it
+	// returns the index of the statement the warehouse refused, and nothing
+	// of the earlier ones remains.
+	ExecAtomic(ctx context.Context, statements []string) (failed int, err error)
 }
 
 // Relation is one thing a SELECT could name.
