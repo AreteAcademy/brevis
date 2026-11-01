@@ -191,7 +191,7 @@ CMD ["serve", "--config", "/etc/brevis/api.yaml", "--connections", "/etc/brevis/
 # the scheduler on the distroless image would leave every run failing with "no
 # such file or directory", which is the worst kind of error: correct and
 # incomprehensible.
-FROM alpine:3.20 AS worker
+FROM alpine:3.24 AS worker
 ARG VERSION=dev
 ARG COMMIT=""
 LABEL org.opencontainers.image.title="Brevis worker" \
@@ -218,7 +218,7 @@ CMD ["scheduler"]
 # What a deployment adds on top is the step's own runtime -- dbt, a Python, a
 # licensed binary -- because that is the point of `host:`: the pod is yours and
 # it already has what it needs. This image is the floor, not the ceiling.
-FROM alpine:3.20 AS agent
+FROM alpine:3.24 AS agent
 ARG VERSION=dev
 ARG COMMIT=""
 LABEL org.opencontainers.image.title="Brevis agent" \
