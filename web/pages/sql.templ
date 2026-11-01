@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
+	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/AreteAcademy/brevis/web/layouts"
 )
 
@@ -70,7 +71,7 @@ templ SQL(v SQLView) {
 					data-rail-toggle
 					aria-expanded="true"
 					aria-controls="objects"
-					aria-label="Show the object tree"
+					aria-label={ i18n.T(ctx, "sql.tree.show") }
 					class="workbench-rail-show self-start rounded-card px-1 py-1 text-muted hover:bg-surface-2 hover:text-ink"
 				>&#8677;</button>
 				<div
@@ -79,7 +80,7 @@ templ SQL(v SQLView) {
 					data-min="180"
 					role="separator"
 					aria-orientation="vertical"
-					aria-label="Resize the object tree"
+					aria-label={ i18n.T(ctx, "sql.tree.resize") }
 					tabindex="0"
 				></div>
 				<div class="workbench-main">
@@ -199,6 +200,9 @@ templ SQL(v SQLView) {
 							<textarea
 								id="q"
 								name="q"
+								if v.Preloaded {
+									data-preloaded
+								}
 								rows="10"
 								spellcheck="false"
 								placeholder="SELECT * FROM dataset.table WHERE day = CURRENT_DATE()"
@@ -403,20 +407,22 @@ templ recent() {
 	</template>
 }
 
-// tree is every connection the catalog knows, and what the open one holds.
+// tree is the connection picker and what the chosen connection holds
+// (screen-sql T1).
 //
-// THE HALF A PICKER CANNOT GIVE: a picker says which warehouse, and this
-// says what is IN it -- including the relations nothing landed on, which is
-// the whole reason somebody opens a workbench instead of a destination page.
+// A PICKER AND ONE TREE, the handoff's shape, chosen by the owner over the
+// roots it replaced. It is a GET form of its own (`?connection=`), so with no
+// script choosing a connection is a page; the island submits it on change,
+// and the open statements survive in the tabs' storage. The connections this
+// console cannot read are offered disabled, with the reason under them.
 //
 // A <details> per schema and not a script: the browser gives the open state,
-// the keyboard and the ARIA for free, which is the same choice the account
-// menu made.
+// the keyboard and the ARIA for free.
 templ tree(v SQLView) {
 	if len(v.Targets) > 0 {
 		<aside id="objects" class="workbench-rail border-r border-line-soft pr-3 text-xs" data-rail>
 			<div class="mb-2 flex items-center justify-between gap-2">
-				<p class="text-[11.5px] font-medium text-muted">Objects</p>
+				<p class="text-[11.5px] font-medium text-muted">{ i18n.T(ctx, "sql.tree.title") }</p>
 				// COLLAPSING IS A CONTROL, not a drag to zero. A rail dragged
 				// to nothing is a rail with no handle left to drag back.
 				<button
@@ -424,49 +430,48 @@ templ tree(v SQLView) {
 					data-rail-toggle
 					aria-expanded="true"
 					aria-controls="objects"
-					aria-label="Collapse the object tree"
+					aria-label={ i18n.T(ctx, "sql.tree.collapse") }
 					class="rounded-card px-1 py-0.5 text-muted hover:bg-surface-2 hover:text-ink"
 				>&#8676;</button>
 			</div>
-			// THE SEARCH FILTERS WHAT IS LOADED, and the island says so when
-			// that is less than everything. Without the island it is an
+			<form method="get" action="/sql" data-connection-pick class="mb-2">
+				<label class="flex items-center gap-2 rounded-card border border-line bg-surface px-2 py-1">
+					if on := v.Running(); on != "" {
+						@components.Logo(kindLogo(kindOf(on)), 16)
+					}
+					<span class="sr-only">{ i18n.T(ctx, "sql.tree.connection") }</span>
+					<select name="connection" class="min-w-0 flex-1 bg-transparent py-0.5 font-mono text-xs text-ink focus:outline-none">
+						for _, w := range v.Warehouses() {
+							if !Queryable(w.Target) {
+								<option value={ w.Target } disabled>{ warehouseLabel(ctx, w) }</option>
+							} else if v.Active(w) {
+								<option value={ w.Target } selected>{ warehouseLabel(ctx, w) }</option>
+							} else {
+								<option value={ w.Target }>{ warehouseLabel(ctx, w) }</option>
+							}
+						}
+					</select>
+				</label>
+				<button type="submit" data-no-js class="mt-1 rounded-card border border-line px-2 py-0.5 text-[0.7rem] text-ink hover:bg-surface-2">{ i18n.T(ctx, "sql.tree.open") }</button>
+				if kinds := v.Unreadable(); len(kinds) > 0 {
+					<p class="mt-1 px-1 text-[0.7rem] text-muted">{ i18n.T(ctx, "sql.tree.unreadable", "kinds", unreadableSaid(ctx, kinds)) }</p>
+				}
+			</form>
+			// THE SEARCH FILTERS WHAT IS LOADED: the chosen connection's
+			// listing, which is on the page. Without the island it is an
 			// ordinary field that does nothing, so it is marked rather than
 			// drawn eagerly: `data-tree-search` is what the script looks for.
 			<input
 				type="search"
 				data-tree-search
-				placeholder="Search this tree"
-				aria-label="Search the objects in this tree"
+				placeholder={ i18n.T(ctx, "sql.tree.filter") }
+				aria-label={ i18n.T(ctx, "sql.tree.filter") }
 				class="mb-2 w-full rounded-card border border-line bg-surface px-2 py-1 text-xs text-ink placeholder:text-muted"
 			/>
-			<p data-tree-unsearched hidden class="mb-2 px-2 text-[0.7rem] text-muted"></p>
-			for _, w := range v.Warehouses() {
-				<div class="mb-1" data-connection={ w.Name } data-loaded={ loaded(v, w) }>
-					// A SUBMIT, like the relation's own button: without a
-					// script, opening a connection is a round trip, because
-					// the listing is not on the page yet. With one, the
-					// island answers the click and nothing reloads.
-					<button
-						type="submit"
-						form="workbench"
-						name="connect"
-						value={ w.Target }
-						aria-expanded={ expanded(v, w) }
-						class="flex w-full items-center gap-1 rounded-card px-2 py-1 text-left font-mono text-ink hover:bg-surface-2"
-					>
-						<span class="shrink-0 text-muted" data-arrow>
-							if v.Active(w) {
-								&#9662;
-							} else {
-								&#9656;
-							}
-						</span>
-						<span class="truncate">{ w.Name }</span>
-					</button>
-					<div data-objects={ w.Target } class="pl-2">
-						if v.Active(w) {
-							@Objects(v.Branch())
-						}
+			if on := v.Running(); on != "" {
+				<div data-connection={ on }>
+					<div data-objects={ v.Target }>
+						@Objects(v.Branch())
 					</div>
 				</div>
 			}
@@ -489,13 +494,15 @@ templ Objects(b Branch) {
 			</summary>
 			for _, t := range s.Tables {
 				<div data-relation={ s.Name + "." + t }>
-					// `data-insert` is what the island reads to put the
-					// name in the editor. Without the island it is still
-					// a readable list, which is the point of putting the
-					// name in the text rather than only in an attribute.
+					// THE TABLE IS ITS FIRST LOOK: the island puts this SELECT
+					// in the editor -- in the open tab when it is empty, in a
+					// new one when it is not -- and opens the columns. Without
+					// the island it is still a readable list, which is the
+					// point of putting the name in the text.
 					<button
 						type="button"
-						data-insert={ s.Name + "." + t }
+						data-select={ selectOf(s.Name, t) }
+						data-relation-name={ s.Name + "." + t }
 						class="flex w-full items-center gap-1.5 rounded-card px-2 py-1 pl-5 text-left font-mono text-muted hover:bg-surface-2 hover:text-ink"
 					>
 						// The span truncates, not the button: a flex row
@@ -528,9 +535,9 @@ templ Objects(b Branch) {
 						class="block w-full rounded-card px-2 py-0.5 pl-[2.375rem] text-left text-[0.7rem] text-muted hover:text-ink"
 					>
 						if b.Open == s.Name+"."+t {
-							&#8722; columns
+							&#8722; { i18n.T(ctx, "sql.tree.columns") }
 						} else {
-							+ columns
+							+ { i18n.T(ctx, "sql.tree.columns") }
 						}
 					</button>
 					<div data-columns={ s.Name + "." + t }>
@@ -543,7 +550,7 @@ templ Objects(b Branch) {
 		</details>
 	}
 	if b.Cut {
-		<p class="mt-2 px-2 text-[0.7rem] text-muted">Showing part of this warehouse — there are more.</p>
+		<p class="mt-2 px-2 text-[0.7rem] text-muted">{ i18n.T(ctx, "sql.tree.cut") }</p>
 	}
 }
 
@@ -588,7 +595,7 @@ templ Columns(cols []sqlserve.Column) {
 			</li>
 		}
 		if len(cols) == 0 {
-			<li class="px-2 py-0.5 text-[0.7rem] text-muted">This warehouse does not say.</li>
+			<li class="px-2 py-0.5 text-[0.7rem] text-muted">{ i18n.T(ctx, "sql.tree.no_columns") }</li>
 		}
 	</ul>
 }

@@ -1,13 +1,16 @@
 package pages
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
+	"github.com/AreteAcademy/brevis/web/components"
 )
 
 // SQLView is the workbench.
@@ -27,6 +30,10 @@ type SQLView struct {
 	// somebody has to type again.
 	Target    string
 	Statement string
+	// Preloaded says Statement is a table's first look from a link, not what
+	// somebody ran: the island opens it in a tab of its own rather than over
+	// the one somebody was writing in.
+	Preloaded bool
 
 	Result *sqlserve.Result
 	Err    string
@@ -134,8 +141,64 @@ func (v SQLView) Branch() Branch {
 	return Branch{Target: v.Target, Tree: v.Tree, Cut: v.TreeCut, Open: v.Open, Cols: v.Cols}
 }
 
-// Warehouses is the tree's roots.
+// Warehouses is the picker's choices: one per connection.
 func (v SQLView) Warehouses() []Warehouse { return Warehouses(v.Targets) }
+
+// queryableSchemes are the warehouses `brevis-sql serve` has a dialect for
+// (`sql/internal/dialect`). The catalog lists Redshift and MySQL tables too;
+// the picker offers them disabled, with the reason, rather than a tree that
+// answers nothing.
+var queryableSchemes = map[string]bool{"bigquery": true, "postgres": true}
+
+// Queryable says this console can read the destination.
+func Queryable(target string) bool {
+	scheme, _, ok := strings.Cut(target, "://")
+	return ok && queryableSchemes[scheme]
+}
+
+// FirstQueryable is the destination the workbench opens on when it was given
+// none: the first one it can read.
+func (v SQLView) FirstQueryable() string {
+	for _, t := range v.Targets {
+		if Queryable(t) {
+			return t
+		}
+	}
+	return ""
+}
+
+// Unreadable is the kinds of warehouse in the catalog this console cannot
+// read, as their makers write them, for the sentence under the picker.
+func (v SQLView) Unreadable() []string {
+	var out []string
+	for _, w := range v.Warehouses() {
+		scheme, _, _ := strings.Cut(w.Name, "://")
+		if !queryableSchemes[scheme] && !slices.Contains(out, scheme) {
+			out = append(out, scheme)
+		}
+	}
+	return out
+}
+
+// SelectFor is a table's first look: every column, a hundred rows, the table
+// named as a build names it -- `schema.table`, with no project or database,
+// which is the connection's. "" for a destination that is not a table this
+// console reads.
+func SelectFor(target string) string {
+	if !Queryable(target) {
+		return ""
+	}
+	_, rest, _ := strings.Cut(target, "://")
+	segs := strings.Split(rest, "/")
+	if len(segs) != 3 || segs[1] == "" || segs[2] == "" {
+		return ""
+	}
+	return selectOf(segs[1], segs[2])
+}
+
+func selectOf(schema, table string) string {
+	return "SELECT *\nFROM " + schema + "." + table + "\nLIMIT 100;"
+}
 
 // Active says this warehouse is the one whose listing is drawn.
 func (v SQLView) Active(w Warehouse) bool {
@@ -157,24 +220,6 @@ func (v SQLView) Running() string {
 		}
 	}
 	return ""
-}
-
-// loaded is `data-loaded`, which the search box reads: a connection nobody
-// opened holds names no filter can see, and a search that quietly skips one
-// is how somebody concludes a table does not exist.
-func loaded(v SQLView, w Warehouse) string {
-	if v.Active(w) && len(v.Tree) > 0 {
-		return "true"
-	}
-	return "false"
-}
-
-// expanded is a connection node's ARIA state.
-func expanded(v SQLView, w Warehouse) string {
-	if v.Active(w) {
-		return "true"
-	}
-	return "false"
 }
 
 // BuildTree groups a listing by schema, in the order the service gave it.
@@ -363,4 +408,21 @@ func openOf(b Branch, schema, table string) string {
 		return "true"
 	}
 	return "false"
+}
+
+// warehouseLabel is a connection as the picker says it: the warehouse by its
+// maker's name, then the connection -- "Google BigQuery · acme".
+func warehouseLabel(ctx context.Context, w Warehouse) string {
+	scheme, rest, _ := strings.Cut(w.Name, "://")
+	return components.LogoTitle(ctx, kindLogo(scheme)) + " · " + rest
+}
+
+// unreadableSaid is the kinds the console cannot read, by their makers'
+// names: "Amazon Redshift, MySQL".
+func unreadableSaid(ctx context.Context, kinds []string) string {
+	names := make([]string, len(kinds))
+	for i, k := range kinds {
+		names[i] = components.LogoTitle(ctx, kindLogo(k))
+	}
+	return strings.Join(names, ", ")
 }

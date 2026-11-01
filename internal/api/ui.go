@@ -754,7 +754,20 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 	// Only one the CATALOG knows is honoured: a parameter naming anything
 	// else is ignored rather than trusted, which is the rule `/data/target`
 	// follows by answering 404 to the same thing.
-	if want := r.URL.Query().Get("target"); want != "" && v.Knows(want) {
+	if want := r.URL.Query().Get("target"); want != "" && v.Knows(want) && pages.Queryable(want) {
+		v.Target = want
+		// AND A TABLE IS ITS FIRST LOOK, written in the box and run by
+		// nobody (screen-sql T1): built from a destination the catalog
+		// knows, never read from the link, so a statement still cannot
+		// travel in a URL.
+		if r.Method == http.MethodGet {
+			v.Statement, v.Preloaded = pages.SelectFor(want), true
+		}
+	}
+	// THE PICKER CHOOSES A CONNECTION AND WRITES NOTHING: its choices are
+	// destinations, and a SELECT of whichever table stood for the connection
+	// would be a statement nobody asked for.
+	if want := r.URL.Query().Get("connection"); want != "" && v.Knows(want) && pages.Queryable(want) {
 		v.Target = want
 	}
 
@@ -839,8 +852,8 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 		u.render(w, r, pages.SQLAnswer(v))
 		return
 	}
-	if v.Target == "" && len(v.Targets) > 0 {
-		v.Target = v.Targets[0]
+	if v.Target == "" {
+		v.Target = v.FirstQueryable()
 	}
 
 	// THE TREE IS ASKED FOR LAST, once the target is settled -- including

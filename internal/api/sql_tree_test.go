@@ -8,25 +8,48 @@ import (
 	"testing"
 )
 
-// EVERY CONNECTION IS A ROOT, AND THE PICKER IS GONE.
+// THE CONNECTION IS A PICKER AGAIN, AT THE TOP OF THE TREE (screen-sql T1).
 //
-// A <select> says which warehouse and nothing about what is in it, so
-// comparing two of them meant choosing one, losing the tree, and choosing the
-// other. One tree with the connection as its root node is the shape the
-// reference uses and the one a person actually reads.
-func TestEveryConnectionIsARootInTheTree(t *testing.T) {
+// The roots let somebody compare two warehouses without losing the tree; the
+// handoff's picker shows one at a time with its logo, and the owner chose it.
+// A form GET, so with no script choosing one is a page; a bucket is still not
+// offered, since no SELECT can name one.
+func TestTheConnectionIsAPickerAtTheTopOfTheTree(t *testing.T) {
 	_, ui := browsing(t)
 	_, body := get(t, ui, "/sql")
-
-	if strings.Contains(body, `<select id="target"`) {
-		t.Error("the connection picker is still on the screen")
+	pick := body[strings.Index(body, "data-connection-pick"):]
+	pick = pick[:strings.Index(pick, "</form>")]
+	if !strings.Contains(pick, `<option value="`+probeTarget+`" selected`) || !strings.Contains(body, `<form method="get" action="/sql" data-connection-pick`) {
+		t.Errorf("the catalog's destination is not the chosen connection: %s", pick)
 	}
-	if !strings.Contains(body, `name="connect" value="`+probeTarget+`"`) {
-		t.Errorf("the catalog's destination is not a node in the tree")
-	}
-	// A bucket is still not offered: no SELECT can name one.
-	if strings.Contains(body, `name="connect" value="file:///data/landing/"`) {
+	if strings.Contains(pick, "file:///data/landing/") {
 		t.Error("a bucket is offered as a connection")
+	}
+	if strings.Contains(body, `name="connect" value="`) {
+		t.Error("the connections are still roots of the tree")
+	}
+}
+
+// A TABLE IN THE LINK IS A SELECT IN THE BOX (screen-sql T1): the Catalog,
+// Loads, Streams and Endpoints link here with a destination, and the
+// workbench opens on it with `SELECT * … LIMIT 100` written -- and RUNS
+// NOTHING: a query is a cost, and opening a page is not asking for one. The
+// statement is built from a destination the catalog knows, never read from
+// the link.
+func TestATableInTheLinkIsASelectInTheBox(t *testing.T) {
+	w, ui := browsing(t)
+	_, body := get(t, ui, "/sql?target="+url.QueryEscape(probeTarget))
+	if !strings.Contains(body, "SELECT *\nFROM bronze.orders\nLIMIT 100;</textarea>") {
+		t.Errorf("the box does not hold the table's SELECT: %s", body[strings.Index(body, "<textarea"):strings.Index(body, "</textarea>")+11])
+	}
+	for _, path := range w.calls {
+		if path == "/v1/query" {
+			t.Error("opening the link ran the query")
+		}
+	}
+	_, body = get(t, ui, "/sql")
+	if strings.Contains(body, "LIMIT 100;</textarea>") {
+		t.Error("a workbench opened with no destination wrote a SELECT")
 	}
 }
 
@@ -95,7 +118,7 @@ func TestObjectsComeBackAsAFragment(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("the fragment answered %d: %s", code, body)
 	}
-	for _, want := range []string{"sales", "daily", "events", `data-insert="sales.daily"`} {
+	for _, want := range []string{"sales", "daily", "events", `data-relation-name="sales.daily"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the fragment does not carry %q:\n%s", want, body)
 		}
@@ -125,8 +148,8 @@ func TestTheTreeMarksEachSchemaWithAnIcon(t *testing.T) {
 	}
 }
 
-// AND EACH TABLE WITH ANOTHER, inside the button that inserts its name --
-// which must still insert exactly the name, icon or not.
+// AND EACH TABLE WITH ANOTHER, inside the button that offers its SELECT --
+// which must still show exactly the name, icon or not.
 func TestTheTreeMarksEachTableWithAnIcon(t *testing.T) {
 	_, ui := browsing(t)
 	_, body := get(t, ui, "/api/sql/objects?target="+url.QueryEscape(probeTarget))
@@ -140,13 +163,13 @@ func TestTheTreeMarksEachTableWithAnIcon(t *testing.T) {
 			t.Errorf("a screen reader would announce the icon: %s", tag)
 		}
 	}
-	at := strings.Index(body, `data-insert="sales.daily"`)
+	at := strings.Index(body, `data-relation-name="sales.daily"`)
 	if at < 0 {
-		t.Fatalf("no button inserts sales.daily:\n%s", body)
+		t.Fatalf("no button offers sales.daily:\n%s", body)
 	}
 	button, _, _ := strings.Cut(body[at:], "</button>")
 	if len(iconTags(button, "table")) != 1 {
-		t.Errorf("the icon is not inside the button that inserts the table:\n%s", button)
+		t.Errorf("the icon is not inside the button that offers the table:\n%s", button)
 	}
 	if !strings.Contains(button, ">daily</span>") {
 		t.Errorf("the button no longer shows the table's name on its own:\n%s", button)
@@ -204,20 +227,13 @@ func TestThePageAndTheFragmentDrawTheSameColumns(t *testing.T) {
 	}
 }
 
-// A CONNECTION NOBODY OPENED HAS NOT BEEN SEARCHED, and the tree says so.
-//
-// The search box filters what is loaded. A warehouse whose listing was never
-// fetched holds names the filter cannot see, and a search that quietly skips
-// one is how somebody concludes a table does not exist.
-func TestTheTreeSaysWhichConnectionsAreNotLoadedYet(t *testing.T) {
+// THE TREE CAN BE FILTERED: one connection's listing is on the page, and the
+// box over it narrows it as somebody types.
+func TestTheTreeHasAFilter(t *testing.T) {
 	_, ui := browsing(t)
 	_, body := get(t, ui, "/sql")
-
-	if !strings.Contains(body, `data-loaded="true"`) {
-		t.Error("the open connection is not marked as loaded")
-	}
-	if !strings.Contains(body, `type="search"`) {
-		t.Error("there is no search box over the tree")
+	if !strings.Contains(body, `type="search"`) || !strings.Contains(body, `placeholder="Filter tables"`) {
+		t.Error("there is no filter over the tree")
 	}
 }
 
@@ -235,7 +251,7 @@ func TestTheIslandInterceptsTheButtonsTheTreeWrites(t *testing.T) {
 	js := strip(raw)
 
 	for _, want := range []string{
-		`"expand"`, `"connect"`, "/api/sql/columns", "/api/sql/objects", "preventDefault",
+		`"expand"`, "data-select", "/api/sql/columns", "[data-connection-pick] select", "preventDefault",
 	} {
 		if !strings.Contains(js, want) {
 			t.Errorf("the island's CODE never uses %q, so that click still reloads the page", want)

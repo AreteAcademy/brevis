@@ -215,43 +215,51 @@
   // AND NOTHING CLOSES. The server path can only hold ONE open relation,
   // because what is open rides in a form field and a field holding a list
   // needs a separator that a `schema.name` may contain. Here the open set is
-  // just the DOM, so three relations in three schemas stay open at once --
-  // which is the complaint this slice exists for.
+  // just the DOM, so three relations in three schemas stay open at once.
+  //
+  // THE PICKER IS A PAGE (screen-sql T1). Choosing a connection submits its
+  // own GET form: the listing, the logo and the label beside Run all belong
+  // to the connection, the server draws them, and the open statements are in
+  // the tabs' storage already, so nothing typed is lost.
   function wireTree() {
     document.addEventListener("click", function (ev) {
-      var el = ev.target.closest ? ev.target.closest("[data-insert]") : null;
-      if (el) {
+      var table = ev.target.closest ? ev.target.closest("[data-select]") : null;
+      if (table) {
         ev.preventDefault();
-        insert(el.getAttribute("data-insert"));
+        offer(table.getAttribute("data-select"));
+        var shut = table.parentNode.querySelector('button[name="expand"][aria-expanded="false"]');
+        if (shut) openRelation(shut);
         return;
       }
-      var btn = ev.target.closest ? ev.target.closest("button[name]") : null;
+      var btn = ev.target.closest ? ev.target.closest('button[name="expand"]') : null;
       if (!btn) return;
-      if (btn.name === "expand") {
-        ev.preventDefault();
-        openRelation(btn);
-      } else if (btn.name === "connect") {
-        ev.preventDefault();
-        openConnection(btn);
-      }
+      ev.preventDefault();
+      openRelation(btn);
+    });
+
+    var pick = document.querySelector("[data-connection-pick] select");
+    if (pick) pick.addEventListener("change", function () {
+      store();
+      pick.form.submit();
     });
 
     var box = document.querySelector("[data-tree-search]");
     if (box) box.addEventListener("input", function () { filter(box.value); });
   }
 
-  function insert(name) {
-    if (editor) {
-      editor.replaceSelection(name);
-      editor.focus();
-      return;
+  // A TABLE'S FIRST LOOK GOES WHERE IT TAKES NOTHING AWAY: the open tab when
+  // it is empty, a new tab when somebody has written in it. Overwriting a
+  // half-written query because a table was clicked would be the click
+  // somebody learns never to make.
+  function offer(statement) {
+    if (text().trim() === "") {
+      put(statement);
+      store();
+    } else {
+      openTab(statement);
     }
-    // No editor: the textarea itself, at its own cursor.
-    var at = area.selectionStart === null ? area.value.length : area.selectionStart;
-    var to = area.selectionEnd === null ? at : area.selectionEnd;
-    area.value = area.value.slice(0, at) + name + area.value.slice(to);
-    area.selectionStart = area.selectionEnd = at + name.length;
-    area.focus();
+    if (editor) editor.focus();
+    estimate();
   }
 
   // A relation's columns, fetched once and then only hidden and shown. The
@@ -268,80 +276,43 @@
     toggle(btn, slot, url);
   }
 
-  // A connection's schemas. Opening one also makes it the connection a query
-  // runs on, which the label beside Run says out loud -- an invisible change
-  // of warehouse is the one thing a picker was good at preventing.
-  function openConnection(btn) {
-    var target = btn.value;
-    var slot = document.querySelector('[data-objects="' + css(target) + '"]');
-    if (!slot) return;
-    var hidden = document.querySelector('#workbench input[name="target"]');
-    if (hidden) hidden.value = target;
-    var node = btn.closest("[data-connection]");
-    var label = document.querySelector("[data-running-on]");
-    if (label && node) label.textContent = node.getAttribute("data-connection");
-    toggle(btn, slot, "/api/sql/objects?target=" + encodeURIComponent(target), node);
-  }
-
-  function toggle(btn, slot, url, node) {
-    var arrow = btn.querySelector("[data-arrow]");
+  function toggle(btn, slot, url) {
     if (slot.innerHTML.trim() !== "") {
       var shut = slot.hidden;
       slot.hidden = !shut;
       btn.setAttribute("aria-expanded", shut ? "true" : "false");
-      if (arrow) arrow.textContent = shut ? "\u25BE" : "\u25B8";
       return;
     }
     btn.setAttribute("aria-busy", "true");
     fetch(url, { headers: { Accept: "text/html" } })
       .then(function (r) { return r.ok ? r.text() : ""; })
       .then(function (html) {
-        // AN EMPTY ANSWER IS AN ANSWER. A warehouse that cannot list or
-        // cannot describe is not an error here either -- the server draws
-        // the sentence that says so, and a refusal draws nothing rather
-        // than leaving the button spinning.
+        // AN EMPTY ANSWER IS AN ANSWER. A warehouse that cannot describe is
+        // not an error here either -- the server draws the sentence that
+        // says so, and a refusal draws nothing rather than leaving the
+        // button spinning.
         slot.innerHTML = html;
         slot.hidden = false;
         btn.setAttribute("aria-expanded", "true");
-        if (arrow) arrow.textContent = "\u25BE";
-        if (node) node.setAttribute("data-loaded", "true");
       })
       .catch(function () { slot.innerHTML = ""; })
       .then(function () { btn.removeAttribute("aria-busy"); });
   }
 
-  // THE FILTER SEES WHAT IS LOADED, AND SAYS WHEN THAT IS NOT EVERYTHING.
-  //
-  // A connection nobody opened holds names this cannot read. A search that
-  // quietly skipped one would be how somebody concludes a table does not
-  // exist, so the ones it could not look inside are named instead.
+  // THE FILTER SEES THE CHOSEN CONNECTION'S LISTING, which is all the page
+  // holds: one connection at a time, drawn whole by the server.
   function filter(term) {
     var q = term.trim().toLowerCase();
-    var unsearched = [];
-    document.querySelectorAll("[data-connection][data-loaded]").forEach(function (node) {
-      if (node.getAttribute("data-loaded") !== "true") {
-        unsearched.push(node.getAttribute("data-connection"));
-      }
-      node.querySelectorAll("[data-relation]").forEach(function (row) {
-        var name = row.getAttribute("data-relation").toLowerCase();
-        row.hidden = q !== "" && name.indexOf(q) < 0;
-      });
-      node.querySelectorAll("details").forEach(function (d) {
-        var any = false;
-        d.querySelectorAll("[data-relation]").forEach(function (row) { if (!row.hidden) any = true; });
-        d.hidden = q !== "" && !any;
-        if (any) d.open = true;
-      });
+    document.querySelectorAll("#objects [data-relation]").forEach(function (row) {
+      var name = row.getAttribute("data-relation").toLowerCase();
+      row.hidden = q !== "" && name.indexOf(q) < 0;
     });
-    var note = document.querySelector("[data-tree-unsearched]");
-    if (!note) return;
-    if (q === "" || unsearched.length === 0) {
-      note.hidden = true;
-      return;
-    }
-    note.hidden = false;
-    note.textContent = "Not searched, because nothing has been loaded from " +
-      (unsearched.length === 1 ? "it" : "them") + ": " + unsearched.join(", ") + ".";
+    document.querySelectorAll("#objects details").forEach(function (d) {
+      var any = false;
+      d.querySelectorAll("[data-relation]").forEach(function (row) { if (!row.hidden) any = true; });
+      d.hidden = q !== "" && !any;
+      if (any) d.open = true;
+    });
   }
 
   // THE CHROME: two grips, one collapse, and a memory.
@@ -780,12 +751,24 @@
     // submit is the statement that just ran, and the copy in storage is
     // older by definition. With nothing echoed, the tab fills the box --
     // which is what makes three tabs survive a reload.
+    //
+    // BUT A LINK'S SELECT IS AN OFFER, NOT A RUN (screen-sql T1): it takes
+    // the open tab only when that tab is empty, and a new tab otherwise.
+    if (echoed !== "" && area.hasAttribute("data-preloaded") && here().text.trim() !== "" && here().text !== echoed) {
+      put(here().text);
+      drawTabs();
+      openTab(echoed);
+      return wireTabClicks();
+    }
     if (echoed !== "") here().text = echoed;
     else put(here().text);
 
     drawTabs();
     store();
+    wireTabClicks();
+  }
 
+  function wireTabClicks() {
     document.addEventListener("click", function (ev) {
       if (!ev.target.closest) return;
       var pick = ev.target.closest("[data-tab-pick]");

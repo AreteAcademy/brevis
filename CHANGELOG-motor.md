@@ -16,6 +16,22 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: the SQL console, its tree
+
+- **The connection is a picker at the top of the tree**, with its logo,
+  instead of one root per connection; choosing one opens its tables. With no
+  script it is a form (`/sql?connection=`). Redshift and MySQL destinations,
+  which `brevis-sql serve` has no dialect for, are offered disabled with the
+  reason, and the console no longer opens on one.
+- **A table is its first look**: clicking it opens its columns and puts
+  `SELECT * … LIMIT 100` in the editor -- in the open tab when it is empty, in
+  a new one when somebody has written there. `/sql?target=` (what the Catalog,
+  Loads, Streams and Endpoints link to) does the same for its table, and runs
+  nothing; the statement is built from a destination the catalog knows, so a
+  statement still never travels in a link.
+- "Filter tables" over the chosen connection's listing. The tree is in every
+  language the console speaks.
+
 ### Security: the scan's findings, and the vulnerable dependencies
 
 - **`gosec` reads `#nosec`, not `//nolint:gosec`.** Twenty-seven findings were
