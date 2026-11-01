@@ -30,6 +30,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -212,6 +213,14 @@ type Gate struct {
 	Next     http.Handler
 	Login    http.Handler // renderiza a tela de login
 	Insecure bool         // plain http: sends the cookie without the Secure flag
+
+	// Limit throttles Attempt; nil gets a default on first use.
+	Limit *Limiter
+	// Check verifies a password against the hash; nil is CheckPassword.
+	// Injectable so a test can count the hashes that run.
+	Check func(hash, password string) bool
+
+	once sync.Once
 }
 
 // livre lists what answers without a session.
@@ -257,16 +266,45 @@ func (p *Gate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, target, http.StatusSeeOther)
 }
 
-// SignIn checks the credential and writes the cookie. Returns false if it did not match.
-func (p *Gate) SignIn(w http.ResponseWriter, user, password string) bool {
+// verify reports whether the credential matches.
+func (p *Gate) verify(user, password string) bool {
 	// Both comparisons ALWAYS run, even with the wrong user: returning early
 	// makes an invalid user answer faster than a valid one, and the
 	// diferenca de tempo entrega quais nomes existem.
 	userOK := subtle.ConstantTimeCompare([]byte(user), []byte(p.Cred.User)) == 1
-	passwordOK := CheckPassword(p.Cred.Hash, password)
-	if !userOK || !passwordOK {
+	check := p.Check
+	if check == nil {
+		check = CheckPassword
+	}
+	passwordOK := check(p.Cred.Hash, password)
+	return userOK && passwordOK
+}
+
+// Attempt is SignIn behind the Limiter, keyed by source (the client address).
+// A Locked or Busy answer did not run the hash.
+func (p *Gate) Attempt(w http.ResponseWriter, source, user, password string) (Outcome, time.Duration) {
+	p.once.Do(func() {
+		if p.Limit == nil {
+			p.Limit = NewLimiter()
+		}
+	})
+	out, retry := p.Limit.Do(source, func() bool { return p.verify(user, password) })
+	if out == Signed {
+		p.setCookie(w)
+	}
+	return out, retry
+}
+
+// SignIn checks the credential and writes the cookie. Returns false if it did not match.
+func (p *Gate) SignIn(w http.ResponseWriter, user, password string) bool {
+	if !p.verify(user, password) {
 		return false
 	}
+	p.setCookie(w)
+	return true
+}
+
+func (p *Gate) setCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:  CookieName,
 		Value: p.Cred.issue(time.Now()),
@@ -280,7 +318,6 @@ func (p *Gate) SignIn(w http.ResponseWriter, user, password string) bool {
 		Secure:   !p.Insecure,
 		Expires:  time.Now().Add(SessionLifetime),
 	})
-	return true
 }
 
 // SignOut apaga o cookie.

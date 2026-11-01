@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"slices"
@@ -2127,12 +2128,32 @@ func (u *UI) RegistrarLogin(mux *http.ServeMux, gate *auth.Gate) {
 		target := auth.Target(r.FormValue(auth.NextParam))
 		user := r.FormValue("username")
 
-		if !gate.SignIn(w, user, r.FormValue("password")) {
-			// Logged as a warning, with the attempted username and the origin: a
-			// burst of failures is the only sign somebody is guessing, and
-			// without a log it does not exist. The password never enters
-			// here.
-			u.log.Warn("login refused", "user", user, "origin", r.RemoteAddr)
+		// The origin is RemoteAddr: Brevis has no trusted-proxy setting, and
+		// trusting X-Forwarded-For unconditionally would let anyone pick
+		// their own key. Behind an ingress that is the proxy's address, so
+		// all clients share one lockout until such a setting exists.
+		origin, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			origin = r.RemoteAddr
+		}
+
+		out, retry := gate.Attempt(w, origin, user, r.FormValue("password"))
+		if out == auth.Locked || out == auth.Busy {
+			u.log.Warn("login throttled", "origin", origin)
+			w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())+1))
+			w.WriteHeader(http.StatusTooManyRequests)
+			u.render(w, r, pages.Login(pages.LoginData{
+				Target: target,
+				Err:    "Too many attempts. Try again in a moment.",
+			}))
+			return
+		}
+		if out != auth.Signed {
+			// Logged as a warning, with the origin: a burst of failures is the
+			// only sign somebody is guessing, and without a log it does not
+			// exist. Neither the password nor the username enters here: a
+			// password typed in the wrong box would land in the logs.
+			u.log.Warn("login refused", "origin", origin)
 
 			// 200, and not a redirect: the form comes back filled in with the
 			// destination and the error in the same response.
