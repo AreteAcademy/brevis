@@ -2,6 +2,7 @@ package pages
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/AreteAcademy/brevis/web/i18n"
 	"github.com/a-h/templ"
@@ -261,7 +262,7 @@ type EndpointView struct {
 	// RunErr why there is none.
 	Form   []FormField
 	Answer *endpointcall.Answer
-	RunErr string
+	RunErr error
 }
 
 // ParamView is one parameter as a caller reads it. Accepts is a list the
@@ -602,3 +603,35 @@ endpoints:
 
 const publishEndpointCommands = `brevis-sql-api describe --config api.yaml --out manifest.json
 brevis endpoints publish manifest.json`
+
+// runErrSaid is why a run brought nothing back, in the reader's words: the
+// console's own failures by key, anything else as it came.
+func runErrSaid(ctx context.Context, err error) string {
+	for known, key := range map[error]string{
+		endpointcall.ErrNotConfigured: "endpoint.try.err.not_configured",
+		endpointcall.ErrUnbuilt:       "endpoint.try.err.unbuilt",
+		endpointcall.ErrUnreachable:   "endpoint.try.err.unreachable",
+		endpointcall.ErrUnreadable:    "endpoint.try.err.unreadable",
+		endpointcall.ErrTooLarge:      "endpoint.try.err.too_large",
+		endpointcall.ErrNotAnswer:     "endpoint.try.err.not_answer",
+	} {
+		if errors.Is(err, known) {
+			return i18n.T(ctx, key)
+		}
+	}
+	return err.Error()
+}
+
+// cacheSaid is what the cache did for an answer, as the API said it in
+// X-Brevis-Cache, and what that meant for the warehouse.
+func cacheSaid(ctx context.Context, cache string) string {
+	switch cache {
+	case "hit":
+		return i18n.T(ctx, "endpoint.try.cache.hit")
+	case "miss":
+		return i18n.T(ctx, "endpoint.try.cache.miss")
+	case "bypass":
+		return i18n.T(ctx, "endpoint.try.cache.bypass")
+	}
+	return ""
+}

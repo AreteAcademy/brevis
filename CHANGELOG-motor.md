@@ -60,8 +60,13 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   to copy: the console never touches the cache. An API published before
   its settings were kept says to publish it again. The tenant note, the
   parameters (what each accepts in words) and the limits per request.
-- Everything is in English, Portuguese and Spanish, but Try it, which comes
-  next.
+- **Try it** is a 360px column beside the page that stays as it scrolls,
+  in the reader's language: the form, Run request (⌘↵), and the answer --
+  the status as HTTP writes it ("200 OK"), HIT or MISS with what it meant
+  for the warehouse, the time and the rows. **Call from outside**, the curl
+  following the form, sits under it. Why a run brought nothing back is said
+  in the reader's words too; a refusal stays in the API's.
+- Everything is in English, Portuguese and Spanish.
 
 ### Changed: Real time, one row per stream
 

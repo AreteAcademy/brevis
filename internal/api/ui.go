@@ -505,7 +505,7 @@ func (u *UI) dataEndpoint(w http.ResponseWriter, r *http.Request) {
 			v.Form = pages.TryForm(e.Endpoint.Params, q)
 			a, err := u.calls.Call(r.Context(), e.API, e.Path, pages.TryValues(e.Endpoint.Params, q))
 			if err != nil {
-				v.RunErr = err.Error()
+				v.RunErr = err
 			} else {
 				v.Answer = &a
 			}

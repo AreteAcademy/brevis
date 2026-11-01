@@ -42,6 +42,16 @@ const maxRows = 500
 // ErrNotConfigured is an API the engine was given no address for.
 var ErrNotConfigured = errors.New("no address is configured for that API")
 
+// The ways a call brings nothing back, as errors a page can tell apart and
+// say in its reader's language. None carries the URL or the key.
+var (
+	ErrUnbuilt     = errors.New("the call could not be built")
+	ErrUnreachable = errors.New("the API could not be reached")
+	ErrUnreadable  = errors.New("the API's answer could not be read")
+	ErrTooLarge    = fmt.Errorf("the API answered more than the console shows (%d MiB); call it directly", maxBody>>20)
+	ErrNotAnswer   = errors.New("the API answered something that is not an endpoint's answer")
+)
+
 // Client runs endpoints on the APIs it has addresses for.
 type Client struct {
 	urls map[string]*url.URL
@@ -123,7 +133,7 @@ func (c *Client) Call(ctx context.Context, api, path string, params url.Values) 
 	u.RawQuery = params.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return Answer{}, errors.New("the call could not be built")
+		return Answer{}, ErrUnbuilt
 	}
 	if c.key != "" {
 		req.Header.Set("Authorization", "Bearer "+c.key)
@@ -132,15 +142,15 @@ func (c *Client) Call(ctx context.Context, api, path string, params url.Values) 
 	resp, err := c.http.Do(req)
 	if err != nil {
 		// NOT err.Error(): it carries the URL.
-		return Answer{}, errors.New("the API could not be reached")
+		return Answer{}, ErrUnreachable
 	}
 	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBody+1))
 	if err != nil {
-		return Answer{}, errors.New("the API's answer could not be read")
+		return Answer{}, ErrUnreadable
 	}
 	if len(body) > maxBody {
-		return Answer{}, fmt.Errorf("the API answered more than the console shows (%d MiB); call it directly", maxBody>>20)
+		return Answer{}, ErrTooLarge
 	}
 	a := Answer{Status: resp.StatusCode, Cache: resp.Header.Get("X-Brevis-Cache"), Millis: time.Since(started).Milliseconds()}
 	if resp.StatusCode != http.StatusOK {
@@ -156,7 +166,7 @@ func (c *Client) Call(ctx context.Context, api, path string, params url.Values) 
 		return a, nil
 	}
 	if err := a.read(body); err != nil {
-		return Answer{}, errors.New("the API answered something that is not an endpoint's answer")
+		return Answer{}, ErrNotAnswer
 	}
 	return a, nil
 }

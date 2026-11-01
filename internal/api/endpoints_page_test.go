@@ -133,7 +133,7 @@ func TestAnEndpointsPageOffersAFormAndAsksNothingUntilRun(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { asked = true }))
 	defer srv.Close()
 	_, body := get(t, tryUI(t, srv.URL, loggedIn), "/data/endpoints/metrics-api/clicks")
-	for _, want := range []string{"Try it", `name="run"`, `name="period"`, `<select`, `<option value="desc"`, "console's key"} {
+	for _, want := range []string{"Try it", `name="run"`, `name="period"`, `<select`, `<option value="desc"`, "console&#39;s key"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the form lacks %q", want)
 		}
@@ -163,7 +163,7 @@ func TestRunCallsTheAPIAndDrawsWhatItAnswered(t *testing.T) {
 		got.Header.Get("Authorization") != "Bearer console-key" {
 		t.Fatalf("the API was asked %v", got)
 	}
-	for _, want := range []string{">day<", ">clicks<", ">412<", "200", "miss"} {
+	for _, want := range []string{">day<", ">clicks<", ">412<", "200 OK", ">MISS<", "kept in the cache"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the answer lacks %q", want)
 		}
@@ -373,7 +373,7 @@ func TestTryItCanAnswerAlone(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("%d", code)
 	}
-	for _, want := range []string{">412<", ">200<"} {
+	for _, want := range []string{">412<", ">200 OK<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the answer lacks %s", want)
 		}
@@ -492,5 +492,23 @@ func TestAnEndpointsPageReadsTheCatalog(t *testing.T) {
 	_, legacy := get(t, ui, "/data/endpoints/metrics-api/clicks")
 	if strings.Contains(legacy, "data-stale-warning") || !strings.Contains(legacy, "publish the API again") {
 		t.Error("an endpoint over a table the catalog does not know, from an API with no settings on record")
+	}
+}
+
+// TRY IT SPEAKS THE READER'S LANGUAGE (screen-endpoints T5), its failures
+// too: an API that cannot be reached is said in Portuguese, and the
+// console's own words never carry the address.
+func TestTryItSpeaksTheReadersLanguage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	addr := srv.URL
+	srv.Close()
+	body := pageIn(t, tryUI(t, addr, loggedIn), "/data/endpoints/metrics-api/clicks?run=1", "pt-BR", "", false)
+	for _, want := range []string{">Testar<", "Executar requisição", "Chamar de fora", "A API não respondeu"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the Portuguese page lacks %q", want)
+		}
+	}
+	if strings.Contains(body, strings.TrimPrefix(addr, "http://")) {
+		t.Error("the page repeats the API's address")
 	}
 }

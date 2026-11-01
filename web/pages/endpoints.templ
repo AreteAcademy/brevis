@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -281,7 +282,7 @@ templ Endpoint(v EndpointView) {
 		// can only answer "not here" is a question nobody can act on.
 		<div
 			if v.CanRun {
-				class="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_380px]"
+				class="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]"
 			} else {
 				class="grid grid-cols-1 gap-3"
 			}
@@ -360,19 +361,20 @@ templ Endpoint(v EndpointView) {
 						{Label: i18n.T(ctx, "endpoint.limits.bytes"), Value: bytesBilled(ctx, v), Icon: "hard-drive"},
 					})
 				</section>
-				@components.Panel(i18n.T(ctx, "endpoint.call"), "") {
-					<div class="p-4">
-						@components.CodeBlock("endpoint-curl", v.Curl(), curlAttrs(v))
-					</div>
+				if !v.CanRun {
+					@endpointCall(v)
 				}
 			</div>
+			// TRY IT, then the call from outside: the run as a command, so
+			// what was tried here is what a caller sends.
 			if v.CanRun {
-				<div data-side class="flex min-w-0 flex-col gap-3 min-[1180px]:sticky min-[1180px]:top-4 min-[1180px]:self-start">
-					@components.Panel("Try it", "") {
+				<div data-side class="flex min-w-0 flex-col gap-3 min-[1180px]:sticky min-[1180px]:top-4 min-[1180px]:max-h-[calc(100vh-2rem)] min-[1180px]:self-start min-[1180px]:overflow-y-auto">
+					@components.Panel(i18n.T(ctx, "endpoint.try"), "") {
 						<div class="p-4">
 							@tryIt(v)
 						</div>
 					}
+					@endpointCall(v)
 				</div>
 			}
 		</div>
@@ -535,27 +537,25 @@ templ endpointCache(v EndpointView) {
 }
 
 templ tryIt(v EndpointView) {
-	<p class="mb-3 text-[0.75rem] text-muted">
-		Runs through this console's key, as that key's tenant, for every login. An empty field is the parameter's default.
-	</p>
+	<p class="mb-3 text-[0.75rem] text-muted">{ i18n.T(ctx, "endpoint.try.lead") }</p>
 	// A GET, so a run is a link somebody can send -- these are an endpoint's
 	// parameters, not SQL. `data-swap` names the pane the answer goes into:
 	// ui.js fetches the answer alone and swaps it, and with no script the
 	// form draws the whole page with the answer in it.
 	<form id="try-it" method="get" action={ templ.SafeURL(v.Row.Href()) } data-swap="endpoint-answer" class="flex flex-col gap-3">
 		<input type="hidden" name="run" value="1"/>
-		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1180px]:grid-cols-1">
 			for _, f := range v.Form {
 				<label class="flex min-w-0 flex-col gap-1">
 					<span class="flex items-center gap-1.5 font-mono text-[0.75rem] text-ink-2">
 						{ f.Name }
 						if f.Required {
-							<span class="rounded-card bg-state-queued/13 px-1 py-px font-sans text-[0.65rem] font-medium text-state-queued">required</span>
+							<span class="rounded-card bg-state-queued/13 px-1 py-px font-sans text-[0.65rem] font-medium tracking-[0.04em] text-state-queued uppercase">{ i18n.T(ctx, "endpoint.params.required") }</span>
 						}
 					</span>
 					if f.Kind == "select" {
 						<select name={ f.Name } class={ fieldClass }>
-							<option value="">default</option>
+							<option value="">{ i18n.T(ctx, "endpoint.try.default") }</option>
 							for _, o := range f.Options {
 								if o == f.Value {
 									<option value={ o } selected>{ o }</option>
@@ -574,7 +574,7 @@ templ tryIt(v EndpointView) {
 		</div>
 		@components.Button(components.ButtonPrimary, components.SizeRegular, templ.Attributes{"type": "submit"}) {
 			@components.Icon("play", "h-3.5 w-3.5")
-			Run request
+			{ i18n.T(ctx, "endpoint.try.run") }
 			<span class="ml-1 font-mono text-[0.7rem] opacity-60">⌘↵</span>
 		}
 	</form>
@@ -585,43 +585,58 @@ templ tryIt(v EndpointView) {
 	</div>
 }
 
+// endpointCall is the call from outside: the curl, with the key a
+// placeholder, following Try it's form as somebody types. It wraps rather
+// than scrolls: in Try it's narrow column a scrolled command hides its end,
+// which is the part a run changes.
+templ endpointCall(v EndpointView) {
+	@components.Panel(i18n.T(ctx, "endpoint.call"), "") {
+		<div class="p-4 [&_pre]:break-all [&_pre]:whitespace-pre-wrap">
+			@components.CodeBlock("endpoint-curl", v.Curl(), curlAttrs(v))
+		</div>
+	}
+}
+
 // EndpointAnswer is what a run brought back -- the status, the cache, the
 // time and the rows -- or why there is nothing. ONE DEFINITION FOR BOTH
 // SHAPES: the page draws it in its pane, and a run that asks for the answer
 // alone (X-Brevis-Fragment: answer) gets exactly this.
 templ EndpointAnswer(v EndpointView) {
-	if v.RunErr != "" {
-		<p class="rounded-card border border-line bg-canvas-subtle px-3 py-2.5 text-[0.82rem] text-ink">{ v.RunErr }</p>
+	if v.RunErr != nil {
+		<p class="rounded-card border border-line bg-canvas-subtle px-3 py-2.5 text-[0.82rem] text-ink">{ runErrSaid(ctx, v.RunErr) }</p>
 	} else if a := v.Answer; a != nil {
 		<div class="mb-2 flex flex-wrap items-center gap-2 text-[0.75rem] text-muted">
+			// The status as HTTP writes it: "200 OK" -- the reason phrase is
+			// the protocol's, the same in every language.
 			if a.Status < 300 {
-				<span class="rounded-card bg-state-success/13 px-1.5 py-px font-mono font-semibold text-state-success">{ fmt.Sprint(a.Status) }</span>
+				<span class="rounded-card bg-state-success/13 px-1.5 py-px font-mono font-semibold text-state-success">{ fmt.Sprint(a.Status) } { http.StatusText(a.Status) }</span>
 			} else {
-				<span class="rounded-card bg-state-failed/13 px-1.5 py-px font-mono font-semibold text-state-failed">{ fmt.Sprint(a.Status) }</span>
+				<span class="rounded-card bg-state-failed/13 px-1.5 py-px font-mono font-semibold text-state-failed">{ fmt.Sprint(a.Status) } { http.StatusText(a.Status) }</span>
+			}
+			if a.Cache != "" {
+				<span class="rounded-card border border-line px-1.5 py-px font-mono text-[0.7rem] font-semibold text-ink">{ strings.ToUpper(a.Cache) }</span>
 			}
 			<span class="tabular-nums">{ fmt.Sprint(a.Millis) } ms</span>
 			if a.Status == 200 {
-				<span class="tabular-nums">{ Total(a.Received, a.Truncated) } rows</span>
-			}
-			if a.Cache != "" {
-				<span>cache <span class="font-mono text-ink">{ a.Cache }</span></span>
+				<span class="tabular-nums">{ i18n.T(ctx, "endpoint.try.rows", "n", Total(a.Received, a.Truncated)) }</span>
 			}
 		</div>
+		if said := cacheSaid(ctx, a.Cache); said != "" {
+			<p class="mb-2 text-[0.72rem] text-muted">{ said }</p>
+		}
 		if a.Received > len(a.Rows) {
-			<p class="mb-2 text-[0.72rem] text-muted">
-				Showing the first { fmt.Sprint(len(a.Rows)) } of { fmt.Sprint(a.Received) } rows; call the API for the rest.
-			</p>
+			<p class="mb-2 text-[0.72rem] text-muted">{ i18n.T(ctx, "endpoint.try.part", "shown", fmt.Sprint(len(a.Rows)), "n", fmt.Sprint(a.Received)) }</p>
 		}
 		if a.Error != "" {
 			<p class="rounded-card border border-line bg-canvas-subtle px-3 py-2.5 text-[0.82rem] text-ink">{ a.Error }</p>
 		} else if len(a.Rows) == 0 {
-			<p class="text-[0.82rem] text-muted">No rows.</p>
+			<p class="text-[0.82rem] text-muted">{ i18n.T(ctx, "endpoint.try.no_rows") }</p>
 		} else {
 			<div class="max-h-[28rem] overflow-auto rounded-card border border-line-soft">
 				@grid(a.Columns, a.Rows)
 			</div>
 		}
 	} else {
-		<p class="text-[0.78rem] text-faint">The answer appears here.</p>
+		<p class="text-[0.78rem] text-faint">{ i18n.T(ctx, "endpoint.try.empty") }</p>
 	}
 }
