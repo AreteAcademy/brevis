@@ -272,3 +272,50 @@ func TestHostHandoverIsOnUnlessTurnedOff(t *testing.T) {
 		t.Errorf("BREVIS_HOST_HANDOVER=false loaded (%v); wanted a refusal naming the variable", err)
 	}
 }
+
+func TestLoadPoolAndRetentionSettings(t *testing.T) {
+	t.Setenv("BREVIS_DATABASE_URL", "postgres://u:p@localhost:5432/db")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.DBMaxConns != 0 || c.ConsoleStatementTimeout != 30*time.Second ||
+		c.RetentionTrimAfter != 0 || c.RetentionPurgeAfter != 0 || c.RetentionInterval != 24*time.Hour {
+		t.Errorf("defaults changed: %+v", c)
+	}
+
+	t.Setenv("BREVIS_DB_MAX_CONNS", "20")
+	t.Setenv("BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS", "0")
+	t.Setenv("BREVIS_RETENTION_TRIM_DAYS", "30")
+	t.Setenv("BREVIS_RETENTION_PURGE_DAYS", "365")
+	t.Setenv("BREVIS_RETENTION_INTERVAL_HOURS", "6")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.DBMaxConns != 20 || c.ConsoleStatementTimeout != 0 ||
+		c.RetentionTrimAfter != 30*24*time.Hour || c.RetentionPurgeAfter != 365*24*time.Hour ||
+		c.RetentionInterval != 6*time.Hour {
+		t.Errorf("parsed wrong: %+v", c)
+	}
+}
+
+func TestLoadRejectsBadPoolAndRetentionSettings(t *testing.T) {
+	for name, env := range map[string]map[string]string{
+		"max conns not a number": {"BREVIS_DB_MAX_CONNS": "many"},
+		"negative timeout":       {"BREVIS_CONSOLE_STATEMENT_TIMEOUT_SECONDS": "-1"},
+		"purge before trim":      {"BREVIS_RETENTION_TRIM_DAYS": "30", "BREVIS_RETENTION_PURGE_DAYS": "7"},
+		"purge without trim":     {"BREVIS_RETENTION_PURGE_DAYS": "7"},
+		"zero interval":          {"BREVIS_RETENTION_TRIM_DAYS": "30", "BREVIS_RETENTION_INTERVAL_HOURS": "0"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("BREVIS_DATABASE_URL", "postgres://u:p@localhost:5432/db")
+			for k, v := range env {
+				t.Setenv(k, v)
+			}
+			if _, err := Load(); err == nil {
+				t.Error("loaded; wanted a boot error")
+			}
+		})
+	}
+}
