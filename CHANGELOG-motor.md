@@ -41,6 +41,22 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
   whatever the page has beside it (actions, an eyebrow, an intro line), and the
   content begins the same distance below.
 
+### Fixed: one colour in `brand.yaml` no longer repaints the console on parchment (#142)
+
+- **A colour the file leaves out is the product's own.** `brand.Default().Theme`
+  held the parchment palette from before the console went dark, so a file that
+  set only `accent:` wrote all fifteen variables, fourteen of them parchment.
+  The default is now empty: the product's colours live in the stylesheet, and
+  the file writes only what it sets (with `line` and the accent's wash derived
+  from `ink` and `accent`, as before).
+- **`skipped:` takes effect.** It was in the file's vocabulary, validated, and
+  never written.
+- **`brand.example.yaml` no longer carries the old palette**: its `theme:` block
+  is commented, with the dark values as the sample, and says to write only what
+  you change.
+- The page's ground follows `--color-canvas`, so the hand-written gradient rule
+  `CSS()` appended (the stylesheet has had no such gradient for a while) is gone.
+
 ### Changed: the Runs badges, red then blue, and they follow
 
 - **The sidebar's Runs link carries two badges**: workflows failing (red) and

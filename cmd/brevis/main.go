@@ -369,7 +369,11 @@ func cmdBrand() *cobra.Command {
 			}
 			fmt.Printf("  ok    %s · %s\n", m.Title, m.Subtitle)
 			fmt.Printf("        logo      %s\n", logo)
-			fmt.Printf("        accent    %s\n", m.Theme.Accent)
+			accent := m.Theme.Accent
+			if accent == "" {
+				accent = "(the product's own)"
+			}
+			fmt.Printf("        accent    %s\n", accent)
 			fmt.Printf("        %s\n", branding.Attribution)
 			return nil
 		},

@@ -46,8 +46,55 @@ func TestMissingFieldsInheritTheDefault(t *testing.T) {
 	if m.Subtitle != branding.Default().Subtitle {
 		t.Errorf("subtitulo perdido: %q", m.Subtitle)
 	}
-	if m.Theme.Succeeded != "#4c7a56" {
-		t.Errorf("cor herdada perdida: %q", m.Theme.Succeeded)
+	// The colours are the product's own, and an empty one says so: the
+	// stylesheet carries them, and nothing is written for a file that sets none.
+	if m.Theme != (branding.Theme{}) {
+		t.Errorf("a file with no colours changed the theme: %+v", m.Theme)
+	}
+	if m.CSS() != "" {
+		t.Errorf("a file with no colours wrote CSS: %s", m.CSS())
+	}
+}
+
+// ONE COLOUR REPAINTS THAT COLOUR (issue #142). The console's default is the
+// dark theme in the stylesheet; a file that sets only an accent used to write
+// all fifteen variables, fourteen of them from a palette the stylesheet no
+// longer had, and the console came up on parchment.
+func TestOneColourWritesOnlyThatColour(t *testing.T) {
+	m, err := branding.Load(writeFile(t, "title: Acme\ntheme:\n  accent: \"#c02a2a\"\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := m.CSS()
+	if !strings.Contains(css, "--color-gold:#c02a2a") || !strings.Contains(css, "--color-gold-wash:#c02a2a14") {
+		t.Errorf("the accent and what is derived from it are missing:\n%s", css)
+	}
+	for _, other := range []string{
+		"--color-parchment", "--color-surface", "--color-ink", "--color-muted", "--color-line",
+		"--color-state-", "--color-gold-strong", "linear-gradient",
+	} {
+		if strings.Contains(css, other) {
+			t.Errorf("%s was written for a file that sets only the accent:\n%s", other, css)
+		}
+	}
+}
+
+// Every colour in the file reaches the page, the skipped state included: it
+// is in the file's vocabulary and was never written.
+func TestEveryColourOfTheFileIsWritten(t *testing.T) {
+	m, err := branding.Load(writeFile(t, `
+title: Acme
+theme: {background: "#111111", background_soft: "#222222", surface: "#333333", ink: "#444444", muted: "#555555", accent: "#666666", accent_strong: "#777777", success: "#888888", failed: "#999999", running: "#aaaaaa", queued: "#bbbbbb", retrying: "#cccccc", canceled: "#dddddd", pending: "#eeeeee", skipped: "#123456"}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := m.CSS()
+	for _, v := range []string{"parchment", "parchment-soft", "surface", "ink", "muted", "gold", "gold-strong",
+		"state-success", "state-failed", "state-running", "state-queued", "state-retrying", "state-canceled", "state-pending", "state-skipped"} {
+		if !strings.Contains(css, "--color-"+v+":#") {
+			t.Errorf("--color-%s is not written:\n%s", v, css)
+		}
 	}
 }
 
@@ -196,7 +243,9 @@ theme_light:
 
 // WITHOUT ONE, NOTHING IS WRITTEN FOR LIGHT, and the product's light theme
 // applies -- including over a client's `theme:`, which describes a dark
-// console. And the hand-written ground gradient is the dark theme's alone.
+// console. The page's ground is a variable (`--color-canvas`), so the dark
+// ground follows `theme:` and the light one follows the product or
+// `theme_light:`, with no rule of its own.
 func TestWithoutALightThemeTheLightOneIsTheProducts(t *testing.T) {
 	m, err := branding.Load(writeFile(t, `
 title: Acme
@@ -210,11 +259,8 @@ theme:
 	if strings.Contains(css, `data-theme="light"]{--`) {
 		t.Errorf("a light block was written with no theme_light:\n%s", css)
 	}
-	if strings.Contains(css, "}body{") {
-		t.Errorf("the ground gradient applies to every theme, the light one included:\n%s", css)
-	}
-	if !strings.Contains(css, `:root:not([data-theme="light"]) body{`) {
-		t.Errorf("the ground gradient is not scoped to the dark theme:\n%s", css)
+	if strings.Contains(css, "body{") {
+		t.Errorf("a rule of its own for the page's ground: it is a variable now:\n%s", css)
 	}
 }
 
