@@ -63,8 +63,7 @@ A cluster per push costs minutes on every run, and the unit and integration
 suites are the gate. So this is run by hand, and this line is the honest
 record of when somebody last did:
 
-**Verified by hand: 2026-10-06** — `make cluster-up` on Docker for Mac,
-k3s v1.31.5, Argo CD v2.13.3. The API answered, the UI answered on :30080,
-and `kubectl -n argocd get applications` found none, which is the point.
-The bootstrap was run twice to check it is idempotent; the second run changed
-nothing and exited 0.
+**Verified by hand: 2026-11-01** — `make cluster-up` on Docker for Mac,
+k3s v1.37.1, Argo CD v2.13.3. The bootstrap installed Argo CD, every deployment rolled
+out and it exited 0. The UI and the idempotent second run were last checked on
+k3s v1.31.5 (2026-10-06).
