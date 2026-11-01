@@ -70,9 +70,8 @@ func TestAStuckSinkAnswers503RatherThanAcceptingForever(t *testing.T) {
 
 	// One event per batch, one worker, one queue slot and a ceiling of 4
 	// events: the smallest arrangement in which saturation is reachable. The
-	// first batch goes to the worker, the second to the queue, and the next
-	// four fill the buffer -- so six requests are accepted and the rest are
-	// told to come back.
+	// ceiling counts the batch in the worker and the one queued as well as the
+	// buffer, so four requests are accepted and the rest are told to come back.
 	srv := asyncGateway(t, sink, `{records: 1, every: 1h}`, 4, `workers: 1`, `queue: 1`)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
@@ -454,4 +453,63 @@ func waitUntil(t *testing.T, ok func() bool) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("it never happened")
+}
+
+// The ceiling counts what is queued and in a worker, not only what is buffered.
+//
+// With a sink that is down, batches leave the buffer for the queue at once, so
+// a ceiling that counted the buffer alone let queue x flush.records events pile
+// up past it. Here the buffer never holds anything (one event per batch), so
+// only the in-flight count can stop the sixth request.
+func TestTheCeilingCountsQueuedBatches(t *testing.T) {
+	sink := newBlockingSink()
+	defer sink.release()
+
+	srv := asyncGateway(t, sink, `{records: 1, every: 1h}`, 5, `workers: 1`, `queue: 64`)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	for i := range 5 {
+		post(t, ts.URL+"/v1/clicks", event(fmt.Sprintf("e-%d", i), "a.b"), http.StatusAccepted)
+	}
+	post(t, ts.URL+"/v1/clicks", event("e-over", "a.b"), http.StatusServiceUnavailable)
+
+	// The sink comes back, the queue drains, and accepting resumes.
+	sink.release()
+	deadline := time.Now().Add(5 * time.Second)
+	for postCode(t, ts.URL+"/v1/clicks", event("e-after", "a.b")) != http.StatusAccepted {
+		if time.Now().After(deadline) {
+			t.Fatal("still refusing after the sink drained")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err := srv.Close(context.Background()); err != nil {
+		t.Fatalf("draining: %v", err)
+	}
+}
+
+// The byte ceiling counts queued batches too, and it is on by default.
+func TestTheByteCeilingCountsQueuedBatches(t *testing.T) {
+	sink := newBlockingSink()
+	defer sink.release()
+
+	// Each event is a few hundred bytes with the padding; 2 KiB is a ceiling
+	// the in-flight batches alone reach, the buffer being empty throughout.
+	srv := asyncGateway(t, sink, `{records: 1, every: 1h}`, 0, `workers: 1`, `queue: 64`, `max_bytes: 1MiB`)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	pad := strings.Repeat("x", 300<<10)
+	body := func(id string) string {
+		return strings.Replace(event(id, "a.b"), "{", `{"pad":"`+pad+`",`, 1)
+	}
+	var accepted int
+	for i := range 10 {
+		if postCode(t, ts.URL+"/v1/clicks", body(fmt.Sprintf("e-%d", i))) == http.StatusAccepted {
+			accepted++
+		}
+	}
+	if accepted < 1 || accepted > 4 {
+		t.Fatalf("accepted %d 300 KiB events against a 1 MiB ceiling", accepted)
+	}
 }
