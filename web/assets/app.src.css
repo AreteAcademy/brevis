@@ -1794,6 +1794,17 @@ tr[data-paused] > td[data-fade] {
     gap: 0;
     padding-inline: 0;
   }
+  /* The project and the search are boxed when open; folded they are icons like
+     the rest, with no frame. */
+  html[data-nav-mode="short"] .app-sidebar [data-project-switcher],
+  html[data-nav-mode="short"] .app-sidebar [data-palette-open] {
+    border-color: transparent;
+    background: transparent;
+  }
+  html[data-nav-mode="short"] .app-sidebar [data-project-switcher]:hover,
+  html[data-nav-mode="short"] .app-sidebar [data-palette-open]:hover {
+    background: var(--color-surface-2);
+  }
   html[data-nav-mode="short"] .app-sidebar .sb-group {
     margin-bottom: 0.5rem;
     padding-top: 0.5rem;
