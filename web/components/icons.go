@@ -32,6 +32,7 @@ var glyphs = map[string]string{
 	"keyboard":       `<path d="M10 8h.01"/> <path d="M12 12h.01"/> <path d="M14 8h.01"/> <path d="M16 12h.01"/> <path d="M18 8h.01"/> <path d="M6 8h.01"/> <path d="M7 16h10"/> <path d="M8 12h.01"/> <rect width="20" height="16" x="2" y="4" rx="2"/>`,
 	"layout-grid":    `<rect width="7" height="7" x="3" y="3" rx="1"/> <rect width="7" height="7" x="14" y="3" rx="1"/> <rect width="7" height="7" x="14" y="14" rx="1"/> <rect width="7" height="7" x="3" y="14" rx="1"/>`,
 	"menu":           `<line x1="4" x2="20" y1="12" y2="12"/> <line x1="4" x2="20" y1="6" y2="6"/> <line x1="4" x2="20" y1="18" y2="18"/>`,
+	"monitor":        `<rect width="20" height="14" x="2" y="3" rx="2"/> <path d="M8 21h8"/> <path d="M12 17v4"/>`,
 	"moon":           `<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>`,
 	"panel-left":     `<rect width="18" height="18" x="3" y="3" rx="2"/> <path d="M9 3v18"/>`,
 	"play":           `<polygon points="6 3 20 12 6 21 6 3"/>`,

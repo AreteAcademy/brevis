@@ -294,26 +294,48 @@
   });
 
   // ------------------------------------------------------------------
-  // The theme switch
+  // The theme and the language (the account menu)
   //
-  // The server chose the theme from the `brevis_theme` cookie before the page
-  // was painted; this only flips it in place and writes the cookie the next
-  // page will be drawn from. No request: the theme is a preference, not
-  // state anybody else reads.
+  // Both are the visitor's own and live in localStorage; the first script in
+  // the head reads them before the first paint (base.templ). The theme is
+  // auto (follows the system, the default), light or dark: this writes the
+  // choice, flips <html data-theme> in place and lights the chosen icon. No
+  // request. The language is what the SERVER draws from, so its button still
+  // posts the form; this only remembers the choice in localStorage first.
   //
   // What reads a colour ONCE when it starts -- the DAG island -- keeps the
   // old one until the next navigation.
   // ------------------------------------------------------------------
 
+  var systemLight = window.matchMedia("(prefers-color-scheme: light)");
+  function remember(key, value) {
+    try { localStorage.setItem(key, value); } catch (e) { /* private mode: not kept */ }
+  }
+  function applyTheme(pref) {
+    var root = document.documentElement;
+    root.dataset.themePref = pref;
+    root.dataset.theme = pref === "auto" ? (systemLight.matches ? "light" : "dark") : pref;
+    document.querySelectorAll("[data-theme-set]").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.dataset.themeSet === pref ? "true" : "false");
+    });
+  }
+  function setTheme(pref) {
+    remember("brevis_theme", pref);
+    applyTheme(pref);
+  }
+  applyTheme(document.documentElement.dataset.themePref || "auto");
+  systemLight.addEventListener("change", function () {
+    if (document.documentElement.dataset.themePref === "auto") applyTheme("auto");
+  });
+
   document.addEventListener("click", function (e) {
-    var btn = e.target.closest && e.target.closest("[data-theme-toggle]");
-    if (!btn) return;
-    var next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
-    document.documentElement.dataset.theme = next;
-    document.cookie = "brevis_theme=" + next + "; Path=/; Max-Age=31536000; SameSite=Lax";
-    var label = next === "light" ? t("theme.to_dark") : t("theme.to_light");
-    btn.setAttribute("aria-label", label);
-    btn.setAttribute("title", label);
+    var btn = e.target.closest && e.target.closest("[data-theme-set]");
+    if (btn) { setTheme(btn.dataset.themeSet); return; }
+    var lang = e.target.closest && e.target.closest('[data-lang-form] button[name="lang"]');
+    if (lang) remember("brevis_lang", lang.value);
+    // The shortcuts list opens over the menu; the menu has done its job.
+    var open = e.target.closest && e.target.closest(".account-menu [data-dialogo]");
+    if (open) open.closest("details").open = false;
   });
 
 
@@ -1665,8 +1687,7 @@
       dialog.close();
       // An action is done here rather than followed.
       if (it.action === "toggle-theme") {
-        var sw = document.querySelector("[data-theme-toggle]");
-        if (sw) sw.click();
+        setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
         return;
       }
       // A language is the sidebar's own switcher pressed: the same POST, the

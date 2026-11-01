@@ -327,17 +327,6 @@
   --color-state-skipped: #74518a;
 }
 
-/* The theme switch shows where a click leads: the sun on the dark theme, the
-   moon on the light one. Both are in the markup, so flipping the attribute is
-   all the script does. */
-.theme-to-dark,
-:root[data-theme="light"] .theme-to-light {
-  display: none;
-}
-:root[data-theme="light"] .theme-to-dark {
-  display: block;
-}
-
 body {
   background: var(--color-canvas);
 }

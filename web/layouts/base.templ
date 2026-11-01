@@ -114,6 +114,13 @@ templ Base(p Page) {
 			// hidden and revealed by the deferred ui.js -- after a paint, on
 			// every navigation where the HTML arrives in pieces -- and popped
 			// in (nav-latency N6). No logic here: anything more is ui.js's.
+			// THE THEME AND THE LANGUAGE ARE THE VISITOR'S, kept in
+			// localStorage and read here, ahead of any paint. The theme is
+			// applied at once (auto follows the system); the language is what
+			// the server draws from, so when localStorage and the cookie
+			// disagree the cookie is mended and the page asked for again --
+			// once per session, so a browser that refuses cookies cannot loop.
+			@templ.Raw(`<script>(function(){var d=document.documentElement,p="auto",l,m;try{p=localStorage.getItem("brevis_theme")||"auto";l=localStorage.getItem("brevis_lang")}catch(e){}if(p!=="light"&&p!=="dark")p="auto";d.dataset.themePref=p;d.dataset.theme=p==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):p;m=document.cookie.match(/(?:^|; )brevis_lang=([^;]*)/);if(l&&/^[a-z]{2}(-[A-Z]{2})?$/.test(l)){if(!m||m[1]!==l){try{if(sessionStorage.getItem("brevis_lang_sync"))return;sessionStorage.setItem("brevis_lang_sync","1")}catch(e){return}document.cookie="brevis_lang="+l+"; Path=/; Max-Age=31536000; SameSite=Lax";location.reload()}}else if(m){try{localStorage.setItem("brevis_lang",m[1])}catch(e){}}})()</script>`)
 			@templ.Raw(`<script>document.documentElement.classList.add("js");document.documentElement.dataset.hash=location.hash.slice(1)</script>`)
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -257,7 +264,7 @@ templ accountMenu(operator string, brand branding.Brand) {
 		// IT OPENS UPWARDS, because it sits at the foot of the sidebar: a
 		// dropdown from there would be drawn past the bottom of the window.
 		// It dropped down for the while it lived in a top bar.
-		<div class="absolute bottom-full left-0 z-20 mb-1 w-60 overflow-hidden rounded-card border border-line bg-surface shadow-warm">
+		<div class="absolute right-0 bottom-full left-0 z-20 mb-1 overflow-hidden rounded-card border border-line bg-surface shadow-warm">
 			// The installation's phrase, INSIDE the menu.
 			//
 			// It used to sit in the sidebar's footer, where it was a paragraph
@@ -297,6 +304,22 @@ templ accountMenu(operator string, brand branding.Brand) {
 				</svg>
 				{ i18n.T(ctx, "shell.docs") }
 			</a>
+			@langChoice()
+			@themeChoice()
+			<span class="block" data-js>
+				<button
+					type="button"
+					data-dialogo="shortcuts"
+					title={ i18n.T(ctx, "shortcuts.tip") }
+					class="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-left text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+				>
+					<span class="flex items-center gap-2.5">
+						@components.Icon("keyboard", "h-4 w-4")
+						{ i18n.T(ctx, "shortcuts.title") }
+					</span>
+					<span class="font-mono text-[0.7rem] text-faint">?</span>
+				</button>
+			</span>
 			if operator != "" {
 				<form method="post" action="/logout">
 					// A POST, and not a link. A GET that signs somebody out is
@@ -400,23 +423,8 @@ templ sidebar(active string, brand branding.Brand) {
 		</nav>
 		// WHO YOU ARE, AT THE FOOT, which is where a console keeps "who am I
 		// and how do I leave". The menu opens upwards from here.
-		<div class="flex shrink-0 items-center gap-0.5 border-t border-line-soft p-2">
-			<div class="min-w-0 flex-1">
-				@accountMenu(auth.De(ctx), brand)
-			</div>
-			<span class="block shrink-0" data-js>
-				<button
-					type="button"
-					data-dialogo="shortcuts"
-					aria-label={ i18n.T(ctx, "shortcuts.title") }
-					data-tip={ i18n.T(ctx, "shortcuts.tip") }
-					class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-				>
-					@components.Icon("keyboard", "h-4 w-4")
-				</button>
-			</span>
-			@langSwitch()
-			@themeSwitch()
+		<div class="shrink-0 border-t border-line-soft p-2">
+			@accountMenu(auth.De(ctx), brand)
 		</div>
 	</aside>
 	// The drawer's backdrop: a click on it closes the drawer. A sibling AFTER
@@ -425,43 +433,54 @@ templ sidebar(active string, brand branding.Brand) {
 	<a href="#" data-drawer-close class="app-drawer-backdrop" aria-hidden="true" tabindex="-1"></a>
 }
 
-// themeSwitch flips the theme in place and remembers it in the cookie the
-// server reads. Only where a script will drive it (data-js): without one it
-// would be a button that does nothing. Both glyphs are drawn and the CSS shows
-// the one for the theme the click leads to, so the script only flips the
-// attribute and the label.
-templ themeSwitch() {
-	<span class="block shrink-0" data-js>
-		<button
-			type="button"
-			data-theme-toggle
-			aria-label={ themeSwitchLabel(ctx) }
-			title={ themeSwitchLabel(ctx) }
-			class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-		>
-			<span class="theme-to-light">@components.Icon("sun", "h-4 w-4")</span>
-			<span class="theme-to-dark">@components.Icon("moon", "h-4 w-4")</span>
-		</button>
-	</span>
+// themeChoice is the menu's theme row: auto, light and dark as three icons,
+// the chosen one lit. The choice lives in localStorage (ui.js writes it, the
+// first script in the head reads it before the first paint), so it is only
+// drawn where a script will drive it (data-js). Auto, the default, follows the
+// system.
+templ themeChoice() {
+	<div class="flex items-center justify-between gap-2 px-3 py-1.5 text-[0.82rem] text-muted" data-js role="group" aria-label={ i18n.T(ctx, "theme.label") }>
+		<span>{ i18n.T(ctx, "theme.label") }</span>
+		<span class="flex items-center gap-0.5 rounded-card border border-line bg-surface p-0.5">
+			@themeButton("auto", "monitor", i18n.T(ctx, "theme.auto"))
+			@themeButton("light", "sun", i18n.T(ctx, "theme.light"))
+			@themeButton("dark", "moon", i18n.T(ctx, "theme.dark"))
+		</span>
+	</div>
 }
 
-// langSwitch chooses the console's language. A <details> menu of three
-// submit buttons in one form, so it needs no script at all: the server
-// remembers the choice and comes back to this page. ui.js closes it on Escape
-// and on a click elsewhere, as it does every [data-popover]. Each language is
-// named in itself and carries its own lang, so a screen reader says it right.
-templ langSwitch() {
+templ themeButton(pref, icon, label string) {
+	<button
+		type="button"
+		data-theme-set={ pref }
+		aria-pressed="false"
+		aria-label={ label }
+		title={ label }
+		class="flex h-6 w-7 items-center justify-center rounded-[5px] text-muted transition-colors hover:text-ink aria-pressed:bg-surface-2 aria-pressed:text-ink"
+	>
+		@components.Icon(icon, "h-3.5 w-3.5")
+	</button>
+}
+
+// langChoice chooses the console's language: a <details> inside the account
+// menu, its summary saying the current one. The list is a form of submit
+// buttons, so it works with no script: the server remembers the choice in the
+// cookie it draws the page from, and ui.js also keeps it in localStorage. Each
+// language is named in itself and carries its own lang, so a screen reader
+// says it right.
+templ langChoice() {
 	{{ current := i18n.Lang(ctx) }}
-	<details class="relative shrink-0" data-popover>
+	<details class="group/lang">
 		<summary
-			aria-label={ i18n.T(ctx, "lang.label") }
-			data-tip={ i18n.T(ctx, "lang.label") }
-			class="flex h-8 cursor-pointer list-none items-center gap-0.5 rounded-card px-1 text-[0.72rem] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			class="flex cursor-pointer list-none items-center justify-between gap-2.5 px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
-			@components.Icon("globe", "h-4 w-4")
-			{ i18n.Codes[current] }
+			<span class="flex items-center gap-2.5">
+				@components.Icon("globe", "h-4 w-4")
+				{ i18n.T(ctx, "lang.label") }
+			</span>
+			<span class="font-mono text-[0.7rem] text-faint">{ i18n.Names[current] }</span>
 		</summary>
-		<form method="post" action="/preferences/lang" data-lang-form class="absolute right-0 bottom-full z-20 mb-1 max-h-[min(24rem,70vh)] w-44 overflow-y-auto rounded-card border border-line bg-surface py-1 shadow-warm">
+		<form method="post" action="/preferences/lang" data-lang-form class="max-h-52 overflow-y-auto border-y border-line-soft bg-surface-2/40 py-1">
 			<input type="hidden" name="next" value={ requestURI(ctx) }/>
 			for _, lang := range i18n.Langs {
 				<button
@@ -472,7 +491,7 @@ templ langSwitch() {
 					if lang == current {
 						aria-current="true"
 					}
-					class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[current=true]:text-ink"
+					class="flex w-full items-center justify-between gap-2 py-1.5 pr-3 pl-9 text-left text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[current=true]:text-ink"
 				>
 					<span>{ i18n.Names[lang] }</span>
 					<span class="font-mono text-[0.7rem] text-faint">{ i18n.Codes[lang] }</span>

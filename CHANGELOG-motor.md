@@ -16,6 +16,17 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: language, theme and shortcuts live in the account menu
+
+- **The account button fills the sidebar's foot**, and its menu now holds the
+  language (a list of the eleven, the current one beside it), the theme and the
+  keyboard shortcuts, beside Docs and Sign out.
+- **Theme is auto, light or dark**, three icons with the chosen one lit. Auto
+  (the default) follows the system and tracks it live.
+- **Theme and language are kept in `localStorage`** and read before the first
+  paint. The language is still drawn by the server from its cookie: when the
+  two disagree the cookie is mended and the page loads again, once per session.
+
 ### Added: eleven languages in the console and on the site
 
 - **The console speaks** English (the default), Spanish, Portuguese (BR),
