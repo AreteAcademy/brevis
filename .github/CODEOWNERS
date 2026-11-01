@@ -1,0 +1,6 @@
+# Every pull request needs a review from one of these before it can merge.
+# The "master: review before merge" ruleset requires a code owner's approval,
+# and this file is what makes danisilva02 (and the owner account) that owner.
+# Two names, because an author cannot approve their own pull request: one
+# reviews what the other opens.
+* @danisilva02 @AreteAcademy
