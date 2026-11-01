@@ -1790,35 +1790,81 @@ tr[data-paused] > td[data-fade] {
 
    Short is the icon rail, from 860px up (below it the sidebar is a drawer and
    stays full). `html[data-nav-mode]` is written by the head script before the
-   first paint and flipped by ui.js; whatever is a LABEL carries `data-collapse`
-   and goes, and each item (`sb-item`) centres its icon. The name of an item
-   comes back as a hint (ui.js, `data-name`). A badge shrinks to the icon's
-   corner so a failing workflow is still seen. */
+   first paint and flipped by ui.js.
+
+   IT IS A CURTAIN, NOT A REARRANGEMENT. Every icon keeps its place in both
+   states -- the 56px rail is the icon column of the 236px sidebar -- so
+   folding only draws the width in, clipping the labels as it goes while they
+   fade (`data-collapse`). Nothing is centred, switched off or re-flowed, which
+   is what made the old fold jump. Group titles fold their height away, and
+   the groups pick up a hairline between them as they do. The curve is an
+   ease-out that lands softly. A badge moves to the icon's corner; the account
+   menu opens past the rail, because it is a menu and not a label. */
 .sb-item {
   position: relative;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .sb-when-short {
   display: none;
 }
 @media (min-width: 860px) {
   .app-sidebar {
-    transition: width 150ms var(--ease-snappy);
+    --ease-cine: cubic-bezier(0.22, 1, 0.36, 1);
+    transition: width 360ms var(--ease-cine);
+    will-change: width;
   }
+  .app-sidebar [data-collapse] {
+    transition: opacity 200ms ease 90ms;
+    white-space: nowrap;
+  }
+  .app-sidebar .sb-head {
+    position: relative;
+  }
+  .app-sidebar .sb-group {
+    padding-top: 0;
+    border-top: 1px solid transparent;
+    transition:
+      padding-top 360ms var(--ease-cine),
+      margin-bottom 360ms var(--ease-cine),
+      border-color 360ms var(--ease-cine);
+  }
+  .app-sidebar p[data-collapse] {
+    max-height: 1.6rem;
+    overflow: hidden;
+    transition:
+      max-height 360ms var(--ease-cine),
+      padding 360ms var(--ease-cine),
+      opacity 160ms ease;
+  }
+  .app-sidebar [data-project-switcher],
+  .app-sidebar [data-palette-open] {
+    transition:
+      border-color 360ms var(--ease-cine),
+      background-color 360ms var(--ease-cine),
+      color 150ms ease;
+  }
+
   html[data-nav-mode="short"] .app-sidebar {
     width: 56px;
   }
   html[data-nav-mode="short"] .app-sidebar [data-collapse] {
-    display: none;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 110ms ease;
   }
-  html[data-nav-mode="short"] .app-sidebar .sb-item {
-    justify-content: center;
-    gap: 0;
-    padding-inline: 0;
+  html[data-nav-mode="short"] .app-sidebar p[data-collapse] {
+    max-height: 0;
+    padding-block: 0;
   }
-  /* The logo is centred in the rail like the icons under it: the row's right
-     padding only makes room for the drawer's close button, which is not here. */
-  html[data-nav-mode="short"] .app-sidebar .sb-head {
-    padding-right: 0;
+  html[data-nav-mode="short"] .app-sidebar .sb-group {
+    margin-bottom: 0.5rem;
+    padding-top: 0.5rem;
+    border-top-color: var(--color-line-soft);
+  }
+  html[data-nav-mode="short"] .app-sidebar .sb-group:first-child {
+    padding-top: 0;
+    border-top-color: transparent;
   }
   /* The project and the search are boxed when open; folded they are icons like
      the rest, with no frame. */
@@ -1831,19 +1877,18 @@ tr[data-paused] > td[data-fade] {
   html[data-nav-mode="short"] .app-sidebar [data-palette-open]:hover {
     background: var(--color-surface-2);
   }
-  html[data-nav-mode="short"] .app-sidebar .sb-group {
-    margin-bottom: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--color-line-soft);
-  }
-  html[data-nav-mode="short"] .app-sidebar .sb-group:first-child {
-    padding-top: 0;
-    border-top: 0;
+  /* The open section: the bar at its left edge has no room on the rail, so the
+     accent becomes the item's ground. */
+  html[data-nav-mode="short"] .app-sidebar a.sb-item[aria-current="page"] {
+    border-color: transparent;
+    background: var(--color-accent-strong);
+    color: var(--color-on-accent);
+    box-shadow: none;
   }
   html[data-nav-mode="short"] .app-sidebar [data-sb-badge] {
     position: absolute;
-    top: -3px;
-    right: -3px;
+    top: 1px;
+    right: 3px;
     margin: 0;
     transform: scale(0.8);
     transform-origin: top right;
@@ -1857,14 +1902,14 @@ tr[data-paused] > td[data-fade] {
     align-items: center;
     justify-content: center;
     opacity: 0;
-    transition: opacity 120ms ease;
+    transition: opacity 140ms ease;
   }
   html[data-nav-mode="short"] .app-sidebar .sb-head:hover .sb-fold,
   html[data-nav-mode="short"] .app-sidebar .sb-head:focus-within .sb-fold {
     opacity: 1;
   }
   html[data-nav-mode="short"] .app-sidebar .sb-head .sb-logo {
-    transition: opacity 120ms ease;
+    transition: opacity 140ms ease;
   }
   html[data-nav-mode="short"] .app-sidebar .sb-head:hover .sb-logo,
   html[data-nav-mode="short"] .app-sidebar .sb-head:focus-within .sb-logo {
@@ -1880,5 +1925,11 @@ tr[data-paused] > td[data-fade] {
   html[data-nav-mode="short"] .app-sidebar .account-menu > div {
     right: auto;
     width: 15rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar,
+  .app-sidebar * {
+    transition: none !important;
   }
 }

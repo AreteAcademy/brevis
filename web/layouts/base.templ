@@ -171,11 +171,11 @@ templ Base(p Page) {
 					// one does not push the title down; and the content always begins
 					// the same distance below. A page's intro line is the content's
 					// first block, not a negative margin that reaches back up.
-					<header data-page-header class="relative px-3 pt-5 pb-2 min-[860px]:px-6 min-[860px]:pt-6">
+					<header data-page-header class="relative px-3 pt-4 pb-1.5 min-[860px]:px-6 min-[860px]:pt-5">
 						<div class="flex min-h-8 flex-wrap items-center justify-between gap-x-6 gap-y-3">
 							<div class="min-w-0">
 								if p.Eyebrow != nil {
-									<div class="absolute top-1 left-3 flex flex-wrap items-center gap-2 min-[860px]:top-1.5 min-[860px]:left-6">
+									<div class="absolute top-0.5 left-3 flex flex-wrap items-center gap-2 min-[860px]:top-1 min-[860px]:left-6">
 										@p.Eyebrow
 									</div>
 								}
@@ -252,7 +252,7 @@ templ accountMenu(operator string, brand branding.Brand) {
 	<details class="account-menu relative">
 		<summary
 			data-name={ accountName(ctx, operator) }
-			class="sb-item flex cursor-pointer list-none items-center justify-between gap-1.5 rounded-card px-2 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			class="sb-item flex cursor-pointer list-none items-center justify-between gap-1.5 rounded-card px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
 			<span class="flex min-w-0 items-center gap-2">
 				<svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
