@@ -221,7 +221,10 @@ func (s *Scheduler) createAndEnqueue(ctx context.Context, slug string, def []byt
 	})
 	if err != nil {
 		if errors.Is(err, postgres.ErrJaExiste) {
-			return false, nil // already materialized: nothing to do
+			// Already materialized -- unless a previous attempt died before the
+			// enqueue, in which case finishing it is the only thing that will.
+			_, err := s.finish(ctx, key, priority)
+			return false, err
 		}
 		return false, err
 	}
@@ -230,6 +233,27 @@ func (s *Scheduler) createAndEnqueue(ctx context.Context, slug string, def []byt
 		return false, err
 	}
 	return true, s.queue.Enqueue(ctx, r.ID, priority, time.Time{})
+}
+
+// finish completes a run a previous attempt created but never enqueued.
+//
+// The three statements of a run's birth are not one transaction, and a crash
+// between them used to lose the slot for good: the next cycle collided on the
+// idempotency key, called it "already materialized", and nothing enqueued it.
+// Enqueue is ON CONFLICT DO NOTHING, so a concurrent scheduler finishing the
+// same run is harmless. It returns the run's id, or uuid.Nil if there was
+// nothing to finish.
+func (s *Scheduler) finish(ctx context.Context, key string, priority int) (uuid.UUID, error) {
+	id, status, found, err := s.runs.Stranded(ctx, key)
+	if err != nil || !found {
+		return uuid.Nil, err
+	}
+	if status == dom.StatusCreated {
+		if err := s.runs.Transicionar(ctx, id, dom.StatusQueued); err != nil {
+			return uuid.Nil, err
+		}
+	}
+	return id, s.queue.Enqueue(ctx, id, priority, time.Time{})
 }
 
 // Disparar creates a manual Run and enqueues it now.
@@ -288,7 +312,9 @@ func (s *Scheduler) Disparar(ctx context.Context, slug string, now time.Time,
 	})
 	if err != nil {
 		if errors.Is(err, postgres.ErrJaExiste) {
-			return uuid.Nil, nil // a repeated click within the same second
+			// A repeated click within the same second -- or a click whose first
+			// attempt died before the enqueue, which this one then finishes.
+			return s.finish(ctx, key, 10)
 		}
 		return uuid.Nil, err
 	}
