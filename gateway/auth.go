@@ -35,6 +35,9 @@ const AuthBearer = "bearer"
 // same as the engine's so an operator learns one word.
 const EnvLocal = "local"
 
+// EnvProduction is what an unset BREVIS_ENV means.
+const EnvProduction = "production"
+
 // BREVIS_COMMUNICATION says which side of the network the gateway serves.
 // Internal makes `listen.auth` optional -- declared, it is still enforced --
 // because a gateway only the cluster reaches is one internal teams integrate

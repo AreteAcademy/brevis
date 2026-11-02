@@ -15,6 +15,14 @@ the versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed: an unset `BREVIS_ENV` is `production`
+
+- The gateway used to treat a missing `BREVIS_ENV` as `local`, which left the
+  ingest endpoint open. It now refuses to start without `listen.auth` unless
+  `BREVIS_ENV=local` is set explicitly (or `BREVIS_COMMUNICATION=internal`).
+  **Upgrade note:** a laptop or compose file that relied on the old default
+  must now set `BREVIS_ENV=local`.
+
 ### Fixed: what the audit found in the ingest path
 
 - **The listener bounds reading the body and writing the response in time**

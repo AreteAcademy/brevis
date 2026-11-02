@@ -180,7 +180,9 @@ unauthenticated one on a routable address is not a gateway with a gap, it is an
 open relay — which is why the refusal is at boot and not a warning.
 
 Locally it stays open, because asking for a token on every
-`docker compose up` only teaches a team to turn authentication off.
+`docker compose up` only teaches a team to turn authentication off. That is
+opt-in: an **unset** `BREVIS_ENV` counts as `production`, so forgetting the
+variable closes the door. A laptop says `BREVIS_ENV=local`.
 
 ### Reached only from inside: `BREVIS_COMMUNICATION`
 
@@ -193,7 +195,7 @@ would be a file that turns off authentication.
 | `BREVIS_COMMUNICATION` | `listen.auth` declared | `listen.auth` absent |
 |---|---|---|
 | `internal` | enforced | **open**; `auto_table` allowed |
-| `external`, or unset | enforced | refuses to start, outside `BREVIS_ENV=local` |
+| `external`, or unset | enforced | refuses to start, outside `BREVIS_ENV=local` (unset `BREVIS_ENV` is `production`) |
 | anything else | refuses to start | refuses to start |
 
 - **Internal makes the key optional, not off.** A declared `bearer` is still
