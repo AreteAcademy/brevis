@@ -44,6 +44,8 @@ IDIOMA_NATIVO = {"en": "English", "es": "Español", "pt": "Português", "fr": "F
 LLMS = "en"
 
 REPO = "https://github.com/AreteAcademy/brevis"
+# owner/name, for the API call that counts the stars (templates/base.html).
+REPO_SLUG = REPO.split("github.com/", 1)[1]
 
 
 # Quem tem a documentação traduzida (content/<lang>/docs). Os demais ganham a
@@ -500,7 +502,9 @@ def gerar(destino):
             "prefixo_docs": prefixo_docs(lang),
             "url_styles": versionado("/css/styles.css"),
             "url_lang": versionado("/js/lang.js"),
+            "url_stars": versionado("/js/stars.js"),
             "repo": REPO,
+            "repo_slug": REPO_SLUG,
             "ano": "2026",
             "alt_landing": alternativas,
             "fontes": fontes(),
@@ -705,8 +709,9 @@ def gerar(destino):
             % (html.escape(s["ui"]["erro_titulo"]), html.escape(s["ui"]["erro_texto"]),
                html.escape(s["ui"]["erro_home"]), html.escape(s["ui"]["docs"])))
     escrever(destino, "404.html", preencher(tpl["base"], {
-        "lang": LOCALE[PADRAO], "prefixo": "", "prefixo_docs": "", "repo": REPO,
-        "url_styles": versionado("/css/styles.css"), "url_lang": versionado("/js/lang.js"), "ano": "2026",
+        "lang": LOCALE[PADRAO], "prefixo": "", "prefixo_docs": "", "repo": REPO, "repo_slug": REPO_SLUG,
+        "url_styles": versionado("/css/styles.css"), "url_lang": versionado("/js/lang.js"),
+        "url_stars": versionado("/js/stars.js"), "ano": "2026",
         "fontes": fontes(),
         "titulo": html.escape(s["ui"]["erro_titulo"]),
         "descricao": html.escape(s["ui"]["erro_texto"]),
