@@ -589,6 +589,37 @@ a.chip:focus-visible .ico {
   margin-left: 1.5rem;
 }
 
+/* The star count inside the GitHub button. js/stars.js fills it and drops the
+   `hidden`, so there is never an empty slot waiting for a number. Mono because
+   it is data; dim because the label is what the button says. The hover takes
+   it along with the rest of the button. */
+.header-cta .stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.15rem;
+  padding-left: 0.65rem;
+  border-left: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.header-cta .stars[hidden] {
+  display: none;
+}
+
+.header-cta .stars svg {
+  width: 13px;
+  height: 13px;
+}
+
+.header-cta:hover .stars {
+  color: inherit;
+  border-color: var(--olive);
+}
+
 .nav-toggle {
   display: none;
   margin-left: auto;

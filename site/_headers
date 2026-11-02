@@ -5,8 +5,9 @@
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
   # No inline script on this site except the one-liner that sets the .js class,
-  # and no third-party anything but the Google Fonts stylesheet.
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  # and no third-party anything but the Google Fonts stylesheet and one GET to
+  # the GitHub API, which js/stars.js makes for the star count in the header.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
 
 # The HTML is regenerated on every content change and its URL never carries a
 # hash, so it must revalidate. must-revalidate, not no-store: a 304 is cheap.
