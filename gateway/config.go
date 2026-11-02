@@ -826,7 +826,9 @@ func (c *Config) check() error {
 	// itself local would be a file that turns off authentication.
 	env := os.Getenv("BREVIS_ENV")
 	if env == "" {
-		env = EnvLocal
+		// Unset is production: forgetting the variable must close the door,
+		// not open it. A laptop says BREVIS_ENV=local out loud.
+		env = EnvProduction
 	}
 	comm, err := communication()
 	if err != nil {

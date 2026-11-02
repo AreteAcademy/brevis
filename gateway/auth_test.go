@@ -132,6 +132,17 @@ func TestOutsideLocalAnOpenEndpointIsRefused(t *testing.T) {
 	}
 }
 
+// Forgetting BREVIS_ENV must close the door, not open it: unset is production.
+func TestUnsetEnvIsProductionAndRefusesAnOpenEndpoint(t *testing.T) {
+	open := strings.Replace(authed, "  auth: {type: bearer, keys_from: GW_KEYS}\n", "", 1)
+
+	t.Setenv("BREVIS_ENV", "")
+	_, err := load(t, fmtConfig(open, t.TempDir()))
+	if err == nil || !strings.Contains(err.Error(), "BREVIS_ENV=production") {
+		t.Errorf("an unset BREVIS_ENV left the endpoint open: %v", err)
+	}
+}
+
 // Half configured is worse than nothing: whoever wrote `bearer` believes the
 // door is closed.
 func TestAuthWithNoKeysIsRefused(t *testing.T) {
