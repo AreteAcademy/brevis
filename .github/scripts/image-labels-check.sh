@@ -11,9 +11,14 @@
 # found by eye while reading the file for something else, which is not a
 # process.
 #
-# Two rules, and both exist because each failed once:
+# Four rules, and each exists because it failed once:
 #   1. Every LABEL block naming a title also names a licence.
 #   2. That licence is the one in LICENSE.
+#   3. Every one names its source as "${SOURCE}", never a written URL: the
+#      repository moved from AreteAcademy to brevis-sh on 2026-11-01, and
+#      seven labels went on naming the old home.
+#   4. Every release build that passes VERSION also passes SOURCE, so the
+#      label is the repository the image was built from.
 set -uo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -44,5 +49,22 @@ while IFS= read -r line; do
   fi
 done < <(grep 'org\.opencontainers\.image\.licenses=' Dockerfile)
 
+sources="$(grep -c 'org\.opencontainers\.image\.source="${SOURCE}"' Dockerfile)"
+if [ "$titles" != "$sources" ]; then
+  echo "❌ Dockerfile has $titles image(s) with a title and $sources whose source is \${SOURCE}"
+  grep -n 'org\.opencontainers\.image\.source=' Dockerfile | grep -v '"${SOURCE}"' | sed 's/^/   /'
+  echo "   a written URL goes stale when the repository moves; take it from the build."
+  failed=1
+fi
+
+for wf in .github/workflows/*.yml; do
+  versions="$(grep -c '^ *VERSION=\${{' "$wf")"
+  given="$(grep -c '^ *SOURCE=\${{ github.server_url }}/\${{ github.repository }}' "$wf")"
+  if [ "$versions" != "$given" ]; then
+    echo "❌ $wf builds $versions image(s) with VERSION and passes SOURCE to $given"
+    failed=1
+  fi
+done
+
 [ "$failed" = "0" ] || exit 1
-echo "✅ every image declares $want, which is what LICENSE says"
+echo "✅ every image declares $want, which is what LICENSE says, and the repository it was built from"
