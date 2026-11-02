@@ -20,7 +20,7 @@ context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    # reaches the engine's /metrics
 ```
 
-**कभी कोई निर्भरता नहीं।** यह एक environment वेरिएबल पढ़ती है, एक फ़ाइल लिखती है और stdout पर एक पंक्ति छापती है। Python 3.9+ चाहिए।
+**कभी कोई निर्भरता नहीं।** यह एक environment वेरिएबल पढ़ती है, एक फ़ाइल लिखती है और stdout पर एक पंक्ति छापती है। Python 3.10+ चाहिए।
 
 यह Go SDK का पोर्ट नहीं है: कोई drivers नहीं, कोई pagination नहीं, कोई ingestion ids नहीं। यह इसलिए है कि टीम pandas, Polars या dbt इस्तेमाल करे और फिर भी वह पाए जिसके लिए ऑर्केस्ट्रेटर होता है।
 

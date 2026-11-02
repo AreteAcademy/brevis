@@ -11,6 +11,22 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Removed: Python 3.9
+
+- **`requires-python` is now `>=3.10`.** Python 3.9 reached its end of life in
+  October 2025 and gets no security fixes, and GitHub's `ubuntu-latest`
+  (Ubuntu 26.04) no longer offers it, so the gates that ran on it -- in
+  `test.yml` and at publish -- could not run at all. They now run on 3.10, the
+  new floor, and on 3.13.
+- A step image on Python 3.9 keeps installing `0.8.0`: `pip` reads
+  `requires-python` and picks the newest release that allows it. Nothing in
+  the library changed for 3.10; the next release is `0.9.0`, since it no
+  longer installs where `0.8.0` did.
+- `_moment` still translates the `Z` of an RFC 3339 timestamp itself:
+  `datetime.fromisoformat` accepts one only from 3.11.
+
 ## [0.8.0] — 2026-10-07
 
 ### Added: `landed()` says which table a step wrote

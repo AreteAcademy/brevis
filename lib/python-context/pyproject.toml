@@ -17,14 +17,13 @@ name = "brevis"
 version = "0.8.0"
 description = "Context and run params for the steps of a Brevis workflow"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 dependencies = []
 keywords = ["brevis", "orchestration", "data-engineering", "etl"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",

@@ -21,7 +21,7 @@ metrics.set("rows_loaded", 48213)    # reaches the engine's /metrics
 ```
 
 **Sin dependencias, nunca.** Lee una variable de entorno, escribe un archivo
-e imprime una línea en stdout. Requiere Python 3.9+.
+e imprime una línea en stdout. Requiere Python 3.10+.
 
 No es un port del SDK de Go: sin drivers, sin paginación, sin ids de ingesta. Existe
 para que un equipo pueda usar pandas, Polars o dbt y aun así obtener aquello para lo que sirve un
