@@ -133,7 +133,7 @@
       <h1>ベンチマーク</h1>
       <p class="doc-desc">gateway の測り方、数字が示すこと、そして一致していなければならない 3 つの証人。</p>
       <p>1 つのコマンドで gateway 全体を計測します。</p>
-<div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
+<div class="code-block" data-code="BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code>BREVIS_BENCH_IMAGE=brevissh/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>Postgres を起動し、gateway を起動し、[k6] で負荷をかけ、<strong>バッファが空になるのを待ち</strong>、gateway 自身の <code>/metrics</code> を取得して、<code>bench/results/REPORT.md</code> を書き出します。</p>
 <h2 id="three-witnesses-and-the-third-is-the-one-that-matters">3 つの証人、そして重要なのは 3 つ目<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>k6 が知っているのは、プロデューサーが見たものです。gateway が知っているのは、自分がしたことです。 前者だけを持つ負荷テストでは、高速な gateway と、<code>202</code> を返しながら受け付けたものを捨てている gateway を 区別できません。</p>
@@ -142,7 +142,7 @@
 <p>最初の 2 つはどちらも gateway 自身の算術です。1 つは書いたレスポンスから、もう 1 つは加算したカウンタから 来ており、イベントを失うバグがあっても、<strong>両者の間で</strong>は整合を保てます。データベースだけが、 こちらの言い分を鵜呑みにしませんでした。</p>
 <p><strong>3 つが一致しない run は、パーセンタイルがどれだけ良くても失敗です。</strong></p>
 <h2 id="the-run-above">上記の run<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
-<p><code>bench/results/REPORT.md</code> にある 2026-09-26 の run です。 <code>areteacademy/brevis-gateway:0.11.0</code>、Darwin arm64、11 CPU、同じカーネル上のコンテナ内の Postgres 17、 <code>write: append</code> の <code>auto_table[columns]</code>:</p>
+<p><code>bench/results/REPORT.md</code> にある 2026-09-26 の run です。 <code>brevissh/brevis-gateway:0.11.0</code>、Darwin arm64、11 CPU、同じカーネル上のコンテナ内の Postgres 17、 <code>write: append</code> の <code>auto_table[columns]</code>:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>受け付けたイベント</td><td><strong>5,431,000</strong>(135,768/s)</td></tr><tr><td>送信したボディ</td><td>40 秒で 1,156.7 MiB</td></tr><tr><td><code>503</code>(バックプレッシャー)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5.9 ms / 16.0 ms / 22.7 ms</td></tr><tr><td>配信したバッチ</td><td>1,087、葬られたものなし</td></tr></tbody></table></div>
 <h2 id="the-thresholds-are-the-point">しきい値こそが要点<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>k6 はしきい値のどれかが破られるとゼロ以外で終了するので、これはグラフではなく<strong>ゲート</strong>です。</p>

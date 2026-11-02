@@ -9,7 +9,7 @@
 Satu command, dan ia mengukur seluruh gateway:
 
 ```bash
-BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
+BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh
 ```
 
 Ia menjalankan Postgres, memulai gateway, membebaninya dengan [k6], **menunggu
@@ -41,7 +41,7 @@ yang tidak mempercayai kata-kata kami.
 ## Run di atas
 
 Run 2026-09-26 di `bench/results/REPORT.md`:
-`areteacademy/brevis-gateway:0.11.0`, Darwin arm64, 11 CPU, Postgres 17 di dalam
+`brevissh/brevis-gateway:0.11.0`, Darwin arm64, 11 CPU, Postgres 17 di dalam
 container pada kernel yang sama, `auto_table[columns]` dengan `write: append`:
 
 | | |

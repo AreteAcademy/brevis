@@ -47,7 +47,7 @@
 
 |  | как подключается | руководство |
 |---|---|---|
-| **Docker** | один образ на компонент: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Установка](/ru/docs/installation/#docker) |
+| **Docker** | один образ на компонент: `brevissh/brevis`, `brevis-gateway`, `brevis-sql` | [Установка](/ru/docs/installation/#docker) |
 | **Kubernetes** | один pod на шаг | [Kubernetes](/ru/docs/kubernetes/index.md), [Pod на шаг](/ru/docs/pod-per-step/index.md) |
 | **Helm** | чарт в `deployments/helm/brevis` | [Kubernetes](/ru/docs/kubernetes/#install-it-with-helm) |
 

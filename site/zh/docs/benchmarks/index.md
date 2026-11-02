@@ -9,7 +9,7 @@
 一条命令，就能度量整个 gateway：
 
 ```bash
-BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
+BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh
 ```
 
 它会启动一个 Postgres，启动 gateway，用 [k6] 对其加压，**等待缓冲区排空**，抓取 gateway 自己的 `/metrics`，并写出 `bench/results/REPORT.md`。
@@ -33,7 +33,7 @@ k6 知道生产者看到了什么。gateway 知道它自己做了什么。只带
 
 ## 上面的运行
 
-`bench/results/REPORT.md` 中 2026-09-26 的运行：`areteacademy/brevis-gateway:0.11.0`，Darwin arm64，11 个 CPU，同一内核上容器中的 Postgres 17，`auto_table[columns]` 搭配 `write: append`：
+`bench/results/REPORT.md` 中 2026-09-26 的运行：`brevissh/brevis-gateway:0.11.0`，Darwin arm64，11 个 CPU，同一内核上容器中的 Postgres 17，`auto_table[columns]` 搭配 `write: append`：
 
 | | |
 |---|---:|

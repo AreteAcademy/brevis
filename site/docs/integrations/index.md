@@ -47,7 +47,7 @@ Each row says which piece reaches it, through which package or sink, and where t
 
 |  | how it gets there | guide |
 |---|---|---|
-| **Docker** | one image per piece: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Installation](/docs/installation/#docker) |
+| **Docker** | one image per piece: `brevissh/brevis`, `brevis-gateway`, `brevis-sql` | [Installation](/docs/installation/#docker) |
 | **Kubernetes** | one pod per step | [Kubernetes](/docs/kubernetes/index.md), [Pod per step](/docs/pod-per-step/index.md) |
 | **Helm** | the chart in `deployments/helm/brevis` | [Kubernetes](/docs/kubernetes/#install-it-with-helm) |
 

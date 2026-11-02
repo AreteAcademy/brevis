@@ -48,7 +48,7 @@ steps:
 
 ```bash
 docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
-  areteacademy/brevis:0.40.0-worker run hello.yaml
+  brevissh/brevis:0.40.0-worker run hello.yaml
 ```
 
 출력은 다음과 같습니다.

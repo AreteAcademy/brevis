@@ -58,10 +58,10 @@ berlawanan:
 | `:0.11.2-worker` | alpine + tini | step `run:` membutuhkan shell |
 
 ```bash
-docker run --rm areteacademy/brevis:latest version
+docker run --rm brevissh/brevis:latest version
 ```
 
-Kedua image berada di [hub.docker.com/r/areteacademy/brevis](https://hub.docker.com/r/areteacademy/brevis),
+Kedua image berada di [hub.docker.com/r/brevissh/brevis](https://hub.docker.com/r/brevissh/brevis),
 untuk `amd64` dan `arm64`.
 
 ## Lingkungan lokal lengkap

@@ -12,10 +12,10 @@ O Core agenda, enfileira e observa — e nunca toca o dado. Quem toca é o SDK, 
 
 | peça | o que faz | como chega | guia |
 |---|---|---|---|
-| **Core** | Agenda, enfileira e sobe um pod por etapa. Nunca toca o dado. | `areteacademy/brevis` | [Core](/pt/docs/core/index.md) |
+| **Core** | Agenda, enfileira e sobe um pod por etapa. Nunca toca o dado. | `brevissh/brevis` | [Core](/pt/docs/core/index.md) |
 | **SDK** | Biblioteca Go que extrai, molda e carrega, dentro da sua etapa. | `go get github.com/AreteAcademy/brevis/sdk` | [SDK em Go](/pt/docs/sdk/index.md) |
-| **Gateway** | Recebe HTTP POST, responde 202 e grava em lote. Sem banco próprio. | `areteacademy/brevis-gateway` | [Ingestão](/pt/docs/ingestion/index.md) |
-| **SQL** | Arquivos .sql viram tabelas e views, em ordem de dependência. | `areteacademy/brevis-sql` | [SQL](/pt/docs/sql/index.md) |
+| **Gateway** | Recebe HTTP POST, responde 202 e grava em lote. Sem banco próprio. | `brevissh/brevis-gateway` | [Ingestão](/pt/docs/ingestion/index.md) |
+| **SQL** | Arquivos .sql viram tabelas e views, em ordem de dependência. | `brevissh/brevis-sql` | [SQL](/pt/docs/sql/index.md) |
 
 ## Plano de controle, plano de dados
 

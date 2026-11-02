@@ -9,7 +9,7 @@ slug: benchmarks
 Ein Befehl, und er misst das ganze Gateway:
 
 ```bash
-BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
+BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh
 ```
 
 Er fährt eine Postgres hoch, startet das Gateway, belastet es mit [k6], **wartet,
@@ -43,7 +43,7 @@ Perzentile auch sind.
 ## Der obige Lauf
 
 Der Lauf vom 26.09.2026 in `bench/results/REPORT.md`:
-`areteacademy/brevis-gateway:0.11.0`, Darwin arm64, 11 CPUs, Postgres 17 in einem
+`brevissh/brevis-gateway:0.11.0`, Darwin arm64, 11 CPUs, Postgres 17 in einem
 Container auf demselben Kernel, `auto_table[columns]` mit `write: append`:
 
 | | |

@@ -112,8 +112,8 @@ Go linker वह छाँट देता है जिसे कोई सं�
 
 | image | क्या ढोती है | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.32.0` | छह sinks, S3, GCS, Redis, memcached | 19.1 MB |
-| `areteacademy/brevis-gateway:0.32.0-slim` | `postgres`, स्थानीय `files`, `auto_table` | **5.2 MB** |
+| `brevissh/brevis-gateway:0.32.0` | छह sinks, S3, GCS, Redis, memcached | 19.1 MB |
+| `brevissh/brevis-gateway:0.32.0-slim` | `postgres`, स्थानीय `files`, `auto_table` | **5.2 MB** |
 
 दोनों एक ट्री के एक बिल्ड से, इसलिए दोनों tags हमेशा वही commit हैं। `latest-slim` नहीं है — `latest` पहले से ऐसा tag है जिसे किसी को deploy नहीं करना चाहिए।
 

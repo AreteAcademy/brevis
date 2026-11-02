@@ -9,7 +9,7 @@ slug: benchmarks
 एक कमांड, और वह पूरे gateway को मापती है:
 
 ```bash
-BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
+BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh
 ```
 
 यह एक Postgres खड़ा करती है, gateway शुरू करती है, उस पर [k6] से भार डालती है, **बफ़र के खाली होने का इंतज़ार
@@ -37,7 +37,7 @@ gateway को उससे अलग नहीं बता सकता जो
 ## ऊपर वाला run
 
 `bench/results/REPORT.md` में 2026-09-26 का run:
-`areteacademy/brevis-gateway:0.11.0`, Darwin arm64, 11 CPUs, उसी kernel पर container में Postgres 17,
+`brevissh/brevis-gateway:0.11.0`, Darwin arm64, 11 CPUs, उसी kernel पर container में Postgres 17,
 `write: append` के साथ `auto_table[columns]`:
 
 | | |

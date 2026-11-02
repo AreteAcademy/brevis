@@ -102,7 +102,7 @@ group by customer_id
 `compile` और `graph` कहीं कनेक्ट नहीं करते:
 
 ```bash
-docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.6.0 \
+docker run --rm -v ./project:/project:ro brevissh/brevis-sql:0.6.0 \
   compile --project /project
 ```
 
@@ -113,7 +113,7 @@ docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.6.0 \
 ```
 
 ```bash
-docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.6.0 \
+docker run --rm -v ./project:/project:ro brevissh/brevis-sql:0.6.0 \
   graph --project /project
 ```
 
@@ -128,7 +128,7 @@ Postgres के विरुद्ध `build` और `test`:
 
 ```bash
 docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.6.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db brevissh/brevis-sql:0.6.0 \
   build --project /project --dsn-from BREVIS_SQL_DSN
 ```
 
@@ -142,7 +142,7 @@ docker run --rm -v ./project:/project:ro \
 
 ```bash
 docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.6.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db brevissh/brevis-sql:0.6.0 \
   test --project /project --dsn-from BREVIS_SQL_DSN
 ```
 

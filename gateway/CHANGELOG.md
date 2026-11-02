@@ -15,6 +15,12 @@ the versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed: the image is `brevissh/brevis-gateway`
+
+- The next release publishes to `docker.io/brevissh/brevis-gateway` (and its
+  `-slim`), not `areteacademy/brevis-gateway`, which keeps the versions
+  already there. The current one was copied over with the same digest.
+
 ### Fixed: what the audit found in the ingest path
 
 - **The listener bounds reading the body and writing the response in time**

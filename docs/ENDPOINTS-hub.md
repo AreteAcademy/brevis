@@ -13,8 +13,8 @@ GET /v1/orders?period=today  →  key → tenant  →  {{ x }} as $1, never as t
 docker run -p 8080:8080 \
   -v ./api:/etc/brevis:ro \
   -e WAREHOUSE_DSN=postgres://reader:...@db:5432/warehouse \
-  -e BREVIS_API_KEYS="$(echo "$KEY" | docker run -i --rm areteacademy/brevis-sql-api:0.6.0 key hash --tenant acme)" \
-  areteacademy/brevis-sql-api:0.6.0 \
+  -e BREVIS_API_KEYS="$(echo "$KEY" | docker run -i --rm brevissh/brevis-sql-api:0.6.0 key hash --tenant acme)" \
+  brevissh/brevis-sql-api:0.6.0 \
   serve --config /etc/brevis/api.yaml --connections /etc/brevis/brevis.yaml --addr :8080
 ```
 
@@ -25,7 +25,7 @@ docker run -p 8080:8080 \
 | `0.6.0` | hooks: a before and an after per endpoint, in a binary of your own (this image has none) |
 | `0.5.0` | Postgres and BigQuery, the Redis cache, Prometheus |
 
-The same `sql/v*` tag and version as `areteacademy/brevis-sql`: one module,
+The same `sql/v*` tag and version as `brevissh/brevis-sql`: one module,
 two binaries. Distroless, non-root, about 15 MB. There is no `latest` to deploy.
 
 ## What it does

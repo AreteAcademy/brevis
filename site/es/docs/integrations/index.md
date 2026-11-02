@@ -47,7 +47,7 @@ Cada fila indica qué pieza llega a él, mediante qué paquete o sink, y adónde
 
 |  | cómo llega | guía |
 |---|---|---|
-| **Docker** | una imagen por pieza: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Instalación](/es/docs/installation/#docker) |
+| **Docker** | una imagen por pieza: `brevissh/brevis`, `brevis-gateway`, `brevis-sql` | [Instalación](/es/docs/installation/#docker) |
 | **Kubernetes** | un pod por step | [Kubernetes](/es/docs/kubernetes/index.md), [Pod por step](/es/docs/pod-per-step/index.md) |
 | **Helm** | el chart en `deployments/helm/brevis` | [Kubernetes](/es/docs/kubernetes/#install-it-with-helm) |
 

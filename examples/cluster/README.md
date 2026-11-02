@@ -148,7 +148,7 @@ arriving. Two of them start six milliseconds apart — the parallel pair, in the
 same container, which is the concurrency nobody is bounding.
 
 **The agent image is built from this tree**, not pulled. The published one —
-`areteacademy/brevis:<version>-agent`, since 0.16.0 — is what a client deploys,
+`brevissh/brevis:<version>-agent`, since 0.16.0 — is what a client deploys,
 and the demo still builds its own: the point of running this is to try the agent
 in the WORKING TREE, and a demo that pulled a tag would be testing the last
 release instead of the change in front of you.

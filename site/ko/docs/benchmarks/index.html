@@ -133,7 +133,7 @@
       <h1>벤치마크</h1>
       <p class="doc-desc">게이트웨이를 측정하는 방법, 숫자가 말하는 것, 그리고 서로 일치해야 하는 세 증인입니다.</p>
       <p>명령 하나로 게이트웨이 전체를 측정합니다.</p>
-<div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
+<div class="code-block" data-code="BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code>BREVIS_BENCH_IMAGE=brevissh/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>Postgres를 띄우고, 게이트웨이를 시작하고, [k6]로 부하를 걸고, <strong>버퍼가 비워질 때까지 기다린 뒤</strong> 게이트웨이 자신의 <code>/metrics</code>를 수집해 <code>bench/results/REPORT.md</code>를 작성합니다.</p>
 <h2 id="three-witnesses-and-the-third-is-the-one-that-matters">증인 셋, 그리고 중요한 것은 세 번째<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>k6는 프로듀서가 본 것을 압니다. 게이트웨이는 자기가 한 일을 압니다. 첫 번째만 가진 부하 테스트는 빠른 게이트웨이와 <code>202</code>로 응답하고 받아들인 것을 버리는 게이트웨이를 구별할 수 없습니다.</p>
@@ -142,7 +142,7 @@
 <p>앞의 둘은 모두 게이트웨이 자신의 산술입니다. 하나는 작성한 응답에서, 하나는 증가시킨 카운터에서 나온 것이며, 이벤트를 잃는 버그가 있어도 둘은 <strong>서로</strong> 일치할 수 있습니다. 우리 말을 믿지 않은 것은 데이터베이스뿐입니다.</p>
 <p><strong>셋이 일치하지 않는 run은 실패한 것입니다.</strong> 백분위수가 아무리 좋아도 마찬가지입니다.</p>
 <h2 id="the-run-above">위의 run<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
-<p><code>bench/results/REPORT.md</code>의 2026-09-26 run입니다. <code>areteacademy/brevis-gateway:0.11.0</code>, Darwin arm64, CPU 11개, 같은 커널의 컨테이너에서 실행한 Postgres 17, <code>write: append</code>인 <code>auto_table[columns]</code>입니다.</p>
+<p><code>bench/results/REPORT.md</code>의 2026-09-26 run입니다. <code>brevissh/brevis-gateway:0.11.0</code>, Darwin arm64, CPU 11개, 같은 커널의 컨테이너에서 실행한 Postgres 17, <code>write: append</code>인 <code>auto_table[columns]</code>입니다.</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>수락된 이벤트</td><td><strong>5,431,000</strong> (135,768/s)</td></tr><tr><td>전송한 본문</td><td>40초 동안 1,156.7 MiB</td></tr><tr><td><code>503</code> (백프레셔)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5.9 ms / 16.0 ms / 22.7 ms</td></tr><tr><td>전달된 배치</td><td>1,087개, 묻힌 것 없음</td></tr></tbody></table></div>
 <h2 id="the-thresholds-are-the-point">임계값이 핵심입니다<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>임계값 중 하나라도 실패하면 k6가 0이 아닌 코드로 종료하므로, 이것은 차트가 아니라 <strong>게이트</strong>입니다.</p>

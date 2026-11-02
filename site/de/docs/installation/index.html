@@ -156,8 +156,8 @@ cd <span class="t-k">brevis</span>
 <h2 id="docker">Docker<a class="anchor" href="#docker" aria-label="link">#</a></h2>
 <p>Zwei Images desselben Binarys, weil die beiden Rollen gegensätzliche Anforderungen haben:</p>
 <div class="table-wrap"><table><thead><tr><th>Tag</th><th>Basis</th><th>Warum</th></tr></thead><tbody><tr><td><code>:0.11.2</code></td><td>distroless</td><td>die API liefert nur HTTP und führt nichts aus – keine Shell, minimale Angriffsfläche</td></tr><tr><td><code>:0.11.2-worker</code></td><td>alpine + tini</td><td><code>run:</code>-Steps brauchen eine Shell</td></tr></tbody></table></div>
-<div class="code-block" data-code="docker run --rm areteacademy/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> areteacademy/<span class="t-k">brevis</span>:latest version</code></pre></div>
-<p>Beide Images liegen unter <a href="https://hub.docker.com/r/areteacademy/brevis" target="_blank" rel="noopener">hub.docker.com/r/areteacademy/brevis</a>, für <code>amd64</code> und <code>arm64</code>.</p>
+<div class="code-block" data-code="docker run --rm brevissh/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> brevissh/<span class="t-k">brevis</span>:latest version</code></pre></div>
+<p>Beide Images liegen unter <a href="https://hub.docker.com/r/brevissh/brevis" target="_blank" rel="noopener">hub.docker.com/r/brevissh/brevis</a>, für <code>amd64</code> und <code>arm64</code>.</p>
 <h2 id="a-full-local-environment">Eine vollständige lokale Umgebung<a class="anchor" href="#a-full-local-environment" aria-label="link">#</a></h2>
 <p>Das Repository liefert eine <code>docker-compose.yml</code> mit, die Postgres, die API und den Scheduler hochfährt:</p>
 <div class="code-block" data-code="make up      # Postgres + API + scheduler

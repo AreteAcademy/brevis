@@ -133,7 +133,7 @@
       <h1>Benchmarks</h1>
       <p class="doc-desc">Cómo medimos el gateway, qué dicen los números y los tres testigos que tienen que coincidir.</p>
       <p>Un comando, y mide todo el gateway:</p>
-<div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
+<div class="code-block" data-code="BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_BENCH_IMAGE=brevissh/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>Levanta un Postgres, inicia el gateway, lo carga con [k6], <strong>espera a que el buffer se vacíe</strong>, scrapea el propio <code>/metrics</code> del gateway y escribe <code>bench/results/REPORT.md</code>.</p>
 <h2 id="three-witnesses-and-the-third-is-the-one-that-matters">Tres testigos, y el tercero es el que importa<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>k6 sabe lo que vio un productor. El gateway sabe lo que hizo. Una prueba de carga que lleva solo el primero no puede distinguir un gateway rápido de uno que responde <code>202</code> y descarta lo que aceptó.</p>
@@ -142,7 +142,7 @@
 <p>Los dos primeros son aritmética del propio gateway —uno de la respuesta que escribió, otro del contador que incrementó—, y un bug que perdiera eventos podría mantenerlos coherentes <strong>entre sí</strong>. La base de datos es la única que no nos tomó la palabra.</p>
 <p><strong>Un run en el que los tres discrepan falló</strong>, por buenos que sean los percentiles.</p>
 <h2 id="the-run-above">El run de arriba<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
-<p>El run del 2026-09-26 en <code>bench/results/REPORT.md</code>: <code>areteacademy/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPUs, Postgres 17 en un contenedor sobre el mismo kernel, <code>auto_table[columns]</code> con <code>write: append</code>:</p>
+<p>El run del 2026-09-26 en <code>bench/results/REPORT.md</code>: <code>brevissh/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPUs, Postgres 17 en un contenedor sobre el mismo kernel, <code>auto_table[columns]</code> con <code>write: append</code>:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>eventos aceptados</td><td><strong>5.431.000</strong> (135.768/s)</td></tr><tr><td>cuerpo enviado</td><td>1.156,7 MiB en 40 s</td></tr><tr><td><code>503</code> (backpressure)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5,9 ms / 16,0 ms / 22,7 ms</td></tr><tr><td>lotes entregados</td><td>1.087, ninguno enterrado</td></tr></tbody></table></div>
 <h2 id="the-thresholds-are-the-point">Los umbrales son lo importante<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>k6 sale con código distinto de cero cuando uno falla, así que esto es una <strong>compuerta</strong> y no un gráfico:</p>

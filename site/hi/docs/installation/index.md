@@ -56,10 +56,10 @@ brevis 0.11.2
 | `:0.11.2-worker` | alpine + tini | `run:` steps को shell चाहिए |
 
 ```bash
-docker run --rm areteacademy/brevis:latest version
+docker run --rm brevissh/brevis:latest version
 ```
 
-दोनों images [hub.docker.com/r/areteacademy/brevis](https://hub.docker.com/r/areteacademy/brevis)
+दोनों images [hub.docker.com/r/brevissh/brevis](https://hub.docker.com/r/brevissh/brevis)
 पर हैं, `amd64` और `arm64` के लिए।
 
 ## पूरा स्थानीय वातावरण

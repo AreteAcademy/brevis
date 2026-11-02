@@ -133,7 +133,7 @@
       <h1>Benchmarks</h1>
       <p class="doc-desc">Comment nous mesurons le gateway, ce que disent les chiffres, et les trois témoins qui doivent concorder.</p>
       <p>Une seule commande, et elle mesure tout le gateway :</p>
-<div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
+<div class="code-block" data-code="BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copier" data-done="Copié">Copier</button></div><pre><code>BREVIS_BENCH_IMAGE=brevissh/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>Elle démarre un Postgres, lance le gateway, le charge avec [k6], <strong>attend que le buffer se vide</strong>, relève le <code>/metrics</code> du gateway lui-même et écrit <code>bench/results/REPORT.md</code>.</p>
 <h2 id="three-witnesses-and-the-third-is-the-one-that-matters">Trois témoins, et le troisième est celui qui compte<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>k6 sait ce qu'un producteur a vu. Le gateway sait ce qu'il a fait. Un test de charge qui ne porte que le premier ne peut pas distinguer un gateway rapide d'un gateway qui répond <code>202</code> et abandonne ce qu'il a accepté.</p>
@@ -142,7 +142,7 @@
 <p>Les deux premiers sont l'arithmétique du gateway lui-même — l'un à partir de la réponse qu'il a écrite, l'autre à partir du compteur qu'il a incrémenté — et un bug qui perdrait des événements pourrait les garder cohérents <strong>entre eux</strong>. La base de données est la seule qui n'ait pas pris notre parole pour argent comptant.</p>
 <p><strong>Un run où les trois divergent a échoué</strong>, quelle que soit la qualité des percentiles.</p>
 <h2 id="the-run-above">Le run ci-dessus<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
-<p>Le run du 2026-09-26 dans <code>bench/results/REPORT.md</code> : <code>areteacademy/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPU, Postgres 17 dans un conteneur sur le même noyau, <code>auto_table[columns]</code> avec <code>write: append</code> :</p>
+<p>Le run du 2026-09-26 dans <code>bench/results/REPORT.md</code> : <code>brevissh/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPU, Postgres 17 dans un conteneur sur le même noyau, <code>auto_table[columns]</code> avec <code>write: append</code> :</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>événements acceptés</td><td><strong>5 431 000</strong> (135 768/s)</td></tr><tr><td>corps envoyé</td><td>1 156,7 MiB en 40s</td></tr><tr><td><code>503</code> (backpressure)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5,9 ms / 16,0 ms / 22,7 ms</td></tr><tr><td>lots livrés</td><td>1 087, aucun enterré</td></tr></tbody></table></div>
 <h2 id="the-thresholds-are-the-point">Les seuils sont le point central<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>k6 quitte avec un code non nul quand l'un d'eux échoue : c'est donc une <strong>barrière</strong> et non un graphique :</p>

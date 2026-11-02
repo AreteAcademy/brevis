@@ -15,7 +15,7 @@ on:
         required: true
 
 env:
-  IMAGE: docker.io/areteacademy/brevis
+  IMAGE: docker.io/brevissh/brevis
 
 jobs:
   images:
@@ -215,6 +215,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: areteacademy/brevis
+          repository: brevissh/brevis
           readme-filepath: ./docs/DOCKERHUB.md
           short-description: "A data orchestration runtime, in Go. Workflows, a queue, a scheduler and a UI in one binary."

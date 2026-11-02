@@ -2,7 +2,7 @@
 
 ```bash
 ./bench/run.sh                                                  # the local build
-BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
+BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh
 ```
 
 It brings up a Postgres, starts the gateway, loads it with [k6], waits for the

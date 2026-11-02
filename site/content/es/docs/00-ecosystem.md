@@ -12,10 +12,10 @@ El Core programa, encola y vigila, y nunca toca los datos. Quien los toca es el 
 
 | pieza | qué hace | cómo obtenerla | guía |
 |---|---|---|---|
-| **Core** | Programa, encola e inicia un pod por step. Nunca toca los datos. | `areteacademy/brevis` | [Core](/docs/core/) |
+| **Core** | Programa, encola e inicia un pod por step. Nunca toca los datos. | `brevissh/brevis` | [Core](/docs/core/) |
 | **SDK** | Una biblioteca Go que extrae, da forma y carga, dentro de tu step. | `go get github.com/AreteAcademy/brevis/sdk` | [SDK de Go](/docs/sdk/) |
-| **Gateway** | Recibe HTTP POST, responde 202 y escribe en lotes. Sin base de datos propia. | `areteacademy/brevis-gateway` | [Ingesta](/docs/ingestion/) |
-| **SQL** | Archivos .sql simples se convierten en tablas y vistas, en orden de dependencia. | `areteacademy/brevis-sql` | [SQL](/docs/sql/) |
+| **Gateway** | Recibe HTTP POST, responde 202 y escribe en lotes. Sin base de datos propia. | `brevissh/brevis-gateway` | [Ingesta](/docs/ingestion/) |
+| **SQL** | Archivos .sql simples se convierten en tablas y vistas, en orden de dependencia. | `brevissh/brevis-sql` | [SQL](/docs/sql/) |
 
 ## Plano de control, plano de datos
 

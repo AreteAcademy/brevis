@@ -16,6 +16,19 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ## [Unreleased]
 
+### Changed: the images are published as `brevissh/*` on Docker Hub
+
+- The engine's images (`brevis`, with `-worker` and `-agent`) and the
+  gateway's and `brevis-sql`'s now publish to `docker.io/brevissh/*`, the
+  project's own Docker Hub account, and no longer to `areteacademy/*`. The
+  current versions were copied there with the same digests, so every pin in
+  the chart, the manifests, the examples and the documentation -- all moved
+  to `brevissh/*` -- names an image that exists.
+- `areteacademy/*` keeps every version published so far and gets no new
+  ones: change `areteacademy/` to `brevissh/` to keep upgrading.
+- `make image-push` publishes to `brevissh` unless `NAMESPACE=` says
+  otherwise.
+
 ### Fixed: the images name the repository they were built from
 
 - Every image's `org.opencontainers.image.source` label -- the link Docker

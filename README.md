@@ -181,7 +181,7 @@ in the worker image.
 
 ```bash
 docker login -u <your Docker Hub user>
-make image-push            # areteacademy/brevis:<VERSION> e :<VERSION>-worker
+make image-push            # brevissh/brevis:<VERSION> e :<VERSION>-worker
 ```
 
 Two images of the same binary: `:<version>` is the API on distroless (it executes

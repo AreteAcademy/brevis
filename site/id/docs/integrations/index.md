@@ -47,7 +47,7 @@ Setiap baris menyebutkan bagian mana yang menjangkaunya, lewat paket atau sink a
 
 |  | cara menjangkaunya | panduan |
 |---|---|---|
-| **Docker** | satu image per bagian: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Instalasi](/id/docs/installation/#docker) |
+| **Docker** | satu image per bagian: `brevissh/brevis`, `brevis-gateway`, `brevis-sql` | [Instalasi](/id/docs/installation/#docker) |
 | **Kubernetes** | satu pod per step | [Kubernetes](/id/docs/kubernetes/index.md), [Pod per step](/id/docs/pod-per-step/index.md) |
 | **Helm** | chart di `deployments/helm/brevis` | [Kubernetes](/id/docs/kubernetes/#install-it-with-helm) |
 

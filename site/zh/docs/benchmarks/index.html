@@ -133,7 +133,7 @@
       <h1>基准测试</h1>
       <p class="doc-desc">我们如何度量 gateway、数字说明了什么，以及必须一致的三个见证。</p>
       <p>一条命令，就能度量整个 gateway：</p>
-<div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
+<div class="code-block" data-code="BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code>BREVIS_BENCH_IMAGE=brevissh/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>它会启动一个 Postgres，启动 gateway，用 [k6] 对其加压，<strong>等待缓冲区排空</strong>，抓取 gateway 自己的 <code>/metrics</code>，并写出 <code>bench/results/REPORT.md</code>。</p>
 <h2 id="three-witnesses-and-the-third-is-the-one-that-matters">三个见证，其中第三个才是关键<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>k6 知道生产者看到了什么。gateway 知道它自己做了什么。只带有第一个见证的负载测试，无法区分快速的 gateway 与那种返回 <code>202</code> 却丢弃了已接受数据的 gateway。</p>
@@ -142,7 +142,7 @@
 <p>前两个都是 gateway 自己的算术：一个来自它写出的响应，一个来自它递增的计数器，而丢失事件的 bug 可以让它们<strong>彼此</strong>保持一致。只有数据库没有相信我们的一面之词。</p>
 <p><strong>三者不一致的运行就是失败的</strong>，无论百分位数多么漂亮。</p>
 <h2 id="the-run-above">上面的运行<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
-<p><code>bench/results/REPORT.md</code> 中 2026-09-26 的运行：<code>areteacademy/brevis-gateway:0.11.0</code>，Darwin arm64，11 个 CPU，同一内核上容器中的 Postgres 17，<code>auto_table[columns]</code> 搭配 <code>write: append</code>：</p>
+<p><code>bench/results/REPORT.md</code> 中 2026-09-26 的运行：<code>brevissh/brevis-gateway:0.11.0</code>，Darwin arm64，11 个 CPU，同一内核上容器中的 Postgres 17，<code>auto_table[columns]</code> 搭配 <code>write: append</code>：</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>已接受的事件</td><td><strong>5,431,000</strong>（135,768/秒）</td></tr><tr><td>发送的请求体</td><td>40 秒内 1,156.7 MiB</td></tr><tr><td><code>503</code>（背压）</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5.9 ms / 16.0 ms / 22.7 ms</td></tr><tr><td>已投递的批次</td><td>1,087，没有被埋入 dead letter 的</td></tr></tbody></table></div>
 <h2 id="the-thresholds-are-the-point">阈值才是重点<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>任何一个阈值失败时，k6 都会以非零状态退出，所以这是一道<strong>关卡</strong>，而不是一张图表：</p>

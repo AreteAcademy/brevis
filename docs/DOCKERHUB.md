@@ -22,7 +22,7 @@ Both are built `linux/amd64` and `linux/arm64` from the same binary.
 ## Try it
 
 ```bash
-docker run --rm areteacademy/brevis:latest version
+docker run --rm brevissh/brevis:latest version
 ```
 
 A full stack — Postgres, the API, the scheduler and a worker — is one compose

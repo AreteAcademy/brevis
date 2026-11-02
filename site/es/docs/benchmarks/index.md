@@ -9,7 +9,7 @@
 Un comando, y mide todo el gateway:
 
 ```bash
-BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
+BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh
 ```
 
 Levanta un Postgres, inicia el gateway, lo carga con [k6], **espera a que
@@ -41,7 +41,7 @@ nos tomó la palabra.
 ## El run de arriba
 
 El run del 2026-09-26 en `bench/results/REPORT.md`:
-`areteacademy/brevis-gateway:0.11.0`, Darwin arm64, 11 CPUs, Postgres 17 en un
+`brevissh/brevis-gateway:0.11.0`, Darwin arm64, 11 CPUs, Postgres 17 en un
 contenedor sobre el mismo kernel, `auto_table[columns]` con `write: append`:
 
 | | |

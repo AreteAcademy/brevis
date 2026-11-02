@@ -12,7 +12,7 @@ POST /v1/clicks  →  decode  →  hook  →  ingestion_id  →  batch  →  202
 ```bash
 docker run -p 8080:8080 \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.32.0-slim
+  brevissh/brevis-gateway:0.32.0-slim
 ```
 
 ## Tags

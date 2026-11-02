@@ -47,7 +47,7 @@
 
 |  | 接入方式 | 指南 |
 |---|---|---|
-| **Docker** | 每个组成部分一个镜像：`areteacademy/brevis`、`brevis-gateway`、`brevis-sql` | [安装](/zh/docs/installation/#docker) |
+| **Docker** | 每个组成部分一个镜像：`brevissh/brevis`、`brevis-gateway`、`brevis-sql` | [安装](/zh/docs/installation/#docker) |
 | **Kubernetes** | 每个 step 一个 pod | [Kubernetes](/zh/docs/kubernetes/index.md)、[每个 step 一个 pod](/zh/docs/pod-per-step/index.md) |
 | **Helm** | `deployments/helm/brevis` 中的 chart | [Kubernetes](/zh/docs/kubernetes/#install-it-with-helm) |
 

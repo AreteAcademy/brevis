@@ -156,8 +156,8 @@ cd <span class="t-k">brevis</span>
 <h2 id="docker">Docker<a class="anchor" href="#docker" aria-label="link">#</a></h2>
 <p>同じバイナリのイメージが 2 つあります。2 つの役割で必要なものが正反対だからです。</p>
 <div class="table-wrap"><table><thead><tr><th>タグ</th><th>ベース</th><th>理由</th></tr></thead><tbody><tr><td><code>:0.11.2</code></td><td>distroless</td><td>API は HTTP を提供するだけで何も実行しないため、シェルなし、攻撃面は最小です</td></tr><tr><td><code>:0.11.2-worker</code></td><td>alpine + tini</td><td><code>run:</code> のステップにはシェルが必要です</td></tr></tbody></table></div>
-<div class="code-block" data-code="docker run --rm areteacademy/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> areteacademy/<span class="t-k">brevis</span>:latest version</code></pre></div>
-<p>どちらのイメージも <a href="https://hub.docker.com/r/areteacademy/brevis" target="_blank" rel="noopener">hub.docker.com/r/areteacademy/brevis</a> にあり、 <code>amd64</code> と <code>arm64</code> に対応しています。</p>
+<div class="code-block" data-code="docker run --rm brevissh/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="コピー" data-done="コピーしました">コピー</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> brevissh/<span class="t-k">brevis</span>:latest version</code></pre></div>
+<p>どちらのイメージも <a href="https://hub.docker.com/r/brevissh/brevis" target="_blank" rel="noopener">hub.docker.com/r/brevissh/brevis</a> にあり、 <code>amd64</code> と <code>arm64</code> に対応しています。</p>
 <h2 id="a-full-local-environment">ローカル環境一式<a class="anchor" href="#a-full-local-environment" aria-label="link">#</a></h2>
 <p>リポジトリには <code>docker-compose.yml</code> が含まれており、Postgres、API、スケジューラを起動します。</p>
 <div class="code-block" data-code="make up      # Postgres + API + scheduler

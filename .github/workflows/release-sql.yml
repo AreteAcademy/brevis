@@ -16,8 +16,8 @@ on:
         required: true
 
 env:
-  IMAGE: docker.io/areteacademy/brevis-sql
-  API_IMAGE: docker.io/areteacademy/brevis-sql-api
+  IMAGE: docker.io/brevissh/brevis-sql
+  API_IMAGE: docker.io/brevissh/brevis-sql-api
 
 jobs:
   image:
@@ -260,7 +260,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: areteacademy/brevis-sql-api
+          repository: brevissh/brevis-sql-api
           readme-filepath: ./docs/ENDPOINTS-hub.md
           short-description: "Declared, read-only SQL over HTTP, one tenant per key, cached until the data changes."
 
@@ -274,7 +274,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: areteacademy/brevis-sql
+          repository: brevissh/brevis-sql
           readme-filepath: ./docs/SQL-hub.md
           short-description: "Plain .sql files become tables and views, in dependency order."
 

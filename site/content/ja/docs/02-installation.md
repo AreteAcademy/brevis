@@ -56,10 +56,10 @@ brevis 0.11.2
 | `:0.11.2-worker` | alpine + tini | `run:` のステップにはシェルが必要です |
 
 ```bash
-docker run --rm areteacademy/brevis:latest version
+docker run --rm brevissh/brevis:latest version
 ```
 
-どちらのイメージも [hub.docker.com/r/areteacademy/brevis](https://hub.docker.com/r/areteacademy/brevis) にあり、
+どちらのイメージも [hub.docker.com/r/brevissh/brevis](https://hub.docker.com/r/brevissh/brevis) にあり、
 `amd64` と `arm64` に対応しています。
 
 ## ローカル環境一式

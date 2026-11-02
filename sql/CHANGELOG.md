@@ -18,6 +18,12 @@ and the versions follow [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed: the images are `brevissh/brevis-sql` and `brevissh/brevis-sql-api`
+
+- The next release publishes to `docker.io/brevissh/*`, not
+  `areteacademy/*`, which keeps the versions already there. The current ones
+  were copied over with the same digests.
+
 ### Fixed: a failed `table` rebuild no longer drops the table
 
 - On Postgres, the `DROP` and the `CREATE TABLE AS` of a `table` model (and of

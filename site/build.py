@@ -826,7 +826,7 @@ command in any image — the **Go SDK**
 two environment variables.
 
 There is a third piece with a version of its own: the **ingestion gateway**
-(`areteacademy/brevis-gateway`), an HTTP endpoint that lands data which arrives
+(`brevissh/brevis-gateway`), an HTTP endpoint that lands data which arrives
 instead of going to fetch it — configured entirely by YAML, delivering to
 Pub/Sub, Postgres, MySQL, BigQuery, Redshift or object storage. What joins all
 three is the `ingestion_id`, a frozen UUID v5 over
@@ -834,7 +834,7 @@ three is the `ingestion_id`, a frozen UUID v5 over
 fetcher lands for the same record are the same row.
 
 The fourth piece, also versioned on its own, is **SQL**
-(`areteacademy/brevis-sql`, 0.1.0): plain `.sql` files that stay valid SQL,
+(`brevissh/brevis-sql`, 0.1.0): plain `.sql` files that stay valid SQL,
 built into tables and views in the order their references imply, on Postgres
 or BigQuery — `brevis-sql compile`, `graph`, `build` and `test`. No templating.
 %s

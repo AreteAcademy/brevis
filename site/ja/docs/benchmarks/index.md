@@ -9,7 +9,7 @@
 1 つのコマンドで gateway 全体を計測します。
 
 ```bash
-BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
+BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh
 ```
 
 Postgres を起動し、gateway を起動し、[k6] で負荷をかけ、**バッファが空になるのを待ち**、gateway 自身の
@@ -39,7 +39,7 @@ k6 が知っているのは、プロデューサーが見たものです。gatew
 ## 上記の run
 
 `bench/results/REPORT.md` にある 2026-09-26 の run です。
-`areteacademy/brevis-gateway:0.11.0`、Darwin arm64、11 CPU、同じカーネル上のコンテナ内の Postgres 17、
+`brevissh/brevis-gateway:0.11.0`、Darwin arm64、11 CPU、同じカーネル上のコンテナ内の Postgres 17、
 `write: append` の `auto_table[columns]`:
 
 | | |

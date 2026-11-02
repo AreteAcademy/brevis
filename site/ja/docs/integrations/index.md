@@ -47,7 +47,7 @@
 
 |  | 接続方法 | ガイド |
 |---|---|---|
-| **Docker** | 構成要素ごとに 1 つのイメージ: `areteacademy/brevis`、`brevis-gateway`、`brevis-sql` | [インストール](/ja/docs/installation/#docker) |
+| **Docker** | 構成要素ごとに 1 つのイメージ: `brevissh/brevis`、`brevis-gateway`、`brevis-sql` | [インストール](/ja/docs/installation/#docker) |
 | **Kubernetes** | ステップごとに 1 つの pod | [Kubernetes](/ja/docs/kubernetes/index.md)、[ステップごとの pod](/ja/docs/pod-per-step/index.md) |
 | **Helm** | `deployments/helm/brevis` にあるチャート | [Kubernetes](/ja/docs/kubernetes/#install-it-with-helm) |
 

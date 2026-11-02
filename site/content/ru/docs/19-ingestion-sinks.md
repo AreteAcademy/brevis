@@ -150,8 +150,8 @@ func main() {
 
 | образ | содержит | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.32.0` | шесть sinks, S3, GCS, Redis, memcached | 19,1 МБ |
-| `areteacademy/brevis-gateway:0.32.0-slim` | `postgres`, локальные `files`, `auto_table` | **5,2 МБ** |
+| `brevissh/brevis-gateway:0.32.0` | шесть sinks, S3, GCS, Redis, memcached | 19,1 МБ |
+| `brevissh/brevis-gateway:0.32.0-slim` | `postgres`, локальные `files`, `auto_table` | **5,2 МБ** |
 
 Оба из одной сборки одного дерева, поэтому два тега всегда указывают на один
 коммит. `latest-slim` нет — `latest` уже тег, который никто не должен

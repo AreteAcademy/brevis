@@ -12,10 +12,10 @@ Core는 스케줄링하고, 큐에 넣고, 감시하지만 데이터는 절대 �
 
 | 구성 요소 | 하는 일 | 받는 방법 | 가이드 |
 |---|---|---|---|
-| **Core** | step마다 pod 하나를 스케줄링하고, 큐에 넣고, 시작합니다. 데이터는 만지지 않습니다. | `areteacademy/brevis` | [Core](/docs/core/) |
+| **Core** | step마다 pod 하나를 스케줄링하고, 큐에 넣고, 시작합니다. 데이터는 만지지 않습니다. | `brevissh/brevis` | [Core](/docs/core/) |
 | **SDK** | step 안에서 추출, 가공, 적재를 수행하는 Go 라이브러리입니다. | `go get github.com/AreteAcademy/brevis/sdk` | [Go SDK](/docs/sdk/) |
-| **Gateway** | HTTP POST를 받아 202로 응답하고 배치로 기록합니다. 자체 데이터베이스는 없습니다. | `areteacademy/brevis-gateway` | [수집](/docs/ingestion/) |
-| **SQL** | 일반 .sql 파일을 의존성 순서대로 테이블과 뷰로 만듭니다. | `areteacademy/brevis-sql` | [SQL](/docs/sql/) |
+| **Gateway** | HTTP POST를 받아 202로 응답하고 배치로 기록합니다. 자체 데이터베이스는 없습니다. | `brevissh/brevis-gateway` | [수집](/docs/ingestion/) |
+| **SQL** | 일반 .sql 파일을 의존성 순서대로 테이블과 뷰로 만듭니다. | `brevissh/brevis-sql` | [SQL](/docs/sql/) |
 
 ## 컨트롤 플레인과 데이터 플레인
 

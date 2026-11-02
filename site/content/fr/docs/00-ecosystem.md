@@ -12,10 +12,10 @@ Le Core planifie, met en file et surveille — sans jamais toucher aux données.
 
 | composant | ce qu'il fait | comment l'obtenir | guide |
 |---|---|---|---|
-| **Core** | Planifie, met en file et démarre un pod par step. Ne touche jamais aux données. | `areteacademy/brevis` | [Core](/docs/core/) |
+| **Core** | Planifie, met en file et démarre un pod par step. Ne touche jamais aux données. | `brevissh/brevis` | [Core](/docs/core/) |
 | **SDK** | Une bibliothèque Go qui extrait, met en forme et charge, à l'intérieur de votre step. | `go get github.com/AreteAcademy/brevis/sdk` | [SDK Go](/docs/sdk/) |
-| **Gateway** | Reçoit un HTTP POST, répond 202 et écrit par lots. Sans base de données propre. | `areteacademy/brevis-gateway` | [Ingestion](/docs/ingestion/) |
-| **SQL** | De simples fichiers .sql deviennent des tables et des vues, dans l'ordre des dépendances. | `areteacademy/brevis-sql` | [SQL](/docs/sql/) |
+| **Gateway** | Reçoit un HTTP POST, répond 202 et écrit par lots. Sans base de données propre. | `brevissh/brevis-gateway` | [Ingestion](/docs/ingestion/) |
+| **SQL** | De simples fichiers .sql deviennent des tables et des vues, dans l'ordre des dépendances. | `brevissh/brevis-sql` | [SQL](/docs/sql/) |
 
 ## Plan de contrôle, plan de données
 

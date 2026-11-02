@@ -150,8 +150,8 @@ hanya menulis secara lokal tidak seharusnya membawa AWS SDK untuk melakukannya.
 
 | image | membawa | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.32.0` | enam sink, S3, GCS, Redis, memcached | 19,1 MB |
-| `areteacademy/brevis-gateway:0.32.0-slim` | `postgres`, `files` lokal, `auto_table` | **5,2 MB** |
+| `brevissh/brevis-gateway:0.32.0` | enam sink, S3, GCS, Redis, memcached | 19,1 MB |
+| `brevissh/brevis-gateway:0.32.0-slim` | `postgres`, `files` lokal, `auto_table` | **5,2 MB** |
 
 Keduanya dari satu build atas satu tree, sehingga kedua tag selalu commit yang
 sama. Tidak ada `latest-slim` — `latest` sudah merupakan tag yang tidak

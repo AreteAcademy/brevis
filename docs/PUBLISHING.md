@@ -4,8 +4,8 @@ Two images come out of the same `Dockerfile`, from the same binary:
 
 | tag | base | role |
 |---|---|---|
-| `areteacademy/brevis:<version>` | distroless | API and UI. It runs nothing, so it has no shell. |
-| `areteacademy/brevis:<version>-worker` | alpine | `scheduler`, `publish`, `backfill`. **It has a shell**, because the workflows' `run:` steps need one. |
+| `brevissh/brevis:<version>` | distroless | API and UI. It runs nothing, so it has no shell. |
+| `brevissh/brevis:<version>-worker` | alpine | `scheduler`, `publish`, `backfill`. **It has a shell**, because the workflows' `run:` steps need one. |
 
 The split is not fussiness: the worker runs arbitrary commands out of the
 client's YAML, and the API does not. Giving the API a shell would widen the
@@ -56,6 +56,6 @@ it is seconds, not minutes.
 ## Checking what was published
 
 ```bash
-docker run --rm areteacademy/brevis:0.1.0 version
-docker buildx imagetools inspect areteacademy/brevis:0.1.0   # checks both architectures
+docker run --rm brevissh/brevis:0.1.0 version
+docker buildx imagetools inspect brevissh/brevis:0.1.0   # checks both architectures
 ```

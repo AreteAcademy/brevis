@@ -112,8 +112,8 @@ Go 链接器会裁剪掉没有被引用的东西，所以从未导入 BigQuery �
 
 | 镜像 | 包含 | 拉取大小（amd64） |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.32.0` | 六个 sink、S3、GCS、Redis、memcached | 19.1 MB |
-| `areteacademy/brevis-gateway:0.32.0-slim` | `postgres`、本地 `files`、`auto_table` | **5.2 MB** |
+| `brevissh/brevis-gateway:0.32.0` | 六个 sink、S3、GCS、Redis、memcached | 19.1 MB |
+| `brevissh/brevis-gateway:0.32.0-slim` | `postgres`、本地 `files`、`auto_table` | **5.2 MB** |
 
 两者来自同一棵树的同一次构建，所以这两个标签始终是同一个 commit。没有 `latest-slim`，因为 `latest` 本来就是一个没有人应该部署的标签。
 

@@ -50,10 +50,10 @@ brevis 0.11.2
 | `:0.11.2-worker` | alpine + tini | `run:` step 需要 shell |
 
 ```bash
-docker run --rm areteacademy/brevis:latest version
+docker run --rm brevissh/brevis:latest version
 ```
 
-两个镜像都在 [hub.docker.com/r/areteacademy/brevis](https://hub.docker.com/r/areteacademy/brevis)，提供 `amd64` 和 `arm64` 两种架构。
+两个镜像都在 [hub.docker.com/r/brevissh/brevis](https://hub.docker.com/r/brevissh/brevis)，提供 `amd64` 和 `arm64` 两种架构。
 
 ## 完整的本地环境
 

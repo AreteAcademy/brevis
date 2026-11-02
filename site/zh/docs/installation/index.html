@@ -156,8 +156,8 @@ cd <span class="t-k">brevis</span>
 <h2 id="docker">Docker<a class="anchor" href="#docker" aria-label="link">#</a></h2>
 <p>同一个二进制文件有两个镜像，因为这两个角色的需求相反：</p>
 <div class="table-wrap"><table><thead><tr><th>标签</th><th>基础镜像</th><th>原因</th></tr></thead><tbody><tr><td><code>:0.11.2</code></td><td>distroless</td><td>API 只提供 HTTP 服务，不执行任何东西：没有 shell，攻击面最小</td></tr><tr><td><code>:0.11.2-worker</code></td><td>alpine + tini</td><td><code>run:</code> step 需要 shell</td></tr></tbody></table></div>
-<div class="code-block" data-code="docker run --rm areteacademy/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> areteacademy/<span class="t-k">brevis</span>:latest version</code></pre></div>
-<p>两个镜像都在 <a href="https://hub.docker.com/r/areteacademy/brevis" target="_blank" rel="noopener">hub.docker.com/r/areteacademy/brevis</a>，提供 <code>amd64</code> 和 <code>arm64</code> 两种架构。</p>
+<div class="code-block" data-code="docker run --rm brevissh/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="复制" data-done="已复制">复制</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> brevissh/<span class="t-k">brevis</span>:latest version</code></pre></div>
+<p>两个镜像都在 <a href="https://hub.docker.com/r/brevissh/brevis" target="_blank" rel="noopener">hub.docker.com/r/brevissh/brevis</a>，提供 <code>amd64</code> 和 <code>arm64</code> 两种架构。</p>
 <h2 id="a-full-local-environment">完整的本地环境<a class="anchor" href="#a-full-local-environment" aria-label="link">#</a></h2>
 <p>仓库附带一个 <code>docker-compose.yml</code>，可以启动 Postgres、API 和调度器：</p>
 <div class="code-block" data-code="make up      # Postgres + API + scheduler
