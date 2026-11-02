@@ -146,7 +146,7 @@ since, until = run.window()          <span class="t-c"># the window this run cov
 
 context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
-<p><strong>कभी कोई निर्भरता नहीं।</strong> यह एक environment वेरिएबल पढ़ती है, एक फ़ाइल लिखती है और stdout पर एक पंक्ति छापती है। Python 3.9+ चाहिए।</p>
+<p><strong>कभी कोई निर्भरता नहीं।</strong> यह एक environment वेरिएबल पढ़ती है, एक फ़ाइल लिखती है और stdout पर एक पंक्ति छापती है। Python 3.10+ चाहिए।</p>
 <p>यह Go SDK का पोर्ट नहीं है: कोई drivers नहीं, कोई pagination नहीं, कोई ingestion ids नहीं। यह इसलिए है कि टीम pandas, Polars या dbt इस्तेमाल करे और फिर भी वह पाए जिसके लिए ऑर्केस्ट्रेटर होता है।</p>
 <h2 id="reading-context">संदर्भ पढ़ना<a class="anchor" href="#reading-context" aria-label="link">#</a></h2>
 <p>Key हमेशा उस step से योग्य होती है जिसने उसे प्रकाशित किया:</p>

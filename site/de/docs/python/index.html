@@ -146,7 +146,7 @@ since, until = run.window()          <span class="t-c"># the window this run cov
 
 context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
-<p><strong>Keine Abhängigkeiten, niemals.</strong> Es liest eine Umgebungsvariable, schreibt eine Datei und gibt eine Zeile auf stdout aus. Erfordert Python 3.9+.</p>
+<p><strong>Keine Abhängigkeiten, niemals.</strong> Es liest eine Umgebungsvariable, schreibt eine Datei und gibt eine Zeile auf stdout aus. Erfordert Python 3.10+.</p>
 <p>Es ist keine Portierung des Go-SDK: keine Treiber, keine Paginierung, keine Ingestion-Ids. Es existiert, damit ein Team pandas, Polars oder dbt nutzen kann und dennoch bekommt, wofür ein Orchestrator da ist.</p>
 <h2 id="reading-context">Kontext lesen<a class="anchor" href="#reading-context" aria-label="link">#</a></h2>
 <p>Ein Schlüssel wird immer durch den Step qualifiziert, der ihn veröffentlicht hat:</p>

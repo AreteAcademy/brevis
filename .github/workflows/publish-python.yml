@@ -27,7 +27,7 @@ jobs:
 
       - uses: actions/setup-python@v7
         with:
-          python-version: '3.9'
+          python-version: '3.10'
 
       # The same script test.yml runs on every push, on the DECLARED floor.
       # It used to be inline here, and that is precisely how `importlib` got

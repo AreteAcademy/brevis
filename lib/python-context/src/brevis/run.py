@@ -352,7 +352,7 @@ def _moment(value: Any) -> Optional[datetime]:
 
     ``datetime.fromisoformat`` did not accept a ``Z`` suffix until 3.11, and
     the engine writes RFC 3339, which always uses one. On the declared floor of
-    3.9 the whole library would parse nothing at all -- silently, since every
+    3.10 the whole library would parse nothing at all -- silently, since every
     field is optional. That is why the suffix is translated here rather than
     left to the standard library, and why there is a test for a timestamp with
     a ``Z`` in it.

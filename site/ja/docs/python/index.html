@@ -146,7 +146,7 @@ since, until = run.window()          <span class="t-c"># the window this run cov
 
 context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
-<p><strong>依存関係は一切ありません。</strong> 環境変数を 1 つ読み、ファイルを 1 つ書き、stdout に 1 行出力するだけです。 Python 3.9 以降が必要です。</p>
+<p><strong>依存関係は一切ありません。</strong> 環境変数を 1 つ読み、ファイルを 1 つ書き、stdout に 1 行出力するだけです。 Python 3.10 以降が必要です。</p>
 <p>Go SDK の移植ではありません。ドライバも、ページネーションも、ingestion id もありません。 チームが pandas、Polars、dbt を使いながら、オーケストレータの存在意義であるものを得られるように するために存在します。</p>
 <h2 id="reading-context">コンテキストを読む<a class="anchor" href="#reading-context" aria-label="link">#</a></h2>
 <p>キーは常に、それを公開したステップで修飾されます。</p>

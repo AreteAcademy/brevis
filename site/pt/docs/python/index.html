@@ -146,7 +146,7 @@ since, until = run.window()          <span class="t-c"># the window this run cov
 
 context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
-<p><strong>Sem dependências, nunca.</strong> Lê uma variável de ambiente, escreve um arquivo e imprime uma linha no stdout. Requer Python 3.9+.</p>
+<p><strong>Sem dependências, nunca.</strong> Lê uma variável de ambiente, escreve um arquivo e imprime uma linha no stdout. Requer Python 3.10+.</p>
 <p>Não é um port do SDK em Go: sem drivers, sem paginação, sem ids de ingestão. Ela existe para que um time use pandas, Polars ou dbt e ainda receba o que um orquestrador tem para dar.</p>
 <h2 id="reading-context">Lendo o contexto<a class="anchor" href="#reading-context" aria-label="link">#</a></h2>
 <p>Uma chave é sempre qualificada pelo passo que a publicou:</p>

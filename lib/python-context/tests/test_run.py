@@ -75,7 +75,7 @@ def test_a_z_suffix_parses_on_the_declared_minimum():
     """`datetime.fromisoformat` refused a `Z` until 3.11.
 
     The engine writes RFC 3339, which always uses one, and every field here is
-    optional -- so on the 3.9 floor this library would have parsed nothing at
+    optional -- so on the 3.10 floor this library would have parsed nothing at
     all and said nothing about it. This test is the reason `_moment` translates
     the suffix instead of handing the string to the standard library.
     """

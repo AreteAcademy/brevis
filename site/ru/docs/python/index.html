@@ -146,7 +146,7 @@ since, until = run.window()          <span class="t-c"># the window this run cov
 
 context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
-<p><strong>Никаких зависимостей, никогда.</strong> Она читает одну переменную окружения, записывает один файл и выводит одну строку в stdout. Требуется Python 3.9+.</p>
+<p><strong>Никаких зависимостей, никогда.</strong> Она читает одну переменную окружения, записывает один файл и выводит одну строку в stdout. Требуется Python 3.10+.</p>
 <p>Это не порт Go SDK: нет драйверов, нет пагинации, нет ingestion id. Она существует, чтобы команда могла использовать pandas, Polars или dbt и всё же получать то, для чего нужен оркестратор.</p>
 <h2 id="reading-context">Чтение контекста<a class="anchor" href="#reading-context" aria-label="link">#</a></h2>
 <p>Ключ всегда квалифицирован шагом, который его опубликовал:</p>

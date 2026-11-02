@@ -3473,7 +3473,7 @@ metrics.set("rows_loaded", 48213)    # reaches the engine's /metrics
 ```
 
 **No dependencies, ever.** It reads one environment variable, writes one file
-and prints one line to stdout. Requires Python 3.9+.
+and prints one line to stdout. Requires Python 3.10+.
 
 It is not a port of the Go SDK: no drivers, no pagination, no ingestion ids. It
 exists so a team can use pandas, Polars or dbt and still get what an

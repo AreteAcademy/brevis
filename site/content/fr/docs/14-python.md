@@ -21,7 +21,7 @@ metrics.set("rows_loaded", 48213)    # reaches the engine's /metrics
 ```
 
 **Aucune dépendance, jamais.** Elle lit une variable d'environnement, écrit un
-fichier et affiche une ligne sur stdout. Nécessite Python 3.9+.
+fichier et affiche une ligne sur stdout. Nécessite Python 3.10+.
 
 Ce n'est pas un portage du SDK Go : pas de drivers, pas de pagination, pas d'ids
 d'ingestion. Elle existe pour qu'une équipe puisse utiliser pandas, Polars ou dbt

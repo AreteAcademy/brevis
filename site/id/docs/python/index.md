@@ -21,7 +21,7 @@ metrics.set("rows_loaded", 48213)    # reaches the engine's /metrics
 ```
 
 **Tanpa dependensi, selamanya.** Ia membaca satu variabel environment, menulis
-satu file, dan mencetak satu baris ke stdout. Membutuhkan Python 3.9+.
+satu file, dan mencetak satu baris ke stdout. Membutuhkan Python 3.10+.
 
 Ia bukan port dari Go SDK: tanpa driver, tanpa pagination, tanpa ingestion id. Ia
 ada agar tim dapat memakai pandas, Polars, atau dbt dan tetap mendapatkan apa yang
