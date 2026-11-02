@@ -53,10 +53,11 @@ copy of every page, and dead weight on the CDN.
 | `404.html` | served for an unmatched path (`not_found_handling`) |
 
 `_headers` sets a CSP that allows exactly what the site uses: its own scripts,
-one inline snippet (the `.js` class), the Google Fonts stylesheet, and the font
-files. Nothing else — no analytics, no frames, no form posts. If you add
-analytics later, that header is the file to change, and forgetting it means the
-script is blocked silently in the browser console.
+one inline snippet (the `.js` class), the Google Fonts stylesheet, the font
+files, and one `GET` to `api.github.com` (`js/stars.js`, the star count in the
+header's button). Nothing else — no analytics, no frames, no form posts. If you
+add analytics later, that header is the file to change, and forgetting it means
+the script is blocked silently in the browser console.
 
 ## Checking a deploy
 
