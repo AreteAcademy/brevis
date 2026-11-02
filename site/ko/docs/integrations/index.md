@@ -47,7 +47,7 @@
 
 |  | 연결 방법 | 가이드 |
 |---|---|---|
-| **Docker** | 구성 요소마다 이미지 하나: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [설치](/ko/docs/installation/#docker) |
+| **Docker** | 구성 요소마다 이미지 하나: `brevissh/brevis`, `brevis-gateway`, `brevis-sql` | [설치](/ko/docs/installation/#docker) |
 | **Kubernetes** | step마다 pod 하나 | [Kubernetes](/ko/docs/kubernetes/index.md), [step당 pod 하나](/ko/docs/pod-per-step/index.md) |
 | **Helm** | `deployments/helm/brevis`의 차트 | [Kubernetes](/ko/docs/kubernetes/#install-it-with-helm) |
 

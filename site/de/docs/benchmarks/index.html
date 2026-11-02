@@ -133,7 +133,7 @@
       <h1>Benchmarks</h1>
       <p class="doc-desc">Wie wir das Gateway messen, was die Zahlen sagen und die drei Zeugen, die übereinstimmen müssen.</p>
       <p>Ein Befehl, und er misst das ganze Gateway:</p>
-<div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
+<div class="code-block" data-code="BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>BREVIS_BENCH_IMAGE=brevissh/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>Er fährt eine Postgres hoch, startet das Gateway, belastet es mit [k6], <strong>wartet, bis sich der Puffer geleert hat</strong>, liest das <code>/metrics</code> des Gateways selbst aus und schreibt <code>bench/results/REPORT.md</code>.</p>
 <h2 id="three-witnesses-and-the-third-is-the-one-that-matters">Drei Zeugen, und der dritte ist der, auf den es ankommt<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>k6 weiß, was ein Produzent gesehen hat. Das Gateway weiß, was es getan hat. Ein Lasttest, der nur den ersten trägt, kann ein schnelles Gateway nicht von einem unterscheiden, das mit <code>202</code> antwortet und verwirft, was es akzeptiert hat.</p>
@@ -142,7 +142,7 @@
 <p>Die ersten beiden sind beide die eigene Arithmetik des Gateways – eine aus der Antwort, die es schrieb, eine aus dem Zähler, den es erhöhte –, und ein Fehler, der Events verlöre, könnte sie <strong>untereinander</strong> konsistent halten. Die Datenbank ist die einzige, die uns nicht aufs Wort glaubte.</p>
 <p><strong>Ein Lauf, in dem die drei nicht übereinstimmen, ist gescheitert</strong>, wie gut die Perzentile auch sind.</p>
 <h2 id="the-run-above">Der obige Lauf<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
-<p>Der Lauf vom 26.09.2026 in <code>bench/results/REPORT.md</code>: <code>areteacademy/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPUs, Postgres 17 in einem Container auf demselben Kernel, <code>auto_table[columns]</code> mit <code>write: append</code>:</p>
+<p>Der Lauf vom 26.09.2026 in <code>bench/results/REPORT.md</code>: <code>brevissh/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPUs, Postgres 17 in einem Container auf demselben Kernel, <code>auto_table[columns]</code> mit <code>write: append</code>:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>Events akzeptiert</td><td><strong>5.431.000</strong> (135.768/s)</td></tr><tr><td>gesendeter Body</td><td>1.156,7 MiB in 40s</td></tr><tr><td><code>503</code> (Backpressure)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5,9 ms / 16,0 ms / 22,7 ms</td></tr><tr><td>Batches zugestellt</td><td>1.087, keiner begraben</td></tr></tbody></table></div>
 <h2 id="the-thresholds-are-the-point">Die Schwellenwerte sind der Punkt<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>k6 beendet sich mit einem Wert ungleich null, wenn einer scheitert, dies ist also ein <strong>Gate</strong> und kein Diagramm:</p>

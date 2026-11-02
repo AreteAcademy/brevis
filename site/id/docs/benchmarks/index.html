@@ -133,7 +133,7 @@
       <h1>Benchmark</h1>
       <p class="doc-desc">Bagaimana kami mengukur gateway, apa kata angka-angkanya, dan tiga saksi yang harus sepakat.</p>
       <p>Satu command, dan ia mengukur seluruh gateway:</p>
-<div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
+<div class="code-block" data-code="BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Salin" data-done="Tersalin">Salin</button></div><pre><code>BREVIS_BENCH_IMAGE=brevissh/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>Ia menjalankan Postgres, memulai gateway, membebaninya dengan [k6], <strong>menunggu buffer terkuras</strong>, men-scrape <code>/metrics</code> milik gateway sendiri, dan menulis <code>bench/results/REPORT.md</code>.</p>
 <h2 id="three-witnesses-and-the-third-is-the-one-that-matters">Tiga saksi, dan yang ketiga adalah yang terpenting<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>k6 tahu apa yang dilihat produser. Gateway tahu apa yang dilakukannya. Uji beban yang hanya membawa yang pertama tidak dapat membedakan gateway yang cepat dari yang menjawab <code>202</code> dan membuang apa yang diterimanya.</p>
@@ -142,7 +142,7 @@
 <p>Dua yang pertama sama-sama aritmetika gateway sendiri — satu dari respons yang ditulisnya, satu dari counter yang ditambahnya — dan bug yang menghilangkan event bisa menjaga keduanya konsisten <strong>satu sama lain</strong>. Database adalah satu-satunya yang tidak mempercayai kata-kata kami.</p>
 <p><strong>Run ketika ketiganya berbeda dianggap gagal</strong>, sebagus apa pun persentilnya.</p>
 <h2 id="the-run-above">Run di atas<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
-<p>Run 2026-09-26 di <code>bench/results/REPORT.md</code>: <code>areteacademy/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPU, Postgres 17 di dalam container pada kernel yang sama, <code>auto_table[columns]</code> dengan <code>write: append</code>:</p>
+<p>Run 2026-09-26 di <code>bench/results/REPORT.md</code>: <code>brevissh/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPU, Postgres 17 di dalam container pada kernel yang sama, <code>auto_table[columns]</code> dengan <code>write: append</code>:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>event diterima</td><td><strong>5.431.000</strong> (135.768/d)</td></tr><tr><td>body terkirim</td><td>1.156,7 MiB dalam 40d</td></tr><tr><td><code>503</code> (backpressure)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5,9 ms / 16,0 ms / 22,7 ms</td></tr><tr><td>batch terkirim</td><td>1.087, tidak ada yang dikuburkan</td></tr></tbody></table></div>
 <h2 id="the-thresholds-are-the-point">Threshold adalah intinya<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>k6 keluar dengan kode bukan nol ketika salah satunya gagal, sehingga ini adalah <strong>gerbang</strong> dan bukan grafik:</p>

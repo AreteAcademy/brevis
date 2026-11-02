@@ -12,10 +12,10 @@ Core планирует, ставит в очередь и наблюдает, �
 
 | компонент | что делает | как получить | руководство |
 |---|---|---|---|
-| **Core** | Планирует, ставит в очередь и запускает по одному pod на каждый шаг. Никогда не касается данных. | `areteacademy/brevis` | [Core](/ru/docs/core/index.md) |
+| **Core** | Планирует, ставит в очередь и запускает по одному pod на каждый шаг. Никогда не касается данных. | `brevissh/brevis` | [Core](/ru/docs/core/index.md) |
 | **SDK** | Библиотека на Go, которая извлекает, преобразует и загружает данные внутри вашего шага. | `go get github.com/AreteAcademy/brevis/sdk` | [Go SDK](/ru/docs/sdk/index.md) |
-| **Gateway** | Принимает HTTP POST, отвечает 202 и пишет пакетами. Собственной базы данных нет. | `areteacademy/brevis-gateway` | [Приём данных](/ru/docs/ingestion/index.md) |
-| **SQL** | Обычные .sql-файлы превращаются в таблицы и представления в порядке зависимостей. | `areteacademy/brevis-sql` | [SQL](/ru/docs/sql/index.md) |
+| **Gateway** | Принимает HTTP POST, отвечает 202 и пишет пакетами. Собственной базы данных нет. | `brevissh/brevis-gateway` | [Приём данных](/ru/docs/ingestion/index.md) |
+| **SQL** | Обычные .sql-файлы превращаются в таблицы и представления в порядке зависимостей. | `brevissh/brevis-sql` | [SQL](/ru/docs/sql/index.md) |
 
 ## Плоскость управления и плоскость данных
 

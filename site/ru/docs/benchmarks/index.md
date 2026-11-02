@@ -9,7 +9,7 @@
 Одна команда измеряет весь gateway:
 
 ```bash
-BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
+BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh
 ```
 
 Она поднимает Postgres, запускает gateway, нагружает его с помощью [k6], **ждёт,
@@ -42,7 +42,7 @@ k6 знает, что увидел производитель. Gateway знае�
 ## Приведённый выше запуск
 
 Запуск от 26.09.2026 в `bench/results/REPORT.md`:
-`areteacademy/brevis-gateway:0.11.0`, Darwin arm64, 11 CPU, Postgres 17 в
+`brevissh/brevis-gateway:0.11.0`, Darwin arm64, 11 CPU, Postgres 17 в
 контейнере на том же ядре, `auto_table[columns]` с `write: append`:
 
 | | |

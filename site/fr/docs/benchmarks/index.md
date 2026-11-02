@@ -9,7 +9,7 @@
 Une seule commande, et elle mesure tout le gateway :
 
 ```bash
-BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
+BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh
 ```
 
 Elle démarre un Postgres, lance le gateway, le charge avec [k6], **attend que le
@@ -42,7 +42,7 @@ percentiles.
 ## Le run ci-dessus
 
 Le run du 2026-09-26 dans `bench/results/REPORT.md` :
-`areteacademy/brevis-gateway:0.11.0`, Darwin arm64, 11 CPU, Postgres 17 dans un
+`brevissh/brevis-gateway:0.11.0`, Darwin arm64, 11 CPU, Postgres 17 dans un
 conteneur sur le même noyau, `auto_table[columns]` avec `write: append` :
 
 | | |

@@ -152,8 +152,8 @@ pour le faire.
 
 | image | contient | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.32.0` | six sinks, S3, GCS, Redis, memcached | 19,1 Mo |
-| `areteacademy/brevis-gateway:0.32.0-slim` | `postgres`, `files` local, `auto_table` | **5,2 Mo** |
+| `brevissh/brevis-gateway:0.32.0` | six sinks, S3, GCS, Redis, memcached | 19,1 Mo |
+| `brevissh/brevis-gateway:0.32.0-slim` | `postgres`, `files` local, `auto_table` | **5,2 Mo** |
 
 Les deux issues d'un même build d'un même arbre, donc les deux tags correspondent
 toujours au même commit. Il n'y a pas de `latest-slim` — `latest` est déjà un tag

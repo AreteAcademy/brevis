@@ -156,8 +156,8 @@ cd <span class="t-k">brevis</span>
 <h2 id="docker">Docker<a class="anchor" href="#docker" aria-label="link">#</a></h2>
 <p>같은 바이너리로 이미지를 두 가지 제공하는데, 두 역할의 요구가 정반대이기 때문입니다.</p>
 <div class="table-wrap"><table><thead><tr><th>태그</th><th>베이스</th><th>이유</th></tr></thead><tbody><tr><td><code>:0.11.2</code></td><td>distroless</td><td>API는 HTTP를 제공할 뿐 아무것도 실행하지 않으므로 셸이 없고 공격 표면이 최소입니다</td></tr><tr><td><code>:0.11.2-worker</code></td><td>alpine + tini</td><td><code>run:</code> step에는 셸이 필요합니다</td></tr></tbody></table></div>
-<div class="code-block" data-code="docker run --rm areteacademy/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> areteacademy/<span class="t-k">brevis</span>:latest version</code></pre></div>
-<p>두 이미지 모두 <code>amd64</code>와 <code>arm64</code>용으로 <a href="https://hub.docker.com/r/areteacademy/brevis" target="_blank" rel="noopener">hub.docker.com/r/areteacademy/brevis</a>에 있습니다.</p>
+<div class="code-block" data-code="docker run --rm brevissh/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> brevissh/<span class="t-k">brevis</span>:latest version</code></pre></div>
+<p>두 이미지 모두 <code>amd64</code>와 <code>arm64</code>용으로 <a href="https://hub.docker.com/r/brevissh/brevis" target="_blank" rel="noopener">hub.docker.com/r/brevissh/brevis</a>에 있습니다.</p>
 <h2 id="a-full-local-environment">전체 로컬 환경<a class="anchor" href="#a-full-local-environment" aria-label="link">#</a></h2>
 <p>저장소에는 Postgres, API, 스케줄러를 띄우는 <code>docker-compose.yml</code>이 포함되어 있습니다.</p>
 <div class="code-block" data-code="make up      # Postgres + API + scheduler

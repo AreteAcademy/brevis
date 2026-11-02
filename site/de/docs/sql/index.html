@@ -200,16 +200,16 @@ select customer_id, count(*) as orders, sum(amount) as revenue
 from staging.stg_orders
 group by customer_id</code></pre></div>
 <p><code>compile</code> und <code>graph</code> verbinden sich mit nichts:</p>
-<div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.6.0 \
-  compile --project /project"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro areteacademy/<span class="t-k">brevis</span>-sql:0.6.0 \
+<div class="code-block" data-code="docker run --rm -v ./project:/project:ro brevissh/brevis-sql:0.6.0 \
+  compile --project /project"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro brevissh/<span class="t-k">brevis</span>-sql:0.6.0 \
   compile <span class="t-n">--project</span> /project</code></pre></div>
 <div class="code-block" data-code="2 models, 2 to build, 0 function(s)
   staging.stg_orders                 view  0 test(s)
   marts.orders                       table 2 test(s)"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>2 models, 2 to build, 0 function(s)
   staging.stg_orders                 view  0 test(s)
   marts.orders                       table 2 test(s)</code></pre></div>
-<div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.6.0 \
-  graph --project /project"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro areteacademy/<span class="t-k">brevis</span>-sql:0.6.0 \
+<div class="code-block" data-code="docker run --rm -v ./project:/project:ro brevissh/brevis-sql:0.6.0 \
+  graph --project /project"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro brevissh/<span class="t-k">brevis</span>-sql:0.6.0 \
   graph <span class="t-n">--project</span> /project</code></pre></div>
 <div class="code-block" data-code="staging.stg_orders
   └─ raw.orders (source)
@@ -220,9 +220,9 @@ marts.orders
   ├─ staging.stg_orders</code></pre></div>
 <p><code>build</code> und <code>test</code>, gegen eine Postgres:</p>
 <div class="code-block" data-code="docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.6.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db brevissh/brevis-sql:0.6.0 \
   build --project /project --dsn-from BREVIS_SQL_DSN"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro \
-  <span class="t-n">-e</span> BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/<span class="t-k">brevis</span>-sql:0.6.0 \
+  <span class="t-n">-e</span> BREVIS_SQL_DSN=postgres://user:pass@host:5432/db brevissh/<span class="t-k">brevis</span>-sql:0.6.0 \
   build <span class="t-n">--project</span> /project <span class="t-n">--dsn-from</span> BREVIS_SQL_DSN</code></pre></div>
 <div class="code-block" data-code="  staging.stg_orders                 view  new   4ms
 @brevis:{&quot;type&quot;:&quot;landed&quot;,&quot;target&quot;:&quot;postgres://postgres/staging/stg_orders&quot;}
@@ -234,9 +234,9 @@ marts.orders
 @brevis:{"type":"landed","target":"postgres://postgres/marts/orders","rows":2}
 2 models built on postgres</code></pre></div>
 <div class="code-block" data-code="docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.6.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db brevissh/brevis-sql:0.6.0 \
   test --project /project --dsn-from BREVIS_SQL_DSN"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro \
-  <span class="t-n">-e</span> BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/<span class="t-k">brevis</span>-sql:0.6.0 \
+  <span class="t-n">-e</span> BREVIS_SQL_DSN=postgres://user:pass@host:5432/db brevissh/<span class="t-k">brevis</span>-sql:0.6.0 \
   test <span class="t-n">--project</span> /project <span class="t-n">--dsn-from</span> BREVIS_SQL_DSN</code></pre></div>
 <div class="code-block" data-code="2 tests passed on postgres"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Kopieren" data-done="Kopiert">Kopieren</button></div><pre><code>2 tests passed on postgres</code></pre></div>
 <p>Die echte Ausgabe, vom veröffentlichten Image – compile und graph verbinden sich mit nichts. Gegen eine Postgres enden build und test mit „2 models built“ und „2 tests passed“.</p>

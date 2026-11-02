@@ -141,8 +141,8 @@ SDK를 포함해서는 안 됩니다.
 
 | 이미지 | 포함하는 것 | pull 크기 (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.32.0` | sink 여섯 개, S3, GCS, Redis, memcached | 19.1 MB |
-| `areteacademy/brevis-gateway:0.32.0-slim` | `postgres`, 로컬 `files`, `auto_table` | **5.2 MB** |
+| `brevissh/brevis-gateway:0.32.0` | sink 여섯 개, S3, GCS, Redis, memcached | 19.1 MB |
+| `brevissh/brevis-gateway:0.32.0-slim` | `postgres`, 로컬 `files`, `auto_table` | **5.2 MB** |
 
 하나의 트리를 한 번 빌드해서 만들므로 두 태그는 항상 같은 커밋입니다. `latest-slim`은
 없습니다. `latest`는 이미 아무도 배포해서는 안 되는 태그이기 때문입니다.

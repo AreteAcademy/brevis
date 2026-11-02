@@ -12,10 +12,10 @@ Core menjadwalkan, mengantrekan, dan memantau — dan tidak pernah menyentuh dat
 
 | bagian | fungsi | cara mendapatkannya | panduan |
 |---|---|---|---|
-| **Core** | Menjadwalkan, mengantrekan, dan memulai satu pod per step. Tidak pernah menyentuh data. | `areteacademy/brevis` | [Core](/id/docs/core/index.md) |
+| **Core** | Menjadwalkan, mengantrekan, dan memulai satu pod per step. Tidak pernah menyentuh data. | `brevissh/brevis` | [Core](/id/docs/core/index.md) |
 | **SDK** | Pustaka Go yang mengekstrak, membentuk, dan memuat data di dalam step Anda. | `go get github.com/AreteAcademy/brevis/sdk` | [Go SDK](/id/docs/sdk/index.md) |
-| **Gateway** | Menerima HTTP POST, menjawab 202, dan menulis secara batch. Tanpa database sendiri. | `areteacademy/brevis-gateway` | [Ingestion](/id/docs/ingestion/index.md) |
-| **SQL** | File .sql biasa menjadi tabel dan view, berurutan sesuai dependensi. | `areteacademy/brevis-sql` | [SQL](/id/docs/sql/index.md) |
+| **Gateway** | Menerima HTTP POST, menjawab 202, dan menulis secara batch. Tanpa database sendiri. | `brevissh/brevis-gateway` | [Ingestion](/id/docs/ingestion/index.md) |
+| **SQL** | File .sql biasa menjadi tabel dan view, berurutan sesuai dependensi. | `brevissh/brevis-sql` | [SQL](/id/docs/sql/index.md) |
 
 ## Control plane, data plane
 

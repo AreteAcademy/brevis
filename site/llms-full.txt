@@ -20,10 +20,10 @@ The Core schedules, queues and watches — and never touches the data. What touc
 
 | piece | what it does | how you get it | guide |
 |---|---|---|---|
-| **Core** | Schedules, queues and starts one pod per step. Never touches the data. | `areteacademy/brevis` | [Core](/docs/core/index.md) |
+| **Core** | Schedules, queues and starts one pod per step. Never touches the data. | `brevissh/brevis` | [Core](/docs/core/index.md) |
 | **SDK** | A Go library that extracts, shapes and loads, inside your step. | `go get github.com/AreteAcademy/brevis/sdk` | [Go SDK](/docs/sdk/index.md) |
-| **Gateway** | Takes HTTP POST, answers 202 and writes in batches. No database of its own. | `areteacademy/brevis-gateway` | [Ingestion](/docs/ingestion/index.md) |
-| **SQL** | Plain .sql files become tables and views, in dependency order. | `areteacademy/brevis-sql` | [SQL](/docs/sql/index.md) |
+| **Gateway** | Takes HTTP POST, answers 202 and writes in batches. No database of its own. | `brevissh/brevis-gateway` | [Ingestion](/docs/ingestion/index.md) |
+| **SQL** | Plain .sql files become tables and views, in dependency order. | `brevissh/brevis-sql` | [SQL](/docs/sql/index.md) |
 
 ## Control plane, data plane
 
@@ -140,7 +140,7 @@ Each row says which piece reaches it, through which package or sink, and where t
 
 |  | how it gets there | guide |
 |---|---|---|
-| **Docker** | one image per piece: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Installation](/docs/installation/#docker) |
+| **Docker** | one image per piece: `brevissh/brevis`, `brevis-gateway`, `brevis-sql` | [Installation](/docs/installation/#docker) |
 | **Kubernetes** | one pod per step | [Kubernetes](/docs/kubernetes/index.md), [Pod per step](/docs/pod-per-step/index.md) |
 | **Helm** | the chart in `deployments/helm/brevis` | [Kubernetes](/docs/kubernetes/#install-it-with-helm) |
 
@@ -363,10 +363,10 @@ Two images of the same binary, because the two roles have opposite needs:
 | `:0.11.2-worker` | alpine + tini | `run:` steps need a shell |
 
 ```bash
-docker run --rm areteacademy/brevis:latest version
+docker run --rm brevissh/brevis:latest version
 ```
 
-Both images live at [hub.docker.com/r/areteacademy/brevis](https://hub.docker.com/r/areteacademy/brevis),
+Both images live at [hub.docker.com/r/brevissh/brevis](https://hub.docker.com/r/brevissh/brevis),
 for `amd64` and `arm64`.
 
 ## A full local environment
@@ -610,7 +610,7 @@ To run it locally, with no queue and no cluster:
 
 ```bash
 docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
-  areteacademy/brevis:0.40.0-worker run hello.yaml
+  brevissh/brevis:0.40.0-worker run hello.yaml
 ```
 
 The output:
@@ -3884,7 +3884,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: areteacademy/brevis:0.40.0
+          image: brevissh/brevis:0.40.0
           args: ["migrate", "up"]
           envFrom:
             - secretRef: {name: brevis-db}
@@ -3908,7 +3908,7 @@ spec:
       serviceAccountName: brevis
       containers:
         - name: api
-          image: areteacademy/brevis:0.40.0
+          image: brevissh/brevis:0.40.0
           args: ["serve"]
           ports: [{containerPort: 8080}]
           envFrom:
@@ -3953,7 +3953,7 @@ spec:
       serviceAccountName: brevis
       containers:
         - name: scheduler
-          image: areteacademy/brevis:0.40.0-worker
+          image: brevissh/brevis:0.40.0-worker
           args: ["scheduler", "--interval", "10s", "--concurrency", "5", "--max-pods", "10"]
           envFrom:
             - secretRef: {name: brevis-db}
@@ -4260,7 +4260,7 @@ With the `gateway.yaml` from the section below, and the key it asks for in `keys
 ```bash
 docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.32.0
+  brevissh/brevis-gateway:0.32.0
 ```
 
 ```text
@@ -4866,8 +4866,8 @@ build that only writes locally should not carry the AWS SDK to do it.
 
 | image | carries | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.32.0` | six sinks, S3, GCS, Redis, memcached | 19.1 MB |
-| `areteacademy/brevis-gateway:0.32.0-slim` | `postgres`, local `files`, `auto_table` | **5.2 MB** |
+| `brevissh/brevis-gateway:0.32.0` | six sinks, S3, GCS, Redis, memcached | 19.1 MB |
+| `brevissh/brevis-gateway:0.32.0-slim` | `postgres`, local `files`, `auto_table` | **5.2 MB** |
 
 Both from one build of one tree, so the two tags are always the same commit.
 There is no `latest-slim` — `latest` is already a tag nobody should deploy.
@@ -5372,7 +5372,7 @@ the state of each, and it is updated when the state changes — not before.
 One command, and it measures the whole gateway:
 
 ```bash
-BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
+BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh
 ```
 
 It brings up a Postgres, starts the gateway, loads it with [k6], **waits for
@@ -5404,7 +5404,7 @@ not take our word for it.
 ## The run above
 
 The 2026-09-26 run in `bench/results/REPORT.md`:
-`areteacademy/brevis-gateway:0.11.0`, Darwin arm64, 11 CPUs, Postgres 17 in a
+`brevissh/brevis-gateway:0.11.0`, Darwin arm64, 11 CPUs, Postgres 17 in a
 container on the same kernel, `auto_table[columns]` with `write: append`:
 
 | | |
@@ -5579,7 +5579,7 @@ group by customer_id
 `compile` and `graph` connect to nothing:
 
 ```bash
-docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.6.0 \
+docker run --rm -v ./project:/project:ro brevissh/brevis-sql:0.6.0 \
   compile --project /project
 ```
 
@@ -5590,7 +5590,7 @@ docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.6.0 \
 ```
 
 ```bash
-docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.6.0 \
+docker run --rm -v ./project:/project:ro brevissh/brevis-sql:0.6.0 \
   graph --project /project
 ```
 
@@ -5605,7 +5605,7 @@ marts.orders
 
 ```bash
 docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.6.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db brevissh/brevis-sql:0.6.0 \
   build --project /project --dsn-from BREVIS_SQL_DSN
 ```
 
@@ -5619,7 +5619,7 @@ docker run --rm -v ./project:/project:ro \
 
 ```bash
 docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.6.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db brevissh/brevis-sql:0.6.0 \
   test --project /project --dsn-from BREVIS_SQL_DSN
 ```
 

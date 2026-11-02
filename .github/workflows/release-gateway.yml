@@ -22,7 +22,7 @@ on:
         required: true
 
 env:
-  IMAGE: docker.io/areteacademy/brevis-gateway
+  IMAGE: docker.io/brevissh/brevis-gateway
 
 jobs:
   image:
@@ -270,6 +270,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: areteacademy/brevis-gateway
+          repository: brevissh/brevis-gateway
           readme-filepath: ./docs/GATEWAY-hub.md
           short-description: "An HTTP endpoint that lands data: validate, shape, batch, deliver."

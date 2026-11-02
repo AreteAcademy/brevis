@@ -28,7 +28,7 @@ does — published, as a deliberate act ([below](#in-the-console)).
 ## It is a binary of its own
 
 `brevis-sql-api` is the `sql` module's second binary, released on the same
-`sql/v*` tag, in its own image (`areteacademy/brevis-sql-api`, distroless,
+`sql/v*` tag, in its own image (`brevissh/brevis-sql-api`, distroless,
 ~15 MB). Not a `brevis-sql` subcommand: `brevis-sql` runs as a step in every
 pipeline that builds a model, and it must not carry an HTTP server, a cache
 and a compressor it never uses. `.github/scripts/sql-weight.sh` holds both

@@ -30,7 +30,7 @@ built at this commit, not written by hand.
 
 ```bash
 make build                    # engine → bin/brevis, with version and commit stamped in
-docker run areteacademy/brevis:latest version
+docker run brevissh/brevis:latest version
 go install github.com/AreteAcademy/brevis/cmd/brevis-sdk@latest
 ```
 

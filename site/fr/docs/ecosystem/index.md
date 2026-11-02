@@ -12,10 +12,10 @@ Le Core planifie, met en file et surveille — sans jamais toucher aux données.
 
 | composant | ce qu'il fait | comment l'obtenir | guide |
 |---|---|---|---|
-| **Core** | Planifie, met en file et démarre un pod par step. Ne touche jamais aux données. | `areteacademy/brevis` | [Core](/fr/docs/core/index.md) |
+| **Core** | Planifie, met en file et démarre un pod par step. Ne touche jamais aux données. | `brevissh/brevis` | [Core](/fr/docs/core/index.md) |
 | **SDK** | Une bibliothèque Go qui extrait, met en forme et charge, à l'intérieur de votre step. | `go get github.com/AreteAcademy/brevis/sdk` | [SDK Go](/fr/docs/sdk/index.md) |
-| **Gateway** | Reçoit un HTTP POST, répond 202 et écrit par lots. Sans base de données propre. | `areteacademy/brevis-gateway` | [Ingestion](/fr/docs/ingestion/index.md) |
-| **SQL** | De simples fichiers .sql deviennent des tables et des vues, dans l'ordre des dépendances. | `areteacademy/brevis-sql` | [SQL](/fr/docs/sql/index.md) |
+| **Gateway** | Reçoit un HTTP POST, répond 202 et écrit par lots. Sans base de données propre. | `brevissh/brevis-gateway` | [Ingestion](/fr/docs/ingestion/index.md) |
+| **SQL** | De simples fichiers .sql deviennent des tables et des vues, dans l'ordre des dépendances. | `brevissh/brevis-sql` | [SQL](/fr/docs/sql/index.md) |
 
 ## Plan de contrôle, plan de données
 

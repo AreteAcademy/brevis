@@ -50,7 +50,7 @@ spec:
           # credential, but it reads the variables `dsn_from` names -- a DSN
           # is parsed for its database, never dialled -- so the API's own
           # environment goes in, and the engine's does not.
-          image: areteacademy/brevis-sql-api:0.6.0
+          image: brevissh/brevis-sql-api:0.6.0
           args: ["describe", "--config", "/etc/brevis/api.yaml",
                  "--connections", "/etc/brevis/brevis.yaml", "--out", "/manifest/manifest.json"]
           envFrom:
@@ -68,7 +68,7 @@ spec:
       containers:
         - name: publish
           # The SAME version the engine runs: this talks to its DATABASE.
-          image: areteacademy/brevis:0.40.0-worker
+          image: brevissh/brevis:0.40.0-worker
           args: ["endpoints", "publish", "/manifest/manifest.json"]
           env:
             - name: BREVIS_DATABASE_URL

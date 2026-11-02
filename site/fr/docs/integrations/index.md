@@ -47,7 +47,7 @@ Chaque ligne indique quel composant l'atteint, par quel package ou sink, et où 
 
 |  | comment y accéder | guide |
 |---|---|---|
-| **Docker** | une image par composant : `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Installation](/fr/docs/installation/#docker) |
+| **Docker** | une image par composant : `brevissh/brevis`, `brevis-gateway`, `brevis-sql` | [Installation](/fr/docs/installation/#docker) |
 | **Kubernetes** | un pod par step | [Kubernetes](/fr/docs/kubernetes/index.md), [Un pod par step](/fr/docs/pod-per-step/index.md) |
 | **Helm** | le chart dans `deployments/helm/brevis` | [Kubernetes](/fr/docs/kubernetes/#install-it-with-helm) |
 

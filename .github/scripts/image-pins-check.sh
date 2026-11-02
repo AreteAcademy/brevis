@@ -16,16 +16,16 @@ failed=0
 
 while IFS= read -r line; do
   file="${line%%:*}"
-  pinned="$(echo "$line" | sed -E 's/.*areteacademy\/brevis:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+  pinned="$(echo "$line" | sed -E 's/.*brevissh\/brevis:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
   if [ "$pinned" != "$want" ]; then
     echo "❌ $file pins $pinned, and this tree is $want"
     failed=1
   fi
-done < <(grep -rn "areteacademy/brevis:[0-9]" deployments/ examples/ || true)
+done < <(grep -rn "brevissh/brevis:[0-9]" deployments/ examples/ || true)
 
-# AND THE OTHER IMAGE. `areteacademy/brevis-sql` is a second published image
+# AND THE OTHER IMAGE. `brevissh/brevis-sql` is a second published image
 # with a VERSION of its own, and the loop above never saw it: it greps
-# `areteacademy/brevis:[0-9]`, and `brevis-sql:` does not match that.
+# `brevissh/brevis:[0-9]`, and `brevis-sql:` does not match that.
 #
 # It was added the day the first manifest pinning it was written, which is
 # exactly one commit before it could have gone wrong -- alert.yaml and
@@ -33,14 +33,14 @@ done < <(grep -rn "areteacademy/brevis:[0-9]" deployments/ examples/ || true)
 sqlwant="$(cat sql/VERSION)"
 while IFS= read -r line; do
   file="${line%%:*}"
-  pinned="$(echo "$line" | sed -E 's/.*areteacademy\/brevis-sql:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+  pinned="$(echo "$line" | sed -E 's/.*brevissh\/brevis-sql:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
   if [ "$pinned" != "$sqlwant" ]; then
     echo "❌ $file pins brevis-sql $pinned, and sql/VERSION is $sqlwant"
     failed=1
   fi
-done < <(grep -rn "areteacademy/brevis-sql:[0-9]" deployments/ examples/ docs/ || true)
+done < <(grep -rn "brevissh/brevis-sql:[0-9]" deployments/ examples/ docs/ || true)
 
-# AND THE THIRD. `areteacademy/brevis-gateway` is released on its own tag
+# AND THE THIRD. `brevissh/brevis-gateway` is released on its own tag
 # with gateway/VERSION, and the gateway's publish Job pins it -- added with
 # that Job, for the reason brevis-sql's was added with its first manifest.
 # `-slim` is the same release, so the version is read before it.
@@ -49,23 +49,23 @@ done < <(grep -rn "areteacademy/brevis-sql:[0-9]" deployments/ examples/ docs/ |
 # above stops at `brevis-sql:` and never sees `brevis-sql-api:`.
 while IFS= read -r line; do
   file="${line%%:*}"
-  pinned="$(echo "$line" | sed -E 's/.*areteacademy\/brevis-sql-api:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+  pinned="$(echo "$line" | sed -E 's/.*brevissh\/brevis-sql-api:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
   if [ "$pinned" != "$sqlwant" ]; then
     echo "❌ $file pins brevis-sql-api $pinned, and sql/VERSION is $sqlwant"
     failed=1
   fi
-done < <(grep -rn "areteacademy/brevis-sql-api:[0-9]" deployments/ examples/ docs/ || true)
+done < <(grep -rn "brevissh/brevis-sql-api:[0-9]" deployments/ examples/ docs/ || true)
 gatewaywant="$(cat gateway/VERSION)"
 while IFS= read -r line; do
   file="${line%%:*}"
-  pinned="$(echo "$line" | sed -E 's/.*areteacademy\/brevis-gateway:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+  pinned="$(echo "$line" | sed -E 's/.*brevissh\/brevis-gateway:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
   if [ "$pinned" != "$gatewaywant" ]; then
     echo "❌ $file pins brevis-gateway $pinned, and gateway/VERSION is $gatewaywant"
     failed=1
   fi
-done < <(grep -rn "areteacademy/brevis-gateway:[0-9]" deployments/ examples/ docs/ || true)
+done < <(grep -rn "brevissh/brevis-gateway:[0-9]" deployments/ examples/ docs/ || true)
 
-# THE CHART'S appVersion IS THE SAME NUMBER, written somewhere `areteacademy/
+# THE CHART'S appVersion IS THE SAME NUMBER, written somewhere `brevissh/
 # brevis:` never appears -- the template builds the tag from it.
 #
 # It is here because it already shipped wrong: appVersion said 0.13.0 while

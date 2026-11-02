@@ -9,7 +9,7 @@ slug: benchmarks
 명령 하나로 게이트웨이 전체를 측정합니다.
 
 ```bash
-BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
+BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh
 ```
 
 Postgres를 띄우고, 게이트웨이를 시작하고, [k6]로 부하를 걸고, **버퍼가 비워질 때까지
@@ -39,7 +39,7 @@ k6는 프로듀서가 본 것을 압니다. 게이트웨이는 자기가 한 일
 ## 위의 run
 
 `bench/results/REPORT.md`의 2026-09-26 run입니다.
-`areteacademy/brevis-gateway:0.11.0`, Darwin arm64, CPU 11개, 같은 커널의 컨테이너에서
+`brevissh/brevis-gateway:0.11.0`, Darwin arm64, CPU 11개, 같은 커널의 컨테이너에서
 실행한 Postgres 17, `write: append`인 `auto_table[columns]`입니다.
 
 | | |

@@ -17,7 +17,7 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-repo="areteacademy/brevis-gateway"
+repo="brevissh/brevis-gateway"
 version=$(tr -d '[:space:]' < "$root/gateway/VERSION")
 docs=(docs/GATEWAY-hub.md
       site/content/en/docs/19-ingestion-sinks.md

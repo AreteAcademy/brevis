@@ -156,8 +156,8 @@ cd <span class="t-k">brevis</span>
 <h2 id="docker">Docker<a class="anchor" href="#docker" aria-label="link">#</a></h2>
 <p>Два образа одного и того же бинарного файла, потому что у двух ролей противоположные потребности:</p>
 <div class="table-wrap"><table><thead><tr><th>тег</th><th>основа</th><th>зачем</th></tr></thead><tbody><tr><td><code>:0.11.2</code></td><td>distroless</td><td>API только отдаёт HTTP и ничего не исполняет — без оболочки, минимальная поверхность</td></tr><tr><td><code>:0.11.2-worker</code></td><td>alpine + tini</td><td>шагам <code>run:</code> нужна оболочка</td></tr></tbody></table></div>
-<div class="code-block" data-code="docker run --rm areteacademy/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> areteacademy/<span class="t-k">brevis</span>:latest version</code></pre></div>
-<p>Оба образа находятся на <a href="https://hub.docker.com/r/areteacademy/brevis" target="_blank" rel="noopener">hub.docker.com/r/areteacademy/brevis</a> для <code>amd64</code> и <code>arm64</code>.</p>
+<div class="code-block" data-code="docker run --rm brevissh/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> brevissh/<span class="t-k">brevis</span>:latest version</code></pre></div>
+<p>Оба образа находятся на <a href="https://hub.docker.com/r/brevissh/brevis" target="_blank" rel="noopener">hub.docker.com/r/brevissh/brevis</a> для <code>amd64</code> и <code>arm64</code>.</p>
 <h2 id="a-full-local-environment">Полное локальное окружение<a class="anchor" href="#a-full-local-environment" aria-label="link">#</a></h2>
 <p>В репозитории есть <code>docker-compose.yml</code>, который поднимает Postgres, API и планировщик:</p>
 <div class="code-block" data-code="make up      # Postgres + API + scheduler

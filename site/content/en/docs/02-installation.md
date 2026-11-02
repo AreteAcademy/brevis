@@ -57,10 +57,10 @@ Two images of the same binary, because the two roles have opposite needs:
 | `:0.11.2-worker` | alpine + tini | `run:` steps need a shell |
 
 ```bash
-docker run --rm areteacademy/brevis:latest version
+docker run --rm brevissh/brevis:latest version
 ```
 
-Both images live at [hub.docker.com/r/areteacademy/brevis](https://hub.docker.com/r/areteacademy/brevis),
+Both images live at [hub.docker.com/r/brevissh/brevis](https://hub.docker.com/r/brevissh/brevis),
 for `amd64` and `arm64`.
 
 ## A full local environment

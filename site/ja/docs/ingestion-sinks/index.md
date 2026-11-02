@@ -138,8 +138,8 @@ AWS SDK を抱えるべきではありません。
 
 | イメージ | 含むもの | pull サイズ(amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.32.0` | 6 つの sink、S3、GCS、Redis、memcached | 19.1 MB |
-| `areteacademy/brevis-gateway:0.32.0-slim` | `postgres`、ローカルの `files`、`auto_table` | **5.2 MB** |
+| `brevissh/brevis-gateway:0.32.0` | 6 つの sink、S3、GCS、Redis、memcached | 19.1 MB |
+| `brevissh/brevis-gateway:0.32.0-slim` | `postgres`、ローカルの `files`、`auto_table` | **5.2 MB** |
 
 どちらも 1 つのツリーの 1 回のビルドから作られるため、2 つのタグは常に同じコミットです。
 `latest-slim` はありません。`latest` はすでに、誰もデプロイすべきでないタグだからです。

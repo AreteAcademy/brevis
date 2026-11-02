@@ -138,9 +138,9 @@
 <p>아래 섹션의 <code>gateway.yaml</code>과 <code>keys_from</code>에서 요구하는 키로 실행합니다.</p>
 <div class="code-block" data-code="docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.32.0"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">-p</span> 8080:8080 <span class="t-n">-e</span> BREVIS_INGEST_KEYS=dev-key \
+  brevissh/brevis-gateway:0.32.0"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="복사" data-done="복사됨">복사</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">-p</span> 8080:8080 <span class="t-n">-e</span> BREVIS_INGEST_KEYS=dev-key \
   <span class="t-n">-v</span> ./gateway.yaml:/etc/<span class="t-k">brevis</span>/gateway.yaml:ro \
-  areteacademy/<span class="t-k">brevis</span>-gateway:0.32.0</code></pre></div>
+  brevissh/<span class="t-k">brevis</span>-gateway:0.32.0</code></pre></div>
 <div class="code-block" data-code="2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds &gt;= 40
 2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
 2026/10/09 01:03:01 listening on :8080

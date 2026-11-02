@@ -48,7 +48,7 @@ Para ejecutarlo localmente, sin cola y sin clúster:
 
 ```bash
 docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
-  areteacademy/brevis:0.40.0-worker run hello.yaml
+  brevissh/brevis:0.40.0-worker run hello.yaml
 ```
 
 La salida:

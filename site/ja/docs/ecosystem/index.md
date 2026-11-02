@@ -12,10 +12,10 @@ Core はスケジューリング、キューイング、監視を担い、デー
 
 | 構成要素 | 役割 | 入手方法 | ガイド |
 |---|---|---|---|
-| **Core** | スケジュールし、キューに積み、ステップごとに 1 つの pod を起動します。データには一切触れません。 | `areteacademy/brevis` | [Core](/ja/docs/core/index.md) |
+| **Core** | スケジュールし、キューに積み、ステップごとに 1 つの pod を起動します。データには一切触れません。 | `brevissh/brevis` | [Core](/ja/docs/core/index.md) |
 | **SDK** | ステップの中で抽出、整形、ロードを行う Go ライブラリです。 | `go get github.com/AreteAcademy/brevis/sdk` | [Go SDK](/ja/docs/sdk/index.md) |
-| **Gateway** | HTTP POST を受け取り、202 を返し、バッチで書き込みます。専用のデータベースは持ちません。 | `areteacademy/brevis-gateway` | [取り込み](/ja/docs/ingestion/index.md) |
-| **SQL** | 通常の .sql ファイルを、依存関係の順にテーブルとビューへ変換します。 | `areteacademy/brevis-sql` | [SQL](/ja/docs/sql/index.md) |
+| **Gateway** | HTTP POST を受け取り、202 を返し、バッチで書き込みます。専用のデータベースは持ちません。 | `brevissh/brevis-gateway` | [取り込み](/ja/docs/ingestion/index.md) |
+| **SQL** | 通常の .sql ファイルを、依存関係の順にテーブルとビューへ変換します。 | `brevissh/brevis-sql` | [SQL](/ja/docs/sql/index.md) |
 
 ## コントロールプレーンとデータプレーン
 

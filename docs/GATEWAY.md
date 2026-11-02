@@ -513,8 +513,8 @@ gateway.Main(hooks, gateway.WithSinks(sinks), gateway.WithStores(stores))
 
 | image | carries | size |
 |---|---|---|
-| `areteacademy/brevis-gateway:X` | six sinks, S3 and GCS, Redis and memcached | 55 MB |
-| `areteacademy/brevis-gateway:X-slim` | `postgres`, `auto_table`, local `files` | **12.4 MB** |
+| `brevissh/brevis-gateway:X` | six sinks, S3 and GCS, Redis and memcached | 55 MB |
+| `brevissh/brevis-gateway:X-slim` | `postgres`, `auto_table`, local `files` | **12.4 MB** |
 
 Both from one build of one tree, so the two tags are always the same commit.
 There is no `latest-slim` — `latest` is already a tag nobody should deploy.
@@ -802,7 +802,7 @@ than no cache.
 
 | build | |
 |---|---|
-| `areteacademy/brevis-gateway` | carries both — 55 MB |
+| `brevissh/brevis-gateway` | carries both — 55 MB |
 | `-slim` | carries neither — **10.2 MB** |
 
 The backends are packages, like the sinks and the object stores, so a binary
@@ -1013,7 +1013,7 @@ to the binary — and `plugin.Open` is not an option at all, because under
 
 ### The published image has no hooks
 
-`areteacademy/brevis-gateway` is a gateway with none registered, which is the
+`brevissh/brevis-gateway` is a gateway with none registered, which is the
 honest artifact for a compiled-hook design: it serves streams that declare no
 `hook:`, and refuses to start on one that does, naming how hooks get there.
 

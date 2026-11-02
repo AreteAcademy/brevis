@@ -133,7 +133,7 @@
       <h1>Бенчмарки</h1>
       <p class="doc-desc">Как мы измеряем gateway, что говорят цифры и три свидетеля, которые должны совпасть.</p>
       <p>Одна команда измеряет весь gateway:</p>
-<div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
+<div class="code-block" data-code="BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Копировать" data-done="Скопировано">Копировать</button></div><pre><code>BREVIS_BENCH_IMAGE=brevissh/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>Она поднимает Postgres, запускает gateway, нагружает его с помощью [k6], <strong>ждёт, пока буфер опустеет</strong>, снимает собственный <code>/metrics</code> gateway и записывает <code>bench/results/REPORT.md</code>.</p>
 <h2 id="three-witnesses-and-the-third-is-the-one-that-matters">Три свидетеля, и важнее всего третий<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>k6 знает, что увидел производитель. Gateway знает, что он сделал. Нагрузочный тест, располагающий только первым, не отличит быстрый gateway от такого, что отвечает <code>202</code> и теряет принятое.</p>
@@ -142,7 +142,7 @@
 <p>Первые два — арифметика самого gateway: одно из ответа, который он написал, другое из счётчика, который он увеличил, — и ошибка, теряющая события, могла бы сохранять их согласованность <strong>друг с другом</strong>. Только база данных не поверила нам на слово.</p>
 <p><strong>Запуск, в котором эти три числа расходятся, считается проваленным</strong>, какими бы хорошими ни были перцентили.</p>
 <h2 id="the-run-above">Приведённый выше запуск<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
-<p>Запуск от 26.09.2026 в <code>bench/results/REPORT.md</code>: <code>areteacademy/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPU, Postgres 17 в контейнере на том же ядре, <code>auto_table[columns]</code> с <code>write: append</code>:</p>
+<p>Запуск от 26.09.2026 в <code>bench/results/REPORT.md</code>: <code>brevissh/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPU, Postgres 17 в контейнере на том же ядре, <code>auto_table[columns]</code> с <code>write: append</code>:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>принято событий</td><td><strong>5 431 000</strong> (135 768/с)</td></tr><tr><td>отправлено тела</td><td>1156,7 МиБ за 40 с</td></tr><tr><td><code>503</code> (backpressure)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5,9 мс / 16,0 мс / 22,7 мс</td></tr><tr><td>доставлено пакетов</td><td>1087, ни один не захоронен</td></tr></tbody></table></div>
 <h2 id="the-thresholds-are-the-point">Пороги — это и есть суть<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>k6 завершается с ненулевым кодом, когда порог нарушен, поэтому это <strong>шлагбаум</strong>, а не диаграмма:</p>

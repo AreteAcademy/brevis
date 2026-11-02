@@ -12,10 +12,10 @@ Core शेड्यूल करता है, कतार में रखत
 
 | हिस्सा | क्या करता है | कैसे मिलता है | गाइड |
 |---|---|---|---|
-| **Core** | शेड्यूल करता है, कतार में रखता है और हर step के लिए एक pod शुरू करता है। डेटा को कभी नहीं छूता। | `areteacademy/brevis` | [Core](/hi/docs/core/index.md) |
+| **Core** | शेड्यूल करता है, कतार में रखता है और हर step के लिए एक pod शुरू करता है। डेटा को कभी नहीं छूता। | `brevissh/brevis` | [Core](/hi/docs/core/index.md) |
 | **SDK** | एक Go लाइब्रेरी जो आपके step के भीतर डेटा निकालती है, उसे ढालती है और लोड करती है। | `go get github.com/AreteAcademy/brevis/sdk` | [Go SDK](/hi/docs/sdk/index.md) |
-| **Gateway** | HTTP POST लेता है, 202 लौटाता है और बैच में लिखता है। इसका अपना कोई डेटाबेस नहीं। | `areteacademy/brevis-gateway` | [Ingestion](/hi/docs/ingestion/index.md) |
-| **SQL** | सादी .sql फ़ाइलें निर्भरता के क्रम में तालिकाएँ और view बन जाती हैं। | `areteacademy/brevis-sql` | [SQL](/hi/docs/sql/index.md) |
+| **Gateway** | HTTP POST लेता है, 202 लौटाता है और बैच में लिखता है। इसका अपना कोई डेटाबेस नहीं। | `brevissh/brevis-gateway` | [Ingestion](/hi/docs/ingestion/index.md) |
+| **SQL** | सादी .sql फ़ाइलें निर्भरता के क्रम में तालिकाएँ और view बन जाती हैं। | `brevissh/brevis-sql` | [SQL](/hi/docs/sql/index.md) |
 
 ## कंट्रोल प्लेन, डेटा प्लेन
 

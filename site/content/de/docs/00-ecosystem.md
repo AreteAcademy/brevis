@@ -12,10 +12,10 @@ Der Core plant, reiht ein und überwacht – und berührt die Daten nie. Die Dat
 
 | Baustein | Was er tut | Bezug | Anleitung |
 |---|---|---|---|
-| **Core** | Plant, reiht ein und startet einen Pod pro Step. Berührt die Daten nie. | `areteacademy/brevis` | [Core](/docs/core/) |
+| **Core** | Plant, reiht ein und startet einen Pod pro Step. Berührt die Daten nie. | `brevissh/brevis` | [Core](/docs/core/) |
 | **SDK** | Eine Go-Bibliothek, die innerhalb Ihres Steps extrahiert, formt und lädt. | `go get github.com/AreteAcademy/brevis/sdk` | [Go-SDK](/docs/sdk/) |
-| **Gateway** | Nimmt HTTP POST entgegen, antwortet mit 202 und schreibt in Batches. Hat keine eigene Datenbank. | `areteacademy/brevis-gateway` | [Ingestion](/docs/ingestion/) |
-| **SQL** | Einfache .sql-Dateien werden in Abhängigkeitsreihenfolge zu Tabellen und Views. | `areteacademy/brevis-sql` | [SQL](/docs/sql/) |
+| **Gateway** | Nimmt HTTP POST entgegen, antwortet mit 202 und schreibt in Batches. Hat keine eigene Datenbank. | `brevissh/brevis-gateway` | [Ingestion](/docs/ingestion/) |
+| **SQL** | Einfache .sql-Dateien werden in Abhängigkeitsreihenfolge zu Tabellen und Views. | `brevissh/brevis-sql` | [SQL](/docs/sql/) |
 
 ## Control Plane, Data Plane
 

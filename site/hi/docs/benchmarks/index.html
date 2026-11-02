@@ -133,7 +133,7 @@
       <h1>Benchmarks</h1>
       <p class="doc-desc">हम gateway को कैसे मापते हैं, संख्याएँ क्या कहती हैं, और वे तीन गवाह जिनका सहमत होना ज़रूरी है।</p>
       <p>एक कमांड, और वह पूरे gateway को मापती है:</p>
-<div class="code-block" data-code="BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>BREVIS_BENCH_IMAGE=areteacademy/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
+<div class="code-block" data-code="BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="कॉपी" data-done="कॉपी हो गया">कॉपी</button></div><pre><code>BREVIS_BENCH_IMAGE=brevissh/<span class="t-k">brevis</span>-gateway:0.11.0 ./bench/run.sh</code></pre></div>
 <p>यह एक Postgres खड़ा करती है, gateway शुरू करती है, उस पर [k6] से भार डालती है, <strong>बफ़र के खाली होने का इंतज़ार करती है</strong>, gateway का अपना <code>/metrics</code> scrape करती है और <code>bench/results/REPORT.md</code> लिखती है।</p>
 <h2 id="three-witnesses-and-the-third-is-the-one-that-matters">तीन गवाह, और तीसरा वही है जो मायने रखता है<a class="anchor" href="#three-witnesses-and-the-third-is-the-one-that-matters" aria-label="link">#</a></h2>
 <p>k6 जानता है कि producer ने क्या देखा। Gateway जानता है कि उसने क्या किया। सिर्फ़ पहले वाले के साथ चलाया गया load test तेज़ gateway को उससे अलग नहीं बता सकता जो <code>202</code> देता है और जो उसने स्वीकार किया उसे गिरा देता है।</p>
@@ -142,7 +142,7 @@
 <p>पहले दो दोनों gateway का अपना गणित हैं — एक उस response से जो उसने लिखा, एक उस counter से जो उसने बढ़ाया — और events गँवाने वाला bug इन्हें <strong>आपस में</strong> सुसंगत रख सकता है। डेटाबेस अकेला है जिसने हमारी बात पर भरोसा नहीं किया।</p>
 <p><strong>जिस run में तीनों असहमत हों वह विफल हुआ</strong>, percentiles कितने भी अच्छे हों।</p>
 <h2 id="the-run-above">ऊपर वाला run<a class="anchor" href="#the-run-above" aria-label="link">#</a></h2>
-<p><code>bench/results/REPORT.md</code> में 2026-09-26 का run: <code>areteacademy/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPUs, उसी kernel पर container में Postgres 17, <code>write: append</code> के साथ <code>auto_table[columns]</code>:</p>
+<p><code>bench/results/REPORT.md</code> में 2026-09-26 का run: <code>brevissh/brevis-gateway:0.11.0</code>, Darwin arm64, 11 CPUs, उसी kernel पर container में Postgres 17, <code>write: append</code> के साथ <code>auto_table[columns]</code>:</p>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>स्वीकार किए गए events</td><td><strong>5,431,000</strong> (135,768/s)</td></tr><tr><td>भेजी गई body</td><td>40s में 1,156.7 MiB</td></tr><tr><td><code>503</code> (backpressure)</td><td>0</td></tr><tr><td>p50 / p95 / p99</td><td>5.9 ms / 16.0 ms / 22.7 ms</td></tr><tr><td>डिलीवर किए गए batches</td><td>1,087, कोई दफ़न नहीं</td></tr></tbody></table></div>
 <h2 id="the-thresholds-are-the-point">Thresholds ही असली बात हैं<a class="anchor" href="#the-thresholds-are-the-point" aria-label="link">#</a></h2>
 <p>जब कोई विफल होता है तो k6 गैर-शून्य के साथ निकलता है, इसलिए यह <strong>गेट</strong> है, चार्ट नहीं:</p>

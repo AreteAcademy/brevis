@@ -47,7 +47,7 @@ Jede Zeile nennt, welcher Baustein ihn erreicht, über welches Paket oder welche
 
 |  | Wie er erreicht wird | Anleitung |
 |---|---|---|
-| **Docker** | ein Image pro Baustein: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [Installation](/de/docs/installation/#docker) |
+| **Docker** | ein Image pro Baustein: `brevissh/brevis`, `brevis-gateway`, `brevis-sql` | [Installation](/de/docs/installation/#docker) |
 | **Kubernetes** | ein Pod pro Step | [Kubernetes](/de/docs/kubernetes/index.md), [Pod pro Step](/de/docs/pod-per-step/index.md) |
 | **Helm** | das Chart in `deployments/helm/brevis` | [Kubernetes](/de/docs/kubernetes/#install-it-with-helm) |
 

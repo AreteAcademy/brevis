@@ -3,7 +3,7 @@
 # k6, scrape the gateway, write the report.
 #
 #   ./bench/run.sh                      # the local build
-#   BREVIS_BENCH_IMAGE=areteacademy/brevis-gateway:0.11.0 ./bench/run.sh
+#   BREVIS_BENCH_IMAGE=brevissh/brevis-gateway:0.11.0 ./bench/run.sh
 #
 # The image form is the one that counts. A benchmark of a binary somebody built
 # on their laptop measures that laptop's toolchain; the published image is what

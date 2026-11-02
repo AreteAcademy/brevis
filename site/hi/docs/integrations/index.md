@@ -47,7 +47,7 @@
 
 |  | वहाँ कैसे पहुँचता है | गाइड |
 |---|---|---|
-| **Docker** | हर हिस्से के लिए एक image: `areteacademy/brevis`, `brevis-gateway`, `brevis-sql` | [इंस्टॉलेशन](/hi/docs/installation/#docker) |
+| **Docker** | हर हिस्से के लिए एक image: `brevissh/brevis`, `brevis-gateway`, `brevis-sql` | [इंस्टॉलेशन](/hi/docs/installation/#docker) |
 | **Kubernetes** | हर step के लिए एक pod | [Kubernetes](/hi/docs/kubernetes/index.md), [हर step के लिए एक pod](/hi/docs/pod-per-step/index.md) |
 | **Helm** | `deployments/helm/brevis` में मौजूद chart | [Kubernetes](/hi/docs/kubernetes/#install-it-with-helm) |
 
