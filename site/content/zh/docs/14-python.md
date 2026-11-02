@@ -20,7 +20,7 @@ context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    # reaches the engine's /metrics
 ```
 
-**永远没有依赖。** 它读取一个环境变量，写入一个文件，向 stdout 打印一行。需要 Python 3.9+。
+**永远没有依赖。** 它读取一个环境变量，写入一个文件，向 stdout 打印一行。需要 Python 3.10+。
 
 它不是 Go SDK 的移植版：没有驱动，没有分页，没有摄取 id。它存在的目的，是让团队可以使用 pandas、Polars 或 dbt，同时仍能获得编排器应当提供的东西。
 

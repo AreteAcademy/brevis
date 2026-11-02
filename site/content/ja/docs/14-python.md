@@ -21,7 +21,7 @@ metrics.set("rows_loaded", 48213)    # reaches the engine's /metrics
 ```
 
 **依存関係は一切ありません。** 環境変数を 1 つ読み、ファイルを 1 つ書き、stdout に 1 行出力するだけです。
-Python 3.9 以降が必要です。
+Python 3.10 以降が必要です。
 
 Go SDK の移植ではありません。ドライバも、ページネーションも、ingestion id もありません。
 チームが pandas、Polars、dbt を使いながら、オーケストレータの存在意義であるものを得られるように

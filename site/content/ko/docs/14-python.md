@@ -21,7 +21,7 @@ metrics.set("rows_loaded", 48213)    # reaches the engine's /metrics
 ```
 
 **의존성은 영원히 없습니다.** 환경 변수 하나를 읽고, 파일 하나를 쓰고, stdout에 한 줄을
-출력합니다. Python 3.9 이상이 필요합니다.
+출력합니다. Python 3.10 이상이 필요합니다.
 
 Go SDK의 포팅이 아닙니다. 드라이버도, 페이지네이션도, ingestion id도 없습니다. 팀이
 pandas, Polars, dbt를 그대로 쓰면서도 오케스트레이터가 존재하는 이유를 얻게 하려고

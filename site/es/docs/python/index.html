@@ -146,7 +146,7 @@ since, until = run.window()          <span class="t-c"># the window this run cov
 
 context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 metrics.set("rows_loaded", 48213)    <span class="t-c"># reaches the engine's /metrics</span></code></pre></div>
-<p><strong>Sin dependencias, nunca.</strong> Lee una variable de entorno, escribe un archivo e imprime una línea en stdout. Requiere Python 3.9+.</p>
+<p><strong>Sin dependencias, nunca.</strong> Lee una variable de entorno, escribe un archivo e imprime una línea en stdout. Requiere Python 3.10+.</p>
 <p>No es un port del SDK de Go: sin drivers, sin paginación, sin ids de ingesta. Existe para que un equipo pueda usar pandas, Polars o dbt y aun así obtener aquello para lo que sirve un orquestador.</p>
 <h2 id="reading-context">Leer el contexto<a class="anchor" href="#reading-context" aria-label="link">#</a></h2>
 <p>Una clave siempre está calificada por el step que la publicó:</p>
